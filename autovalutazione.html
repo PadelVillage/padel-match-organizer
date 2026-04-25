@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Autovalutazione livello padel - sicura</title>
+  <title>Autovalutazione livello padel - coerenza</title>
   <script src="config.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -34,7 +34,7 @@
 
     <div class="card">
       <div class="alert info">
-        Ciao! Questa scheda serve per aiutare lo staff a proporti partite più equilibrate e adatte al tuo livello. Richiede meno di 2 minuti.
+        Ciao! Questa scheda serve per aiutare lo staff a proporti partite più equilibrate e adatte al tuo livello. Richiede meno di 2 minuti. Le risposte verranno controllate anche per coerenza, così lo staff potrà proporti partite più equilibrate.
       </div>
       <div id="topStatus"></div>
 
@@ -47,6 +47,9 @@
 
         <label>Telefono</label>
         <input id="phone" type="tel" autocomplete="tel" />
+
+        <label>Email, opzionale</label>
+        <input id="email" type="email" autocomplete="email" placeholder="utile per aggiornare i tuoi dati" />
 
         <label>Da quanto tempo giochi a padel?</label>
         <select id="experience">
@@ -251,6 +254,58 @@
       return data;
     }
 
+
+    function scoreOption(value, map, fallback = 1) {
+      const key = String(value || '').toLowerCase();
+      for (const [needle, score] of Object.entries(map)) {
+        if (key.includes(needle)) return score;
+      }
+      return fallback;
+    }
+    function roundHalf(n) { return Math.round(n * 2) / 2; }
+    function calculateCoherence() {
+      const declared = parseFloat(value('declaredLevel')) || 0;
+      const scores = [];
+      scores.push(scoreOption(value('experience'), {
+        'appena': 0.8, 'meno di 6': 1.2, '6 mesi': 1.8, '1 a 3': 2.8, 'più di 3': 3.7
+      }));
+      scores.push(scoreOption(value('monthlyFrequency'), {
+        'meno di 1': 0.8, '1-2': 1.4, '3-5': 2.2, '6-10': 3.0, 'più di 10': 3.8
+      }));
+      scores.push(scoreOption(value('basicStrokes'), {
+        'molto poco': 1.0, 'abbastanza': 2.0, 'sicuro': 3.0, 'molto sicuro': 4.0
+      }));
+      scores.push(scoreOption(value('glassUsage'), {
+        'no': 1.0, 'qualche': 2.0, 'abbastanza spesso': 3.0, 'sicurezza': 4.0
+      }));
+      scores.push(scoreOption(value('netPlay'), {
+        'no / poco': 1.0, 'base': 1.8, 'discreto': 2.7, 'buono': 3.5, 'molto buono': 4.3
+      }));
+      scores.push(scoreOption(value('positioning'), {
+        'senza riferimenti': 1.0, 'abbastanza': 2.0, 'di solito': 3.0, 'consapevolezza': 4.0
+      }));
+      scores.push(scoreOption(value('rallyPatience'), {
+        'molti errori': 1.0, 'a volte': 2.0, 'spesso': 3.0, 'continuità': 4.0
+      }));
+      const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+      const compBonus = scoreOption(value('competitions'), {
+        'no': 0, 'sociali': 0.2, 'amatoriali': 0.4, 'federali': 0.7
+      }, 0);
+      let calculated = Math.max(1, Math.min(5, roundHalf(avg + compBonus)));
+      const reasons = [];
+      const diff = Math.abs(declared - calculated);
+      if (declared >= 4 && value('experience').toLowerCase().includes('appena')) reasons.push('livello alto dichiarato ma esperienza iniziale');
+      if (declared >= 4 && value('glassUsage').toLowerCase().startsWith('no')) reasons.push('livello alto dichiarato ma uso del vetro assente');
+      if (declared >= 4 && value('netPlay').toLowerCase().includes('no / poco')) reasons.push('livello alto dichiarato ma gioco a rete basso');
+      if (declared >= 4.5 && value('competitions').toLowerCase() === 'no') reasons.push('livello molto alto dichiarato senza esperienza in tornei');
+      if (diff >= 1.5) reasons.push(`livello dichiarato distante dal livello calcolato (${declared} vs ${calculated})`);
+      let status = 'high';
+      if (diff >= 1 || reasons.length) status = 'medium';
+      if (diff >= 1.5 || reasons.length >= 2) status = 'low';
+      const consistencyScore = status === 'high' ? 90 : status === 'medium' ? 65 : 35;
+      return { declared, calculated, consistencyScore, consistencyStatus: status, reasons };
+    }
+
     async function submitAssessment(payload) {
       const data = await callRpc('submit_self_assessment', {
         p_token: token,
@@ -286,10 +341,30 @@
         const tokenRow = await supabaseGetToken();
         if (tokenRow.status === 'completed') throw new Error('Questa autovalutazione risulta già compilata.');
 
+        const coherence = calculateCoherence();
+        if (coherence.consistencyStatus !== 'high') {
+          const label = coherence.consistencyStatus === 'low' ? 'bassa' : 'media';
+          const msg = `Le risposte sembrano avere coerenza ${label}.
+
+Livello dichiarato: ${coherence.declared}
+Livello calcolato: ${coherence.calculated}
+${coherence.reasons.length ? '\nMotivi:\n- ' + coherence.reasons.join('\n- ') : ''}
+
+Puoi annullare e correggere oppure inviare comunque. In caso di incoerenza lo staff verificherà prima di applicare il livello.`;
+          if (!confirm(msg)) {
+            button.disabled = false;
+            button.textContent = 'Invia autovalutazione';
+            isSubmitting = false;
+            showMessage('Invio annullato. Puoi correggere le risposte e riprovare.', 'warning');
+            return;
+          }
+        }
+
         const payload = {
           first_name: value('firstName'),
           last_name: value('lastName'),
           phone: value('phone'),
+          email: value('email'),
           experience: value('experience'),
           monthly_frequency: value('monthlyFrequency'),
           basic_strokes: value('basicStrokes'),
@@ -298,10 +373,14 @@
           positioning: value('positioning'),
           rally_patience: value('rallyPatience'),
           competitions: value('competitions'),
-          declared_level: parseFloat(value('declaredLevel')),
-          calculated_level: parseFloat(value('declaredLevel')),
+          declared_level: coherence.declared,
+          calculated_level: coherence.calculated,
+          consistency_score: coherence.consistencyScore,
+          consistency_status: coherence.consistencyStatus,
+          inconsistency_reasons: coherence.reasons,
           wants_matches: value('wantsMatches'),
           preferred_days: value('preferredDays'),
+          preferred_hours: '',
           notes: value('notes')
         };
 
