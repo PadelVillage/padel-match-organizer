@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autovalutazione livello padel | Padel Village ASD</title>
+  <meta name="description" content="Scheda rapida Padel Village ASD per aggiornare il livello e organizzare partite più equilibrate. Richiede meno di 2 minuti." />
+  <meta property="og:title" content="Autovalutazione livello padel" />
+  <meta property="og:description" content="Padel Village ASD: compila la tua scheda personale. Richiede meno di 2 minuti." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/og-autovalutazione.png" />
+  <meta name="theme-color" content="#0D47A1" />
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --blue:#0D47A1;
+      --blue-dark:#072F70;
+      --green:#14A64A;
+      --green-soft:#EAF8EF;
+      --red:#D71920;
+      --ink:#0B1D3A;
+      --muted:#617084;
+      --border:#D9E1EC;
+      --bg:#F4F7FB;
+      --card:#FFFFFF;
+      --info:#EAF4FF;
+      --danger:#D93025;
+      --warning:#F59E0B;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body {
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#f8fbff 0%,#edf3fb 100%);
+      color:var(--ink);
+      line-height:1.45;
+    }
+    .page {
+      max-width:760px;
+      margin:0 auto;
+      min-height:100vh;
+      background:#fff;
+      box-shadow:0 18px 60px rgba(13,71,161,.12);
+    }
+    .brand-header {
+      background:linear-gradient(135deg,var(--blue-dark),var(--blue));
+      color:#fff;
+      padding:20px 18px 24px;
+      border-bottom-left-radius:26px;
+      border-bottom-right-radius:26px;
+      position:relative;
+      overflow:hidden;
+    }
+    .brand-header:after {
+      content:"";
+      position:absolute;
+      right:-38px;
+      top:-40px;
+      width:170px;
+      height:170px;
+      border-radius:50%;
+      background:radial-gradient(circle,rgba(255,255,255,.18),rgba(255,255,255,0) 65%);
+    }
+    .topbar {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      position:relative;
+      z-index:1;
+      text-align:center;
+    }
+    .brand-logo {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:9px;
+      width:100%;
+    }
+    .brand-mark {
+      width:86px;
+      height:86px;
+      border-radius:50%;
+      background:#fff;
+      color:var(--blue);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:28px;
+      font-weight:950;
+      letter-spacing:-1px;
+      box-shadow:0 8px 20px rgba(0,0,0,.16);
+      border:5px solid rgba(255,255,255,.48);
+    }
+    .brand-name {
+      font-weight:900;
+      font-size:24px;
+      letter-spacing:.2px;
+      white-space:normal;
+      line-height:1.1;
+    }
+    .hero {
+      padding:28px 18px 8px;
+      text-align:center;
+    }
+    .hero-icon {
+      font-size:34px;
+      margin-bottom:6px;
+    }
+    h1 {
+      margin:0;
+      color:var(--blue);
+      font-size:34px;
+      line-height:1.05;
+      letter-spacing:-.7px;
+    }
+    .subtitle {
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:19px;
+      font-weight:600;
+    }
+    .content { padding:0 16px 24px; }
+    .notice {
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      padding:16px;
+      border-radius:18px;
+      margin:16px 0;
+      background:var(--info);
+      border:1px solid #B8D9FF;
+      border-left:6px solid var(--blue);
+      color:#12233F;
+    }
+    .notice .icon {
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      background:#fff;
+      color:var(--blue);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      border:2px solid var(--blue);
+      flex:0 0 auto;
+    }
+    .notice strong { color:var(--blue); }
+    .time-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      margin-top:10px;
+      padding:7px 11px;
+      border-radius:999px;
+      background:#fff;
+      color:var(--blue-dark);
+      font-weight:900;
+      border:1px solid #C7DCF6;
+      box-shadow:0 4px 12px rgba(13,71,161,.08);
+    }
+    .microcopy {
+      margin:10px 0 0;
+      color:#34445B;
+      font-size:14px;
+    }
+    .card {
+      background:var(--card);
+      border:1px solid #E6ECF4;
+      border-radius:20px;
+      padding:20px 18px;
+      box-shadow:0 10px 30px rgba(11,29,58,.08);
+      margin-top:16px;
+    }
+    .section-title {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      margin:4px 0 14px;
+      font-size:18px;
+      font-weight:900;
+      color:var(--blue-dark);
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .section-title:before {
+      content:"";
+      display:block;
+      width:5px;
+      height:26px;
+      background:var(--green);
+      border-radius:999px;
+    }
+    label {
+      display:block;
+      font-weight:800;
+      margin:14px 0 7px;
+      color:#10244A;
+    }
+    .input-wrap { position:relative; }
+    .input-icon {
+      position:absolute;
+      left:13px;
+      top:50%;
+      transform:translateY(-50%);
+      color:var(--green);
+      font-size:18px;
+      pointer-events:none;
+    }
+    input, select, textarea {
+      width:100%;
+      padding:13px 13px;
+      border:1px solid #C9D3E1;
+      border-radius:12px;
+      font-size:16px;
+      background:#fff;
+      color:var(--ink);
+      outline:none;
+      transition:border-color .15s, box-shadow .15s, background .15s;
+    }
+    input.with-icon { padding-left:43px; }
+    input:focus, select:focus, textarea:focus {
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(13,71,161,.14);
+    }
+    select { appearance:auto; }
+    .divider {
+      height:1px;
+      background:#E3E9F1;
+      margin:18px 0 10px;
+    }
+    button {
+      width:100%;
+      background:linear-gradient(135deg,var(--blue),#0066D6);
+      color:white;
+      border:0;
+      padding:16px 18px;
+      border-radius:14px;
+      font-size:19px;
+      font-weight:900;
+      cursor:pointer;
+      margin-top:18px;
+      box-shadow:0 10px 24px rgba(13,71,161,.28);
+    }
+    button:disabled { opacity:.65; cursor:not-allowed; }
+    .alert {
+      padding:15px 16px;
+      border-radius:14px;
+      margin:14px 0;
+      border-left:6px solid;
+      white-space:pre-line;
+      font-weight:650;
+    }
+    .info { background:#EAF4FF; border-color:var(--blue); color:#12315F; }
+    .success { background:var(--green-soft); border-color:var(--green); color:#09682E; }
+    .warning { background:#FFF7E6; border-color:var(--warning); color:#7A4A00; }
+    .danger { background:#FDECEC; border-color:var(--danger); color:#7B1712; }
+    .muted { color:var(--muted); font-size:14px; }
+    .field-error { outline:2px solid var(--danger); background:#FFF8F8; }
+    .footer-note {
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      color:var(--muted);
+      font-size:14px;
+      padding:16px 6px 2px;
+    }
+    .footer-note .shield { color:var(--blue); font-size:22px; }
+    @media (max-width:520px) {
+      .page { box-shadow:none; }
+      .brand-header { border-radius:0 0 24px 24px; padding:16px 14px 22px; }
+      .brand-mark { width:76px; height:76px; font-size:25px; }
+      .brand-name { font-size:20px; }
+      h1 { font-size:30px; }
+      .subtitle { font-size:17px; }
+      .content { padding:0 12px 20px; }
+      .card { padding:18px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="brand-header">
+      <div class="topbar">
+        <div class="brand-logo">
+          <div class="brand-mark" aria-hidden="true">PV</div>
+          <div class="brand-name" id="clubName">Padel Village ASD</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-icon" aria-hidden="true">🎾</div>
+      <h1>Autovalutazione<br>livello padel</h1>
+      <p class="subtitle">Padel Village ASD</p>
+    </section>
+
+    <div class="content">
+      <div class="notice">
+        <div class="icon">i</div>
+        <div>
+          Ciao! Questa breve scheda ci aiuta a organizzare partite più equilibrate e divertenti per tutti.
+          <div class="time-badge">⏱ Richiede meno di 2 minuti</div>
+          <p class="microcopy">Compilala con sincerità: il livello non è definitivo, ma un punto di partenza che sarà controllato dallo staff.</p>
+        </div>
+      </div>
+
+      <div id="topStatus" class="status-slot"></div>
+
+      <form id="assessmentForm" class="card" onsubmit="handleAssessmentSubmit(event)" novalidate>
+        <div class="section-title">I tuoi dati</div>
+
+        <label for="firstName">Nome</label>
+        <input id="firstName" autocomplete="given-name" placeholder="Inserisci il tuo nome" />
+
+        <label for="lastName">Cognome</label>
+        <input id="lastName" autocomplete="family-name" placeholder="Inserisci il tuo cognome" />
+
+        <label for="phone">Telefono</label>
+        <div class="input-wrap">
+          <span class="input-icon">☎</span>
+          <input id="phone" class="with-icon" type="tel" autocomplete="tel" placeholder="Inserisci il tuo numero di telefono" />
+        </div>
+
+        <label for="email">Email, opzionale</label>
+        <div class="input-wrap">
+          <span class="input-icon">✉</span>
+          <input id="email" class="with-icon" type="email" autocomplete="email" placeholder="utile per aggiornare i tuoi dati" />
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-title">Autovalutazione</div>
+
+        <label for="experience">Da quanto tempo giochi a padel?</label>
+        <select id="experience"><option value="">Seleziona</option><option>Ho appena iniziato</option><option>Meno di 6 mesi</option><option>Da 6 mesi a 1 anno</option><option>Da 1 a 3 anni</option><option>Da più di 3 anni</option></select>
+
+        <label for="monthlyFrequency">Quante volte giochi mediamente al mese?</label>
+        <select id="monthlyFrequency"><option value="">Seleziona</option><option>Meno di 1 volta al mese</option><option>1-2 volte al mese</option><option>3-5 volte al mese</option><option>6-10 volte al mese</option><option>Più di 10 volte al mese</option></select>
+
+        <label for="basicStrokes">Quanto ti senti sicuro nei colpi base?</label>
+        <select id="basicStrokes"><option value="">Seleziona</option><option>Molto poco sicuro</option><option>Abbastanza sicuro</option><option>Sicuro</option><option>Molto sicuro</option></select>
+
+        <label for="glassUsage">Sai usare il vetro durante il gioco?</label>
+        <select id="glassUsage"><option value="">Seleziona</option><option>No, quasi mai</option><option>Qualche volta</option><option>Sì, abbastanza spesso</option><option>Sì, con sicurezza</option></select>
+
+        <label for="netPlay">Sai giocare a rete con volée e bandeja?</label>
+        <select id="netPlay"><option value="">Seleziona</option><option>No / poco</option><option>Base</option><option>Discreto</option><option>Buono</option><option>Molto buono</option></select>
+
+        <label for="positioning">Riesci a mantenere la posizione con il compagno?</label>
+        <select id="positioning"><option value="">Seleziona</option><option>No, mi muovo senza riferimenti precisi</option><option>Abbastanza</option><option>Sì, di solito</option><option>Sì, con buona consapevolezza tattica</option></select>
+
+        <label for="rallyPatience">Riesci a gestire uno scambio senza cercare subito il punto?</label>
+        <select id="rallyPatience"><option value="">Seleziona</option><option>No, faccio molti errori</option><option>A volte</option><option>Spesso</option><option>Sì, con buona continuità</option></select>
+
+        <label for="competitions">Hai mai partecipato a tornei o competizioni?</label>
+        <select id="competitions"><option value="">Seleziona</option><option>No</option><option>Sì, tornei sociali</option><option>Sì, tornei amatoriali</option><option>Sì, competizioni federali o simili</option></select>
+
+        <label for="declaredLevel">Secondo te qual è il tuo livello attuale?</label>
+        <select id="declaredLevel"><option value="">Seleziona</option><option value="1.0">1,0 — Principiante assoluto</option><option value="1.5">1,5 — Principiante con prime basi</option><option value="2.0">2,0 — Base</option><option value="2.5">2,5 — Base evoluto</option><option value="3.0">3,0 — Intermedio basso</option><option value="3.5">3,5 — Intermedio</option><option value="4.0">4,0 — Intermedio buono</option><option value="4.5">4,5 — Avanzato amatoriale</option><option value="5.0">5,0 o superiore — Avanzato</option></select>
+
+        <label for="wantsMatches">Vuoi essere contattato per partite coerenti con il tuo livello?</label>
+        <select id="wantsMatches"><option value="">Seleziona</option><option>Sì</option><option>No</option><option>Solo in determinati giorni/orari</option></select>
+
+        <label for="preferredDays">Giorni/orari preferiti, opzionale</label>
+        <input id="preferredDays" placeholder="Es. lunedì sera, weekend, pranzo..." />
+
+        <label for="notes">Note, opzionale</label>
+        <textarea id="notes" rows="3" placeholder="Aggiungi eventuali note utili per lo staff"></textarea>
+
+        <button id="submitBtn" type="submit">✈ Invia la mia autovalutazione</button>
+        <div id="submitStatus"></div>
+      </form>
+
+      <div class="footer-note"><span class="shield">♢</span><span>Le risposte saranno controllate dallo staff. Il livello indicato è una prima autovalutazione e potrà essere confermato o modificato in base al gioco reale.</span></div>
+    </div>
+  </main>
+
+  <script>
+    const token = new URLSearchParams(window.location.search).get('t') || '';
+    let isSubmitting = false;
+    const requiredFields = [
+      ['firstName', 'Nome'],
+      ['lastName', 'Cognome'],
+      ['phone', 'Telefono'],
+      ['experience', 'Da quanto tempo giochi a padel'],
+      ['monthlyFrequency', 'Quante volte giochi al mese'],
+      ['basicStrokes', 'Colpi base'],
+      ['glassUsage', 'Uso del vetro'],
+      ['netPlay', 'Gioco a rete'],
+      ['positioning', 'Posizione con il compagno'],
+      ['rallyPatience', 'Gestione dello scambio'],
+      ['competitions', 'Tornei o competizioni'],
+      ['declaredLevel', 'Livello attuale'],
+      ['wantsMatches', 'Disponibilità a essere contattato']
+    ];
+
+    function el(id) { return document.getElementById(id); }
+    function value(id) { return (el(id)?.value || '').trim(); }
+    function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+    function showMessage(message, type = 'info', scroll = true) {
+      const html = `<div class="alert ${type}">${escapeHtml(message)}</div>`;
+      if (el('submitStatus')) el('submitStatus').innerHTML = html;
+      if (el('topStatus')) el('topStatus').innerHTML = html;
+      if (scroll && el('submitStatus')) el('submitStatus').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function cfg() { return window.PADEL_CONFIG || {}; }
+    function configReady() {
+      const c = cfg();
+      return c.SUPABASE_URL && c.SUPABASE_ANON_KEY && !String(c.SUPABASE_URL).includes('INCOLLA') && !String(c.SUPABASE_ANON_KEY).includes('INCOLLA');
+    }
+    function headers() {
+      return {
+        'apikey': cfg().SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + cfg().SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      };
+    }
+    function validate() {
+      requiredFields.forEach(([id]) => el(id)?.classList.remove('field-error'));
+      const missing = [];
+      let first = null;
+      requiredFields.forEach(([id, label]) => {
+        if (!value(id)) {
+          missing.push(label);
+          el(id)?.classList.add('field-error');
+          if (!first) first = el(id);
+        }
+      });
+      if (missing.length) {
+        showMessage('Compila prima questi campi obbligatori:\n' + missing.slice(0, 6).join('\n') + (missing.length > 6 ? '\n...' : ''), 'warning');
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+      return true;
+    }
+    async function callRpc(functionName, body) {
+      const baseUrl = String(cfg().SUPABASE_URL || '').replace(/\/$/, '');
+      const url = `${baseUrl}/rest/v1/rpc/${functionName}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; }
+      catch (e) { data = text; }
+      if (!res.ok) throw new Error(`${functionName} non riuscita: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+      return data;
+    }
+    async function supabaseGetToken() {
+      const data = await callRpc('get_assessment_token', { p_token: token });
+      if (!data || data.ok !== true) {
+        const error = data?.error || 'TOKEN_NOT_FOUND';
+        if (error === 'TOKEN_NOT_FOUND') throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
+        throw new Error('Controllo link non riuscito: ' + error);
+      }
+      return data;
+    }
+    function scoreOption(value, map, fallback = 1) {
+      const key = String(value || '').toLowerCase();
+      for (const [needle, score] of Object.entries(map)) if (key.includes(needle)) return score;
+      return fallback;
+    }
+    function roundHalf(n) { return Math.round(n * 2) / 2; }
+    function calculateCoherence() {
+      const declared = parseFloat(value('declaredLevel')) || 0;
+      const scores = [];
+      scores.push(scoreOption(value('experience'), {'appena':0.8,'meno di 6':1.2,'6 mesi':1.8,'1 a 3':2.8,'più di 3':3.7}));
+      scores.push(scoreOption(value('monthlyFrequency'), {'meno di 1':0.8,'1-2':1.4,'3-5':2.2,'6-10':3.0,'più di 10':3.8}));
+      scores.push(scoreOption(value('basicStrokes'), {'molto poco':1.0,'abbastanza':2.0,'sicuro':3.0,'molto sicuro':4.0}));
+      scores.push(scoreOption(value('glassUsage'), {'no':1.0,'qualche':2.0,'abbastanza spesso':3.0,'sicurezza':4.0}));
+      scores.push(scoreOption(value('netPlay'), {'no / poco':1.0,'base':1.8,'discreto':2.7,'buono':3.5,'molto buono':4.3}));
+      scores.push(scoreOption(value('positioning'), {'senza riferimenti':1.0,'abbastanza':2.0,'di solito':3.0,'consapevolezza':4.0}));
+      scores.push(scoreOption(value('rallyPatience'), {'molti errori':1.0,'a volte':2.0,'spesso':3.0,'continuità':4.0}));
+      const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+      const compBonus = scoreOption(value('competitions'), {'no':0,'sociali':0.2,'amatoriali':0.4,'federali':0.7}, 0);
+      let calculated = Math.max(1, Math.min(5, roundHalf(avg + compBonus)));
+      const reasons = [];
+      const diff = Math.abs(declared - calculated);
+      if (declared >= 4 && value('experience').toLowerCase().includes('appena')) reasons.push('livello alto dichiarato ma esperienza iniziale');
+      if (declared >= 4 && value('glassUsage').toLowerCase().startsWith('no')) reasons.push('livello alto dichiarato ma uso del vetro assente');
+      if (declared >= 4 && value('netPlay').toLowerCase().includes('no / poco')) reasons.push('livello alto dichiarato ma gioco a rete basso');
+      if (declared >= 4.5 && value('competitions').toLowerCase() === 'no') reasons.push('livello molto alto dichiarato senza esperienza in tornei');
+      if (diff >= 1.5) reasons.push(`livello dichiarato distante dal livello calcolato (${declared} vs ${calculated})`);
+      let status = 'high';
+      if (diff >= 1 || reasons.length) status = 'medium';
+      if (diff >= 1.5 || reasons.length >= 2) status = 'low';
+      const consistencyScore = status === 'high' ? 90 : status === 'medium' ? 65 : 35;
+      return { declared, calculated, consistencyScore, consistencyStatus: status, reasons };
+    }
+    async function submitAssessment(payload) {
+      const data = await callRpc('submit_self_assessment', { p_token: token, p_payload: payload });
+      if (!data || data.ok !== true) {
+        const error = data?.error || 'UNKNOWN_ERROR';
+        if (error === 'TOKEN_NOT_FOUND') throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
+        if (error === 'ALREADY_COMPLETED') throw new Error('Questa autovalutazione risulta già compilata.');
+        if (error === 'ALREADY_SUBMITTED') throw new Error('Questa autovalutazione è già stata inviata.');
+        throw new Error('Salvataggio non riuscito: ' + error);
+      }
+      return data;
+    }
+    async function handleAssessmentSubmit(event) {
+      if (event) event.preventDefault();
+      if (isSubmitting) return;
+      showMessage('Click ricevuto. Controllo i dati...', 'info');
+      if (!token) return showMessage('Link non valido: token mancante. Chiedi allo staff un nuovo link.', 'danger');
+      if (!configReady()) return showMessage('Configurazione mancante: controlla che su GitHub esista config.js con SUPABASE_URL e SUPABASE_ANON_KEY.', 'danger');
+      if (!validate()) return;
+      const button = el('submitBtn');
+      try {
+        isSubmitting = true;
+        button.disabled = true;
+        button.textContent = 'Invio in corso...';
+        showMessage('Invio in corso... Attendi qualche secondo.', 'info');
+        const tokenRow = await supabaseGetToken();
+        if (tokenRow.status === 'completed') throw new Error('Questa autovalutazione risulta già compilata.');
+        const coherence = calculateCoherence();
+        if (coherence.consistencyStatus !== 'high') {
+          const label = coherence.consistencyStatus === 'low' ? 'bassa' : 'media';
+          const msg = `Le risposte sembrano avere coerenza ${label}.\n\nLivello dichiarato: ${coherence.declared}\nLivello calcolato: ${coherence.calculated}${coherence.reasons.length ? '\n\nMotivi:\n- ' + coherence.reasons.join('\n- ') : ''}\n\nPuoi annullare e correggere oppure inviare comunque. In caso di incoerenza lo staff verificherà prima di applicare il livello.`;
+          if (!confirm(msg)) {
+            button.disabled = false;
+            button.textContent = 'Invia la mia autovalutazione';
+            isSubmitting = false;
+            showMessage('Invio annullato. Puoi correggere le risposte e riprovare.', 'warning');
+            return;
+          }
+        }
+        const payload = {
+          first_name: value('firstName'),
+          last_name: value('lastName'),
+          phone: value('phone'),
+          email: value('email'),
+          experience: value('experience'),
+          monthly_frequency: value('monthlyFrequency'),
+          basic_strokes: value('basicStrokes'),
+          glass_usage: value('glassUsage'),
+          net_play: value('netPlay'),
+          positioning: value('positioning'),
+          rally_patience: value('rallyPatience'),
+          competitions: value('competitions'),
+          declared_level: coherence.declared,
+          calculated_level: coherence.calculated,
+          consistency_score: coherence.consistencyScore,
+          consistency_status: coherence.consistencyStatus,
+          inconsistency_reasons: coherence.reasons,
+          wants_matches: value('wantsMatches'),
+          preferred_days: value('preferredDays'),
+          preferred_hours: '',
+          notes: value('notes')
+        };
+        await submitAssessment(payload);
+        button.textContent = 'Autovalutazione inviata';
+        showMessage('Grazie! La tua autovalutazione è stata registrata correttamente.', 'success');
+        Array.from(el('assessmentForm').elements).forEach(input => { if (input !== button) input.disabled = true; });
+      } catch (error) {
+        console.error(error);
+        showMessage('Errore: ' + (error.message || 'riprova o avvisa lo staff.'), 'danger');
+        button.disabled = false;
+        button.textContent = 'Invia la mia autovalutazione';
+      } finally {
+        isSubmitting = false;
+      }
+    }
+    window.handleAssessmentSubmit = handleAssessmentSubmit;
+    window.addEventListener('DOMContentLoaded', () => {
+      if (cfg().CLUB_NAME) el('clubName').textContent = cfg().CLUB_NAME;
+      if (!token) showMessage('Link non valido: token mancante.', 'danger', false);
+      else if (!configReady()) showMessage('Configurazione mancante: controlla config.js su GitHub.', 'danger', false);
+      else showMessage('Accesso personale verificato. Puoi compilare la scheda.', 'success', false);
+    });
+    window.addEventListener('error', e => {
+      showMessage('Errore tecnico pagina: ' + (e.message || 'sconosciuto'), 'danger');
+    });
+  </script>
+</body>
+</html>
