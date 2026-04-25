@@ -3,164 +3,74 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Autovalutazione livello padel - coerenza</title>
+  <title>Autovalutazione livello padel | Padel Village ASD</title>
+  <meta name="description" content="Scheda veloce per aiutare lo staff Padel Village ASD a proporre partite più equilibrate. Richiede meno di 2 minuti." />
+  <meta property="og:title" content="Autovalutazione livello padel" />
+  <meta property="og:description" content="Padel Village ASD: compila la tua scheda personale. Richiede meno di 2 minuti." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/og-autovalutazione.png" />
+  <meta name="theme-color" content="#0D47A1" />
   <script src="config.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, sans-serif; background: #f6f8fb; color: #222; line-height: 1.5; }
-    .container { max-width: 760px; margin: 0 auto; padding: 18px; }
-    header { background: #1F4788; color: white; padding: 22px; border-radius: 12px; margin: 18px 0; }
-    h1 { margin: 0 0 6px; font-size: 26px; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); margin-bottom: 16px; }
-    label { display: block; font-weight: bold; margin: 14px 0 6px; }
-    input, select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
-    button { background: #1F4788; color: white; border: 0; padding: 13px 18px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 16px; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .alert { padding: 14px; border-radius: 8px; margin: 14px 0; border-left: 5px solid; white-space: pre-line; }
-    .info { background: #e3f2fd; border-color: #1F4788; }
-    .success { background: #d4edda; border-color: #4CAF50; color: #155724; }
-    .warning { background: #fff3cd; border-color: #ff9800; color: #856404; }
-    .danger { background: #f8d7da; border-color: #f44336; color: #721c24; }
-    .muted { color: #666; font-size: 13px; }
-    .field-error { outline: 2px solid #f44336; background: #fff8f8; }
+    :root { --blue:#0D47A1; --blue-dark:#072F70; --green:#14A64A; --green-soft:#EAF8EF; --red:#D71920; --ink:#0B1D3A; --muted:#617084; --border:#D9E1EC; --bg:#F4F7FB; --card:#FFFFFF; --info:#EAF4FF; --danger:#D93025; --warning:#F59E0B; }
+    * { box-sizing:border-box; } html { scroll-behavior:smooth; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:linear-gradient(180deg,#f8fbff 0%,#edf3fb 100%); color:var(--ink); line-height:1.45; }
+    .page { max-width:760px; margin:0 auto; min-height:100vh; background:#fff; box-shadow:0 18px 60px rgba(13,71,161,.12); }
+    .brand-header { background:linear-gradient(135deg,var(--blue-dark),var(--blue)); color:#fff; padding:20px 18px 26px; border-bottom-left-radius:26px; border-bottom-right-radius:26px; position:relative; overflow:hidden; }
+    .brand-header:after { content:""; position:absolute; right:-38px; top:-40px; width:170px; height:170px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.18),rgba(255,255,255,0) 65%); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; z-index:1; }
+    .menu-icon { font-size:28px; line-height:1; opacity:.95; }
+    .brand-logo { display:flex; align-items:center; gap:12px; min-width:0; }
+    .brand-logo img { width:82px; height:82px; object-fit:contain; background:#fff; border-radius:50%; padding:8px; box-shadow:0 8px 20px rgba(0,0,0,.16); }
+    .brand-name { font-weight:800; font-size:22px; letter-spacing:.2px; white-space:nowrap; }
+    .hero { padding:28px 18px 8px; text-align:center; } .hero-icon { font-size:34px; margin-bottom:6px; }
+    h1 { margin:0; color:var(--blue); font-size:34px; line-height:1.05; letter-spacing:-.7px; } .subtitle { margin:8px 0 0; color:var(--muted); font-size:19px; font-weight:600; }
+    .content { padding:0 16px 24px; }
+    .notice { display:flex; gap:14px; align-items:flex-start; padding:16px; border-radius:16px; margin:16px 0; background:var(--info); border:1px solid #B8D9FF; border-left:6px solid var(--blue); color:#12233F; }
+    .notice .icon { width:38px; height:38px; border-radius:50%; background:#fff; color:var(--blue); display:flex; align-items:center; justify-content:center; font-weight:900; border:2px solid var(--blue); flex:0 0 auto; } .notice strong { color:var(--blue); }
+    .card { background:var(--card); border:1px solid #E6ECF4; border-radius:20px; padding:20px 18px; box-shadow:0 10px 30px rgba(11,29,58,.08); margin-top:16px; }
+    .section-title { display:flex; align-items:center; gap:9px; margin:4px 0 14px; font-size:18px; font-weight:900; color:var(--blue-dark); text-transform:uppercase; letter-spacing:.4px; }
+    .section-title:before { content:""; display:block; width:5px; height:26px; background:var(--green); border-radius:999px; }
+    label { display:block; font-weight:800; margin:14px 0 7px; color:#10244A; } .input-wrap { position:relative; } .input-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--green); font-size:18px; pointer-events:none; }
+    input, select, textarea { width:100%; padding:13px 13px; border:1px solid #C9D3E1; border-radius:12px; font-size:16px; background:#fff; color:var(--ink); outline:none; transition:border-color .15s, box-shadow .15s, background .15s; } input.with-icon { padding-left:43px; } input:focus, select:focus, textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(13,71,161,.14); } select { appearance:auto; } .divider { height:1px; background:#E3E9F1; margin:18px 0 10px; }
+    button { width:100%; background:linear-gradient(135deg,var(--blue),#0066D6); color:white; border:0; padding:16px 18px; border-radius:14px; font-size:19px; font-weight:900; cursor:pointer; margin-top:18px; box-shadow:0 10px 24px rgba(13,71,161,.28); } button:disabled { opacity:.65; cursor:not-allowed; }
+    .alert { padding:15px 16px; border-radius:14px; margin:14px 0; border-left:6px solid; white-space:pre-line; font-weight:650; } .info { background:#EAF4FF; border-color:var(--blue); color:#12315F; } .success { background:var(--green-soft); border-color:var(--green); color:#09682E; } .warning { background:#FFF7E6; border-color:var(--warning); color:#7A4A00; } .danger { background:#FDECEC; border-color:var(--danger); color:#7B1712; } .muted { color:var(--muted); font-size:14px; } .field-error { outline:2px solid var(--danger); background:#FFF8F8; }
+    .footer-note { display:flex; align-items:flex-start; gap:10px; color:var(--muted); font-size:14px; padding:16px 6px 2px; } .footer-note .shield { color:var(--blue); font-size:22px; }
+    @media (max-width:520px) { .page { box-shadow:none; } .brand-header { border-radius:0 0 24px 24px; } .brand-logo img { width:68px; height:68px; } .brand-name { font-size:18px; } h1 { font-size:30px; } .subtitle { font-size:17px; } .content { padding:0 12px 20px; } .card { padding:18px 14px; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🎾 Autovalutazione livello padel</h1>
-      <div id="clubName">Padel Village</div>
-    </header>
-
-    <div class="card">
-      <div class="alert info">
-        Ciao! Questa scheda serve per aiutare lo staff a proporti partite più equilibrate e adatte al tuo livello. Richiede meno di 2 minuti. Le risposte verranno controllate anche per coerenza, così lo staff potrà proporti partite più equilibrate.
-      </div>
-      <div id="topStatus"></div>
-
-      <form id="assessmentForm" onsubmit="handleAssessmentSubmit(event)" novalidate>
-        <label>Nome</label>
-        <input id="firstName" autocomplete="given-name" />
-
-        <label>Cognome</label>
-        <input id="lastName" autocomplete="family-name" />
-
-        <label>Telefono</label>
-        <input id="phone" type="tel" autocomplete="tel" />
-
-        <label>Email, opzionale</label>
-        <input id="email" type="email" autocomplete="email" placeholder="utile per aggiornare i tuoi dati" />
-
-        <label>Da quanto tempo giochi a padel?</label>
-        <select id="experience">
-          <option value="">Seleziona</option>
-          <option>Ho appena iniziato</option>
-          <option>Meno di 6 mesi</option>
-          <option>Da 6 mesi a 1 anno</option>
-          <option>Da 1 a 3 anni</option>
-          <option>Da più di 3 anni</option>
-        </select>
-
-        <label>Quante volte giochi mediamente al mese?</label>
-        <select id="monthlyFrequency">
-          <option value="">Seleziona</option>
-          <option>Meno di 1 volta al mese</option>
-          <option>1-2 volte al mese</option>
-          <option>3-5 volte al mese</option>
-          <option>6-10 volte al mese</option>
-          <option>Più di 10 volte al mese</option>
-        </select>
-
-        <label>Quanto ti senti sicuro nei colpi base?</label>
-        <select id="basicStrokes">
-          <option value="">Seleziona</option>
-          <option>Molto poco sicuro</option>
-          <option>Abbastanza sicuro</option>
-          <option>Sicuro</option>
-          <option>Molto sicuro</option>
-        </select>
-
-        <label>Sai usare il vetro durante il gioco?</label>
-        <select id="glassUsage">
-          <option value="">Seleziona</option>
-          <option>No, quasi mai</option>
-          <option>Qualche volta</option>
-          <option>Sì, abbastanza spesso</option>
-          <option>Sì, con sicurezza</option>
-        </select>
-
-        <label>Sai giocare a rete con volée e bandeja?</label>
-        <select id="netPlay">
-          <option value="">Seleziona</option>
-          <option>No / poco</option>
-          <option>Base</option>
-          <option>Discreto</option>
-          <option>Buono</option>
-          <option>Molto buono</option>
-        </select>
-
-        <label>Riesci a mantenere la posizione con il compagno?</label>
-        <select id="positioning">
-          <option value="">Seleziona</option>
-          <option>No, mi muovo senza riferimenti precisi</option>
-          <option>Abbastanza</option>
-          <option>Sì, di solito</option>
-          <option>Sì, con buona consapevolezza tattica</option>
-        </select>
-
-        <label>Riesci a gestire uno scambio senza cercare subito il punto?</label>
-        <select id="rallyPatience">
-          <option value="">Seleziona</option>
-          <option>No, faccio molti errori</option>
-          <option>A volte</option>
-          <option>Spesso</option>
-          <option>Sì, con buona continuità</option>
-        </select>
-
-        <label>Hai mai partecipato a tornei o competizioni?</label>
-        <select id="competitions">
-          <option value="">Seleziona</option>
-          <option>No</option>
-          <option>Sì, tornei sociali</option>
-          <option>Sì, tornei amatoriali</option>
-          <option>Sì, competizioni federali o simili</option>
-        </select>
-
-        <label>Secondo te qual è il tuo livello attuale?</label>
-        <select id="declaredLevel">
-          <option value="">Seleziona</option>
-          <option value="1.0">1,0 — Principiante assoluto</option>
-          <option value="1.5">1,5 — Principiante con prime basi</option>
-          <option value="2.0">2,0 — Base</option>
-          <option value="2.5">2,5 — Base evoluto</option>
-          <option value="3.0">3,0 — Intermedio basso</option>
-          <option value="3.5">3,5 — Intermedio</option>
-          <option value="4.0">4,0 — Intermedio buono</option>
-          <option value="4.5">4,5 — Avanzato amatoriale</option>
-          <option value="5.0">5,0 o superiore — Avanzato</option>
-        </select>
-
-        <label>Vuoi essere contattato per partite coerenti con il tuo livello?</label>
-        <select id="wantsMatches">
-          <option value="">Seleziona</option>
-          <option>Sì</option>
-          <option>No</option>
-          <option>Solo in determinati giorni/orari</option>
-        </select>
-
-        <label>Giorni/orari preferiti, opzionale</label>
-        <input id="preferredDays" placeholder="Es. lunedì sera, weekend, pranzo..." />
-
-        <label>Note, opzionale</label>
-        <textarea id="notes" rows="3"></textarea>
-
-        <button id="submitBtn" type="submit" onclick="handleAssessmentSubmit(event)">Invia autovalutazione</button>
+  <main class="page">
+    <header class="brand-header"><div class="topbar"><div class="menu-icon" aria-hidden="true">☰</div><div class="brand-logo"><img src="data:image/jpeg;base64,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" alt="Padel Village" /><div class="brand-name" id="clubName">Padel Village ASD</div></div></div></header>
+    <section class="hero"><div class="hero-icon" aria-hidden="true">🎾</div><h1>Autovalutazione<br>livello padel</h1><p class="subtitle">Padel Village ASD</p></section>
+    <div class="content">
+      <div class="notice"><div class="icon">i</div><div>Questa scheda aiuta lo staff a proporti partite più equilibrate e adatte al tuo livello.<br><strong>Richiede meno di 2 minuti.</strong></div></div>
+      <div id="topStatus" class="status-slot"></div>
+      <form id="assessmentForm" class="card" onsubmit="handleAssessmentSubmit(event)" novalidate>
+        <div class="section-title">I tuoi dati</div>
+        <label>Nome</label><input id="firstName" autocomplete="given-name" placeholder="Inserisci il tuo nome" />
+        <label>Cognome</label><input id="lastName" autocomplete="family-name" placeholder="Inserisci il tuo cognome" />
+        <label>Telefono</label><div class="input-wrap"><span class="input-icon">☎</span><input id="phone" class="with-icon" type="tel" autocomplete="tel" placeholder="Inserisci il tuo numero di telefono" /></div>
+        <label>Email, opzionale</label><div class="input-wrap"><span class="input-icon">✉</span><input id="email" class="with-icon" type="email" autocomplete="email" placeholder="utile per aggiornare i tuoi dati" /></div>
+        <div class="divider"></div><div class="section-title">Autovalutazione</div>
+        <label>Da quanto tempo giochi a padel?</label><select id="experience"><option value="">Seleziona</option><option>Ho appena iniziato</option><option>Meno di 6 mesi</option><option>Da 6 mesi a 1 anno</option><option>Da 1 a 3 anni</option><option>Da più di 3 anni</option></select>
+        <label>Quante volte giochi mediamente al mese?</label><select id="monthlyFrequency"><option value="">Seleziona</option><option>Meno di 1 volta al mese</option><option>1-2 volte al mese</option><option>3-5 volte al mese</option><option>6-10 volte al mese</option><option>Più di 10 volte al mese</option></select>
+        <label>Quanto ti senti sicuro nei colpi base?</label><select id="basicStrokes"><option value="">Seleziona</option><option>Molto poco sicuro</option><option>Abbastanza sicuro</option><option>Sicuro</option><option>Molto sicuro</option></select>
+        <label>Sai usare il vetro durante il gioco?</label><select id="glassUsage"><option value="">Seleziona</option><option>No, quasi mai</option><option>Qualche volta</option><option>Sì, abbastanza spesso</option><option>Sì, con sicurezza</option></select>
+        <label>Sai giocare a rete con volée e bandeja?</label><select id="netPlay"><option value="">Seleziona</option><option>No / poco</option><option>Base</option><option>Discreto</option><option>Buono</option><option>Molto buono</option></select>
+        <label>Riesci a mantenere la posizione con il compagno?</label><select id="positioning"><option value="">Seleziona</option><option>No, mi muovo senza riferimenti precisi</option><option>Abbastanza</option><option>Sì, di solito</option><option>Sì, con buona consapevolezza tattica</option></select>
+        <label>Riesci a gestire uno scambio senza cercare subito il punto?</label><select id="rallyPatience"><option value="">Seleziona</option><option>No, faccio molti errori</option><option>A volte</option><option>Spesso</option><option>Sì, con buona continuità</option></select>
+        <label>Hai mai partecipato a tornei o competizioni?</label><select id="competitions"><option value="">Seleziona</option><option>No</option><option>Sì, tornei sociali</option><option>Sì, tornei amatoriali</option><option>Sì, competizioni federali o simili</option></select>
+        <label>Secondo te qual è il tuo livello attuale?</label><select id="declaredLevel"><option value="">Seleziona</option><option value="1.0">1,0 — Principiante assoluto</option><option value="1.5">1,5 — Principiante con prime basi</option><option value="2.0">2,0 — Base</option><option value="2.5">2,5 — Base evoluto</option><option value="3.0">3,0 — Intermedio basso</option><option value="3.5">3,5 — Intermedio</option><option value="4.0">4,0 — Intermedio buono</option><option value="4.5">4,5 — Avanzato amatoriale</option><option value="5.0">5,0 o superiore — Avanzato</option></select>
+        <label>Vuoi essere contattato per partite coerenti con il tuo livello?</label><select id="wantsMatches"><option value="">Seleziona</option><option>Sì</option><option>No</option><option>Solo in determinati giorni/orari</option></select>
+        <label>Giorni/orari preferiti, opzionale</label><input id="preferredDays" placeholder="Es. lunedì sera, weekend, pranzo..." />
+        <label>Note, opzionale</label><textarea id="notes" rows="3" placeholder="Aggiungi eventuali note utili per lo staff"></textarea>
+        <button id="submitBtn" type="submit" onclick="handleAssessmentSubmit(event)">✈ Invia autovalutazione</button>
         <div id="submitStatus"></div>
       </form>
-      <p class="muted">Il livello indicato è una prima autovalutazione e potrà essere verificato dallo staff.</p>
+      <div class="footer-note"><span class="shield">♢</span><span>Le risposte saranno controllate anche per coerenza dallo staff. Il livello indicato è una prima autovalutazione e potrà essere verificato.</span></div>
     </div>
-  </div>
-
+  </main>
   <script>
     const token = new URLSearchParams(window.location.search).get('t') || '';
     let isSubmitting = false;
@@ -405,12 +315,13 @@ Puoi annullare e correggere oppure inviare comunque. In caso di incoerenza lo st
       if (cfg().CLUB_NAME) el('clubName').textContent = cfg().CLUB_NAME;
       if (!token) showMessage('Link non valido: token mancante.', 'danger', false);
       else if (!configReady()) showMessage('Configurazione mancante: controlla config.js su GitHub.', 'danger', false);
-      else showMessage('Pagina pronta. Token rilevato: ' + token, 'success', false);
+      else showMessage('Accesso personale verificato. Puoi compilare la scheda.', 'success', false);
     });
 
     window.addEventListener('error', e => {
       showMessage('Errore tecnico pagina: ' + (e.message || 'sconosciuto'), 'danger');
     });
+
   </script>
 </body>
 </html>
