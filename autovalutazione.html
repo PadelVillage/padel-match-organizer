@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Autovalutazione livello padel</title>
+  <title>Autovalutazione livello padel - sicura</title>
   <script src="config.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -223,26 +223,47 @@
       return true;
     }
 
+    async function callRpc(functionName, body) {
+      const baseUrl = String(cfg().SUPABASE_URL || '').replace(/\/$/, '');
+      const url = `${baseUrl}/rest/v1/rpc/${functionName}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; }
+      catch (e) { data = text; }
+      if (!res.ok) {
+        throw new Error(`${functionName} non riuscita: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+      }
+      return data;
+    }
+
     async function supabaseGetToken() {
-      const url = `${cfg().SUPABASE_URL}/rest/v1/assessment_tokens?select=token,status,member_name&token=eq.${encodeURIComponent(token)}`;
-      const res = await fetch(url, { headers: headers() });
-      if (!res.ok) throw new Error('Controllo link non riuscito: ' + await res.text());
-      const rows = await res.json();
-      return rows[0] || null;
+      const data = await callRpc('get_assessment_token', { p_token: token });
+      if (!data || data.ok !== true) {
+        const error = data?.error || 'TOKEN_NOT_FOUND';
+        if (error === 'TOKEN_NOT_FOUND') throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
+        throw new Error('Controllo link non riuscito: ' + error);
+      }
+      return data;
     }
 
-    async function insertAssessment(payload) {
-      const url = `${cfg().SUPABASE_URL}/rest/v1/self_assessments`;
-      const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error('Salvataggio non riuscito: ' + await res.text());
-      return res.json();
-    }
-
-    async function updateTokenCompleted() {
-      const url = `${cfg().SUPABASE_URL}/rest/v1/assessment_tokens?token=eq.${encodeURIComponent(token)}`;
-      const body = { status: 'completed', completed_at: new Date().toISOString() };
-      const res = await fetch(url, { method: 'PATCH', headers: headers(), body: JSON.stringify(body) });
-      if (!res.ok) console.warn('Token non aggiornato:', await res.text());
+    async function submitAssessment(payload) {
+      const data = await callRpc('submit_self_assessment', {
+        p_token: token,
+        p_payload: payload
+      });
+      if (!data || data.ok !== true) {
+        const error = data?.error || 'UNKNOWN_ERROR';
+        if (error === 'TOKEN_NOT_FOUND') throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
+        if (error === 'ALREADY_COMPLETED') throw new Error('Questa autovalutazione risulta già compilata.');
+        if (error === 'ALREADY_SUBMITTED') throw new Error('Questa autovalutazione è già stata inviata.');
+        throw new Error('Salvataggio non riuscito: ' + error);
+      }
+      return data;
     }
 
     async function handleAssessmentSubmit(event) {
@@ -263,11 +284,9 @@
         showMessage('Invio in corso... Attendi qualche secondo.', 'info');
 
         const tokenRow = await supabaseGetToken();
-        if (!tokenRow) throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
         if (tokenRow.status === 'completed') throw new Error('Questa autovalutazione risulta già compilata.');
 
         const payload = {
-          token: token,
           first_name: value('firstName'),
           last_name: value('lastName'),
           phone: value('phone'),
@@ -286,8 +305,7 @@
           notes: value('notes')
         };
 
-        await insertAssessment(payload);
-        await updateTokenCompleted();
+        await submitAssessment(payload);
 
         button.textContent = 'Autovalutazione inviata';
         showMessage('Grazie! La tua autovalutazione è stata registrata correttamente.', 'success');
