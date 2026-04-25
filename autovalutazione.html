@@ -20,7 +20,9 @@
     .alert { padding: 14px; border-radius: 8px; margin: 14px 0; border-left: 5px solid; }
     .info { background: #e3f2fd; border-color: #1F4788; }
     .success { background: #d4edda; border-color: #4CAF50; color: #155724; }
+    .warning { background: #fff3cd; border-color: #ff9800; color: #856404; }
     .danger { background: #f8d7da; border-color: #f44336; color: #721c24; }
+    .field-error { outline: 2px solid #f44336; background: #fff8f8; }
     .muted { color: #666; font-size: 13px; }
   </style>
 </head>
@@ -38,7 +40,7 @@
       </div>
       <div id="status"></div>
 
-      <form id="assessmentForm">
+      <form id="assessmentForm" novalidate>
         <label>Nome</label>
         <input id="firstName" required />
 
@@ -152,6 +154,7 @@
         <textarea id="notes" rows="3"></textarea>
 
         <button id="submitBtn" type="submit">Invia autovalutazione</button>
+        <div id="submitStatus"></div>
       </form>
       <p class="muted">Il livello indicato è una prima autovalutazione e potrà essere verificato dallo staff.</p>
     </div>
@@ -163,13 +166,45 @@
     const statusEl = document.getElementById('status');
     const form = document.getElementById('assessmentForm');
     const submitBtn = document.getElementById('submitBtn');
+    const submitStatusEl = document.getElementById('submitStatus');
+
+    const requiredFields = [
+      ['firstName', 'Nome'],
+      ['lastName', 'Cognome'],
+      ['phone', 'Telefono'],
+      ['experience', 'Da quanto tempo giochi a padel'],
+      ['monthlyFrequency', 'Quante volte giochi al mese'],
+      ['basicStrokes', 'Colpi base'],
+      ['glassUsage', 'Uso del vetro'],
+      ['netPlay', 'Gioco a rete'],
+      ['positioning', 'Posizione con il compagno'],
+      ['rallyPatience', 'Gestione dello scambio'],
+      ['competitions', 'Tornei o competizioni'],
+      ['declaredLevel', 'Livello attuale'],
+      ['wantsMatches', 'Disponibilità a essere contattato']
+    ];
 
     if (window.PADEL_CONFIG?.CLUB_NAME) {
       document.getElementById('clubName').textContent = window.PADEL_CONFIG.CLUB_NAME;
     }
 
-    function showStatus(message, type) {
-      statusEl.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    }
+
+    function showStatus(message, type = 'info', nearButton = false) {
+      const html = `<div class="alert ${type}">${escapeHtml(message)}</div>`;
+      if (statusEl) statusEl.innerHTML = html;
+      if (submitStatusEl) submitStatusEl.innerHTML = html;
+      if (nearButton && submitStatusEl) {
+        submitStatusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function isConfigMissing() {
+      const cfg = window.PADEL_CONFIG || {};
+      return !window.supabase || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY ||
+        String(cfg.SUPABASE_URL).includes('INCOLLA') || String(cfg.SUPABASE_ANON_KEY).includes('INCOLLA');
     }
 
     function calculateLevel() {
@@ -181,69 +216,145 @@
       return document.getElementById(id).value.trim();
     }
 
+    function clearFieldErrors() {
+      requiredFields.forEach(([id]) => document.getElementById(id)?.classList.remove('field-error'));
+    }
+
+    function validateFormManually() {
+      clearFieldErrors();
+      const missing = [];
+      let firstMissingEl = null;
+
+      requiredFields.forEach(([id, label]) => {
+        const el = document.getElementById(id);
+        if (!el || !String(el.value || '').trim()) {
+          missing.push(label);
+          if (el) el.classList.add('field-error');
+          if (!firstMissingEl && el) firstMissingEl = el;
+        }
+      });
+
+      if (missing.length) {
+        showStatus(`Compila prima questi campi obbligatori: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? '...' : ''}`, 'warning', true);
+        if (firstMissingEl) firstMissingEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+      return true;
+    }
+
     async function initSupabase() {
-      if (!window.PADEL_CONFIG || !window.supabase) {
-        showStatus('Configurazione mancante. Avvisa lo staff.', 'danger');
-        submitBtn.disabled = true;
+      if (isConfigMissing()) {
+        showStatus('Configurazione mancante: controlla che su GitHub esista il file config.js e che contenga Project URL e Publishable key.', 'danger', true);
+        submitBtn.disabled = false;
         return null;
       }
       return window.supabase.createClient(window.PADEL_CONFIG.SUPABASE_URL, window.PADEL_CONFIG.SUPABASE_ANON_KEY);
     }
 
-    form.addEventListener('submit', async (event) => {
+    async function submitAssessment(event) {
       event.preventDefault();
 
-      if (!token) {
-        showStatus('Link non valido: token mancante. Chiedi allo staff un nuovo link.', 'danger');
-        return;
-      }
+      try {
+        if (!token) {
+          showStatus('Link non valido: token mancante. Chiedi allo staff un nuovo link.', 'danger', true);
+          return;
+        }
 
-      const client = await initSupabase();
-      if (!client) return;
+        if (!validateFormManually()) return;
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Invio in corso...';
+        const client = await initSupabase();
+        if (!client) return;
 
-      const payload = {
-        token,
-        first_name: getValue('firstName'),
-        last_name: getValue('lastName'),
-        phone: getValue('phone'),
-        experience: getValue('experience'),
-        monthly_frequency: getValue('monthlyFrequency'),
-        basic_strokes: getValue('basicStrokes'),
-        glass_usage: getValue('glassUsage'),
-        net_play: getValue('netPlay'),
-        positioning: getValue('positioning'),
-        rally_patience: getValue('rallyPatience'),
-        competitions: getValue('competitions'),
-        declared_level: parseFloat(getValue('declaredLevel')),
-        wants_matches: getValue('wantsMatches'),
-        preferred_days: getValue('preferredDays'),
-        notes: getValue('notes'),
-        calculated_level: calculateLevel()
-      };
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Invio in corso...';
+        showStatus('Invio in corso... Attendi qualche secondo.', 'info', true);
 
-      const { error } = await client.from('self_assessments').insert(payload);
+        // Controllo leggero del token: aiuta a dare messaggi più chiari.
+        const { data: tokenData, error: tokenError } = await client
+          .from('assessment_tokens')
+          .select('token,status,member_name')
+          .eq('token', token)
+          .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        showStatus('Errore durante il salvataggio. Riprova o avvisa lo staff.', 'danger');
+        if (tokenError) {
+          throw new Error('Errore controllo link: ' + tokenError.message);
+        }
+
+        if (!tokenData) {
+          throw new Error('Link non riconosciuto. Chiedi allo staff un nuovo link.');
+        }
+
+        if (tokenData.status === 'completed') {
+          throw new Error('Questa autovalutazione risulta già compilata.');
+        }
+
+        const payload = {
+          token,
+          first_name: getValue('firstName'),
+          last_name: getValue('lastName'),
+          phone: getValue('phone'),
+          experience: getValue('experience'),
+          monthly_frequency: getValue('monthlyFrequency'),
+          basic_strokes: getValue('basicStrokes'),
+          glass_usage: getValue('glassUsage'),
+          net_play: getValue('netPlay'),
+          positioning: getValue('positioning'),
+          rally_patience: getValue('rallyPatience'),
+          competitions: getValue('competitions'),
+          declared_level: parseFloat(getValue('declaredLevel')),
+          wants_matches: getValue('wantsMatches'),
+          preferred_days: getValue('preferredDays'),
+          notes: getValue('notes'),
+          calculated_level: calculateLevel()
+        };
+
+        const { error } = await client.from('self_assessments').insert(payload);
+
+        if (error) {
+          throw new Error(error.message || 'Errore durante il salvataggio.');
+        }
+
+        const { error: updateError } = await client
+          .from('assessment_tokens')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('token', token);
+
+        if (updateError) {
+          console.warn('Autovalutazione salvata, ma token non aggiornato:', updateError);
+        }
+
+        submitBtn.textContent = 'Autovalutazione inviata';
+        showStatus('Grazie! La tua autovalutazione è stata registrata correttamente.', 'success', true);
+        Array.from(form.elements).forEach(el => { if (el !== submitBtn) el.disabled = true; });
+      } catch (err) {
+        console.error(err);
+        showStatus('Errore: ' + (err.message || 'riprova o avvisa lo staff.'), 'danger', true);
         submitBtn.disabled = false;
         submitBtn.textContent = 'Invia autovalutazione';
-        return;
       }
+    }
 
-      await client.from('assessment_tokens').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('token', token);
+    form.addEventListener('submit', submitAssessment);
+    submitBtn.addEventListener('click', () => {
+      // Mostra subito qualcosa vicino al bottone anche se il browser/app è lento.
+      if (!validateFormManually()) return;
+      if (isConfigMissing()) {
+        showStatus('Configurazione mancante: controlla il file config.js su GitHub.', 'danger', true);
+      }
+    });
 
-      form.style.display = 'none';
-      showStatus('Grazie! La tua autovalutazione è stata registrata.', 'success');
+    window.addEventListener('error', (event) => {
+      console.error('Errore pagina:', event.error || event.message);
+      showStatus('Errore tecnico nella pagina: ' + (event.message || 'controlla la configurazione.'), 'danger', true);
     });
 
     if (!token) {
-      showStatus('Link non valido: token mancante.', 'danger');
+      showStatus('Link non valido: token mancante.', 'danger', true);
       submitBtn.disabled = true;
+    } else if (isConfigMissing()) {
+      showStatus('Configurazione mancante: controlla che su GitHub esista il file config.js e che contenga Project URL e Publishable key.', 'danger', true);
+      submitBtn.disabled = false;
     }
-  </script>
+  </script>  </script>
 </body>
 </html>
