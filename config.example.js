@@ -3,7 +3,7 @@
 // ATTENZIONE: non caricare config.js su GitHub se contiene chiavi reali.
 
 window.PADEL_CONFIG = {
-  SUPABASE_URL: "https://INSERISCI-PROGETTO.supabase.co",
-  SUPABASE_ANON_KEY: "INSERISCI_SUPABASE_ANON_KEY",
+  SUPABASE_URL: "qqbfphyslczzkxoncgex",
+  SUPABASE_ANON_KEY: "sb_publishable_8b2oGUOpob0Z8qbBG0N_Pw_v21A9o-u",
   CLUB_NAME: "Padel Village"
 };
