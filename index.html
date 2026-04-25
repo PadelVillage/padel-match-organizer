@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Padel Match Organizer v5.10.1</title>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1F4788; --secondary: #2E5C8A; --success: #4CAF50;
+      --danger: #f44336; --warning: #ff9800; --light: #f5f5f5;
+      --border: #ddd; --text: #333;
+    }
+    body { font-family: Arial, sans-serif; background: #f8f9fb; color: var(--text); line-height: 1.5; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    header { background: var(--primary); color: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; }
+    header h1 { font-size: 28px; margin-bottom: 4px; }
+    .version { font-size: 12px; opacity: .85; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+    .tab-button { border: 0; background: transparent; padding: 12px 18px; cursor: pointer; font-weight: bold; color: #666; border-bottom: 3px solid transparent; }
+    .tab-button.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .section { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .section h2 { color: var(--primary); margin-bottom: 15px; }
+    .section h3 { color: var(--primary); margin: 20px 0 10px; }
+    label { display: block; margin: 0 0 5px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; }
+    button { border: 0; border-radius: 5px; padding: 10px 16px; font-size: 14px; font-weight: bold; cursor: pointer; margin: 0 8px 10px 0; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--secondary); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary { background: #666; color: white; }
+    .row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+    .col { flex: 1; min-width: 190px; }
+    .info-box { background: #e3f2fd; border-left: 4px solid var(--primary); padding: 14px; border-radius: 5px; margin-bottom: 15px; }
+    .alert { padding: 14px; border-radius: 5px; margin-bottom: 12px; border-left: 4px solid; white-space: pre-line; }
+    .alert-success { background: #d4edda; color: #155724; border-left-color: var(--success); }
+    .alert-danger { background: #f8d7da; color: #721c24; border-left-color: var(--danger); }
+    .alert-warning { background: #fff3cd; color: #856404; border-left-color: var(--warning); }
+    .alert-info { background: #d1ecf1; color: #0c5460; border-left-color: #17a2b8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+    th { background: var(--light); color: var(--primary); text-align: left; padding: 12px; border-bottom: 2px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-info { background: #e3f2fd; color: #1976d2; }
+    .badge-success { background: #c8e6c9; color: #2e7d32; }
+    .badge-danger { background: #ffcdd2; color: #c62828; }
+    .badge-warning { background: #ffe0b2; color: #e65100; }
+    .slot-card { background: #f0f4f8; border-left: 4px solid var(--primary); padding: 12px; margin-bottom: 10px; border-radius: 5px; cursor: pointer; transition: .2s; }
+    .slot-card:hover { background: #e3f2fd; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .member-card { margin-top: 25px; border: 2px solid var(--primary); background: #f8fbff; border-radius: 10px; padding: 20px; }
+    .muted { color: #666; font-size: 12px; }
+    .actions { white-space: nowrap; }
+    .small-btn { padding: 5px 9px; font-size: 12px; }
+
+    .members-summary { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:10px 0 15px; padding:10px 12px; background:#f8fbff; border:1px solid var(--border); border-radius:8px; }
+    .summary-card { display:flex; align-items:center; gap:6px; white-space:nowrap; font-size:14px; padding:6px 10px; background:#fff; border:1px solid #e6ebf2; border-radius:7px; }
+    .summary-card span { color:#333; }
+    .summary-card strong { color:var(--primary); font-size:17px; }
+    .status-panel { background:#e3f2fd; color:#0c5460; border-left:5px solid #17a2b8; border-radius:8px; padding:14px 18px; margin:0 0 20px 0; box-shadow:0 1px 3px rgba(0,0,0,0.08); font-size:15px; }
+    .status-panel.status-success { background:#d4edda; color:#155724; border-left-color:var(--success); }
+    .status-panel.status-danger { background:#f8d7da; color:#721c24; border-left-color:var(--danger); }
+    .status-panel.status-warning { background:#fff3cd; color:#856404; border-left-color:var(--warning); }
+    .status-panel.status-info { background:#d1ecf1; color:#0c5460; border-left-color:#17a2b8; }
+    .status-title { font-weight:bold; margin-bottom:4px; }
+    .status-time { margin-top:6px; font-size:12px; opacity:0.75; }
+    .action-alert { display:block; margin:8px 0 14px 0; max-width:760px; box-shadow:0 5px 18px rgba(0,0,0,0.14); clear:both; }
+    .floating-action-alert { position:fixed; right:18px; bottom:18px; z-index:9999; max-width:420px; margin:0; }
+    .backup-panel { display:none; background:#f8fbff; border:2px solid var(--primary); border-radius:8px; padding:15px; margin:12px 0 18px; }
+    .backup-panel strong { color:var(--primary); }
+    .backup-panel .backup-name { font-family: monospace; background:#eef3fb; padding:4px 6px; border-radius:4px; display:inline-block; margin:6px 0; }
+
+    .diff-panel { display:none; background:#fff; border:2px solid var(--primary); border-radius:10px; padding:16px; margin:20px 0; }
+    .diff-panel h3 { margin:0 0 10px; color:var(--primary); }
+    .diff-summary { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; }
+    .diff-chip { background:#f8fbff; border:1px solid #e1e7ef; border-radius:8px; padding:8px 10px; font-weight:bold; white-space:nowrap; }
+    .diff-chip strong { color:var(--primary); font-size:18px; }
+    .diff-section { margin-top:14px; }
+    .diff-section h4 { color:var(--primary); margin-bottom:6px; }
+    .diff-mini { font-size:12px; color:#666; margin-top:6px; }
+    .diff-empty { color:#666; padding:8px 0; }
+    @media (max-width: 800px) {
+      .container { padding: 10px; }
+      table { display: block; overflow-x: auto; }
+      .tab-button { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎾 Padel Match Organizer</h1>
+      <div class="version">v5.10.1 - storico cumulativo limitato agli ultimi 12 mesi</div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-button active" onclick="switchTab('matchpoint', this)">🔄 Matchpoint Sync</button>
+      <button class="tab-button" onclick="switchTab('members', this)">👥 Gestione Soci</button>
+      <button class="tab-button" onclick="switchTab('slots', this)">📊 Analizza Slot</button>
+      <button class="tab-button" onclick="switchTab('create', this)">🎯 Crea Partita</button>
+      <button class="tab-button" onclick="switchTab('contact', this)">📱 Contatta Giocatori</button>
+    </div>
+
+    <div id="globalAlerts"></div>
+
+    <div id="statusPanel" class="status-panel status-info" style="display:none;">
+      <div class="status-title">📌 Stato app</div>
+      <div id="statusMessage"></div>
+      <div id="statusTime" class="status-time"></div>
+    </div>
+
+    <div id="matchpoint" class="tab-content active">
+      <div class="section">
+        <h2>🔄 Sincronizzazione Matchpoint</h2>
+        <div class="info-box">
+          <strong>Ordine corretto:</strong> importa prima il file clienti <strong>out.xlsx</strong>, poi il file prenotazioni <strong>out_prenotazioni.xlsx</strong>.
+        </div>
+
+        <div class="info-box" style="background:#f8fbff;">
+          <h3 style="margin-bottom:8px;color:var(--primary);">📁 Import manuale consigliato</h3>
+          <p>Scarica da Matchpoint i file Excel e poi importali qui sotto. La app confronterà i nuovi file con i dati già salvati e mostrerà le differenze giornaliere.</p>
+          <p style="margin-top:8px;"><strong>1)</strong> File clienti: <strong>out.xlsx</strong> &nbsp; | &nbsp; <strong>2)</strong> Prenotazioni future: <strong>out_prenotazioni.xlsx</strong> &nbsp; | &nbsp; <strong>3)</strong> Storico prenotazioni: ultimi 30 giorni, import cumulativo.</p>
+        </div>
+
+        <h3>📥 Passo 1: Importa Clienti</h3>
+        <div class="form-group">
+          <label>File Clienti Excel</label>
+          <input type="file" id="matchpointFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <button class="btn-primary" onclick="setActionAnchor(this); importMatchpointData()">✅ Importa Clienti</button>
+        <button class="btn-warning" onclick="setActionAnchor(this); clearMatchpointCache()">🗑️ Cancella Cache</button>
+        <button class="btn-success" onclick="setActionAnchor(this); exportBackup()">💾 Backup Dati</button>
+        <button class="btn-secondary" onclick="setActionAnchor(this); triggerImportBackup()">♻️ Ripristina Backup</button>
+        <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
+        <div id="backupResult" class="backup-panel"></div>
+
+        <hr style="margin:20px 0; border:0; border-top:1px solid var(--border);" />
+
+        <h3>📅 Passo 2: Importa Prenotazioni Future</h3>
+        <div class="form-group">
+          <label>File Prenotazioni Excel</label>
+          <input type="file" id="bookingsFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <button class="btn-primary" onclick="setActionAnchor(this); importBookings()">✅ Importa Prenotazioni</button>
+
+        <hr style="margin:20px 0; border:0; border-top:1px solid var(--border);" />
+
+        <h3>📚 Passo 3: Importa Storico Prenotazioni</h3>
+        <div class="info-box" style="background:#fffaf0;">
+          <strong>Come esportarlo da Matchpoint:</strong><br>
+          Inf. e statistiche → Elenco degli utenti negli spazi → imposta <strong>Dal Giorno</strong> a 30 giorni fa e <strong>Al Giorno</strong> a oggi → Generare una relazione → Esportare in Excel.<br>
+          <strong>Novità v5.10.1:</strong> ogni import storico viene <strong>aggiunto allo storico già salvato</strong>, ma l'archivio mantiene automaticamente solo gli <strong>ultimi 12 mesi</strong>.
+        </div>
+        <div class="form-group">
+          <label>File Storico Prenotazioni Excel</label>
+          <input type="file" id="historicBookingsFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <button class="btn-primary" onclick="setActionAnchor(this); importHistoricalBookings()">📚 Importa Storico Prenotazioni</button>
+
+        <h2 style="margin-top:30px;">📊 Statistiche</h2>
+        <table>
+          <tr><th>Metrica</th><th>Valore</th></tr>
+          <tr><td>👥 Clienti Matchpoint</td><td><strong id="statClienti">0</strong></td></tr>
+          <tr><td>🎮 Giocatori in App</td><td><strong id="statGiocatori">0</strong></td></tr>
+          <tr><td>📅 Prenotazioni Future Caricate</td><td><strong id="statPrenotazioni">0</strong></td></tr>
+          <tr><td>📚 Storico Prenotazioni (ultimi 12 mesi)</td><td><strong id="statStorico">0</strong></td></tr>
+          <tr><td>⏰ Ultimo Sync</td><td><strong id="statUltimoSync">Mai</strong></td></tr>
+        </table>
+
+
+        <div id="dailyDiffPanel" class="diff-panel"></div>
+      </div>
+    </div>
+
+    <div id="members" class="tab-content">
+      <div class="section">
+        <h2>👥 Gestione Soci</h2>
+        <button class="btn-primary" onclick="setActionAnchor(this); showAddMember()">➕ Nuovo Socio</button>
+        <button class="btn-warning" onclick="setActionAnchor(this); detectGender()">🔍 Rileva Genere</button>
+        <button class="btn-secondary" onclick="setActionAnchor(this); showSystemDebug()">🐛 Debug</button>
+
+        <div id="addMemberForm" style="display:none; margin-top:20px;">
+          <div class="row">
+            <div class="col"><label>Nome</label><input id="firstName" /></div>
+            <div class="col"><label>Cognome</label><input id="surname" /></div>
+            <div class="col"><label>Sesso</label><select id="manualGender"><option value="NA">N/A</option><option value="M">M</option><option value="F">F</option></select></div>
+            <div class="col"><label>Livello</label><input type="number" id="level" min="0" max="7" step="0.5" value="3" /></div>
+          </div>
+          <div class="row">
+            <div class="col"><label>Telefono</label><input id="phone" /></div>
+            <div class="col"><label>Email</label><input id="email" /></div>
+          </div>
+          <div class="form-group"><label>Giorni preferiti</label><input id="prefDays" placeholder="lunedì,mercoledì,venerdì" /></div>
+          <div class="form-group"><label>Orari preferiti</label><input id="prefHours" placeholder="12:00-15:00,17:00-23:00" /></div>
+          <button class="btn-primary" onclick="setActionAnchor(this); addMember()">✅ Aggiungi Socio</button>
+          <button class="btn-secondary" onclick="hideAddMember()">❌ Annulla</button>
+        </div>
+
+        <h3>Filtri</h3>
+        <div class="row">
+          <div class="col"><input id="searchFilter" placeholder="🔍 Ricerca nome/email/telefono" onkeyup="displayMembers()" /></div>
+          <div class="col"><select id="statusFilter" onchange="displayMembers()"><option value="">Tutti</option><option value="active">Attivi</option><option value="inactive">Inattivi</option></select></div>
+          <div class="col"><select id="levelFilter" onchange="displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
+          <div class="col"><select id="genderFilter" onchange="displayMembers()"><option value="">Tutti</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">N/A</option></select></div>
+        </div>
+
+        <div id="membersSummary" class="members-summary">
+          <div class="summary-card">
+            <span>👥 Totali</span>
+            <strong id="membersTotalCount">0</strong>
+          </div>
+          <div class="summary-card filtered">
+            <span>🔎 Visualizzati</span>
+            <strong id="membersFilteredCount">0</strong>
+          </div>
+          <div class="summary-card">
+            <span>✅ Attivi</span>
+            <strong id="membersActiveCount">0</strong>
+          </div>
+          <div class="summary-card">
+            <span>🚫 Inattivi</span>
+            <strong id="membersInactiveCount">0</strong>
+          </div>
+        </div>
+
+        <table>
+          <thead><tr><th>Nome</th><th>Cognome</th><th>Sesso</th><th>Livello</th><th>Telefono</th><th>Email</th><th>Giorni</th><th>Stato</th><th>Azioni</th></tr></thead>
+          <tbody id="memberTableBody"></tbody>
+        </table>
+        <div id="memberCard" style="display:none"></div>
+      </div>
+    </div>
+
+    <div id="slots" class="tab-content">
+      <div class="section">
+        <h2>📊 Analizza Slot Vuoti</h2>
+        <div class="info-box">La ricerca usa le prenotazioni importate per capire quali campi/orari sono liberi.</div>
+        <div class="row">
+          <div class="col"><label>Data Inizio</label><input type="date" id="slotStartDate" onchange="analyzeSlots()" /></div>
+          <div class="col"><label>Data Fine</label><input type="date" id="slotEndDate" onchange="analyzeSlots()" /></div>
+          <div class="col"><label>Campo</label><select id="slotFieldFilter" onchange="analyzeSlots()"><option value="">Tutti</option><option>Campo 1</option><option>Campo 2</option><option>Campo 3</option><option>Campo 4</option></select></div>
+          <div class="col"><label>Fascia oraria</label><select id="slotTimeFilter" onchange="analyzeSlots()"><option value="">Tutte le fasce</option><option value="mattino">Mattino (09:00-12:00)</option><option value="pranzo">Pranzo (12:00-15:00)</option><option value="pomeriggio">Pomeriggio (15:00-18:00)</option><option value="sera">Sera (18:00-23:00)</option></select></div>
+        </div>
+        <div class="muted" style="margin:-5px 0 15px 0;">⏱️ Fasce: Mattino 09:00-12:00 | Pranzo 12:00-15:00 | Pomeriggio 15:00-18:00 | Sera 18:00-23:00</div>
+        <button class="btn-warning" onclick="setActionAnchor(this); exportSlotsCSV()">📥 Esporta CSV</button>
+        <div id="slotsResult" style="margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <div id="create" class="tab-content">
+      <div class="section">
+        <h2>🎯 Crea Partita</h2>
+        <div class="row">
+          <div class="col"><label>📅 Data</label><input type="date" id="matchDate" /></div>
+          <div class="col"><label>🕒 Ora</label><input type="time" id="matchTime" /></div>
+          <div class="col"><label>🎾 Campo</label><input id="matchField" placeholder="Campo 1" /></div>
+          <div class="col"><label>👥 Tipo</label><select id="matchType"><option value="mista">Mista</option><option value="maschile">Maschile</option><option value="femminile">Femminile</option></select></div>
+        </div>
+        <div class="info-box" style="background:#f8fbff;">
+          <label style="display:flex;gap:8px;align-items:center;font-weight:bold;margin-bottom:6px;">
+            <input type="checkbox" id="preferNoFutureBookings" checked style="width:auto;" />
+            Preferisci giocatori che non hanno prenotazioni nei prossimi 15 giorni
+          </label>
+          <span class="muted">La lista viene ordinata usando lo storico: fascia serale, stesso giorno della settimana, attività recente e compatibilità col tipo partita.</span>
+        </div>
+        <button class="btn-primary" onclick="setActionAnchor(this); suggestMatch()">💡 Suggerisci Matching</button>
+        <div id="matchResult"></div>
+      </div>
+    </div>
+
+    <div id="contact" class="tab-content">
+      <div class="section">
+        <h2>📱 Contatta Giocatori</h2>
+        <div class="info-box">Crea prima una partita, poi genera la lista WhatsApp.</div>
+        <div id="contactForm"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    const APP_VERSION = '5.10.1';
+    const HISTORY_RETENTION_MONTHS = 12;
+    document.title = `Padel Match Organizer ${APP_VERSION}`;
+    const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
+    const DAYS_IT = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+
+    const SLOT_CONFIG = {
+      weekday_monThu: [{start:'12:30',end:'14:00',name:'12:30-14:00'},{start:'18:00',end:'19:30',name:'18:00-19:30'},{start:'19:30',end:'21:00',name:'19:30-21:00'},{start:'21:00',end:'22:30',name:'21:00-22:30'}],
+      weekday_fri: [{start:'12:30',end:'14:00',name:'12:30-14:00'},{start:'17:00',end:'18:30',name:'17:00-18:30'},{start:'18:30',end:'20:00',name:'18:30-20:00'},{start:'20:00',end:'21:30',name:'20:00-21:30'}],
+      saturday: [{start:'09:00',end:'10:30',name:'09:00-10:30'},{start:'10:30',end:'12:00',name:'10:30-12:00'},{start:'12:00',end:'13:30',name:'12:00-13:30'},{start:'13:30',end:'15:00',name:'13:30-15:00'},{start:'15:00',end:'16:30',name:'15:00-16:30'},{start:'16:30',end:'18:00',name:'16:30-18:00'},{start:'18:00',end:'19:30',name:'18:00-19:30'}],
+      sunday: [{start:'09:00',end:'10:30',name:'09:00-10:30'},{start:'10:30',end:'12:00',name:'10:30-12:00'},{start:'15:00',end:'16:30',name:'15:00-16:30'},{start:'16:30',end:'18:00',name:'16:30-18:00'},{start:'18:00',end:'19:30',name:'18:00-19:30'}]
+    };
+
+    const maleNames = ['fabio','tobia','alberto','enrico','maurizio','santiago','riccardo','leonardo','stefano','michele','massimo','davide','alessandro','pietro','valentino','alan','omar','rudi','daniele','lucio','gabriele','gianluca','girolamo','sandro','samuele','mirko','remo','cristiano','federico','manuel','emanuele','diego','eddy','loris','valter','dario','maicol','enea','luciano','gianmario','nello','niccolo','patrizio','pierantonio','pierluigi','reiner','ubaldo','claudio','ferdinando','lamberto','vittorio','nicolas','gaetano','elio','william','kevin','danilo','salvatore','fabrizio','tommaso','luigi','giancarlo','tonino','flavio','giacomo','gianni','mario','mauro','renato','sergio','tiziano','marco','andrea','luca','giuseppe','antonio','giovanni','carlo','giorgio','roberto','paolo','matteo','francesco','lorenzo','filippo','simone','nicola','christian','adem','mattia'];
+    const femaleNames = ['paola','elisa','anastasia','pierangela','oriana','valentina','martina','giorgia','gloria','silvia','barbara','tiziana','jessica','maura','luisa','federica','priscilla','renza','arianna','simonetta','lisa','rosanna','giulia','michela','jasmine','alessandra','katia','serena','cinzia','silvana','miriam','roberta','vanessa','sabrina','valeria','stefania','milena','simona','matilde','alice','ilaria','erika','fabiana','veronica','sonia','daniela','rosita','diletta','viola','sheila','linda','lucia','antonella','sara','natasha','asia','diana','cristiana','sofia','elena','chiara','debora','eleonora','mara','eliana','maddalena','michelle','selene','emma','grazia','teresa','tania','carla','erica','isabella','jenny','aurora','irene','noemi','nadia','donatella','patrizia','manuela','maria','anna','francesca','rosa','angela','caterina','laura','marta'];
+
+    let giocatori = safeLoad('giocatori', []);
+    let prenotazioni = safeLoad('prenotazioni', []);
+    let storicoPrenotazioni = safeLoad('storicoPrenotazioni', []);
+    let matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
+    let contactHistory = safeLoad('contactHistory', {});
+    let weeklyContactLog = safeLoad('weeklyContactLog', {});
+    let dailyDiffHistory = safeLoad('dailyDiffHistory', []);
+    let lastComputedSlots = [];
+    let currentMatchContext = {};
+
+    function safeLoad(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch { return fallback; }
+    }
+    function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function cleanCell(value) { return String(value ?? '').replace(/\u00A0/g, ' ').trim(); }
+    function compactSpaces(value) { return cleanCell(value).replace(/\s+/g, ' '); }
+    function normalizeText(value) { return cleanCell(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
+    function normalizeKey(value) { return normalizeText(value).replace(/[^a-z0-9]+/g, ''); }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function makeId() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now() + Math.random()); }
+    function playerFullName(p) { return `${p.firstName || ''} ${p.surname || ''}`.trim(); }
+    function splitList(value) { return cleanCell(value).split(',').map(x => x.trim()).filter(Boolean); }
+    function formatLocalDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    function toMinutes(timeStr) {
+      const parts = cleanCell(timeStr).replace('.', ':').split(':');
+      return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+    }
+    function addMonthsLocal(date, months) {
+      const d = new Date(date);
+      const originalDay = d.getDate();
+      d.setMonth(d.getMonth() + months);
+      if (d.getDate() !== originalDay) d.setDate(0);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function historyCutoffDate() {
+      return formatLocalDate(addMonthsLocal(new Date(), -HISTORY_RETENTION_MONTHS));
+    }
+    function pruneHistoricalBookings(showNotice = false) {
+      const cutoff = historyCutoffDate();
+      const before = storicoPrenotazioni.length;
+      storicoPrenotazioni = storicoPrenotazioni.filter(p => p && p.data && p.data >= cutoff);
+      const removed = before - storicoPrenotazioni.length;
+      if (removed > 0) {
+        save('storicoPrenotazioni', storicoPrenotazioni);
+        if (showNotice) showAlert(`🧹 Archivio storico pulito: eliminate ${removed} righe più vecchie di 12 mesi.`, 'info');
+      }
+      return removed;
+    }
+    function minutesToTime(min) { return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`; }
+    function setActionAnchor(el) {
+      window.__lastActionAnchor = el || null;
+    }
+
+    document.addEventListener('click', (event) => {
+      const action = event.target.closest('button, a');
+      if (action) setActionAnchor(action);
+    }, true);
+
+    function getActionAlertTarget(anchor) {
+      if (!anchor || !anchor.isConnected) return null;
+      let target = anchor;
+
+      // Se ci sono altri bottoni nello stesso gruppo, metto l'avviso sotto tutto il gruppo.
+      while (target.nextElementSibling) {
+        const next = target.nextElementSibling;
+        const isButton = next.tagName === 'BUTTON';
+        const isHiddenInput = next.tagName === 'INPUT' && (next.type === 'file' || next.type === 'hidden') && (next.style.display === 'none' || next.hidden);
+        if (!isButton && !isHiddenInput) break;
+        target = next;
+      }
+
+      return target;
+    }
+
+    function showAlert(message, type='info', anchorEl=null) {
+      const seconds = 6500;
+      document.querySelectorAll('.action-alert').forEach(el => el.remove());
+
+      const box = document.createElement('div');
+      box.className = `alert alert-${type} action-alert`;
+      box.textContent = message;
+
+      const active = document.activeElement;
+      const anchor = anchorEl || window.__lastActionAnchor || ((active && ['BUTTON','A'].includes(active.tagName)) ? active : null);
+      const target = getActionAlertTarget(anchor);
+
+      if (target && target.parentNode) {
+        target.insertAdjacentElement('afterend', box);
+        setTimeout(() => {
+          const rect = box.getBoundingClientRect();
+          const visible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+          if (!visible) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      } else {
+        box.classList.add('floating-action-alert');
+        document.body.appendChild(box);
+      }
+
+      setTimeout(() => box.remove(), seconds);
+    }
+    function switchTab(tabName, btn=null) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabName)?.classList.add('active');
+      if (btn) btn.classList.add('active');
+      else Array.from(document.querySelectorAll('.tab-button')).find(b => (b.getAttribute('onclick') || '').includes(`'${tabName}'`))?.classList.add('active');
+      if (tabName === 'members') displayMembers();
+      if (tabName === 'slots') analyzeSlots();
+      updateStats();
+    }
+
+    function getMatchpointCell(row, possibleNames) {
+      const keys = Object.keys(row || {});
+      for (const name of possibleNames) {
+        if (row[name] !== undefined && cleanCell(row[name]) !== '') return row[name];
+      }
+      const wanted = possibleNames.map(normalizeKey);
+      const found = keys.find(k => wanted.includes(normalizeKey(k)));
+      return found ? row[found] : '';
+    }
+    function readExcel(file, onSuccess) {
+      if (!window.XLSX) {
+        showAlert('❌ Libreria Excel non caricata. Controlla la connessione internet e ricarica la pagina.', 'danger');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+          console.log('Colonne Excel:', rows.length ? Object.keys(rows[0]) : []);
+          onSuccess(rows);
+        } catch (err) {
+          console.error(err);
+          showAlert('❌ Errore lettura Excel: ' + err.message, 'danger');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    function splitClienteName(fullName) {
+      const clean = compactSpaces(fullName);
+      if (!clean) return {firstName:'', surname:''};
+      if (clean.includes(',')) {
+        const parts = clean.split(',').map(x => x.trim());
+        return { firstName: parts[1] || '', surname: parts[0] || '' };
+      }
+      const parts = clean.split(' ');
+      if (parts.length === 1) return { firstName: parts[0], surname: '' };
+      return { firstName: parts[0], surname: parts.slice(1).join(' ') };
+    }
+    function genderFromValue(value, firstName='') {
+      const s = normalizeKey(value);
+      if (['uomo','m','maschio','male'].includes(s)) return 'M';
+      if (['donna','f','femmina','female'].includes(s)) return 'F';
+      return detectGenderByName(firstName);
+    }
+    function detectGenderByName(firstName) {
+      const n = normalizeKey(firstName);
+      if (maleNames.includes(n) && !femaleNames.includes(n)) return 'M';
+      if (femaleNames.includes(n) && !maleNames.includes(n)) return 'F';
+      if (['andrea','luca','mattia','nicola','tobia','elia','gianluca'].includes(n)) return 'M';
+      if (['alice','irene','beatrice','matilde','adele'].includes(n)) return 'F';
+      if (n.endsWith('a')) return 'F';
+      if (n.endsWith('o')) return 'M';
+      return 'NA';
+    }
+    function normalizePhone(value) {
+      let phone = cleanCell(value).replace(/[^\d+]/g, '');
+      if (phone && !phone.startsWith('+39') && phone.startsWith('3')) phone = '+39' + phone;
+      return phone;
+    }
+    function parseLevel(value, fallback=3) {
+      const n = parseFloat(cleanCell(value).replace(',', '.'));
+      return isNaN(n) ? fallback : n;
+    }
+    function parseDateValue(value) {
+      if (value instanceof Date && !isNaN(value)) return formatLocalDate(value);
+      const s = cleanCell(value);
+      if (!s) return '';
+      if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+        const [y,m,d] = s.split('-');
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      }
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+        const [d,m,y] = s.split('/');
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      }
+      const d = new Date(s);
+      return isNaN(d) ? '' : formatLocalDate(d);
+    }
+    function parseTimeValue(value) {
+      let s = cleanCell(value).replace('.', ':');
+      if (!s) return '';
+      if (s.includes(' ')) s = s.split(' ')[0];
+      const match = s.match(/^(\d{1,2})(?::(\d{1,2}))?/);
+      if (!match) return '';
+      return `${match[1].padStart(2,'0')}:${(match[2] || '00').padStart(2,'0')}`;
+    }
+
+    function memberKey(member) {
+      return normalizeText(playerFullName(member));
+    }
+
+    function bookingKey(booking) {
+      const numero = normalizeText(booking.numero || '');
+      const giocatore = normalizeText(booking.giocatore || '');
+      const data = booking.data || '';
+      const ora = booking.ora || '';
+      const campo = normalizeText(booking.campo || '');
+
+      // Matchpoint esporta una riga per ogni giocatore dentro la stessa prenotazione.
+      // Il solo Numero non basta: altrimenti una partita con 4 persone diventa 1 sola riga.
+      // Chiave corretta: Numero + Giocatore. Se manca il Numero, uso data/ora/campo/giocatore.
+      if (numero) return `numero:${numero}_giocatore:${giocatore}`;
+      return `${giocatore}_${data}_${ora}_${campo}`;
+    }
+
+    function parseMemberRow(row) {
+      const cliente = cleanCell(getMatchpointCell(row, ['Cliente','Nominativo','Nome e cognome','Nome completo','Full Name']));
+      let firstName = cleanCell(getMatchpointCell(row, ['Nome','First Name']));
+      let surname = cleanCell(getMatchpointCell(row, ['Cognome','Last Name','Surname']));
+      if ((!firstName || !surname) && cliente) {
+        const split = splitClienteName(cliente);
+        firstName = firstName || split.firstName;
+        surname = surname || split.surname;
+      }
+      const fullName = compactSpaces(`${firstName} ${surname}`);
+      if (!firstName || !surname || normalizeText(fullName).includes('tpc app non cancellare')) return null;
+      return {
+        id: makeId(),
+        firstName,
+        surname,
+        name: fullName,
+        phone: normalizePhone(getMatchpointCell(row, ['Telefono cellulare','Cellulare','Telefono','Phone','Mobile'])),
+        email: cleanCell(getMatchpointCell(row, ['E-mail','Email','Mail'])),
+        gender: genderFromValue(getMatchpointCell(row, ['Sesso','Genere','Gender']), firstName),
+        level: parseLevel(getMatchpointCell(row, ['Livello','Level','Livello Padel']), 3),
+        active: true,
+        prefDays: [],
+        prefHours: []
+      };
+    }
+
+    function parseBookingRows(rows) {
+      const seen = new Set();
+      let skipped = 0;
+      const bookings = rows.map(row => {
+        const numero = cleanCell(getMatchpointCell(row, ['Numero','N. prenotazione','Prenotazione']));
+        const giocatore = cleanCell(getMatchpointCell(row, ['Nome','Giocatore','Utente','Cliente']));
+        const data = parseDateValue(getMatchpointCell(row, ['Giorno','Data','Date']));
+        const ora = parseTimeValue(getMatchpointCell(row, ['Ora','Time','Orario']));
+        const durata = cleanCell(getMatchpointCell(row, ['Ore','Durata','Duration'])).replace(',', '.') || '1.5';
+        const campo = cleanCell(getMatchpointCell(row, ['Spazio','Campo','Field']));
+        const tipo = cleanCell(getMatchpointCell(row, ['Tipo','Tipologia','Descrizione']));
+        return { numero, giocatore, data, ora, durata, campo, tipo };
+      }).filter(p => {
+        if (!p.giocatore || !p.data || !p.ora || !p.campo) { skipped++; return false; }
+        if (normalizeText(p.giocatore) === 'ospite') { skipped++; return false; }
+        const key = bookingKey(p);
+        if (seen.has(key)) { skipped++; return false; }
+        seen.add(key);
+        return true;
+      });
+      return { bookings, skipped };
+    }
+
+    function compareMembers(oldList, newList) {
+      const oldMap = new Map(oldList.map(m => [memberKey(m), m]));
+      const newMap = new Map(newList.map(m => [memberKey(m), m]));
+      const added = [];
+      const removed = [];
+      const modified = [];
+
+      newMap.forEach((n, key) => {
+        const o = oldMap.get(key);
+        if (!o) {
+          added.push(n);
+          return;
+        }
+        const changes = [];
+        const fields = [
+          ['Telefono', o.phone || '', n.phone || ''],
+          ['Email', o.email || '', n.email || ''],
+          ['Sesso', o.gender || 'NA', n.gender || 'NA'],
+          ['Livello', String(o.level ?? ''), String(n.level ?? '')]
+        ];
+        fields.forEach(([label, oldValue, newValue]) => {
+          if (normalizeText(oldValue) !== normalizeText(newValue)) changes.push({ label, oldValue, newValue });
+        });
+        if (changes.length) modified.push({ item: n, oldItem: o, changes });
+      });
+
+      oldMap.forEach((o, key) => {
+        if (!newMap.has(key)) removed.push(o);
+      });
+
+      return { added, removed, modified };
+    }
+
+    function compareBookings(oldList, newList) {
+      const oldMap = new Map(oldList.map(b => [bookingKey(b), b]));
+      const newMap = new Map(newList.map(b => [bookingKey(b), b]));
+      const added = [];
+      const removed = [];
+      const modified = [];
+
+      newMap.forEach((n, key) => {
+        const o = oldMap.get(key);
+        if (!o) {
+          added.push(n);
+          return;
+        }
+        const changes = [];
+        const fields = [
+          ['Giocatore', o.giocatore || '', n.giocatore || ''],
+          ['Data', o.data || '', n.data || ''],
+          ['Ora', o.ora || '', n.ora || ''],
+          ['Durata', o.durata || '', n.durata || ''],
+          ['Campo', o.campo || '', n.campo || ''],
+          ['Tipo', o.tipo || '', n.tipo || '']
+        ];
+        fields.forEach(([label, oldValue, newValue]) => {
+          if (normalizeText(oldValue) !== normalizeText(newValue)) changes.push({ label, oldValue, newValue });
+        });
+        if (changes.length) modified.push({ item: n, oldItem: o, changes });
+      });
+
+      oldMap.forEach((o, key) => {
+        if (!newMap.has(key)) removed.push(o);
+      });
+
+      return { added, removed, modified };
+    }
+
+    function renderChangeRows(items, formatter, emptyText) {
+      if (!items || !items.length) return `<div class="diff-empty">${emptyText}</div>`;
+      const limit = 30;
+      const rows = items.slice(0, limit).map(formatter).join('');
+      const more = items.length > limit ? `<div class="diff-mini">Mostro i primi ${limit} di ${items.length} risultati.</div>` : '';
+      return `<table>${rows}</table>${more}`;
+    }
+
+    function renderDiffPanel(diff) {
+      const panel = document.getElementById('dailyDiffPanel');
+      if (!panel || !diff) return;
+      panel.style.display = 'block';
+      const isMembers = diff.type === 'clienti';
+      const title = isMembers ? '👥 Differenze clienti' : '📅 Differenze prenotazioni';
+      const bookingNote = isMembers ? '' : '<div class="diff-mini">Nota: il confronto prenotazioni è per singolo giocatore dentro la prenotazione Matchpoint.</div>';
+      const removedLabel = isMembers ? 'Non più nel file' : 'Cancellate';
+      const addedLabel = isMembers ? 'Nuovi soci' : 'Nuove prenotazioni';
+      const modifiedLabel = 'Modificate';
+
+      const fmtMember = m => `<tr><td><strong>${escapeHtml(playerFullName(m))}</strong></td><td>${escapeHtml(m.phone || '')}</td><td>${escapeHtml(m.email || '')}</td><td>${escapeHtml(m.gender || 'NA')}</td><td>${escapeHtml(m.level ?? '')}</td></tr>`;
+      const fmtBooking = b => `<tr><td><strong>${escapeHtml(b.giocatore)}</strong></td><td>${escapeHtml(b.data)}</td><td>${escapeHtml(b.ora)}</td><td>${escapeHtml(b.campo)}</td><td>${escapeHtml(b.tipo || '')}</td></tr>`;
+      const fmtModified = x => `<tr><td><strong>${escapeHtml(isMembers ? playerFullName(x.item) : x.item.giocatore)}</strong></td><td>${x.changes.map(c => `${escapeHtml(c.label)}: ${escapeHtml(c.oldValue || '-')} → ${escapeHtml(c.newValue || '-')}`).join('<br>')}</td></tr>`;
+
+      panel.innerHTML = `
+        <h3>${title}</h3>
+        <div class="muted">Ultimo controllo: ${escapeHtml(diff.createdAtDisplay || '')}</div>
+        ${bookingNote}
+        <div class="diff-summary">
+          <div class="diff-chip">${addedLabel}: <strong>${diff.added.length}</strong></div>
+          <div class="diff-chip">${removedLabel}: <strong>${diff.removed.length}</strong></div>
+          <div class="diff-chip">${modifiedLabel}: <strong>${diff.modified.length}</strong></div>
+        </div>
+        <div class="diff-section"><h4>${addedLabel}</h4>${renderChangeRows(diff.added, isMembers ? fmtMember : fmtBooking, 'Nessuna novità.')}</div>
+        <div class="diff-section"><h4>${removedLabel}</h4>${renderChangeRows(diff.removed, isMembers ? fmtMember : fmtBooking, 'Nessuna cancellazione o assenza.')}</div>
+        <div class="diff-section"><h4>${modifiedLabel}</h4>${renderChangeRows(diff.modified, fmtModified, 'Nessuna modifica.')}</div>
+      `;
+    }
+
+    function saveDailyDiff(diff) {
+      diff.createdAt = new Date().toISOString();
+      diff.createdAtDisplay = new Date().toLocaleString('it-IT');
+      dailyDiffHistory.unshift(diff);
+      dailyDiffHistory = dailyDiffHistory.slice(0, 20);
+      save('dailyDiffHistory', dailyDiffHistory);
+      renderDiffPanel(diff);
+    }
+
+    function renderLastDailyDiff() {
+      if (dailyDiffHistory && dailyDiffHistory.length) renderDiffPanel(dailyDiffHistory[0]);
+    }
+
+    function importMatchpointData() {
+      const file = document.getElementById('matchpointFile')?.files?.[0];
+      if (!file) return showAlert('❌ Seleziona il file clienti Excel', 'danger');
+      readExcel(file, rows => {
+        let skipped = 0;
+        const importedMembers = [];
+        rows.forEach(row => {
+          const parsed = parseMemberRow(row);
+          if (!parsed) { skipped++; return; }
+          importedMembers.push(parsed);
+        });
+
+        const diff = compareMembers(giocatori, importedMembers);
+        let added = 0, updated = 0;
+
+        importedMembers.forEach(member => {
+          const idx = giocatori.findIndex(g => memberKey(g) === memberKey(member));
+          if (idx >= 0) {
+            giocatori[idx] = {
+              ...giocatori[idx],
+              firstName: member.firstName,
+              surname: member.surname,
+              name: member.name,
+              phone: member.phone || giocatori[idx].phone || '',
+              email: member.email || giocatori[idx].email || '',
+              gender: member.gender !== 'NA' ? member.gender : (giocatori[idx].gender || 'NA'),
+              level: member.level || giocatori[idx].level || 3,
+              active: giocatori[idx].active !== false,
+              prefDays: giocatori[idx].prefDays || [],
+              prefHours: giocatori[idx].prefHours || []
+            };
+            updated++;
+          } else {
+            giocatori.push(member);
+            added++;
+          }
+        });
+
+        save('giocatori', giocatori);
+        matchpointData = { lastSync: new Date().toLocaleString('it-IT'), clientCount: importedMembers.length };
+        save('matchpointData', matchpointData);
+        saveDailyDiff({ type:'clienti', added: diff.added, removed: diff.removed, modified: diff.modified, skipped });
+        displayMembers(); updateStats();
+        if (!importedMembers.length) showAlert('⚠️ File clienti letto, ma nessun socio importato. Apri Console F12 per vedere le colonne.', 'warning');
+        else showAlert(`✅ Clienti importati: ${added} nuovi, ${updated} aggiornati. Differenze: ${diff.added.length} nuovi, ${diff.removed.length} non più nel file, ${diff.modified.length} modificati.`, 'success');
+      });
+    }
+
+    function importBookings() {
+      const file = document.getElementById('bookingsFile')?.files?.[0];
+      if (!file) return showAlert('❌ Seleziona il file prenotazioni Excel', 'danger');
+      readExcel(file, rows => {
+        const parsed = parseBookingRows(rows);
+        const diff = compareBookings(prenotazioni, parsed.bookings);
+        prenotazioni = parsed.bookings;
+        save('prenotazioni', prenotazioni);
+        saveDailyDiff({ type:'prenotazioni', added: diff.added, removed: diff.removed, modified: diff.modified, skipped: parsed.skipped });
+        updateStats(); analyzeSlots();
+        if (!prenotazioni.length) showAlert('⚠️ File prenotazioni letto, ma nessuna prenotazione importata. Apri Console F12 per vedere le colonne.', 'warning');
+        else showAlert(`✅ Prenotazioni importate: ${prenotazioni.length}. Differenze: ${diff.added.length} nuove, ${diff.removed.length} cancellate, ${diff.modified.length} modificate.`, 'success');
+      });
+    }
+
+    function importHistoricalBookings() {
+      const file = document.getElementById('historicBookingsFile')?.files?.[0];
+      if (!file) return showAlert('❌ Seleziona il file storico prenotazioni Excel', 'danger');
+
+      readExcel(file, rows => {
+        const parsed = parseBookingRows(rows);
+        const imported = parsed.bookings;
+
+        if (!imported.length) {
+          showAlert('⚠️ File storico letto, ma nessuna prenotazione valida importata. Controlla colonne e date.', 'warning');
+          return;
+        }
+
+        const dates = imported.map(p => p.data).filter(Boolean).sort();
+        const fromDate = dates[0];
+        const toDate = dates[dates.length - 1];
+        const previousTotal = storicoPrenotazioni.length;
+
+        // Matchpoint permette solo un export storico limitato, quindi la app diventa archivio cumulativo.
+        // Regola: il periodo appena importato viene aggiornato/sostituito, i periodi più vecchi restano salvati.
+        const oldInRange = storicoPrenotazioni.filter(p => p.data >= fromDate && p.data <= toDate);
+        const oldOutsideRange = storicoPrenotazioni.filter(p => p.data < fromDate || p.data > toDate);
+
+        const oldMap = new Map(oldInRange.map(p => [bookingKey(p), p]));
+        const importedMap = new Map(imported.map(p => [bookingKey(p), p]));
+
+        let newRows = 0;
+        let updatedRows = 0;
+        let unchangedRows = 0;
+        let removedInRange = 0;
+
+        importedMap.forEach((newBooking, key) => {
+          const oldBooking = oldMap.get(key);
+          if (!oldBooking) {
+            newRows++;
+            return;
+          }
+          const oldJson = JSON.stringify(oldBooking);
+          const newJson = JSON.stringify(newBooking);
+          if (oldJson === newJson) unchangedRows++;
+          else updatedRows++;
+        });
+
+        oldMap.forEach((oldBooking, key) => {
+          if (!importedMap.has(key)) removedInRange++;
+        });
+
+        storicoPrenotazioni = [...oldOutsideRange, ...imported];
+        storicoPrenotazioni.sort((a, b) => `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
+        const removedOld12Months = pruneHistoricalBookings(false);
+        save('storicoPrenotazioni', storicoPrenotazioni);
+        updateStats();
+
+        showAlert(
+          `✅ Archivio storico aggiornato (${fromDate} → ${toDate}). Totale storico: ${previousTotal} → ${storicoPrenotazioni.length}. Nuove: ${newRows}, aggiornate: ${updatedRows}, già presenti: ${unchangedRows}, rimosse nel periodo aggiornato: ${removedInRange}, eliminate oltre 12 mesi: ${removedOld12Months}. Righe saltate: ${parsed.skipped}`,
+          'success'
+        );
+      });
+    }
+
+    function clearMatchpointCache() {
+      const ok = confirm('⚠️ Cancellare tutti i dati salvati nel browser?\n\nConsiglio: fai prima Backup Dati.');
+      if (!ok) return;
+      giocatori = []; prenotazioni = []; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; matchpointData = {lastSync:null, clientCount:0};
+      save('giocatori', giocatori); save('prenotazioni', prenotazioni); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('matchpointData', matchpointData);
+      closeMemberCard(); displayMembers(); updateStats(); analyzeSlots();
+      showAlert('✅ Cache cancellata', 'success');
+    }
+    function getBackupFilename() {
+      const now = new Date();
+      const date = formatLocalDate(now);
+      const time = now.toLocaleTimeString('it-IT', { hour12:false }).replaceAll(':','-');
+      return `Backup_Padel_${date}_${time}.json`;
+    }
+
+    function createBackupPayload() {
+      return {
+        app:'Padel Match Organizer',
+        version: APP_VERSION,
+        createdAt: new Date().toISOString(),
+        giocatori,
+        prenotazioni,
+        storicoPrenotazioni,
+        matchpointData,
+        contactHistory,
+        weeklyContactLog,
+        dailyDiffHistory
+      };
+    }
+
+    function exportBackup() {
+      const backup = createBackupPayload();
+      const text = JSON.stringify(backup, null, 2);
+      const filename = getBackupFilename();
+
+      window.__lastBackupText = text;
+      window.__lastBackupFilename = filename;
+
+      const ok = downloadText(text, filename, 'application/json');
+      showBackupResult(filename);
+
+      if (ok) {
+        showAlert(`✅ Backup creato. Cerca il file: ${filename}`, 'success');
+      } else {
+        showAlert('⚠️ Backup creato, ma il browser non ha avviato il download. Usa il pulsante “Scarica di nuovo”.', 'warning');
+      }
+    }
+
+    function showBackupResult(filename) {
+      const panel = document.getElementById('backupResult');
+      if (!panel) return;
+      panel.style.display = 'block';
+      panel.innerHTML = `
+        <strong>💾 Backup pronto</strong><br>
+        File creato: <span class="backup-name">${escapeHtml(filename)}</span><br>
+        Contiene: <strong>${giocatori.length}</strong> soci, <strong>${prenotazioni.length}</strong> prenotazioni future e <strong>${storicoPrenotazioni.length}</strong> righe storico.<br>
+        Se non lo trovi in Download, clicca qui sotto:
+        <div style="margin-top:10px;">
+          <button class="btn-success" onclick="setActionAnchor(this); downloadLastBackup()">📥 Scarica di nuovo</button>
+          <button class="btn-secondary" onclick="setActionAnchor(this); saveBackupWithPicker()">📂 Salva scegliendo cartella</button>
+        </div>
+      `;
+    }
+
+    async function saveBackupWithPicker() {
+      if (!window.__lastBackupText || !window.__lastBackupFilename) {
+        return showAlert('⚠️ Prima clicca Backup Dati.', 'warning');
+      }
+
+      if (!window.showSaveFilePicker) {
+        downloadLastBackup();
+        return showAlert('ℹ️ Il tuo browser non supporta la scelta manuale della cartella. Ho riavviato il download normale.', 'info');
+      }
+
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: window.__lastBackupFilename,
+          types: [{ description: 'Backup JSON', accept: { 'application/json': ['.json'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(window.__lastBackupText);
+        await writable.close();
+        showAlert(`✅ Backup salvato: ${window.__lastBackupFilename}`, 'success');
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        showAlert('❌ Non sono riuscito a salvare il backup: ' + err.message, 'danger');
+      }
+    }
+
+    function downloadLastBackup() {
+      if (!window.__lastBackupText || !window.__lastBackupFilename) {
+        return showAlert('⚠️ Prima clicca Backup Dati.', 'warning');
+      }
+      const ok = downloadText(window.__lastBackupText, window.__lastBackupFilename, 'application/json');
+      showAlert(ok ? `✅ Download riavviato: ${window.__lastBackupFilename}` : '❌ Il browser ha bloccato il download.', ok ? 'success' : 'danger');
+    }
+    function triggerImportBackup() { const input = document.getElementById('backupFile'); input.value = ''; input.click(); }
+    function importBackupFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!Array.isArray(data.giocatori)) return showAlert('❌ Backup non valido', 'danger');
+          if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return;
+          giocatori = data.giocatori || []; prenotazioni = data.prenotazioni || []; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
+          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = data.dailyDiffHistory || [];
+          const removedOld12Months = pruneHistoricalBookings(false);
+          save('giocatori', giocatori); save('prenotazioni', prenotazioni); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory);
+          displayMembers(); updateStats(); analyzeSlots();
+          showAlert(`✅ Backup ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
+        } catch (err) { showAlert('❌ Errore backup: ' + err.message, 'danger'); }
+      };
+      reader.readAsText(file);
+    }
+
+    function showAddMember() { document.getElementById('addMemberForm').style.display = 'block'; }
+    function hideAddMember() {
+      ['firstName','surname','phone','email','prefDays','prefHours'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('level').value = '3';
+      document.getElementById('manualGender').value = 'NA';
+      document.getElementById('addMemberForm').style.display = 'none';
+    }
+    function addMember() {
+      const firstName = cleanCell(document.getElementById('firstName').value);
+      const surname = cleanCell(document.getElementById('surname').value);
+      if (!firstName || !surname) return showAlert('❌ Nome e cognome obbligatori', 'danger');
+      const exists = giocatori.some(g => normalizeText(playerFullName(g)) === normalizeText(`${firstName} ${surname}`));
+      if (exists) return showAlert('❌ Socio già esistente', 'danger');
+      let gender = document.getElementById('manualGender').value;
+      if (gender === 'NA') gender = detectGenderByName(firstName);
+      giocatori.push({
+        id: makeId(), firstName, surname, name: `${firstName} ${surname}`,
+        phone: normalizePhone(document.getElementById('phone').value),
+        email: cleanCell(document.getElementById('email').value),
+        level: parseLevel(document.getElementById('level').value, 3),
+        gender, active: true,
+        prefDays: splitList(document.getElementById('prefDays').value),
+        prefHours: splitList(document.getElementById('prefHours').value)
+      });
+      save('giocatori', giocatori);
+      hideAddMember(); displayMembers(); updateStats();
+      showAlert('✅ Socio aggiunto', 'success');
+    }
+    function detectGender() {
+      let updated = 0;
+      giocatori.forEach(g => {
+        if (!g.gender || g.gender === 'NA') {
+          const detected = detectGenderByName(g.firstName);
+          if (detected !== 'NA') { g.gender = detected; updated++; }
+        }
+      });
+      save('giocatori', giocatori);
+      displayMembers();
+      showAlert(`🔍 Generi aggiornati: ${updated}`, updated ? 'success' : 'warning');
+    }
+    function applyFilters() {
+      const search = normalizeText(document.getElementById('searchFilter')?.value || '');
+      const status = document.getElementById('statusFilter')?.value || '';
+      const level = document.getElementById('levelFilter')?.value || '';
+      const gender = document.getElementById('genderFilter')?.value || '';
+      return giocatori.filter(g => {
+        const hay = normalizeText(`${g.firstName} ${g.surname} ${g.phone} ${g.email}`);
+        const okSearch = !search || hay.includes(search);
+        const okStatus = !status || (status === 'active' ? g.active !== false : g.active === false);
+        const okLevel = !level || parseFloat(g.level) === parseFloat(level);
+        const okGender = !gender || (g.gender || 'NA') === gender;
+        return okSearch && okStatus && okLevel && okGender;
+      });
+    }
+    function updateMemberCounts(filtered) {
+      const total = giocatori.length;
+      const visible = Array.isArray(filtered) ? filtered.length : total;
+      const active = giocatori.filter(g => g.active !== false).length;
+      const inactive = total - active;
+
+      const totalEl = document.getElementById('membersTotalCount');
+      const filteredEl = document.getElementById('membersFilteredCount');
+      const activeEl = document.getElementById('membersActiveCount');
+      const inactiveEl = document.getElementById('membersInactiveCount');
+
+      if (totalEl) totalEl.textContent = total;
+      if (filteredEl) filteredEl.textContent = visible;
+      if (activeEl) activeEl.textContent = active;
+      if (inactiveEl) inactiveEl.textContent = inactive;
+    }
+
+    function displayMembers() {
+      const tbody = document.getElementById('memberTableBody');
+      if (!tbody) return;
+      const filtered = applyFilters();
+      updateMemberCounts(filtered);
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#666;">ℹ️ Nessun socio trovato</td></tr>';
+        return;
+      }
+      tbody.innerHTML = filtered.map(g => `
+        <tr>
+          <td>${escapeHtml(g.firstName)}</td>
+          <td>${escapeHtml(g.surname)}</td>
+          <td><span class="badge ${g.gender === 'M' ? 'badge-info' : g.gender === 'F' ? 'badge-danger' : 'badge-warning'}">${g.gender === 'M' ? '🧑 M' : g.gender === 'F' ? '👩 F' : 'N/A'}</span></td>
+          <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
+          <td>${escapeHtml(g.phone || '')}</td>
+          <td>${escapeHtml(g.email || '')}</td>
+          <td>${escapeHtml((g.prefDays || []).join(', ') || '-')}</td>
+          <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? '✅ Attivo' : '❌ Inattivo'}</span></td>
+          <td><button class="btn-secondary small-btn" onclick="openMemberCard('${escapeHtml(String(g.id))}')">📋 Scheda</button></td>
+        </tr>`).join('');
+    }
+    function getTotalContactCount(playerId) {
+      return Object.values(contactHistory || {}).reduce((total, list) => total + (Array.isArray(list) ? list.filter(id => String(id) === String(playerId)).length : 0), 0);
+    }
+    function getWeekStart(date) {
+      const d = new Date(date); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff); d.setHours(0,0,0,0); return d;
+    }
+    function getWeeklyContactCount(playerId) {
+      const key = `${playerId}_${formatLocalDate(getWeekStart(new Date()))}`;
+      return weeklyContactLog[key] || 0;
+    }
+    function openMemberCard(memberId) {
+      const g = giocatori.find(p => String(p.id) === String(memberId));
+      const card = document.getElementById('memberCard');
+      if (!g || !card) return;
+      card.style.display = 'block';
+      card.className = 'member-card';
+      card.innerHTML = `
+        <h3>📋 Scheda Socio: ${escapeHtml(playerFullName(g))}</h3>
+        <div class="info-box">
+          <strong>📊 Storico:</strong><br>
+          Contatti totali: <strong>${getTotalContactCount(g.id)}</strong><br>
+          Contatti questa settimana: <strong>${getWeeklyContactCount(g.id)}</strong><br>
+          Stato: <strong>${g.active !== false ? 'Attivo' : 'Inattivo'}</strong>
+        </div>
+        <div class="row">
+          <div class="col"><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
+          <div class="col"><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
+          <div class="col"><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>N/A</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
+          <div class="col"><label>Livello</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
+        </div>
+        <div class="row">
+          <div class="col"><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
+          <div class="col"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
+        </div>
+        <div class="form-group"><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
+        <div class="form-group"><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
+        <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">💾 Salva Scheda</button>
+        <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? '⏸️ Disattiva' : '▶️ Riattiva'}</button>
+        <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">🗑️ Cancella Socio</button>
+        <button class="btn-secondary" onclick="closeMemberCard()">❌ Chiudi</button>
+      `;
+      card.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+    function saveMemberCard(memberId) {
+      const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
+      if (idx < 0) return;
+      const firstName = cleanCell(document.getElementById('cardFirstName').value);
+      const surname = cleanCell(document.getElementById('cardSurname').value);
+      if (!firstName || !surname) return showAlert('❌ Nome e cognome obbligatori', 'danger');
+      giocatori[idx] = {
+        ...giocatori[idx], firstName, surname, name: `${firstName} ${surname}`,
+        gender: document.getElementById('cardGender').value,
+        level: parseLevel(document.getElementById('cardLevel').value, 3),
+        phone: normalizePhone(document.getElementById('cardPhone').value),
+        email: cleanCell(document.getElementById('cardEmail').value),
+        prefDays: splitList(document.getElementById('cardPrefDays').value),
+        prefHours: splitList(document.getElementById('cardPrefHours').value)
+      };
+      save('giocatori', giocatori);
+      displayMembers(); openMemberCard(memberId);
+      showAlert('✅ Scheda salvata', 'success');
+    }
+    function toggleMemberActive(memberId) {
+      const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
+      if (idx < 0) return;
+      giocatori[idx].active = giocatori[idx].active === false;
+      save('giocatori', giocatori); displayMembers(); openMemberCard(memberId);
+      showAlert(giocatori[idx].active ? '✅ Socio riattivato' : '⏸️ Socio disattivato', 'success');
+    }
+    function deleteMemberCard(memberId) {
+      const g = giocatori.find(p => String(p.id) === String(memberId));
+      if (!g) return;
+      if (!confirm(`Cancellare ${playerFullName(g)} dalla lista soci?`)) return;
+      giocatori = giocatori.filter(p => String(p.id) !== String(memberId));
+      save('giocatori', giocatori);
+      closeMemberCard(); displayMembers(); updateStats();
+      showAlert('🗑️ Socio cancellato', 'success');
+    }
+    function closeMemberCard() {
+      const card = document.getElementById('memberCard');
+      if (card) { card.style.display = 'none'; card.innerHTML = ''; }
+    }
+
+    function getDaySlots(date) {
+      const day = date.getDay();
+      if (day >= 1 && day <= 4) return SLOT_CONFIG.weekday_monThu;
+      if (day === 5) return SLOT_CONFIG.weekday_fri;
+      if (day === 6) return SLOT_CONFIG.saturday;
+      return SLOT_CONFIG.sunday;
+    }
+    function matchesTimeFilter(slot, filter) {
+      if (!filter) return true;
+      const start = toMinutes(slot.start);
+      if (filter === 'pranzo') return start >= 12*60 && start < 15*60;
+      if (filter === 'sera') return start >= 18*60 && start < 23*60;
+      if (filter === 'mattino') return start >= 9*60 && start < 12*60;
+      if (filter === 'pomeriggio') return start >= 15*60 && start < 18*60;
+      return true;
+    }
+    function isSameField(a,b) {
+      const aa = normalizeText(a), bb = normalizeText(b);
+      return aa === bb || aa.includes(bb) || bb.includes(aa);
+    }
+    function bookingOverlapsSlot(booking, dateStr, field, slot) {
+      if (booking.data !== dateStr || !isSameField(booking.campo, field)) return false;
+      const bStart = toMinutes(booking.ora);
+      const duration = Math.max(30, (parseFloat(String(booking.durata || '1.5').replace(',', '.')) || 1.5) * 60);
+      const bEnd = bStart + duration;
+      const sStart = toMinutes(slot.start), sEnd = toMinutes(slot.end);
+      return bStart < sEnd && bEnd > sStart;
+    }
+    function analyzeSlots() {
+      const fieldFilter = document.getElementById('slotFieldFilter')?.value || '';
+      const timeFilter = document.getElementById('slotTimeFilter')?.value || '';
+      let start = document.getElementById('slotStartDate')?.value ? new Date(document.getElementById('slotStartDate').value + 'T00:00') : new Date();
+      let end = document.getElementById('slotEndDate')?.value ? new Date(document.getElementById('slotEndDate').value + 'T00:00') : new Date(start);
+      if (!document.getElementById('slotEndDate')?.value) end.setDate(start.getDate() + 15);
+      const slots = [];
+      const current = new Date(start);
+      while (current <= end) {
+        const dateStr = formatLocalDate(current);
+        const dayName = DAYS_IT[current.getDay()];
+        FIELDS.forEach(field => {
+          if (fieldFilter && field !== fieldFilter) return;
+          getDaySlots(current).forEach(slot => {
+            if (!matchesTimeFilter(slot, timeFilter)) return;
+            const isBooked = prenotazioni.some(p => bookingOverlapsSlot(p, dateStr, field, slot));
+            if (!isBooked) slots.push({ date: dateStr, dateDisplay: current.toLocaleDateString('it-IT'), day: dayName, time: slot.name, field, timeStart: slot.start, timeEnd: slot.end });
+          });
+        });
+        current.setDate(current.getDate() + 1);
+      }
+      lastComputedSlots = slots;
+      displaySlots(slots);
+    }
+    function displaySlots(slots) {
+      const div = document.getElementById('slotsResult');
+      if (!div) return;
+      if (!slots.length) {
+        div.innerHTML = '<div class="alert alert-warning">ℹ️ Nessuno slot vuoto trovato.</div>';
+        return;
+      }
+      div.innerHTML = `<div class="alert alert-success">✅ Trovati ${slots.length} slot vuoti</div>` +
+        slots.map((slot, idx) => `<div class="slot-card" onclick="selectSlotForMatch(${idx})"><strong>📅 ${slot.dateDisplay} (${slot.day})</strong><br>🕒 ${slot.time} | 🎾 ${slot.field}<br><small class="muted">Clicca per creare una partita</small></div>`).join('');
+    }
+    function selectSlotForMatch(index) {
+      const slot = lastComputedSlots[index];
+      if (!slot) return;
+      document.getElementById('matchDate').value = slot.date;
+      document.getElementById('matchTime').value = slot.timeStart;
+      document.getElementById('matchField').value = slot.field;
+      switchTab('create');
+      showAlert('✅ Slot selezionato', 'success');
+    }
+    function exportSlotsCSV() {
+      analyzeSlots();
+      if (!lastComputedSlots.length) return showAlert('⚠️ Nessuno slot da esportare', 'warning');
+      const csv = 'Data,Giorno,Ora,Campo\n' + lastComputedSlots.map(s => `"${s.dateDisplay}","${s.day}","${s.time}","${s.field}"`).join('\n');
+      downloadText(csv, `Slot_Vuoti_${formatLocalDate(new Date())}.csv`, 'text/csv');
+      showAlert('✅ CSV slot esportato', 'success');
+    }
+
+    function samePlayerName(a, b) {
+      const aa = normalizeText(a), bb = normalizeText(b);
+      return !!aa && !!bb && (aa === bb || aa.includes(bb) || bb.includes(aa));
+    }
+    function getBookedPlayersForMatch(date, time, field) {
+      const slot = { start: time, end: minutesToTime(toMinutes(time) + 90) };
+      const relevant = prenotazioni.filter(p => bookingOverlapsSlot(p, date, field, slot));
+      return giocatori.filter(g => relevant.some(p => samePlayerName(p.giocatore, playerFullName(g)) || samePlayerName(p.giocatore, g.firstName)));
+    }
+    function playerHasConflict(g, date, time) {
+      const slot = { start: time, end: minutesToTime(toMinutes(time) + 90) };
+      return prenotazioni.some(p => p.data === date && (samePlayerName(p.giocatore, playerFullName(g)) || samePlayerName(p.giocatore, g.firstName)) && bookingOverlapsSlot(p, date, p.campo, slot));
+    }
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+    function isDateBetween(dateStr, startDate, endDate) {
+      const d = new Date(`${dateStr}T00:00`);
+      return d >= startDate && d <= endDate;
+    }
+    function playerFutureBookingsCount(player, days=15) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const end = addDays(today, days);
+      return prenotazioni.filter(p =>
+        isDateBetween(p.data, today, end) &&
+        (samePlayerName(p.giocatore, playerFullName(player)) || samePlayerName(p.giocatore, player.firstName))
+      ).length;
+    }
+    function matchTimeBand(time) {
+      const m = toMinutes(time);
+      if (m >= 9*60 && m < 12*60) return 'mattino';
+      if (m >= 12*60 && m < 15*60) return 'pranzo';
+      if (m >= 15*60 && m < 18*60) return 'pomeriggio';
+      if (m >= 18*60 && m <= 23*60) return 'sera';
+      return 'altro';
+    }
+    function playerHistoricalStats(player, targetDate, targetTime) {
+      const targetBand = matchTimeBand(targetTime);
+      const targetDay = new Date(`${targetDate}T00:00`).getDay();
+      let total = 0, sameBand = 0, sameDay = 0, recent = 0, sameBandAndDay = 0;
+      const ninetyDaysAgo = addDays(new Date(), -90);
+      ninetyDaysAgo.setHours(0,0,0,0);
+
+      storicoPrenotazioni.forEach(p => {
+        if (!(samePlayerName(p.giocatore, playerFullName(player)) || samePlayerName(p.giocatore, player.firstName))) return;
+        total++;
+        const band = matchTimeBand(p.ora);
+        const pDate = new Date(`${p.data}T00:00`);
+        const day = pDate.getDay();
+        if (band === targetBand) sameBand++;
+        if (day === targetDay) sameDay++;
+        if (band === targetBand && day === targetDay) sameBandAndDay++;
+        if (pDate >= ninetyDaysAgo) recent++;
+      });
+
+      return { total, sameBand, sameDay, sameBandAndDay, recent, targetBand };
+    }
+    function playerSmartScore(player, targetDate, targetTime) {
+      const stats = playerHistoricalStats(player, targetDate, targetTime);
+      const futureCount = playerFutureBookingsCount(player, 15);
+      let score = 0;
+      score += stats.sameBand * 8;
+      score += stats.sameBandAndDay * 10;
+      score += stats.sameDay * 3;
+      score += stats.recent * 2;
+      score += Math.min(stats.total, 20);
+      if (futureCount === 0) score += 40;
+      else score -= futureCount * 25;
+      return { score, futureCount, ...stats };
+    }
+    function buildSuggestion(players, type, count, targetDate='', targetTime='', preferNoFuture=true) {
+      let pool = players.filter(p => p.active !== false && p.gender !== 'NA');
+      if (type === 'maschile') pool = pool.filter(p => p.gender === 'M');
+      if (type === 'femminile') pool = pool.filter(p => p.gender === 'F');
+
+      pool = pool.map(p => ({ ...p, _smart: playerSmartScore(p, targetDate, targetTime) }));
+      if (preferNoFuture) {
+        const noFuture = pool.filter(p => p._smart.futureCount === 0);
+        if (noFuture.length >= count) pool = noFuture;
+      }
+
+      pool.sort((a,b) => {
+        const scoreDiff = (b._smart?.score || 0) - (a._smart?.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        return (parseFloat(a.level)||3) - (parseFloat(b.level)||3);
+      });
+
+      if (type !== 'mista') return pool.slice(0, count);
+
+      const males = pool.filter(p => p.gender === 'M');
+      const females = pool.filter(p => p.gender === 'F');
+      const result = [];
+      while (result.length < count && (males.length || females.length)) {
+        if (males.length) result.push(males.shift());
+        if (result.length < count && females.length) result.push(females.shift());
+      }
+      return result.slice(0, count);
+    }
+    function suggestMatch() {
+      const date = document.getElementById('matchDate').value;
+      const time = document.getElementById('matchTime').value;
+      const field = cleanCell(document.getElementById('matchField').value);
+      const type = document.getElementById('matchType').value;
+      const preferNoFuture = document.getElementById('preferNoFutureBookings')?.checked !== false;
+      if (!date || !time || !field) return showAlert('❌ Compila data, ora e campo', 'danger');
+      if (new Date(`${date}T${time}`) < new Date()) return showAlert('❌ Data/ora nel passato', 'danger');
+      const alreadyBooked = getBookedPlayersForMatch(date, time, field);
+      const needed = Math.max(0, 4 - alreadyBooked.length);
+      const available = giocatori.filter(g => g.active !== false && !playerHasConflict(g, date, time) && !alreadyBooked.some(b => String(b.id) === String(g.id)));
+      const suggested = buildSuggestion(available, type, needed || 4, date, time, preferNoFuture);
+      if (needed > 0 && suggested.length === 0) return showAlert('❌ Nessun giocatore disponibile per questo tipo partita', 'danger');
+      currentMatchContext = { date, time, field, type, alreadyBooked, playersNeeded: needed, availablePlayers: available, suggested, preferNoFuture };
+      displayMatchResult();
+    }
+    function probabilityLabel(p) {
+      const score = p._smart?.score || 0;
+      if (score >= 80) return '<span class="badge badge-success">Alta</span>';
+      if (score >= 45) return '<span class="badge badge-warning">Media</span>';
+      return '<span class="badge badge-info">Bassa</span>';
+    }
+    function displayMatchResult() {
+      const {date,time,field,alreadyBooked,playersNeeded,suggested,preferNoFuture} = currentMatchContext;
+      const div = document.getElementById('matchResult');
+      const noFutureCount = suggested.filter(p => (p._smart?.futureCount || 0) === 0).length;
+      div.innerHTML = `<div class="alert alert-success">✅ Matching per ${date} ${time} - ${field}</div>
+        ${alreadyBooked.length ? `<div class="alert alert-info"><strong>Già confermati (${alreadyBooked.length}):</strong> ${alreadyBooked.map(playerFullName).join(', ')}</div>` : '<p><strong>Partita nuova:</strong> servono 4 giocatori.</p>'}
+        <p style="color:var(--primary);font-weight:bold;">Giocatori da trovare: ${playersNeeded}. Senza prenotazioni nei prossimi 15 giorni: ${noFutureCount}/${suggested.length}</p>
+        ${storicoPrenotazioni.length ? `<p class="muted">Analisi basata su ${storicoPrenotazioni.length} righe storico. Fascia target: <strong>${matchTimeBand(time)}</strong>. Filtro futuro 15 giorni: <strong>${preferNoFuture ? 'attivo' : 'non prioritario'}</strong>.</p>` : '<div class="alert alert-warning">📚 Storico non ancora importato: il suggerimento usa solo disponibilità, livello e prenotazioni future.</div>'}
+        ${suggested.length ? `<table><tr><th>Giocatore</th><th>Livello</th><th>Sesso</th><th>Probabilità</th><th>Storico fascia</th><th>Prossimi 15 gg</th><th>Telefono</th></tr>${suggested.map(p => `<tr><td><strong>${escapeHtml(playerFullName(p))}</strong></td><td>${escapeHtml(p.level)}</td><td>${escapeHtml(p.gender)}</td><td>${probabilityLabel(p)}</td><td>${p._smart?.sameBand || 0}</td><td>${p._smart?.futureCount || 0}</td><td>${escapeHtml(p.phone || '')}</td></tr>`).join('')}</table>` : '<div class="alert alert-warning">La partita sembra già piena o non ci sono suggerimenti.</div>'}
+        <button class="btn-primary" onclick="setActionAnchor(this); displayContactForm()">📱 Contatta Giocatori</button>
+        <button class="btn-warning" onclick="setActionAnchor(this); suggestMatch()">🔄 Rigenera</button>`;
+    }
+
+    function getSlotKey(date, field, time) { return `${date}_${normalizeText(field)}_${time}`; }
+    function canContactPlayer(playerId, slotKey) { return !(contactHistory[slotKey] || []).includes(playerId) && getWeeklyContactCount(playerId) < 4; }
+    function markContacted(playerId, slotKey) {
+      contactHistory[slotKey] = contactHistory[slotKey] || [];
+      if (!contactHistory[slotKey].includes(playerId)) contactHistory[slotKey].push(playerId);
+      const wk = `${playerId}_${formatLocalDate(getWeekStart(new Date()))}`;
+      weeklyContactLog[wk] = (weeklyContactLog[wk] || 0) + 1;
+      save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog);
+    }
+    function getContactCandidates() {
+      const ctx = currentMatchContext;
+      if (!ctx.date) return [];
+      const slotKey = getSlotKey(ctx.date, ctx.field, ctx.time);
+      const target = Math.min(Math.max(10, (ctx.playersNeeded || 1) * 10), ctx.availablePlayers.length);
+      return buildSuggestion(
+        ctx.availablePlayers.filter(p => p.phone && canContactPlayer(p.id, slotKey)),
+        ctx.type,
+        target,
+        ctx.date,
+        ctx.time,
+        ctx.preferNoFuture !== false
+      );
+    }
+    function displayContactForm() {
+      if (!currentMatchContext.date) return showAlert('⚠️ Crea prima una partita', 'warning');
+      const {date,time,field,alreadyBooked,playersNeeded} = currentMatchContext;
+      const candidates = getContactCandidates();
+      const slotKey = getSlotKey(date, field, time);
+      const htmlRows = candidates.map(p => {
+        const phone = normalizePhone(p.phone).replace(/^\+/, '');
+        const msg = encodeURIComponent(`Ciao ${p.firstName}! Ti va di giocare a padel il ${date} alle ${time} su ${field}? 🎾`);
+        return `<tr><td><strong>${escapeHtml(playerFullName(p))}</strong></td><td>${escapeHtml(p.level)}</td><td>${escapeHtml(p.gender)}</td><td>${escapeHtml(p.phone)}</td><td class="actions"><a target="_blank" href="https://wa.me/${phone}?text=${msg}" onclick="markContacted('${escapeHtml(String(p.id))}','${escapeHtml(slotKey)}')">💬 WA</a> <button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyPhone('${escapeHtml(p.phone)}')">📋 Copia</button></td></tr>`;
+      }).join('');
+      document.getElementById('contactForm').innerHTML = `<div class="alert alert-info"><strong>Partita:</strong> ${date} ${time} - ${field}</div>
+        ${alreadyBooked.length ? `<div class="alert alert-success"><strong>Già confermati:</strong><br>${alreadyBooked.map(p => '• ' + escapeHtml(playerFullName(p))).join('<br>')}</div>` : ''}
+        <p><strong>Da trovare:</strong> ${playersNeeded}. <strong>Contatti suggeriti:</strong> ${candidates.length}</p>
+        ${candidates.length ? `<table><tr><th>Giocatore</th><th>Livello</th><th>Sesso</th><th>Telefono</th><th>Azione</th></tr>${htmlRows}</table><button class="btn-primary" onclick="setActionAnchor(this); exportContactsCSV()">📥 Esporta CSV</button>` : '<div class="alert alert-warning">Nessun contatto disponibile con telefono e limiti settimanali.</div>'}`;
+      switchTab('contact');
+    }
+    function copyPhone(phone) {
+      if (navigator.clipboard) navigator.clipboard.writeText(phone);
+      showAlert('✅ Numero copiato', 'success');
+    }
+    function exportContactsCSV() {
+      const {date,time,field} = currentMatchContext;
+      const candidates = getContactCandidates();
+      if (!candidates.length) return showAlert('⚠️ Nessun contatto da esportare', 'warning');
+      const csv = 'Nome,Telefono,Email,Livello,Sesso,Link WhatsApp\n' + candidates.map(p => {
+        const phone = normalizePhone(p.phone).replace(/^\+/, '');
+        const msg = encodeURIComponent(`Ciao ${p.firstName}! Ti va di giocare a padel il ${date} alle ${time} su ${field}? 🎾`);
+        return `"${playerFullName(p)}","${p.phone || ''}","${p.email || ''}","${p.level}","${p.gender}","https://wa.me/${phone}?text=${msg}"`;
+      }).join('\n');
+      downloadText(csv, `Contatti_${date}_${time.replace(':','')}.csv`, 'text/csv');
+      showAlert('✅ CSV contatti esportato', 'success');
+    }
+
+    function downloadText(text, filename, type) {
+      try {
+        const blob = new Blob([text], {type});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 1500);
+        return true;
+      } catch (err) {
+        console.error('Download fallito:', err);
+        return false;
+      }
+    }
+    function updateStats() {
+      document.getElementById('statClienti').textContent = matchpointData.clientCount || 0;
+      document.getElementById('statGiocatori').textContent = giocatori.length;
+      document.getElementById('statPrenotazioni').textContent = prenotazioni.length;
+      const statStorico = document.getElementById('statStorico');
+      if (statStorico) statStorico.textContent = storicoPrenotazioni.length;
+      document.getElementById('statUltimoSync').textContent = matchpointData.lastSync || 'Mai';
+    }
+    function showSystemDebug() {
+      console.clear();
+      console.log('=== Padel Match Organizer Debug ===');
+      console.log('Versione:', APP_VERSION);
+      console.log('Giocatori:', giocatori.length, giocatori.slice(0, 5));
+      console.log('Prenotazioni future:', prenotazioni.length, prenotazioni.slice(0, 5));
+      console.log('Storico prenotazioni:', storicoPrenotazioni.length, storicoPrenotazioni.slice(0, 5));
+      console.log('matchpointData:', matchpointData);
+      showAlert('🐛 Debug scritto nella Console del browser (F12)', 'info');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      pruneHistoricalBookings(false);
+      updateStats();
+      displayMembers();
+      const today = new Date();
+      const end = new Date(today); end.setDate(end.getDate() + 15);
+      document.getElementById('slotStartDate').value = formatLocalDate(today);
+      document.getElementById('slotEndDate').value = formatLocalDate(end);
+      analyzeSlots();
+      console.log('✅ Padel Match Organizer v5.10.1 caricato');
+    });
+  </script>
+</body>
+</html>

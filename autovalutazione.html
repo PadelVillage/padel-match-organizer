@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autovalutazione livello padel</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f6f8fb; color: #222; line-height: 1.5; }
+    .container { max-width: 760px; margin: 0 auto; padding: 18px; }
+    header { background: #1F4788; color: white; padding: 22px; border-radius: 12px; margin: 18px 0; }
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    label { display: block; font-weight: bold; margin: 14px 0 6px; }
+    input, select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+    button { background: #1F4788; color: white; border: 0; padding: 13px 18px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 16px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .alert { padding: 14px; border-radius: 8px; margin: 14px 0; border-left: 5px solid; }
+    .info { background: #e3f2fd; border-color: #1F4788; }
+    .success { background: #d4edda; border-color: #4CAF50; color: #155724; }
+    .danger { background: #f8d7da; border-color: #f44336; color: #721c24; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎾 Autovalutazione livello padel</h1>
+      <div id="clubName">Padel Club</div>
+    </header>
+
+    <div class="card">
+      <div class="alert info">
+        Ciao! Questa scheda serve per aiutare lo staff a proporti partite più equilibrate e adatte al tuo livello.
+        Richiede meno di 2 minuti.
+      </div>
+      <div id="status"></div>
+
+      <form id="assessmentForm">
+        <label>Nome</label>
+        <input id="firstName" required />
+
+        <label>Cognome</label>
+        <input id="lastName" required />
+
+        <label>Telefono</label>
+        <input id="phone" type="tel" required />
+
+        <label>Da quanto tempo giochi a padel?</label>
+        <select id="experience" required>
+          <option value="">Seleziona</option>
+          <option>Ho appena iniziato</option>
+          <option>Meno di 6 mesi</option>
+          <option>Da 6 mesi a 1 anno</option>
+          <option>Da 1 a 3 anni</option>
+          <option>Da più di 3 anni</option>
+        </select>
+
+        <label>Quante volte giochi mediamente al mese?</label>
+        <select id="monthlyFrequency" required>
+          <option value="">Seleziona</option>
+          <option>Meno di 1 volta al mese</option>
+          <option>1-2 volte al mese</option>
+          <option>3-5 volte al mese</option>
+          <option>6-10 volte al mese</option>
+          <option>Più di 10 volte al mese</option>
+        </select>
+
+        <label>Quanto ti senti sicuro nei colpi base?</label>
+        <select id="basicStrokes" required>
+          <option value="">Seleziona</option>
+          <option>Molto poco sicuro</option>
+          <option>Abbastanza sicuro</option>
+          <option>Sicuro</option>
+          <option>Molto sicuro</option>
+        </select>
+
+        <label>Sai usare il vetro durante il gioco?</label>
+        <select id="glassUsage" required>
+          <option value="">Seleziona</option>
+          <option>No, quasi mai</option>
+          <option>Qualche volta</option>
+          <option>Sì, abbastanza spesso</option>
+          <option>Sì, con sicurezza</option>
+        </select>
+
+        <label>Sai giocare a rete con volée e bandeja?</label>
+        <select id="netPlay" required>
+          <option value="">Seleziona</option>
+          <option>No / poco</option>
+          <option>Base</option>
+          <option>Discreto</option>
+          <option>Buono</option>
+          <option>Molto buono</option>
+        </select>
+
+        <label>Riesci a mantenere la posizione con il compagno?</label>
+        <select id="positioning" required>
+          <option value="">Seleziona</option>
+          <option>No, mi muovo senza riferimenti precisi</option>
+          <option>Abbastanza</option>
+          <option>Sì, di solito</option>
+          <option>Sì, con buona consapevolezza tattica</option>
+        </select>
+
+        <label>Riesci a gestire uno scambio senza cercare subito il punto?</label>
+        <select id="rallyPatience" required>
+          <option value="">Seleziona</option>
+          <option>No, faccio molti errori</option>
+          <option>A volte</option>
+          <option>Spesso</option>
+          <option>Sì, con buona continuità</option>
+        </select>
+
+        <label>Hai mai partecipato a tornei o competizioni?</label>
+        <select id="competitions" required>
+          <option value="">Seleziona</option>
+          <option>No</option>
+          <option>Sì, tornei sociali</option>
+          <option>Sì, tornei amatoriali</option>
+          <option>Sì, competizioni federali o simili</option>
+        </select>
+
+        <label>Secondo te qual è il tuo livello attuale?</label>
+        <select id="declaredLevel" required>
+          <option value="">Seleziona</option>
+          <option value="1.0">1,0 — Principiante assoluto</option>
+          <option value="1.5">1,5 — Principiante con prime basi</option>
+          <option value="2.0">2,0 — Base</option>
+          <option value="2.5">2,5 — Base evoluto</option>
+          <option value="3.0">3,0 — Intermedio basso</option>
+          <option value="3.5">3,5 — Intermedio</option>
+          <option value="4.0">4,0 — Intermedio buono</option>
+          <option value="4.5">4,5 — Avanzato amatoriale</option>
+          <option value="5.0">5,0 o superiore — Avanzato</option>
+        </select>
+
+        <label>Vuoi essere contattato per partite coerenti con il tuo livello?</label>
+        <select id="wantsMatches" required>
+          <option value="">Seleziona</option>
+          <option>Sì</option>
+          <option>No</option>
+          <option>Solo in determinati giorni/orari</option>
+        </select>
+
+        <label>Giorni/orari preferiti, opzionale</label>
+        <input id="preferredDays" placeholder="Es. lunedì sera, weekend, pranzo..." />
+
+        <label>Note, opzionale</label>
+        <textarea id="notes" rows="3"></textarea>
+
+        <button id="submitBtn" type="submit">Invia autovalutazione</button>
+      </form>
+      <p class="muted">Il livello indicato è una prima autovalutazione e potrà essere verificato dallo staff.</p>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('t') || '';
+    const statusEl = document.getElementById('status');
+    const form = document.getElementById('assessmentForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (window.PADEL_CONFIG?.CLUB_NAME) {
+      document.getElementById('clubName').textContent = window.PADEL_CONFIG.CLUB_NAME;
+    }
+
+    function showStatus(message, type) {
+      statusEl.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function calculateLevel() {
+      const declared = parseFloat(document.getElementById('declaredLevel').value || '0');
+      return declared || null;
+    }
+
+    function getValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    async function initSupabase() {
+      if (!window.PADEL_CONFIG || !window.supabase) {
+        showStatus('Configurazione mancante. Avvisa lo staff.', 'danger');
+        submitBtn.disabled = true;
+        return null;
+      }
+      return window.supabase.createClient(window.PADEL_CONFIG.SUPABASE_URL, window.PADEL_CONFIG.SUPABASE_ANON_KEY);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!token) {
+        showStatus('Link non valido: token mancante. Chiedi allo staff un nuovo link.', 'danger');
+        return;
+      }
+
+      const client = await initSupabase();
+      if (!client) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Invio in corso...';
+
+      const payload = {
+        token,
+        first_name: getValue('firstName'),
+        last_name: getValue('lastName'),
+        phone: getValue('phone'),
+        experience: getValue('experience'),
+        monthly_frequency: getValue('monthlyFrequency'),
+        basic_strokes: getValue('basicStrokes'),
+        glass_usage: getValue('glassUsage'),
+        net_play: getValue('netPlay'),
+        positioning: getValue('positioning'),
+        rally_patience: getValue('rallyPatience'),
+        competitions: getValue('competitions'),
+        declared_level: parseFloat(getValue('declaredLevel')),
+        wants_matches: getValue('wantsMatches'),
+        preferred_days: getValue('preferredDays'),
+        notes: getValue('notes'),
+        calculated_level: calculateLevel()
+      };
+
+      const { error } = await client.from('self_assessments').insert(payload);
+
+      if (error) {
+        console.error(error);
+        showStatus('Errore durante il salvataggio. Riprova o avvisa lo staff.', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Invia autovalutazione';
+        return;
+      }
+
+      await client.from('assessment_tokens').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('token', token);
+
+      form.style.display = 'none';
+      showStatus('Grazie! La tua autovalutazione è stata registrata.', 'success');
+    });
+
+    if (!token) {
+      showStatus('Link non valido: token mancante.', 'danger');
+      submitBtn.disabled = true;
+    }
+  </script>
+</body>
+</html>

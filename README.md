@@ -1,0 +1,78 @@
+# Padel Match Organizer
+
+Web app per gestione soci, import file Matchpoint, analisi slot, creazione partite e futura autovalutazione livello soci.
+
+## Stato progetto
+
+Versione base inclusa nel repository: **v5.10.1**
+
+Questa versione funziona ancora in locale tramite file HTML e salva i dati nel browser con `localStorage`.
+
+## File principali
+
+```text
+index.html                 Web app admin attuale
+autovalutazione.html       Prima pagina pubblica per autovalutazione soci
+config.example.js          Esempio configurazione Supabase
+supabase_schema.sql        Schema iniziale database Supabase
+VERSIONI.md                Registro versioni
+README.md                  Istruzioni progetto
+.gitignore                 File da non caricare su GitHub
+```
+
+## Attenzione: dati personali
+
+NON caricare mai su GitHub:
+
+```text
+out.xlsx
+out_prenotazioni.xlsx
+Backup_Padel_*.json
+file Excel clienti
+file Excel prenotazioni
+numeri di telefono reali
+email reali
+backup reali della web app
+```
+
+GitHub deve contenere solo codice e documentazione.
+
+## Obiettivo prossimo
+
+Creare un sistema online per permettere ai soci con livello `0,5` di compilare una scheda di autovalutazione.
+
+Flusso previsto:
+
+```text
+Socio riceve link WhatsApp
+↓
+Apre autovalutazione.html
+↓
+Compila il modulo
+↓
+La risposta viene salvata su Supabase
+↓
+La web app admin legge le risposte
+↓
+Lo staff conferma/applica il livello
+```
+
+## Primo setup GitHub semplice
+
+1. Crea un repository GitHub chiamato `padel-match-organizer`.
+2. Carica questi file.
+3. Non caricare file Excel o backup.
+4. In futuro abiliteremo GitHub Pages o Netlify per pubblicare la pagina `autovalutazione.html`.
+
+## Primo setup Supabase
+
+1. Crea un progetto Supabase.
+2. Apri SQL Editor.
+3. Incolla ed esegui il contenuto di `supabase_schema.sql`.
+4. Copia `config.example.js` in `config.js`.
+5. Inserisci `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+6. Non caricare `config.js` su GitHub se contiene chiavi reali.
+
+## Nota operativa
+
+La pagina `autovalutazione.html` è una prima base tecnica. Prima di inviarla ai soci va testata con pochi utenti interni.
