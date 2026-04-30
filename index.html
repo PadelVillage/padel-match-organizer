@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.126</title>
+  <title>Padel Match Organizer v5.127</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1551,7 +1551,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.126</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.127</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2302,7 +2302,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.126';
+    const APP_VERSION = '5.127';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -8806,7 +8806,6 @@ Per confermare scrivi ELIMINA.`);
       if (!options.silent) showAlert(`✅ Risposte importate: ${added} nuove, ${updated} aggiornate`, 'success');
     }
     function openAssessmentResponseEditor(memberId) {
-      if (document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]') && !document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]')?.checked) { showAlert('Seleziona prima il socio da modificare.', 'warning'); return; }
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
       const response = rec ? getAssessmentResponseByToken(rec.token) : null;
@@ -8946,7 +8945,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.126 caricato');
+      console.log('✅ Padel Match Organizer v5.127 caricato');
     });
   
 
@@ -9284,8 +9283,9 @@ Per confermare scrivi ELIMINA.`);
         const info = assessmentRecordFor(member);
         const status = info.applied ? 'levelApplied' : (info.paused ? 'paused' : (info.response ? (info.review ? 'review' : 'ready') : (info.rec?.status === 'sent' ? 'sentNoResponse' : 'notResponded')));
         const availabilityProfile = info.response ? getAssessmentAvailabilityProfile(info.response) : null;
+        const availabilityHtml = renderAvailabilityProfile(availabilityProfile, { empty:'' });
         const responseText = info.response
-          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}${renderAvailabilityProfile(availabilityProfile, { empty:'' })}`
+          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}${availabilityHtml ? `<div style="margin-top:8px;">${availabilityHtml}</div>` : ''}`
           : (info.rec?.sentAt ? `Invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT'))}<br>Risposta: non ricevuta${info.paused ? '<br>Stato operativo: in pausa' : ''}` : 'Nessun invio registrato');
         const canResend = member.phone && info.rec?.registeredToSupabase && !info.response && !info.paused;
         const canPause = !info.paused && status === 'sentNoResponse';
@@ -9299,7 +9299,7 @@ Per confermare scrivi ELIMINA.`);
             ${canResend ? `<button class="btn-success small-btn assessment-post-action" disabled onclick="setActionAnchor(this); openAssessmentWhatsApp('${escapeHtml(String(member.id))}')">💬 Reinvia</button>` : ''}
             ${canPause ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pauseAssessmentMember('${escapeHtml(String(member.id))}')">⏸️ Pausa</button>` : ''}
             ${canResume ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(member.id))}')">▶️ Riattiva</button>` : ''}
-            ${info.response ? `<button class="btn-secondary small-btn assessment-post-action" disabled onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn assessment-post-action" disabled onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>` : ''}
+            ${info.response ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn" onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -9603,7 +9603,6 @@ Per confermare scrivi ELIMINA.`);
 
     // v5.119 - Modalità essenziale: applica livello nella scheda socio e prepara nuova autovalutazione.
     function applyAssessmentLevel(memberId) {
-      if (document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]') && !document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]')?.checked) { showAlert('Seleziona prima il socio da applicare.', 'warning'); return; }
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
       const response = rec ? getAssessmentResponseByToken(rec.token) : null;
@@ -9819,7 +9818,7 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
     }
 
     function renderAvailabilityProfile(profile, options = {}) {
-      if (!hasAvailabilityProfile(profile)) return options.empty || '<span class="muted">Disponibilità non disponibile</span>';
+      if (!hasAvailabilityProfile(profile)) return options.empty !== undefined ? options.empty : '';
       const updated = profile.updatedAt ? (() => {
         try { return new Date(profile.updatedAt).toLocaleString('it-IT'); } catch { return profile.updatedAt; }
       })() : '';
