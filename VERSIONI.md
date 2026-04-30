@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.133
+
+- Versione base corrente importata come nuovo punto stabile di lavoro.
+- Da questa versione si lavora per sezioni autonome tramite branch dedicate.
+- Ogni sezione validata viene consolidata su `main` prima di aprire la sezione successiva.
+
 ## v5.10.1
 
 - Archivio storico prenotazioni cumulativo.

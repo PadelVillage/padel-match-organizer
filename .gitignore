@@ -1,0 +1,13 @@
+.DS_Store
+
+# File locali / dati reali da non caricare su GitHub
+out.xlsx
+out_prenotazioni.xlsx
+Backup_Padel_*.json
+*.xls
+*.xlsx
+*.csv
+
+# Backup e versioni temporanee locali
+*_backup.*
+*_temp.*

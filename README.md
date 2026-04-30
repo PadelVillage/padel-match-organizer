@@ -4,16 +4,16 @@ Web app per gestione soci, import file Matchpoint, analisi slot, creazione parti
 
 ## Stato progetto
 
-Versione base inclusa nel repository: **v5.10.1**
+Versione base inclusa nel repository: **v5.133**
 
-Questa versione funziona ancora in locale tramite file HTML e salva i dati nel browser con `localStorage`.
+Questa versione funziona ancora come app HTML locale/pubblicabile e salva i dati operativi nel browser con `localStorage`.
 
 ## File principali
 
 ```text
 index.html                 Web app admin attuale
 autovalutazione.html       Prima pagina pubblica per autovalutazione soci
-config.example.js          Esempio configurazione Supabase
+config.js                  Configurazione Supabase usata dalla pagina pubblicata
 supabase_schema.sql        Schema iniziale database Supabase
 VERSIONI.md                Registro versioni
 README.md                  Istruzioni progetto
@@ -62,16 +62,15 @@ Lo staff conferma/applica il livello
 1. Crea un repository GitHub chiamato `padel-match-organizer`.
 2. Carica questi file.
 3. Non caricare file Excel o backup.
-4. In futuro abiliteremo GitHub Pages o Netlify per pubblicare la pagina `autovalutazione.html`.
+4. Pubblica `index.html`, `autovalutazione.html` e `config.js` tramite GitHub Pages o servizio equivalente.
 
 ## Primo setup Supabase
 
 1. Crea un progetto Supabase.
 2. Apri SQL Editor.
 3. Incolla ed esegui il contenuto di `supabase_schema.sql`.
-4. Copia `config.example.js` in `config.js`.
-5. Inserisci `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
-6. Non caricare `config.js` su GitHub se contiene chiavi reali.
+4. Inserisci in `config.js` `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+5. Prima di aprire la pagina ai soci, verifica che le policy Supabase/RLS permettano solo le operazioni previste.
 
 ## Nota operativa
 
