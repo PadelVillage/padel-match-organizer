@@ -1284,21 +1284,8 @@
     .assessment-public-modal p { margin:0 0 16px; color:#344054; font-size:16px; }
     .assessment-public-modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     @media (max-width:760px) { .assessment-public-form-head, .assessment-public-identity { grid-template-columns:1fr; flex-direction:column; } .assessment-public-grid { grid-template-columns:1fr; } .assessment-public-actions { display:grid; grid-template-columns:1fr; } .assessment-public-actions .btn { width:100%; } }
-
-  
-    /* PUBLIC_ASSESSMENT_UI_FIX_START */
-    body.assessment-public-mode #anchor-assessment-scheda {
-      display: none !important;
-      visibility: hidden !important;
-      height: 0 !important;
-      min-height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      overflow: hidden !important;
-    }
-
-    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card {
+body.assessment-public-mode .assessment-public-only-card {
+      display: block !important;
       border: 0 !important;
       border-top: 0 !important;
       box-shadow: none !important;
@@ -1307,14 +1294,52 @@
       margin: 0 !important;
     }
 
-    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card::before,
-    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card::after {
+  
+    /* PUBLIC_ASSESSMENT_STRUCTURAL_FIX_START */
+    body.assessment-public-mode .side-nav,
+    body.assessment-public-mode .top-nav-bar,
+    body.assessment-public-mode .tabs {
       display: none !important;
-      content: none !important;
     }
 
-    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card .assessment-public-form-card:first-child {
-      margin-top: 0 !important;
+    body.assessment-public-mode .app-shell {
+      display: block !important;
+      min-height: 100vh !important;
+    }
+
+    body.assessment-public-mode .main-content {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+
+    body.assessment-public-mode .container {
+      max-width: 980px !important;
+      padding-top: 18px !important;
+    }
+
+    body.assessment-public-mode .tab-content {
+      display: none !important;
+    }
+
+    body.assessment-public-mode #assessment.tab-content {
+      display: block !important;
+    }
+
+    body.assessment-public-mode #assessment .assessment-v5144-section > * {
+      display: none !important;
+    }
+
+    body.assessment-public-mode #assessment .assessment-v5144-section > #anchor-assessment-scheda {
+      display: block !important;
+    }
+
+    body.assessment-public-mode #anchor-assessment-scheda.assessment-flow-card {
+      border: 0 !important;
+      border-top: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
 
     #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn {
@@ -1367,7 +1392,7 @@
         max-width: none !important;
       }
     }
-    /* PUBLIC_ASSESSMENT_UI_FIX_END */
+    /* PUBLIC_ASSESSMENT_STRUCTURAL_FIX_END */
 
   </style>
 </head>
@@ -1819,8 +1844,7 @@
 
           <div id="assessmentArchiveList" class="assessment-clean-list"></div>
         </div>
-        <h3 id="anchor-assessment-scheda" class="assessment-section-title">📋 Scheda autovalutazione</h3>
-        <div class="assessment-flow-card archive">
+        <div id="anchor-assessment-scheda" class="assessment-flow-card archive assessment-public-only-card">
           <div class="assessment-public-form-card assessment-public-form-head">
             <div>
               <h4>SCHEDA DI AUTOVALUTAZIONE</h4>
@@ -9482,18 +9506,7 @@ Per confermare scrivi ELIMINA.`);
       if (!token) return false;
 
       document.body.classList.add('assessment-public-mode');
-
-      const publicTitle = document.getElementById('anchor-assessment-scheda');
-      if (publicTitle) {
-        publicTitle.style.setProperty('display', 'none', 'important');
-        publicTitle.style.setProperty('visibility', 'hidden', 'important');
-        publicTitle.style.setProperty('height', '0', 'important');
-        publicTitle.style.setProperty('margin', '0', 'important');
-        publicTitle.style.setProperty('padding', '0', 'important');
-      }
-
-
-      let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null;
+let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null;
       let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
       const nameFromUrl = cleanCell(params.get('nome') || params.get('name') || '');
       const displayName = nameFromUrl || (member ? playerFullName(member) : cleanCell(rec?.memberName || 'Socio Padel Village'));
