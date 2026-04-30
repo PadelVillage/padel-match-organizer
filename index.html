@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.129</title>
+  <title>Padel Match Organizer v5.130</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1551,6 +1551,18 @@ body.assessment-public-mode .assessment-public-only-card {
       transition: outline-color .25s ease;
     }
 
+  
+    /* v5.130 - Calcolo tecnico autovalutazione */
+    .assessment-calculation-box {
+      margin-top:10px;
+      padding:10px 12px;
+      background:#fffaf0;
+      border:1px solid #ffe0a6;
+      border-left:5px solid var(--warning);
+      border-radius:12px;
+      color:#4b3a10;
+    }
+
   </style>
 </head>
 <body>
@@ -1560,7 +1572,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.129</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.130</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2311,7 +2323,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.129';
+    const APP_VERSION = '5.130';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -4025,7 +4037,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
         <div class="form-group"><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
         <div class="form-group"><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
-        ${renderAvailabilityProfile(g.availabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione.</span></div>' })}
+        ${renderAvailabilityProfile(g.availabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione. Se la risposta è vecchia, il dato potrebbe non essere stato salvato.</span></div>' })}
         <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">💾 Salva Scheda</button>
         <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">📝 Reinvia autovalutazione</button>
         <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? '⏸️ Disattiva' : '▶️ Riattiva'}</button>
@@ -8846,7 +8858,8 @@ Per confermare scrivi ELIMINA.`);
           <strong>Dati ricevuti</strong><br>
           Invio: ${rec?.sentAt ? escapeHtml(new Date(rec.sentAt).toLocaleString('it-IT')) : 'n/d'} · Compilazione: ${escapeHtml(submitted)}<br>
           Token: <span class="assessment-link">${escapeHtml(rec?.token || '')}</span>
-          ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(response), { empty:'' })}
+          ${renderAssessmentCalculationSummary(response, { empty:'' })}
+          ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(response), { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Disponibilità non ricevuta in questa risposta. Probabile scheda compilata prima del salvataggio disponibilità.</span></div>' })}
         </div>
         <div class="assessment-edit-grid">
           <div><label>Livello dichiarato</label><input id="assessmentEditDeclared" type="number" min="0" max="7" step="0.5" value="${escapeHtml(response.declared_level || '')}" /></div>
@@ -8966,7 +8979,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.129 caricato');
+      console.log('✅ Padel Match Organizer v5.130 caricato');
     });
   
 
@@ -9301,7 +9314,7 @@ Per confermare scrivi ELIMINA.`);
         const availabilityProfile = info.response ? getAssessmentAvailabilityProfile(info.response) : null;
         const availabilityHtml = renderAvailabilityProfile(availabilityProfile, { empty:'' });
         const responseText = info.response
-          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}${availabilityHtml ? `<div style="margin-top:8px;">${availabilityHtml}</div>` : ''}`
+          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}${renderAssessmentCalculationSummary(info.response, { empty:'' })}${availabilityHtml ? `<div style="margin-top:8px;">${availabilityHtml}</div>` : ''}`
           : (info.rec?.sentAt ? `Invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT'))}<br>Risposta: non ricevuta${info.paused ? '<br>Stato operativo: in pausa' : ''}` : 'Nessun invio registrato');
         const canResend = member.phone && info.rec?.registeredToSupabase && !info.response && !info.paused;
         const canPause = !info.paused && status === 'sentNoResponse';
@@ -9892,11 +9905,115 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       if (modal) modal.style.display = 'none';
     }
 
+
+    function assessmentPublicScoreFromText(value, map) {
+      const raw = cleanCell(value || '');
+      if (!raw) return null;
+      const key = normalizeText(raw);
+      for (const [needle, score] of map) {
+        if (key.includes(normalizeText(needle))) return score;
+      }
+      return null;
+    }
+
+    function assessmentPublicTechnicalScores(data) {
+      const rally = assessmentPublicScoreFromText(data?.rally, [
+        ['Faccio fatica a tenere 3-4 colpi', 1.0],
+        ['Tengo lo scambio solo a ritmo lento', 2.0],
+        ['Tengo scambi regolari con continuità', 3.0],
+        ['Tengo scambi anche con ritmo alto', 4.0],
+        ['Costruisco il punto con controllo', 5.0]
+      ]);
+      const glass = assessmentPublicScoreFromText(data?.glass, [
+        ['Evito quasi sempre il vetro', 1.0],
+        ['Lo uso solo se la palla è facile', 2.0],
+        ['Difendo con il vetro in modo base', 2.5],
+        ['Lo uso con continuità anche sotto pressione', 3.5],
+        ['Lo uso per difendere e contrattaccare', 4.5]
+      ]);
+      const net = assessmentPublicScoreFromText(data?.net, [
+        ['Resto quasi sempre a fondo', 1.5],
+        ['Salgo a rete ma sono poco efficace', 2.0],
+        ['Mi avvicino e chiudo palle semplici', 2.5],
+        ['Costruisco e chiudo il punto a rete', 3.5],
+        ['Metto pressione e chiudo con continuità', 4.5]
+      ]);
+      const overhead = assessmentPublicScoreFromText(data?.overhead, [
+        ['Non li uso quasi mai', 1.5],
+        ['Li provo ma con poca sicurezza', 2.0],
+        ['Uso bandeja e smash con controllo', 3.0],
+        ['Uso colpi alti in modo tattico e affidabile', 4.0],
+        ['Uso colpi alti per dominare il punto', 5.0]
+      ]);
+      const values = [rally, glass, net, overhead].filter(v => typeof v === 'number' && Number.isFinite(v));
+      const average = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+      return { rally, glass, net, overhead, average };
+    }
+
+    function roundAssessmentToHalf(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '';
+      return String(Math.max(0.5, Math.min(7, Math.round(n * 2) / 2)));
+    }
+
+    function calculateAssessmentPublicLevel(data) {
+      const declared = parseFloat(assessmentPublicParseLevel(data?.declaredLevel));
+      const balanced = parseFloat(assessmentPublicParseLevel(data?.balancedLevel));
+      const technical = assessmentPublicTechnicalScores(data);
+      const parts = [];
+      if (Number.isFinite(declared)) parts.push({ value: declared, weight: 0.40 });
+      if (Number.isFinite(balanced)) parts.push({ value: balanced, weight: 0.25 });
+      if (Number.isFinite(technical.average)) parts.push({ value: technical.average, weight: 0.35 });
+
+      if (!parts.length) {
+        return {
+          declared_level: '',
+          balanced_level: '',
+          calculated_level: '',
+          technical_average: '',
+          technical_scores: technical,
+          raw_score: '',
+          coherence: 'medium',
+          staff_status: 'review',
+          note: 'Dati insufficienti per calcolo tecnico'
+        };
+      }
+
+      const weightSum = parts.reduce((sum, p) => sum + p.weight, 0);
+      const rawScore = parts.reduce((sum, p) => sum + p.value * p.weight, 0) / weightSum;
+      let calculated = parseFloat(roundAssessmentToHalf(rawScore));
+
+      // Regole prudenziali: non facciamo salti eccessivi senza verifica.
+      if (Number.isFinite(declared)) {
+        if (calculated > declared + 0.5) calculated = declared + 0.5;
+        if (calculated < declared - 1.0) calculated = declared - 1.0;
+        calculated = Math.max(0.5, Math.min(7, Math.round(calculated * 2) / 2));
+      }
+
+      const technicalRef = Number.isFinite(technical.average) ? technical.average : (Number.isFinite(balanced) ? balanced : calculated);
+      const diff = Number.isFinite(declared) ? Math.abs(declared - technicalRef) : 0;
+      const coherence = diff <= 0.5 ? 'high' : (diff <= 1 ? 'medium' : 'low');
+      const staffStatus = coherence === 'low' ? 'review' : '';
+
+      return {
+        declared_level: Number.isFinite(declared) ? String(declared) : '',
+        balanced_level: Number.isFinite(balanced) ? String(balanced) : '',
+        calculated_level: String(calculated),
+        technical_average: Number.isFinite(technical.average) ? String(Math.round(technical.average * 100) / 100) : '',
+        technical_scores: technical,
+        raw_score: String(Math.round(rawScore * 1000) / 1000),
+        coherence,
+        staff_status: staffStatus,
+        note: coherence === 'low' ? 'Differenza alta tra livello dichiarato e risposte tecniche: verificare staff.' : ''
+      };
+    }
+
     function assessmentPublicParseLevel(value) {
       const raw = cleanCell(value || '');
       if (!raw) return '';
-      if (raw.includes('5')) return '5';
-      const match = raw.replace(',', '.').match(/\d+(?:\.\d+)?/);
+      const normalized = raw.replace(',', '.').trim();
+      if (/^\s*5\+/.test(normalized)) return '5';
+      const match = normalized.match(/\d+(?:\.\d+)?/);
       return match ? match[0] : '';
     }
 
@@ -9974,16 +10091,34 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       </div>`;
     }
 
+
+    function renderAssessmentCalculationSummary(response, options = {}) {
+      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || {});
+      const avg = cleanCell(raw.technical_average || '');
+      const balanced = cleanCell(raw.balanced_level || '');
+      const rawScore = cleanCell(raw.raw_score || '');
+      const note = cleanCell(raw.calculation_note || '');
+      if (!avg && !balanced && !rawScore && !note) return options.empty || '';
+      return `<div class="assessment-calculation-box">
+        <strong>🧮 Calcolo tecnico</strong>
+        <div class="assessment-availability-grid">
+          <div><span>Dichiarato</span><b>${escapeHtml(response?.declared_level || '-')}</b></div>
+          <div><span>Equilibrato</span><b>${escapeHtml(balanced || '-')}</b></div>
+          <div><span>Tecnica media</span><b>${escapeHtml(avg || '-')}</b></div>
+          <div><span>Score grezzo</span><b>${escapeHtml(rawScore || '-')}</b></div>
+          <div><span>Calcolato</span><b>${escapeHtml(response?.calculated_level || '-')}</b></div>
+        </div>
+        ${note ? `<div class="muted" style="margin-top:6px;">${escapeHtml(note)}</div>` : ''}
+      </div>`;
+    }
+
     function buildAssessmentPublicPayload() {
       const form = document.getElementById('assessmentPublicForm');
       const params = new URLSearchParams(window.location.search || '');
       const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
       const token = cleanCell(form?.dataset?.token || params.get('t') || params.get('token') || '');
       const name = cleanCell(document.getElementById('assessmentPublicPlayerName')?.textContent || params.get('nome') || params.get('name') || '');
-      const declared = assessmentPublicParseLevel(data.declaredLevel);
-      const balanced = assessmentPublicParseLevel(data.balancedLevel);
-      const calculated = declared || balanced || '';
-      const coherence = assessmentPublicCoherence(declared, balanced);
+      const levelCalc = calculateAssessmentPublicLevel(data);
       const split = assessmentPublicSplitName(name);
       const availabilityProfile = buildAvailabilityProfileFromFormData(data);
       return {
@@ -9991,12 +10126,17 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         first_name: split.first_name,
         last_name: split.last_name,
         phone: '',
-        declared_level: declared,
-        calculated_level: calculated,
-        consistency_status: coherence,
-        staff_status: coherence === 'low' ? 'review' : '',
+        declared_level: levelCalc.declared_level,
+        calculated_level: levelCalc.calculated_level,
+        consistency_status: levelCalc.coherence,
+        staff_status: levelCalc.staff_status,
         submitted_at: new Date().toISOString(),
         raw_response: {
+          balanced_level: levelCalc.balanced_level,
+          technical_average: levelCalc.technical_average,
+          technical_scores: levelCalc.technical_scores,
+          raw_score: levelCalc.raw_score,
+          calculation_note: levelCalc.note,
           availability_profile: availabilityProfile,
           answers: data
         }
