@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.123</title>
+  <title>Padel Match Organizer v5.126</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1394,6 +1394,154 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     /* PUBLIC_ASSESSMENT_STRUCTURAL_FIX_END */
 
+  
+    /* v5.124 - Scroll indipendente sidebar/contenuto START */
+    html,
+    body {
+      height: 100%;
+      min-height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .app-shell {
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .side-nav {
+      height: 100vh;
+      max-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 0 0 286px;
+      position: sticky;
+      top: 0;
+      align-self: stretch;
+    }
+
+    .main-content {
+      height: 100vh;
+      max-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 1 1 auto;
+      min-width: 0;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .main-content > .container {
+      padding-bottom: 48px;
+    }
+
+    body.sidebar-collapsed .side-nav {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      height: 100vh;
+      max-height: 100vh;
+    }
+
+    body.sidebar-collapsed .main-content {
+      margin-left: 0;
+    }
+
+    body.assessment-public-mode {
+      overflow: hidden;
+    }
+
+    body.assessment-public-mode .app-shell {
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      display: block !important;
+    }
+
+    body.assessment-public-mode .main-content {
+      height: 100vh;
+      max-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      width: 100%;
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .app-shell {
+        height: 100vh;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .main-content {
+        height: 100vh;
+        max-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .side-nav {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 1000;
+      }
+    }
+    /* v5.124 - Scroll indipendente sidebar/contenuto END */
+
+  
+    /* v5.126 - Disponibilità autovalutazione in risposta e scheda socio */
+    .assessment-availability-box {
+      margin-top:10px;
+      padding:10px 12px;
+      background:#f8fbff;
+      border:1px solid #dfe8f3;
+      border-left:5px solid var(--primary);
+      border-radius:12px;
+      color:#334;
+    }
+    .assessment-availability-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:8px;
+      margin-top:8px;
+    }
+    .assessment-availability-grid div {
+      background:#fff;
+      border:1px solid #e7edf6;
+      border-radius:10px;
+      padding:8px 9px;
+    }
+    .assessment-availability-grid span {
+      display:block;
+      color:#667085;
+      font-size:11px;
+      font-weight:bold;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      margin-bottom:2px;
+    }
+    .assessment-availability-grid b {
+      color:#1f2937;
+      font-size:13px;
+    }
+
   </style>
 </head>
 <body>
@@ -1403,7 +1551,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.123</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.126</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2154,7 +2302,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.123';
+    const APP_VERSION = '5.126';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -3857,6 +4005,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
         <div class="form-group"><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
         <div class="form-group"><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
+        ${renderAvailabilityProfile(g.availabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione.</span></div>' })}
         <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">💾 Salva Scheda</button>
         <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">📝 Reinvia autovalutazione</button>
         <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? '⏸️ Disattiva' : '▶️ Riattiva'}</button>
@@ -6832,7 +6981,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       const courtOccupancy = document.getElementById('dashboardCourtOccupancy');
       if (!kpiGrid || !routineList || !importSummary || !memberStats || !levelStats || !courtOccupancy) return;
 
-      const toSend = assessment.toContact.length;
+      const toSend = assessment.toContact.filter(x => isLevelZeroPointFive(x.member)).length;
       // v5.102: in Dashboard "da confermare" indica i cicli aperti dopo invio: risposte nuove da verificare + soci inviati che non hanno ancora risposto.
       const toConfirm = assessment.newResponses.length + assessment.alreadySentNotCompleted.length;
 
@@ -6844,7 +6993,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
 
       kpiGrid.innerHTML = [
         dashboardKpiHtml('Partite aperte', invites.open, 'Partite non ancora chiuse', invites.open ? 'warn' : 'good', 'Vai alla sezione', `goToTabSection('inviteResponses','Aperte')`, 'btn-success'),
-        dashboardKpiHtml('Autovalutazioni da inviare', toSend, 'Richieste ancora da inviare manualmente', toSend ? 'info' : 'info', 'Vai da inviare', `goToTabSection('assessment','Pre-invio')`, 'btn-primary'),
+        dashboardKpiHtml('Autovalutazioni da inviare', toSend, 'Richieste livello 0.5 ancora da inviare', toSend ? 'info' : 'info', 'Vai da inviare', `goToTabSection('assessment','Pre-invio')`, 'btn-primary'),
         dashboardKpiHtml('Autovalutazioni da confermare', toConfirm, 'Risposte da verificare manualmente', toConfirm ? 'danger' : 'danger', 'Vai da confermare', `goToTabSection('assessment','Post-invio')`, 'btn-danger')
       ].join('');
 
@@ -7411,6 +7560,13 @@ Padel Village ASD 🎾`;
     function isTechnicalMemberRecord(member) {
       const name = String(member && (member.name || `${member.firstName || ''} ${member.surname || ''}`.trim()) || '').toLowerCase().replace(/\s+/g, ' ').trim();
       return ['padel village', 'tennisup', 'tennis up', 'tennis app'].includes(name);
+    }
+
+
+    function isLevelZeroPointFive(member) {
+      const raw = String(member?.level ?? member?.livello ?? member?.currentLevel ?? '').replace(',', '.').trim();
+      const n = parseFloat(raw);
+      return Number.isFinite(n) && Math.abs(n - 0.5) < 0.001;
     }
 
     function getAssessmentRoutineStats() {
@@ -8631,7 +8787,13 @@ Per confermare scrivi ELIMINA.`);
           calculated_level: cleanCell(firstAvailable(row, ['calculated_level','Livello calcolato'])),
           consistency_status: cleanCell(firstAvailable(row, ['consistency_status','Coerenza'])),
           staff_status: cleanCell(firstAvailable(row, ['staff_status','Stato staff'])),
-          submitted_at: cleanCell(firstAvailable(row, ['submitted_at','Data invio']))
+          submitted_at: cleanCell(firstAvailable(row, ['submitted_at','Data invio'])),
+          raw_response: normalizeAssessmentRawResponse(firstAvailable(row, ['raw_response','rawResponse','raw','Risposta completa'])),
+          availability_time: cleanCell(firstAvailable(row, ['availability_time','availabilityTime','Quando giochi più volentieri?','Quando'])),
+          preferred_days: cleanCell(firstAvailable(row, ['preferred_days','preferredDays','Giorni preferiti'])),
+          desired_frequency: cleanCell(firstAvailable(row, ['desired_frequency','desiredFrequency','Frequenza desiderata'])),
+          notice: cleanCell(firstAvailable(row, ['notice','Preavviso minimo'])),
+          preferred_match_type: cleanCell(firstAvailable(row, ['preferred_match_type','matchType','Tipo partita preferita']))
         };
         const idx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(token));
         if (idx >= 0) { assessmentResponses[idx] = { ...assessmentResponses[idx], ...normalized }; updated++; }
@@ -8664,6 +8826,7 @@ Per confermare scrivi ELIMINA.`);
           <strong>Dati ricevuti</strong><br>
           Invio: ${rec?.sentAt ? escapeHtml(new Date(rec.sentAt).toLocaleString('it-IT')) : 'n/d'} · Compilazione: ${escapeHtml(submitted)}<br>
           Token: <span class="assessment-link">${escapeHtml(rec?.token || '')}</span>
+          ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(response), { empty:'' })}
         </div>
         <div class="assessment-edit-grid">
           <div><label>Livello dichiarato</label><input id="assessmentEditDeclared" type="number" min="0" max="7" step="0.5" value="${escapeHtml(response.declared_level || '')}" /></div>
@@ -8783,7 +8946,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.123 caricato');
+      console.log('✅ Padel Match Organizer v5.126 caricato');
     });
   
 
@@ -9120,8 +9283,9 @@ Per confermare scrivi ELIMINA.`);
       list.innerHTML = `<div class="muted" style="padding:10px 14px;background:#fafafa;">${rows.length} soci visualizzati · selezionati: <strong id="assessmentPostSelectedCount">0</strong></div>` + rows.map(member => {
         const info = assessmentRecordFor(member);
         const status = info.applied ? 'levelApplied' : (info.paused ? 'paused' : (info.response ? (info.review ? 'review' : 'ready') : (info.rec?.status === 'sent' ? 'sentNoResponse' : 'notResponded')));
+        const availabilityProfile = info.response ? getAssessmentAvailabilityProfile(info.response) : null;
         const responseText = info.response
-          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}`
+          ? `Invio: ${info.rec?.sentAt ? escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT')) : 'n/d'}<br>Dichiarato: ${escapeHtml(info.response.declared_level || '')} · Calcolato: ${escapeHtml(info.response.calculated_level || '')} · Coerenza: ${escapeHtml(info.response.consistency_status || '')}${renderAvailabilityProfile(availabilityProfile, { empty:'' })}`
           : (info.rec?.sentAt ? `Invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleString('it-IT'))}<br>Risposta: non ricevuta${info.paused ? '<br>Stato operativo: in pausa' : ''}` : 'Nessun invio registrato');
         const canResend = member.phone && info.rec?.registeredToSupabase && !info.response && !info.paused;
         const canPause = !info.paused && status === 'sentNoResponse';
@@ -9457,6 +9621,14 @@ Per confermare scrivi ELIMINA.`);
       member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
       member.selfAssessmentToken = rec.token;
       member.lastLevelUpdateAt = new Date().toISOString();
+      const availabilityProfile = getAssessmentAvailabilityProfile(response);
+      if (hasAvailabilityProfile(availabilityProfile)) {
+        member.availabilityProfile = {
+          ...availabilityProfile,
+          source: 'autovalutazione',
+          updatedAt: response.submitted_at || new Date().toISOString()
+        };
+      }
 
       response.staff_status = 'applied';
       response.applied_level = String(level);
@@ -9607,6 +9779,63 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       return { first_name:parts[0], last_name:parts.slice(1).join(' ') };
     }
 
+
+    function buildAvailabilityProfileFromFormData(data) {
+      const profile = {
+        time: cleanCell(data?.availabilityTime || data?.availability_time || ''),
+        days: cleanCell(data?.preferredDays || data?.preferred_days || ''),
+        frequency: cleanCell(data?.desiredFrequency || data?.desired_frequency || ''),
+        notice: cleanCell(data?.notice || ''),
+        matchType: cleanCell(data?.matchType || data?.preferred_match_type || ''),
+        source: 'autovalutazione',
+        updatedAt: new Date().toISOString()
+      };
+      return profile;
+    }
+
+    function normalizeAssessmentRawResponse(value) {
+      if (!value) return {};
+      if (typeof value === 'object') return value;
+      try { return JSON.parse(String(value)); } catch { return {}; }
+    }
+
+    function getAssessmentAvailabilityProfile(response) {
+      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
+      const fromRaw = raw.availability_profile || raw.availabilityProfile || raw.availability || {};
+      const profile = {
+        time: cleanCell(response?.availability_time || response?.availabilityTime || fromRaw.time || fromRaw.availabilityTime || ''),
+        days: cleanCell(response?.preferred_days || response?.preferredDays || fromRaw.days || fromRaw.preferredDays || ''),
+        frequency: cleanCell(response?.desired_frequency || response?.desiredFrequency || fromRaw.frequency || fromRaw.desiredFrequency || ''),
+        notice: cleanCell(response?.notice || fromRaw.notice || ''),
+        matchType: cleanCell(response?.preferred_match_type || response?.matchType || fromRaw.matchType || fromRaw.preferredMatchType || ''),
+        source: cleanCell(fromRaw.source || 'autovalutazione'),
+        updatedAt: cleanCell(fromRaw.updatedAt || response?.submitted_at || new Date().toISOString())
+      };
+      return profile;
+    }
+
+    function hasAvailabilityProfile(profile) {
+      return !!(profile && (profile.time || profile.days || profile.frequency || profile.notice || profile.matchType));
+    }
+
+    function renderAvailabilityProfile(profile, options = {}) {
+      if (!hasAvailabilityProfile(profile)) return options.empty || '<span class="muted">Disponibilità non disponibile</span>';
+      const updated = profile.updatedAt ? (() => {
+        try { return new Date(profile.updatedAt).toLocaleString('it-IT'); } catch { return profile.updatedAt; }
+      })() : '';
+      return `<div class="assessment-availability-box">
+        <strong>🗓️ Disponibilità dichiarata</strong>
+        <div class="assessment-availability-grid">
+          <div><span>Quando</span><b>${escapeHtml(profile.time || '-')}</b></div>
+          <div><span>Giorni</span><b>${escapeHtml(profile.days || '-')}</b></div>
+          <div><span>Frequenza</span><b>${escapeHtml(profile.frequency || '-')}</b></div>
+          <div><span>Preavviso</span><b>${escapeHtml(profile.notice || '-')}</b></div>
+          <div><span>Tipo partita</span><b>${escapeHtml(profile.matchType || '-')}</b></div>
+        </div>
+        ${updated ? `<div class="muted" style="margin-top:6px;">Aggiornata da ${escapeHtml(profile.source || 'autovalutazione')} · ${escapeHtml(updated)}</div>` : ''}
+      </div>`;
+    }
+
     function buildAssessmentPublicPayload() {
       const form = document.getElementById('assessmentPublicForm');
       const params = new URLSearchParams(window.location.search || '');
@@ -9618,6 +9847,7 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       const calculated = declared || balanced || '';
       const coherence = assessmentPublicCoherence(declared, balanced);
       const split = assessmentPublicSplitName(name);
+      const availabilityProfile = buildAvailabilityProfileFromFormData(data);
       return {
         token,
         first_name: split.first_name,
@@ -9627,7 +9857,11 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         calculated_level: calculated,
         consistency_status: coherence,
         staff_status: coherence === 'low' ? 'review' : '',
-        submitted_at: new Date().toISOString()
+        submitted_at: new Date().toISOString(),
+        raw_response: {
+          availability_profile: availabilityProfile,
+          answers: data
+        }
       };
     }
 
