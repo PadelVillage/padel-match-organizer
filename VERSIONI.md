@@ -1,7 +1,8 @@
 # Versioni
 
-## v5.134 / Autovalutazione
+## v5.134 / Scheda Autovalutazione
 
+- Validata la scheda pubblica di autovalutazione compilata dal socio.
 - Allineato il calcolo tecnico alle risposte reali del modulo pubblico.
 - Reso configurabile il link pubblico generato per WhatsApp.
 - Corretti i rientri interni verso Pre-invio e Archivio.

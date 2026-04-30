@@ -80,4 +80,4 @@ La pagina `autovalutazione.html` è una prima base tecnica. Prima di inviarla ai
 
 La branch `main` deve rimanere stabile. Ogni sezione va lavorata su una branch dedicata, validata, poi consolidata su `main`.
 
-Prima sezione in validazione: **Autovalutazione**.
+Prima sezione validata: **Scheda Autovalutazione**.
