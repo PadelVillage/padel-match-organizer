@@ -4,14 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Padel Match Organizer v5.122</title>
-  <meta name="description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
-  <meta property="og:title" content="Autovalutazione livello padel" />
-  <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://padelvillage.github.io/padel-match-organizer/" />
-  <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
-  <meta property="og:image:alt" content="Logo Padel Village" />
-  <meta name="twitter:card" content="summary_large_image" />
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -518,6 +510,17 @@
     body.sidebar-collapsed .sidebar-backdrop { display:none; }
     body.sidebar-collapsed .main-content { margin-left:0; }
     .tabs { display:none; }
+
+    body.assessment-public-mode .side-nav,
+    body.assessment-public-mode .top-nav-bar,
+    body.assessment-public-mode .tabs { display:none !important; }
+    body.assessment-public-mode .app-shell { display:block; min-height:100vh; }
+    body.assessment-public-mode .main-content { margin-left:0 !important; width:100%; }
+    body.assessment-public-mode .container { max-width:980px; padding-top:18px; }
+    body.assessment-public-mode #assessment .assessment-v5144-section > * { display:none !important; }
+    body.assessment-public-mode #assessment .assessment-v5144-section > #anchor-assessment-scheda,
+    body.assessment-public-mode #assessment .assessment-v5144-section > #anchor-assessment-scheda + .assessment-flow-card { display:block !important; }
+    body.assessment-public-mode #anchor-assessment-scheda { display:flex !important; margin-top:0; }
 
     .side-nav::-webkit-scrollbar { width:8px; }
     .side-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.28); border-radius:8px; }
@@ -2022,12 +2025,6 @@
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
     let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: 'https://padelvillage.github.io/padel-match-organizer/', configUrl: 'https://padelvillage.github.io/padel-match-organizer/config.js', adminPin: '' });
-    // v5.122 fix: la scheda autovalutazione ora è servita da index/root; mantengo compatibilità se in localStorage resta il vecchio URL.
-    if (!assessmentSettings || typeof assessmentSettings !== 'object') assessmentSettings = {};
-    if (!assessmentSettings.baseUrl || /\/autovalutazione\.html(\?|#|$)/.test(String(assessmentSettings.baseUrl)) || /^https?:\/\/padelvillage\.github\.io\/?$/.test(String(assessmentSettings.baseUrl))) {
-      assessmentSettings.baseUrl = 'https://padelvillage.github.io/padel-match-organizer/';
-      try { save('assessmentSettings', assessmentSettings); } catch (err) { console.warn('Migrazione URL autovalutazione non salvata:', err); }
-    }
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let dailyAssistantState = safeLoad('dailyAssistantState', {});
     let dailyPlayerGroups = safeLoad('dailyPlayerGroups', []);
@@ -8617,6 +8614,8 @@ Per confermare scrivi ELIMINA.`);
       renderMatchpointSecretaryPanel();
       displayMembers();
       displayAssessment();
+      setupAssessmentPublicForm();
+      handleAssessmentPublicDeepLink();
       const today = new Date();
       const end = new Date(today); end.setDate(end.getDate() + 15);
       document.getElementById('slotStartDate').value = formatLocalDate(today);
@@ -9336,6 +9335,44 @@ Per confermare scrivi ELIMINA.`);
           if (modal) modal.style.display = 'flex';
         });
       }
+    }
+
+
+    function handleAssessmentPublicDeepLink() {
+      let params;
+      try {
+        params = new URLSearchParams(window.location.search || '');
+      } catch (err) {
+        return false;
+      }
+      const token = cleanCell(params.get('t') || params.get('token') || '');
+      if (!token) return false;
+
+      document.body.classList.add('assessment-public-mode');
+
+      let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null;
+      let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
+      const nameFromUrl = cleanCell(params.get('nome') || params.get('name') || '');
+      const displayName = nameFromUrl || (member ? playerFullName(member) : cleanCell(rec?.memberName || 'Socio Padel Village'));
+
+      const nameBox = document.getElementById('assessmentPublicPlayerName');
+      if (nameBox) nameBox.textContent = displayName;
+
+      const form = document.getElementById('assessmentPublicForm');
+      if (form) {
+        form.dataset.token = token;
+        if (rec?.memberId) form.dataset.memberId = String(rec.memberId);
+      }
+
+      switchTab('assessment', null, { scrollTop:false });
+      setupAssessmentPublicForm();
+
+      setTimeout(() => {
+        const anchor = document.getElementById('anchor-assessment-scheda');
+        if (anchor) anchor.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 120);
+
+      return true;
     }
 
     function closeAssessmentPublicConfirm() {
