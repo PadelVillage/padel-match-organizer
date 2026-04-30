@@ -1647,7 +1647,6 @@ body.assessment-public-mode .assessment-public-only-card {
         <span id="dashboardTopUpdate" class="dashboard-top-update">Aggiornamento: non disponibile</span>
       </div>
       <div class="top-nav-actions">
-        <button id="assessmentSyncTopButton" class="assessment-sync-status-btn needs-update" onclick="handleTopAssessmentResponsesUpdate()" title="Aggiorna le risposte ricevute dai moduli di autovalutazione">🔴 Aggiorna risposte</button>
       </div>
     </div>
 
@@ -1934,6 +1933,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <h4>Post-invio e risposte</h4>
               <p class="muted">Controlla chi ha risposto e reinvia solo quando serve.</p>
             </div>
+            <button id="assessmentSyncTopButton" class="assessment-sync-status-btn needs-update visible" onclick="handleTopAssessmentResponsesUpdate()" title="Aggiorna le risposte ricevute dai moduli di autovalutazione">🔴 Aggiorna risposte</button>
           </div>
           <div class="assessment-filter-grid">
             <div>
@@ -9399,7 +9399,6 @@ Per confermare scrivi ELIMINA.`);
       const link = info?.rec?.token && member ? getAssessmentLink(info.rec.token, member) : '';
       const linkActions = link
         ? `<div class="actions" style="margin-top:10px;">
-            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyText('${escapeJs(link)}')">📋 Copia link scheda</button>
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.location.href='${escapeJs(link)}'">↗️ Apri scheda test</button>
           </div>`
         : '';
@@ -9492,7 +9491,7 @@ Per confermare scrivi ELIMINA.`);
         const canResume = info.paused;
         const responseLink = info.rec?.token ? getAssessmentLink(info.rec.token, member) : '';
         const responseLinkActions = responseLink
-          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyText('${escapeJs(responseLink)}')">📋 Copia link scheda</button><button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.location.href='${escapeJs(responseLink)}'">↗️ Apri scheda test</button>`
+          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.location.href='${escapeJs(responseLink)}'">↗️ Apri scheda test</button>`
           : '';
         const responseActions = info.response
           ? (info.applied
