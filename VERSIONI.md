@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.136 / Layout admin Autovalutazioni
+
+- Resa più compatta e leggibile la sezione interna Autovalutazioni.
+- Allineato il comando "Aggiorna risposte" nell'header del box Post-invio.
+- Ridotto l'ingombro di pannelli, righe, filtri e azioni nei flussi Pre-invio, Post-invio e Archivio.
+
 ## v5.135 / Autovalutazioni app interna
 
 - Validata la sezione interna Autovalutazioni: Pre-invio, Post-invio, Archivio, Token e Supabase.

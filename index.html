@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.135</title>
+  <title>Padel Match Organizer v5.136</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1250,6 +1250,189 @@
 
     @media (max-width: 760px) { .assessment-compact-head { align-items:flex-start; flex-direction:column; } }
 
+    /* v5.136 - Autovalutazioni: layout admin piu compatto e leggibile */
+    .assessment-compact-page {
+      max-width:1280px;
+      margin:0 auto;
+      padding:14px 18px 34px;
+    }
+    .assessment-compact-page .assessment-ops-dashboard.compact {
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:10px;
+      margin:0 0 16px;
+    }
+    .assessment-compact-page .assessment-ops-card {
+      border-radius:8px !important;
+      box-shadow:none;
+    }
+    .assessment-compact-page > .assessment-section-title {
+      margin:18px 0 8px;
+      padding:0;
+      border:0;
+      font-size:14px;
+      color:#60708a;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .assessment-compact-page > .assessment-section-title::after { display:none; }
+    .assessment-flow-card {
+      border:1px solid #dfe8f3 !important;
+      border-top:4px solid var(--primary) !important;
+      border-radius:10px !important;
+      box-shadow:0 1px 4px rgba(31,71,136,.06) !important;
+      padding:16px !important;
+      margin:8px 0 22px !important;
+    }
+    .assessment-flow-card.post { border-top-color:#17a2b8 !important; }
+    .assessment-flow-card.archive { border-top-color:#667085 !important; }
+    .assessment-flow-header,
+    .assessment-flow-header.compact {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:14px;
+      align-items:center;
+      margin-bottom:14px;
+      padding-bottom:12px;
+      border-bottom:1px solid #eef2f7;
+    }
+    .assessment-flow-header h4,
+    .assessment-flow-header.compact h4 {
+      margin:0 0 3px;
+      font-size:18px;
+      line-height:1.2;
+    }
+    .assessment-flow-header .muted,
+    .assessment-flow-header.compact .muted {
+      margin:0;
+      font-size:13px;
+    }
+    .assessment-sync-status-btn.visible {
+      min-height:38px;
+      border-radius:8px;
+      padding:8px 12px;
+      align-self:center;
+    }
+    .assessment-whatsapp-layout {
+      grid-template-columns:260px minmax(360px,1fr) 330px;
+      gap:12px;
+    }
+    .assessment-whatsapp-panel {
+      border-radius:8px;
+      padding:12px;
+      min-height:0;
+    }
+    .assessment-whatsapp-panel h5 {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin:0 0 6px;
+      font-size:15px;
+    }
+    .assessment-whatsapp-panel .panel-sub {
+      min-height:0;
+      margin-bottom:10px;
+      line-height:1.35;
+    }
+    .assessment-pre-quick-actions .small-btn,
+    .assessment-clean-row .small-btn,
+    .assessment-archive-actions .small-btn {
+      border-radius:7px;
+      padding:7px 9px;
+      font-size:12px;
+    }
+    .assessment-main-send-box {
+      border-radius:8px;
+      padding:12px;
+      margin:8px 0 10px;
+    }
+    .assessment-main-send-box .selected-name {
+      font-size:18px;
+      line-height:1.2;
+    }
+    .assessment-main-send-btn {
+      border-radius:8px;
+      padding:11px 13px;
+      font-size:14px;
+    }
+    .assessment-filter-grid {
+      grid-template-columns:minmax(240px,1.15fr) minmax(170px,.75fr) minmax(190px,.8fr);
+      gap:10px;
+      margin:0 0 12px;
+      align-items:end;
+    }
+    .assessment-clean-list {
+      border-radius:8px;
+      overflow:hidden;
+    }
+    .assessment-clean-row {
+      grid-template-columns:26px minmax(175px,.9fr) minmax(135px,.62fr) minmax(270px,1.3fr) minmax(150px,.62fr);
+      gap:10px;
+      padding:10px 12px;
+      min-height:64px;
+    }
+    .assessment-clean-row.minimal,
+    .assessment-clean-row.minimal.status-action-row {
+      grid-template-columns:26px minmax(170px,1fr) minmax(120px,auto) auto;
+      padding:10px 12px;
+    }
+    .assessment-clean-row .name {
+      font-size:14px;
+      line-height:1.2;
+    }
+    .assessment-clean-row .meta,
+    .assessment-row-response {
+      font-size:12px;
+      line-height:1.35;
+    }
+    .assessment-clean-row .actions {
+      gap:6px;
+      justify-content:flex-end;
+    }
+    .assessment-post-row .actions {
+      flex-direction:column;
+      align-items:stretch;
+    }
+    .assessment-post-row .actions .small-btn,
+    .assessment-post-row .actions .badge {
+      width:100%;
+      margin:0;
+      text-align:center;
+      justify-content:center;
+      white-space:normal;
+    }
+    .assessment-pre-toolbar {
+      border-radius:8px;
+      padding:8px 10px;
+    }
+    .assessment-preparation-details,
+    .assessment-technical-details {
+      border-radius:8px;
+    }
+    .assessment-technical-step {
+      border-radius:8px;
+      padding:9px 10px;
+    }
+    @media (max-width:1180px) {
+      .assessment-whatsapp-layout { grid-template-columns:1fr; }
+      .assessment-filter-grid { grid-template-columns:1fr; }
+      .assessment-clean-row { grid-template-columns:26px minmax(180px,1fr); }
+      .assessment-clean-row > div:nth-child(n+3) { grid-column:2; }
+      .assessment-post-row .actions { flex-direction:row; justify-content:flex-start; }
+      .assessment-post-row .actions .small-btn,
+      .assessment-post-row .actions .badge { width:auto; }
+    }
+    @media (max-width:760px) {
+      .assessment-compact-page { padding:10px 10px 28px; }
+      .assessment-compact-page .assessment-ops-dashboard.compact { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      body:has(#assessment.active) .current-section {
+        white-space:normal;
+        line-height:1.2;
+      }
+      .assessment-flow-header,
+      .assessment-flow-header.compact { grid-template-columns:1fr; gap:10px; }
+      .assessment-sync-status-btn.visible { width:100%; justify-content:center; }
+    }
+
   
     .assessment-pre-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
     .assessment-pre-quick-actions .small-btn{font-size:0.9rem;padding:8px 12px;border-radius:9px;}
@@ -1577,7 +1760,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.135</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.136</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -9092,7 +9275,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.135 caricato');
+      console.log('✅ Padel Match Organizer v5.136 caricato');
     });
   
 
