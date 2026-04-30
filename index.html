@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.133</title>
+  <title>Padel Match Organizer v5.134</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1577,7 +1577,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.133</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.134</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2329,7 +2329,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.133';
+    const APP_VERSION = '5.134';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -7094,8 +7094,22 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
     }
+    function getAssessmentPublicBaseUrl() {
+      const fallback = 'https://padelvillage.github.io/padel-match-organizer/';
+      const configured = cleanCell(assessmentSettings?.baseUrl || fallback) || fallback;
+      try {
+        const url = new URL(configured, window.location.href);
+        if (!/\.html?$/i.test(url.pathname || '')) {
+          url.pathname = url.pathname.replace(/\/?$/, '/') + 'autovalutazione.html';
+        }
+        return url.toString();
+      } catch (err) {
+        if (/\.html?(?:[?#]|$)/i.test(configured)) return configured;
+        return configured.replace(/\/?$/, '/') + 'autovalutazione.html';
+      }
+    }
     function getAssessmentLink(token, memberOrId=null) {
-      const rawBase = 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html';
+      const rawBase = getAssessmentPublicBaseUrl();
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
       let member = null;
       if (memberOrId && typeof memberOrId === 'object') member = memberOrId;
@@ -9052,7 +9066,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.133 caricato');
+      console.log('✅ Padel Match Organizer v5.134 caricato');
     });
   
 
@@ -9679,7 +9693,7 @@ Per confermare scrivi ELIMINA.`);
           search.value = options.searchText;
           renderAssessmentPrePanel();
         }
-        const anchor = document.getElementById('anchor-assessment-pre');
+        const anchor = document.getElementById('anchor-assessment-invii');
         if (anchor) scrollMainContentToElement(anchor);
         if (search && options.focusSearch !== false) search.focus();
       }, 120);
@@ -9709,7 +9723,7 @@ Per confermare scrivi ELIMINA.`);
           search.value = options.searchText;
           renderAssessmentArchivePanel();
         }
-        const anchor = document.getElementById('anchor-assessment-archive');
+        const anchor = document.getElementById('anchor-assessment-archivio');
         if (anchor) scrollMainContentToElement(anchor);
         if (search && options.focusSearch) search.focus();
       }, 120);
@@ -9739,7 +9753,7 @@ Per confermare scrivi ELIMINA.`);
           search.value = playerFullName(member);
           renderAssessmentPrePanel();
         }
-        const anchor = document.getElementById('anchor-assessment-pre');
+        const anchor = document.getElementById('anchor-assessment-invii');
         if (anchor) scrollMainContentToElement(anchor);
         if (search && options.focusSearch !== false) search.focus();
       }, 180);
@@ -9966,7 +9980,7 @@ Per confermare scrivi ELIMINA.`);
       setTimeout(() => {
         document.querySelectorAll('.assessment-pre-check').forEach(el => { el.checked = String(el.value) === String(member.id); });
         assessmentUpdatePreSelectedCount();
-        const anchor = document.getElementById('anchor-assessment-pre');
+        const anchor = document.getElementById('anchor-assessment-invii');
         if (anchor) {
           scrollMainContentToElement(anchor);
         }
@@ -10105,21 +10119,21 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         ['Lo uso solo se la palla è facile', 2.0],
         ['Difendo con il vetro in modo base', 2.5],
         ['Lo uso con continuità anche sotto pressione', 3.5],
-        ['Lo uso per difendere e contrattaccare', 4.5]
+        ['Lo uso per difendere e ripartire in attacco', 4.5]
       ]);
       const net = assessmentPublicScoreFromText(data?.net, [
-        ['Resto quasi sempre a fondo', 1.5],
-        ['Salgo a rete ma sono poco efficace', 2.0],
-        ['Mi avvicino e chiudo palle semplici', 2.5],
-        ['Costruisco e chiudo il punto a rete', 3.5],
-        ['Metto pressione e chiudo con continuità', 4.5]
+        ['Sto poco a rete', 1.5],
+        ['Vado a rete ma faccio fatica a chiudere', 2.0],
+        ['Gioco volée semplici', 2.5],
+        ['Tengo posizione e controllo le volée', 3.5],
+        ['Costruisco e chiudo il punto a rete', 4.5]
       ]);
       const overhead = assessmentPublicScoreFromText(data?.overhead, [
-        ['Non li uso quasi mai', 1.5],
+        ['Non li uso', 1.5],
         ['Li provo ma con poca sicurezza', 2.0],
-        ['Uso bandeja e smash con controllo', 3.0],
-        ['Uso colpi alti in modo tattico e affidabile', 4.0],
-        ['Uso colpi alti per dominare il punto', 5.0]
+        ['Uso almeno la bandeja in modo semplice', 2.5],
+        ['Uso bandeja e smash con controllo', 3.5],
+        ['Uso colpi alti in modo tattico e affidabile', 4.5]
       ]);
       const values = [rally, glass, net, overhead].filter(v => typeof v === 'number' && Number.isFinite(v));
       const average = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
@@ -10352,7 +10366,10 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         const rpcText = await rpcResponse.text();
         let rpcData = null;
         try { rpcData = rpcText ? JSON.parse(rpcText) : null; } catch {}
-        if (rpcResponse.ok) return { ok:true, source:'rpc', data:rpcData };
+        if (rpcResponse.ok) {
+          if (rpcData && rpcData.ok === false) throw new Error(rpcData.error || 'Invio non riuscito');
+          return { ok:true, source:'rpc', data:rpcData };
+        }
         // Se la funzione non esiste, provo l'inserimento diretto.
         const msg = rpcData?.message || rpcData?.error || rpcText || '';
         if (!String(msg).includes('Could not find') && !String(msg).includes('PGRST202') && rpcResponse.status !== 404) {

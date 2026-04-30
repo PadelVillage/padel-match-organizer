@@ -4,7 +4,7 @@ Web app per gestione soci, import file Matchpoint, analisi slot, creazione parti
 
 ## Stato progetto
 
-Versione base inclusa nel repository: **v5.133**
+Versione base inclusa nel repository: **v5.134**
 
 Questa versione funziona ancora come app HTML locale/pubblicabile e salva i dati operativi nel browser con `localStorage`.
 
@@ -75,3 +75,9 @@ Lo staff conferma/applica il livello
 ## Nota operativa
 
 La pagina `autovalutazione.html` è una prima base tecnica. Prima di inviarla ai soci va testata con pochi utenti interni.
+
+## Flusso di lavoro a sezioni
+
+La branch `main` deve rimanere stabile. Ogni sezione va lavorata su una branch dedicata, validata, poi consolidata su `main`.
+
+Prima sezione in validazione: **Autovalutazione**.

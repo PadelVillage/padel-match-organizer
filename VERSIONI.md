@@ -1,5 +1,12 @@
 # Versioni
 
+## v5.134 / Autovalutazione
+
+- Allineato il calcolo tecnico alle risposte reali del modulo pubblico.
+- Reso configurabile il link pubblico generato per WhatsApp.
+- Corretti i rientri interni verso Pre-invio e Archivio.
+- Aggiornato lo schema Supabase con RPC, campi risposta, disponibilità e PIN staff.
+
 ## v5.133
 
 - Versione base corrente importata come nuovo punto stabile di lavoro.
