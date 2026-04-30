@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.131</title>
+  <title>Padel Match Organizer v5.133</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -531,10 +531,8 @@
     body.assessment-public-mode #assessment .assessment-v5144-section > #anchor-assessment-scheda + .assessment-flow-card { display:block !important; }
     body.assessment-public-mode #anchor-assessment-scheda { display:flex !important; margin-top:0; }
 
-    body.assessment-public-mode #anchor-assessment-scheda {
-      display:none !important;
-    }
-    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card {
+    body.assessment-public-mode #anchor-assessment-scheda.assessment-flow-card {
+      display:block !important;
       border:0 !important;
       border-top:0 !important;
       box-shadow:none !important;
@@ -1563,6 +1561,13 @@ body.assessment-public-mode .assessment-public-only-card {
       color:#4b3a10;
     }
 
+  
+    .assessment-public-submit-locked {
+      background:#98a2b3 !important;
+      cursor:not-allowed !important;
+      opacity:.9;
+    }
+
   </style>
 </head>
 <body>
@@ -1572,7 +1577,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.131</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.133</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2088,6 +2093,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-primary" onclick="setActionAnchor(this); saveAssessmentSettings(); displayAssessment()">💾 Salva impostazioni</button>
             <button class="btn-success" onclick="setActionAnchor(this); registerAssessmentTokensInSupabase()">🚀 Registra tutti i token in Supabase</button>
             <button class="btn-success" onclick="setActionAnchor(this); syncAssessmentResponsesFromSupabase()">🔄 Sincronizza risposte da Supabase</button>
+            <button class="btn-warning" onclick="setActionAnchor(this); repairAppliedAssessmentAvailabilities()">🔧 Ripristina disponibilità applicate</button>
             <button class="btn-secondary" onclick="setActionAnchor(this); triggerAssessmentResponsesImport()">📥 Importa risposte da Excel/CSV</button>
             <button class="btn-secondary" onclick="setActionAnchor(this); buildAssessmentTokensSql()">⚙️ SQL manuale emergenza</button>
             <input type="file" id="assessmentResponsesFile" accept=".xlsx,.xls,.csv,.json" style="display:none" onchange="importAssessmentResponsesFile(this.files[0])" />
@@ -2323,7 +2329,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.131';
+    const APP_VERSION = '5.133';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -2652,6 +2658,9 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function resolveSidebarAnchor(tabName, key) {
       const tabMap = SIDEBAR_ANCHOR_MAP?.[tabName] || {};
+      if (tabName === 'assessment' && (key.includes('scheda autovalutazione') || key.includes('scheda di autovalutazione'))) {
+        return '#anchor-assessment-scheda, #assessmentPublicForm, .assessment-public-form-card';
+      }
       return tabMap[key] || tabMap[Object.keys(tabMap).find(k => key.includes(k))];
     }
 
@@ -2679,8 +2688,13 @@ body.assessment-public-mode .assessment-public-only-card {
           if (!active) return;
           const selector = resolveSidebarAnchor(tabName, key);
           let found = selector ? getFirstVisibleElement(selector, active) : null;
+          if (!found && tabName === 'assessment' && (key.includes('scheda autovalutazione') || key.includes('scheda di autovalutazione'))) {
+            found = document.getElementById('anchor-assessment-scheda')
+              || document.querySelector('#assessmentPublicForm')?.closest('.assessment-flow-card, .assessment-public-form-card')
+              || document.getElementById('assessmentPublicForm');
+          }
           if (!found) {
-            const candidates = Array.from(active.querySelectorAll('h2,h3,h4,label,strong,button,.info-box,.match-toolbar,.ux-intro,.assessment-flow-card,.assessment-section-box'));
+            const candidates = Array.from(active.querySelectorAll('h2,h3,h4,label,strong,button,.info-box,.match-toolbar,.ux-intro,.assessment-flow-card,.assessment-section-box,.assessment-public-form-card'));
             found = candidates.find(el => normalizeText(el.textContent).includes(key));
           }
           if (found) {
@@ -4013,6 +4027,15 @@ body.assessment-public-mode .assessment-public-only-card {
       const g = giocatori.find(p => String(p.id) === String(memberId));
       const card = document.getElementById('memberCard');
       if (!g || !card) return;
+      const memberAvailabilityProfile = hasAvailabilityProfile(g.availabilityProfile) ? g.availabilityProfile : {
+        time: cleanCell(g.availabilityTime || (Array.isArray(g.prefHours) ? g.prefHours.join(', ') : g.prefHours || '')),
+        days: cleanCell(g.preferredDays || (Array.isArray(g.prefDays) ? g.prefDays.join(', ') : g.prefDays || '')),
+        frequency: cleanCell(g.desiredFrequency || ''),
+        notice: cleanCell(g.notice || ''),
+        matchType: cleanCell(g.preferredMatchType || ''),
+        source: cleanCell(g.availabilitySource || 'scheda socio'),
+        updatedAt: cleanCell(g.availabilityUpdatedAt || '')
+      };
       card.style.display = 'block';
       card.className = 'member-card';
       card.innerHTML = `
@@ -4037,7 +4060,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
         <div class="form-group"><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
         <div class="form-group"><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
-        ${renderAvailabilityProfile(g.availabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione. Se la risposta è vecchia, il dato potrebbe non essere stato salvato.</span></div>' })}
+        ${renderAvailabilityProfile(memberAvailabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione. Se la risposta è vecchia, il dato potrebbe non essere stato salvato.</span></div>' })}
         <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">💾 Salva Scheda</button>
         <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">📝 Reinvia autovalutazione</button>
         <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? '⏸️ Disattiva' : '▶️ Riattiva'}</button>
@@ -4061,7 +4084,15 @@ body.assessment-public-mode .assessment-public-only-card {
         phone: normalizePhone(document.getElementById('cardPhone').value),
         email: cleanCell(document.getElementById('cardEmail').value),
         prefDays: splitList(document.getElementById('cardPrefDays').value),
-        prefHours: splitList(document.getElementById('cardPrefHours').value)
+        prefHours: splitList(document.getElementById('cardPrefHours').value),
+        availabilityProfile: giocatori[idx].availabilityProfile,
+        availabilityTime: giocatori[idx].availabilityTime,
+        preferredDays: giocatori[idx].preferredDays,
+        desiredFrequency: giocatori[idx].desiredFrequency,
+        notice: giocatori[idx].notice,
+        preferredMatchType: giocatori[idx].preferredMatchType,
+        availabilitySource: giocatori[idx].availabilitySource,
+        availabilityUpdatedAt: giocatori[idx].availabilityUpdatedAt
       };
       save('giocatori', giocatori);
       displayMembers(); openMemberCard(memberId);
@@ -9021,7 +9052,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.131 caricato');
+      console.log('✅ Padel Match Organizer v5.133 caricato');
     });
   
 
@@ -9794,6 +9825,55 @@ Per confermare scrivi ELIMINA.`);
 
 
     // v5.119 - Modalità essenziale: applica livello nella scheda socio e prepara nuova autovalutazione.
+
+    function getAssessmentAvailabilityFromResponse(response) {
+      const profile = getAssessmentAvailabilityProfile(response);
+      if (hasAvailabilityProfile(profile)) return profile;
+
+      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || {});
+      const answers = raw.answers || raw.form || raw.data || {};
+      const fallback = {
+        time: cleanCell(answers.availabilityTime || answers.availability_time || response?.availability_time || response?.availabilityTime || ''),
+        days: cleanCell(answers.preferredDays || answers.preferred_days || response?.preferred_days || response?.preferredDays || ''),
+        frequency: cleanCell(answers.desiredFrequency || answers.desired_frequency || response?.desired_frequency || response?.desiredFrequency || ''),
+        notice: cleanCell(answers.notice || response?.notice || ''),
+        matchType: cleanCell(answers.matchType || answers.preferred_match_type || response?.preferred_match_type || response?.matchType || ''),
+        source: 'autovalutazione',
+        updatedAt: cleanCell(response?.submitted_at || raw.submitted_at || new Date().toISOString())
+      };
+      return fallback;
+    }
+
+    function applyAvailabilityProfileToMember(member, profile, submittedAt) {
+      if (!member || !hasAvailabilityProfile(profile)) return false;
+      const normalizedProfile = {
+        time: cleanCell(profile.time || ''),
+        days: cleanCell(profile.days || ''),
+        frequency: cleanCell(profile.frequency || ''),
+        notice: cleanCell(profile.notice || ''),
+        matchType: cleanCell(profile.matchType || ''),
+        source: cleanCell(profile.source || 'autovalutazione'),
+        updatedAt: cleanCell(submittedAt || profile.updatedAt || new Date().toISOString())
+      };
+
+      member.availabilityProfile = normalizedProfile;
+
+      // Campi "veri" già visibili/modificabili nella scheda giocatore.
+      if (normalizedProfile.days) member.prefDays = splitList(normalizedProfile.days);
+      if (normalizedProfile.time) member.prefHours = splitList(normalizedProfile.time);
+
+      // Campi espliciti dedicati, così il dato non si perde e resta leggibile anche in futuro.
+      member.availabilityTime = normalizedProfile.time;
+      member.preferredDays = normalizedProfile.days;
+      member.desiredFrequency = normalizedProfile.frequency;
+      member.notice = normalizedProfile.notice;
+      member.preferredMatchType = normalizedProfile.matchType;
+      member.availabilitySource = 'autovalutazione';
+      member.availabilityUpdatedAt = normalizedProfile.updatedAt;
+      member.availabilityMissingFromAssessment = false;
+      return true;
+    }
+
     function applyAssessmentLevel(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
@@ -9812,18 +9892,9 @@ Per confermare scrivi ELIMINA.`);
       member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
       member.selfAssessmentToken = rec.token;
       member.lastLevelUpdateAt = new Date().toISOString();
-      const availabilityProfile = getAssessmentAvailabilityProfile(response);
-      if (hasAvailabilityProfile(availabilityProfile)) {
-        member.availabilityProfile = {
-          ...availabilityProfile,
-          source: 'autovalutazione',
-          updatedAt: response.submitted_at || new Date().toISOString()
-        };
-        if (availabilityProfile.days) member.prefDays = splitList(availabilityProfile.days);
-        if (availabilityProfile.time) member.prefHours = splitList(availabilityProfile.time);
-        member.availabilityUpdatedAt = response.submitted_at || new Date().toISOString();
-        member.availabilitySource = 'autovalutazione';
-      } else {
+      const availabilityProfile = getAssessmentAvailabilityFromResponse(response);
+      const availabilityApplied = applyAvailabilityProfileToMember(member, availabilityProfile, response.submitted_at);
+      if (!availabilityApplied) {
         member.availabilityMissingFromAssessment = true;
         member.availabilityMissingAt = new Date().toISOString();
       }
@@ -9841,10 +9912,28 @@ Per confermare scrivi ELIMINA.`);
       try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
       updateStats();
       try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      showAlert(hasAvailabilityProfile(availabilityProfile)
+      showAlert(availabilityApplied
         ? `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità salvate nella scheda socio.`
         : `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità non salvate perché non presenti nella risposta ricevuta.`,
-        hasAvailabilityProfile(availabilityProfile) ? 'success' : 'warning');
+        availabilityApplied ? 'success' : 'warning');
+    }
+
+
+    function repairAppliedAssessmentAvailabilities() {
+      let repaired = 0, missing = 0;
+      assessmentResponses.forEach(response => {
+        if (!response || response.staff_status !== 'applied') return;
+        const memberId = response.applied_member_id;
+        const member = giocatori.find(g => String(g.id) === String(memberId));
+        if (!member) return;
+        const profile = getAssessmentAvailabilityFromResponse(response);
+        if (applyAvailabilityProfileToMember(member, profile, response.submitted_at)) repaired++;
+        else missing++;
+      });
+      save('giocatori', giocatori);
+      displayMembers();
+      try { renderAssessmentArchivePanel(); } catch {}
+      showAlert(`🔧 Ripristino disponibilità completato: ${repaired} schede aggiornate, ${missing} senza dati disponibilità.`, missing ? 'warning' : 'success');
     }
 
     function restartAssessmentForMember(memberId) {
@@ -9901,6 +9990,16 @@ Per confermare scrivi ELIMINA.`);
           if (!form) return;
           if (errorBox) errorBox.style.display = 'none';
           if (successBox) successBox.style.display = 'none';
+          const token = cleanCell(form.dataset.token || new URLSearchParams(window.location.search || '').get('t') || '');
+          if (hasAssessmentPublicSubmitted(token)) {
+            lockAssessmentPublicSubmitButton('Autovalutazione già inviata');
+            if (successBox) {
+              successBox.textContent = 'Autovalutazione già inviata. Grazie!';
+              successBox.style.display = 'block';
+              if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(successBox, { block:'center' });
+            }
+            return;
+          }
           const required = Array.from(form.querySelectorAll('[required]'));
           const invalid = required.filter(el => !el.value);
           invalid.forEach(el => el.style.borderColor = 'var(--danger)');
@@ -9940,6 +10039,9 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         form.dataset.token = token;
         if (rec?.memberId) form.dataset.memberId = String(rec.memberId);
       }
+      if (hasAssessmentPublicSubmitted(token)) {
+        setTimeout(() => lockAssessmentPublicSubmitButton('Autovalutazione già inviata'), 0);
+      }
 
       switchTab('assessment', null, { scrollTop:false });
       setupAssessmentPublicForm();
@@ -9950,6 +10052,28 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       }, 120);
 
       return true;
+    }
+
+
+    function assessmentPublicSubmittedKey(token) {
+      return `assessmentPublicSubmitted_${cleanCell(token || 'missing')}`;
+    }
+
+    function markAssessmentPublicSubmitted(token) {
+      try { localStorage.setItem(assessmentPublicSubmittedKey(token), new Date().toISOString()); } catch {}
+    }
+
+    function hasAssessmentPublicSubmitted(token) {
+      try { return !!localStorage.getItem(assessmentPublicSubmittedKey(token)); } catch { return false; }
+    }
+
+    function lockAssessmentPublicSubmitButton(message = 'Autovalutazione già inviata') {
+      const btn = document.getElementById('assessmentPublicOpenConfirm');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = message;
+        btn.classList.add('assessment-public-submit-locked');
+      }
     }
 
     function closeAssessmentPublicConfirm() {
@@ -10279,10 +10403,21 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         }
         return;
       }
+      if (hasAssessmentPublicSubmitted(payload.token)) {
+        lockAssessmentPublicSubmitButton('Autovalutazione già inviata');
+        if (successBox) {
+          successBox.textContent = 'Autovalutazione già inviata. Grazie!';
+          successBox.style.display = 'block';
+          if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(successBox, { block:'center' }); else successBox.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+        return;
+      }
 
       try {
         await submitAssessmentPublicResponseToSupabase(payload);
         saveAssessmentPublicResponseLocally(payload);
+        markAssessmentPublicSubmitted(payload.token);
+        lockAssessmentPublicSubmitButton('Autovalutazione inviata');
 
         if (successBox) {
           successBox.textContent = 'Autovalutazione inviata correttamente. Grazie!';
