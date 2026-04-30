@@ -531,6 +531,46 @@
     body.assessment-public-mode #assessment .assessment-v5144-section > #anchor-assessment-scheda + .assessment-flow-card { display:block !important; }
     body.assessment-public-mode #anchor-assessment-scheda { display:flex !important; margin-top:0; }
 
+    body.assessment-public-mode #anchor-assessment-scheda {
+      display:none !important;
+    }
+    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card {
+      border:0 !important;
+      border-top:0 !important;
+      box-shadow:none !important;
+      padding:0 !important;
+      margin-top:0 !important;
+      background:transparent !important;
+    }
+    body.assessment-public-mode .assessment-public-form-card:first-of-type {
+      margin-top:0 !important;
+    }
+    .assessment-public-whatsapp-btn {
+      display:inline-flex !important;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      background:#25D366 !important;
+      color:#fff !important;
+      border-radius:999px !important;
+      padding:10px 16px !important;
+      min-width:118px;
+      text-decoration:none !important;
+      font-weight:800 !important;
+      box-shadow:0 3px 10px rgba(37,211,102,.22);
+      border:0 !important;
+      line-height:1 !important;
+      white-space:nowrap;
+    }
+    .assessment-public-whatsapp-btn:hover {
+      filter:brightness(.96);
+      text-decoration:none !important;
+    }
+    .assessment-public-whatsapp-btn .wa-icon {
+      font-size:16px;
+      line-height:1;
+    }
+
     .side-nav::-webkit-scrollbar { width:8px; }
     .side-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.28); border-radius:8px; }
     .side-nav::-webkit-scrollbar-track { background:rgba(0,0,0,.08); }
@@ -1710,7 +1750,7 @@
               <div class="assessment-public-name" id="assessmentPublicPlayerName">Maurizio Aprea</div>
               <div class="assessment-public-small">Se il nome non è corretto o vuoi segnalarci una modifica, scrivici su WhatsApp.</div>
             </div>
-            <a class="btn btn-success" id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+            <a class="assessment-public-whatsapp-btn" id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener"><span class="wa-icon">💬</span><span>WhatsApp</span></a>
           </div>
 
           <form id="assessmentPublicForm" novalidate>
