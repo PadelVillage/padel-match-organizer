@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Padel Match Organizer v5.122</title>
+  <meta name="description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
+  <meta property="og:title" content="Autovalutazione livello padel" />
+  <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://padelvillage.github.io/padel-match-organizer/" />
+  <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
+  <meta property="og:image:alt" content="Logo Padel Village" />
+  <meta name="twitter:card" content="summary_large_image" />
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1735,7 +1743,7 @@
           <div class="row">
             <div class="col">
               <label>URL pagina autovalutazione</label>
-              <input id="assessmentBaseUrl" placeholder="https://padelvillage.github.io/padel-match-organizer/autovalutazione.html" />
+              <input id="assessmentBaseUrl" placeholder="https://padelvillage.github.io/padel-match-organizer/" />
             </div>
             <div class="col">
               <label>URL config Supabase</label>
@@ -2013,7 +2021,13 @@
     let lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
-    let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html', configUrl: 'https://padelvillage.github.io/padel-match-organizer/config.js', adminPin: '' });
+    let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: 'https://padelvillage.github.io/padel-match-organizer/', configUrl: 'https://padelvillage.github.io/padel-match-organizer/config.js', adminPin: '' });
+    // v5.122 fix: la scheda autovalutazione ora è servita da index/root; mantengo compatibilità se in localStorage resta il vecchio URL.
+    if (!assessmentSettings || typeof assessmentSettings !== 'object') assessmentSettings = {};
+    if (!assessmentSettings.baseUrl || /\/autovalutazione\.html(\?|#|$)/.test(String(assessmentSettings.baseUrl)) || /^https?:\/\/padelvillage\.github\.io\/?$/.test(String(assessmentSettings.baseUrl))) {
+      assessmentSettings.baseUrl = 'https://padelvillage.github.io/padel-match-organizer/';
+      try { save('assessmentSettings', assessmentSettings); } catch (err) { console.warn('Migrazione URL autovalutazione non salvata:', err); }
+    }
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let dailyAssistantState = safeLoad('dailyAssistantState', {});
     let dailyPlayerGroups = safeLoad('dailyPlayerGroups', []);
@@ -6711,7 +6725,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
     }
     function getAssessmentLink(token, memberOrId=null) {
-      const rawBase = (assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html').trim();
+      const rawBase = (assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/').trim();
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
       let member = null;
       if (memberOrId && typeof memberOrId === 'object') member = memberOrId;
@@ -8930,7 +8944,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function displayAssessment() {
       const baseInput = document.getElementById('assessmentBaseUrl');
-      if (baseInput) baseInput.value = assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html';
+      if (baseInput) baseInput.value = assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/';
       const configInput = document.getElementById('assessmentConfigUrl');
       if (configInput) configInput.value = assessmentSettings.configUrl || 'https://padelvillage.github.io/padel-match-organizer/config.js';
       const adminPinInput = document.getElementById('assessmentAdminPin');
