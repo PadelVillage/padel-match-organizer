@@ -24,7 +24,8 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 2px 10px rgba(15,23,42,.06);padding:18px;margin:14px 0}
     .header{display:flex;justify-content:space-between;align-items:center;gap:14px;background:linear-gradient(135deg,#fff,#f4f8ff)}
     .brand{display:flex;align-items:center;gap:12px}
-    .logo{width:54px;height:54px;border-radius:16px;background:#ebf2ff;border:1px solid #cfe0f6;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 2px 8px rgba(31,71,136,.10)}
+    .logo{width:54px;height:54px;border-radius:16px;background:#fff;border:1px solid #cfe0f6;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(31,71,136,.10);overflow:hidden}
+    .logo-img{width:100%;height:100%;object-fit:contain;padding:4px;display:block}
     h1{margin:0;color:var(--primary);font-size:26px;line-height:1.15}
     h2{margin:0 0 12px;color:var(--primary);font-size:20px}
     .subtitle{margin:8px 0 0;color:var(--muted);font-size:14px}
@@ -69,7 +70,7 @@
       .actions{display:grid;grid-template-columns:1fr}
       .btn{width:100%}
       .club-pill{align-self:flex-start}
-      .logo{width:46px;height:46px;font-size:24px}
+      .logo{width:46px;height:46px}
     }
   </style>
 </head>
@@ -77,7 +78,7 @@
   <main class="page">
     <section class="card header">
       <div class="brand">
-        <div class="logo" aria-label="Logo Padel Village">🎾</div>
+        <div class="logo" aria-label="Logo Padel Village"><img class="logo-img" src="logo-padel-village.jpeg" alt="Padel Village ASD"></div>
         <div>
           <h1>Scheda di autovalutazione</h1>
           <p class="subtitle">Modalità essenziale: dati minimi, risposte a scelta, invio confermato.</p>
