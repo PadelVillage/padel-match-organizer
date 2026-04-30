@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.119</title>
+  <title>Padel Match Organizer v5.120</title>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1234,7 +1234,7 @@
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.119</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.120</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2002,7 +2002,7 @@
   <script>
     'use strict';
 
-    const APP_VERSION = '5.119';
+    const APP_VERSION = '5.120';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -6732,9 +6732,28 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
     }
-    function getAssessmentLink(token) {
-      const base = (assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html').replace(/\?+$/, '');
-      return `${base}?t=${encodeURIComponent(token)}`;
+    function getAssessmentLink(token, memberOrId=null) {
+      const rawBase = (assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html').trim();
+      let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
+      let member = null;
+      if (memberOrId && typeof memberOrId === 'object') member = memberOrId;
+      else if (memberOrId != null) member = giocatori.find(g => String(g.id) === String(memberOrId) || String(g.memberId) === String(memberOrId));
+      if (!member && rec) member = giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId));
+      const params = new URLSearchParams();
+      params.set('t', token || '');
+      const name = member ? playerFullName(member) : cleanCell(rec?.memberName || '');
+      const email = cleanCell(member?.email || rec?.email || '');
+      if (name) params.set('nome', name);
+      if (email) params.set('email', email);
+      try {
+        const url = new URL(rawBase, window.location.href);
+        params.forEach((value, key) => url.searchParams.set(key, value));
+        return url.toString();
+      } catch (err) {
+        const base = rawBase.replace(/\?+$/, '');
+        const sep = base.includes('?') ? '&' : '?';
+        return `${base}${sep}${params.toString()}`;
+      }
     }
     function saveAssessmentSettings() {
       const v = cleanCell(document.getElementById('assessmentBaseUrl')?.value || assessmentSettings.baseUrl);
@@ -7381,7 +7400,7 @@ Padel Village ASD 🎾`;
       const phone = phoneCheck.digits;
       const check = canOpenAssessmentWhatsApp(member.id);
       if (!check.ok) return showAlert(check.message, 'warning');
-      const link = getAssessmentLink(rec.token);
+      const link = getAssessmentLink(rec.token, member);
       openWhatsAppWebSameTab(phone, buildAssessmentWhatsAppMessage(member, link));
       markAssessmentSent(member.id);
     }
@@ -7898,7 +7917,7 @@ Padel Village ASD 🎾`;
       const postponed = Math.max(0, stats.toContact.length - selected.length);
       queue.innerHTML = `<div class="alert alert-info">Oggi preparo al massimo ${selected.length} richiesta/e WhatsApp. ${postponed ? postponed + ' socio/i restano in coda per i prossimi giorni.' : 'Nessun socio resta in coda.'}</div>` +
         selected.map(({member, rec}) => {
-          const link = getAssessmentLink(rec.token);
+          const link = getAssessmentLink(rec.token, member);
           return `<div class="assistant-list-item"><div><strong>${escapeHtml(playerFullName(member))}</strong><br><span class="muted">${escapeHtml(member.phone || '')} · Token ${escapeHtml(rec.token)} · ${escapeHtml(link)}</span></div><div><button class="btn-success small-btn" onclick="setActionAnchor(this); openAssessmentWhatsApp('${escapeHtml(String(member.id))}')">💬 Apri WhatsApp</button><button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyText('${escapeJs(link)}')">📋 Copia link</button></div></div>`;
         }).join('');
       showAlert(`✅ Coda pronta: ${selected.length} richieste massimo per oggi.`, 'success');
@@ -8789,7 +8808,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.119 caricato');
+      console.log('✅ Padel Match Organizer v5.120 caricato');
     });
   
 
