@@ -1,5 +1,5 @@
 -- Supabase schema per Autovalutazione Livelli
--- Versione: v5.134
+-- Versione: v5.135
 -- Eseguire in Supabase SQL Editor.
 
 create extension if not exists pgcrypto;
@@ -248,7 +248,7 @@ begin
   )
   values (
     v_token,
-    coalesce((p_response->>'submitted_at')::timestamptz, now()),
+    coalesce(nullif(trim(p_response->>'submitted_at'), '')::timestamptz, now()),
     nullif(trim(p_response->>'first_name'), ''),
     nullif(trim(p_response->>'last_name'), ''),
     nullif(trim(p_response->>'phone'), ''),

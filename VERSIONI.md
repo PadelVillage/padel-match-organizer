@@ -1,5 +1,15 @@
 # Versioni
 
+## v5.135 / Autovalutazioni app interna
+
+- Validata la sezione interna Autovalutazioni: Pre-invio, Post-invio, Archivio, Token e Supabase.
+- Il link laterale Token e Supabase apre direttamente gli strumenti tecnici avanzati.
+- Nel Post-invio una risposta già applicata non mostra più l'azione Applica come se fosse ancora da lavorare.
+- L'applicazione del livello salva origine, data, token, coerenza e disponibilità nella scheda giocatore.
+- L'Archivio mostra storico token/invii e risposte ricevute anche dopo la preparazione di una nuova autovalutazione.
+- Il payload pubblico include anche i campi disponibilità top-level per il fallback diretto su Supabase.
+- Reso più robusto l'RPC Supabase quando `submitted_at` arriva vuoto.
+
 ## v5.134 / Scheda Autovalutazione
 
 - Validata la scheda pubblica di autovalutazione compilata dal socio.
