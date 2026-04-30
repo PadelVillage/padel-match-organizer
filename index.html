@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.120</title>
+  <title>Padel Match Organizer v5.122</title>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1234,7 +1234,7 @@
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.120</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.122</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -1677,17 +1677,9 @@
         </div>
         <h3 id="anchor-assessment-scheda" class="assessment-section-title">📋 Scheda autovalutazione</h3>
         <div class="assessment-flow-card archive">
-          <div class="assessment-flow-header">
-            <div>
-              <h4>Scheda in modalità essenziale</h4>
-              <p class="muted">Anteprima integrata della scheda che compilerà il socio: dati minimi, tendine e disponibilità di gioco.</p>
-            </div>
-          </div>
-
           <div class="assessment-public-form-card assessment-public-form-head">
             <div>
-              <h4>Scheda di autovalutazione</h4>
-              <p>Modalità essenziale: dati minimi, risposte a scelta, invio confermato.</p>
+              <h4>SCHEDA DI AUTOVALUTAZIONE</h4>
             </div>
             <span class="assessment-public-pill">Padel Village ASD</span>
           </div>
@@ -1702,15 +1694,6 @@
           </div>
 
           <form id="assessmentPublicForm" novalidate>
-            <div class="assessment-public-form-card">
-              <h4>Dati essenziali</h4>
-              <div class="field">
-                <label for="assessmentPublicEmail">Email</label>
-                <input id="assessmentPublicEmail" name="email" type="email" placeholder="Inserisci la tua email, se vuoi" value="" />
-                <div class="assessment-public-small">Il telefono non viene richiesto in questa scheda. Per modifiche al contatto, usa WhatsApp.</div>
-              </div>
-            </div>
-
             <div class="assessment-public-form-card">
               <h4>Questionario livello</h4>
               <p class="assessment-public-note">Solo risposte a scelta. Nessun campo di testo libero.</p>
@@ -2002,7 +1985,7 @@
   <script>
     'use strict';
 
-    const APP_VERSION = '5.120';
+    const APP_VERSION = '5.121';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -4889,10 +4872,6 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       return { group, resolved, options };
     }
 
-    function safeDomId(value) {
-      return String(value || '').replace(/[^a-zA-Z0-9_-]+/g, '_');
-    }
-
     function lunchGroupAddOptionLabel(option, record) {
       if (!option || !option.player) return '';
       const notes = [];
@@ -5567,7 +5546,6 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
 
     function renderOrganizedMatchHistory(records) {
       const sorted = [...records].sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
-      if (!sorted.length) return `<details id="anchor-invites-history" class="invite-history-panel"><summary>📚 Storico partite organizzate · 0</summary><div class="invite-history-body"><div class="ux-empty-state"><strong>Nessuna partita nello storico.</strong><br>Le partite appariranno qui dopo il loro orario di fine, oppure quando sono chiuse/annullate.</div></div></details>`;
       const cards = sorted.map(record => {
         const summary = getLunchInvitationSummary(record);
         const status = getLunchRecordOperationalStatus(record);
@@ -5584,11 +5562,14 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
           </div>
         </div>`;
       }).join('');
+      const body = sorted.length
+        ? `<div class="invite-history-toolbar"><span>Partite già svolte, chiuse o annullate. Non occupano più la vista operativa.</span><span>Ordine: più recenti prima</span></div>
+          <div class="invite-history-grid">${cards}</div>`
+        : `<div class="ux-empty-state"><strong>Nessuna partita nello storico.</strong><br>Le partite appariranno qui dopo il loro orario di fine, oppure quando sono chiuse/annullate.</div>`;
       return `<details id="anchor-invites-history" class="invite-history-panel">
         <summary>📚 Storico partite organizzate · ${sorted.length}</summary>
         <div class="invite-history-body">
-          <div class="invite-history-toolbar"><span>Partite già svolte, chiuse o annullate. Non occupano più la vista operativa.</span><span>Ordine: più recenti prima</span></div>
-          <div class="invite-history-grid">${cards}</div>
+          ${body}
         </div>
       </details>`;
     }
@@ -6723,9 +6704,6 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       if (isNaN(filterLevel)) return true;
       return Math.abs(memberLevel - filterLevel) < 0.001;
     }
-    function getAssessmentCandidates() {
-      return giocatori.filter(g => g.active !== false && levelMatchesAssessmentFilter(g));
-    }
     function getAssessmentTokenRecord(memberId) {
       return assessmentTokens[String(memberId)] || null;
     }
@@ -6810,163 +6788,11 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
         return true;
       });
     }
-    function assessmentArchiveResetAndRender() {
-      window.__assessmentArchiveLimit = 50;
-      renderAssessmentArchivePanel();
-      setupAssessmentPublicForm();
-    }
-    function assessmentArchiveHasActiveFilter() {
-      const search = cleanCell(document.getElementById('assessmentArchiveSearch')?.value || '');
-      const level = document.getElementById('assessmentArchiveLevel')?.value || 'all';
-      const status = document.getElementById('assessmentArchiveStatus')?.value || 'all';
-      return normalizeText(search).length >= 2 || level !== 'all' || status !== 'all';
-    }
-    function assessmentArchiveRows() {
-      const search = document.getElementById('assessmentArchiveSearch')?.value || '';
-      const level = document.getElementById('assessmentArchiveLevel')?.value || 'all';
-      const status = document.getElementById('assessmentArchiveStatus')?.value || 'all';
-      if (!assessmentArchiveHasActiveFilter()) return [];
-      return assessmentAllActiveMembers().filter(member => {
-        const info = assessmentRecordFor(member);
-        if (!assessmentLevelMatches(member, level)) return false;
-        if (search && !assessmentSearchMatches(member, search)) return false;
-        if (status === 'all') return true;
-        if (status === 'responded') return !!info.response;
-        if (status === 'review') return info.review;
-        if (status === 'levelApplied') return info.applied;
-        return info.preStatus === status || info.postStatus === status;
-      });
-    }
-        function renderAssessmentArchivePanel() {
-      const list = document.getElementById('assessmentArchiveList');
-      const chip = document.getElementById('assessmentArchiveCountChip');
-      if (!list) return;
-      if (!assessmentArchiveHasActiveFilter()) {
-        list.innerHTML = '<div class="assessment-empty">Archivio in attesa: cerca almeno 2 lettere oppure seleziona un livello o uno stato.</div>';
-        if (chip) chip.textContent = 'Ricerca richiesta';
-        return;
-      }
-      const rows = assessmentArchiveRows();
-      const limit = window.__assessmentArchiveLimit || 50;
-      const shown = rows.slice(0, limit);
-      if (chip) chip.textContent = `Risultati: ${Math.min(shown.length, rows.length)}/${rows.length}`;
-      if (!rows.length) { list.innerHTML = '<div class="assessment-empty">Nessun socio trovato con questi filtri.</div>'; return; }
-      const rowHtml = shown.map(member => {
-        const info = assessmentRecordFor(member);
-        const status = info.applied ? 'levelApplied' : (info.response ? (info.review ? 'review' : 'responded') : info.preStatus);
-        const sentText = info.rec?.sentAt ? `Ultimo invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleDateString('it-IT'))}` : 'Mai inviato';
-        const responseText = info.response ? `Risposta: dichiarato ${escapeHtml(info.response.declared_level || '-')} · calcolato ${escapeHtml(info.response.calculated_level || '-')} · coerenza ${escapeHtml(info.response.consistency_status || '-')}` : 'Risposta assente';
-        const memberKey = escapeHtml(String(member.id));
-        const meta = `ID: ${escapeHtml(member.memberId || member.id || '')} · liv. ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}`;
-        return `<div class="assessment-archive-row">
-          <div class="assessment-archive-person">
-            <div class="assessment-archive-name">${escapeHtml(playerFullName(member))}</div>
-            <div class="assessment-archive-meta">${meta}</div>
-          </div>
-          <div class="status-line">${assessmentBadge(assessmentArchiveStatusLabel(status), assessmentArchiveStatusClass(status))}</div>
-          <div class="assessment-archive-response">${sentText}<br>${responseText}</div>
-          <div class="assessment-archive-actions">
-            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); openMemberCard('${memberKey}')">📋 Apri scheda</button>
-            <button class="btn-success small-btn" onclick="setActionAnchor(this); restartAssessmentForMember('${memberKey}')">📝 Reinvia</button>
-          </div>
-        </div>`;
-      }).join('');
-      list.innerHTML = `<div class="muted" style="padding:10px 14px;background:#fafafa;">${shown.length} risultati mostrati su ${rows.length}</div>
-        <div class="assessment-archive-table-wrap">
-          <div class="assessment-archive-table">
-            <div class="assessment-archive-table-head"><div>Socio</div><div>Stato</div><div>Invio / risposta</div><div style="text-align:right;">Azioni</div></div>
-            ${rowHtml}
-          </div>
-        </div>` + (rows.length > shown.length ? `<div style="padding:12px 14px;"><button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.__assessmentArchiveLimit = (window.__assessmentArchiveLimit || 50) + 50; renderAssessmentArchivePanel();">Mostra altri 50</button></div>` : '');
-    }    function assessmentArchiveStatusLabel(status) {
-      return { ready:'Pronto da inviare', missingToken:'Token da registrare', needsPrep:'Token da registrare', unregistered:'Token da registrare', sentNoResponse:'Inviato, non risposto', responded:'Ha risposto', review:'Da verificare', levelApplied:'Livello applicato', noPhone:'Senza telefono' }[status] || status;
-    }
-    function assessmentArchiveStatusClass(status) {
-      return { ready:'badge-warning', missingToken:'badge-warning', unregistered:'badge-warning', sentNoResponse:'badge-warning', responded:'badge-warning', review:'badge-warning', levelApplied:'badge-success', noPhone:'badge-danger' }[status] || 'badge-info';
-    }
-    function assessmentArchiveSelect(mode) {
-      document.querySelectorAll('.assessment-archive-check').forEach(el => { el.checked = mode === 'visible'; });
-      assessmentUpdateArchiveSelectedCount();
-    }
-    function assessmentUpdateArchiveSelectedCount() {
-      const el = document.getElementById('assessmentArchiveSelectedCount');
-      if (el) el.textContent = document.querySelectorAll('.assessment-archive-check:checked').length;
-    }
-
-    function setAssessmentFilter(value) {
-      const el = document.getElementById('assessmentFilter');
-      if (el) el.value = value;
-      displayAssessment();
-    }
     function updateAssessmentActionBanner(completedCount, reviewCount, readyCount) {
       const banner = document.getElementById('assessmentActionBanner');
       if (!banner) return;
       banner.className = 'assessment-banner';
       banner.innerHTML = '';
-    }
-    function displayAssessment() {
-      const baseInput = document.getElementById('assessmentBaseUrl');
-      if (baseInput) baseInput.value = assessmentSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html';
-      const configInput = document.getElementById('assessmentConfigUrl');
-      if (configInput) configInput.value = assessmentSettings.configUrl || 'https://padelvillage.github.io/padel-match-organizer/config.js';
-      const adminPinInput = document.getElementById('assessmentAdminPin');
-      if (adminPinInput && !adminPinInput.value) adminPinInput.value = assessmentSettings.adminPin || '';
-      const all = getAssessmentCandidates();
-      const withPhone = all.filter(m => m.phone).length;
-      const tokenCount = all.filter(m => getAssessmentTokenRecord(m.id)).length;
-      const sentCount = all.filter(m => getAssessmentTokenRecord(m.id)?.status === 'sent').length;
-      const completedCount = all.filter(m => { const rec = getAssessmentTokenRecord(m.id); return rec && getAssessmentResponseByToken(rec.token); }).length;
-      const reviewCount = all.filter(m => { const rec = getAssessmentTokenRecord(m.id); const r = rec && getAssessmentResponseByToken(rec.token); return r && (r.consistency_status === 'low' || normalizeText(r.staff_status || '').includes('review') || normalizeText(r.staff_status || '').includes('attention')); }).length;
-      const readyCount = Math.max(0, completedCount - reviewCount);
-      const set = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-      set('assessmentTotal05', all.length); set('assessmentPhoneCount', withPhone); set('assessmentTokenCount', tokenCount); set('assessmentSentCount', sentCount); set('assessmentCompletedCount', completedCount); set('assessmentNewResponsesCount', completedCount); set('assessmentReviewCount', reviewCount);
-      updateAssessmentActionBanner(completedCount, reviewCount, readyCount);
-      renderAssessmentSecretaryPanel();
-      renderAssessmentSendDashboard();
-      renderAssessmentMultiPanel();
-      populateAssessmentTestSelect();
-      const tbody = document.getElementById('assessmentTableBody');
-      if (!tbody) return;
-      const rows = assessmentVisibleMembers();
-      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#666;padding:20px;">Nessun socio trovato con questi filtri</td></tr>'; return; }
-      tbody.innerHTML = rows.map(member => {
-        const rec = getAssessmentTokenRecord(member.id);
-        const token = rec?.token || '';
-        const link = token ? getAssessmentLink(token) : '';
-        const response = token ? getAssessmentResponseByToken(token) : null;
-        const coh = response?.consistency_status || '';
-        const cohClass = coh === 'high' ? 'coherence-high' : coh === 'medium' ? 'coherence-medium' : coh === 'low' ? 'coherence-low' : 'badge-info';
-        const waText = token ? encodeURIComponent(`Ciao ${member.firstName} 👋
-
-Padel Village sta aggiornando i livelli dei soci per organizzare partite più equilibrate e divertenti.
-
-Ti chiediamo di compilare questa breve autovalutazione:
-${link}
-
-Richiede meno di 2 minuti.
-
-Il livello indicato non è definitivo: sarà controllato dallo staff e servirà solo per proporti partite più adatte al tuo livello.
-
-Grazie!
-Padel Village ASD 🎾`) : '';
-        const phone = normalizePhone(member.phone || '').replace(/^\+/, '');
-        return `<tr>
-          <td><strong>${escapeHtml(playerFullName(member))}</strong><br><span class="muted">ID locale: ${escapeHtml(member.id)}</span></td>
-          <td><strong>${escapeHtml(member.level)}</strong></td>
-          <td>${escapeHtml(member.phone || '')}</td>
-          <td>${rec ? `<span class="badge ${rec.status === 'sent' ? 'badge-warning' : 'badge-info'}">${escapeHtml(rec.status)}</span>` : '<span class="badge badge-danger">senza token</span>'}</td>
-          <td>${link ? `<span class="assessment-link" title="${escapeHtml(link)}">${escapeHtml(link)}</span>` : '-'}</td>
-          <td>${response ? `<span class="badge ${cohClass}">${escapeHtml(coh || 'ricevuta')}</span><br><span class="muted">Dich.: ${escapeHtml(response.declared_level || '')} | Calc.: ${escapeHtml(response.calculated_level || '')}</span>` : '<span class="muted">non importata</span>'}</td>
-          <td class="actions">
-            ${rec?.token
-              ? `<button class="btn-warning small-btn" onclick="setActionAnchor(this); regenerateAssessmentTokenForMember('${escapeHtml(String(member.id))}')">♻️ Rigenera token</button>`
-              : `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); generateAssessmentTokenForMember('${escapeHtml(String(member.id))}')">🔐 Crea token</button>`}
-            ${link ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyText('${escapeJs(link)}')">📋 Link</button>` : ''}
-            ${link && phone ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); openAssessmentWhatsApp('${escapeHtml(String(member.id))}')">💬 WA</button>` : ''}
-            ${response ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn" onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>` : ''}
-          </td>
-        </tr>`;
-      }).join('');
     }
     function generateAssessmentTokenForMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
@@ -8719,30 +8545,6 @@ Per confermare scrivi ELIMINA.`);
       if (applyAfterSave) applyAssessmentLevel(memberId);
     }
 
-    function applyAssessmentLevel(memberId) {
-      if (document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]') && !document.querySelector('.assessment-post-check[value="' + CSS.escape(String(memberId)) + '"]')?.checked) { showAlert('Seleziona prima il socio da applicare.', 'warning'); return; }
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      const rec = getAssessmentTokenRecord(memberId);
-      const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-      if (!member || !response) return showAlert('❌ Risposta non trovata', 'danger');
-      if (response.consistency_status === 'low') {
-        const ok = confirm('⚠️ Questa autovalutazione ha coerenza bassa. Vuoi comunque applicare il livello calcolato?');
-        if (!ok) return;
-      }
-      const level = parseFloat(String(response.calculated_level || response.declared_level || '').replace(',', '.'));
-      if (isNaN(level)) return showAlert('❌ Livello calcolato non valido', 'danger');
-      member.level = level;
-      member.levelSource = response.consistency_status === 'low' ? 'autovalutazione_da_verificare' : 'autovalutazione';
-      member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
-      member.selfAssessmentToken = rec.token;
-      save('giocatori', giocatori);
-      displayAssessment();
-      renderAssessmentArchivePanel();
-      displayMembers();
-      updateStats();
-      showAlert(`✅ Livello applicato a ${playerFullName(member)}: ${level}. Giro autovalutazione chiuso: il socio esce dal Post-invio operativo e resta in Archivio/Livello applicato.`, 'success');
-    }
-
     function downloadText(text, filename, type) {
       try {
         const blob = new Blob([text], {type});
@@ -8808,7 +8610,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.120 caricato');
+      console.log('✅ Padel Match Organizer v5.122 caricato');
     });
   
 
@@ -9349,7 +9151,7 @@ Per confermare scrivi ELIMINA.`);
         return info.preStatus === status || info.postStatus === status;
       });
     }
-        function renderAssessmentArchivePanel() {
+    function renderAssessmentArchivePanel() {
       const list = document.getElementById('assessmentArchiveList');
       const chip = document.getElementById('assessmentArchiveCountChip');
       if (!list) return;
@@ -9390,7 +9192,9 @@ Per confermare scrivi ELIMINA.`);
             ${rowHtml}
           </div>
         </div>` + (rows.length > shown.length ? `<div style="padding:12px 14px;"><button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.__assessmentArchiveLimit = (window.__assessmentArchiveLimit || 50) + 50; renderAssessmentArchivePanel();">Mostra altri 50</button></div>` : '');
-    }    function assessmentArchiveStatusLabel(status) {
+    }
+
+    function assessmentArchiveStatusLabel(status) {
       return { ready:'Pronto da inviare', missingToken:'Token da registrare', needsPrep:'Token da registrare', unregistered:'Token da registrare', sentNoResponse:'Inviato, non risposto', responded:'Ha risposto', review:'Da verificare', levelApplied:'Livello applicato', noPhone:'Senza telefono' }[status] || status;
     }
     function assessmentArchiveStatusClass(status) {
