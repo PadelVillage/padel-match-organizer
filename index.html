@@ -9536,12 +9536,157 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       if (modal) modal.style.display = 'none';
     }
 
-    function submitAssessmentPublicPreview() {
+    function assessmentPublicParseLevel(value) {
+      const raw = cleanCell(value || '');
+      if (!raw) return '';
+      if (raw.includes('5')) return '5';
+      const match = raw.replace(',', '.').match(/\d+(?:\.\d+)?/);
+      return match ? match[0] : '';
+    }
+
+    function assessmentPublicCoherence(declared, balanced) {
+      const d = parseFloat(String(declared || '').replace(',', '.'));
+      const b = parseFloat(String(balanced || '').replace(',', '.'));
+      if (Number.isNaN(d) || Number.isNaN(b)) return 'medium';
+      const diff = Math.abs(d - b);
+      if (diff <= 0.5) return 'high';
+      if (diff <= 1) return 'medium';
+      return 'low';
+    }
+
+    function assessmentPublicSplitName(fullName) {
+      const parts = cleanCell(fullName || '').split(/\s+/).filter(Boolean);
+      if (!parts.length) return { first_name:'', last_name:'' };
+      if (parts.length === 1) return { first_name:parts[0], last_name:'' };
+      return { first_name:parts[0], last_name:parts.slice(1).join(' ') };
+    }
+
+    function buildAssessmentPublicPayload() {
+      const form = document.getElementById('assessmentPublicForm');
+      const params = new URLSearchParams(window.location.search || '');
+      const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
+      const token = cleanCell(form?.dataset?.token || params.get('t') || params.get('token') || '');
+      const name = cleanCell(document.getElementById('assessmentPublicPlayerName')?.textContent || params.get('nome') || params.get('name') || '');
+      const declared = assessmentPublicParseLevel(data.declaredLevel);
+      const balanced = assessmentPublicParseLevel(data.balancedLevel);
+      const calculated = declared || balanced || '';
+      const coherence = assessmentPublicCoherence(declared, balanced);
+      const split = assessmentPublicSplitName(name);
+      return {
+        token,
+        first_name: split.first_name,
+        last_name: split.last_name,
+        phone: '',
+        declared_level: declared,
+        calculated_level: calculated,
+        consistency_status: coherence,
+        staff_status: coherence === 'low' ? 'review' : '',
+        submitted_at: new Date().toISOString()
+      };
+    }
+
+    function saveAssessmentPublicResponseLocally(payload) {
+      if (!payload || !payload.token) return;
+      const idx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(payload.token));
+      if (idx >= 0) assessmentResponses[idx] = { ...assessmentResponses[idx], ...payload };
+      else assessmentResponses.push(payload);
+
+      const localRec = Object.values(assessmentTokens || {}).find(r => normalizeText(r.token) === normalizeText(payload.token));
+      if (localRec) {
+        localRec.status = 'completed';
+        localRec.completedAt = payload.submitted_at || new Date().toISOString();
+      }
+
+      save('assessmentResponses', assessmentResponses);
+      save('assessmentTokens', assessmentTokens);
+    }
+
+    async function submitAssessmentPublicResponseToSupabase(payload) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+
+      // Primo tentativo: RPC pubblico, se presente nel database.
+      try {
+        const rpcResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/submit_self_assessment_public`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          },
+          body: JSON.stringify({ p_response: payload })
+        });
+        const rpcText = await rpcResponse.text();
+        let rpcData = null;
+        try { rpcData = rpcText ? JSON.parse(rpcText) : null; } catch {}
+        if (rpcResponse.ok) return { ok:true, source:'rpc', data:rpcData };
+        // Se la funzione non esiste, provo l'inserimento diretto.
+        const msg = rpcData?.message || rpcData?.error || rpcText || '';
+        if (!String(msg).includes('Could not find') && !String(msg).includes('PGRST202') && rpcResponse.status !== 404) {
+          throw new Error(msg || `Errore RPC ${rpcResponse.status}`);
+        }
+      } catch (err) {
+        const msg = String(err?.message || err || '');
+        if (!msg.includes('Could not find') && !msg.includes('PGRST202') && !msg.includes('404')) {
+          throw err;
+        }
+      }
+
+      // Secondo tentativo: tabella standard letta dalla funzione get_self_assessments_by_tokens.
+      const tableResponse = await fetch(`${supabaseUrl}/rest/v1/self_assessments?on_conflict=token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const tableText = await tableResponse.text();
+      if (!tableResponse.ok) {
+        let tableData = null;
+        try { tableData = tableText ? JSON.parse(tableText) : null; } catch {}
+        throw new Error(tableData?.message || tableData?.error || tableText || `Errore Supabase ${tableResponse.status}`);
+      }
+
+      return { ok:true, source:'table' };
+    }
+
+    async function submitAssessmentPublicPreview() {
       closeAssessmentPublicConfirm();
       const successBox = document.getElementById('assessmentPublicSuccess');
-      const form = document.getElementById('assessmentPublicForm');
-      if (successBox) { successBox.style.display = 'block'; successBox.scrollIntoView({behavior:'smooth', block:'center'}); }
-      if (form) console.log('Scheda autovalutazione integrata - dati test', Object.fromEntries(new FormData(form).entries()));
+      const errorBox = document.getElementById('assessmentPublicError');
+      if (successBox) successBox.style.display = 'none';
+      if (errorBox) errorBox.style.display = 'none';
+
+      const payload = buildAssessmentPublicPayload();
+      if (!payload.token) {
+        if (errorBox) {
+          errorBox.textContent = 'Link non valido: token mancante. Chiedi allo staff un nuovo link.';
+          errorBox.style.display = 'block';
+          errorBox.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+        return;
+      }
+
+      try {
+        await submitAssessmentPublicResponseToSupabase(payload);
+        saveAssessmentPublicResponseLocally(payload);
+
+        if (successBox) {
+          successBox.textContent = 'Autovalutazione inviata correttamente. Grazie!';
+          successBox.style.display = 'block';
+          successBox.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+      } catch (err) {
+        console.error('Invio autovalutazione non riuscito:', err);
+        if (errorBox) {
+          errorBox.textContent = 'Invio non riuscito: ' + (err?.message || err) + '. Riprova tra poco oppure contatta lo staff su WhatsApp.';
+          errorBox.style.display = 'block';
+          errorBox.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+      }
     }
 
   </script>
