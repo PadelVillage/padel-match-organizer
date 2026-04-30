@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.130</title>
+  <title>Padel Match Organizer v5.131</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1572,7 +1572,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.130</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.131</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2323,7 +2323,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.130';
+    const APP_VERSION = '5.131';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -8721,6 +8721,38 @@ Per confermare scrivi ELIMINA.`);
       return result;
     }
 
+
+    async function fetchAssessmentRawResponsesByTokens(supabaseUrl, supabaseKey, tokens) {
+      if (!Array.isArray(tokens) || !tokens.length) return {};
+      const out = {};
+      const chunkSize = 80;
+      for (let i = 0; i < tokens.length; i += chunkSize) {
+        const chunk = tokens.slice(i, i + chunkSize).map(t => cleanCell(t)).filter(Boolean);
+        if (!chunk.length) continue;
+        const encodedTokens = chunk.map(t => `"${String(t).replace(/"/g, '\\"')}"`).join(',');
+        try {
+          const response = await fetch(`${supabaseUrl}/rest/v1/self_assessments?select=token,raw_response&token=in.(${encodeURIComponent(encodedTokens)})`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            }
+          });
+          const text = await response.text();
+          let data = [];
+          try { data = text ? JSON.parse(text) : []; } catch { data = []; }
+          if (!response.ok || !Array.isArray(data)) continue;
+          data.forEach(row => {
+            if (row?.token) out[normalizeText(row.token)] = normalizeAssessmentRawResponse(row.raw_response);
+          });
+        } catch (err) {
+          console.warn('Raw response disponibilità non recuperata:', err);
+        }
+      }
+      return out;
+    }
+
     async function syncAssessmentResponsesFromSupabase(options = {}) {
       try {
         saveAssessmentSettings();
@@ -8749,6 +8781,14 @@ Per confermare scrivi ELIMINA.`);
           throw new Error(msg);
         }
         const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        const missingRaw = rows.some(r => !r?.raw_response && !r?.rawResponse && !r?.raw);
+        if (rows.length && missingRaw) {
+          const rawMap = await fetchAssessmentRawResponsesByTokens(supabaseUrl, supabaseKey, rows.map(r => r.token));
+          rows.forEach(r => {
+            const raw = rawMap[normalizeText(r.token || '')];
+            if (raw && Object.keys(raw).length) r.raw_response = raw;
+          });
+        }
         if (!rows.length) {
           localStorage.setItem('assessmentResponsesLastSyncAt', new Date().toISOString());
           updateAssessmentSyncTopButton();
@@ -8811,24 +8851,26 @@ Per confermare scrivi ELIMINA.`);
       rows.forEach(row => {
         const token = cleanCell(firstAvailable(row, ['token','Token']));
         if (!token) return;
+        const incomingRaw = normalizeAssessmentRawResponse(firstAvailable(row, ['raw_response','rawResponse','raw','Risposta completa']));
+        const idx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(token));
+        const previous = idx >= 0 ? assessmentResponses[idx] : {};
         const normalized = {
           token,
-          first_name: cleanCell(firstAvailable(row, ['first_name','Nome'])),
-          last_name: cleanCell(firstAvailable(row, ['last_name','Cognome'])),
-          phone: cleanCell(firstAvailable(row, ['phone','Telefono'])),
-          declared_level: cleanCell(firstAvailable(row, ['declared_level','Livello dichiarato'])),
-          calculated_level: cleanCell(firstAvailable(row, ['calculated_level','Livello calcolato'])),
-          consistency_status: cleanCell(firstAvailable(row, ['consistency_status','Coerenza'])),
-          staff_status: cleanCell(firstAvailable(row, ['staff_status','Stato staff'])),
-          submitted_at: cleanCell(firstAvailable(row, ['submitted_at','Data invio'])),
-          raw_response: normalizeAssessmentRawResponse(firstAvailable(row, ['raw_response','rawResponse','raw','Risposta completa'])),
-          availability_time: cleanCell(firstAvailable(row, ['availability_time','availabilityTime','Quando giochi più volentieri?','Quando'])),
-          preferred_days: cleanCell(firstAvailable(row, ['preferred_days','preferredDays','Giorni preferiti'])),
-          desired_frequency: cleanCell(firstAvailable(row, ['desired_frequency','desiredFrequency','Frequenza desiderata'])),
-          notice: cleanCell(firstAvailable(row, ['notice','Preavviso minimo'])),
-          preferred_match_type: cleanCell(firstAvailable(row, ['preferred_match_type','matchType','Tipo partita preferita']))
+          first_name: cleanCell(firstAvailable(row, ['first_name','Nome'])) || previous.first_name || '',
+          last_name: cleanCell(firstAvailable(row, ['last_name','Cognome'])) || previous.last_name || '',
+          phone: cleanCell(firstAvailable(row, ['phone','Telefono'])) || previous.phone || '',
+          declared_level: cleanCell(firstAvailable(row, ['declared_level','Livello dichiarato'])) || previous.declared_level || '',
+          calculated_level: cleanCell(firstAvailable(row, ['calculated_level','Livello calcolato'])) || previous.calculated_level || '',
+          consistency_status: cleanCell(firstAvailable(row, ['consistency_status','Coerenza'])) || previous.consistency_status || '',
+          staff_status: cleanCell(firstAvailable(row, ['staff_status','Stato staff'])) || previous.staff_status || '',
+          submitted_at: cleanCell(firstAvailable(row, ['submitted_at','Data invio'])) || previous.submitted_at || '',
+          raw_response: Object.keys(incomingRaw).length ? incomingRaw : normalizeAssessmentRawResponse(previous.raw_response || previous.rawResponse || {}),
+          availability_time: cleanCell(firstAvailable(row, ['availability_time','availabilityTime','Quando giochi più volentieri?','Quando'])) || previous.availability_time || '',
+          preferred_days: cleanCell(firstAvailable(row, ['preferred_days','preferredDays','Giorni preferiti'])) || previous.preferred_days || '',
+          desired_frequency: cleanCell(firstAvailable(row, ['desired_frequency','desiredFrequency','Frequenza desiderata'])) || previous.desired_frequency || '',
+          notice: cleanCell(firstAvailable(row, ['notice','Preavviso minimo'])) || previous.notice || '',
+          preferred_match_type: cleanCell(firstAvailable(row, ['preferred_match_type','matchType','Tipo partita preferita'])) || previous.preferred_match_type || ''
         };
-        const idx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(token));
         if (idx >= 0) { assessmentResponses[idx] = { ...assessmentResponses[idx], ...normalized }; updated++; }
         else { assessmentResponses.push(normalized); added++; }
         const localRec = Object.values(assessmentTokens).find(r => normalizeText(r.token) === normalizeText(token));
@@ -8979,7 +9021,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.130 caricato');
+      console.log('✅ Padel Match Organizer v5.131 caricato');
     });
   
 
@@ -9777,6 +9819,13 @@ Per confermare scrivi ELIMINA.`);
           source: 'autovalutazione',
           updatedAt: response.submitted_at || new Date().toISOString()
         };
+        if (availabilityProfile.days) member.prefDays = splitList(availabilityProfile.days);
+        if (availabilityProfile.time) member.prefHours = splitList(availabilityProfile.time);
+        member.availabilityUpdatedAt = response.submitted_at || new Date().toISOString();
+        member.availabilitySource = 'autovalutazione';
+      } else {
+        member.availabilityMissingFromAssessment = true;
+        member.availabilityMissingAt = new Date().toISOString();
       }
 
       response.staff_status = 'applied';
@@ -9792,7 +9841,10 @@ Per confermare scrivi ELIMINA.`);
       try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
       updateStats();
       try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      showAlert(`✅ Livello applicato a ${playerFullName(member)}: ${level}.`, 'success');
+      showAlert(hasAvailabilityProfile(availabilityProfile)
+        ? `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità salvate nella scheda socio.`
+        : `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità non salvate perché non presenti nella risposta ricevuta.`,
+        hasAvailabilityProfile(availabilityProfile) ? 'success' : 'warning');
     }
 
     function restartAssessmentForMember(memberId) {
