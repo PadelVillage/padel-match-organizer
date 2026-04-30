@@ -1285,6 +1285,90 @@
     .assessment-public-modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     @media (max-width:760px) { .assessment-public-form-head, .assessment-public-identity { grid-template-columns:1fr; flex-direction:column; } .assessment-public-grid { grid-template-columns:1fr; } .assessment-public-actions { display:grid; grid-template-columns:1fr; } .assessment-public-actions .btn { width:100%; } }
 
+  
+    /* PUBLIC_ASSESSMENT_UI_FIX_START */
+    body.assessment-public-mode #anchor-assessment-scheda {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      overflow: hidden !important;
+    }
+
+    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card {
+      border: 0 !important;
+      border-top: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card::before,
+    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    body.assessment-public-mode #anchor-assessment-scheda + .assessment-flow-card .assessment-public-form-card:first-child {
+      margin-top: 0 !important;
+    }
+
+    #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      width: auto !important;
+      min-width: 132px !important;
+      max-width: max-content !important;
+      padding: 11px 17px !important;
+      margin: 0 !important;
+      border: 0 !important;
+      border-radius: 999px !important;
+      background: #25D366 !important;
+      color: #ffffff !important;
+      text-decoration: none !important;
+      font-weight: 800 !important;
+      font-size: 15px !important;
+      line-height: 1 !important;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, .28) !important;
+      white-space: nowrap !important;
+      cursor: pointer !important;
+    }
+
+    #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn:hover,
+    #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn:focus,
+    #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn:visited {
+      color: #ffffff !important;
+      text-decoration: none !important;
+      background: #1ebe5d !important;
+    }
+
+    #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn .wa-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 20px !important;
+      height: 20px !important;
+      border-radius: 50% !important;
+      background: rgba(255, 255, 255, .22) !important;
+      font-size: 13px !important;
+      line-height: 1 !important;
+    }
+
+    @media (max-width: 760px) {
+      #assessmentPublicWhatsappHelp.assessment-public-whatsapp-btn {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+      }
+    }
+    /* PUBLIC_ASSESSMENT_UI_FIX_END */
+
   </style>
 </head>
 <body>
@@ -1750,7 +1834,7 @@
               <div class="assessment-public-name" id="assessmentPublicPlayerName">Maurizio Aprea</div>
               <div class="assessment-public-small">Se il nome non è corretto o vuoi segnalarci una modifica, scrivici su WhatsApp.</div>
             </div>
-            <a class="assessment-public-whatsapp-btn" id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener"><span class="wa-icon">💬</span><span>WhatsApp</span></a>
+            <a id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener" class="assessment-public-whatsapp-btn"><span class="wa-icon">💬</span><span>WhatsApp</span></a>
           </div>
 
           <form id="assessmentPublicForm" novalidate>
@@ -9398,6 +9482,16 @@ Per confermare scrivi ELIMINA.`);
       if (!token) return false;
 
       document.body.classList.add('assessment-public-mode');
+
+      const publicTitle = document.getElementById('anchor-assessment-scheda');
+      if (publicTitle) {
+        publicTitle.style.setProperty('display', 'none', 'important');
+        publicTitle.style.setProperty('visibility', 'hidden', 'important');
+        publicTitle.style.setProperty('height', '0', 'important');
+        publicTitle.style.setProperty('margin', '0', 'important');
+        publicTitle.style.setProperty('padding', '0', 'important');
+      }
+
 
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null;
       let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
