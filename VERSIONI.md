@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.145 / Scheda test in nuova tab
+
+- I pulsanti "Apri scheda test" aprono la scheda pubblica in una nuova tab, mantenendo l'app admin nella posizione corrente.
+
 ## v5.144 / Codice staff nel Pre-invio
 
 - Il bottone "Prepara" resta nel flusso Pre-invio: se serve il Codice staff Supabase, apre le azioni tecniche locali sotto il pulsante invece di portare in fondo agli strumenti avanzati.

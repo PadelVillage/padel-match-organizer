@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.144</title>
+  <title>Padel Match Organizer v5.145</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1902,7 +1902,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.144</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.145</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -7475,6 +7475,12 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
         return `${base}${sep}${params.toString()}`;
       }
     }
+    function openAssessmentTestLink(link) {
+      const url = cleanCell(link || '');
+      if (!url) return showAlert('⚠️ Link scheda non disponibile.', 'warning');
+      const opened = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!opened) showAlert('⚠️ Il browser ha bloccato la nuova scheda. Copia il link o abilita i popup per questa pagina.', 'warning');
+    }
     function saveAssessmentSettings() {
       const v = cleanCell(document.getElementById('assessmentBaseUrl')?.value || assessmentSettings.baseUrl);
       if (v) assessmentSettings.baseUrl = v;
@@ -9438,7 +9444,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.144 caricato');
+      console.log('✅ Padel Match Organizer v5.145 caricato');
     });
   
 
@@ -9776,7 +9782,7 @@ Per confermare scrivi ELIMINA.`);
       const link = info?.rec?.token && member ? getAssessmentLink(info.rec.token, member) : '';
       const linkActions = link
         ? `<div class="actions" style="margin-top:10px;">
-            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.location.href='${escapeJs(link)}'">↗️ Apri scheda test</button>
+            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentTestLink('${escapeJs(link)}')">↗️ Apri scheda test</button>
           </div>`
         : '';
       box.innerHTML = `<div class="selected-name">${escapeHtml(member ? playerFullName(member) : ids[0])}${escapeHtml(more)}</div>
@@ -9889,7 +9895,7 @@ Per confermare scrivi ELIMINA.`);
         const canResume = info.paused;
         const responseLink = info.rec?.token ? getAssessmentLink(info.rec.token, member) : '';
         const responseLinkActions = responseLink
-          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); window.location.href='${escapeJs(responseLink)}'">↗️ Apri scheda test</button>`
+          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentTestLink('${escapeJs(responseLink)}')">↗️ Apri scheda test</button>`
           : '';
         const responseActions = info.response
           ? (info.applied
