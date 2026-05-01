@@ -3490,6 +3490,17 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function scrollToMenuTarget(el, behavior='smooth') {
       if (!el) return;
+      const main = document.querySelector('.main-content');
+      if (main && main.contains(el)) {
+        const mainRect = main.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        main.scrollTo({
+          top: Math.max(0, main.scrollTop + (elRect.top - mainRect.top) - getScrollOffsetForMenu()),
+          behavior
+        });
+        flashAnchor(el);
+        return;
+      }
       const top = el.getBoundingClientRect().top + window.pageYOffset - getScrollOffsetForMenu();
       window.scrollTo({ top: Math.max(0, top), behavior });
       flashAnchor(el);
