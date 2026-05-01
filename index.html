@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.145</title>
+  <title>Padel Match Organizer v5.146</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1902,7 +1902,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.145</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.146</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -4376,7 +4376,9 @@ body.assessment-public-mode .assessment-public-only-card {
               <div><span>Data</span><b>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</b></div>
               <div><span>Token</span><b>${escapeHtml(g.selfAssessmentToken || '-')}</b></div>
               <div><span>Coerenza</span><b>${escapeHtml(g.selfAssessmentConsistency || '-')}</b></div>
+              <div><span>Notifica socio</span><b>${escapeHtml(g.selfAssessmentNotifiedAt ? 'Preparata ' + new Date(g.selfAssessmentNotifiedAt).toLocaleDateString('it-IT') : 'Da inviare')}</b></div>
             </div>
+            <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(g.id))}')">💬 Avvisa socio</button></div>
           </div>`
         : '';
       card.style.display = 'block';
@@ -8012,6 +8014,46 @@ Padel Village ASD 🎾`;
       openWhatsAppWebSameTab(phone, buildAssessmentWhatsAppMessage(member, link));
       markAssessmentSent(member.id);
     }
+    function buildAssessmentLevelNotificationMessage(member, response=null) {
+      const firstName = displayFirstName(member);
+      const level = cleanCell(response?.applied_level || member?.level || '');
+      return `Ciao ${firstName} 👋
+
+abbiamo controllato la tua scheda di autovalutazione Padel Village.
+
+Il tuo livello è stato aggiornato a: ${level}
+
+Useremo questo livello per proporti partite più equilibrate e adatte al tuo gioco.
+
+Grazie!
+Padel Village`;
+    }
+    function notifyAssessmentLevelApplied(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('⚠️ Socio non trovato.', 'warning');
+      const rec = getAssessmentTokenRecord(member.id);
+      const response = rec?.token ? getAssessmentResponseByToken(rec.token) : null;
+      const applied = !!(member.selfAssessmentToken || response?.staff_status === 'applied' || response?.applied_at);
+      if (!applied) return showAlert('⚠️ Applica prima il livello alla scheda socio, poi prepara la notifica.', 'warning');
+      const phoneCheck = validateWhatsAppPhone(member.phone || '');
+      if (!phoneCheck.ok) return showAlert('⚠️ ' + phoneCheck.message, 'warning');
+      const message = buildAssessmentLevelNotificationMessage(member, response);
+      openWhatsAppWebSameTab(phoneCheck.digits, message);
+      const now = new Date().toISOString();
+      member.selfAssessmentNotifiedAt = now;
+      member.selfAssessmentNotificationLevel = String(member.level ?? '');
+      member.selfAssessmentNotificationMode = getWhatsAppOpenMode();
+      if (response) {
+        response.notification_status = 'prepared';
+        response.notified_at = now;
+      }
+      save('giocatori', giocatori);
+      save('assessmentResponses', assessmentResponses);
+      displayAssessment();
+      try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
+      try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
+      showAlert(`💬 Notifica preparata per ${playerFullName(member)}. Premi Invio manualmente su WhatsApp.`, 'success');
+    }
 
     function assessmentResponseNeedsReview(response) {
       return !!response && (response.consistency_status === 'low' || normalizeText(response.staff_status || '').includes('review') || normalizeText(response.staff_status || '').includes('attention'));
@@ -9444,7 +9486,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.145 caricato');
+      console.log('✅ Padel Match Organizer v5.146 caricato');
     });
   
 
@@ -9899,7 +9941,7 @@ Per confermare scrivi ELIMINA.`);
           : '';
         const responseActions = info.response
           ? (info.applied
-            ? '<span class="badge badge-success">✅ Già applicato</span>'
+            ? `<span class="badge badge-success">✅ Già applicato</span><button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(member.id))}')">💬 Avvisa socio</button>${member.selfAssessmentNotifiedAt ? '<span class="badge badge-info">Notifica preparata</span>' : ''}`
             : (hasAvailabilityProfile(availabilityProfile)
               ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn" onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>`
               : `<span class="badge badge-warning">Disponibilità mancanti</span><button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica livello</button>`))
@@ -10317,6 +10359,8 @@ Per confermare scrivi ELIMINA.`);
             return `${when} · calc. ${item.calculated_level || '-'}${normalizeText(item.staff_status || '') === 'applied' ? ' · applicata' : ''}`;
           }).join(' · ')}` : ''
         ].filter(Boolean).join('<br>');
+        const notificationText = member.selfAssessmentNotifiedAt ? `Notifica preparata: ${escapeHtml(new Date(member.selfAssessmentNotifiedAt).toLocaleDateString('it-IT'))}` : 'Notifica socio: da inviare';
+        const notifyButton = hasAppliedHistory && member.phone ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(member.id))}')">💬 Avvisa socio</button>` : '';
         const memberKey = escapeHtml(String(member.id));
         const meta = `ID: ${escapeHtml(member.memberId || member.id || '')} · liv. ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}`;
         return `<div class="assessment-archive-row">
@@ -10325,9 +10369,10 @@ Per confermare scrivi ELIMINA.`);
             <div class="assessment-archive-meta">${meta}</div>
           </div>
           <div class="status-line">${assessmentBadge(assessmentArchiveStatusLabel(status), assessmentArchiveStatusClass(status))}</div>
-          <div class="assessment-archive-response">${sentText}<br>${responseText}${historyHtml ? `<br><span class="muted">${historyHtml}</span>` : ''}</div>
+          <div class="assessment-archive-response">${sentText}<br>${responseText}${hasAppliedHistory ? `<br><span class="muted">${notificationText}</span>` : ''}${historyHtml ? `<br><span class="muted">${historyHtml}</span>` : ''}</div>
           <div class="assessment-archive-actions">
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentArchiveOpenMemberCard('${memberKey}')">📋 Apri scheda</button>
+            ${notifyButton}
             <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentArchiveRestartMember('${memberKey}')">📝 Reinvia</button>
           </div>
         </div>`;
@@ -10459,8 +10504,8 @@ Per confermare scrivi ELIMINA.`);
       updateStats();
       try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
       showAlert(availabilityApplied
-        ? `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità salvate nella scheda socio.`
-        : `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità non salvate perché non presenti nella risposta ricevuta.`,
+        ? `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità salvate nella scheda socio. Ora puoi usare “Avvisa socio” per preparare il messaggio WhatsApp.`
+        : `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità non salvate perché non presenti nella risposta ricevuta. Ora puoi usare “Avvisa socio” per preparare il messaggio WhatsApp.`,
         availabilityApplied ? 'success' : 'warning');
     }
 

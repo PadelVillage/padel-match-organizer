@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.146 / Avviso socio livello validato
+
+- Dopo l'applicazione del livello da autovalutazione, l'app mostra l'azione manuale "Avvisa socio" per preparare un messaggio WhatsApp con il livello validato.
+- La notifica viene tracciata come preparata nella scheda socio, nel Post-invio e nell'Archivio, senza invio automatico.
+
 ## v5.145 / Scheda test in nuova tab
 
 - I pulsanti "Apri scheda test" aprono la scheda pubblica in una nuova tab, mantenendo l'app admin nella posizione corrente.
