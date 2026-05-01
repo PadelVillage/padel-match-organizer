@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.137 / Fix scroll lista Pre-invio
+
+- Ripristinato lo scroll interno della lista "Controlla" nel Pre-invio quando sono selezionati fino a 10 soci pronti.
+- Mantenuta fissa l'intestazione con conteggio risultati/selezionati durante lo scroll.
+
 ## v5.136 / Layout admin Autovalutazioni
 
 - Resa più compatta e leggibile la sezione interna Autovalutazioni.

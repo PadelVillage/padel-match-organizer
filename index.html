@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.136</title>
+  <title>Padel Match Organizer v5.137</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1364,6 +1364,18 @@
       border-radius:8px;
       overflow:hidden;
     }
+    .assessment-clean-list.assessment-whatsapp-results {
+      max-height:min(520px, calc(100vh - 260px));
+      overflow-y:auto;
+      overflow-x:hidden;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+    }
+    .assessment-clean-list.assessment-whatsapp-results .assessment-pre-toolbar {
+      position:sticky;
+      top:0;
+      z-index:2;
+    }
     .assessment-clean-row {
       grid-template-columns:26px minmax(175px,.9fr) minmax(135px,.62fr) minmax(270px,1.3fr) minmax(150px,.62fr);
       gap:10px;
@@ -1760,7 +1772,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.136</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.137</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -9275,7 +9287,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.136 caricato');
+      console.log('✅ Padel Match Organizer v5.137 caricato');
     });
   
 
