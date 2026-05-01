@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.146</title>
+  <title>Padel Match Organizer v5.150</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -158,7 +158,7 @@
     .assessment-archive-person { min-width:0; }
     .assessment-archive-name { color:#222; font-weight:bold; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .assessment-archive-meta { color:#666; font-size:12px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .assessment-archive-response { color:#555; font-size:12px; line-height:1.35; }
+    .assessment-archive-response { color:#555; font-size:12px; line-height:1.35; min-width:0; overflow-wrap:anywhere; }
     .assessment-archive-actions { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; }
     .assessment-archive-actions .small-btn { margin:0; }
     @media (max-width: 950px) {
@@ -174,21 +174,28 @@
     .row, .col, .assessment-filter-grid, .assessment-send-layout, .ux-grid-2, .invite-v44-layout { min-width:0; }
     input, select, textarea, button { max-width:100%; }
     .assessment-limit-chip#assessmentArchiveCountChip { background:#f8fbff; color:var(--primary); border:1px solid #d9e6f5; border-radius:999px; padding:7px 11px; font-size:13px; box-shadow:none; }
-    .assessment-archive-table-wrap { width:100%; overflow-x:auto; border:1px solid #e6ebf2; border-radius:14px; background:#fff; }
-    .assessment-archive-table { min-width:860px; border:0 !important; border-radius:0 !important; overflow:visible !important; background:#fff; }
+    .assessment-archive-table-wrap { width:100%; overflow-x:visible; border:1px solid #e6ebf2; border-radius:14px; background:#fff; }
+    .assessment-archive-table { min-width:0; width:100%; border:0 !important; border-radius:0 !important; overflow:visible !important; background:#fff; }
     .assessment-archive-table-head,
-    .assessment-archive-row { grid-template-columns:minmax(230px,1.05fr) minmax(130px,.48fr) minmax(285px,.92fr) 178px !important; gap:12px !important; }
+    .assessment-archive-row { grid-template-columns:minmax(210px,.9fr) minmax(130px,.45fr) minmax(260px,1.1fr) minmax(150px,.55fr) !important; gap:12px !important; }
     .assessment-archive-table-head { padding:9px 12px !important; }
     .assessment-archive-row { padding:10px 12px !important; min-height:62px !important; }
-    .assessment-archive-actions { flex-wrap:nowrap !important; gap:6px !important; justify-content:flex-end; min-width:0; }
-    .assessment-archive-actions .small-btn { margin:0; padding:6px 8px; font-size:12px; white-space:nowrap; }
-    @media (max-width: 950px) {
-      .assessment-archive-table-wrap { overflow-x:visible; }
-      .assessment-archive-table { min-width:0; }
+    .assessment-archive-actions { flex-wrap:wrap !important; gap:7px !important; justify-content:flex-end; min-width:0; align-items:center; }
+    .assessment-archive-actions .small-btn { margin:0; padding:6px 9px; font-size:12px; white-space:normal; flex:0 1 auto; min-width:0; }
+    @media (max-width: 1380px) {
       .assessment-archive-table-head { display:none; }
-      .assessment-archive-row { grid-template-columns:1fr !important; gap:8px !important; }
-      .assessment-archive-actions { justify-content:flex-start; flex-wrap:wrap !important; }
+      .assessment-archive-row { grid-template-columns:minmax(180px,1fr) minmax(135px,auto) !important; gap:10px 14px !important; align-items:start; }
+      .assessment-archive-response,
+      .assessment-archive-actions { grid-column:1 / -1; }
+      .assessment-archive-actions { justify-content:flex-start; }
       .assessment-archive-name, .assessment-archive-meta { white-space:normal; }
+    }
+    .assessment-member-history { margin-top:10px; }
+    .assessment-member-history summary { cursor:pointer; font-weight:bold; color:var(--primary); }
+    .assessment-member-history-list { margin-top:8px; color:#555; font-size:12px; line-height:1.45; }
+    @media (max-width: 620px) {
+      .assessment-archive-row { grid-template-columns:1fr !important; }
+      .assessment-archive-actions .small-btn { width:100%; justify-content:center; }
     }
 
     @media (max-width: 900px) { .assessment-send-layout { grid-template-columns: 1fr; } }
@@ -1902,7 +1909,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.146</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.150</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2657,7 +2664,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.135';
+    const APP_VERSION = '5.150';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -4368,6 +4375,25 @@ body.assessment-public-mode .assessment-public-only-card {
         source: cleanCell(g.availabilitySource || 'scheda socio'),
         updatedAt: cleanCell(g.availabilityUpdatedAt || '')
       };
+      const assessmentTokenHistory = assessmentMemberTokenHistory(g);
+      const assessmentResponseHistory = assessmentMemberResponses(g);
+      const assessmentHistoryBox = (assessmentTokenHistory.length || assessmentResponseHistory.length)
+        ? `<details class="assessment-member-history">
+            <summary>Storico invii e risposte autovalutazione</summary>
+            <div class="assessment-member-history-list">
+              ${assessmentTokenHistory.length ? `<div><strong>Invii/token:</strong><br>${assessmentTokenHistory.map(item => {
+                const when = item.sentAt || item.completedAt || item.createdAt || item.archivedAt || '';
+                const whenText = when ? new Date(when).toLocaleDateString('it-IT') : 'data n/d';
+                return `${escapeHtml(item.current ? 'attuale' : 'storico')} · ${escapeHtml(whenText)}`;
+              }).join('<br>')}</div>` : ''}
+              ${assessmentResponseHistory.length ? `<div style="margin-top:8px;"><strong>Risposte ricevute:</strong><br>${assessmentResponseHistory.map(item => {
+                const when = item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('it-IT') : 'data n/d';
+                const applied = normalizeText(item.staff_status || '') === 'applied' ? ' · applicata' : '';
+                return `${escapeHtml(when)} · dichiarato ${escapeHtml(item.declared_level || '-')} · calcolato ${escapeHtml(item.calculated_level || '-')}${escapeHtml(applied)}`;
+              }).join('<br>')}</div>` : ''}
+            </div>
+          </details>`
+        : '';
       const assessmentMeta = g.selfAssessmentToken
         ? `<div class="assessment-availability-box">
             <strong>📝 Autovalutazione applicata</strong>
@@ -4378,9 +4404,10 @@ body.assessment-public-mode .assessment-public-only-card {
               <div><span>Coerenza</span><b>${escapeHtml(g.selfAssessmentConsistency || '-')}</b></div>
               <div><span>Notifica socio</span><b>${escapeHtml(g.selfAssessmentNotifiedAt ? 'Preparata ' + new Date(g.selfAssessmentNotifiedAt).toLocaleDateString('it-IT') : 'Da inviare')}</b></div>
             </div>
+            ${assessmentHistoryBox}
             <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(g.id))}')">💬 Avvisa socio</button></div>
           </div>`
-        : '';
+        : (assessmentHistoryBox ? `<div class="assessment-availability-box"><strong>📝 Autovalutazioni</strong>${assessmentHistoryBox}</div>` : '');
       card.style.display = 'block';
       card.className = 'member-card';
       card.innerHTML = `
@@ -8018,14 +8045,11 @@ Padel Village ASD 🎾`;
       const firstName = displayFirstName(member);
       const level = cleanCell(response?.applied_level || member?.level || '');
       return `Ciao ${firstName} 👋
-
 abbiamo controllato la tua scheda di autovalutazione Padel Village.
+Il tuo livello validato è: ${level}
+Lo useremo per proporti partite più equilibrate e adatte al tuo gioco.
 
-Il tuo livello è stato aggiornato a: ${level}
-
-Useremo questo livello per proporti partite più equilibrate e adatte al tuo gioco.
-
-Grazie!
+Grazie,
 Padel Village`;
     }
     function notifyAssessmentLevelApplied(memberId) {
@@ -9486,7 +9510,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.146 caricato');
+      console.log('✅ Padel Match Organizer v5.150 caricato');
     });
   
 
@@ -10346,30 +10370,18 @@ Per confermare scrivi ELIMINA.`);
         const status = hasAppliedHistory ? 'levelApplied' : (info.response ? (info.review ? 'review' : 'responded') : info.preStatus);
         const sentText = info.rec?.sentAt ? `Ultimo invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleDateString('it-IT'))}` : 'Mai inviato';
         const responseText = info.response ? `Risposta: dichiarato ${escapeHtml(info.response.declared_level || '-')} · calcolato ${escapeHtml(info.response.calculated_level || '-')} · coerenza ${escapeHtml(info.response.consistency_status || '-')}` : 'Risposta assente';
-        const tokenHistory = assessmentMemberTokenHistory(member);
-        const responseHistory = assessmentMemberResponses(member);
-        const historyHtml = [
-          tokenHistory.length ? `Invii/token: ${tokenHistory.map(item => {
-            const when = item.sentAt || item.completedAt || item.createdAt || item.archivedAt || '';
-            const whenText = when ? new Date(when).toLocaleDateString('it-IT') : 'data n/d';
-            return `${item.current ? 'attuale' : 'storico'} ${whenText}`;
-          }).join(' · ')}` : '',
-          responseHistory.length ? `Risposte ricevute: ${responseHistory.map(item => {
-            const when = item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('it-IT') : 'data n/d';
-            return `${when} · calc. ${item.calculated_level || '-'}${normalizeText(item.staff_status || '') === 'applied' ? ' · applicata' : ''}`;
-          }).join(' · ')}` : ''
-        ].filter(Boolean).join('<br>');
         const notificationText = member.selfAssessmentNotifiedAt ? `Notifica preparata: ${escapeHtml(new Date(member.selfAssessmentNotifiedAt).toLocaleDateString('it-IT'))}` : 'Notifica socio: da inviare';
         const notifyButton = hasAppliedHistory && member.phone ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(member.id))}')">💬 Avvisa socio</button>` : '';
         const memberKey = escapeHtml(String(member.id));
         const meta = `ID: ${escapeHtml(member.memberId || member.id || '')} · liv. ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}`;
+        const responseSummary = [sentText, responseText, hasAppliedHistory ? notificationText : ''].filter(Boolean).join('<br>');
         return `<div class="assessment-archive-row">
           <div class="assessment-archive-person">
             <div class="assessment-archive-name">${escapeHtml(playerFullName(member))}</div>
             <div class="assessment-archive-meta">${meta}</div>
           </div>
           <div class="status-line">${assessmentBadge(assessmentArchiveStatusLabel(status), assessmentArchiveStatusClass(status))}</div>
-          <div class="assessment-archive-response">${sentText}<br>${responseText}${hasAppliedHistory ? `<br><span class="muted">${notificationText}</span>` : ''}${historyHtml ? `<br><span class="muted">${historyHtml}</span>` : ''}</div>
+          <div class="assessment-archive-response">${responseSummary}</div>
           <div class="assessment-archive-actions">
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentArchiveOpenMemberCard('${memberKey}')">📋 Apri scheda</button>
             ${notifyButton}

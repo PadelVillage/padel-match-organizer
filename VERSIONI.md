@@ -1,5 +1,27 @@
 # Versioni
 
+## v5.150 / Messaggio livello validato compatto
+
+- Reso più compatto il messaggio WhatsApp "Avvisa socio" dopo la validazione del livello.
+- Ridotti gli spazi verticali tra le frasi, mantenendo una sola separazione prima della firma.
+
+## v5.149 / Archivio senza scroll orizzontale
+
+- Rimosso lo scroll orizzontale dall'Archivio autovalutazioni.
+- La lista ora si adatta al box: layout tabellare su desktop ampio e layout compatto/card quando lo spazio non basta.
+- I pulsanti Azioni rientrano nel contenitore e vanno a capo senza tagliare il testo.
+
+## v5.148 / Archivio autovalutazioni essenziale
+
+- Alleggerita la lista Archivio autovalutazioni: resta visibile solo il riepilogo operativo essenziale.
+- Spostato lo storico completo di invii/token e risposte dentro la scheda socio, in un blocco richiudibile.
+
+## v5.147 / Archivio autovalutazioni responsive
+
+- Corretta la griglia dell'Archivio autovalutazioni: la colonna Azioni non si sovrappone più al riepilogo invio/risposta.
+- Migliorato il comportamento responsive dell'Archivio con layout a card su larghezze intermedie e mobile.
+- Allineata la costante interna `APP_VERSION` alla versione mostrata nell'interfaccia.
+
 ## v5.146 / Avviso socio livello validato
 
 - Dopo l'applicazione del livello da autovalutazione, l'app mostra l'azione manuale "Avvisa socio" per preparare un messaggio WhatsApp con il livello validato.
