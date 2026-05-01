@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.139 / Flusso unico 0.5 da inviare
+
+- Rimosso il bottone rapido separato "Token da registrare" dal Pre-invio.
+- Il bottone "0.5 da inviare" mostra i candidati livello 0.5 sia pronti sia da preparare, fino a 10 soci.
+- Se tra i selezionati ci sono token mancanti o non registrati, il pannello di invio propone la preparazione token/Supabase prima di WhatsApp.
+
 ## v5.138 / Pre-invio solo livello 0.5
 
 - Il bottone rapido "Pronti 0.5 da inviare" mostra e preseleziona solo soci con livello attuale 0.5.

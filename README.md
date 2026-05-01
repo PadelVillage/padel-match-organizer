@@ -4,7 +4,7 @@ Web app per gestione soci, import file Matchpoint, analisi slot, creazione parti
 
 ## Stato progetto
 
-Versione base inclusa nel repository: **v5.138**
+Versione base inclusa nel repository: **v5.139**
 
 Questa versione funziona ancora come app HTML locale/pubblicabile e salva i dati operativi nel browser con `localStorage`.
 

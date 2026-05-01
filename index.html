@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.138</title>
+  <title>Padel Match Organizer v5.139</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1772,7 +1772,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.138</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.139</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2085,8 +2085,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <input id="assessmentPreSearch" placeholder="nome, telefono o email" oninput="assessmentClearPreQuickFilter(); renderAssessmentPrePanel()" />
               </div>
               <div class="assessment-pre-quick-actions" aria-label="Ricerche rapide pre-invio">
-                <button type="button" id="assessmentQuickReady" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('ready')">Pronti 0.5 da inviare</button>
-                <button type="button" id="assessmentQuickNeedsPrep" class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('needsPrep')">Token da registrare</button>
+                <button type="button" id="assessmentQuickReady" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('ready')">0.5 da inviare</button>
                 <button type="button" id="assessmentQuickNoPhone" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('noPhone')">Senza telefono</button>
               </div>
             </div>
@@ -2100,7 +2099,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <p class="panel-sub">Invia il modulo al socio selezionato.</p>
               <div id="assessmentPreSelectedSummary" class="assessment-main-send-box"></div>
               <button id="assessmentPreMainSend" class="btn-success assessment-main-send-btn" onclick="setActionAnchor(this); assessmentSendSelectedPreWhatsApp()">💬 Invia modulo WhatsApp</button>
-              <button id="assessmentPrePrepareButton" class="btn-warning assessment-main-send-btn" style="display:none" onclick="setActionAnchor(this); assessmentOpenPreparationDetails()">🛠️ Prepara invio</button>
+              <button id="assessmentPrePrepareButton" class="btn-warning assessment-main-send-btn" style="display:none" onclick="setActionAnchor(this); assessmentPrepareSelectedPreInvites()">🛠️ Prepara token e Supabase</button>
               <div id="assessmentPreQueue" class="assessment-guided-box"></div>
             </div>
           </div>
@@ -9287,7 +9286,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.138 caricato');
+      console.log('✅ Padel Match Organizer v5.139 caricato');
     });
   
 
@@ -9462,7 +9461,6 @@ Per confermare scrivi ELIMINA.`);
       const current = assessmentCurrentPreQuickFilter();
       const pairs = [
         ['assessmentQuickReady', 'ready'],
-        ['assessmentQuickNeedsPrep', 'needsPrep'],
         ['assessmentQuickNoPhone', 'noPhone']
       ];
       pairs.forEach(([id, value]) => {
@@ -9488,11 +9486,12 @@ Per confermare scrivi ELIMINA.`);
         const info = assessmentRecordFor(member);
         if (!assessmentPreAllowedStatus(info.preStatus)) return false;
         if (cleanCell(search).length >= 2 && !assessmentSearchMatches(member, search)) return false;
+        if (statusFilter === 'ready') return isLevelZeroPointFive(member) && ['ready', 'missingToken', 'unregistered'].includes(info.preStatus);
         if (!statusFilter) return true;
         if (statusFilter === 'needsPrep') return info.preStatus === 'missingToken' || info.preStatus === 'unregistered';
         return info.preStatus === statusFilter;
       });
-      if (statusFilter === 'ready') rows = rows.filter(isLevelZeroPointFive).slice(0, 10);
+      if (statusFilter === 'ready') rows = rows.slice(0, 10);
       return rows;
     }
     function assessmentSelectPreByStatus(status) {
@@ -9589,8 +9588,14 @@ Per confermare scrivi ELIMINA.`);
       }
       const member = giocatori.find(g => String(g.id) === String(ids[0]));
       const more = ids.length > 1 ? ` + altri ${ids.length - 1}` : '';
+      const selectedMembers = ids.map(id => giocatori.find(g => String(g.id) === String(id))).filter(Boolean);
+      const selectedStatuses = selectedMembers.map(item => assessmentPreEssentialStatus(item, assessmentRecordFor(item)));
+      const prepCount = selectedStatuses.filter(item => item.canPrepare).length;
       const info = member ? assessmentRecordFor(member) : null;
-      const status = assessmentPreEssentialStatus(member, info);
+      const firstStatus = assessmentPreEssentialStatus(member, info);
+      const status = prepCount
+        ? { label:`${prepCount} da preparare`, cls:'badge-warning', canSend:false, canPrepare:true, reason:`Prima prepara token e registrazione Supabase per ${prepCount} socio/i selezionati. Poi potrai inviare WhatsApp.` }
+        : firstStatus;
       const link = info?.rec?.token && member ? getAssessmentLink(info.rec.token, member) : '';
       const linkActions = link
         ? `<div class="actions" style="margin-top:10px;">
@@ -9607,7 +9612,10 @@ Per confermare scrivi ELIMINA.`);
         btn.style.display = status.canSend ? '' : 'none';
         btn.textContent = '💬 Invia modulo WhatsApp';
       }
-      if (prepBtn) prepBtn.style.display = status.canPrepare ? '' : 'none';
+      if (prepBtn) {
+        prepBtn.style.display = status.canPrepare ? '' : 'none';
+        prepBtn.textContent = prepCount ? `🛠️ Prepara ${prepCount} selezionati` : '🛠️ Prepara token e Supabase';
+      }
     }
     function renderAssessmentPrePanel() {
       const list = document.getElementById('assessmentPreList');
@@ -9633,7 +9641,7 @@ Per confermare scrivi ELIMINA.`);
         renderAssessmentOpsDashboard();
         return;
       }
-      const headerNote = statusValue === 'ready' ? `${rows.length} risultati livello 0.5 · massimo 10 pronti da inviare` : (statusValue === 'needsPrep' ? `${rows.length} token da registrare` : (statusValue === 'noPhone' ? `${rows.length} senza telefono` : `${rows.length} risultati`));
+      const headerNote = statusValue === 'ready' ? `${rows.length} candidati livello 0.5 · massimo 10 da preparare/inviare` : (statusValue === 'needsPrep' ? `${rows.length} token da registrare` : (statusValue === 'noPhone' ? `${rows.length} senza telefono` : `${rows.length} risultati`));
       let headerAction = '';
       if (statusValue === 'needsPrep') {
         headerAction = `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSelectPreByStatus('needsPrep')">☑️ Seleziona tutti token da registrare</button>`;
@@ -9642,7 +9650,7 @@ Per confermare scrivi ELIMINA.`);
         const info = assessmentRecordFor(member);
         const disabled = !member.phone;
         const status = assessmentPreEssentialStatus(member, info);
-        const checked = status.canSend && !hasAssessmentRequestToday(member.id);
+        const checked = (status.canSend || status.canPrepare) && !hasAssessmentRequestToday(member.id);
         const isNoPhone = info.preStatus === 'noPhone';
         const statusHtml = isNoPhone ? '' : assessmentBadge(status.label, status.cls);
         const actionHtml = isNoPhone ? `<button class="btn-secondary small-btn" onclick="event.stopPropagation(); setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(member.id))}')">📋 Apri scheda</button>` : '';
@@ -9803,6 +9811,28 @@ Per confermare scrivi ELIMINA.`);
       displayAssessment();
       assessmentRestoreSelection(ids, area);
       showAlert(`✅ Token aggiornati. Creati/nuovi: ${created}. Già presenti: ${skipped}.`, 'success');
+    }
+    async function assessmentPrepareSelectedPreInvites() {
+      const ids = assessmentSelectedIds('pre');
+      if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio 0.5 da preparare.', 'warning');
+      let created = 0;
+      ids.forEach(id => {
+        const member = giocatori.find(g => String(g.id) === String(id));
+        if (!member || getAssessmentTokenRecord(member.id)) return;
+        ensureAssessmentToken(member);
+        created++;
+      });
+      if (created) save('assessmentTokens', assessmentTokens);
+      const needsRegister = ids.some(id => {
+        const rec = assessmentTokens[String(id)];
+        return rec?.token && !rec.registeredToSupabase;
+      });
+      if (!needsRegister) {
+        displayAssessment();
+        assessmentRestoreSelection(ids, 'pre');
+        return showAlert('✅ I selezionati sono già preparati. Puoi procedere con WhatsApp.', 'success');
+      }
+      await assessmentRegisterSelectedTokens('pre');
     }
     function regenerateAssessmentTokenSilently(member) {
       const existing = getAssessmentTokenRecord(member.id);
