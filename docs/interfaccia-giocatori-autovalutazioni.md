@@ -27,3 +27,12 @@ Struttura usata:
 ## Nota operativa
 
 La v5.164 non apre una nuova logica dati: rende coerenti le sezioni gia' presenti nell'app e le collega ai contatori reali. Le evoluzioni successive possono entrare senza ricreare una chat o perdere memoria del progetto.
+
+## Versione v5.165 - 2026-05-02
+
+Correzione dopo test visivo della v5.164.
+
+- Ripristinata la base stabile della v5.163 per non rompere Riempi Slot.
+- Rimossa l'integrazione invasiva della v5.164 su Database giocatori e Autovalutazioni.
+- Aggiornata solo la sezione **Giocatori / gruppi staff** con KPI e layout piu' vicino al mockup approvato.
+- Riempi Slot resta isolato: calendario, overlay e logica derivano dalla v5.163 stabile.
