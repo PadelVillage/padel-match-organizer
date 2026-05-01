@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.141</title>
+  <title>Padel Match Organizer v5.142</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1384,8 +1384,17 @@
     }
     .assessment-clean-row.minimal,
     .assessment-clean-row.minimal.status-action-row {
-      grid-template-columns:26px minmax(170px,1fr) minmax(120px,auto) auto;
+      grid-template-columns:26px minmax(170px,1fr) minmax(120px,auto) minmax(126px,auto);
       padding:10px 12px;
+    }
+    .assessment-clean-row.minimal.status-action-row .status-action {
+      min-width:126px;
+      justify-content:flex-end;
+    }
+    .assessment-clean-row.minimal.status-action-row .status-action .small-btn {
+      min-width:112px;
+      white-space:nowrap;
+      text-align:center;
     }
     .assessment-clean-row .name {
       font-size:14px;
@@ -1500,6 +1509,16 @@
       .assessment-filter-grid { grid-template-columns:1fr; }
       .assessment-clean-row { grid-template-columns:26px minmax(180px,1fr); }
       .assessment-clean-row > div:nth-child(n+3) { grid-column:2; }
+      .assessment-clean-row.minimal.status-action-row { grid-template-columns:26px minmax(0,1fr); }
+      .assessment-clean-row.minimal.status-action-row .status-action {
+        grid-column:2;
+        min-width:0;
+        justify-content:flex-start;
+      }
+      .assessment-clean-row.minimal.status-action-row .status-action .small-btn {
+        min-width:112px;
+        max-width:100%;
+      }
       .assessment-post-row .actions { flex-direction:row; justify-content:flex-start; }
       .assessment-post-row .actions .small-btn,
       .assessment-post-row .actions .badge { width:auto; }
@@ -1847,7 +1866,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.141</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.142</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -9364,7 +9383,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.141 caricato');
+      console.log('✅ Padel Match Organizer v5.142 caricato');
     });
   
 

@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.142 / Responsive riga Pre-invio
+
+- Corretto l'allineamento del pulsante "Apri scheda" nelle righe Pre-invio, evitando tagli del testo su desktop e mantenendo l'azione sotto al nome su mobile/tablet.
+
 ## v5.141 / Feedback bottone 0.5 da inviare
 
 - Quando il bottone "0.5 da inviare" non trova candidati, il Pre-invio mostra un messaggio esplicito con riepilogo dei soci 0.5 invece del generico "nessun socio trovato".
