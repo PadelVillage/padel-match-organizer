@@ -1,5 +1,12 @@
 # Versioni
 
+## v5.151 / Scheda socio ottimizzata
+
+- Ridisegnata la scheda socio con header compatto, dati socio, preferenze operative e stato rapido separati.
+- Rinominati i KPI operativi in "Messaggi inviati totali", "Messaggi inviati questa settimana" e "Ultimo messaggio inviato".
+- Spostati dettagli tecnici di autovalutazione e storico invii/token/risposte in una colonna dedicata con blocco richiudibile.
+- Mantenute le funzioni esistenti di salvataggio, reinvio autovalutazione, disattivazione e cancellazione socio.
+
 ## v5.150 / Messaggio livello validato compatto
 
 - Reso più compatto il messaggio WhatsApp "Avvisa socio" dopo la validazione del livello.

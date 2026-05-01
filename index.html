@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.150</title>
+  <title>Padel Match Organizer v5.151</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1725,6 +1725,222 @@ body.assessment-public-mode .assessment-public-only-card {
     /* PUBLIC_ASSESSMENT_STRUCTURAL_FIX_END */
 
   
+    /* v5.151 - Scheda socio ottimizzata */
+    .member-card.member-card-optimized {
+      margin-top:25px;
+      padding:0;
+      overflow:hidden;
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 5px rgba(15,23,42,.08);
+    }
+    .member-card-head {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:14px;
+      align-items:start;
+      padding:18px 20px;
+      border-bottom:1px solid #dce5f2;
+      background:#fff;
+    }
+    .member-card-identity {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-width:0;
+    }
+    .member-card-avatar {
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      background:var(--primary);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:18px;
+      flex:0 0 auto;
+    }
+    .member-card-name {
+      font-size:24px;
+      font-weight:900;
+      color:#172033;
+      line-height:1.1;
+      overflow-wrap:anywhere;
+    }
+    .member-card-badges {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:7px;
+    }
+    .member-card-actions-top,
+    .member-card-action-row,
+    .member-card-footer-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .member-card-actions-top {
+      justify-content:flex-end;
+    }
+    .member-card-body {
+      display:grid;
+      grid-template-columns:minmax(0,1.35fr) minmax(320px,.85fr);
+      gap:18px;
+      padding:18px 20px 20px;
+    }
+    .member-card-stack {
+      display:grid;
+      gap:14px;
+      align-content:start;
+      min-width:0;
+    }
+    .member-panel {
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      background:#fff;
+      padding:14px;
+      min-width:0;
+    }
+    .member-panel-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+    .member-panel-head h4 {
+      margin:0;
+      color:var(--primary);
+      font-size:17px;
+      line-height:1.2;
+    }
+    .member-panel-hint {
+      color:#667085;
+      font-size:12px;
+      font-weight:normal;
+    }
+    .member-form-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+    .member-form-grid .full {
+      grid-column:1 / -1;
+    }
+    .member-status-grid {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+    }
+    .member-status-stat {
+      background:#f8fbff;
+      border:1px solid #dce5f2;
+      border-radius:9px;
+      padding:10px;
+      min-width:0;
+    }
+    .member-status-stat span {
+      display:block;
+      color:#667085;
+      font-size:12px;
+      font-weight:bold;
+      margin-bottom:3px;
+    }
+    .member-status-stat strong {
+      display:block;
+      color:#172033;
+      font-size:20px;
+      line-height:1.15;
+      overflow-wrap:anywhere;
+    }
+    .member-source-lines {
+      display:grid;
+      gap:0;
+    }
+    .member-source-line {
+      display:grid;
+      grid-template-columns:126px minmax(0,1fr);
+      gap:10px;
+      padding:8px 0;
+      border-bottom:1px solid #edf1f7;
+      font-size:14px;
+    }
+    .member-source-line:last-child {
+      border-bottom:0;
+    }
+    .member-source-line span {
+      color:#667085;
+      font-size:12px;
+      font-weight:bold;
+    }
+    .member-source-line strong {
+      color:#243044;
+      overflow-wrap:anywhere;
+    }
+    .member-card-optimized .assessment-member-history {
+      margin:0;
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      background:#fbfdff;
+      padding:0;
+    }
+    .member-card-optimized .assessment-member-history summary {
+      padding:11px 12px;
+      cursor:pointer;
+      color:var(--primary);
+      font-weight:900;
+    }
+    .member-card-optimized .assessment-member-history-list {
+      border-top:1px solid #dce5f2;
+      padding:12px;
+      color:#344054;
+      font-size:13px;
+    }
+    .member-card-footer {
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      padding:14px 20px;
+      border-top:1px solid #dce5f2;
+      background:#fbfdff;
+    }
+    @media (max-width:1180px) {
+      .member-card-body {
+        grid-template-columns:1fr;
+      }
+    }
+    @media (max-width:760px) {
+      .member-card-head,
+      .member-card-body {
+        grid-template-columns:1fr;
+        padding:14px;
+      }
+      .member-card-actions-top {
+        justify-content:flex-start;
+      }
+      .member-form-grid,
+      .member-status-grid,
+      .member-source-line {
+        grid-template-columns:1fr;
+      }
+      .member-card-footer {
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .member-card-footer-actions button,
+      .member-card-actions-top button,
+      .member-card-action-row button {
+        width:100%;
+        margin-right:0;
+      }
+    }
+
     /* v5.124 - Scroll indipendente sidebar/contenuto START */
     html,
     body {
@@ -1909,7 +2125,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.150</div>
+        <div class="side-nav-subtitle">Match Organizer · v5.151</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2664,7 +2880,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.150';
+    const APP_VERSION = '5.151';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -4394,51 +4610,118 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
           </details>`
         : '';
+      const availabilityUpdated = memberAvailabilityProfile.updatedAt ? (() => {
+        try { return new Date(memberAvailabilityProfile.updatedAt).toLocaleDateString('it-IT'); } catch { return memberAvailabilityProfile.updatedAt; }
+      })() : '';
+      const availabilitySource = hasAvailabilityProfile(memberAvailabilityProfile)
+        ? `<div class="member-source-line"><span>Disponibilita</span><strong>Salvata nelle preferenze operative</strong></div>
+           <div class="member-source-line"><span>Origine</span><strong>${escapeHtml(memberAvailabilityProfile.source || 'scheda socio')}${availabilityUpdated ? ' · ' + escapeHtml(availabilityUpdated) : ''}</strong></div>`
+        : `<div class="member-source-line"><span>Disponibilita</span><strong>Nessuna disponibilita dichiarata</strong></div>`;
+      const notificationText = g.selfAssessmentNotifiedAt ? 'Notifica preparata' : 'Notifica livello da inviare';
+      const notificationClass = g.selfAssessmentNotifiedAt ? 'badge-info' : 'badge-warning';
       const assessmentMeta = g.selfAssessmentToken
-        ? `<div class="assessment-availability-box">
-            <strong>📝 Autovalutazione applicata</strong>
-            <div class="assessment-availability-grid">
-              <div><span>Origine livello</span><b>${escapeHtml(g.levelSource || 'autovalutazione')}</b></div>
-              <div><span>Data</span><b>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</b></div>
-              <div><span>Token</span><b>${escapeHtml(g.selfAssessmentToken || '-')}</b></div>
-              <div><span>Coerenza</span><b>${escapeHtml(g.selfAssessmentConsistency || '-')}</b></div>
-              <div><span>Notifica socio</span><b>${escapeHtml(g.selfAssessmentNotifiedAt ? 'Preparata ' + new Date(g.selfAssessmentNotifiedAt).toLocaleDateString('it-IT') : 'Da inviare')}</b></div>
+        ? `<section class="member-panel">
+            <div class="member-panel-head">
+              <h4>Autovalutazione</h4>
+              <span class="badge badge-success">Applicata</span>
             </div>
-            ${assessmentHistoryBox}
+            <div class="member-source-lines">
+              <div class="member-source-line"><span>Livello</span><strong>${escapeHtml(g.level ?? '-')} ${escapeHtml(g.levelSource ? '(' + g.levelSource + ')' : '')}</strong></div>
+              <div class="member-source-line"><span>Data</span><strong>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</strong></div>
+              <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(g.selfAssessmentConsistency || '-')}</strong></div>
+              <div class="member-source-line"><span>Notifica</span><strong>${escapeHtml(g.selfAssessmentNotifiedAt ? 'Preparata ' + new Date(g.selfAssessmentNotifiedAt).toLocaleDateString('it-IT') : 'Da inviare')}</strong></div>
+              ${availabilitySource}
+            </div>
             <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(g.id))}')">💬 Avvisa socio</button></div>
-          </div>`
-        : (assessmentHistoryBox ? `<div class="assessment-availability-box"><strong>📝 Autovalutazioni</strong>${assessmentHistoryBox}</div>` : '');
+          </section>`
+        : `<section class="member-panel">
+            <div class="member-panel-head">
+              <h4>Autovalutazione</h4>
+              <span class="badge badge-muted">Non applicata</span>
+            </div>
+            <div class="member-source-lines">${availabilitySource}</div>
+          </section>`;
+      const initials = `${cleanCell(g.firstName || '').charAt(0)}${cleanCell(g.surname || '').charAt(0)}`.toLocaleUpperCase('it-IT') || 'PV';
       card.style.display = 'block';
-      card.className = 'member-card';
+      card.className = 'member-card member-card-optimized';
       card.innerHTML = `
-        <h3>📋 Scheda Socio: ${escapeHtml(playerFullName(g))}</h3>
-        <div class="muted" style="margin:-6px 0 12px;">ID giocatore: <strong>${escapeHtml(g.memberId || '-')}</strong></div>
-        <div class="info-box">
-          <strong>📊 Storico:</strong><br>
-          Contatti totali: <strong>${getTotalContactCount(g.id)}</strong><br>
-          Contatti questa settimana: <strong>${getWeeklyContactCount(g.id)}</strong><br>
-          Stato: <strong>${g.active !== false ? 'Attivo' : 'Inattivo'}</strong>
+        <div class="member-card-head">
+          <div class="member-card-identity">
+            <div class="member-card-avatar">${escapeHtml(initials)}</div>
+            <div>
+              <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
+              <div class="member-card-badges">
+                <span class="badge badge-muted">ID ${escapeHtml(g.memberId || '-')}</span>
+                <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
+                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
+                <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
+              </div>
+            </div>
+          </div>
+          <div class="member-card-actions-top">
+            <button class="btn-secondary" onclick="closeMemberCard()">Chiudi</button>
+            <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
+          </div>
         </div>
-        <div class="row">
-          <div class="col"><label>ID giocatore</label><input value="${escapeHtml(g.memberId || '-')}" readonly title="ID interno stabile usato per evitare duplicati e collegare storico, gruppi e autovalutazioni."></div>
-          <div class="col"><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
-          <div class="col"><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
-          <div class="col"><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>N/A</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
-          <div class="col"><label>Livello</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
+        <div class="member-card-body">
+          <div class="member-card-stack">
+            <section class="member-panel">
+              <div class="member-panel-head">
+                <h4>Dati socio</h4>
+                <span class="member-panel-hint">Anagrafica modificabile</span>
+              </div>
+              <div class="member-form-grid">
+                <div><label>ID giocatore</label><input value="${escapeHtml(g.memberId || '-')}" readonly title="ID interno stabile usato per evitare duplicati e collegare storico, gruppi e autovalutazioni."></div>
+                <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
+                <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
+                <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
+                <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>N/A</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
+                <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
+                <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
+              </div>
+            </section>
+            <section class="member-panel">
+              <div class="member-panel-head">
+                <h4>Preferenze operative</h4>
+                <span class="member-panel-hint">Dato usato per gruppi e partite</span>
+              </div>
+              <div class="member-form-grid">
+                <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
+                <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
+              </div>
+            </section>
+            <section class="member-panel">
+              <div class="member-panel-head">
+                <h4>Stato rapido</h4>
+                <span class="member-panel-hint">Controllo prima di contattare</span>
+              </div>
+              <div class="member-status-grid">
+                <div class="member-status-stat"><span>Messaggi inviati totali</span><strong>${escapeHtml(String(getTotalContactCount(g.id)))}</strong></div>
+                <div class="member-status-stat"><span>Messaggi inviati questa settimana</span><strong>${escapeHtml(String(getWeeklyContactCount(g.id)))}</strong></div>
+                <div class="member-status-stat"><span>Ultimo messaggio inviato</span><strong>-</strong></div>
+              </div>
+            </section>
+          </div>
+          <aside class="member-card-stack">
+            ${assessmentMeta}
+            ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
+            <section class="member-panel">
+              <div class="member-panel-head"><h4>Azioni operative</h4></div>
+              <div class="member-card-action-row">
+                <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Reinvia autovalutazione</button>
+                <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
+                <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
+              </div>
+            </section>
+          </aside>
         </div>
-        <div class="row">
-          <div class="col"><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
-          <div class="col"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
+        <div class="member-card-footer">
+          <span class="member-panel-hint">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
+          <div class="member-card-footer-actions">
+            <button class="btn-secondary" onclick="closeMemberCard()">Annulla</button>
+            <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva scheda</button>
+          </div>
         </div>
-        <div class="form-group"><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
-        <div class="form-group"><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
-        ${assessmentMeta}
-        ${renderAvailabilityProfile(memberAvailabilityProfile, { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Nessuna disponibilità applicata da autovalutazione. Se la risposta è vecchia, il dato potrebbe non essere stato salvato.</span></div>' })}
-        <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">💾 Salva Scheda</button>
-        <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">📝 Reinvia autovalutazione</button>
-        <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? '⏸️ Disattiva' : '▶️ Riattiva'}</button>
-        <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">🗑️ Cancella Socio</button>
-        <button class="btn-secondary" onclick="closeMemberCard()">❌ Chiudi</button>
       `;
       if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(card);
       else if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(card); else card.scrollIntoView({behavior:'smooth', block:'start'});
@@ -9510,7 +9793,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.150 caricato');
+      console.log('✅ Padel Match Organizer v5.151 caricato');
     });
   
 
