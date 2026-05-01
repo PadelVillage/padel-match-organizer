@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.143</title>
+  <title>Padel Match Organizer v5.144</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1354,6 +1354,27 @@
       padding:11px 13px;
       font-size:14px;
     }
+    .assessment-inline-pin {
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:minmax(160px,.45fr) minmax(220px,1fr);
+      gap:8px;
+      align-items:center;
+      background:#fff;
+      border:1px solid #e6ebf2;
+      border-radius:8px;
+      padding:9px 10px;
+    }
+    .assessment-inline-pin label {
+      margin:0;
+      font-size:12px;
+      color:#667085;
+      font-weight:bold;
+    }
+    .assessment-inline-pin input {
+      margin:0;
+      min-height:36px;
+    }
     .assessment-filter-grid {
       grid-template-columns:minmax(240px,1.15fr) minmax(170px,.75fr) minmax(190px,.8fr);
       gap:10px;
@@ -1521,6 +1542,7 @@
     @media (max-width:1180px) {
       .assessment-whatsapp-layout { grid-template-columns:1fr; }
       .assessment-filter-grid { grid-template-columns:1fr; }
+      .assessment-inline-pin { grid-template-columns:1fr; }
       .assessment-clean-row { grid-template-columns:26px minmax(180px,1fr); }
       .assessment-clean-row > div:nth-child(n+3) { grid-column:2; }
       .assessment-clean-row.minimal.status-action-row { grid-template-columns:26px minmax(0,1fr); }
@@ -1880,7 +1902,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.143</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.144</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2224,6 +2246,10 @@ body.assessment-public-mode .assessment-public-only-card {
                 <strong>Supabase</strong>
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentRegisterSelectedTokens()">☁️ Registra Supabase</button>
               </div>
+            </div>
+            <div class="assessment-inline-pin">
+              <label for="assessmentInlineAdminPin">Codice staff Supabase</label>
+              <input id="assessmentInlineAdminPin" type="password" placeholder="necessario per registrare i token" oninput="syncAssessmentInlineAdminPin()" />
             </div>
           </details>
         </div>
@@ -7459,16 +7485,31 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       save('assessmentSettings', assessmentSettings);
       showAlert('✅ Impostazioni autovalutazione salvate', 'success');
     }
+    function syncAssessmentInlineAdminPin() {
+      const inline = document.getElementById('assessmentInlineAdminPin');
+      const advanced = document.getElementById('assessmentAdminPin');
+      const value = cleanCell(inline?.value || '');
+      if (advanced && advanced.value !== value) advanced.value = value;
+      assessmentSettings.adminPin = value;
+      save('assessmentSettings', assessmentSettings);
+    }
+    function getAssessmentAdminPinInput() {
+      return document.getElementById('assessmentInlineAdminPin') || document.getElementById('assessmentAdminPin');
+    }
     function requireAssessmentAdminPin(actionLabel='questa operazione') {
-      const input = document.getElementById('assessmentAdminPin');
+      const input = getAssessmentAdminPinInput();
       const adminPin = cleanCell(input?.value || assessmentSettings.adminPin || '');
       if (adminPin) {
         if (input && !input.value) input.value = adminPin;
+        const advanced = document.getElementById('assessmentAdminPin');
+        const inline = document.getElementById('assessmentInlineAdminPin');
+        if (advanced && !advanced.value) advanced.value = adminPin;
+        if (inline && !inline.value) inline.value = adminPin;
         assessmentSettings.adminPin = adminPin;
         save('assessmentSettings', assessmentSettings);
         return adminPin;
       }
-      const details = document.querySelector('.assessment-tech-details');
+      const details = document.getElementById('assessmentPreparationDetails') || document.querySelector('.assessment-tech-details');
       if (details) details.open = true;
       if (input) {
         input.focus();
@@ -9397,7 +9438,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.143 caricato');
+      console.log('✅ Padel Match Organizer v5.144 caricato');
     });
   
 
@@ -9884,6 +9925,8 @@ Per confermare scrivi ELIMINA.`);
       if (configInput) configInput.value = assessmentSettings.configUrl || 'https://padelvillage.github.io/padel-match-organizer/config.js';
       const adminPinInput = document.getElementById('assessmentAdminPin');
       if (adminPinInput && !adminPinInput.value) adminPinInput.value = assessmentSettings.adminPin || '';
+      const inlineAdminPinInput = document.getElementById('assessmentInlineAdminPin');
+      if (inlineAdminPinInput && !inlineAdminPinInput.value) inlineAdminPinInput.value = assessmentSettings.adminPin || '';
       renderAssessmentOpsDashboard();
       renderAssessmentPrePanel();
       renderAssessmentPostPanel();

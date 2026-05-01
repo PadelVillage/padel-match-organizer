@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.144 / Codice staff nel Pre-invio
+
+- Il bottone "Prepara" resta nel flusso Pre-invio: se serve il Codice staff Supabase, apre le azioni tecniche locali sotto il pulsante invece di portare in fondo agli strumenti avanzati.
+- Aggiunto il campo Codice staff Supabase dentro le azioni tecniche del Pre-invio, sincronizzato con le impostazioni avanzate.
+
 ## v5.143 / Riga senza telefono Pre-invio
 
 - La riga "Senza telefono" nel Pre-invio usa un layout dedicato: il pulsante "Apri scheda" resta sotto al nome e non viene più tagliato nelle larghezze intermedie.
