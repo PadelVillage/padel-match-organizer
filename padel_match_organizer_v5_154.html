@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.152</title>
+  <title>Padel Match Organizer v5.154</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1072,7 +1072,7 @@
     .availability-card-title { font-weight:bold; color:#1f2937; margin-bottom:4px; }
     .availability-card-meta { color:#667085; font-size:12px; line-height:1.5; }
     .availability-empty { color:#667085; background:#fff; border:1px dashed #cbd5e1; border-radius:12px; padding:14px; }
-    /* v5.152 - Sezione autonoma Riempi slot */
+    /* v5.154 - Riempi slot: priorità operative e proposte partita */
     .fill-slots-page { display:grid; gap:14px; }
     .fill-slots-top { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; padding-bottom:12px; border-bottom:1px solid #e1e7ef; }
     .fill-slots-title h2 { margin:0 0 4px; color:var(--primary); }
@@ -1125,6 +1125,14 @@
     .fill-mini strong { color:#172033; font-size:22px; line-height:1; }
     .fill-candidate-list { display:grid; gap:9px; }
     .fill-candidate { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:10px; align-items:center; border:1px solid #e8eef7; border-radius:8px; background:#fff; padding:10px; }
+    .fill-proposal-list { display:grid; gap:10px; margin-bottom:14px; }
+    .fill-proposal { border:1px solid #dce5f2; border-left:6px solid var(--primary); border-radius:8px; background:#fbfdff; padding:12px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:start; }
+    .fill-proposal.good { border-left-color:var(--success); }
+    .fill-proposal.warn { border-left-color:var(--warning); }
+    .fill-proposal-title { font-weight:900; color:#172033; line-height:1.25; margin-bottom:4px; }
+    .fill-proposal-meta { color:#667085; font-size:12px; line-height:1.45; }
+    .fill-proposal-pills { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+    .fill-proposal-actions { display:flex; flex-direction:column; align-items:flex-end; gap:7px; min-width:132px; }
     .fill-avatar { width:30px; height:30px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; }
     .fill-person { font-weight:900; color:#172033; line-height:1.2; }
     .fill-meta { color:#667085; font-size:12px; margin-top:2px; }
@@ -1144,6 +1152,8 @@
       .fill-slots-kpis, .fill-toolbar, .fill-detail-layout, .fill-detail-grid { grid-template-columns:1fr; }
       .fill-candidate { grid-template-columns:32px minmax(0,1fr); }
       .fill-score { grid-column:2; align-items:flex-start; }
+      .fill-proposal { grid-template-columns:1fr; }
+      .fill-proposal-actions { align-items:flex-start; }
       .fill-slots-actions button { width:100%; }
     }
 
@@ -2200,7 +2210,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-        <div class="side-nav-subtitle">Match Organizer · v5.152</div>
+        <div class="side-nav-subtitle">Match Organizer · v5.154</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2998,7 +3008,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.152';
+    const APP_VERSION = '5.154';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -5246,6 +5256,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const high = slot.candidates.filter(p => p._fill?.probability?.key === 'high');
       const medium = slot.candidates.filter(p => p._fill?.probability?.key === 'medium');
       const low = slot.candidates.filter(p => p._fill?.probability?.key === 'low');
+      const proposals = buildFillSlotMatchProposals(slot);
       const title = `${slot.day.charAt(0).toUpperCase() + slot.day.slice(1)} ${slot.dateDisplay} · ${slot.timeStart} · ${slot.field}`;
       el.innerHTML = `
         <div class="fill-panel-head">
@@ -5260,6 +5271,10 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="fill-mini"><span>Media</span><strong>${medium.length}</strong></div>
                 <div class="fill-mini"><span>Bassa</span><strong>${low.length}</strong></div>
                 <div class="fill-mini"><span>Mix</span><strong>${slot.males}M/${slot.females}F</strong></div>
+              </div>
+              <h3 style="margin:0 0 8px;">Proposte partita</h3>
+              <div class="fill-proposal-list">
+                ${proposals.length ? proposals.slice(0, 5).map(p => renderFillSlotProposal(p)).join('') : '<div class="availability-empty">Nessuna proposta partita pronta: servono almeno 4 giocatori disponibili.</div>'}
               </div>
               <div class="fill-candidate-list">
                 ${slot.candidates.slice(0, 12).map(p => renderFillSlotCandidate(slot, p)).join('') || '<div class="availability-empty">Nessun candidato con i filtri correnti.</div>'}
@@ -5282,6 +5297,115 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
         </div>
       `;
+    }
+    function fillSlotBandLabel(band) {
+      return ({ mattino:'mattina', pranzo:'pranzo', pomeriggio:'pomeriggio', sera:'sera' }[band] || band || '');
+    }
+    function fillSlotGroupFit(group, slot) {
+      const groupDay = String(group?.day || '');
+      const dayFit = !groupDay || groupDay === String(slot.weekday);
+      const groupBand = group?.startTime ? matchTimeBand(group.startTime) : '';
+      const bandFit = !groupBand || groupBand === slot.band;
+      const exactTime = group?.startTime && group.startTime === slot.timeStart;
+      let score = 0;
+      if (dayFit) score += groupDay ? 24 : 10;
+      else score -= 18;
+      if (exactTime) score += 22;
+      else if (bandFit) score += 12;
+      else score -= 10;
+      const labels = [];
+      labels.push(dayFit ? 'giorno coerente' : 'giorno diverso');
+      labels.push(exactTime ? 'orario esatto' : (bandFit ? 'fascia coerente' : 'fascia diversa'));
+      return { dayFit, bandFit, exactTime, score, labels };
+    }
+    function fillSlotProposalWarnings(players, missingCount=0, restedCount=0) {
+      const warnings = [];
+      const noPhone = players.filter(p => !p.phone).length;
+      const lowFuture = players.filter(p => (p._fill?.future10 || 0) >= 2).length;
+      if (missingCount) warnings.push(`${missingCount} nominativi non trovati`);
+      if (restedCount) warnings.push(`${restedCount} esclusi per riposo settimanale`);
+      if (noPhone) warnings.push(`${noPhone} senza telefono`);
+      if (lowFuture) warnings.push(`${lowFuture} con 2+ partite nei prossimi 10 giorni`);
+      return warnings;
+    }
+    function rankFillSlotPlayersForProposal(players, slot) {
+      return (players || []).map(p => {
+        if (p._fill) return p;
+        const smart = playerSmartScore(p, slot.date, slot.timeStart);
+        const future10 = fillSlotFutureBookingsCount(p, slot.date, 10);
+        return { ...p, _fill:{ ...smart, future10, probability:fillSlotProbabilityFromFutureCount(future10), score:(smart.score || 0) } };
+      }).sort((a, b) => (b._fill?.score || 0) - (a._fill?.score || 0) || normalizeText(playerFullName(a)).localeCompare(normalizeText(playerFullName(b)), 'it'));
+    }
+    function buildFillSlotMatchProposals(slot) {
+      const proposals = [];
+      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
+      groups.forEach(group => {
+        const fit = fillSlotGroupFit(group, slot);
+        if (!fit.dayFit && !fit.bandFit) return;
+        const resolved = resolveAssistantGroup(group);
+        const active = resolved.matched.filter(p => p && p.active !== false && !playerHasConflict(p, slot.date, slot.timeStart));
+        const weekly = splitPlayersByWeeklyRest(active, slot.date);
+        const available = rankFillSlotPlayersForProposal(weekly.available, slot);
+        if (available.length < 4) return;
+        const score = (slot.priorityScore || 0) + 35 + fit.score + Math.min(available.length, 16) + Math.min(available.filter(p => (p._fill?.future10 || 0) === 0).length, 8);
+        proposals.push({
+          key: `group_${group.id}_${slot.key}`,
+          type: 'savedGroup',
+          title: group.name || 'Gruppo salvato',
+          sourceLabel: 'Gruppo salvato',
+          score,
+          slot,
+          group,
+          players: available,
+          suggested: available,
+          poolCount: available.length,
+          className: score >= 145 ? 'good' : 'warn',
+          notes: fit.labels,
+          warnings: fillSlotProposalWarnings(available, resolved.missing.length, weekly.rested.length)
+        });
+      });
+      const historicalPlayers = rankFillSlotPlayersForProposal(slot.candidates || [], slot).slice(0, 16);
+      if (historicalPlayers.length >= 4) {
+        const high = historicalPlayers.filter(p => p._fill?.probability?.key === 'high').length;
+        const sameBandDay = historicalPlayers.reduce((sum, p) => sum + (p._fill?.sameBandAndDay || 0), 0);
+        const score = (slot.priorityScore || 0) + 18 + high * 5 + Math.min(sameBandDay, 24) + Math.min(historicalPlayers.length, 16);
+        proposals.push({
+          key: `history_${slot.key}`,
+          type: 'history',
+          title: `Gruppo potenziale da storico`,
+          sourceLabel: 'Storico + candidati',
+          score,
+          slot,
+          group: null,
+          players: historicalPlayers,
+          suggested: historicalPlayers,
+          poolCount: historicalPlayers.length,
+          className: score >= 130 ? 'good' : 'warn',
+          notes: [`${high} alta probabilità`, `${sameBandDay} segnali stesso giorno/fascia`, fillSlotBandLabel(slot.band)],
+          warnings: fillSlotProposalWarnings(historicalPlayers)
+        });
+      }
+      return proposals.sort((a, b) => b.score - a.score || b.poolCount - a.poolCount);
+    }
+    function renderFillSlotProposal(proposal) {
+      const names = proposal.players.slice(0, 6).map(playerFullName).filter(Boolean).join(', ');
+      const more = proposal.players.length > 6 ? `, +${proposal.players.length - 6} altri` : '';
+      const warnings = proposal.warnings.length ? proposal.warnings : ['nessuna attenzione forte'];
+      return `<div class="fill-proposal ${proposal.className}">
+        <div>
+          <div class="fill-proposal-title">${escapeHtml(proposal.title)}</div>
+          <div class="fill-proposal-meta">${escapeHtml(proposal.sourceLabel)} · score ${Math.round(proposal.score)} · bacino ${proposal.poolCount} giocatori<br>${escapeHtml(names + more)}</div>
+          <div class="fill-proposal-pills">
+            <span class="pill ${proposal.slot.priorityClass || ''}">${escapeHtml(proposal.slot.priorityLabel || 'Priorità slot')}</span>
+            ${proposal.notes.slice(0, 4).map(note => `<span class="pill">${escapeHtml(note)}</span>`).join('')}
+            ${warnings.slice(0, 3).map(w => `<span class="pill ${w === 'nessuna attenzione forte' ? 'good' : 'warn'}">${escapeHtml(w)}</span>`).join('')}
+          </div>
+        </div>
+        <div class="fill-proposal-actions">
+          <span class="pill ${proposal.className === 'good' ? 'good' : 'warn'}">Score ${Math.round(proposal.score)}</span>
+          <button class="btn-primary" onclick="setActionAnchor(this); approveFillSlotProposal('${escapeJs(proposal.key)}')">Approva proposta</button>
+        </div>
+      </div>`;
     }
     function renderFillSlotCandidate(slot, player) {
       const probability = player._fill?.probability || fillSlotProbabilityFromFutureCount(player._fill?.future10 || 0);
@@ -5313,6 +5437,46 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     function getCurrentFillSlot() {
       return (lastFillSlotsAnalysis || []).find(s => s.key === currentFillSlotKey) || (lastFillSlotsAnalysis || [])[0] || null;
+    }
+    function approveFillSlotProposal(proposalKey) {
+      const slot = getCurrentFillSlot();
+      if (!slot) return showAlert('⚠️ Seleziona prima uno slot.', 'warning');
+      const proposal = buildFillSlotMatchProposals(slot).find(p => p.key === proposalKey);
+      if (!proposal) return showAlert('⚠️ Proposta non trovata o non più valida con i dati attuali.', 'warning');
+      const players = proposal.players || [];
+      if (players.length < 4) return showAlert('⚠️ La proposta non ha almeno 4 giocatori disponibili.', 'warning');
+      const type = proposal.group?.matchType || (document.getElementById('fillSlotGenderFilter')?.value === 'M' ? 'maschile' : (document.getElementById('fillSlotGenderFilter')?.value === 'F' ? 'femminile' : 'mista'));
+      currentMatchContext = {
+        date: slot.date,
+        time: slot.timeStart,
+        endTime: slot.timeEnd,
+        field: slot.field,
+        type,
+        alreadyBooked: [],
+        playersNeeded: 4,
+        availablePlayers: players,
+        suggested: players,
+        preferNoFuture: true,
+        sourceGroupId: proposal.group?.id || '',
+        sourceGroupName: proposal.group?.name || proposal.title,
+        sourceGroupFormat: proposal.type === 'savedGroup' ? 'Gruppo salvato' : 'Gruppo potenziale da Riempi slot',
+        fillSlotProposalKey: proposal.key,
+        fillSlotProposalScore: proposal.score,
+        fillSlotProposalType: proposal.type,
+        fillSlotPriorityLabel: slot.priorityLabel || ''
+      };
+      const record = ensureLunchInvitationsForCurrentMatch(players);
+      if (record) {
+        record.status = record.status || 'inviting';
+        record.proposalSource = proposal.sourceLabel;
+        record.proposalScore = Math.round(proposal.score);
+        record.fillSlotPriorityLabel = slot.priorityLabel || '';
+        record.formatName = currentMatchContext.sourceGroupFormat;
+        saveLunchInvitationRecord(record);
+      }
+      switchTab('inviteResponses');
+      renderInviteResponsesDashboard();
+      showAlert('✅ Proposta approvata e aperta in Programmazione Partite. Ora puoi modificare giocatori e gestire gli inviti.', 'success');
     }
     function saveFillSlotCandidateGroup() {
       const slot = getCurrentFillSlot();
@@ -5363,6 +5527,8 @@ body.assessment-public-mode .assessment-public-only-card {
     function createMatchFromFillSlot() {
       const slot = getCurrentFillSlot();
       if (!slot) return showAlert('⚠️ Seleziona prima uno slot.', 'warning');
+      const bestProposal = buildFillSlotMatchProposals(slot)[0];
+      if (bestProposal) return approveFillSlotProposal(bestProposal.key);
       const dateEl = document.getElementById('matchDate');
       const timeEl = document.getElementById('matchTime');
       const fieldEl = document.getElementById('matchField');
@@ -10323,7 +10489,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.152 caricato');
+      console.log('✅ Padel Match Organizer v5.154 caricato');
     });
   
 

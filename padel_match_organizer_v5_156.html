@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.152</title>
+  <title>Padel Match Organizer v5.156</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1072,11 +1072,16 @@
     .availability-card-title { font-weight:bold; color:#1f2937; margin-bottom:4px; }
     .availability-card-meta { color:#667085; font-size:12px; line-height:1.5; }
     .availability-empty { color:#667085; background:#fff; border:1px dashed #cbd5e1; border-radius:12px; padding:14px; }
-    /* v5.152 - Sezione autonoma Riempi slot */
-    .fill-slots-page { display:grid; gap:14px; }
-    .fill-slots-top { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; padding-bottom:12px; border-bottom:1px solid #e1e7ef; }
-    .fill-slots-title h2 { margin:0 0 4px; color:var(--primary); }
-    .fill-slots-title p { margin:0; color:#667085; font-size:13px; }
+    /* v5.156 - Riempi slot: calendario operativo sticky e anti-spam candidati */
+    .fill-slots-page { display:grid; gap:14px; padding:0 !important; overflow:visible; }
+    .fill-slots-top {
+      position:sticky; top:0; z-index:70;
+      display:flex; justify-content:space-between; align-items:center; gap:14px;
+      padding:16px 18px; border-bottom:1px solid #dce5f2; background:rgba(255,255,255,.98);
+      backdrop-filter:blur(8px);
+    }
+    .fill-slots-title h2 { margin:0; color:var(--primary); font-size:24px; letter-spacing:0; }
+    .fill-slots-title p { display:none; }
     .fill-slots-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .fill-slots-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
     .fill-kpi { background:#fff; border:1px solid #dce5f2; border-top:4px solid var(--primary); border-radius:8px; padding:11px 12px; min-height:86px; box-shadow:0 1px 4px rgba(15,23,42,.05); }
@@ -1086,25 +1091,27 @@
     .fill-kpi span { display:block; color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; }
     .fill-kpi strong { display:block; color:#172033; font-size:28px; line-height:1; margin:7px 0 4px; }
     .fill-kpi small { color:#667085; font-size:12px; }
-    .fill-panel { background:#fff; border:1px solid #dce5f2; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); overflow:hidden; }
-    .fill-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 15px; border-bottom:1px solid #dce5f2; }
-    .fill-panel-head h3 { margin:0; color:var(--primary); font-size:18px; }
-    .fill-panel-body { padding:14px 15px; }
+    .fill-panel { background:#fff; border:1px solid #dce5f2; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); overflow:hidden; margin:0 18px 18px; }
+    .fill-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #dce5f2; background:#fff; }
+    .fill-panel-head h3 { margin:0; color:var(--primary); font-size:24px; letter-spacing:0; }
+    .fill-panel-body { padding:18px; }
     .pill { display:inline-flex; align-items:center; min-height:24px; border-radius:999px; padding:4px 9px; background:#eef2f7; color:#344054; font-size:12px; font-weight:900; white-space:nowrap; }
     .pill.good { background:#e6f4ea; color:var(--success); }
     .pill.warn { background:#fff4df; color:var(--warning); }
     .pill.danger { background:#fde7e7; color:var(--danger); }
-    .fill-toolbar { display:grid; grid-template-columns:minmax(220px,1fr) repeat(4,minmax(120px,.55fr)); gap:9px; align-items:end; margin-bottom:12px; }
-    .fill-legend { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; color:#667085; font-size:12px; }
+    .fill-toolbar { display:grid; grid-template-columns:minmax(220px,1fr) repeat(4,minmax(120px,.55fr)); gap:16px; align-items:end; margin-bottom:14px; }
+    .fill-toolbar label { font-size:16px; color:#333; margin-bottom:8px; }
+    .fill-toolbar input, .fill-toolbar select { min-height:38px; border-radius:6px; }
+    .fill-legend { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; color:#667085; font-size:12px; }
     .fill-legend span { display:inline-flex; align-items:center; gap:6px; }
     .fill-dot { width:10px; height:10px; border-radius:50%; display:inline-block; background:#cfd8e6; }
     .fill-dot.good { background:var(--success); }
     .fill-dot.warn { background:var(--warning); }
     .fill-dot.low { background:#98a2b3; }
-    .fill-calendar-wrap { overflow:auto; border:1px solid #e8eef7; border-radius:8px; }
+    .fill-calendar-wrap { overflow:auto; border:1px solid #e8eef7; border-radius:8px; max-height:calc(100vh - 255px); background:#fff; }
     .fill-calendar-grid { min-width:1040px; display:grid; grid-template-columns:92px repeat(10,minmax(92px,1fr)); background:#fff; }
-    .fill-cal-head, .fill-time-head { position:sticky; top:0; z-index:2; background:#fbfdff; border-bottom:1px solid #e8eef7; color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; padding:8px; min-height:50px; }
-    .fill-time-head { left:0; z-index:3; border-right:1px solid #e8eef7; }
+    .fill-cal-head, .fill-time-head { position:sticky; top:0; z-index:30; background:#fbfdff; border-bottom:1px solid #e8eef7; color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; padding:8px; min-height:50px; box-shadow:0 1px 0 #e8eef7; }
+    .fill-time-head { left:0; z-index:40; border-right:1px solid #e8eef7; }
     .fill-time-label { position:sticky; left:0; z-index:1; display:flex; align-items:center; background:#fbfdff; border-right:1px solid #e8eef7; border-bottom:1px solid #e8eef7; padding:8px; font-weight:900; color:#172033; font-size:13px; }
     .fill-cal-head .day { color:#172033; font-size:13px; text-transform:none; letter-spacing:0; }
     .fill-cal-head .date { color:#667085; font-size:11px; margin-top:2px; }
@@ -1118,6 +1125,7 @@
     .fill-slot-num { font-size:18px; font-weight:900; color:var(--primary); line-height:1; }
     .fill-slot-mini { grid-column:1 / -1; display:flex; gap:4px; flex-wrap:wrap; color:#667085; font-size:10px; font-weight:800; }
     .fill-slot-empty { color:#98a2b3; font-size:12px; padding:7px; }
+    .fill-detail-panel { display:none; }
     .fill-detail-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
     .fill-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:13px; }
     .fill-mini { border:1px solid #e8eef7; border-radius:8px; background:#fbfdff; padding:10px; }
@@ -1125,6 +1133,14 @@
     .fill-mini strong { color:#172033; font-size:22px; line-height:1; }
     .fill-candidate-list { display:grid; gap:9px; }
     .fill-candidate { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:10px; align-items:center; border:1px solid #e8eef7; border-radius:8px; background:#fff; padding:10px; }
+    .fill-proposal-list { display:grid; gap:10px; margin-bottom:14px; }
+    .fill-proposal { border:1px solid #dce5f2; border-left:6px solid var(--primary); border-radius:8px; background:#fbfdff; padding:12px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:start; }
+    .fill-proposal.good { border-left-color:var(--success); }
+    .fill-proposal.warn { border-left-color:var(--warning); }
+    .fill-proposal-title { font-weight:900; color:#172033; line-height:1.25; margin-bottom:4px; }
+    .fill-proposal-meta { color:#667085; font-size:12px; line-height:1.45; }
+    .fill-proposal-pills { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+    .fill-proposal-actions { display:flex; flex-direction:column; align-items:flex-end; gap:7px; min-width:132px; }
     .fill-avatar { width:30px; height:30px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; }
     .fill-person { font-weight:900; color:#172033; line-height:1.2; }
     .fill-meta { color:#667085; font-size:12px; margin-top:2px; }
@@ -1141,9 +1157,14 @@
     }
     @media (max-width:760px) {
       .fill-slots-top, .fill-footer { align-items:stretch; flex-direction:column; }
+      .fill-panel { margin:0 10px 14px; }
+      .fill-panel-head { align-items:flex-start; flex-direction:column; }
+      .fill-calendar-wrap { max-height:calc(100vh - 315px); }
       .fill-slots-kpis, .fill-toolbar, .fill-detail-layout, .fill-detail-grid { grid-template-columns:1fr; }
       .fill-candidate { grid-template-columns:32px minmax(0,1fr); }
       .fill-score { grid-column:2; align-items:flex-start; }
+      .fill-proposal { grid-template-columns:1fr; }
+      .fill-proposal-actions { align-items:flex-start; }
       .fill-slots-actions button { width:100%; }
     }
 
@@ -2200,7 +2221,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-        <div class="side-nav-subtitle">Match Organizer · v5.152</div>
+        <div class="side-nav-subtitle">Match Organizer · v5.156</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2842,8 +2863,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section fill-slots-page">
         <header id="anchor-fill-slots-top" class="fill-slots-top">
           <div class="fill-slots-title">
-            <h2>🎯 Riempi slot</h2>
-            <p>Vista calendario: scegli una fascia libera, leggi i numeri e apri i candidati sotto.</p>
+            <h2>Menù riempi slot</h2>
           </div>
           <div class="fill-slots-actions">
             <button class="btn-secondary" onclick="setActionAnchor(this); switchTab('groups')">👥 Torna a Giocatori</button>
@@ -2851,11 +2871,11 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
         </header>
 
-        <section id="fillSlotsKpis" class="fill-slots-kpis"></section>
+        <section id="fillSlotsKpis" class="fill-slots-kpis" style="display:none;"></section>
 
         <section class="fill-panel">
           <div class="fill-panel-head">
-            <h3>Calendario slot liberi</h3>
+            <h3>Slot liberi</h3>
             <span class="pill badge-warning">Clicca un numero per vedere i candidati</span>
           </div>
           <div class="fill-panel-body">
@@ -2870,13 +2890,13 @@ body.assessment-public-mode .assessment-public-only-card {
               <span><i class="fill-dot good"></i>12+ candidati</span>
               <span><i class="fill-dot warn"></i>6-11 candidati</span>
               <span><i class="fill-dot low"></i>pochi candidati</span>
-              <span>Numero grande = candidati plausibili per quella fascia/campo</span>
+              <span>Numero grande = candidati prioritari, max 2 slot per giocatore in giorni diversi</span>
             </div>
             <div id="fillSlotsCalendar" class="fill-calendar-wrap"></div>
           </div>
         </section>
 
-        <section id="fillSlotsDetail" class="fill-panel"></section>
+        <section id="fillSlotsDetail" class="fill-panel fill-detail-panel"></section>
       </div>
     </div>
 
@@ -2998,7 +3018,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.152';
+    const APP_VERSION = '5.156';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -5127,6 +5147,45 @@ body.assessment-public-mode .assessment-public-only-card {
       if (weekday === 0 && band === 'pomeriggio') return { score:10, label:'Bassa · domenica pomeriggio', cls:'danger' };
       return { score:20, label:'Bassa priorità', cls:'' };
     }
+    function applyFillSlotAntiSpamAssignment(slots) {
+      const rankedByPlayer = new Map();
+      (slots || []).forEach(slot => {
+        (slot.rawCandidates || slot.candidates || []).forEach(player => {
+          const key = fillSlotPlayerRuntimeKey(player);
+          if (!rankedByPlayer.has(key)) rankedByPlayer.set(key, []);
+          const personalScore = (player._fill?.score || 0) + (slot.priorityScore || 0) * 0.55;
+          rankedByPlayer.get(key).push({ slot, player, personalScore });
+        });
+      });
+      const assigned = new Map();
+      rankedByPlayer.forEach(items => {
+        const usedDates = new Set();
+        items.sort((a, b) =>
+          b.personalScore - a.personalScore ||
+          (b.slot.priorityScore || 0) - (a.slot.priorityScore || 0) ||
+          String(a.slot.date || '').localeCompare(String(b.slot.date || '')) ||
+          String(a.slot.timeStart || '').localeCompare(String(b.slot.timeStart || ''))
+        );
+        items.forEach(item => {
+          if (usedDates.size >= 2 || usedDates.has(item.slot.date)) return;
+          usedDates.add(item.slot.date);
+          if (!assigned.has(item.slot.key)) assigned.set(item.slot.key, []);
+          assigned.get(item.slot.key).push(item.player);
+        });
+      });
+      slots.forEach(slot => {
+        const unique = assigned.get(slot.key) || [];
+        unique.sort((a, b) => (b._fill?.score || 0) - (a._fill?.score || 0) || normalizeText(playerFullName(a)).localeCompare(normalizeText(playerFullName(b)), 'it'));
+        slot.rawCandidates = slot.rawCandidates || slot.candidates || [];
+        slot.rawCandidateCount = slot.rawCandidates.length;
+        slot.candidates = unique;
+        slot.candidateCount = unique.length;
+        slot.males = unique.filter(p => p.gender === 'M').length;
+        slot.females = unique.filter(p => p.gender === 'F').length;
+        slot.high = unique.filter(p => p._fill?.probability?.key === 'high').length;
+      });
+      return slots;
+    }
     function buildFillSlotsAnalysis() {
       const filters = {
         search: normalizeText(document.getElementById('fillSlotSearch')?.value || ''),
@@ -5158,10 +5217,11 @@ body.assessment-public-mode .assessment-public-only-card {
             const high = candidates.filter(p => p._fill?.probability?.key === 'high').length;
             const haystack = normalizeText(`${slot.day} ${slot.dateDisplay} ${slot.field} ${slot.time} ${slot.band} ${priority.label}`);
             if (filters.search && !haystack.includes(filters.search)) return;
-            slots.push({ ...slot, key:getFillSlotKey(slot), priorityScore:priority.score, priorityLabel:priority.label, priorityClass:priority.cls, candidates, candidateCount:candidates.length, males, females, high });
+            slots.push({ ...slot, key:getFillSlotKey(slot), priorityScore:priority.score, priorityLabel:priority.label, priorityClass:priority.cls, rawCandidates:candidates, candidates, rawCandidateCount:candidates.length, candidateCount:candidates.length, males, females, high });
           });
         });
       });
+      applyFillSlotAntiSpamAssignment(slots);
       slots.sort((a, b) =>
         (b.priorityScore || 0) - (a.priorityScore || 0) ||
         String(a.date || '').localeCompare(String(b.date || '')) ||
@@ -5225,7 +5285,7 @@ body.assessment-public-mode .assessment-public-only-card {
               const cls = getFillSlotClass(slot.candidateCount);
               const active = slot.key === currentFillSlotKey ? ' active' : '';
               const court = (slot.field || '').replace(/^Campo\s*/i, 'C');
-              const mini = `${slot.priorityLabel || ''} · ${slot.males}M · ${slot.females}F${slot.high ? ' · ' + slot.high + ' alte' : ''}`;
+              const mini = `${slot.males}M · ${slot.females}F${slot.high ? ' · ' + slot.high + ' alte' : ''}`;
               return `<button class="fill-slot-btn ${cls}${active}" onclick="setActionAnchor(this); selectFillSlot('${escapeJs(slot.key)}')"><span class="fill-slot-time">${escapeHtml(court)} ${escapeHtml(slot.timeStart)}</span><span class="fill-slot-num">${slot.candidateCount}</span><span class="fill-slot-mini">${escapeHtml(mini)}</span></button>`;
             }).join('');
           }
@@ -5246,6 +5306,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const high = slot.candidates.filter(p => p._fill?.probability?.key === 'high');
       const medium = slot.candidates.filter(p => p._fill?.probability?.key === 'medium');
       const low = slot.candidates.filter(p => p._fill?.probability?.key === 'low');
+      const proposals = buildFillSlotMatchProposals(slot);
       const title = `${slot.day.charAt(0).toUpperCase() + slot.day.slice(1)} ${slot.dateDisplay} · ${slot.timeStart} · ${slot.field}`;
       el.innerHTML = `
         <div class="fill-panel-head">
@@ -5260,6 +5321,10 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="fill-mini"><span>Media</span><strong>${medium.length}</strong></div>
                 <div class="fill-mini"><span>Bassa</span><strong>${low.length}</strong></div>
                 <div class="fill-mini"><span>Mix</span><strong>${slot.males}M/${slot.females}F</strong></div>
+              </div>
+              <h3 style="margin:0 0 8px;">Proposte partita</h3>
+              <div class="fill-proposal-list">
+                ${proposals.length ? proposals.slice(0, 5).map(p => renderFillSlotProposal(p)).join('') : '<div class="availability-empty">Nessuna proposta partita pronta: servono almeno 4 giocatori disponibili.</div>'}
               </div>
               <div class="fill-candidate-list">
                 ${slot.candidates.slice(0, 12).map(p => renderFillSlotCandidate(slot, p)).join('') || '<div class="availability-empty">Nessun candidato con i filtri correnti.</div>'}
@@ -5283,6 +5348,115 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
       `;
     }
+    function fillSlotBandLabel(band) {
+      return ({ mattino:'mattina', pranzo:'pranzo', pomeriggio:'pomeriggio', sera:'sera' }[band] || band || '');
+    }
+    function fillSlotGroupFit(group, slot) {
+      const groupDay = String(group?.day || '');
+      const dayFit = !groupDay || groupDay === String(slot.weekday);
+      const groupBand = group?.startTime ? matchTimeBand(group.startTime) : '';
+      const bandFit = !groupBand || groupBand === slot.band;
+      const exactTime = group?.startTime && group.startTime === slot.timeStart;
+      let score = 0;
+      if (dayFit) score += groupDay ? 24 : 10;
+      else score -= 18;
+      if (exactTime) score += 22;
+      else if (bandFit) score += 12;
+      else score -= 10;
+      const labels = [];
+      labels.push(dayFit ? 'giorno coerente' : 'giorno diverso');
+      labels.push(exactTime ? 'orario esatto' : (bandFit ? 'fascia coerente' : 'fascia diversa'));
+      return { dayFit, bandFit, exactTime, score, labels };
+    }
+    function fillSlotProposalWarnings(players, missingCount=0, restedCount=0) {
+      const warnings = [];
+      const noPhone = players.filter(p => !p.phone).length;
+      const lowFuture = players.filter(p => (p._fill?.future10 || 0) >= 2).length;
+      if (missingCount) warnings.push(`${missingCount} nominativi non trovati`);
+      if (restedCount) warnings.push(`${restedCount} esclusi per riposo settimanale`);
+      if (noPhone) warnings.push(`${noPhone} senza telefono`);
+      if (lowFuture) warnings.push(`${lowFuture} con 2+ partite nei prossimi 10 giorni`);
+      return warnings;
+    }
+    function rankFillSlotPlayersForProposal(players, slot) {
+      return (players || []).map(p => {
+        if (p._fill) return p;
+        const smart = playerSmartScore(p, slot.date, slot.timeStart);
+        const future10 = fillSlotFutureBookingsCount(p, slot.date, 10);
+        return { ...p, _fill:{ ...smart, future10, probability:fillSlotProbabilityFromFutureCount(future10), score:(smart.score || 0) } };
+      }).sort((a, b) => (b._fill?.score || 0) - (a._fill?.score || 0) || normalizeText(playerFullName(a)).localeCompare(normalizeText(playerFullName(b)), 'it'));
+    }
+    function buildFillSlotMatchProposals(slot) {
+      const proposals = [];
+      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
+      groups.forEach(group => {
+        const fit = fillSlotGroupFit(group, slot);
+        if (!fit.dayFit && !fit.bandFit) return;
+        const resolved = resolveAssistantGroup(group);
+        const active = resolved.matched.filter(p => p && p.active !== false && !playerHasConflict(p, slot.date, slot.timeStart));
+        const weekly = splitPlayersByWeeklyRest(active, slot.date);
+        const available = rankFillSlotPlayersForProposal(weekly.available, slot);
+        if (available.length < 4) return;
+        const score = (slot.priorityScore || 0) + 35 + fit.score + Math.min(available.length, 16) + Math.min(available.filter(p => (p._fill?.future10 || 0) === 0).length, 8);
+        proposals.push({
+          key: `group_${group.id}_${slot.key}`,
+          type: 'savedGroup',
+          title: group.name || 'Gruppo salvato',
+          sourceLabel: 'Gruppo salvato',
+          score,
+          slot,
+          group,
+          players: available,
+          suggested: available,
+          poolCount: available.length,
+          className: score >= 145 ? 'good' : 'warn',
+          notes: fit.labels,
+          warnings: fillSlotProposalWarnings(available, resolved.missing.length, weekly.rested.length)
+        });
+      });
+      const historicalPlayers = rankFillSlotPlayersForProposal(slot.candidates || [], slot).slice(0, 16);
+      if (historicalPlayers.length >= 4) {
+        const high = historicalPlayers.filter(p => p._fill?.probability?.key === 'high').length;
+        const sameBandDay = historicalPlayers.reduce((sum, p) => sum + (p._fill?.sameBandAndDay || 0), 0);
+        const score = (slot.priorityScore || 0) + 18 + high * 5 + Math.min(sameBandDay, 24) + Math.min(historicalPlayers.length, 16);
+        proposals.push({
+          key: `history_${slot.key}`,
+          type: 'history',
+          title: `Gruppo potenziale da storico`,
+          sourceLabel: 'Storico + candidati',
+          score,
+          slot,
+          group: null,
+          players: historicalPlayers,
+          suggested: historicalPlayers,
+          poolCount: historicalPlayers.length,
+          className: score >= 130 ? 'good' : 'warn',
+          notes: [`${high} alta probabilità`, `${sameBandDay} segnali stesso giorno/fascia`, fillSlotBandLabel(slot.band)],
+          warnings: fillSlotProposalWarnings(historicalPlayers)
+        });
+      }
+      return proposals.sort((a, b) => b.score - a.score || b.poolCount - a.poolCount);
+    }
+    function renderFillSlotProposal(proposal) {
+      const names = proposal.players.slice(0, 6).map(playerFullName).filter(Boolean).join(', ');
+      const more = proposal.players.length > 6 ? `, +${proposal.players.length - 6} altri` : '';
+      const warnings = proposal.warnings.length ? proposal.warnings : ['nessuna attenzione forte'];
+      return `<div class="fill-proposal ${proposal.className}">
+        <div>
+          <div class="fill-proposal-title">${escapeHtml(proposal.title)}</div>
+          <div class="fill-proposal-meta">${escapeHtml(proposal.sourceLabel)} · score ${Math.round(proposal.score)} · bacino ${proposal.poolCount} giocatori<br>${escapeHtml(names + more)}</div>
+          <div class="fill-proposal-pills">
+            <span class="pill ${proposal.slot.priorityClass || ''}">${escapeHtml(proposal.slot.priorityLabel || 'Priorità slot')}</span>
+            ${proposal.notes.slice(0, 4).map(note => `<span class="pill">${escapeHtml(note)}</span>`).join('')}
+            ${warnings.slice(0, 3).map(w => `<span class="pill ${w === 'nessuna attenzione forte' ? 'good' : 'warn'}">${escapeHtml(w)}</span>`).join('')}
+          </div>
+        </div>
+        <div class="fill-proposal-actions">
+          <span class="pill ${proposal.className === 'good' ? 'good' : 'warn'}">Score ${Math.round(proposal.score)}</span>
+          <button class="btn-primary" onclick="setActionAnchor(this); approveFillSlotProposal('${escapeJs(proposal.key)}')">Approva proposta</button>
+        </div>
+      </div>`;
+    }
     function renderFillSlotCandidate(slot, player) {
       const probability = player._fill?.probability || fillSlotProbabilityFromFutureCount(player._fill?.future10 || 0);
       const initials = (playerFullName(player).split(/\s+/).map(x => x.charAt(0)).join('').slice(0, 2) || '?').toUpperCase();
@@ -5305,7 +5479,8 @@ body.assessment-public-mode .assessment-public-only-card {
       lastFillSlotsAnalysis = analysis.slots;
       renderFillSlotsKpis(analysis);
       renderFillSlotsCalendar(analysis);
-      renderFillSlotsDetail(analysis);
+      const detail = document.getElementById('fillSlotsDetail');
+      if (detail && !detail.classList.contains('fill-detail-panel')) renderFillSlotsDetail(analysis);
     }
     function selectFillSlot(slotKey) {
       currentFillSlotKey = slotKey;
@@ -5313,6 +5488,46 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     function getCurrentFillSlot() {
       return (lastFillSlotsAnalysis || []).find(s => s.key === currentFillSlotKey) || (lastFillSlotsAnalysis || [])[0] || null;
+    }
+    function approveFillSlotProposal(proposalKey) {
+      const slot = getCurrentFillSlot();
+      if (!slot) return showAlert('⚠️ Seleziona prima uno slot.', 'warning');
+      const proposal = buildFillSlotMatchProposals(slot).find(p => p.key === proposalKey);
+      if (!proposal) return showAlert('⚠️ Proposta non trovata o non più valida con i dati attuali.', 'warning');
+      const players = proposal.players || [];
+      if (players.length < 4) return showAlert('⚠️ La proposta non ha almeno 4 giocatori disponibili.', 'warning');
+      const type = proposal.group?.matchType || (document.getElementById('fillSlotGenderFilter')?.value === 'M' ? 'maschile' : (document.getElementById('fillSlotGenderFilter')?.value === 'F' ? 'femminile' : 'mista'));
+      currentMatchContext = {
+        date: slot.date,
+        time: slot.timeStart,
+        endTime: slot.timeEnd,
+        field: slot.field,
+        type,
+        alreadyBooked: [],
+        playersNeeded: 4,
+        availablePlayers: players,
+        suggested: players,
+        preferNoFuture: true,
+        sourceGroupId: proposal.group?.id || '',
+        sourceGroupName: proposal.group?.name || proposal.title,
+        sourceGroupFormat: proposal.type === 'savedGroup' ? 'Gruppo salvato' : 'Gruppo potenziale da Riempi slot',
+        fillSlotProposalKey: proposal.key,
+        fillSlotProposalScore: proposal.score,
+        fillSlotProposalType: proposal.type,
+        fillSlotPriorityLabel: slot.priorityLabel || ''
+      };
+      const record = ensureLunchInvitationsForCurrentMatch(players);
+      if (record) {
+        record.status = record.status || 'inviting';
+        record.proposalSource = proposal.sourceLabel;
+        record.proposalScore = Math.round(proposal.score);
+        record.fillSlotPriorityLabel = slot.priorityLabel || '';
+        record.formatName = currentMatchContext.sourceGroupFormat;
+        saveLunchInvitationRecord(record);
+      }
+      switchTab('inviteResponses');
+      renderInviteResponsesDashboard();
+      showAlert('✅ Proposta approvata e aperta in Programmazione Partite. Ora puoi modificare giocatori e gestire gli inviti.', 'success');
     }
     function saveFillSlotCandidateGroup() {
       const slot = getCurrentFillSlot();
@@ -5363,6 +5578,8 @@ body.assessment-public-mode .assessment-public-only-card {
     function createMatchFromFillSlot() {
       const slot = getCurrentFillSlot();
       if (!slot) return showAlert('⚠️ Seleziona prima uno slot.', 'warning');
+      const bestProposal = buildFillSlotMatchProposals(slot)[0];
+      if (bestProposal) return approveFillSlotProposal(bestProposal.key);
       const dateEl = document.getElementById('matchDate');
       const timeEl = document.getElementById('matchTime');
       const fieldEl = document.getElementById('matchField');
@@ -10323,7 +10540,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.152 caricato');
+      console.log('✅ Padel Match Organizer v5.156 caricato');
     });
   
 

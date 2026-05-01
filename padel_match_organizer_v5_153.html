@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.152</title>
+  <title>Padel Match Organizer v5.153</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1072,7 +1072,7 @@
     .availability-card-title { font-weight:bold; color:#1f2937; margin-bottom:4px; }
     .availability-card-meta { color:#667085; font-size:12px; line-height:1.5; }
     .availability-empty { color:#667085; background:#fff; border:1px dashed #cbd5e1; border-radius:12px; padding:14px; }
-    /* v5.152 - Sezione autonoma Riempi slot */
+    /* v5.153 - Sezione autonoma Riempi slot con priorità operative */
     .fill-slots-page { display:grid; gap:14px; }
     .fill-slots-top { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; padding-bottom:12px; border-bottom:1px solid #e1e7ef; }
     .fill-slots-title h2 { margin:0 0 4px; color:var(--primary); }
@@ -2200,7 +2200,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-        <div class="side-nav-subtitle">Match Organizer · v5.152</div>
+        <div class="side-nav-subtitle">Match Organizer · v5.153</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2998,7 +2998,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.152';
+    const APP_VERSION = '5.153';
     const HISTORY_RETENTION_MONTHS = 12;
     document.title = `Padel Match Organizer v${APP_VERSION}`;
     const FIELDS = ['Campo 1', 'Campo 2', 'Campo 3', 'Campo 4'];
@@ -10323,7 +10323,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.152 caricato');
+      console.log('✅ Padel Match Organizer v5.153 caricato');
     });
   
 
