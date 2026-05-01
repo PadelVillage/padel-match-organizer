@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.143 / Riga senza telefono Pre-invio
+
+- La riga "Senza telefono" nel Pre-invio usa un layout dedicato: il pulsante "Apri scheda" resta sotto al nome e non viene più tagliato nelle larghezze intermedie.
+
 ## v5.142 / Responsive riga Pre-invio
 
 - Corretto l'allineamento del pulsante "Apri scheda" nelle righe Pre-invio, evitando tagli del testo su desktop e mantenendo l'azione sotto al nome su mobile/tablet.
