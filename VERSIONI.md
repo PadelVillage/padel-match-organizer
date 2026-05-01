@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.138 / Pre-invio solo livello 0.5
+
+- Il bottone rapido "Pronti 0.5 da inviare" mostra e preseleziona solo soci con livello attuale 0.5.
+- Aggiornati conteggi e testo del Pre-invio per rendere esplicita la routine dedicata ai nuovi soci da autovalutare.
+
 ## v5.137 / Fix scroll lista Pre-invio
 
 - Ripristinato lo scroll interno della lista "Controlla" nel Pre-invio quando sono selezionati fino a 10 soci pronti.

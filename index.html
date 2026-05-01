@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.137</title>
+  <title>Padel Match Organizer v5.138</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1772,7 +1772,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.137</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.138</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -2085,7 +2085,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <input id="assessmentPreSearch" placeholder="nome, telefono o email" oninput="assessmentClearPreQuickFilter(); renderAssessmentPrePanel()" />
               </div>
               <div class="assessment-pre-quick-actions" aria-label="Ricerche rapide pre-invio">
-                <button type="button" id="assessmentQuickReady" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('ready')">Pronti da inviare</button>
+                <button type="button" id="assessmentQuickReady" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('ready')">Pronti 0.5 da inviare</button>
                 <button type="button" id="assessmentQuickNeedsPrep" class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('needsPrep')">Token da registrare</button>
                 <button type="button" id="assessmentQuickNoPhone" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('noPhone')">Senza telefono</button>
               </div>
@@ -7539,7 +7539,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       const notCompleted = all.filter(m => { const rec = getAssessmentTokenRecord(m.id); return rec && !getAssessmentResponseByToken(rec.token); });
       const readyToSend = notCompleted.filter(m => {
         const rec = getAssessmentTokenRecord(m.id);
-        return !!(m.phone && rec && rec.registeredToSupabase && rec.status !== 'sent');
+        return !!(isLevelZeroPointFive(m) && m.phone && rec && rec.registeredToSupabase && rec.status !== 'sent');
       });
       const sentToday = getAssessmentRequestsSentTodayCount();
       const kpi = (label, value, note='') => `<div class="assessment-kpi"><div class="kpi-label">${escapeHtml(label)}</div><div class="kpi-value">${escapeHtml(value)}</div>${note ? `<div class="muted">${escapeHtml(note)}</div>` : ''}</div>`;
@@ -7547,7 +7547,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
         kpi('Soci nel filtro', all.length),
         kpi('Token presenti', withToken.length),
         kpi('Registrati Supabase', registered.length),
-        kpi('Pronti da inviare', readyToSend.length),
+        kpi('Pronti 0.5 da inviare', readyToSend.length),
         kpi('Richieste oggi', `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`),
         kpi('Risposte ricevute', completed.length)
       ].join('');
@@ -9287,7 +9287,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.137 caricato');
+      console.log('✅ Padel Match Organizer v5.138 caricato');
     });
   
 
@@ -9492,7 +9492,7 @@ Per confermare scrivi ELIMINA.`);
         if (statusFilter === 'needsPrep') return info.preStatus === 'missingToken' || info.preStatus === 'unregistered';
         return info.preStatus === statusFilter;
       });
-      if (statusFilter === 'ready') rows = rows.slice(0, 10);
+      if (statusFilter === 'ready') rows = rows.filter(isLevelZeroPointFive).slice(0, 10);
       return rows;
     }
     function assessmentSelectPreByStatus(status) {
@@ -9633,7 +9633,7 @@ Per confermare scrivi ELIMINA.`);
         renderAssessmentOpsDashboard();
         return;
       }
-      const headerNote = statusValue === 'ready' ? `${rows.length} risultati · massimo 10 pronti da inviare` : (statusValue === 'needsPrep' ? `${rows.length} token da registrare` : (statusValue === 'noPhone' ? `${rows.length} senza telefono` : `${rows.length} risultati`));
+      const headerNote = statusValue === 'ready' ? `${rows.length} risultati livello 0.5 · massimo 10 pronti da inviare` : (statusValue === 'needsPrep' ? `${rows.length} token da registrare` : (statusValue === 'noPhone' ? `${rows.length} senza telefono` : `${rows.length} risultati`));
       let headerAction = '';
       if (statusValue === 'needsPrep') {
         headerAction = `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSelectPreByStatus('needsPrep')">☑️ Seleziona tutti token da registrare</button>`;
