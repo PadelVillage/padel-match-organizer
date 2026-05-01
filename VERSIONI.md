@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.140 / Post-invio più leggibile e sync a sessione
+
+- Ridisegnata la riga del Post-invio con intestazione socio/stato/azioni e dettagli risposta in blocchi compatti.
+- Il pulsante "Aggiorna risposte" torna rosso a ogni ricarica pagina finché non viene eseguita una sincronizzazione Supabase nella sessione corrente.
+
 ## v5.139 / Flusso unico 0.5 da inviare
 
 - Rimosso il bottone rapido separato "Token da registrare" dal Pre-invio.
