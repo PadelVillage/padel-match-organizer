@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.140</title>
+  <title>Padel Match Organizer v5.141</title>
   <meta property="og:title" content="Autovalutazione livello padel" />
   <meta property="og:description" content="Richiede meno di 2 minuti. Il livello sarà controllato dallo staff." />
   <meta property="og:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
@@ -1847,7 +1847,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-header">
         <div>
           <div class="side-nav-title">🎾 Padel Village</div>
-          <div class="side-nav-subtitle">Match Organizer · v5.140</div>
+          <div class="side-nav-subtitle">Match Organizer · v5.141</div>
         </div>
         <button class="side-nav-close" onclick="toggleSidebar(false)">✕</button>
       </div>
@@ -9364,7 +9364,7 @@ Per confermare scrivi ELIMINA.`);
       analyzeSlots();
       renderInitialDashboard();
       renderPlayerAvailabilityPreview();
-      console.log('✅ Padel Match Organizer v5.140 caricato');
+      console.log('✅ Padel Match Organizer v5.141 caricato');
     });
   
 
@@ -9572,6 +9572,31 @@ Per confermare scrivi ELIMINA.`);
       if (statusFilter === 'ready') rows = rows.slice(0, 10);
       return rows;
     }
+    function assessmentPreEmptyMessage(statusValue, searchValue='') {
+      if (statusValue === 'ready') {
+        const level05 = assessmentAllActiveMembers().filter(isLevelZeroPointFive);
+        const noPhone = level05.filter(member => assessmentRecordFor(member).preStatus === 'noPhone').length;
+        const alreadySent = level05.filter(member => assessmentRecordFor(member).preStatus === 'sentNoResponse').length;
+        const alreadyResponded = level05.filter(member => {
+          const info = assessmentRecordFor(member);
+          return info.preStatus === 'responded' || info.applied;
+        }).length;
+        return `<div class="assessment-empty">
+          <strong>Nessun socio 0.5 da preparare o inviare.</strong><br>
+          <span class="muted">Il click è stato registrato, ma non ci sono candidati livello 0.5 disponibili in questo momento.</span>
+          <div class="assessment-post-summary-grid" style="margin-top:10px;">
+            <div><span>Livello 0.5 totali</span><b>${escapeHtml(String(level05.length))}</b></div>
+            <div><span>Senza telefono</span><b>${escapeHtml(String(noPhone))}</b></div>
+            <div><span>Già inviati</span><b>${escapeHtml(String(alreadySent))}</b></div>
+            <div><span>Già risposti/applicati</span><b>${escapeHtml(String(alreadyResponded))}</b></div>
+          </div>
+        </div>`;
+      }
+      const hint = (searchValue && statusValue)
+        ? `<br><span class="muted">Hai cercato “${escapeHtml(searchValue)}” con una ricerca rapida attiva. Prova a scrivere di nuovo nel campo ricerca o scegli un altro bottone.</span>`
+        : '';
+      return `<div class="assessment-empty">Nessun socio trovato con questi filtri.${hint}</div>`;
+    }
     function assessmentSelectPreByStatus(status) {
       document.querySelectorAll('.assessment-pre-check').forEach(el => {
         const rowStatus = el.getAttribute('data-status') || '';
@@ -9710,10 +9735,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (!rows.length) {
         const searchValue = cleanCell(document.getElementById('assessmentPreSearch')?.value || '');
-        const hint = (searchValue && statusValue)
-          ? `<br><span class="muted">Hai cercato “${escapeHtml(searchValue)}” con una ricerca rapida attiva. Prova a scrivere di nuovo nel campo ricerca o scegli un altro bottone.</span>`
-          : '';
-        list.innerHTML = `<div class="assessment-empty">Nessun socio trovato con questi filtri.${hint}</div>`;
+        list.innerHTML = assessmentPreEmptyMessage(statusValue, searchValue);
         renderAssessmentPreQueue();
         renderAssessmentPreSelectedSummary();
         renderAssessmentOpsDashboard();

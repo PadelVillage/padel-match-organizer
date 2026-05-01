@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.141 / Feedback bottone 0.5 da inviare
+
+- Quando il bottone "0.5 da inviare" non trova candidati, il Pre-invio mostra un messaggio esplicito con riepilogo dei soci 0.5 invece del generico "nessun socio trovato".
+
 ## v5.140 / Post-invio più leggibile e sync a sessione
 
 - Ridisegnata la riga del Post-invio con intestazione socio/stato/azioni e dettagli risposta in blocchi compatti.
