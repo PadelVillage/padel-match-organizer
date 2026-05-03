@@ -69,6 +69,16 @@ Quando una proposta da richiesta deve passare a Chiudi Partite, l'app conta solo
 
 Il bottone `Crea in Chiudi Partite` resta grigio e non cliccabile finche il totale non arriva almeno a 4. Se i presenti sono 2, servono almeno altri 2 accettati. Se il totale e' 3, la proposta non puo' essere inviata a Chiudi Partite. Se lo staff accetta 6, 7 o 8 giocatori, tutti gli accettati entrano nella rosa operativa da gestire in Chiudi Partite. L'algoritmo non deve completare automaticamente con candidati non accettati.
 
+## Fonte slot potenziali
+
+Da v5.233 gli slot teorici non devono essere inventati da fasce standard hardcoded. La fonte comune e' `potentialSlotSchedule`, configurata nella sezione DATI (in/out) e documentata in `docs/slot-potenziali.md`.
+
+Il calendario Apri Partite e la Dashboard devono calcolare gli slot liberi con la stessa regola:
+
+`slot potenziali configurati - prenotazioni/occupazioni Matchpoint importate = slot liberi reali`
+
+Le logiche di ranking candidati, gruppi staff, richieste giocatore e creazione in Chiudi Partite restano separate da questa configurazione: usano gli slot liberi risultanti, ma non devono duplicare la griglia.
+
 ## Priorita slot
 
 La priorita dello slot serve all'algoritmo, non deve necessariamente essere visibile in ogni card. Risponde alla domanda: quale buco conviene provare a riempire prima?
