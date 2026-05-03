@@ -41,7 +41,8 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 - `padel_match_organizer_v5_166.html`: versione di riallineamento conservativa, superata perche non conteneva l'ultima grafica approvata Giocatori.
 - `padel_match_organizer_v5_167.html`: versione ricostruita dalla chat per Giocatori/Gruppi staff su base stabile 5.163.
 - `padel_match_organizer_v5_168.html`: raffinamento Database giocatori; tolto Livello 0.5 da Attenzione dati, resta nel filtro Livello.
-- `padel_match_organizer_v5_169.html`: raffinamento Database giocatori; scheda socio aperta come overlay sopra elenco giocatori.\n- `padel_match_organizer_v5_176.html`: raffinamento Giocatori/Gruppi; nuovo socio, nuovo gruppo, dettaglio e modifica gruppo aperti in overlay.
+- `padel_match_organizer_v5_169.html`: raffinamento Database giocatori; scheda socio aperta come overlay sopra elenco giocatori.
+- `padel_match_organizer_v5_176.html`: raffinamento Giocatori/Gruppi; nuovo socio, nuovo gruppo, dettaglio e modifica gruppo aperti in overlay.
 - `padel_match_organizer_v5_177.html`: restyling calendario Riempi Slot, superata da v5.178; non pubblicata.
 - `padel_match_organizer_v5_178.html`: evoluzione Proposte Partite con flusso operativo in 3 passaggi, superata da v5.179; non pubblicata.
 - `padel_match_organizer_v5_179.html`: correzione menu Proposte Partite come voce principale autonoma e ottimizzazione apertura slot; superata da v5.180; non pubblicata.
@@ -131,6 +132,9 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 - `padel_match_organizer_v5_263.html`: rifinitura Post-invio su base v5.262: il pulsante `Aggiorna risposte` diventa stabile, senza cambio rosso/verde; sotto al pulsante compare `Ultimo controllo` con data e ora dell'ultimo click. Nessuna modifica alla sincronizzazione Supabase; da validare manualmente e non pubblicata.
 - `padel_match_organizer_v5_264.html`: rifinitura Autovalutazioni su base v5.263: nella modale `Modifica valutazione` resta solo `Salva modifica`, rimuovendo `Salva e applica`; aggiunta pulizia mirata per Alan Ceschin/Ceskin, che rimuove il falso stato `Inviato senza risposta` se non esiste risposta collegata. Da validare manualmente e non pubblicata.
 - `padel_match_organizer_v5_265.html`: correzione Post-invio su base v5.264: il bottone `Aggiorna risposte` viene forzato visibile sopra `Ultimo controllo`; la ricerca libera mostra anche situazioni storiche/gia applicate quando si cerca nome, cognome o telefono. Da validare manualmente e non pubblicata.
+- `padel_match_organizer_v5_269.html`: pubblicata su GitHub Pages; per Giocatori/Gruppi rimuove `Pranzo` da Tipo partita in filtro e scheda gruppo, lasciandolo solo come fascia oraria dove pertinente.
+- `padel_match_organizer_v5_268.html`: candidata locale non pubblicata per Giocatori; rimuove i KPI alti `Risultati filtro` e `Da completare` dal Database giocatori e riadatta la griglia a 4 indicatori.
+- `padel_match_organizer_v5_267.html`: candidata locale non pubblicata per Giocatori/Gruppi; alza gli overlay della sezione sopra il menu laterale desktop, evitando click intercettati dalla sidebar.
 - `padel_match_organizer_v5_266.html`: micro-correzione Post-invio su base v5.265: il filtro `Livello applicato` usa la stessa logica storica della riga e include anche i giocatori con livello gia' applicato da autovalutazioni precedenti; se esiste una nuova risposta corrente non ancora applicata, prevale lo stato operativo `Pronta da applicare`/`Da verificare staff`. Validata manualmente dall'utente e pubblicata su GitHub Pages.
 
 ## Checklist prima di creare una nuova versione globale
