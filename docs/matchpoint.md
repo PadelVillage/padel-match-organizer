@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: in prova locale su v5.236.
+Stato: rifinitura UX backup su v5.249, da validare manualmente.
 
 ## Obiettivo
 
@@ -18,6 +18,18 @@ La sezione deve essere una schermata operativa rapida per importare dati e crear
   - Storico Matchpoint;
   - Backup dati.
 - Seconda riga con riquadro largo `Slot potenziali Matchpoint`, aperto di default senza barra di apertura.
+
+## Backup dati v5.249
+
+Il box `Backup dati` deve restare un controllo rapido, non un report.
+
+Da v5.249:
+
+- il bottone principale e' neutro e si chiama `Scarica backup`;
+- dopo il download non viene mostrato nessun riquadro riepilogativo sotto al box;
+- il feedback `Backup scaricato` viene mostrato grande e leggibile sotto i bottoni;
+- non devono comparire nella sezione DATI conteggi lunghi, liste di contenuti tecnici, nome file o riepiloghi interni del file;
+- il ripristino resta disponibile come azione separata nello stesso box.
 
 ## Slot potenziali v5.234
 
@@ -37,6 +49,8 @@ Stati colore dei bottoni DATI:
 - blu: pronto;
 - arancione: file, immagine o modifiche selezionate ma non ancora confermate;
 - verde: operazione salvata/importata.
+
+Eccezione: il bottone `Scarica backup` resta neutro anche dopo la creazione del backup, per non dare alla sezione DATI un peso visivo da report.
 
 Questa griglia e' la fonte comune per:
 
