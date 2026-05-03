@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: rifinitura UX backup su v5.249, da validare manualmente.
+Stato: pubblicata in v5.249.
 
 ## Obiettivo
 
