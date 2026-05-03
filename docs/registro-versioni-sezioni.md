@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-02
+Ultimo aggiornamento: 2026-05-03
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -26,7 +26,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 | Autovalutazioni / dashboard | `mockup/padel-dashboard-mockup.html`; viewer `mockup/padel-players-assessment-viewer.html` | **Da confermare** | La 164 non va considerata definitiva. Serve recuperare la versione validata della chat dedicata. |
 | Programmazione Partite / Partite aperte | Da confermare | **Da confermare** | Riempi Slot dovra' creare proposte verso Partite Aperte, non direttamente verso invio richiesta. |
 | WhatsApp / messaggi | Da confermare | **Da confermare** | Nessun invio automatico senza conferma manuale. |
-| Matchpoint import | App storica nelle versioni 151-165 | **Da confermare** | Import Excel deve aggiornare automaticamente giocatori, prenotazioni, storico, Riempi Slot e disponibilita'. |
+| Matchpoint / DATI (in/out) | `padel_match_organizer_v5_228.html`; `docs/matchpoint.md` | **In prova locale su v5.228, validata con file locali da confermare manualmente** | Sezione resa operativa e minimale: una sola voce menu `DATI (in/out)` senza sottomenu, 4 box per Clienti Matchpoint, Prenotazioni future Matchpoint, Storico Matchpoint e Backup dati. Rimossi dalla sezione statistiche, riepiloghi lunghi e consulta storico; lo stato dati resta demandato alla Dashboard. Aggiunta validazione durante import: controllo tipo file e controllo dati parsati prima del salvataggio locale. v5.228 rende proporzionato l'avviso sui telefoni mancanti clienti per non chiedere conferma su pochi casi fisiologici. |
 
 ## Versioni da non usare come base globale
 
@@ -90,6 +90,8 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 - `padel_match_organizer_v5_224.html`: seconda fase performance Apri Partite: nessun loading visibile nella sezione, contesto candidati riusato in memoria e pre-riscaldato dopo il calendario; pubblicata e validata come base stabile attuale.
 - `padel_match_organizer_v5_225.html`: rimpaginazione grafica del menu laterale con capitoli numerati nell'ordine operativo indicato, sottomenu chiusi e apertura a fisarmonica; WhatsApp spostato sotto Chiudi Partite come supporto operativo; da validare manualmente e non ancora pubblicata.
 - `padel_match_organizer_v5_226.html`: correzione scroll menu laterale: Dashboard e Apri Partite si aprono dalla parte alta della vista resettando `.main-content`; lo stesso criterio viene usato dal ritorno in alto di Apri Partite. Rimossa dalla Dashboard la barra superiore con titolo/badge mostrata sopra i contenuti; da validare manualmente e non ancora pubblicata.
+- `padel_match_organizer_v5_227.html`: revisione locale sezione Matchpoint in `DATI (in/out)`: menu senza sottomenu, quattro box operativi per import clienti/prenotazioni/storico e backup, rimozione contenuti statistici dalla sezione e validazione dei dati durante import prima dei salvataggi; da validare manualmente e non pubblicata.
+- `padel_match_organizer_v5_228.html`: rifinitura validazione clienti su v5.227: il controllo telefoni mancanti chiede conferma solo se i mancanti superano una soglia significativa. Test locale con `dati scaricati/out.xlsx`, `out (1).xlsx`, `out (2).xlsx`: clienti, prenotazioni future e storico passano nei box corretti; combinazioni sbagliate vengono bloccate o richiedono conferma.
 
 ## Checklist prima di creare una nuova versione globale
 
