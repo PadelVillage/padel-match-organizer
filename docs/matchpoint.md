@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.309.
+Stato: pubblicata in v5.310.
 
 ## Obiettivo
 
@@ -18,6 +18,7 @@ La sezione deve essere una schermata operativa rapida per importare dati e crear
   - Storico Matchpoint;
   - Backup dati.
 - Sotto i bottoni dei primi tre box compare il feedback operativo dell'ultimo import con data e ora, non una scritta generica.
+- Sotto i bottoni del box Backup compare il feedback operativo dell'ultimo backup scaricato con data e ora.
 - Seconda riga con riquadro largo `Slot potenziali Matchpoint`, aperto di default senza barra di apertura.
 
 ## Feedback import v5.309
@@ -28,6 +29,14 @@ Nei box `Clienti Matchpoint`, `Prenotazioni future Matchpoint` e `Storico Matchp
 
 La fonte e' lo storico locale degli import (`dailyDiffHistory`) gia aggiornato dalle funzioni di import. Il feedback resta sintetico: non deve diventare un riepilogo, non deve mostrare metriche e non deve duplicare la Dashboard.
 
+## Feedback backup v5.310
+
+Nel box `Backup dati`, il testo verde sotto i bottoni deve mostrare quando il file di backup e' stato scaricato o salvato localmente, nel formato operativo:
+
+`Ultimo backup scaricato: gg/mm/aaaa • hh:mm`
+
+La fonte e' `lastBackupInfo`, aggiornata solo quando il download/salvataggio del backup viene avviato con successo. Il feedback resta sintetico e non deve mostrare nome file, contenuti del backup, conteggi o metriche.
+
 ## Backup dati v5.249
 
 Il box `Backup dati` deve restare un controllo rapido, non un report.
@@ -36,7 +45,7 @@ Da v5.249:
 
 - il bottone principale e' neutro e si chiama `Scarica backup`;
 - dopo il download non viene mostrato nessun riquadro riepilogativo sotto al box;
-- il feedback `Backup scaricato` viene mostrato grande e leggibile sotto i bottoni;
+- da v5.310 il feedback sotto i bottoni mostra `Ultimo backup scaricato` con data e ora del download/salvataggio del file;
 - non devono comparire nella sezione DATI conteggi lunghi, liste di contenuti tecnici, nome file o riepiloghi interni del file;
 - il ripristino resta disponibile come azione separata nello stesso box.
 
