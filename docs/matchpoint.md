@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.249.
+Stato: pubblicata in v5.309.
 
 ## Obiettivo
 
@@ -17,7 +17,16 @@ La sezione deve essere una schermata operativa rapida per importare dati e crear
   - Prenotazioni future Matchpoint;
   - Storico Matchpoint;
   - Backup dati.
+- Sotto i bottoni dei primi tre box compare il feedback operativo dell'ultimo import con data e ora, non una scritta generica.
 - Seconda riga con riquadro largo `Slot potenziali Matchpoint`, aperto di default senza barra di apertura.
+
+## Feedback import v5.309
+
+Nei box `Clienti Matchpoint`, `Prenotazioni future Matchpoint` e `Storico Matchpoint`, il testo verde sotto il bottone deve mostrare la data e l'orario dell'ultimo import salvato, nel formato operativo:
+
+`Ultimo import: gg/mm/aaaa • hh:mm`
+
+La fonte e' lo storico locale degli import (`dailyDiffHistory`) gia aggiornato dalle funzioni di import. Il feedback resta sintetico: non deve diventare un riepilogo, non deve mostrare metriche e non deve duplicare la Dashboard.
 
 ## Backup dati v5.249
 
