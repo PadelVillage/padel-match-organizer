@@ -504,6 +504,7 @@ Da raffinare:
 - v5.207: le richieste salvate con data/orario passati vengono marcate come scadute e non alimentano piu la coda Richieste salvate ne il segnale R sul calendario.
 - v5.208: data e orario della Richiesta giocatore sono opzionali; una richiesta senza slot resta come appunto operativo riapribile/eliminabile e non produce proposta finche non viene completata con data/orario futuri.
 - v5.209: calendario interno di Apri Partite reso responsive: la griglia si adatta alla larghezza disponibile e non usa piu min-width fisso con sbordo orizzontale.
+- v5.272: Chiudi Partite diventa una tabella operativa: ogni riga e' una partita gia' creata da Apri Partite, ordinabile e filtrabile per giorno, slot, tipologia, livello e priorita temporale. I dettagli giocatori/inviti/risposte restano nella scheda partita in overlay. Le partite chiuse, annullate o passate non occupano la vista principale.
 - v5.156: introdotta regola anti-spam candidati, massimo 2 slot per giocatore in giorni diversi.
 - v5.157: aggiunto primo uso delle disponibilita dichiarate da autovalutazione nello score giocatore-slot e creata questa specifica.
 - post v5.157: definito il modello operativo slot orario multi-campo, calendario senza numeri candidati, indicatori G/A, selezione campo nella scheda e classifica candidati 1-12.
