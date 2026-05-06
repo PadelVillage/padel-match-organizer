@@ -3644,10 +3644,10 @@ body.assessment-public-mode .assessment-public-only-card {
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
     <form class="pmo-login-card" onsubmit="return handleStaffLoginSubmit(event)">
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
-      <p>Accesso staff. Usa l'email personale quando sara attivata in Amministrazione, oppure la password login beta.</p>
+      <p>Accesso operatori. Usa l'email personale quando sara attivata in Amministrazione, oppure la password accesso beta.</p>
       <div class="pmo-login-row">
         <div class="pmo-login-field">
-          <label for="pmoStaffEmail">Email staff</label>
+          <label for="pmoStaffEmail">Email utente</label>
           <input id="pmoStaffEmail" type="email" autocomplete="username" placeholder="nome@padelvillage.it" />
         </div>
         <div class="pmo-login-field">
@@ -3658,7 +3658,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-login-divider">oppure accesso beta</div>
       <div class="pmo-login-secondary">
         <div class="pmo-login-field">
-          <label for="pmoStaffPassword">Password login beta</label>
+          <label for="pmoStaffPassword">Password accesso beta</label>
           <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
         </div>
       </div>
@@ -4438,7 +4438,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title">
           <h2>Amministrazione</h2>
-          <p>Gestione utenti staff, ruoli, permessi e accesso sicuro tramite Supabase Auth.</p>
+          <p>Gestione utenti autorizzati, ruoli, permessi e accesso sicuro tramite Supabase.</p>
         </div>
         <div id="pmoAdminKpis" class="admin-grid"></div>
 
@@ -4446,7 +4446,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="admin-panel-head">
             <div>
               <h3>Accesso sicuro</h3>
-              <p>Stato della sessione corrente e passaggio dalla password login beta agli utenti personali.</p>
+              <p>Stato della sessione corrente e passaggio dalla password accesso beta agli utenti personali.</p>
             </div>
             <div class="admin-actions">
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshMyStaffProfile()">Aggiorna profilo</button>
@@ -4459,7 +4459,7 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="admin-panel">
           <div class="admin-panel-head">
             <div>
-              <h3>Utenti staff</h3>
+              <h3>Utenti autorizzati</h3>
               <p>Crea o aggiorna le email autorizzate. Poi la persona potra registrarsi dal login con la stessa email.</p>
             </div>
           </div>
@@ -4491,7 +4491,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">Salva utente</button>
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoClearStaffUserForm()">Svuota modulo</button>
           </div>
-          <div class="admin-note">Nota operativa: il profilo autorizza l'email. La password personale viene scelta dalla persona con “Crea accesso” nella schermata di login, oppure creando l'utente in Supabase Auth.</div>
+          <div class="admin-note">Nota operativa: il profilo autorizza l'email. La password personale viene scelta dalla persona con “Crea accesso” nella schermata iniziale, oppure creando l'utente in Supabase.</div>
           <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Inserisci il PIN staff e carica gli utenti.</div>
           <div id="pmoStaffUsersTable"></div>
         </div>
@@ -4898,7 +4898,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const emailInput = document.getElementById('pmoStaffEmail');
       const passwordInput = document.getElementById('pmoStaffAuthPassword');
       try {
-        if (!email || !password) throw new Error('Inserisci email staff e password personale.');
+        if (!email || !password) throw new Error('Inserisci email utente e password personale.');
         const authData = await pmoSupabaseAuthFetch('token?grant_type=password', { email, password });
         pmoStoreSupabaseStaffSession(authData);
         const profile = await pmoLoadMyStaffProfile();
@@ -17549,10 +17549,22 @@ Per confermare scrivi ELIMINA.`);
 	    function pmoStatusLabel(status) {
 	      return ({ invited:'Invitato', active:'Attivo', paused:'Disattivato' })[status] || status || '-';
 	    }
+	    function pmoPermissionLabel(permission) {
+	      return ({
+	        manage_users:'Gestione utenti',
+	        cloud_sync:'Sincronizzazione dati cloud',
+	        routines:'Routine',
+	        members_write:'Modifica soci',
+	        matches_write:'Modifica partite',
+	        messages_write:'Messaggi WhatsApp',
+	        data_export:'Esportazione/importazione dati',
+	        read_all:'Lettura completa'
+	      })[permission] || String(permission || '').replace(/_/g, ' ');
+	    }
 	    function pmoCurrentSessionSummary() {
 	      const stored = safeLoad(PMO_STAFF_AUTH_KEY, null);
 	      const profile = pmoStaffProfile || safeLoad(PMO_STAFF_PROFILE_KEY, null);
-	      if (pmoIsStaffProfileActive(profile)) return { mode:'Supabase Auth', user:profile.email || '-', role:pmoRoleLabel(profile.role), status:pmoStatusLabel(profile.status), profile };
+	      if (pmoIsStaffProfileActive(profile)) return { mode:'Accesso personale Supabase', user:profile.email || '-', role:pmoRoleLabel(profile.role), status:pmoStatusLabel(profile.status), profile };
 	      if (stored?.mode === 'legacy_password') return { mode:'Password beta', user:'Staff condiviso', role:'Accesso beta', status:'Attivo', profile:null };
 	      return { mode:'Non autenticato', user:'-', role:'-', status:'-', profile:null };
 	    }
@@ -17584,7 +17596,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const session = pmoCurrentSessionSummary();
 	      const permissions = session.profile?.permissions || {};
-	      const permissionLabels = Object.entries(permissions).filter(([,value]) => !!value).map(([key]) => key.replace(/_/g, ' ')).join(', ') || 'Permessi non caricati';
+	      const permissionLabels = Object.entries(permissions).filter(([,value]) => !!value).map(([key]) => pmoPermissionLabel(key)).join(', ') || 'Permessi non caricati';
 	      target.innerHTML = `
 	        <div class="admin-table-wrap"><table class="admin-table"><tbody>
 	          <tr><th>Metodo accesso</th><td>${escapeHtml(session.mode)}</td></tr>
@@ -17593,7 +17605,7 @@ Per confermare scrivi ELIMINA.`);
 	          <tr><th>Stato</th><td><span class="admin-status-pill ${escapeHtml(session.profile?.status || 'active')}">${escapeHtml(session.status)}</span></td></tr>
 	          <tr><th>Permessi</th><td>${escapeHtml(permissionLabels)}</td></tr>
 	        </tbody></table></div>
-	        <div class="admin-note">Finche usi la password login beta, chi conosce quella password entra come staff condiviso. Con Supabase Auth ogni persona avra email, password e permessi propri.</div>
+	        <div class="admin-note">Finche usi la password accesso beta, chi conosce quella password entra come utente condiviso. Con Supabase ogni persona avra email, password e permessi propri.</div>
 	      `;
 	    }
 	    function pmoSetAdminStatus(message, type='info') {
@@ -17624,7 +17636,10 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoFillStaffUserForm(email) {
 	      const user = (pmoAdminState.staffUsers || []).find(u => String(u.email || '') === String(email || ''));
-	      if (!user) return;
+	      if (!user) {
+	        pmoSetAdminStatus('Utente non trovato nella lista caricata. Clicca “Carica utenti” e riprova.', 'warning');
+	        return;
+	      }
 	      const emailEl = document.getElementById('pmoStaffUserEmail'); if (emailEl) emailEl.value = user.email || '';
 	      const nameEl = document.getElementById('pmoStaffUserName'); if (nameEl) nameEl.value = user.full_name || '';
 	      const roleEl = document.getElementById('pmoStaffUserRole'); if (roleEl) roleEl.value = user.role || 'staff';
@@ -17633,19 +17648,29 @@ Per confermare scrivi ELIMINA.`);
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        input.checked = !!permissions[input.dataset.adminPermission];
 	      });
+	      pmoSetAdminStatus(`Utente caricato nel modulo: ${user.email || ''}. Ora puoi modificare e cliccare “Salva utente”.`, 'info');
+	      requestAnimationFrame(() => {
+	        const target = document.getElementById('pmoStaffUserEmail');
+	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
+	        else target?.scrollIntoView?.({ behavior:'smooth', block:'center' });
+	        if (target) {
+	          target.focus();
+	          target.select?.();
+	        }
+	      });
 	      showAlert('Utente caricato nel modulo.', 'info');
 	    }
 	    async function pmoLoadStaffUsers() {
 	      try {
 	        const adminPin = pmoRequireAdminPin('leggere gli utenti staff');
 	        if (!adminPin) return;
-	        pmoSetAdminStatus('Carico utenti staff...', 'info');
+	        pmoSetAdminStatus('Carico utenti autorizzati...', 'info');
 	        const rows = await pmoCloudRpc('pmo_get_staff_users_admin', { p_admin_pin: adminPin });
 	        pmoAdminState.staffUsers = Array.isArray(rows) ? rows : [];
 	        pmoAdminState.lastStaffReadAt = new Date().toISOString();
 	        save('pmoAdminState', pmoAdminState);
 	        renderPmoAdministration();
-	        pmoSetAdminStatus(`✅ Utenti staff caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
+	        pmoSetAdminStatus(`✅ Utenti autorizzati caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Lettura utenti non riuscita: ' + (err.message || err), 'danger');
 	      }
@@ -17658,8 +17683,8 @@ Per confermare scrivi ELIMINA.`);
 	        const fullName = compactSpaces(document.getElementById('pmoStaffUserName')?.value || '');
 	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
 	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
-	        if (!email) return showAlert('Inserisci email staff.', 'warning');
-	        pmoSetAdminStatus('Salvo utente staff...', 'info');
+	        if (!email) return showAlert('Inserisci email utente.', 'warning');
+	        pmoSetAdminStatus('Salvo utente autorizzato...', 'info');
 	        const result = await pmoCloudRpc('pmo_upsert_staff_user_admin', {
 	          p_admin_pin: adminPin,
 	          p_email: email,
@@ -17682,9 +17707,12 @@ Per confermare scrivi ELIMINA.`);
 	      try {
 	        const adminPin = pmoRequireAdminPin('aggiornare lo stato utente');
 	        if (!adminPin) return;
+	        const statusText = pmoStatusLabel(status).toLowerCase();
+	        pmoSetAdminStatus(`Aggiorno stato utente: ${email} -> ${statusText}...`, 'info');
 	        const result = await pmoCloudRpc('pmo_set_staff_user_status_admin', { p_admin_pin: adminPin, p_email: email, p_status: status });
 	        if (!result || result.ok !== true) throw new Error(result?.error || 'Aggiornamento stato non riuscito.');
 	        await pmoLoadStaffUsers();
+	        pmoSetAdminStatus(`✅ Stato aggiornato: ${email} ora è ${statusText}.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Stato utente non aggiornato: ' + (err.message || err), 'danger');
 	      }
@@ -17698,7 +17726,10 @@ Per confermare scrivi ELIMINA.`);
 	        return;
 	      }
 	      const rows = users.map(user => {
-	        const activePermissions = Object.entries(user.permissions || {}).filter(([,value]) => !!value).map(([key]) => key.replace(/_/g, ' ')).join(', ') || '-';
+	        const activePermissions = Object.entries(user.permissions || {}).filter(([,value]) => !!value).map(([key]) => pmoPermissionLabel(key)).join(', ') || '-';
+	        const statusAction = user.status === 'active'
+	          ? `<button class="btn-warning small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'paused')">Disattiva</button>`
+	          : `<button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'active')">Attiva</button>`;
 	        return `<tr>
 	          <td><strong>${escapeHtml(user.full_name || '-')}</strong><div class="routine-mini">${escapeHtml(user.email || '')}</div></td>
 	          <td><span class="admin-role-pill">${escapeHtml(pmoRoleLabel(user.role))}</span></td>
@@ -17707,8 +17738,7 @@ Per confermare scrivi ELIMINA.`);
 	          <td>${escapeHtml(pmoFormatDateTime(user.last_seen_at || user.updated_at))}</td>
 	          <td><div class="admin-actions">
 	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoFillStaffUserForm('${escapeJs(user.email || '')}')">Modifica</button>
-	            <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'active')">Attiva</button>
-	            <button class="btn-warning small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'paused')">Disattiva</button>
+	            ${statusAction}
 	          </div></td>
 	        </tr>`;
 	      }).join('');
@@ -17733,7 +17763,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const rows = Array.isArray(pmoAdminState.auditLog) ? pmoAdminState.auditLog : [];
 	      if (!rows.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun evento caricato.</strong><br>Clicca “Registro attivita” nel pannello Utenti staff.</div>';
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun evento caricato.</strong><br>Clicca “Registro attivita” nel pannello Utenti autorizzati.</div>';
 	        return;
 	      }
 	      const html = rows.map(row => `<tr>
@@ -17747,11 +17777,11 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoRefreshMyStaffProfile() {
 	      try {
 	        const profile = await pmoLoadMyStaffProfile();
-	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password login beta e' normale.", 'info');
+	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password accesso beta e' normale.", 'info');
 	        renderPmoAdministration();
-	        showAlert('Profilo staff aggiornato.', 'success');
+	        showAlert('Profilo utente aggiornato.', 'success');
 	      } catch (err) {
-	        showAlert('Profilo staff non aggiornato: ' + (err.message || err), 'warning');
+	        showAlert('Profilo utente non aggiornato: ' + (err.message || err), 'warning');
 	      }
 	    }
 	    async function pmoUploadLocalDataToCloud() {
