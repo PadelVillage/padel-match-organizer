@@ -3,7 +3,7 @@
 ## URL
 
 - PROD: https://padelvillage.github.io/padel-match-organizer/
-- TEST: https://padelvillage.github.io/padel-match-organizer/?env=test
+- TEST: https://padelvillage.github.io/padel-match-organizer/test/?env=test
 
 ## Supabase
 
@@ -21,19 +21,41 @@ Project ref:
 Schema previsto:
 
 ```text
-App senza env=test  -> config.js      -> Supabase PROD
-App con ?env=test   -> config-test.js -> Supabase TEST
+App PROD             -> config.js      -> Supabase PROD
+App TEST in /test/   -> config-test.js -> Supabase TEST
 ```
 
 ## Procedura consigliata
 
 1. Sviluppare nel repo locale lavorando su `index.html`, senza creare nuove copie `padel_match_organizer_v5_*.html`.
-2. Pubblicare/aprire la versione TEST con `?env=test`.
-3. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
-4. Verificare login, routine, permessi, sync e form pubblici su TEST.
-5. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
-6. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
-7. Usare Git/GitHub per storico, commit e tag versione.
+2. Pubblicare automaticamente ogni modifica pronta per verifica nella branch `test-preview`.
+3. La pagina `/test/` carica automaticamente l'ultima versione della branch `test-preview`.
+4. Aprire/verificare la versione TEST con `https://padelvillage.github.io/padel-match-organizer/test/?env=test`.
+5. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
+6. Verificare login, routine, permessi, sync e form pubblici su TEST.
+7. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
+8. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
+9. Usare Git/GitHub per storico, commit e tag versione.
+
+## Regola pubblicazione TEST
+
+Ogni modifica sviluppata deve essere pubblicata automaticamente in TEST appena e' pronta per la verifica di Maurizio.
+
+La branch stabile di collaudo e' `test-preview`. La pagina `/test/` legge automaticamente l'ultima versione pubblicata su quella branch:
+
+```text
+https://padelvillage.github.io/padel-match-organizer/test/?env=test
+```
+
+La pubblicazione TEST serve a vedere e provare le modifiche reali prima della produzione. La regola vale per:
+
+- modifiche dell'interfaccia app;
+- correzioni di flusso e testi;
+- nuove funzioni applicative;
+- SQL, Auth, policy e configurazioni Supabase, sempre prima su Supabase TEST;
+- routine cloud o sincronizzazioni da validare.
+
+PROD non deve ricevere automaticamente le modifiche di TEST. La radice GitHub Pages resta il canale di produzione; la cartella `/test/` e' solo un loader del canale di verifica.
 
 ## Regola autorizzazione PROD
 
@@ -52,7 +74,7 @@ L'autorizzazione deve essere chiara nella conversazione prima dell'intervento su
 
 Nel progetto Supabase TEST:
 
-- Site URL: `https://padelvillage.github.io/padel-match-organizer/?env=test`
+- Site URL: `https://padelvillage.github.io/padel-match-organizer/test/?env=test`
 - Redirect URLs: `https://padelvillage.github.io/padel-match-organizer/*`
 
 ## Setup iniziale Supabase TEST
@@ -86,9 +108,9 @@ Stato attuale: completato il 2026-05-06 sul progetto `cudiqnrrlbyqryrtaprd`.
 
 5. In Project Settings copia Project URL e anon/public key nel file `config-test.js`.
 6. In Authentication > URL Configuration imposta:
-   - Site URL: `https://padelvillage.github.io/padel-match-organizer/?env=test`
+   - Site URL: `https://padelvillage.github.io/padel-match-organizer/test/?env=test`
    - Redirect URLs: `https://padelvillage.github.io/padel-match-organizer/*`
-7. Apri `https://padelvillage.github.io/padel-match-organizer/?env=test`, crea l'accesso con email personale e verifica login staff, recupero password, sync cloud, routine, autovalutazione e feedback post-partita.
+7. Apri `https://padelvillage.github.io/padel-match-organizer/test/?env=test`, crea l'accesso con email personale e verifica login staff, recupero password, sync cloud, routine, autovalutazione e feedback post-partita.
 
 ## Verifica Supabase TEST
 
