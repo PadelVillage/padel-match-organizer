@@ -28,8 +28,8 @@ App TEST in /test/   -> config-test.js -> Supabase TEST
 ## Procedura consigliata
 
 1. Sviluppare nel repo locale lavorando su `index.html`, senza creare nuove copie `padel_match_organizer_v5_*.html`.
-2. Pubblicare automaticamente ogni modifica pronta per verifica nella branch `test`.
-3. GitHub Actions copia `main` alla radice Pages e `test` nella cartella pubblica `/test/`.
+2. Pubblicare automaticamente ogni modifica pronta per verifica nella branch `test-preview`.
+3. GitHub Actions copia `main` alla radice Pages e `test-preview` nella cartella pubblica `/test/`.
 4. Aprire/verificare la versione TEST con `https://padelvillage.github.io/padel-match-organizer/test/?env=test`.
 5. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
 6. Verificare login, routine, permessi, sync e form pubblici su TEST.
@@ -41,7 +41,7 @@ App TEST in /test/   -> config-test.js -> Supabase TEST
 
 Ogni modifica sviluppata deve essere pubblicata automaticamente in TEST appena e' pronta per la verifica di Maurizio.
 
-La branch stabile di collaudo e' `test`. Ogni push su `test` pubblica l'anteprima in:
+La branch stabile di collaudo e' `test-preview`. Ogni push su `test-preview` pubblica l'anteprima in:
 
 ```text
 https://padelvillage.github.io/padel-match-organizer/test/?env=test
