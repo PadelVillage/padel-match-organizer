@@ -1,5 +1,12 @@
 # Versioni
 
+## v5.333 / Accessi staff guidati in TEST
+
+- Ridisegnata in ambiente TEST la sezione Amministrazione > Accessi staff come flusso guidato: autorizza email, crea accesso, lavora con permessi.
+- Semplificata la gestione quotidiana con preset ruolo e riepilogo permessi visibile.
+- Spostate le checkbox avanzate dietro "Personalizza permessi", lasciando invariata la logica Supabase Auth + permessi.
+- Rinominata l'azione principale in "Autorizza email" per chiarire che la password viene scelta dalla persona dalla schermata iniziale.
+
 ## v5.332 / Admin Supabase senza PIN staff
 
 - Rimosso il PIN operativo dalle sezioni Amministrazione, Routine cloud, registrazione token autovalutazione e feedback post-partita.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.330</title>
+  <title>Padel Match Organizer v5.333</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -239,6 +239,34 @@
     .admin-check-row.pending .check-state { color:#667085; }
     .admin-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
     .admin-note { color:#667085; font-size:13px; line-height:1.45; margin-top:8px; }
+    /* v5.333 - TEST: flusso guidato accessi staff */
+    .staff-access-head { align-items:center; }
+    .staff-access-toolbar { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+    .staff-access-flow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:12px 0 16px; }
+    .staff-flow-step { display:grid; grid-template-columns:32px minmax(0,1fr); gap:9px; align-items:start; padding:11px 12px; border:1px solid #dfe8f3; border-radius:8px; background:#fbfdff; }
+    .staff-flow-number { display:grid; place-items:center; width:32px; height:32px; border-radius:999px; background:#e8f0fb; color:var(--primary); font-weight:900; }
+    .staff-flow-step strong { display:block; color:#1f2937; line-height:1.2; }
+    .staff-flow-step span:not(.staff-flow-number) { display:block; color:#667085; font-size:12px; line-height:1.35; margin-top:2px; }
+    .staff-access-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:16px; align-items:start; margin-top:8px; }
+    .staff-access-block { min-width:0; }
+    .staff-block-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #e6edf5; }
+    .staff-block-title h4 { margin:0; color:var(--primary); font-size:16px; }
+    .staff-block-title p { margin:3px 0 0; color:#667085; font-size:13px; }
+    .staff-invite-grid { grid-template-columns:minmax(220px,1.1fr) minmax(200px,1fr) minmax(160px,.7fr) minmax(150px,.65fr); }
+    .staff-role-summary { border:1px solid #dfe8f3; border-radius:8px; background:#f8fbff; padding:11px 12px; margin-top:10px; }
+    .staff-role-summary strong { display:block; color:#1f2937; margin-bottom:6px; }
+    .staff-role-summary .routine-mini { line-height:1.45; }
+    .staff-permission-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .staff-permission-chip { display:inline-flex; align-items:center; min-height:28px; border-radius:999px; padding:5px 8px; background:#eef3fb; color:var(--primary); font-size:12px; font-weight:900; }
+    .staff-permission-chip-muted { background:#f2f4f7; color:#667085; }
+    .staff-access-primary-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:12px; }
+    .staff-access-primary-actions .small-btn, .staff-access-toolbar .small-btn { margin:0; }
+    .staff-permissions-copy { color:#667085; font-size:13px; line-height:1.45; margin-bottom:10px; }
+    .staff-permission-toggle { margin:8px 0 10px; }
+    .staff-permissions-advanced[hidden] { display:none !important; }
+    .staff-login-note { margin-top:12px; padding:11px 12px; border-left:4px solid var(--primary); background:#f8fbff; border-radius:8px; color:#475467; font-size:13px; line-height:1.45; }
+    @media (max-width:1050px) { .staff-access-flow, .staff-access-layout { grid-template-columns:1fr; } .staff-invite-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:680px) { .staff-access-toolbar, .staff-access-primary-actions { justify-content:flex-start; } .staff-invite-grid { grid-template-columns:1fr; } .staff-flow-step { grid-template-columns:28px 1fr; } }
     @media (max-width:1050px) { .admin-grid { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr 1fr; } }
     @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } .admin-check-row { grid-template-columns:1fr; gap:3px; } }
 
@@ -4522,7 +4550,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div id="pmoAdminAuthStatus"></div>
         </div>
 
-        <div class="admin-panel">
+        <div class="admin-panel" id="pmoStaffAccessPanel">
           <div class="admin-panel-head">
             <div>
               <h3>Utenti autorizzati</h3>
@@ -4654,7 +4682,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.332';
+    const APP_VERSION = '5.333';
     const PMO_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     const PMO_PROD_SUPABASE_PROJECT_REF = 'qqbfphyslczzkxoncgex';
     function pmoDetectRuntimeEnv() {
@@ -17802,7 +17830,7 @@ Per confermare scrivi ELIMINA.`);
 	      return ({ owner:'Proprietario', admin:'Admin', staff:'Staff', readonly:'Solo lettura' })[role] || role || '-';
 	    }
 	    function pmoStatusLabel(status) {
-	      return ({ invited:'Invitato', active:'Attivo', paused:'Disattivato' })[status] || status || '-';
+	      return ({ invited:'Invitato', active:'Attivo', paused: PMO_IS_TEST_ENV ? 'Sospeso' : 'Disattivato' })[status] || status || '-';
 	    }
 	    function pmoPermissionLabel(permission) {
 	      return ({
@@ -17815,6 +17843,113 @@ Per confermare scrivi ELIMINA.`);
 	        data_export:'Esportazione/importazione dati',
 	        read_all:'Lettura completa'
 	      })[permission] || String(permission || '').replace(/_/g, ' ');
+	    }
+	    function pmoStaffPermissionCheckboxesHtml() {
+	      const items = [
+	        ['manage_users', 'Gestisce utenti'],
+	        ['cloud_sync', 'Sync dati cloud'],
+	        ['routines', 'Routine'],
+	        ['members_write', 'Modifica soci'],
+	        ['matches_write', 'Modifica partite'],
+	        ['messages_write', 'Messaggi WhatsApp'],
+	        ['data_export', 'Export/import dati'],
+	        ['read_all', 'Lettura completa']
+	      ];
+	      return items.map(([key, label]) => `<label><input type="checkbox" data-admin-permission="${escapeHtml(key)}" onchange="pmoRenderStaffRoleSummary()" /> ${escapeHtml(label)}</label>`).join('');
+	    }
+	    function pmoRenderStaffAccessPanel() {
+	      if (!PMO_IS_TEST_ENV) return;
+	      const panel = document.getElementById('pmoStaffAccessPanel');
+	      if (!panel || panel.dataset.flowUi === 'v5333') return;
+	      panel.dataset.flowUi = 'v5333';
+	      panel.innerHTML = `
+	        <div class="admin-panel-head staff-access-head">
+	          <div>
+	            <h3>Accessi staff</h3>
+	            <p>Autorizza una email staff. La persona completera l'accesso dalla schermata iniziale con "Crea accesso".</p>
+	          </div>
+	          <div class="staff-access-toolbar">
+	            <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoLoadStaffUsers()">Carica lista</button>
+	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
+	          </div>
+	        </div>
+	        <div class="staff-access-flow">
+	          <div class="staff-flow-step"><span class="staff-flow-number">1</span><div><strong>Autorizza email</strong><span>Inserisci email, nome e ruolo dello staff.</span></div></div>
+	          <div class="staff-flow-step"><span class="staff-flow-number">2</span><div><strong>Crea accesso</strong><span>La persona apre la login e imposta la password personale.</span></div></div>
+	          <div class="staff-flow-step"><span class="staff-flow-number">3</span><div><strong>Lavora con permessi</strong><span>L'app abilita solo le funzioni previste dal profilo.</span></div></div>
+	        </div>
+	        <div class="staff-access-layout">
+	          <div class="staff-access-block">
+	            <div class="staff-block-title">
+	              <div>
+	                <h4>Invita nuovo staff</h4>
+	                <p>Il salvataggio autorizza l'email, non crea una password.</p>
+	              </div>
+	            </div>
+	            <div class="admin-form-grid staff-invite-grid">
+	              <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" /></div>
+	              <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" autocomplete="name" placeholder="Nome staff" /></div>
+	              <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()"><option value="owner">Proprietario</option><option value="admin">Admin</option><option value="staff">Staff</option><option value="readonly">Solo lettura</option></select></div>
+	              <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus"><option value="invited">Invitato</option><option value="active">Attivo</option><option value="paused">Sospeso</option></select></div>
+	            </div>
+	            <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
+	            <div class="staff-access-primary-actions">
+	              <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">Autorizza email</button>
+	              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoClearStaffUserForm()">Svuota</button>
+	            </div>
+	            <div class="staff-login-note">Dopo l'autorizzazione, lo staff apre la login, inserisce la stessa email e usa "Crea accesso" per impostare la password personale.</div>
+	          </div>
+	          <div class="staff-access-block">
+	            <div class="staff-block-title">
+	              <div>
+	                <h4>Permessi</h4>
+	                <p>Il ruolo seleziona un preset. Apri i dettagli solo se devi personalizzare.</p>
+	              </div>
+	            </div>
+	            <div class="staff-permissions-copy">I preset tengono pulita la gestione quotidiana: Proprietario e Admin hanno tutto, Staff lavora su soci/partite/messaggi, Solo lettura consulta i dati.</div>
+	            <button id="pmoStaffPermissionToggle" class="btn-secondary small-btn staff-permission-toggle" type="button" aria-expanded="false" onclick="pmoToggleStaffPermissions()">Personalizza permessi</button>
+	            <div id="pmoStaffPermissionAdvanced" class="staff-permissions-advanced" hidden>
+	              <div class="admin-permission-grid">
+	                ${pmoStaffPermissionCheckboxesHtml()}
+	              </div>
+	            </div>
+	          </div>
+	        </div>
+	        <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Accedi con email personale Supabase e carica la lista staff.</div>
+	        <div id="pmoStaffUsersTable"></div>
+	      `;
+	    }
+	    function pmoToggleStaffPermissions(forceOpen=null) {
+	      const box = document.getElementById('pmoStaffPermissionAdvanced');
+	      const button = document.getElementById('pmoStaffPermissionToggle');
+	      if (!box) return;
+	      const open = forceOpen === null ? box.hidden : !!forceOpen;
+	      box.hidden = !open;
+	      if (button) {
+	        button.textContent = open ? 'Nascondi permessi avanzati' : 'Personalizza permessi';
+	        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+	      }
+	    }
+	    function pmoRenderStaffRoleSummary() {
+	      const target = document.getElementById('pmoStaffRoleSummary');
+	      if (!target) return;
+	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
+	      const permissions = pmoCollectAdminPermissions();
+	      const active = Object.entries(permissions).filter(([, value]) => !!value).map(([key]) => key);
+	      const chips = active.length
+	        ? active.map(key => `<span class="staff-permission-chip">${escapeHtml(pmoPermissionLabel(key))}</span>`).join('')
+	        : '<span class="staff-permission-chip staff-permission-chip-muted">Nessun permesso operativo</span>';
+	      const summaries = {
+	        owner: 'Accesso completo: gestione utenti, dati, routine e tutte le funzioni operative.',
+	        admin: 'Accesso completo operativo, pensato per chi gestisce la piattaforma.',
+	        staff: 'Accesso operativo: soci, partite, messaggi e lettura completa, senza gestione utenti.',
+	        readonly: 'Accesso di consultazione: puo leggere i dati, senza modifiche operative.'
+	      };
+	      target.innerHTML = `
+	        <strong>Preset ${escapeHtml(pmoRoleLabel(role))}</strong>
+	        <div class="routine-mini">${escapeHtml(summaries[role] || 'Preset personalizzato.')}</div>
+	        <div class="staff-permission-chips">${chips}</div>
+	      `;
 	    }
 	    function pmoCurrentSessionSummary() {
 	      let stored = null;
@@ -17868,6 +18003,7 @@ Per confermare scrivi ELIMINA.`);
 	      `;
 	    }
 	    function renderPmoAdministration() {
+	      pmoRenderStaffAccessPanel();
 	      pmoRenderAdminKpis();
 	      pmoRenderEnvironmentCheck();
 	      pmoRenderAdminAuthStatus();
@@ -18003,6 +18139,7 @@ Per confermare scrivi ELIMINA.`);
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        input.checked = !!defaults[input.dataset.adminPermission];
 	      });
+	      pmoRenderStaffRoleSummary();
 	    }
 	    function pmoCollectAdminPermissions() {
 	      const permissions = {};
@@ -18016,6 +18153,7 @@ Per confermare scrivi ELIMINA.`);
 	      const role = document.getElementById('pmoStaffUserRole'); if (role) role.value = 'staff';
 	      const status = document.getElementById('pmoStaffUserStatus'); if (status) status.value = 'invited';
 	      pmoApplyRolePermissions();
+	      pmoRenderStaffRoleSummary();
 	    }
 	    function pmoFillStaffUserForm(email) {
 	      const user = (pmoAdminState.staffUsers || []).find(u => String(u.email || '') === String(email || ''));
@@ -18031,7 +18169,8 @@ Per confermare scrivi ELIMINA.`);
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        input.checked = !!permissions[input.dataset.adminPermission];
 	      });
-	      pmoSetAdminStatus(`Utente caricato nel modulo: ${user.email || ''}. Ora puoi modificare e cliccare “Salva utente”.`, 'info');
+	      pmoRenderStaffRoleSummary();
+	      pmoSetAdminStatus(`Utente caricato nel modulo: ${user.email || ''}. Ora puoi modificare e autorizzare l'email.`, 'info');
 	      requestAnimationFrame(() => {
 	        const target = document.getElementById('pmoStaffUserEmail');
 	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
@@ -18063,7 +18202,7 @@ Per confermare scrivi ELIMINA.`);
 	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
 	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
 	        if (!email) return showAlert('Inserisci email utente.', 'warning');
-	        pmoSetAdminStatus('Salvo utente autorizzato...', 'info');
+	        pmoSetAdminStatus(PMO_IS_TEST_ENV ? 'Autorizzo email staff...' : 'Salvo utente autorizzato...', 'info');
 	        const result = await pmoStaffRpc('pmo_upsert_staff_user_admin', {
 	          p_email: email,
 	          p_full_name: fullName,
@@ -18075,7 +18214,7 @@ Per confermare scrivi ELIMINA.`);
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Salvataggio non riuscito.', 'salvare un utente staff'));
 	        }
 	        await pmoLoadStaffUsers();
-	        pmoSetAdminStatus(`✅ Utente salvato: ${email}.`, 'success');
+	        pmoSetAdminStatus(PMO_IS_TEST_ENV ? `✅ Email autorizzata: ${email}. Ora la persona puo usare "Crea accesso" dalla login.` : `✅ Utente salvato: ${email}.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
 	      }
@@ -18097,7 +18236,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
 	      if (!users.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>Accedi con email personale Supabase e clicca “Carica utenti”.</div>';
+	        target.innerHTML = `<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>Accedi con email personale Supabase e clicca “${PMO_IS_TEST_ENV ? 'Carica lista' : 'Carica utenti'}”.</div>`;
 	        return;
 	      }
 	      const rows = users.map(user => {
