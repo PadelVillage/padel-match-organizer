@@ -203,7 +203,7 @@
 
     @media (max-width: 900px) { .assessment-send-layout { grid-template-columns: 1fr; } }
 
-    /* v5.330 - Centro Routine cloud e sync Supabase */
+    /* v5.332 - Accesso admin Supabase Auth senza PIN staff */
     .admin-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0; }
     .admin-card { background:#fff; border:1px solid #dfe8f3; border-radius:8px; padding:13px; box-shadow:0 1px 4px rgba(15,23,42,.04); }
     .admin-card .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.02em; }
@@ -226,10 +226,21 @@
     .admin-status-pill.active { background:#e7f8ec; color:#1f7a35; }
     .admin-status-pill.invited { background:#fff7df; color:#8a5b00; }
     .admin-status-pill.paused { background:#ffecec; color:#b42318; }
+    .admin-env-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:10px; }
+    .admin-env-item { border:1px solid #dfe8f3; border-radius:8px; background:#fbfdff; padding:10px; min-width:0; }
+    .admin-env-item .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.02em; }
+    .admin-env-item .value { margin-top:4px; color:#1f2937; font-size:13px; font-weight:800; overflow-wrap:anywhere; }
+    .admin-check-list { display:grid; gap:7px; margin-top:10px; }
+    .admin-check-row { display:grid; grid-template-columns:96px minmax(0,1fr); gap:10px; align-items:start; border:1px solid #e6edf5; border-radius:8px; padding:9px 10px; background:#fff; font-size:13px; }
+    .admin-check-row .check-state { font-weight:900; }
+    .admin-check-row.ok .check-state { color:#1f7a35; }
+    .admin-check-row.warn .check-state { color:#8a5b00; }
+    .admin-check-row.fail .check-state { color:#b42318; }
+    .admin-check-row.pending .check-state { color:#667085; }
     .admin-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
     .admin-note { color:#667085; font-size:13px; line-height:1.45; margin-top:8px; }
-    @media (max-width:1050px) { .admin-grid { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid { grid-template-columns:1fr 1fr; } }
-    @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } }
+    @media (max-width:1050px) { .admin-grid { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } .admin-check-row { grid-template-columns:1fr; gap:3px; } }
 
     body.post-match-feedback-public-mode .side-nav,
     body.post-match-feedback-public-mode .top-nav-bar,
@@ -4157,10 +4168,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentRegisterSelectedTokens()">☁️ Registra Supabase</button>
               </div>
             </div>
-            <div class="assessment-inline-pin">
-              <label for="assessmentInlineAdminPin">Codice staff Supabase</label>
-              <input id="assessmentInlineAdminPin" type="password" placeholder="necessario per registrare i token" oninput="syncAssessmentInlineAdminPin()" />
-            </div>
+            <div class="info-box" style="margin-top:10px;">La registrazione su Supabase usa l’accesso personale e i permessi del profilo staff.</div>
           </details>
         </div>
 
@@ -4289,10 +4297,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="col">
               <label>URL config Supabase</label>
               <input id="assessmentConfigUrl" placeholder="https://padelvillage.github.io/padel-match-organizer/config.js" />
-            </div>
-            <div class="col">
-              <label>Codice staff Supabase</label>
-              <input id="assessmentAdminPin" type="password" placeholder="codice staff per registrare token" />
             </div>
           </div>
           <div class="assessment-toolbar">
@@ -4449,15 +4453,15 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
           <div class="routine-settings-row">
             <div>
-              <label for="pmoCloudAdminPin">PIN staff Supabase</label>
-              <input id="pmoCloudAdminPin" type="password" autocomplete="off" placeholder="Usa lo stesso PIN delle autovalutazioni" oninput="pmoRememberCloudPin()" />
+              <label>Accesso operativo</label>
+              <div id="pmoCloudAuthSummary" class="routine-mini">Accesso personale Supabase richiesto.</div>
             </div>
             <div>
               <label>Ultimo sync</label>
               <div id="pmoCloudLastSync" class="routine-mini">Mai</div>
             </div>
           </div>
-          <div id="pmoCloudStatus" class="info-box">Inserisci il PIN staff, poi usa la sincronizzazione quando vuoi aggiornare Supabase.</div>
+          <div id="pmoCloudStatus" class="info-box">Accedi con email personale Supabase; i permessi del profilo autorizzano sync e routine.</div>
         </div>
         <div class="routine-cloud-panel">
           <div class="routine-cloud-head">
@@ -4494,6 +4498,19 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="admin-panel">
           <div class="admin-panel-head">
             <div>
+              <h3>Ambiente Supabase</h3>
+              <p>Controllo rapido di ambiente, config, Auth e schema.</p>
+            </div>
+            <div class="admin-actions">
+              <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRunSupabaseEnvironmentCheck()">Verifica ambiente</button>
+            </div>
+          </div>
+          <div id="pmoEnvironmentCheckPanel"></div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <div>
               <h3>Accesso sicuro</h3>
               <p>Stato della sessione corrente e passaggio dalla password accesso beta agli utenti personali.</p>
             </div>
@@ -4513,10 +4530,6 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
           </div>
           <div class="admin-pin-row">
-            <div>
-              <label for="pmoAdminPin">PIN staff Supabase</label>
-              <input id="pmoAdminPin" type="password" autocomplete="off" placeholder="Usa il PIN staff Supabase" oninput="pmoRememberAdminPin()" />
-            </div>
             <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoLoadStaffUsers()">Carica utenti</button>
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
           </div>
@@ -4541,7 +4554,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoClearStaffUserForm()">Svuota modulo</button>
           </div>
           <div class="admin-note">Nota operativa: il profilo autorizza l'email. La password personale viene scelta dalla persona con “Crea accesso” nella schermata iniziale, oppure creando l'utente in Supabase.</div>
-          <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Inserisci il PIN staff e carica gli utenti.</div>
+          <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Accedi con email personale Supabase e carica gli utenti.</div>
           <div id="pmoStaffUsersTable"></div>
         </div>
 
@@ -4641,8 +4654,9 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.330';
+    const APP_VERSION = '5.332';
     const PMO_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
+    const PMO_PROD_SUPABASE_PROJECT_REF = 'qqbfphyslczzkxoncgex';
     function pmoDetectRuntimeEnv() {
       try {
         const params = new URLSearchParams(window.location.search || '');
@@ -4704,7 +4718,11 @@ body.assessment-public-mode .assessment-public-only-card {
     let lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
-    let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: PMO_DEFAULT_ASSESSMENT_BASE_URL, configUrl: PMO_DEFAULT_CONFIG_URL, adminPin: '' });
+    let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: PMO_DEFAULT_ASSESSMENT_BASE_URL, configUrl: PMO_DEFAULT_CONFIG_URL });
+    if (assessmentSettings && Object.prototype.hasOwnProperty.call(assessmentSettings, 'adminPin')) {
+      delete assessmentSettings.adminPin;
+      save('assessmentSettings', assessmentSettings);
+    }
     let postMatchFeedbackTokens = safeLoad('postMatchFeedbackTokens', {});
     let postMatchFeedbackResponses = safeLoad('postMatchFeedbackResponses', []);
     let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: PMO_DEFAULT_FEEDBACK_BASE_URL });
@@ -4741,7 +4759,7 @@ body.assessment-public-mode .assessment-public-only-card {
 	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
 	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
-	    let pmoStaffProfile = safeLoad(PMO_STAFF_PROFILE_KEY, null);
+	    let pmoStaffProfile = pmoReadStaffProfile();
 	    let fillSlotsCandidateContextCache = { signature:'', filterKey:'', context:null };
     let fillSlotsContextWarmTimer = null;
     let fillSlotsAnalysisRequestId = 0;
@@ -4920,6 +4938,10 @@ body.assessment-public-mode .assessment-public-only-card {
       message.classList.toggle('pmo-login-message-success', tone === 'success');
     }
 
+    function pmoReadStaffProfile() {
+      try { return JSON.parse(localStorage.getItem(PMO_STAFF_PROFILE_KEY) || 'null'); }
+      catch { return null; }
+    }
     function pmoReadSupabaseStaffSession() {
       try { return JSON.parse(localStorage.getItem(PMO_STAFF_SUPABASE_SESSION_KEY) || 'null'); }
       catch { return null; }
@@ -15512,45 +15534,9 @@ Grazie!`
       if (v) assessmentSettings.baseUrl = v;
       const cfg = cleanCell(document.getElementById('assessmentConfigUrl')?.value || assessmentSettings.configUrl || PMO_DEFAULT_CONFIG_URL);
       if (cfg) assessmentSettings.configUrl = cfg;
-      const adminPin = cleanCell(document.getElementById('assessmentAdminPin')?.value || assessmentSettings.adminPin || '');
-      assessmentSettings.adminPin = adminPin;
       if (sameData(previous, assessmentSettings)) return showAlert('ℹ️ Nessuna modifica da salvare.', 'info');
       save('assessmentSettings', assessmentSettings);
       showAlert('✅ Impostazioni autovalutazione salvate', 'success');
-    }
-    function syncAssessmentInlineAdminPin() {
-      const inline = document.getElementById('assessmentInlineAdminPin');
-      const advanced = document.getElementById('assessmentAdminPin');
-      const value = cleanCell(inline?.value || '');
-      if (advanced && advanced.value !== value) advanced.value = value;
-      assessmentSettings.adminPin = value;
-      save('assessmentSettings', assessmentSettings);
-    }
-    function getAssessmentAdminPinInput() {
-      return document.getElementById('assessmentInlineAdminPin') || document.getElementById('assessmentAdminPin');
-    }
-    function requireAssessmentAdminPin(actionLabel='questa operazione') {
-      const input = getAssessmentAdminPinInput();
-      const adminPin = cleanCell(input?.value || assessmentSettings.adminPin || '');
-      if (adminPin) {
-        if (input && !input.value) input.value = adminPin;
-        const advanced = document.getElementById('assessmentAdminPin');
-        const inline = document.getElementById('assessmentInlineAdminPin');
-        if (advanced && !advanced.value) advanced.value = adminPin;
-        if (inline && !inline.value) inline.value = adminPin;
-        assessmentSettings.adminPin = adminPin;
-        save('assessmentSettings', assessmentSettings);
-        return adminPin;
-      }
-      const details = document.getElementById('assessmentPreparationDetails') || document.querySelector('.assessment-tech-details');
-      if (details) details.open = true;
-      if (input) {
-        input.focus();
-        if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(input, { block:'center' });
-        else input.scrollIntoView({ behavior:'smooth', block:'center' });
-      }
-      showAlert(`⚠️ Inserisci il Codice staff Supabase per ${actionLabel}, poi riprova.`, 'warning', input || null);
-      return '';
     }
     function makeAssessmentToken(member) {
       const raw = `${Date.now()}_${member.id}_${Math.random()}`;
@@ -17558,37 +17544,35 @@ Per confermare scrivi ELIMINA.`);
       const supabaseUrl = cleanCell(cfg?.SUPABASE_URL || '');
       const supabaseKey = cleanCell(cfg?.SUPABASE_ANON_KEY || cfg?.SUPABASE_PUBLISHABLE_KEY || '');
       if (!supabaseUrl || !supabaseKey) {
-	        throw new Error('config.js trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY');
+	        throw new Error(`${PMO_IS_TEST_ENV ? 'config-test.js' : 'config.js'} trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY`);
 	      }
 	      return { supabaseUrl: supabaseUrl.replace(/\/+$/, ''), supabaseKey };
 	    }
-	    function pmoRememberCloudPin() {
-	      const value = cleanCell(document.getElementById('pmoCloudAdminPin')?.value || '');
-	      if (!value) return;
-	      assessmentSettings.adminPin = value;
-	      save('assessmentSettings', assessmentSettings);
-	      const advanced = document.getElementById('assessmentAdminPin');
-	      if (advanced && !advanced.value) advanced.value = value;
+	    function pmoProfileHasPermission(profile, permission) {
+	      if (!permission) return true;
+	      if (!pmoIsStaffProfileActive(profile)) return false;
+	      if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
+	      return !!profile.permissions?.[permission];
 	    }
-	    function pmoRememberAdminPin() {
-	      const value = cleanCell(document.getElementById('pmoAdminPin')?.value || '');
-	      if (!value) return;
-	      assessmentSettings.adminPin = value;
-	      save('assessmentSettings', assessmentSettings);
-	      const cloud = document.getElementById('pmoCloudAdminPin');
-	      if (cloud && !cloud.value) cloud.value = value;
+	    function pmoFriendlyCloudError(value, actionLabel='questa operazione') {
+	      const raw = cleanCell(value?.message || value?.error || value?.msg || value || '');
+	      if (raw.includes('AUTH_REQUIRED')) return `Accedi con email personale Supabase per ${actionLabel}.`;
+	      if (raw.includes('PERMISSION_DENIED')) return `Il tuo profilo non ha il permesso per ${actionLabel}.`;
+	      if (raw.includes('INVALID_ADMIN_PIN')) return 'Questa operazione usa ancora il vecchio PIN staff. Aggiorna lo schema Supabase.';
+	      return raw || 'Operazione Supabase non riuscita.';
 	    }
-	    function pmoRequireAdminPin(actionLabel='questa operazione cloud') {
-	      const inputs = ['pmoAdminPin', 'pmoCloudAdminPin', 'assessmentAdminPin'].map(id => document.getElementById(id)).filter(Boolean);
-	      const adminPin = cleanCell(inputs.map(input => input.value).find(Boolean) || assessmentSettings.adminPin || '');
-	      if (!adminPin) {
-	        showAlert(`⚠️ Inserisci il PIN staff per ${actionLabel}.`, 'warning');
-	        return '';
-	      }
-	      assessmentSettings.adminPin = adminPin;
-	      save('assessmentSettings', assessmentSettings);
-	      inputs.forEach(input => { if (input && !input.value) input.value = adminPin; });
-	      return adminPin;
+	    async function pmoRequireStaffPermission(permission='', actionLabel='questa operazione') {
+	      const accessToken = await pmoGetSupabaseStaffAccessToken();
+	      if (!accessToken) throw new Error(`Accedi con email personale Supabase per ${actionLabel}.`);
+	      let profile = pmoIsStaffProfileActive(pmoStaffProfile) ? pmoStaffProfile : null;
+	      if (!profile) profile = await pmoLoadMyStaffProfile();
+	      if (!pmoIsStaffProfileActive(profile)) throw new Error('Profilo staff non attivo. Crea l’accesso personale o abilita l’email in Amministrazione.');
+	      if (!pmoProfileHasPermission(profile, permission)) throw new Error(`Il tuo profilo non ha il permesso per ${actionLabel}.`);
+	      return { accessToken, profile };
+	    }
+	    async function pmoStaffRpc(functionName, payload={}, permission='', actionLabel='questa operazione') {
+	      const staff = await pmoRequireStaffPermission(permission, actionLabel);
+	      return pmoCloudRpc(functionName, payload, { accessToken: staff.accessToken });
 	    }
 	    async function pmoCloudRpc(functionName, payload, options={}) {
 	      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -17600,7 +17584,7 @@ Per confermare scrivi ELIMINA.`);
 	      const text = await response.text();
 	      let data = null;
 	      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-	      if (!response.ok) throw new Error((data && data.message) || text || `Errore HTTP ${response.status}`);
+	      if (!response.ok) throw new Error(pmoFriendlyCloudError(data || text || `Errore HTTP ${response.status}`));
 	      return data;
 	    }
 	    function pmoStableStringify(value) {
@@ -17648,7 +17632,14 @@ Per confermare scrivi ELIMINA.`);
 	        'postMatchFeedbackSettings'
 	      ].forEach(key => {
 	        const value = window[key] !== undefined ? window[key] : ({ potentialSlotSchedule, dailyAssistantState, assessmentSettings, whatsappOpenSettings, postMatchFeedbackSettings })[key];
-	        if (value !== undefined) pmoAddCloudRecord(records, 'app_setting', key, { key, value });
+	        if (value !== undefined) {
+	          let safeValue = value;
+	          if (key === 'assessmentSettings' && value && typeof value === 'object') {
+	            const { adminPin, ...rest } = value;
+	            safeValue = rest;
+	          }
+	          pmoAddCloudRecord(records, 'app_setting', key, { key, value: safeValue });
+	        }
 	      });
 	      return records;
 	    }
@@ -17726,8 +17717,13 @@ Per confermare scrivi ELIMINA.`);
 	      });
 	    }
 	    function renderPmoRoutineCenter() {
-	      const pin = document.getElementById('pmoCloudAdminPin');
-	      if (pin && !pin.value) pin.value = assessmentSettings.adminPin || '';
+	      const cloudAuth = document.getElementById('pmoCloudAuthSummary');
+	      if (cloudAuth) {
+	        const summary = pmoCurrentSessionSummary();
+	        cloudAuth.textContent = summary.profile
+	          ? `${summary.user} · ${summary.role}`
+	          : 'Accesso personale Supabase richiesto per sync e routine.';
+	      }
 	      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
 	      const activeGroups = groups.filter(g => g.autoCreateEnabled);
 	      const localRecordsCount = pmoBuildCloudRecordsFromLocalState().length;
@@ -17821,16 +17817,59 @@ Per confermare scrivi ELIMINA.`);
 	      })[permission] || String(permission || '').replace(/_/g, ' ');
 	    }
 	    function pmoCurrentSessionSummary() {
-	      const stored = safeLoad(PMO_STAFF_AUTH_KEY, null);
-	      const profile = pmoStaffProfile || safeLoad(PMO_STAFF_PROFILE_KEY, null);
+	      let stored = null;
+	      try { stored = JSON.parse(localStorage.getItem(PMO_STAFF_AUTH_KEY) || 'null'); } catch { stored = null; }
+	      const profile = pmoStaffProfile || pmoReadStaffProfile();
 	      if (pmoIsStaffProfileActive(profile)) return { mode:'Accesso personale Supabase', user:profile.email || '-', role:pmoRoleLabel(profile.role), status:pmoStatusLabel(profile.status), profile };
 	      if (stored?.mode === 'legacy_password') return { mode:'Password beta', user:'Staff condiviso', role:'Accesso beta', status:'Attivo', profile:null };
 	      return { mode:'Non autenticato', user:'-', role:'-', status:'-', profile:null };
 	    }
+	    function pmoCurrentConfigUrl() {
+	      return pmoResolveEnvUrl(assessmentSettings.configUrl, PMO_DEFAULT_CONFIG_URL);
+	    }
+	    function pmoSupabaseProjectRefFromUrl(supabaseUrl) {
+	      try {
+	        const host = new URL(supabaseUrl).hostname || '';
+	        const match = host.match(/^([a-z0-9-]+)\.supabase\.co$/i);
+	        return match ? match[1] : '';
+	      } catch {
+	        return '';
+	      }
+	    }
+	    function pmoExpectedAuthSiteUrl() {
+	      return PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}?env=test` : PMO_PUBLIC_BASE_URL;
+	    }
+	    function pmoEnvironmentCheckRow(row) {
+	      const state = row?.ok === true ? 'ok' : row?.ok === false ? 'fail' : row?.type === 'warn' ? 'warn' : 'pending';
+	      const label = state === 'ok' ? 'OK' : state === 'fail' ? 'Errore' : state === 'warn' ? 'Nota' : 'Da verificare';
+	      return `<div class="admin-check-row ${state}">
+	        <div class="check-state">${label}</div>
+	        <div><strong>${escapeHtml(row?.title || '')}</strong><div class="routine-mini">${escapeHtml(row?.detail || '')}</div></div>
+	      </div>`;
+	    }
+	    function pmoRenderEnvironmentCheck() {
+	      const target = document.getElementById('pmoEnvironmentCheckPanel');
+	      if (!target) return;
+	      const check = pmoAdminState.envCheck || {};
+	      const projectRef = check.projectRef || pmoSupabaseProjectRefFromUrl(check.supabaseUrl || '');
+	      const defaultRows = [
+	        { title:'Config ambiente', detail:'Esegui una verifica dopo avere collegato il progetto Supabase.', ok:null },
+	        { title:'Auth URL', detail:`Site URL atteso: ${pmoExpectedAuthSiteUrl()}`, type:'warn' }
+	      ];
+	      const rows = Array.isArray(check.rows) && check.rows.length ? check.rows : defaultRows;
+	      target.innerHTML = `
+	        <div class="admin-env-grid">
+	          <div class="admin-env-item"><div class="label">Ambiente app</div><div class="value">${escapeHtml(PMO_IS_TEST_ENV ? 'TEST' : 'PROD')}</div></div>
+	          <div class="admin-env-item"><div class="label">Config</div><div class="value">${escapeHtml(check.configUrl || pmoCurrentConfigUrl())}</div></div>
+	          <div class="admin-env-item"><div class="label">Project ref</div><div class="value">${escapeHtml(projectRef || '-')}</div></div>
+	          <div class="admin-env-item"><div class="label">Ultima verifica</div><div class="value">${escapeHtml(pmoFormatDateTime(check.checkedAt))}</div></div>
+	        </div>
+	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
+	      `;
+	    }
 	    function renderPmoAdministration() {
-	      const pin = document.getElementById('pmoAdminPin');
-	      if (pin && !pin.value) pin.value = assessmentSettings.adminPin || '';
 	      pmoRenderAdminKpis();
+	      pmoRenderEnvironmentCheck();
 	      pmoRenderAdminAuthStatus();
 	      pmoRenderStaffUsersTable();
 	      pmoRenderAuditLogTable();
@@ -17872,6 +17911,91 @@ Per confermare scrivi ELIMINA.`);
 	      if (!box) return;
 	      box.className = `info-box alert-${type}`;
 	      box.textContent = message;
+	    }
+	    async function pmoCheckAuthEndpoint(supabaseUrl, supabaseKey) {
+	      try {
+	        const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+	          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+	        });
+	        const text = await response.text();
+	        const detail = response.ok
+	          ? 'Endpoint Auth raggiungibile.'
+	          : `Endpoint Auth risponde con HTTP ${response.status}.`;
+	        return {
+	          title:'Auth raggiungibile',
+	          detail: text && response.status >= 500 ? `${detail} ${text.slice(0, 140)}` : detail,
+	          ok: response.ok || [401, 403].includes(response.status)
+	        };
+	      } catch (err) {
+	        return { title:'Auth raggiungibile', detail: err.message || String(err), ok:false };
+	      }
+	    }
+	    async function pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, functionName, payload, title, acceptedErrors=[], options={}) {
+	      try {
+	        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+	          method:'POST',
+	          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${options.accessToken || supabaseKey}` },
+	          body: JSON.stringify(payload || {})
+	        });
+	        const text = await response.text();
+	        let data = null;
+	        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+	        const message = cleanCell(data?.message || data?.error || data?.hint || text || '');
+	        const accepted = acceptedErrors.some(value => message.includes(value) || text.includes(value));
+	        if (response.ok || accepted) {
+	          return { title, detail: response.ok ? `RPC ${functionName} disponibile.` : `RPC ${functionName} disponibile: ${message || `HTTP ${response.status}`}.`, ok:true };
+	        }
+	        return { title, detail: message || `HTTP ${response.status}`, ok:false };
+	      } catch (err) {
+	        return { title, detail: err.message || String(err), ok:false };
+	      }
+	    }
+	    async function pmoRunSupabaseEnvironmentCheck() {
+	      const configUrl = pmoCurrentConfigUrl();
+	      const rows = [];
+	      try {
+	        pmoAdminState.envCheck = {
+	          checkedAt: new Date().toISOString(),
+	          configUrl,
+	          rows: [{ title:'Verifica in corso', detail:'Controllo configurazione Supabase...', ok:null }]
+	        };
+	        save('pmoAdminState', pmoAdminState);
+	        renderPmoAdministration();
+
+	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	        const staffAccessToken = await pmoGetSupabaseStaffAccessToken().catch(() => '');
+	        const projectRef = pmoSupabaseProjectRefFromUrl(supabaseUrl);
+	        const envOk = PMO_IS_TEST_ENV ? !!projectRef && projectRef !== PMO_PROD_SUPABASE_PROJECT_REF : projectRef === PMO_PROD_SUPABASE_PROJECT_REF;
+	        rows.push({
+	          title:'Separazione TEST/PROD',
+	          detail: PMO_IS_TEST_ENV
+	            ? `TEST punta al progetto ${projectRef || 'non riconosciuto'}${projectRef === PMO_PROD_SUPABASE_PROJECT_REF ? ', che e il ref PROD' : ''}.`
+	            : `PROD punta al progetto ${projectRef || 'non riconosciuto'}.`,
+	          ok: envOk
+	        });
+	        rows.push({ title:'Config Supabase', detail:`${configUrl} -> ${supabaseUrl}`, ok:true });
+	        rows.push(await pmoCheckAuthEndpoint(supabaseUrl, supabaseKey));
+	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'get_self_assessments_by_tokens', { p_tokens: [] }, 'Schema autovalutazioni'));
+	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'upsert_post_match_feedback_tokens_admin', { p_tokens: [] }, 'Schema feedback post-partita no-PIN', ['AUTH_REQUIRED', 'PERMISSION_DENIED', 'permission denied'], { accessToken: staffAccessToken }));
+	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'pmo_get_routines_admin', {}, 'Schema cloud routine no-PIN', ['AUTH_REQUIRED', 'PERMISSION_DENIED', 'permission denied'], { accessToken: staffAccessToken }));
+	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'pmo_get_staff_users_admin', {}, 'Schema staff admin no-PIN', ['AUTH_REQUIRED', 'PERMISSION_DENIED', 'permission denied'], { accessToken: staffAccessToken }));
+	        rows.push({
+	          title:'URL Authentication',
+	          detail:`Site URL: ${pmoExpectedAuthSiteUrl()} | Redirect URL: ${PMO_PUBLIC_BASE_URL}*`,
+	          type:'warn'
+	        });
+	        const ok = rows.every(row => row.ok !== false);
+	        pmoAdminState.envCheck = { checkedAt:new Date().toISOString(), configUrl, supabaseUrl, projectRef, rows, ok };
+	        save('pmoAdminState', pmoAdminState);
+	        renderPmoAdministration();
+	        showAlert(ok ? 'Verifica Supabase completata.' : 'Verifica Supabase completata con errori.', ok ? 'success' : 'warning');
+	      } catch (err) {
+	        rows.push({ title:'Config Supabase', detail:err.message || String(err), ok:false });
+	        pmoAdminState.envCheck = { checkedAt:new Date().toISOString(), configUrl, rows, ok:false };
+	        save('pmoAdminState', pmoAdminState);
+	        renderPmoAdministration();
+	        showAlert('Verifica Supabase non riuscita: ' + (err.message || err), 'danger');
+	      }
 	    }
 	    function pmoApplyRolePermissions() {
 	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
@@ -17921,10 +18045,8 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoLoadStaffUsers() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('leggere gli utenti staff');
-	        if (!adminPin) return;
 	        pmoSetAdminStatus('Carico utenti autorizzati...', 'info');
-	        const rows = await pmoCloudRpc('pmo_get_staff_users_admin', { p_admin_pin: adminPin });
+	        const rows = await pmoStaffRpc('pmo_get_staff_users_admin', {}, 'manage_users', 'leggere gli utenti staff');
 	        pmoAdminState.staffUsers = Array.isArray(rows) ? rows : [];
 	        pmoAdminState.lastStaffReadAt = new Date().toISOString();
 	        save('pmoAdminState', pmoAdminState);
@@ -17936,25 +18058,21 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoSaveStaffUser() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('salvare un utente staff');
-	        if (!adminPin) return;
 	        const email = cleanCell(document.getElementById('pmoStaffUserEmail')?.value || '').toLowerCase();
 	        const fullName = compactSpaces(document.getElementById('pmoStaffUserName')?.value || '');
 	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
 	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
 	        if (!email) return showAlert('Inserisci email utente.', 'warning');
 	        pmoSetAdminStatus('Salvo utente autorizzato...', 'info');
-	        const result = await pmoCloudRpc('pmo_upsert_staff_user_admin', {
-	          p_admin_pin: adminPin,
+	        const result = await pmoStaffRpc('pmo_upsert_staff_user_admin', {
 	          p_email: email,
 	          p_full_name: fullName,
 	          p_role: role,
 	          p_status: status,
 	          p_permissions: pmoCollectAdminPermissions()
-	        });
+	        }, 'manage_users', 'salvare un utente staff');
 	        if (!result || result.ok !== true) {
-	          if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
-	          throw new Error(result?.error || 'Salvataggio non riuscito.');
+	          throw new Error(pmoFriendlyCloudError(result?.error || 'Salvataggio non riuscito.', 'salvare un utente staff'));
 	        }
 	        await pmoLoadStaffUsers();
 	        pmoSetAdminStatus(`✅ Utente salvato: ${email}.`, 'success');
@@ -17964,12 +18082,10 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoSetStaffUserStatus(email, status) {
 	      try {
-	        const adminPin = pmoRequireAdminPin('aggiornare lo stato utente');
-	        if (!adminPin) return;
 	        const statusText = pmoStatusLabel(status).toLowerCase();
 	        pmoSetAdminStatus(`Aggiorno stato utente: ${email} -> ${statusText}...`, 'info');
-	        const result = await pmoCloudRpc('pmo_set_staff_user_status_admin', { p_admin_pin: adminPin, p_email: email, p_status: status });
-	        if (!result || result.ok !== true) throw new Error(result?.error || 'Aggiornamento stato non riuscito.');
+	        const result = await pmoStaffRpc('pmo_set_staff_user_status_admin', { p_email: email, p_status: status }, 'manage_users', 'aggiornare lo stato utente');
+	        if (!result || result.ok !== true) throw new Error(pmoFriendlyCloudError(result?.error || 'Aggiornamento stato non riuscito.', 'aggiornare lo stato utente'));
 	        await pmoLoadStaffUsers();
 	        pmoSetAdminStatus(`✅ Stato aggiornato: ${email} ora è ${statusText}.`, 'success');
 	      } catch (err) {
@@ -17981,7 +18097,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
 	      if (!users.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>Inserisci il PIN staff e clicca “Carica utenti”.</div>';
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>Accedi con email personale Supabase e clicca “Carica utenti”.</div>';
 	        return;
 	      }
 	      const rows = users.map(user => {
@@ -18005,9 +18121,7 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoLoadAuditLog() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('leggere il registro attivita');
-	        if (!adminPin) return;
-	        const rows = await pmoCloudRpc('pmo_get_audit_log_admin', { p_admin_pin: adminPin, p_limit: 80 });
+	        const rows = await pmoStaffRpc('pmo_get_audit_log_admin', { p_limit: 80 }, 'manage_users', 'leggere il registro attivita');
 	        pmoAdminState.auditLog = Array.isArray(rows) ? rows : [];
 	        pmoAdminState.lastAuditReadAt = new Date().toISOString();
 	        save('pmoAdminState', pmoAdminState);
@@ -18045,8 +18159,7 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoUploadLocalDataToCloud() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('sincronizzare i dati locali su Supabase');
-	        if (!adminPin) return;
+	        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare i dati locali su Supabase');
 	        const records = pmoBuildCloudRecordsFromLocalState();
 	        if (!records.length) return showAlert('⚠️ Nessun dato locale da sincronizzare.', 'warning');
 	        pmoSetCloudStatus(`Sincronizzazione in corso: 0/${records.length}`, 'info');
@@ -18054,10 +18167,9 @@ Per confermare scrivi ELIMINA.`);
 	        let uploaded = 0;
 	        for (let i = 0; i < records.length; i += chunkSize) {
 	          const chunk = records.slice(i, i + chunkSize);
-	          const result = await pmoCloudRpc('pmo_upsert_records_admin', { p_admin_pin: adminPin, p_records: chunk });
+	          const result = await pmoCloudRpc('pmo_upsert_records_admin', { p_records: chunk }, { accessToken: staff.accessToken });
 	          if (!result || result.ok !== true) {
-	            if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
-	            throw new Error(result?.error || 'Sync dati non riuscito.');
+	            throw new Error(pmoFriendlyCloudError(result?.error || 'Sync dati non riuscito.', 'sincronizzare i dati locali su Supabase'));
 	          }
 	          uploaded += result.count || chunk.length;
 	          pmoSetCloudStatus(`Sincronizzazione in corso: ${Math.min(i + chunk.length, records.length)}/${records.length}`, 'info');
@@ -18074,15 +18186,13 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoSyncGroupRoutinesToCloud() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('sincronizzare le routine gruppi');
-	        if (!adminPin) return;
+	        const staff = await pmoRequireStaffPermission('routines', 'sincronizzare le routine gruppi');
 	        const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
 	        if (!groups.length) return showAlert('⚠️ Nessun gruppo da sincronizzare.', 'warning');
 	        pmoSetCloudStatus(`Sincronizzazione routine in corso: 0/${groups.length}`, 'info');
 	        let count = 0;
 	        for (const group of groups) {
 	          const result = await pmoCloudRpc('pmo_set_group_match_routine_admin', {
-	            p_admin_pin: adminPin,
 	            p_group_id: String(group.id || ''),
 	            p_group_name: group.name || 'Gruppo soci',
 	            p_enabled: !!group.autoCreateEnabled,
@@ -18095,10 +18205,9 @@ Per confermare scrivi ELIMINA.`);
 	              createOnlyIfFieldFree: true,
 	              timezone: 'Europe/Rome'
 	            }
-	          });
+	          }, { accessToken: staff.accessToken });
 	          if (!result || result.ok !== true) {
-	            if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
-	            throw new Error(result?.error || `Routine non sincronizzata: ${group.name || group.id}`);
+	            throw new Error(pmoFriendlyCloudError(result?.error || `Routine non sincronizzata: ${group.name || group.id}`, 'sincronizzare le routine gruppi'));
 	          }
 	          count += 1;
 	          pmoSetCloudStatus(`Sincronizzazione routine in corso: ${count}/${groups.length}`, 'info');
@@ -18114,9 +18223,7 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoRefreshCloudRoutines(showOk=true) {
 	      try {
-	        const adminPin = pmoRequireAdminPin('leggere le routine cloud');
-	        if (!adminPin) return;
-	        const rows = await pmoCloudRpc('pmo_get_routines_admin', { p_admin_pin: adminPin });
+	        const rows = await pmoStaffRpc('pmo_get_routines_admin', {}, 'routines', 'leggere le routine cloud');
 	        pmoCloudState.routines = Array.isArray(rows) ? rows : [];
 	        pmoCloudState.lastRoutineReadAt = new Date().toISOString();
 	        save('pmoCloudState', pmoCloudState);
@@ -18161,14 +18268,11 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoPullOperationalCloudRecords() {
 	      try {
-	        const adminPin = pmoRequireAdminPin('scaricare le novità cloud');
-	        if (!adminPin) return;
 	        pmoSetCloudStatus('Scarico partite e gruppi dal cloud...', 'info');
-	        const rows = await pmoCloudRpc('pmo_get_records_admin', {
-	          p_admin_pin: adminPin,
+	        const rows = await pmoStaffRpc('pmo_get_records_admin', {
 	          p_record_types: ['match_invitation', 'player_group'],
 	          p_since: null
-	        });
+	        }, 'cloud_sync', 'scaricare le novità cloud');
 	        const list = Array.isArray(rows) ? rows : [];
 	        let mergedMatches = 0;
 	        let mergedGroups = 0;
@@ -18201,9 +18305,6 @@ Per confermare scrivi ELIMINA.`);
           return showAlert('⚠️ Nessun token generato. Prima clicca “🔐 Genera token mancanti”.', 'warning');
         }
 
-        const adminPin = requireAssessmentAdminPin('registrare i token in Supabase');
-        if (!adminPin) return;
-
         const payload = records.map(r => ({
           token: cleanCell(r.token),
           member_local_id: cleanCell(r.memberId || r.member_local_id || ''),
@@ -18216,31 +18317,9 @@ Per confermare scrivi ELIMINA.`);
         }
 
         showAlert('⏳ Registro i token in Supabase...', 'info');
-        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_assessment_tokens_admin`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({
-            p_admin_pin: adminPin,
-            p_tokens: payload
-          })
-        });
-
-        const text = await response.text();
-        let data = null;
-        try { data = text ? JSON.parse(text) : null; }
-        catch { throw new Error(text || 'Risposta Supabase non leggibile'); }
-
-        if (!response.ok) {
-          throw new Error(data?.message || text || `Errore HTTP ${response.status}`);
-        }
+        const data = await pmoStaffRpc('upsert_assessment_tokens_admin', { p_tokens: payload }, 'cloud_sync', 'registrare i token in Supabase');
         if (!data || data.ok !== true) {
-          if (data?.error === 'INVALID_ADMIN_PIN') throw new Error('Codice staff non valido. Controlla il codice e riprova.');
-          throw new Error(data?.error || 'Registrazione token non riuscita');
+          throw new Error(pmoFriendlyCloudError(data?.error || 'Registrazione token non riuscita', 'registrare i token in Supabase'));
         }
 
         const now = new Date().toISOString();
@@ -18503,22 +18582,9 @@ Per confermare scrivi ELIMINA.`);
       try {
         const payload = postMatchFeedbackRegistrationPayload(recordKey);
         if (!payload.length) return showAlert('Genera prima almeno un link feedback per questa partita.', 'warning');
-        const adminPin = requireAssessmentAdminPin('registrare i token feedback in Supabase');
-        if (!adminPin) return;
         showAlert('Registro token feedback in Supabase...', 'info');
-        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_post_match_feedback_tokens_admin`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
-          body: JSON.stringify({ p_admin_pin: adminPin, p_tokens: payload })
-        });
-        const text = await response.text();
-        let data = null;
-        try { data = text ? JSON.parse(text) : null; } catch { throw new Error(text || 'Risposta Supabase non leggibile'); }
-        if (!response.ok || data?.ok !== true) {
-          if (data?.error === 'INVALID_ADMIN_PIN') throw new Error('Codice staff non valido.');
-          throw new Error(data?.error || data?.message || text || 'Registrazione non riuscita');
-        }
+        const data = await pmoStaffRpc('upsert_post_match_feedback_tokens_admin', { p_tokens: payload }, 'cloud_sync', 'registrare i token feedback in Supabase');
+        if (!data || data.ok !== true) throw new Error(pmoFriendlyCloudError(data?.error || 'Registrazione non riuscita', 'registrare i token feedback in Supabase'));
         const now = new Date().toISOString();
         payload.forEach(item => {
           const rec = Object.values(postMatchFeedbackTokens || {}).find(r => cleanCell(r.token) === item.token);
@@ -19489,10 +19555,6 @@ Per confermare scrivi ELIMINA.`);
       if (baseInput) baseInput.value = pmoResolveEnvUrl(assessmentSettings.baseUrl, PMO_DEFAULT_ASSESSMENT_BASE_URL);
       const configInput = document.getElementById('assessmentConfigUrl');
       if (configInput) configInput.value = pmoResolveEnvUrl(assessmentSettings.configUrl, PMO_DEFAULT_CONFIG_URL);
-      const adminPinInput = document.getElementById('assessmentAdminPin');
-      if (adminPinInput && !adminPinInput.value) adminPinInput.value = assessmentSettings.adminPin || '';
-      const inlineAdminPinInput = document.getElementById('assessmentInlineAdminPin');
-      if (inlineAdminPinInput && !inlineAdminPinInput.value) inlineAdminPinInput.value = assessmentSettings.adminPin || '';
       repairAlanCeschinAssessmentSentState();
       renderAssessmentOpsDashboard();
       renderAssessmentPrePanel();
@@ -19644,17 +19706,11 @@ Per confermare scrivi ELIMINA.`);
         if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio.', 'warning');
         const records = ids.map(id => assessmentTokens[String(id)]).filter(Boolean);
         if (!records.length) return showAlert('⚠️ Nessun token da registrare per i soci selezionati.', 'warning');
-        const adminPin = requireAssessmentAdminPin('registrare i token selezionati in Supabase');
-        if (!adminPin) return;
         const payload = records.map(r => ({ token:cleanCell(r.token), member_local_id:cleanCell(r.memberId || r.member_local_id || ''), member_name:cleanCell(r.memberName || r.member_name || 'Socio'), phone_last4:String(r.phone || '').replace(/\D/g, '').slice(-4) })).filter(r => r.token && r.member_local_id);
         if (!payload.length) return showAlert('⚠️ Nessun token valido da registrare.', 'warning');
         showAlert('⏳ Registro i token selezionati in Supabase...', 'info');
-        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_assessment_tokens_admin`, { method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` }, body:JSON.stringify({ p_admin_pin:adminPin, p_tokens:payload }) });
-        const text = await response.text();
-        let data = null; try { data = text ? JSON.parse(text) : null; } catch { throw new Error(text || 'Risposta Supabase non leggibile'); }
-        if (!response.ok) throw new Error(data?.message || text || `Errore HTTP ${response.status}`);
-        if (!data || data.ok !== true) { if (data?.error === 'INVALID_ADMIN_PIN') throw new Error('Codice staff non valido.'); throw new Error(data?.error || 'Registrazione token non riuscita'); }
+        const data = await pmoStaffRpc('upsert_assessment_tokens_admin', { p_tokens: payload }, 'cloud_sync', 'registrare i token selezionati in Supabase');
+        if (!data || data.ok !== true) throw new Error(pmoFriendlyCloudError(data?.error || 'Registrazione token non riuscita', 'registrare i token selezionati in Supabase'));
         const now = new Date().toISOString();
         payload.forEach(item => { const rec = Object.values(assessmentTokens || {}).find(r => cleanCell(r.token) === item.token); if (rec) { rec.registeredAt=now; rec.registeredToSupabase=true; } });
         save('assessmentTokens', assessmentTokens);

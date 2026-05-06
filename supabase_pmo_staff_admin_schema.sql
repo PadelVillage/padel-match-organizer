@@ -125,9 +125,23 @@ begin
 end;
 $$;
 
-create or replace function public.pmo_get_my_staff_profile()
+create or replace function public.pmo_staff_permission_ok(
+  p_role text,
+  p_permissions jsonb,
+  p_permission text
+)
+returns boolean
+language sql
+stable
+as $$
+  select coalesce(p_role in ('owner', 'admin'), false)
+    or coalesce(p_permissions->>coalesce(p_permission, ''), 'false') = 'true';
+$$;
+
+create or replace function public.pmo_current_staff_profile()
 returns table (
   id uuid,
+  auth_user_id uuid,
   email text,
   full_name text,
   role text,
@@ -180,8 +194,48 @@ begin
     return;
   end if;
 
+  return query
+  select
+    v_profile.id,
+    v_profile.auth_user_id,
+    v_profile.email,
+    v_profile.full_name,
+    v_profile.role,
+    v_profile.status,
+    v_profile.permissions,
+    v_profile.last_seen_at,
+    v_profile.updated_at;
+end;
+$$;
+
+create or replace function public.pmo_get_my_staff_profile()
+returns table (
+  id uuid,
+  email text,
+  full_name text,
+  role text,
+  status text,
+  permissions jsonb,
+  last_seen_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile record;
+begin
+  select * into v_profile
+  from public.pmo_current_staff_profile()
+  limit 1;
+
+  if not found then
+    return;
+  end if;
+
   insert into public.pmo_audit_log (actor_user_id, actor_email, actor_role, action, detail)
-  values (v_uid, v_profile.email, v_profile.role, 'staff_login', jsonb_build_object('source', 'supabase_auth'));
+  values (v_profile.auth_user_id, v_profile.email, v_profile.role, 'staff_login', jsonb_build_object('source', 'supabase_auth'));
 
   return query
   select
@@ -193,6 +247,210 @@ begin
     v_profile.permissions,
     v_profile.last_seen_at,
     v_profile.updated_at;
+end;
+$$;
+
+create or replace function public.pmo_upsert_staff_user_admin(
+  p_email text,
+  p_full_name text default '',
+  p_role text default 'staff',
+  p_status text default 'invited',
+  p_permissions jsonb default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor record;
+  v_email text := lower(trim(coalesce(p_email, '')));
+  v_role text := case when p_role in ('owner', 'admin', 'staff', 'readonly') then p_role else 'staff' end;
+  v_status text := case when p_status in ('invited', 'active', 'paused') then p_status else 'invited' end;
+  v_permissions jsonb := coalesce(p_permissions, public.pmo_default_staff_permissions(v_role));
+  v_id uuid;
+begin
+  select * into v_actor
+  from public.pmo_current_staff_profile()
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'AUTH_REQUIRED');
+  end if;
+  if not public.pmo_staff_permission_ok(v_actor.role, v_actor.permissions, 'manage_users') then
+    return jsonb_build_object('ok', false, 'error', 'PERMISSION_DENIED');
+  end if;
+
+  if v_email = '' or position('@' in v_email) = 0 then
+    return jsonb_build_object('ok', false, 'error', 'INVALID_EMAIL');
+  end if;
+
+  insert into public.pmo_staff_profiles (email, full_name, role, status, permissions)
+  values (v_email, trim(coalesce(p_full_name, '')), v_role, v_status, v_permissions)
+  on conflict (email) do update
+  set full_name = excluded.full_name,
+      role = excluded.role,
+      status = excluded.status,
+      permissions = excluded.permissions
+  returning id into v_id;
+
+  insert into public.pmo_audit_log (actor_user_id, actor_email, actor_role, action, detail)
+  values (
+    v_actor.auth_user_id,
+    v_actor.email,
+    v_actor.role,
+    'staff_user_upsert',
+    jsonb_build_object('email', v_email, 'role', v_role, 'status', v_status)
+  );
+
+  return jsonb_build_object('ok', true, 'id', v_id, 'email', v_email, 'role', v_role, 'status', v_status);
+end;
+$$;
+
+create or replace function public.pmo_set_staff_user_status_admin(
+  p_email text,
+  p_status text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor record;
+  v_email text := lower(trim(coalesce(p_email, '')));
+  v_status text := case when p_status in ('invited', 'active', 'paused') then p_status else null end;
+begin
+  select * into v_actor
+  from public.pmo_current_staff_profile()
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'AUTH_REQUIRED');
+  end if;
+  if not public.pmo_staff_permission_ok(v_actor.role, v_actor.permissions, 'manage_users') then
+    return jsonb_build_object('ok', false, 'error', 'PERMISSION_DENIED');
+  end if;
+
+  if v_email = '' or v_status is null then
+    return jsonb_build_object('ok', false, 'error', 'INVALID_REQUEST');
+  end if;
+
+  update public.pmo_staff_profiles
+  set status = v_status
+  where email = v_email;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'USER_NOT_FOUND');
+  end if;
+
+  insert into public.pmo_audit_log (actor_user_id, actor_email, actor_role, action, detail)
+  values (
+    v_actor.auth_user_id,
+    v_actor.email,
+    v_actor.role,
+    'staff_user_status',
+    jsonb_build_object('email', v_email, 'status', v_status)
+  );
+
+  return jsonb_build_object('ok', true, 'email', v_email, 'status', v_status);
+end;
+$$;
+
+create or replace function public.pmo_get_staff_users_admin()
+returns table (
+  id uuid,
+  email text,
+  full_name text,
+  role text,
+  status text,
+  permissions jsonb,
+  auth_user_id uuid,
+  invited_at timestamptz,
+  activated_at timestamptz,
+  last_seen_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor record;
+begin
+  select * into v_actor
+  from public.pmo_current_staff_profile()
+  limit 1;
+
+  if not found then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+  if not public.pmo_staff_permission_ok(v_actor.role, v_actor.permissions, 'manage_users') then
+    raise exception 'PERMISSION_DENIED';
+  end if;
+
+  return query
+  select
+    p.id,
+    p.email,
+    p.full_name,
+    p.role,
+    p.status,
+    p.permissions,
+    p.auth_user_id,
+    p.invited_at,
+    p.activated_at,
+    p.last_seen_at,
+    p.updated_at
+  from public.pmo_staff_profiles p
+  order by
+    case p.role when 'owner' then 1 when 'admin' then 2 when 'staff' then 3 else 4 end,
+    p.email;
+end;
+$$;
+
+create or replace function public.pmo_get_audit_log_admin(
+  p_limit integer default 100
+)
+returns table (
+  id uuid,
+  actor_user_id uuid,
+  actor_email text,
+  actor_role text,
+  action text,
+  detail jsonb,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor record;
+begin
+  select * into v_actor
+  from public.pmo_current_staff_profile()
+  limit 1;
+
+  if not found then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+  if not public.pmo_staff_permission_ok(v_actor.role, v_actor.permissions, 'manage_users') then
+    raise exception 'PERMISSION_DENIED';
+  end if;
+
+  return query
+  select
+    l.id,
+    l.actor_user_id,
+    l.actor_email,
+    l.actor_role,
+    l.action,
+    l.detail,
+    l.created_at
+  from public.pmo_audit_log l
+  order by l.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 100), 300));
 end;
 $$;
 
@@ -374,7 +632,13 @@ revoke all on public.pmo_staff_profiles from anon, authenticated;
 revoke all on public.pmo_audit_log from anon, authenticated;
 
 grant usage on schema public to anon, authenticated;
+grant execute on function public.pmo_staff_permission_ok(text, jsonb, text) to authenticated;
+grant execute on function public.pmo_current_staff_profile() to authenticated;
 grant execute on function public.pmo_get_my_staff_profile() to authenticated;
+grant execute on function public.pmo_upsert_staff_user_admin(text, text, text, text, jsonb) to authenticated;
+grant execute on function public.pmo_set_staff_user_status_admin(text, text) to authenticated;
+grant execute on function public.pmo_get_staff_users_admin() to authenticated;
+grant execute on function public.pmo_get_audit_log_admin(integer) to authenticated;
 grant execute on function public.pmo_upsert_staff_user_admin(text, text, text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.pmo_set_staff_user_status_admin(text, text, text) to anon, authenticated;
 grant execute on function public.pmo_get_staff_users_admin(text) to anon, authenticated;

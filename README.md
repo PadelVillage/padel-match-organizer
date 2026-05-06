@@ -4,7 +4,7 @@ Web app per gestione soci, import file Matchpoint, analisi slot, creazione parti
 
 ## Stato progetto
 
-Versione base inclusa nel repository: **v5.151**
+Versione base inclusa nel repository: **v5.332**
 
 Questa versione funziona ancora come app HTML locale/pubblicabile e salva i dati operativi nel browser con `localStorage`.
 
@@ -68,13 +68,26 @@ Lo staff conferma/applica il livello
 
 1. Crea un progetto Supabase.
 2. Apri SQL Editor.
-3. Incolla ed esegui il contenuto di `supabase_schema.sql`.
-4. Inserisci in `config.js` `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
-5. Prima di aprire la pagina ai soci, verifica che le policy Supabase/RLS permettano solo le operazioni previste.
+3. Incolla ed esegui gli schema SQL del progetto.
+4. Crea il primo profilo proprietario in `pmo_staff_profiles`.
+5. Inserisci in `config.js` `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+6. Prima di aprire la pagina ai soci, verifica che le policy Supabase/RLS permettano solo le operazioni previste.
 
 ## Nota operativa
 
 La pagina `autovalutazione.html` è una prima base tecnica. Prima di inviarla ai soci va testata con pochi utenti interni.
+
+## Flusso TEST/PROD
+
+Il computer locale resta un workspace pulito: non si creano piu' copie HTML di versione per ogni modifica.
+
+- Git/GitHub conserva lo storico del codice.
+- `index.html` e' sempre l'app corrente.
+- TEST e PROD sono separati in Supabase, non in copie diverse dell'app.
+- TEST si apre con `https://padelvillage.github.io/padel-match-organizer/?env=test` e usa `config-test.js`.
+- PROD si apre con `https://padelvillage.github.io/padel-match-organizer/` e usa `config.js`.
+- Ogni modifica passa prima da Supabase TEST; solo dopo verifica si applicano gli SQL su Supabase PROD.
+- Le operazioni amministrative usano Supabase Auth e i permessi del profilo staff, senza PIN operativo.
 
 ## Flusso di lavoro a sezioni
 

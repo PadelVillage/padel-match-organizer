@@ -11,3 +11,7 @@ Backup_Padel_*.json
 # Backup e versioni temporanee locali
 *_backup.*
 *_temp.*
+
+# Da ora lo storico versioni vive su Git/GitHub, non in copie HTML locali.
+# Eventuali snapshot manuali non devono entrare nel repository.
+padel_match_organizer_v5_*.html

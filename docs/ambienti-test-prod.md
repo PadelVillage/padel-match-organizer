@@ -7,16 +7,32 @@
 
 ## Supabase
 
-- PROD usa `config.js`.
-- TEST usa `config-test.js`.
-- TEST deve puntare a un progetto Supabase separato, senza dati sensibili reali.
+- PROD e TEST sono due progetti Supabase separati.
+- PROD usa il progetto Supabase reale di produzione e viene raggiunto dall'app tramite `config.js`.
+- TEST usa un progetto Supabase dedicato a test/collaudo e viene raggiunto dall'app tramite `config-test.js`.
+- Non usare mai lo stesso project ref Supabase per PROD e TEST.
+- TEST deve restare senza dati sensibili reali.
+
+Project ref:
+
+- PROD: `qqbfphyslczzkxoncgex`
+- TEST: `cudiqnrrlbyqryrtaprd`
+
+Schema previsto:
+
+```text
+App senza env=test  -> config.js      -> Supabase PROD
+App con ?env=test   -> config-test.js -> Supabase TEST
+```
 
 ## Procedura consigliata
 
-1. Sviluppare e provare in locale.
-2. Pubblicare o aprire la versione TEST con `?env=test`.
-3. Verificare login, routine, permessi, sync e form pubblici.
-4. Solo dopo pubblicare o usare la versione PROD.
+1. Sviluppare nel repo locale lavorando su `index.html`, senza creare nuove copie `padel_match_organizer_v5_*.html`.
+2. Pubblicare/aprire la versione TEST con `?env=test`.
+3. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
+4. Verificare login, routine, permessi, sync e form pubblici su TEST.
+5. Solo dopo verifica, applicare gli stessi cambi database/Auth/funzioni su Supabase PROD.
+6. Usare Git/GitHub per storico, commit e tag versione.
 
 ## Configurazione Auth Supabase TEST
 
@@ -24,6 +40,59 @@ Nel progetto Supabase TEST:
 
 - Site URL: `https://padelvillage.github.io/padel-match-organizer/?env=test`
 - Redirect URLs: `https://padelvillage.github.io/padel-match-organizer/*`
+
+## Setup iniziale Supabase TEST
+
+Stato attuale: completato il 2026-05-06 sul progetto `cudiqnrrlbyqryrtaprd`.
+
+1. Crea un nuovo progetto Supabase chiamato `Padel Match Organizer TEST`.
+2. Usa la regione `eu-west-1`, come il progetto PROD, salvo necessita' operative diverse.
+3. In SQL Editor esegui gli schema in questo ordine:
+   - `supabase_schema.sql`
+   - `supabase_pmo_cloud_schema.sql`
+   - `supabase_pmo_staff_admin_schema.sql`
+4. Inserisci il primo profilo proprietario nel progetto TEST, una sola volta:
+
+   ```sql
+   insert into public.pmo_staff_profiles (email, full_name, role, status, permissions)
+   values (
+     'padelvillage.club@gmail.com',
+     'Maurizio Aprea',
+     'owner',
+     'active',
+     public.pmo_default_staff_permissions('owner')
+   )
+   on conflict (email) do update
+   set full_name = excluded.full_name,
+       role = excluded.role,
+       status = excluded.status,
+       permissions = excluded.permissions,
+       updated_at = now();
+   ```
+
+5. In Project Settings copia Project URL e anon/public key nel file `config-test.js`.
+6. In Authentication > URL Configuration imposta:
+   - Site URL: `https://padelvillage.github.io/padel-match-organizer/?env=test`
+   - Redirect URLs: `https://padelvillage.github.io/padel-match-organizer/*`
+7. Apri `https://padelvillage.github.io/padel-match-organizer/?env=test`, crea l'accesso con email personale e verifica login staff, recupero password, sync cloud, routine, autovalutazione e feedback post-partita.
+
+## Verifica Supabase TEST
+
+Health check SQL eseguito sul progetto TEST:
+
+```sql
+select
+  exists (select 1 from pmo_staff_profiles where role = 'owner' and status = 'active') as owner_profile_configured,
+  to_regclass('public.assessment_tokens') is not null as assessment_tokens_ok,
+  to_regclass('public.self_assessments') is not null as self_assessments_ok,
+  to_regclass('public.post_match_feedback_tokens') is not null as feedback_tokens_ok,
+  to_regclass('public.pmo_cloud_records') is not null as cloud_records_ok,
+  to_regclass('public.pmo_routines') is not null as routines_ok,
+  to_regclass('public.pmo_staff_profiles') is not null as staff_profiles_ok,
+  to_regprocedure('public.pmo_get_my_staff_profile()') is not null as staff_auth_rpc_ok;
+```
+
+Risultato atteso/verificato: tutte le colonne `true`.
 
 ## Nota dati
 

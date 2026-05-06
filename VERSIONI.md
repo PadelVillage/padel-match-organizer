@@ -1,5 +1,19 @@
 # Versioni
 
+## v5.332 / Admin Supabase senza PIN staff
+
+- Rimosso il PIN operativo dalle sezioni Amministrazione, Routine cloud, registrazione token autovalutazione e feedback post-partita.
+- Le RPC amministrative usano Supabase Auth e controllano ruolo/permessi del profilo staff (`owner`, `admin`, `staff`, `readonly`).
+- Aggiunte RPC no-PIN compatibili per utenti staff autenticati, lasciando le vecchie firme con PIN solo come compatibilita' legacy.
+- Ripulito `assessmentSettings` dal vecchio `adminPin` prima del sync cloud.
+
+## v5.331 / Verifica ambiente Supabase
+
+- Aggiunto in Amministrazione il pannello "Ambiente Supabase" per controllare ambiente app, config caricata, project ref, Auth e principali RPC.
+- Il check segnala se TEST punta per errore al project ref PROD.
+- Migliorato il messaggio quando in TEST `config-test.js` e' presente ma mancano URL o anon key.
+- Collegato `config-test.js` al progetto Supabase TEST `cudiqnrrlbyqryrtaprd`.
+
 ## v5.151 / Scheda socio ottimizzata
 
 - Ridisegnata la scheda socio con header compatto, dati socio, preferenze operative e stato rapido separati.
