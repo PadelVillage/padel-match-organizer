@@ -204,6 +204,33 @@
     @media (max-width: 900px) { .assessment-send-layout { grid-template-columns: 1fr; } }
 
     /* v5.330 - Centro Routine cloud e sync Supabase */
+    .admin-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0; }
+    .admin-card { background:#fff; border:1px solid #dfe8f3; border-radius:8px; padding:13px; box-shadow:0 1px 4px rgba(15,23,42,.04); }
+    .admin-card .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.02em; }
+    .admin-card .value { margin-top:5px; color:var(--primary); font-size:22px; font-weight:900; line-height:1.1; }
+    .admin-panel { background:#fff; border:1px solid #dfe8f3; border-radius:8px; padding:18px; margin:14px 0; box-shadow:0 1px 4px rgba(15,23,42,.04); }
+    .admin-panel-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .admin-panel-head h3 { margin:0 0 4px; color:var(--primary); }
+    .admin-panel-head p { margin:0; color:#667085; }
+    .admin-form-grid { display:grid; grid-template-columns:1.1fr 1fr .7fr .7fr; gap:10px; align-items:end; }
+    .admin-form-grid label, .admin-pin-row label { color:#475467; font-size:12px; font-weight:900; margin-bottom:5px; display:block; }
+    .admin-pin-row { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; gap:10px; align-items:end; margin:10px 0 12px; }
+    .admin-permission-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px; }
+    .admin-permission-grid label { display:flex; align-items:center; gap:7px; border:1px solid #dfe8f3; border-radius:8px; padding:9px 10px; background:#fbfdff; font-size:13px; font-weight:850; color:#344054; }
+    .admin-permission-grid input { width:auto; }
+    .admin-table-wrap { border:1px solid #e1e7ef; border-radius:8px; overflow:auto; margin-top:12px; }
+    .admin-table { margin:0; min-width:920px; }
+    .admin-table th { background:#f3f7fc; color:#17386f; }
+    .admin-table td { vertical-align:middle; }
+    .admin-role-pill, .admin-status-pill { display:inline-flex; align-items:center; border-radius:999px; padding:5px 8px; font-size:12px; font-weight:900; background:#eef3fb; color:var(--primary); }
+    .admin-status-pill.active { background:#e7f8ec; color:#1f7a35; }
+    .admin-status-pill.invited { background:#fff7df; color:#8a5b00; }
+    .admin-status-pill.paused { background:#ffecec; color:#b42318; }
+    .admin-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+    .admin-note { color:#667085; font-size:13px; line-height:1.45; margin-top:8px; }
+    @media (max-width:1050px) { .admin-grid { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } }
+
     body.post-match-feedback-public-mode .side-nav,
     body.post-match-feedback-public-mode .top-nav-bar,
     body.post-match-feedback-public-mode .tabs { display:none !important; }
@@ -3456,7 +3483,7 @@ body.assessment-public-mode .assessment-public-only-card {
       color:#182233;
     }
     .pmo-login-card {
-      width:min(440px,100%);
+      width:min(540px,100%);
       background:#fff;
       border:1px solid rgba(255,255,255,.35);
       border-radius:12px;
@@ -3477,6 +3504,15 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     .pmo-login-field {
       margin-top:22px;
+    }
+    .pmo-login-row {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:18px;
+    }
+    .pmo-login-row .pmo-login-field {
+      margin-top:0;
     }
     .pmo-login-field label {
       display:block;
@@ -3512,6 +3548,35 @@ body.assessment-public-mode .assessment-public-only-card {
       font-weight:800;
       color:#b42318;
     }
+    .pmo-login-divider {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:#667085;
+      font-size:12px;
+      font-weight:900;
+      margin:18px 0 2px;
+      text-transform:uppercase;
+    }
+    .pmo-login-divider::before,
+    .pmo-login-divider::after {
+      content:'';
+      height:1px;
+      background:#e1e7ef;
+      flex:1;
+    }
+    .pmo-login-secondary {
+      background:#f8fbff;
+      border:1px solid #e1e7ef;
+      border-radius:10px;
+      padding:12px;
+      margin-top:12px;
+    }
+    .pmo-login-secondary .pmo-login-field input {
+      font-size:16px;
+      padding:11px 12px;
+    }
+    @media (max-width:620px) { .pmo-login-row { grid-template-columns:1fr; } }
     .side-nav-auth-logout {
       background:rgba(255,255,255,.14);
       color:#fff;
@@ -3579,16 +3644,30 @@ body.assessment-public-mode .assessment-public-only-card {
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
     <form class="pmo-login-card" onsubmit="return handleStaffLoginSubmit(event)">
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
-      <p>Accesso staff. Inserisci la password per aprire il gestionale.</p>
-      <div class="pmo-login-field">
-        <label for="pmoStaffPassword">Password staff</label>
-        <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
+      <p>Accesso staff. Usa l'email personale quando sara attivata in Amministrazione, oppure la password beta.</p>
+      <div class="pmo-login-row">
+        <div class="pmo-login-field">
+          <label for="pmoStaffEmail">Email staff</label>
+          <input id="pmoStaffEmail" type="email" autocomplete="username" placeholder="nome@padelvillage.it" />
+        </div>
+        <div class="pmo-login-field">
+          <label for="pmoStaffAuthPassword">Password personale</label>
+          <input id="pmoStaffAuthPassword" type="password" autocomplete="current-password" />
+        </div>
+      </div>
+      <div class="pmo-login-divider">oppure accesso beta</div>
+      <div class="pmo-login-secondary">
+        <div class="pmo-login-field">
+          <label for="pmoStaffPassword">Password staff beta</label>
+          <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
+        </div>
       </div>
       <div id="pmoLoginMessage" class="pmo-login-message" aria-live="polite"></div>
       <div class="pmo-login-actions">
         <button id="pmoLoginButton" type="submit" class="btn-primary">Entra</button>
+        <button id="pmoSignupButton" type="button" class="btn-secondary" onclick="pmoHandleStaffSignup()">Crea accesso</button>
       </div>
-      <p>Protezione beta per evitare accessi casuali al link pubblico.</p>
+      <p>La creazione accesso funziona solo per email gia abilitate nella sezione Amministrazione.</p>
     </form>
   </div>
   <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
@@ -3663,6 +3742,11 @@ body.assessment-public-mode .assessment-public-only-card {
         <button class="tab-button side-nav-main-item" onclick="switchTab('routines', this)">
           <span class="nav-order">7</span>
           <span class="nav-copy"><span class="nav-main">Routine</span><span class="nav-sub">Automazioni e cloud</span></span>
+        </button>
+
+        <button class="tab-button side-nav-main-item" onclick="switchTab('administration', this)">
+          <span class="nav-order">8</span>
+          <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti e sicurezza</span></span>
         </button>
 
       </div>
@@ -4350,6 +4434,80 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
+    <div id="administration" class="tab-content">
+      <div class="section">
+        <div class="dashboard-page-title">
+          <h2>Amministrazione</h2>
+          <p>Gestione utenti staff, ruoli, permessi e accesso sicuro tramite Supabase Auth.</p>
+        </div>
+        <div id="pmoAdminKpis" class="admin-grid"></div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <div>
+              <h3>Accesso sicuro</h3>
+              <p>Stato della sessione corrente e passaggio dalla password beta agli utenti personali.</p>
+            </div>
+            <div class="admin-actions">
+              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshMyStaffProfile()">Aggiorna profilo</button>
+              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); staffLogout()">Esci</button>
+            </div>
+          </div>
+          <div id="pmoAdminAuthStatus"></div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <div>
+              <h3>Utenti staff</h3>
+              <p>Crea o aggiorna le email autorizzate. Poi la persona potra registrarsi dal login con la stessa email.</p>
+            </div>
+          </div>
+          <div class="admin-pin-row">
+            <div>
+              <label for="pmoAdminPin">PIN staff Supabase</label>
+              <input id="pmoAdminPin" type="password" autocomplete="off" placeholder="Usa il PIN staff Supabase" oninput="pmoRememberAdminPin()" />
+            </div>
+            <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoLoadStaffUsers()">Carica utenti</button>
+            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
+          </div>
+          <div class="admin-form-grid">
+            <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" placeholder="nome@padelvillage.it" /></div>
+            <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" placeholder="Nome staff" /></div>
+            <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()"><option value="owner">Proprietario</option><option value="admin">Admin</option><option value="staff">Staff</option><option value="readonly">Solo lettura</option></select></div>
+            <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus"><option value="invited">Invitato</option><option value="active">Attivo</option><option value="paused">Disattivato</option></select></div>
+          </div>
+          <div class="admin-permission-grid">
+            <label><input type="checkbox" data-admin-permission="manage_users" /> Gestisce utenti</label>
+            <label><input type="checkbox" data-admin-permission="cloud_sync" /> Sync dati cloud</label>
+            <label><input type="checkbox" data-admin-permission="routines" /> Routine</label>
+            <label><input type="checkbox" data-admin-permission="members_write" /> Modifica soci</label>
+            <label><input type="checkbox" data-admin-permission="matches_write" /> Modifica partite</label>
+            <label><input type="checkbox" data-admin-permission="messages_write" /> Messaggi WhatsApp</label>
+            <label><input type="checkbox" data-admin-permission="data_export" /> Export/import dati</label>
+            <label><input type="checkbox" data-admin-permission="read_all" /> Lettura completa</label>
+          </div>
+          <div class="admin-actions" style="margin-top:12px;">
+            <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">Salva utente</button>
+            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoClearStaffUserForm()">Svuota modulo</button>
+          </div>
+          <div class="admin-note">Nota operativa: il profilo autorizza l'email. La password personale viene scelta dalla persona con “Crea accesso” nella schermata di login, oppure creando l'utente in Supabase Auth.</div>
+          <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Inserisci il PIN staff e carica gli utenti.</div>
+          <div id="pmoStaffUsersTable"></div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <div>
+              <h3>Registro attivita</h3>
+              <p>Ultime azioni amministrative registrate in Supabase.</p>
+            </div>
+          </div>
+          <div id="pmoAuditLogTable"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="whatsappComposerOverlay" class="whatsapp-composer-overlay" onclick="if(event.target.id==='whatsappComposerOverlay') closeWhatsAppTemplateComposer()"></div>
 
     <div id="inviteResponses" class="tab-content">
@@ -4436,6 +4594,8 @@ body.assessment-public-mode .assessment-public-only-card {
 
     const APP_VERSION = '5.330';
     const PMO_STAFF_AUTH_KEY = 'pmoStaffAccessV1';
+    const PMO_STAFF_SUPABASE_SESSION_KEY = 'pmoStaffSupabaseSessionV1';
+    const PMO_STAFF_PROFILE_KEY = 'pmoStaffProfileV1';
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
     const PMO_STAFF_AUTH_SALT = 'pmo-village-beta';
     const PMO_STAFF_PASSWORD_SHA256 = '4ec9587b325c496c64e25e10333550e67e6d3b4dd68fb3137eadb09eabfa217f';
@@ -4510,6 +4670,8 @@ body.assessment-public-mode .assessment-public-only-card {
     let lastFillSlotsAnalysisSignature = '';
 	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
+	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
+	    let pmoStaffProfile = safeLoad(PMO_STAFF_PROFILE_KEY, null);
 	    let fillSlotsCandidateContextCache = { signature:'', filterKey:'', context:null };
     let fillSlotsContextWarmTimer = null;
     let fillSlotsAnalysisRequestId = 0;
@@ -4555,7 +4717,7 @@ body.assessment-public-mode .assessment-public-only-card {
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
       if (!unlocked) {
         setTimeout(() => {
-          const input = document.getElementById('pmoStaffPassword');
+          const input = document.getElementById('pmoStaffEmail') || document.getElementById('pmoStaffPassword');
           if (input) input.focus();
         }, 0);
       }
@@ -4563,25 +4725,30 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function isStaffSessionValid() {
       if (isAssessmentPublicRequest()) return true;
+      const supabaseSession = pmoReadSupabaseStaffSession();
+      if (pmoIsSupabaseSessionFresh(supabaseSession) && pmoIsStaffProfileActive(pmoStaffProfile)) return true;
       let session = null;
       try { session = JSON.parse(localStorage.getItem(PMO_STAFF_AUTH_KEY) || 'null'); }
       catch { session = null; }
-      return !!session && Number(session.expiresAt || 0) > Date.now();
+      return !!session && session.mode === 'legacy_password' && Number(session.expiresAt || 0) > Date.now();
     }
 
-    function rememberStaffSession() {
+    function rememberStaffSession(mode='legacy_password', meta={}) {
       const now = Date.now();
       try {
         localStorage.setItem(PMO_STAFF_AUTH_KEY, JSON.stringify({
           unlockedAt: now,
           expiresAt: now + PMO_STAFF_AUTH_TTL_MS,
-          version: APP_VERSION
+          version: APP_VERSION,
+          mode,
+          ...meta
         }));
       } catch {}
     }
 
     function clearStaffSession() {
       try { localStorage.removeItem(PMO_STAFF_AUTH_KEY); } catch {}
+      pmoClearSupabaseStaffSession();
     }
 
     function pmoStaffFallbackHash(value) {
@@ -4623,14 +4790,24 @@ body.assessment-public-mode .assessment-public-only-card {
     function handleStaffLoginSubmit(event) {
       if (event) event.preventDefault();
       const input = document.getElementById('pmoStaffPassword');
+      const emailInput = document.getElementById('pmoStaffEmail');
+      const authPasswordInput = document.getElementById('pmoStaffAuthPassword');
       const message = document.getElementById('pmoLoginMessage');
       const button = document.getElementById('pmoLoginButton');
+      const email = cleanCell(emailInput?.value || '');
+      const authPassword = authPasswordInput ? authPasswordInput.value : '';
       const password = input ? input.value : '';
       if (message) message.textContent = '';
       if (button) button.disabled = true;
+      if (email || authPassword) {
+        pmoHandleStaffEmailLogin(email, authPassword).finally(() => {
+          if (button) button.disabled = false;
+        });
+        return false;
+      }
       isStaffPasswordValid(password).then(valid => {
         if (valid) {
-          rememberStaffSession();
+          rememberStaffSession('legacy_password');
           if (input) input.value = '';
           setStaffAuthState(true);
         } else {
@@ -4652,6 +4829,120 @@ body.assessment-public-mode .assessment-public-only-card {
     function staffLogout() {
       clearStaffSession();
       setStaffAuthState(false);
+    }
+
+    function pmoReadSupabaseStaffSession() {
+      try { return JSON.parse(localStorage.getItem(PMO_STAFF_SUPABASE_SESSION_KEY) || 'null'); }
+      catch { return null; }
+    }
+    function pmoIsSupabaseSessionFresh(session) {
+      return !!session?.access_token && Number(session.expires_at_ms || 0) > Date.now() + 30000;
+    }
+    function pmoIsStaffProfileActive(profile) {
+      return !!profile && String(profile.status || '') === 'active';
+    }
+    function pmoStoreSupabaseStaffSession(data) {
+      if (!data?.access_token) return null;
+      const expiresIn = Number(data.expires_in || 3600);
+      const session = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || '',
+        expires_at_ms: data.expires_at ? Number(data.expires_at) * 1000 : Date.now() + expiresIn * 1000,
+        user: data.user || null,
+        saved_at: Date.now()
+      };
+      localStorage.setItem(PMO_STAFF_SUPABASE_SESSION_KEY, JSON.stringify(session));
+      return session;
+    }
+    function pmoStoreStaffProfile(profile) {
+      pmoStaffProfile = profile || null;
+      if (pmoStaffProfile) localStorage.setItem(PMO_STAFF_PROFILE_KEY, JSON.stringify(pmoStaffProfile));
+      else localStorage.removeItem(PMO_STAFF_PROFILE_KEY);
+    }
+    function pmoClearSupabaseStaffSession() {
+      try { localStorage.removeItem(PMO_STAFF_SUPABASE_SESSION_KEY); } catch {}
+      try { localStorage.removeItem(PMO_STAFF_PROFILE_KEY); } catch {}
+      pmoStaffProfile = null;
+    }
+    async function pmoSupabaseAuthFetch(path, body) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/auth/v1/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey },
+        body: JSON.stringify(body || {})
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok) throw new Error((data && (data.msg || data.message || data.error_description || data.error)) || text || `Errore HTTP ${response.status}`);
+      return data;
+    }
+    async function pmoGetSupabaseStaffAccessToken() {
+      let session = pmoReadSupabaseStaffSession();
+      if (pmoIsSupabaseSessionFresh(session)) return session.access_token;
+      if (!session?.refresh_token) return '';
+      const refreshed = await pmoSupabaseAuthFetch('token?grant_type=refresh_token', { refresh_token: session.refresh_token });
+      session = pmoStoreSupabaseStaffSession(refreshed);
+      return session?.access_token || '';
+    }
+    async function pmoLoadMyStaffProfile() {
+      const accessToken = await pmoGetSupabaseStaffAccessToken();
+      if (!accessToken) return null;
+      const rows = await pmoCloudRpc('pmo_get_my_staff_profile', {}, { accessToken });
+      const profile = Array.isArray(rows) ? rows[0] : rows;
+      pmoStoreStaffProfile(profile || null);
+      return profile || null;
+    }
+    async function pmoHandleStaffEmailLogin(email, password) {
+      const message = document.getElementById('pmoLoginMessage');
+      const emailInput = document.getElementById('pmoStaffEmail');
+      const passwordInput = document.getElementById('pmoStaffAuthPassword');
+      try {
+        if (!email || !password) throw new Error('Inserisci email staff e password personale.');
+        const authData = await pmoSupabaseAuthFetch('token?grant_type=password', { email, password });
+        pmoStoreSupabaseStaffSession(authData);
+        const profile = await pmoLoadMyStaffProfile();
+        if (!pmoIsStaffProfileActive(profile)) {
+          pmoClearSupabaseStaffSession();
+          throw new Error('Email non abilitata o utente disattivato in Amministrazione.');
+        }
+        rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        setStaffAuthState(true);
+        renderPmoAdministration();
+      } catch (err) {
+        pmoClearSupabaseStaffSession();
+        if (message) message.textContent = err.message || 'Accesso non riuscito.';
+      }
+    }
+    async function pmoHandleStaffSignup() {
+      const button = document.getElementById('pmoSignupButton');
+      const message = document.getElementById('pmoLoginMessage');
+      const email = cleanCell(document.getElementById('pmoStaffEmail')?.value || '');
+      const password = document.getElementById('pmoStaffAuthPassword')?.value || '';
+      try {
+        if (message) message.textContent = '';
+        if (button) button.disabled = true;
+        if (!email || !password) throw new Error('Inserisci email e password personale da creare.');
+        if (password.length < 8) throw new Error('Scegli una password di almeno 8 caratteri.');
+        const data = await pmoSupabaseAuthFetch('signup', { email, password });
+        if (data?.access_token) {
+          pmoStoreSupabaseStaffSession(data);
+          const profile = await pmoLoadMyStaffProfile();
+          if (pmoIsStaffProfileActive(profile)) {
+            rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
+            setStaffAuthState(true);
+            renderPmoAdministration();
+            return;
+          }
+        }
+        if (message) message.textContent = 'Accesso creato. Se Supabase richiede conferma email, confermala e poi entra.';
+      } catch (err) {
+        if (message) message.textContent = err.message || 'Creazione accesso non riuscita.';
+      } finally {
+        if (button) button.disabled = false;
+      }
     }
 
     const DATA_SNAPSHOT_KEY = 'pmoAutoDataSnapshotV1';
@@ -5215,6 +5506,7 @@ body.assessment-public-mode .assessment-public-only-card {
       fillSlots: '🎯 Apri Partite',
       contact: '💬 Messaggi WhatsApp',
       routines: '⚙️ Routine',
+      administration: '🔐 Amministrazione',
       inviteResponses: '🎾 Chiudi Partite',
       matchHistory: '📚 Storico partite'
     };
@@ -5634,6 +5926,7 @@ body.assessment-public-mode .assessment-public-only-card {
             if (tabName === 'groups') { renderAssistantGroups(); renderPlayerAvailabilityPreview(); }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
             if (tabName === 'routines') renderPmoRoutineCenter();
+            if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
             if (tabName === 'matchHistory') renderMatchHistoryDashboard();
           }, 0);
@@ -17018,22 +17311,31 @@ Per confermare scrivi ELIMINA.`);
 	      const advanced = document.getElementById('assessmentAdminPin');
 	      if (advanced && !advanced.value) advanced.value = value;
 	    }
+	    function pmoRememberAdminPin() {
+	      const value = cleanCell(document.getElementById('pmoAdminPin')?.value || '');
+	      if (!value) return;
+	      assessmentSettings.adminPin = value;
+	      save('assessmentSettings', assessmentSettings);
+	      const cloud = document.getElementById('pmoCloudAdminPin');
+	      if (cloud && !cloud.value) cloud.value = value;
+	    }
 	    function pmoRequireAdminPin(actionLabel='questa operazione cloud') {
-	      const input = document.getElementById('pmoCloudAdminPin') || document.getElementById('assessmentAdminPin');
-	      const adminPin = cleanCell(input?.value || assessmentSettings.adminPin || '');
+	      const inputs = ['pmoAdminPin', 'pmoCloudAdminPin', 'assessmentAdminPin'].map(id => document.getElementById(id)).filter(Boolean);
+	      const adminPin = cleanCell(inputs.map(input => input.value).find(Boolean) || assessmentSettings.adminPin || '');
 	      if (!adminPin) {
 	        showAlert(`⚠️ Inserisci il PIN staff per ${actionLabel}.`, 'warning');
 	        return '';
 	      }
 	      assessmentSettings.adminPin = adminPin;
 	      save('assessmentSettings', assessmentSettings);
+	      inputs.forEach(input => { if (input && !input.value) input.value = adminPin; });
 	      return adminPin;
 	    }
-	    async function pmoCloudRpc(functionName, payload) {
+	    async function pmoCloudRpc(functionName, payload, options={}) {
 	      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
 	      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
 	        method: 'POST',
-	        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+	        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${options.accessToken || supabaseKey}` },
 	        body: JSON.stringify(payload || {})
 	      });
 	      const text = await response.text();
@@ -17234,6 +17536,223 @@ Per confermare scrivi ELIMINA.`);
 	        <td>${escapeHtml(pmoFormatDateTime(r.last_checked_at))}<div class="routine-mini">${escapeHtml(r.last_message || r.last_status || '')}</div></td>
 	      </tr>`).join('');
 	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Routine</th><th>Stato</th><th>Anticipo</th><th>Ultimo controllo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	    }
+	    function pmoDefaultPermissionsForRole(role) {
+	      const all = { manage_users:true, cloud_sync:true, routines:true, members_write:true, matches_write:true, messages_write:true, data_export:true, read_all:true };
+	      if (role === 'owner' || role === 'admin') return all;
+	      if (role === 'staff') return { manage_users:false, cloud_sync:false, routines:false, members_write:true, matches_write:true, messages_write:true, data_export:false, read_all:true };
+	      return { manage_users:false, cloud_sync:false, routines:false, members_write:false, matches_write:false, messages_write:false, data_export:false, read_all:true };
+	    }
+	    function pmoRoleLabel(role) {
+	      return ({ owner:'Proprietario', admin:'Admin', staff:'Staff', readonly:'Solo lettura' })[role] || role || '-';
+	    }
+	    function pmoStatusLabel(status) {
+	      return ({ invited:'Invitato', active:'Attivo', paused:'Disattivato' })[status] || status || '-';
+	    }
+	    function pmoCurrentSessionSummary() {
+	      const stored = safeLoad(PMO_STAFF_AUTH_KEY, null);
+	      const profile = pmoStaffProfile || safeLoad(PMO_STAFF_PROFILE_KEY, null);
+	      if (pmoIsStaffProfileActive(profile)) return { mode:'Supabase Auth', user:profile.email || '-', role:pmoRoleLabel(profile.role), status:pmoStatusLabel(profile.status), profile };
+	      if (stored?.mode === 'legacy_password') return { mode:'Password beta', user:'Staff condiviso', role:'Accesso beta', status:'Attivo', profile:null };
+	      return { mode:'Non autenticato', user:'-', role:'-', status:'-', profile:null };
+	    }
+	    function renderPmoAdministration() {
+	      const pin = document.getElementById('pmoAdminPin');
+	      if (pin && !pin.value) pin.value = assessmentSettings.adminPin || '';
+	      pmoRenderAdminKpis();
+	      pmoRenderAdminAuthStatus();
+	      pmoRenderStaffUsersTable();
+	      pmoRenderAuditLogTable();
+	    }
+	    function pmoRenderAdminKpis() {
+	      const target = document.getElementById('pmoAdminKpis');
+	      if (!target) return;
+	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
+	      const active = users.filter(u => u.status === 'active').length;
+	      const invited = users.filter(u => u.status === 'invited').length;
+	      const paused = users.filter(u => u.status === 'paused').length;
+	      const session = pmoCurrentSessionSummary();
+	      target.innerHTML = `
+	        <div class="admin-card"><div class="label">Sessione</div><div class="value" style="font-size:18px">${escapeHtml(session.mode)}</div></div>
+	        <div class="admin-card"><div class="label">Utenti attivi</div><div class="value">${active}</div></div>
+	        <div class="admin-card"><div class="label">Invitati</div><div class="value">${invited}</div></div>
+	        <div class="admin-card"><div class="label">Disattivati</div><div class="value">${paused}</div></div>
+	      `;
+	    }
+	    function pmoRenderAdminAuthStatus() {
+	      const target = document.getElementById('pmoAdminAuthStatus');
+	      if (!target) return;
+	      const session = pmoCurrentSessionSummary();
+	      const permissions = session.profile?.permissions || {};
+	      const permissionLabels = Object.entries(permissions).filter(([,value]) => !!value).map(([key]) => key.replace(/_/g, ' ')).join(', ') || 'Permessi non caricati';
+	      target.innerHTML = `
+	        <div class="admin-table-wrap"><table class="admin-table"><tbody>
+	          <tr><th>Metodo accesso</th><td>${escapeHtml(session.mode)}</td></tr>
+	          <tr><th>Utente</th><td>${escapeHtml(session.user)}</td></tr>
+	          <tr><th>Ruolo</th><td><span class="admin-role-pill">${escapeHtml(session.role)}</span></td></tr>
+	          <tr><th>Stato</th><td><span class="admin-status-pill ${escapeHtml(session.profile?.status || 'active')}">${escapeHtml(session.status)}</span></td></tr>
+	          <tr><th>Permessi</th><td>${escapeHtml(permissionLabels)}</td></tr>
+	        </tbody></table></div>
+	        <div class="admin-note">Finche usi la password beta, chi conosce quella password entra come staff condiviso. Con Supabase Auth ogni persona avra email, password e permessi propri.</div>
+	      `;
+	    }
+	    function pmoSetAdminStatus(message, type='info') {
+	      const box = document.getElementById('pmoAdminStatus');
+	      if (!box) return;
+	      box.className = `info-box alert-${type}`;
+	      box.textContent = message;
+	    }
+	    function pmoApplyRolePermissions() {
+	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
+	      const defaults = pmoDefaultPermissionsForRole(role);
+	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
+	        input.checked = !!defaults[input.dataset.adminPermission];
+	      });
+	    }
+	    function pmoCollectAdminPermissions() {
+	      const permissions = {};
+	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
+	        permissions[input.dataset.adminPermission] = !!input.checked;
+	      });
+	      return permissions;
+	    }
+	    function pmoClearStaffUserForm() {
+	      ['pmoStaffUserEmail','pmoStaffUserName'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+	      const role = document.getElementById('pmoStaffUserRole'); if (role) role.value = 'staff';
+	      const status = document.getElementById('pmoStaffUserStatus'); if (status) status.value = 'invited';
+	      pmoApplyRolePermissions();
+	    }
+	    function pmoFillStaffUserForm(email) {
+	      const user = (pmoAdminState.staffUsers || []).find(u => String(u.email || '') === String(email || ''));
+	      if (!user) return;
+	      const emailEl = document.getElementById('pmoStaffUserEmail'); if (emailEl) emailEl.value = user.email || '';
+	      const nameEl = document.getElementById('pmoStaffUserName'); if (nameEl) nameEl.value = user.full_name || '';
+	      const roleEl = document.getElementById('pmoStaffUserRole'); if (roleEl) roleEl.value = user.role || 'staff';
+	      const statusEl = document.getElementById('pmoStaffUserStatus'); if (statusEl) statusEl.value = user.status || 'invited';
+	      const permissions = user.permissions || pmoDefaultPermissionsForRole(user.role || 'staff');
+	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
+	        input.checked = !!permissions[input.dataset.adminPermission];
+	      });
+	      showAlert('Utente caricato nel modulo.', 'info');
+	    }
+	    async function pmoLoadStaffUsers() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('leggere gli utenti staff');
+	        if (!adminPin) return;
+	        pmoSetAdminStatus('Carico utenti staff...', 'info');
+	        const rows = await pmoCloudRpc('pmo_get_staff_users_admin', { p_admin_pin: adminPin });
+	        pmoAdminState.staffUsers = Array.isArray(rows) ? rows : [];
+	        pmoAdminState.lastStaffReadAt = new Date().toISOString();
+	        save('pmoAdminState', pmoAdminState);
+	        renderPmoAdministration();
+	        pmoSetAdminStatus(`✅ Utenti staff caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Lettura utenti non riuscita: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function pmoSaveStaffUser() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('salvare un utente staff');
+	        if (!adminPin) return;
+	        const email = cleanCell(document.getElementById('pmoStaffUserEmail')?.value || '').toLowerCase();
+	        const fullName = compactSpaces(document.getElementById('pmoStaffUserName')?.value || '');
+	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
+	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
+	        if (!email) return showAlert('Inserisci email staff.', 'warning');
+	        pmoSetAdminStatus('Salvo utente staff...', 'info');
+	        const result = await pmoCloudRpc('pmo_upsert_staff_user_admin', {
+	          p_admin_pin: adminPin,
+	          p_email: email,
+	          p_full_name: fullName,
+	          p_role: role,
+	          p_status: status,
+	          p_permissions: pmoCollectAdminPermissions()
+	        });
+	        if (!result || result.ok !== true) {
+	          if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
+	          throw new Error(result?.error || 'Salvataggio non riuscito.');
+	        }
+	        await pmoLoadStaffUsers();
+	        pmoSetAdminStatus(`✅ Utente salvato: ${email}.`, 'success');
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function pmoSetStaffUserStatus(email, status) {
+	      try {
+	        const adminPin = pmoRequireAdminPin('aggiornare lo stato utente');
+	        if (!adminPin) return;
+	        const result = await pmoCloudRpc('pmo_set_staff_user_status_admin', { p_admin_pin: adminPin, p_email: email, p_status: status });
+	        if (!result || result.ok !== true) throw new Error(result?.error || 'Aggiornamento stato non riuscito.');
+	        await pmoLoadStaffUsers();
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Stato utente non aggiornato: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    function pmoRenderStaffUsersTable() {
+	      const target = document.getElementById('pmoStaffUsersTable');
+	      if (!target) return;
+	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
+	      if (!users.length) {
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>Inserisci il PIN staff e clicca “Carica utenti”.</div>';
+	        return;
+	      }
+	      const rows = users.map(user => {
+	        const activePermissions = Object.entries(user.permissions || {}).filter(([,value]) => !!value).map(([key]) => key.replace(/_/g, ' ')).join(', ') || '-';
+	        return `<tr>
+	          <td><strong>${escapeHtml(user.full_name || '-')}</strong><div class="routine-mini">${escapeHtml(user.email || '')}</div></td>
+	          <td><span class="admin-role-pill">${escapeHtml(pmoRoleLabel(user.role))}</span></td>
+	          <td><span class="admin-status-pill ${escapeHtml(user.status || '')}">${escapeHtml(pmoStatusLabel(user.status))}</span></td>
+	          <td>${escapeHtml(activePermissions)}</td>
+	          <td>${escapeHtml(pmoFormatDateTime(user.last_seen_at || user.updated_at))}</td>
+	          <td><div class="admin-actions">
+	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoFillStaffUserForm('${escapeJs(user.email || '')}')">Modifica</button>
+	            <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'active')">Attiva</button>
+	            <button class="btn-warning small-btn" onclick="setActionAnchor(this); pmoSetStaffUserStatus('${escapeJs(user.email || '')}', 'paused')">Disattiva</button>
+	          </div></td>
+	        </tr>`;
+	      }).join('');
+	      target.innerHTML = `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Utente</th><th>Ruolo</th><th>Stato</th><th>Permessi</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	    }
+	    async function pmoLoadAuditLog() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('leggere il registro attivita');
+	        if (!adminPin) return;
+	        const rows = await pmoCloudRpc('pmo_get_audit_log_admin', { p_admin_pin: adminPin, p_limit: 80 });
+	        pmoAdminState.auditLog = Array.isArray(rows) ? rows : [];
+	        pmoAdminState.lastAuditReadAt = new Date().toISOString();
+	        save('pmoAdminState', pmoAdminState);
+	        renderPmoAdministration();
+	        pmoSetAdminStatus(`✅ Registro attivita caricato: ${pmoAdminState.auditLog.length} righe.`, 'success');
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Registro non letto: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    function pmoRenderAuditLogTable() {
+	      const target = document.getElementById('pmoAuditLogTable');
+	      if (!target) return;
+	      const rows = Array.isArray(pmoAdminState.auditLog) ? pmoAdminState.auditLog : [];
+	      if (!rows.length) {
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun evento caricato.</strong><br>Clicca “Registro attivita” nel pannello Utenti staff.</div>';
+	        return;
+	      }
+	      const html = rows.map(row => `<tr>
+	        <td>${escapeHtml(pmoFormatDateTime(row.created_at))}</td>
+	        <td><strong>${escapeHtml(row.actor_email || '-')}</strong><div class="routine-mini">${escapeHtml(row.actor_role || '')}</div></td>
+	        <td>${escapeHtml(row.action || '')}</td>
+	        <td><code>${escapeHtml(JSON.stringify(row.detail || {}))}</code></td>
+	      </tr>`).join('');
+	      target.innerHTML = `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Utente</th><th>Azione</th><th>Dettaglio</th></tr></thead><tbody>${html}</tbody></table></div>`;
+	    }
+	    async function pmoRefreshMyStaffProfile() {
+	      try {
+	        const profile = await pmoLoadMyStaffProfile();
+	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password beta e' normale.", 'info');
+	        renderPmoAdministration();
+	        showAlert('Profilo staff aggiornato.', 'success');
+	      } catch (err) {
+	        showAlert('Profilo staff non aggiornato: ' + (err.message || err), 'warning');
+	      }
 	    }
 	    async function pmoUploadLocalDataToCloud() {
 	      try {
@@ -18157,6 +18676,8 @@ Per confermare scrivi ELIMINA.`);
 	      renderInitialDashboard();
 	      renderPlayerAvailabilityPreview();
 	      renderPmoRoutineCenter();
+	      renderPmoAdministration();
+	      pmoApplyRolePermissions();
 	      refreshAssistantGroupsCountBadge();
       checkLocalDataSafetyOnStartup();
       if (createdChiudiTestMatch) {
