@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.328</title>
+  <title>Padel Match Organizer v5.330</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -203,6 +203,35 @@
 
     @media (max-width: 900px) { .assessment-send-layout { grid-template-columns: 1fr; } }
 
+    /* v5.330 - Centro Routine cloud e sync Supabase */
+    body.post-match-feedback-public-mode .side-nav,
+    body.post-match-feedback-public-mode .top-nav-bar,
+    body.post-match-feedback-public-mode .tabs { display:none !important; }
+    body.post-match-feedback-public-mode .app-shell { display:block; min-height:100vh; }
+    body.post-match-feedback-public-mode .main-content { margin-left:0 !important; width:100%; }
+    body.post-match-feedback-public-mode .container { max-width:860px; padding-top:18px; }
+    body.post-match-feedback-public-mode .tab-content { display:none !important; }
+    body.post-match-feedback-public-mode #assessment.tab-content { display:block !important; }
+    body.post-match-feedback-public-mode #assessment .assessment-v5144-section > * { display:none !important; }
+    body.post-match-feedback-public-mode #postMatchFeedbackPublicCard { display:block !important; }
+    body:not(.post-match-feedback-public-mode) #postMatchFeedbackPublicCard { display:none !important; }
+    .post-match-feedback-card { background:#fff; border:1px solid #d9e5f2; border-radius:16px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    .post-match-feedback-card h3 { margin:0 0 6px; color:var(--primary); }
+    .post-match-feedback-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
+    .post-match-feedback-pill { background:#eef7ff; color:var(--primary); border:1px solid #d9e6f5; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:bold; white-space:nowrap; }
+    .post-match-feedback-question { border:1px solid #e6edf5; border-radius:12px; padding:13px; margin-top:10px; background:#fbfdff; }
+    .post-match-feedback-question .q-title { font-weight:bold; color:#243b53; margin-bottom:8px; }
+    .post-match-feedback-question select, .post-match-feedback-question textarea { width:100%; }
+    .post-match-feedback-note { color:#667085; font-size:13px; line-height:1.45; }
+    .post-match-feedback-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+    .post-match-feedback-panel { border:1px solid #dfe8f3; border-radius:12px; background:#f8fbff; padding:12px; margin:10px 0; }
+    .post-match-feedback-stat { background:#fff; border:1px solid #e6edf5; border-radius:10px; padding:9px; }
+    .post-match-feedback-stat span { display:block; color:#667085; font-size:12px; }
+    .post-match-feedback-stat strong { color:var(--primary); }
+    .post-match-feedback-mini { color:#667085; font-size:12px; margin-top:3px; }
+    @media (max-width:680px) { .post-match-feedback-head { flex-direction:column; } .post-match-feedback-actions { flex-direction:column; } .post-match-feedback-actions button { width:100%; } }
+
+    
     .whatsapp-mode-box { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; padding:10px; background:#fff; border:1px solid #e1e7ef; border-radius:8px; }
     .whatsapp-mode-badge { display:inline-block; padding:5px 8px; border-radius:999px; font-size:12px; font-weight:bold; background:#eef3fb; color:var(--primary); }
     .whatsapp-mode-buttons { display:grid; grid-template-columns:repeat(2, max-content); gap:8px; align-items:center; justify-content:end; }
@@ -3506,6 +3535,31 @@ body.assessment-public-mode .assessment-public-only-card {
     body.dashboard-view .top-nav-bar {
       display:none;
     }
+    .routine-cloud-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:12px 0 16px; }
+    .routine-cloud-card { border:1px solid var(--border); border-top:4px solid var(--primary); border-radius:8px; background:#fff; padding:14px; min-width:0; }
+    .routine-cloud-card.success { border-top-color:var(--success); }
+    .routine-cloud-card.warning { border-top-color:var(--warning); }
+    .routine-cloud-card.info { border-top-color:#7c3aed; }
+    .routine-cloud-card .label { color:#667085; font-size:12px; font-weight:800; margin-bottom:5px; }
+    .routine-cloud-card .value { color:#111827; font-size:24px; font-weight:900; line-height:1.1; }
+    .routine-cloud-panel { border:1px solid var(--border); border-radius:8px; background:#fff; padding:16px; margin:14px 0; }
+    .routine-cloud-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:1px solid #eef2f7; padding-bottom:12px; margin-bottom:12px; }
+    .routine-cloud-head h3 { margin:0; color:var(--primary); font-size:20px; }
+    .routine-cloud-head p { margin:4px 0 0; color:#667085; font-size:13px; }
+    .routine-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .routine-settings-row { display:grid; grid-template-columns:minmax(180px,1fr) minmax(120px,.45fr); gap:10px; align-items:end; margin:10px 0; }
+    .routine-table-wrap { overflow:auto; border:1px solid #eef2f7; border-radius:8px; }
+    .routine-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .routine-table th, .routine-table td { padding:9px 10px; border-bottom:1px solid #eef2f7; text-align:left; vertical-align:middle; }
+    .routine-table th { background:#f8fbff; color:#344054; font-size:12px; text-transform:uppercase; letter-spacing:0; }
+    .routine-table tbody tr:last-child td { border-bottom:0; }
+    .routine-status { display:inline-flex; align-items:center; border-radius:999px; padding:5px 8px; font-size:12px; font-weight:900; background:#eef3fb; color:var(--primary); }
+    .routine-status.active { background:#d4edda; color:#155724; }
+    .routine-status.paused { background:#f1f1f1; color:#555; }
+    .routine-status.blocked { background:#f8d7da; color:#721c24; }
+    .routine-mini { color:#667085; font-size:12px; margin-top:3px; line-height:1.35; }
+    .routine-option-box { border:1px solid #e1e7ef; border-radius:8px; background:#fbfdff; padding:10px; }
+    .routine-option-box label { display:flex; gap:8px; align-items:center; margin:0; font-weight:850; color:#344054; }
     @media (max-width:800px) {
       body.dashboard-view .top-nav-bar {
         display:flex;
@@ -3514,7 +3568,10 @@ body.assessment-public-mode .assessment-public-only-card {
       body.dashboard-view #dashboardTopUpdate {
         display:none;
       }
+      .routine-cloud-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .routine-settings-row { grid-template-columns:1fr; }
     }
+    @media (max-width:560px) { .routine-cloud-grid { grid-template-columns:1fr; } }
 
   </style>
 </head>
@@ -3601,6 +3658,11 @@ body.assessment-public-mode .assessment-public-only-card {
         <button class="tab-button side-nav-main-item" onclick="switchTab('contact', this)">
           <span class="nav-order">6</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
+        </button>
+
+        <button class="tab-button side-nav-main-item" onclick="switchTab('routines', this)">
+          <span class="nav-order">7</span>
+          <span class="nav-copy"><span class="nav-main">Routine</span><span class="nav-sub">Automazioni e cloud</span></span>
         </button>
 
       </div>
@@ -4004,6 +4066,31 @@ body.assessment-public-mode .assessment-public-only-card {
           <div id="assessmentPostList" class="assessment-clean-list"></div>
         </div>
 
+
+        <div id="postMatchFeedbackPublicCard" class="post-match-feedback-card">
+          <div class="post-match-feedback-head">
+            <div>
+              <h3>Feedback post-partita</h3>
+              <p class="post-match-feedback-note">Tre risposte rapide per aiutarci a organizzare partite piu equilibrate e adatte a te.</p>
+            </div>
+            <span class="post-match-feedback-pill">Padel Village</span>
+          </div>
+          <div class="post-match-feedback-panel">
+            <div class="assessment-public-eyebrow">Feedback intestato a</div>
+            <div class="assessment-public-name" id="postMatchFeedbackPlayerName">Socio Padel Village</div>
+            <div class="post-match-feedback-note" id="postMatchFeedbackMatchLabel">Partita appena giocata</div>
+          </div>
+          <form id="postMatchFeedbackPublicForm" novalidate>
+            <div class="post-match-feedback-question"><div class="q-title">1. Com'e stato il livello della partita per te? <span class="assessment-public-required">*</span></div><select required name="levelExperience"><option value="" selected disabled>Seleziona</option><option value="too_easy">Troppo facile</option><option value="right">Giusto</option><option value="too_hard">Troppo difficile</option><option value="too_mixed">Troppo disomogeneo</option></select></div>
+            <div class="post-match-feedback-question"><div class="q-title">2. Per le prossime partite preferisci una composizione... <span class="assessment-public-required">*</span></div><select required name="compositionPreference"><option value="" selected disabled>Seleziona</option><option value="mixed_gender">Mista uomini/donne</option><option value="homogeneous">Omogenea</option><option value="indifferent">Indifferente</option></select></div>
+            <div class="post-match-feedback-question"><div class="q-title">3. Vuoi continuare a ricevere proposte per partite organizzate da noi? <span class="assessment-public-required">*</span></div><select required name="futureInterest"><option value="" selected disabled>Seleziona</option><option value="yes">Si</option><option value="less_often">Si, ma meno spesso</option><option value="no">No</option></select></div>
+            <div class="post-match-feedback-question"><div class="q-title">Nota facoltativa</div><textarea name="note" rows="3" maxlength="500" placeholder="Se vuoi, aggiungi un dettaglio sulla partita."></textarea></div>
+            <div class="assessment-public-message error" id="postMatchFeedbackError">Compila le tre domande obbligatorie prima di inviare.</div>
+            <div class="assessment-public-message success" id="postMatchFeedbackSuccess">Feedback inviato correttamente. Grazie!</div>
+            <div class="post-match-feedback-actions"><button type="submit" class="btn-primary" id="postMatchFeedbackSubmit">Invia feedback</button></div>
+          </form>
+        </div>
+
         <div id="anchor-assessment-scheda" class="assessment-flow-card archive assessment-public-only-card">
           <div class="assessment-public-form-card assessment-public-form-head">
             <div>
@@ -4125,12 +4212,27 @@ body.assessment-public-mode .assessment-public-only-card {
                         <label>Giorno preferito</label>
                         <select id="assistantGroupDay"><option value="">Qualsiasi giorno</option><option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="0">Domenica</option></select>
                       </div>
-                      <div class="row">
-                        <div class="col"><label>Ora inizio</label><input type="time" id="assistantGroupStartTime" value="12:30" /></div>
-                        <div class="col"><label>Ora fine</label><input type="time" id="assistantGroupEndTime" value="14:00" /></div>
-                      </div>
-                      <div class="form-group">
-                        <label>Soci del gruppo</label>
+	                      <div class="row">
+	                        <div class="col"><label>Ora inizio</label><input type="time" id="assistantGroupStartTime" value="12:30" /></div>
+	                        <div class="col"><label>Ora fine</label><input type="time" id="assistantGroupEndTime" value="14:00" /></div>
+	                      </div>
+	                      <div class="routine-option-box">
+	                        <label><input id="assistantGroupAutoCreateEnabled" type="checkbox" /> Crea automaticamente in Chiudi Partite</label>
+	                        <div class="routine-settings-row">
+	                          <div>
+	                            <label for="assistantGroupAutoCreateHoursBefore">Anticipo creazione</label>
+	                            <select id="assistantGroupAutoCreateHoursBefore">
+	                              <option value="24">24 ore prima</option>
+	                              <option value="36">36 ore prima</option>
+	                              <option value="48" selected>48 ore prima</option>
+	                              <option value="72">72 ore prima</option>
+	                            </select>
+	                          </div>
+	                          <div class="routine-mini">La routine cloud prepara solo la partita. WhatsApp resta manuale.</div>
+	                        </div>
+	                      </div>
+	                      <div class="form-group">
+	                        <label>Soci del gruppo</label>
                         <div class="assistant-group-picker">
                           <div id="assistantGroupRows" class="assistant-group-rows"></div>
                           <div class="group-editor-hint" id="assistantGroupNamesCount">0 soci inseriti nel gruppo.</div>
@@ -4189,6 +4291,62 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div id="anchor-whatsapp-top" class="whatsapp-template-board"></div>
         <div id="contactForm" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div id="routines" class="tab-content">
+      <div class="section">
+        <div class="dashboard-page-title">
+          <h2>Routine</h2>
+          <p>Centro operativo per sincronizzazione cloud e automazioni dei gruppi soci.</p>
+        </div>
+        <div id="routineCloudKpis" class="routine-cloud-grid"></div>
+        <div class="routine-cloud-panel">
+          <div class="routine-cloud-head">
+            <div>
+              <h3>Cloud Supabase</h3>
+              <p>Carica una copia dei dati locali nel backend e aggiorna le configurazioni routine.</p>
+            </div>
+            <div class="routine-actions">
+	              <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()">Sincronizza dati locali</button>
+	              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoPullOperationalCloudRecords()">Scarica novità cloud</button>
+	              <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSyncGroupRoutinesToCloud()">Sincronizza routine gruppi</button>
+              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshCloudRoutines()">Aggiorna stato cloud</button>
+            </div>
+          </div>
+          <div class="routine-settings-row">
+            <div>
+              <label for="pmoCloudAdminPin">PIN staff Supabase</label>
+              <input id="pmoCloudAdminPin" type="password" autocomplete="off" placeholder="Usa lo stesso PIN delle autovalutazioni" oninput="pmoRememberCloudPin()" />
+            </div>
+            <div>
+              <label>Ultimo sync</label>
+              <div id="pmoCloudLastSync" class="routine-mini">Mai</div>
+            </div>
+          </div>
+          <div id="pmoCloudStatus" class="info-box">Inserisci il PIN staff, poi usa la sincronizzazione quando vuoi aggiornare Supabase.</div>
+        </div>
+        <div class="routine-cloud-panel">
+          <div class="routine-cloud-head">
+            <div>
+              <h3>Routine gruppi soci</h3>
+              <p id="routineGroupsHint">La prima automazione prevista crea partite in Chiudi Partite 48 ore prima.</p>
+            </div>
+            <div class="routine-actions">
+              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); switchTab('groups')">Apri gruppi soci</button>
+            </div>
+          </div>
+          <div id="routineGroupsTable"></div>
+        </div>
+        <div class="routine-cloud-panel">
+          <div class="routine-cloud-head">
+            <div>
+              <h3>Routine cloud</h3>
+              <p>Stato letto da Supabase dopo la sincronizzazione.</p>
+            </div>
+          </div>
+          <div id="routineCloudTable"></div>
+        </div>
       </div>
     </div>
 
@@ -4276,7 +4434,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.328';
+    const APP_VERSION = '5.330';
     const PMO_STAFF_AUTH_KEY = 'pmoStaffAccessV1';
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
     const PMO_STAFF_AUTH_SALT = 'pmo-village-beta';
@@ -4317,6 +4475,9 @@ body.assessment-public-mode .assessment-public-only-card {
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
     let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html', configUrl: 'https://padelvillage.github.io/padel-match-organizer/config.js', adminPin: '' });
+    let postMatchFeedbackTokens = safeLoad('postMatchFeedbackTokens', {});
+    let postMatchFeedbackResponses = safeLoad('postMatchFeedbackResponses', []);
+    let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: 'https://padelvillage.github.io/padel-match-organizer/feedback-partita.html' });
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let assessmentPausedTokens = safeLoad('assessmentPausedTokens', {});
     let dailyAssistantState = safeLoad('dailyAssistantState', {});
@@ -4326,12 +4487,14 @@ body.assessment-public-mode .assessment-public-only-card {
       let changed = false;
       dailyPlayerGroups = dailyPlayerGroups.filter(g => g && typeof g === 'object').map(g => {
         if (!g.id) { g.id = makeId(); changed = true; }
-        if (!Array.isArray(g.names)) {
-          g.names = parseAssistantGroupNames ? parseAssistantGroupNames(g.names || '') : String(g.names || '').split('\n').map(x => x.trim()).filter(Boolean);
-          changed = true;
-        }
-        return g;
-      });
+	        if (!Array.isArray(g.names)) {
+	          g.names = parseAssistantGroupNames ? parseAssistantGroupNames(g.names || '') : String(g.names || '').split('\n').map(x => x.trim()).filter(Boolean);
+	          changed = true;
+	        }
+	        if (g.autoCreateEnabled === undefined) { g.autoCreateEnabled = false; changed = true; }
+	        if (!g.autoCreateHoursBefore) { g.autoCreateHoursBefore = 48; changed = true; }
+	        return g;
+	      });
       if (changed) save('dailyPlayerGroups', dailyPlayerGroups);
     }
     let lunchMatchInvitations = safeLoad('lunchMatchInvitations', {});
@@ -4345,8 +4508,9 @@ body.assessment-public-mode .assessment-public-only-card {
     let lastFillSlotsAnalysis = [];
     let lastFillSlotsViewAnalysis = null;
     let lastFillSlotsAnalysisSignature = '';
-    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
-    let fillSlotsCandidateContextCache = { signature:'', filterKey:'', context:null };
+	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
+	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
+	    let fillSlotsCandidateContextCache = { signature:'', filterKey:'', context:null };
     let fillSlotsContextWarmTimer = null;
     let fillSlotsAnalysisRequestId = 0;
     let fillSlotApproveInProgress = false;
@@ -4380,6 +4544,7 @@ body.assessment-public-mode .assessment-public-only-card {
       let params;
       try { params = new URLSearchParams(window.location.search || ''); }
       catch { return false; }
+      if (typeof isPostMatchFeedbackPublicRequest === 'function' && isPostMatchFeedbackPublicRequest()) return false;
       return !!String(params.get('t') || params.get('token') || '').trim();
     }
 
@@ -4445,6 +4610,7 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     function initStaffAccessGate() {
+      if (typeof isPostMatchFeedbackPublicRequest === 'function' && isPostMatchFeedbackPublicRequest()) document.body.classList.add('post-match-feedback-public-mode');
       if (isAssessmentPublicRequest()) document.body.classList.add('assessment-public-mode');
       if (isStaffSessionValid()) {
         setStaffAuthState(true);
@@ -5048,6 +5214,7 @@ body.assessment-public-mode .assessment-public-only-card {
       groups: '👥 Gruppi soci',
       fillSlots: '🎯 Apri Partite',
       contact: '💬 Messaggi WhatsApp',
+      routines: '⚙️ Routine',
       inviteResponses: '🎾 Chiudi Partite',
       matchHistory: '📚 Storico partite'
     };
@@ -5466,6 +5633,7 @@ body.assessment-public-mode .assessment-public-only-card {
             if (tabName === 'assessment') displayAssessment();
             if (tabName === 'groups') { renderAssistantGroups(); renderPlayerAvailabilityPreview(); }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
+            if (tabName === 'routines') renderPmoRoutineCenter();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
             if (tabName === 'matchHistory') renderMatchHistoryDashboard();
           }, 0);
@@ -6788,6 +6956,8 @@ body.assessment-public-mode .assessment-public-only-card {
         dailyDiffHistory,
         assessmentTokens,
         assessmentResponses,
+        postMatchFeedbackTokens,
+        postMatchFeedbackResponses,
         assessmentSettings,
         assessmentDailySendLog,
         assessmentPausedTokens,
@@ -6870,13 +7040,13 @@ body.assessment-public-mode .assessment-public-only-card {
           if (!Array.isArray(data.giocatori)) return showAlert('❌ Backup non valido', 'danger');
           if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return;
           giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
-          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = data.dailyDiffHistory || []; assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = data.dailyDiffHistory || []; assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
           if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
             if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
             else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
           }
           const removedOld12Months = pruneHistoricalBookings(false);
-          save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else localStorage.removeItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+          save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else localStorage.removeItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
           renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone('restore', 'Backup ripristinato'); saveLocalDataSnapshot('restore-backup');
           showAlert(`✅ Backup ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
         } catch (err) { showAlert('❌ Errore backup: ' + err.message, 'danger'); }
@@ -7292,6 +7462,10 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
           <aside class="member-card-stack">
             ${assessmentMeta}
+            <section class="member-panel">
+              <div class="member-panel-head"><h4>Feedback post-partita</h4><span class="member-panel-hint">Preferenze emerse dalle partite giocate</span></div>
+              ${renderPostMatchFeedbackMemberSummary(g)}
+            </section>
             ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
             <section class="member-panel">
               <div class="member-panel-head"><h4>Azioni operative</h4></div>
@@ -13243,6 +13417,7 @@ Grazie!`
           <td>${lunchInviteStatusBadge(status)}<br><span class="muted">${escapeHtml(last)}</span></td>
           <td>${closed ? `<div class="match-message-actions">
             <div class="match-actions-group">
+              <button class="btn-success small-btn" onclick="setActionAnchor(this); openPostMatchFeedbackWhatsApp('${escapeJs(record.key)}','${escapeJs(id)}')">Feedback</button>
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); openLunchWhatsAppTemplateComposer('${escapeJs(record.key)}','${escapeJs(id)}','closed_notice')">💬 Già chiusa</button>
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); openLunchWhatsAppTemplateComposer('${escapeJs(record.key)}','${escapeJs(id)}','free')">Libero</button>
             </div>
@@ -13292,6 +13467,7 @@ Grazie!`
         <div class="invite-sheet-body">
           <div class="match-card slim">
             <div class="match-detail-grid" style="margin-top:12px;">
+              ${renderPostMatchFeedbackPanel(record)}
               ${closed || cancelled ? '' : `<div class="match-add-panels">
                 <details class="sub-action-panel"><summary>➕ Giocatore</summary><div class="sub-body">${buildManualAnagraficaPlayerPanelForRecord(record)}</div></details>
                 <details class="sub-action-panel" ontoggle="loadCompatiblePlayersPanel(this,'${escapeJs(record.key)}')"><summary>➕ Altri giocatori compatibili</summary><div class="sub-body" data-compatible-body="1">${buildCompatiblePlayersPlaceholderForRecord(record)}</div></details>
@@ -16220,14 +16396,16 @@ Padel Village`;
       closeAssistantGroupDetailOverlay();
       const overlay = document.getElementById('assistantGroupEditorOverlay');
       const panel = document.getElementById('assistantGroupEditorPanel');
-      if (clearFirst) {
-        setAssistantGroupEditMode('');
-        ['assistantGroupName','assistantGroupRecommendedDays','assistantGroupNames','assistantGroupNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        const dayEl = document.getElementById('assistantGroupDay'); if (dayEl) dayEl.value = '';
-        const typeEl = document.getElementById('assistantGroupMatchType'); if (typeEl) typeEl.value = 'mista';
-        setAssistantGroupTimePreset('12:30','14:00');
-        setAssistantGroupNameRows([]);
-      }
+	      if (clearFirst) {
+	        setAssistantGroupEditMode('');
+	        ['assistantGroupName','assistantGroupRecommendedDays','assistantGroupNames','assistantGroupNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+	        const dayEl = document.getElementById('assistantGroupDay'); if (dayEl) dayEl.value = '';
+	        const typeEl = document.getElementById('assistantGroupMatchType'); if (typeEl) typeEl.value = 'mista';
+	        const autoEl = document.getElementById('assistantGroupAutoCreateEnabled'); if (autoEl) autoEl.checked = false;
+	        const autoHoursEl = document.getElementById('assistantGroupAutoCreateHoursBefore'); if (autoHoursEl) autoHoursEl.value = '48';
+	        setAssistantGroupTimePreset('12:30','14:00');
+	        setAssistantGroupNameRows([]);
+	      }
       if (panel) panel.open = true;
       if (overlay) {
         overlay.classList.add('open');
@@ -16254,11 +16432,15 @@ Padel Village`;
       ['assistantGroupName','assistantGroupRecommendedDays','assistantGroupNames','assistantGroupNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       const dayEl = document.getElementById('assistantGroupDay');
       if (dayEl) dayEl.value = '';
-      const typeEl = document.getElementById('assistantGroupMatchType');
-      if (typeEl) typeEl.value = 'mista';
-      setAssistantGroupTimePreset('12:30','14:00');
-      setAssistantGroupNameRows([]);
-      showAlert('✅ Modulo gruppo svuotato.', 'success');
+	      const typeEl = document.getElementById('assistantGroupMatchType');
+	      if (typeEl) typeEl.value = 'mista';
+	      const autoEl = document.getElementById('assistantGroupAutoCreateEnabled');
+	      if (autoEl) autoEl.checked = false;
+	      const autoHoursEl = document.getElementById('assistantGroupAutoCreateHoursBefore');
+	      if (autoHoursEl) autoHoursEl.value = '48';
+	      setAssistantGroupTimePreset('12:30','14:00');
+	      setAssistantGroupNameRows([]);
+	      showAlert('✅ Modulo gruppo svuotato.', 'success');
     }
     function saveAssistantGroup(options={}) {
       const opts = options || {};
@@ -16266,10 +16448,12 @@ Padel Village`;
       const recommendedDays = compactSpaces(document.getElementById('assistantGroupRecommendedDays')?.value || '');
       const day = cleanCell(document.getElementById('assistantGroupDay')?.value || '');
       const matchType = cleanCell(document.getElementById('assistantGroupMatchType')?.value || 'mista');
-      const startTime = parseTimeValue(document.getElementById('assistantGroupStartTime')?.value || '12:30') || '12:30';
-      const endTime = parseTimeValue(document.getElementById('assistantGroupEndTime')?.value || '14:00') || '14:00';
-      const formatName = compactSpaces(document.getElementById('assistantGroupFormat')?.value || '');
-      const notes = compactSpaces(document.getElementById('assistantGroupNotes')?.value || '');
+	      const startTime = parseTimeValue(document.getElementById('assistantGroupStartTime')?.value || '12:30') || '12:30';
+	      const endTime = parseTimeValue(document.getElementById('assistantGroupEndTime')?.value || '14:00') || '14:00';
+	      const autoCreateEnabled = !!document.getElementById('assistantGroupAutoCreateEnabled')?.checked;
+	      const autoCreateHoursBefore = Math.max(1, parseInt(document.getElementById('assistantGroupAutoCreateHoursBefore')?.value || '48', 10) || 48);
+	      const formatName = compactSpaces(document.getElementById('assistantGroupFormat')?.value || '');
+	      const notes = compactSpaces(document.getElementById('assistantGroupNotes')?.value || '');
       renderAssistantGroupNameRows();
       const draftNames = assistantGroupDraftNames();
       const names = assistantGroupCommittedNames();
@@ -16284,7 +16468,7 @@ Padel Village`;
       // v5.13.3: il nome non è più usato come chiave. Possono esistere gruppi con nomi simili;
       // la differenza reale è l'ID interno, giorno, orario e nominativi.
 
-      const payloadCore = { name, recommendedDays, day, matchType, startTime, endTime, formatName, notes, names };
+	      const payloadCore = { name, recommendedDays, day, matchType, startTime, endTime, formatName, notes, names, autoCreateEnabled, autoCreateHoursBefore };
       if (existing) {
         const hasLegacyLevel = Object.prototype.hasOwnProperty.call(existing, 'level');
         const currentCore = {
@@ -16292,12 +16476,14 @@ Padel Village`;
           recommendedDays: existing.recommendedDays || '',
           day: existing.day || '',
           matchType: existing.matchType || 'mista',
-          startTime: existing.startTime || '12:30',
-          endTime: existing.endTime || '14:00',
-          formatName: existing.formatName || '',
-          notes: existing.notes || '',
-          names: Array.isArray(existing.names) ? existing.names : parseAssistantGroupNames(existing.names || '')
-        };
+	          startTime: existing.startTime || '12:30',
+	          endTime: existing.endTime || '14:00',
+	          formatName: existing.formatName || '',
+	          notes: existing.notes || '',
+	          names: Array.isArray(existing.names) ? existing.names : parseAssistantGroupNames(existing.names || ''),
+	          autoCreateEnabled: !!existing.autoCreateEnabled,
+	          autoCreateHoursBefore: Math.max(1, parseInt(existing.autoCreateHoursBefore || '48', 10) || 48)
+	        };
         if (!hasLegacyLevel && sameData(currentCore, payloadCore)) {
           if (!opts.silent) {
             closeAssistantGroupOverlay();
@@ -16352,17 +16538,21 @@ Padel Village`;
       const recommendedDaysEl = document.getElementById('assistantGroupRecommendedDays');
       const dayEl = document.getElementById('assistantGroupDay');
       const typeEl = document.getElementById('assistantGroupMatchType');
-      const startEl = document.getElementById('assistantGroupStartTime');
-      const endEl = document.getElementById('assistantGroupEndTime');
-      const formatEl = document.getElementById('assistantGroupFormat');
-      const notesEl = document.getElementById('assistantGroupNotes');
-      const namesEl = document.getElementById('assistantGroupNames');
+	      const startEl = document.getElementById('assistantGroupStartTime');
+	      const endEl = document.getElementById('assistantGroupEndTime');
+	      const autoEl = document.getElementById('assistantGroupAutoCreateEnabled');
+	      const autoHoursEl = document.getElementById('assistantGroupAutoCreateHoursBefore');
+	      const formatEl = document.getElementById('assistantGroupFormat');
+	      const notesEl = document.getElementById('assistantGroupNotes');
+	      const namesEl = document.getElementById('assistantGroupNames');
       if (nameEl) nameEl.value = group.name || '';
       if (recommendedDaysEl) recommendedDaysEl.value = group.recommendedDays || '';
       if (dayEl) dayEl.value = group.day || '';
-      if (typeEl) typeEl.value = group.matchType || 'mista';
-      setAssistantGroupTimePreset(group.startTime || '12:30', group.endTime || '14:00');
-      if (formatEl) formatEl.value = group.formatName || '';
+	      if (typeEl) typeEl.value = group.matchType || 'mista';
+	      setAssistantGroupTimePreset(group.startTime || '12:30', group.endTime || '14:00');
+	      if (autoEl) autoEl.checked = !!group.autoCreateEnabled;
+	      if (autoHoursEl) autoHoursEl.value = String(group.autoCreateHoursBefore || 48);
+	      if (formatEl) formatEl.value = group.formatName || '';
       if (notesEl) notesEl.value = group.notes || '';
       if (namesEl) namesEl.value = (group.names || []).join('\n');
       setAssistantGroupNameRows(group.names || []);
@@ -16387,18 +16577,22 @@ Padel Village`;
       const recommendedDaysEl = document.getElementById('assistantGroupRecommendedDays');
       const dayEl = document.getElementById('assistantGroupDay');
       const typeEl = document.getElementById('assistantGroupMatchType');
-      const startEl = document.getElementById('assistantGroupStartTime');
-      const endEl = document.getElementById('assistantGroupEndTime');
-      const formatEl = document.getElementById('assistantGroupFormat');
+	      const startEl = document.getElementById('assistantGroupStartTime');
+	      const endEl = document.getElementById('assistantGroupEndTime');
+	      const autoEl = document.getElementById('assistantGroupAutoCreateEnabled');
+	      const autoHoursEl = document.getElementById('assistantGroupAutoCreateHoursBefore');
+	      const formatEl = document.getElementById('assistantGroupFormat');
       const notesEl = document.getElementById('assistantGroupNotes');
       const namesEl = document.getElementById('assistantGroupNames');
 
       if (nameEl) nameEl.value = buildUniqueGroupCopyName(group.name || 'Gruppo');
       if (recommendedDaysEl) recommendedDaysEl.value = group.recommendedDays || '';
       if (dayEl) dayEl.value = group.day || '';
-      if (typeEl) typeEl.value = group.matchType || 'mista';
-      setAssistantGroupTimePreset(group.startTime || '12:30', group.endTime || '14:00');
-      if (formatEl) formatEl.value = group.formatName || '';
+	      if (typeEl) typeEl.value = group.matchType || 'mista';
+	      setAssistantGroupTimePreset(group.startTime || '12:30', group.endTime || '14:00');
+	      if (autoEl) autoEl.checked = !!group.autoCreateEnabled;
+	      if (autoHoursEl) autoHoursEl.value = String(group.autoCreateHoursBefore || 48);
+	      if (formatEl) formatEl.value = group.formatName || '';
       if (notesEl) notesEl.value = group.notes || '';
       if (namesEl) namesEl.value = (group.names || []).join('\n');
       setAssistantGroupNameRows(group.names || []);
@@ -16637,25 +16831,27 @@ Per confermare scrivi ELIMINA.`);
       }
       const rows = visibleGroups.map(group => {
         const resolved = resolveAssistantGroup(group);
-        const derivedLevel = assistantGroupDerivedLevelInfo(group);
-        const isOpen = String(assistantGroupOpenId) === String(group.id);
-        const status = group.active === false ? 'Inattivo' : 'Attivo';
-        return `<tr class="${isOpen ? 'selected' : ''}" onclick="editAssistantGroup('${escapeHtml(String(group.id))}')">
-          <td>${escapeHtml(assistantGroupDayLabel(group.day))}</td>
-          <td><div class="players-name">${escapeHtml(group.name)}</div><div class="players-meta">${escapeHtml(String(group.matchType || 'mista') === 'pranzo' ? 'mista' : (group.matchType || 'mista'))}</div></td>
-          <td><strong>${escapeHtml(derivedLevel.label)}</strong></td>
-          <td>${escapeHtml(group.startTime || '12:30')}-${escapeHtml(group.endTime || '14:00')}</td>
-          <td><span class="badge ${group.active === false ? 'badge-danger' : 'badge-success'}">${status}</span></td>
-          <td>${resolved.names.length}</td>
-          <td><div class="groups-actions">
-            <button class="btn-secondary small-btn" onclick="event.stopPropagation(); setActionAnchor(this); editAssistantGroup('${escapeHtml(String(group.id))}')">Modifica</button>
-            <button class="btn-success small-btn" onclick="event.stopPropagation(); setActionAnchor(this); assistantPrepareLunchMatchFromGroup('${escapeHtml(String(group.id))}')">Crea partita in Chiudi Partite</button>
-          </div></td>
-        </tr>`;
-      }).join('');
-      list.innerHTML = `<div class="groups-table-wrap"><table class="groups-table"><thead><tr>
-        <th>${assistantGroupSortButton('day','Giorno')}</th><th>Nome gruppo</th><th>${assistantGroupSortButton('level','Livello soci')}</th><th>${assistantGroupSortButton('band','Fascia')}</th><th>${assistantGroupSortButton('state','Stato')}</th><th>Giocatori</th><th>Azioni</th>
-      </tr></thead><tbody>${rows}</tbody></table></div>`;
+	        const derivedLevel = assistantGroupDerivedLevelInfo(group);
+	        const isOpen = String(assistantGroupOpenId) === String(group.id);
+	        const status = group.active === false ? 'Inattivo' : 'Attivo';
+	        const routineLabel = group.autoCreateEnabled ? `Attiva · ${escapeHtml(String(group.autoCreateHoursBefore || 48))}h` : 'In pausa';
+	        return `<tr class="${isOpen ? 'selected' : ''}" onclick="editAssistantGroup('${escapeHtml(String(group.id))}')">
+	          <td>${escapeHtml(assistantGroupDayLabel(group.day))}</td>
+	          <td><div class="players-name">${escapeHtml(group.name)}</div><div class="players-meta">${escapeHtml(String(group.matchType || 'mista') === 'pranzo' ? 'mista' : (group.matchType || 'mista'))}</div></td>
+	          <td><strong>${escapeHtml(derivedLevel.label)}</strong></td>
+	          <td>${escapeHtml(group.startTime || '12:30')}-${escapeHtml(group.endTime || '14:00')}</td>
+	          <td><span class="badge ${group.active === false ? 'badge-danger' : 'badge-success'}">${status}</span></td>
+	          <td><span class="routine-status ${group.autoCreateEnabled ? 'active' : 'paused'}">${routineLabel}</span></td>
+	          <td>${resolved.names.length}</td>
+	          <td><div class="groups-actions">
+	            <button class="btn-secondary small-btn" onclick="event.stopPropagation(); setActionAnchor(this); editAssistantGroup('${escapeHtml(String(group.id))}')">Modifica</button>
+	            <button class="btn-success small-btn" onclick="event.stopPropagation(); setActionAnchor(this); assistantPrepareLunchMatchFromGroup('${escapeHtml(String(group.id))}')">Crea partita in Chiudi Partite</button>
+	          </div></td>
+	        </tr>`;
+	      }).join('');
+	      list.innerHTML = `<div class="groups-table-wrap"><table class="groups-table"><thead><tr>
+	        <th>${assistantGroupSortButton('day','Giorno')}</th><th>Nome gruppo</th><th>${assistantGroupSortButton('level','Livello soci')}</th><th>${assistantGroupSortButton('band','Fascia')}</th><th>${assistantGroupSortButton('state','Stato')}</th><th>Routine</th><th>Giocatori</th><th>Azioni</th>
+	      </tr></thead><tbody>${rows}</tbody></table></div>`;
       assistantGroupOpenId = '';
     }
     function openAssistantGroupDetail(groupId) {
@@ -16810,11 +17006,386 @@ Per confermare scrivi ELIMINA.`);
       const supabaseUrl = cleanCell(cfg?.SUPABASE_URL || '');
       const supabaseKey = cleanCell(cfg?.SUPABASE_ANON_KEY || cfg?.SUPABASE_PUBLISHABLE_KEY || '');
       if (!supabaseUrl || !supabaseKey) {
-        throw new Error('config.js trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY');
-      }
-      return { supabaseUrl: supabaseUrl.replace(/\/+$/, ''), supabaseKey };
-    }
-    async function registerAssessmentTokensInSupabase() {
+	        throw new Error('config.js trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY');
+	      }
+	      return { supabaseUrl: supabaseUrl.replace(/\/+$/, ''), supabaseKey };
+	    }
+	    function pmoRememberCloudPin() {
+	      const value = cleanCell(document.getElementById('pmoCloudAdminPin')?.value || '');
+	      if (!value) return;
+	      assessmentSettings.adminPin = value;
+	      save('assessmentSettings', assessmentSettings);
+	      const advanced = document.getElementById('assessmentAdminPin');
+	      if (advanced && !advanced.value) advanced.value = value;
+	    }
+	    function pmoRequireAdminPin(actionLabel='questa operazione cloud') {
+	      const input = document.getElementById('pmoCloudAdminPin') || document.getElementById('assessmentAdminPin');
+	      const adminPin = cleanCell(input?.value || assessmentSettings.adminPin || '');
+	      if (!adminPin) {
+	        showAlert(`⚠️ Inserisci il PIN staff per ${actionLabel}.`, 'warning');
+	        return '';
+	      }
+	      assessmentSettings.adminPin = adminPin;
+	      save('assessmentSettings', assessmentSettings);
+	      return adminPin;
+	    }
+	    async function pmoCloudRpc(functionName, payload) {
+	      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+	        method: 'POST',
+	        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+	        body: JSON.stringify(payload || {})
+	      });
+	      const text = await response.text();
+	      let data = null;
+	      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+	      if (!response.ok) throw new Error((data && data.message) || text || `Errore HTTP ${response.status}`);
+	      return data;
+	    }
+	    function pmoStableStringify(value) {
+	      if (Array.isArray(value)) return '[' + value.map(pmoStableStringify).join(',') + ']';
+	      if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + pmoStableStringify(value[key])).join(',') + '}';
+	      return JSON.stringify(value);
+	    }
+	    function pmoShortHash(value) {
+	      const text = pmoStableStringify(value);
+	      let h = 5381;
+	      for (let i = 0; i < text.length; i++) h = ((h << 5) + h) ^ text.charCodeAt(i);
+	      return (h >>> 0).toString(36);
+	    }
+	    function pmoBookingCloudKey(row, index, prefix) {
+	      const parts = [prefix, row?.numero, row?.data, row?.ora || row?.orario, row?.campo, row?.giocatore, row?.durata].map(cleanCell).filter(Boolean);
+	      return parts.length > 2 ? parts.join('|') : `${prefix}|${index}|${pmoShortHash(row)}`;
+	    }
+	    function pmoCloudObjectEntries(value) {
+	      return value && typeof value === 'object' && !Array.isArray(value) ? Object.entries(value) : [];
+	    }
+	    function pmoAddCloudRecord(records, recordType, localKey, payload) {
+	      const key = cleanCell(localKey);
+	      if (!key || !payload) return;
+	      records.push({ record_type: recordType, local_key: key, payload });
+	    }
+	    function pmoBuildCloudRecordsFromLocalState() {
+	      const records = [];
+	      (Array.isArray(giocatori) ? giocatori : []).forEach((item, index) => pmoAddCloudRecord(records, 'member', item.id || item.memberId || `member|${index}|${pmoShortHash(item)}`, item));
+	      (Array.isArray(prenotazioni) ? prenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking', pmoBookingCloudKey(item, index, 'booking'), item));
+	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
+	      (Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_history', pmoBookingCloudKey(item, index, 'history'), item));
+	      (Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : []).forEach((item, index) => pmoAddCloudRecord(records, 'player_group', item.id || `group|${index}|${pmoShortHash(item)}`, item));
+	      pmoCloudObjectEntries(lunchMatchInvitations).forEach(([key, item]) => pmoAddCloudRecord(records, 'match_invitation', item.key || key, item));
+	      pmoCloudObjectEntries(fillSlotCreatedMatches).forEach(([key, item]) => pmoAddCloudRecord(records, 'fill_slot_created_match', item.key || key, item));
+	      (Array.isArray(fillSlotPlayerRequests) ? fillSlotPlayerRequests : []).forEach((item, index) => pmoAddCloudRecord(records, 'fill_slot_player_request', item.id || item.key || `request|${index}|${pmoShortHash(item)}`, item));
+	      pmoCloudObjectEntries(guidedInviteSessions).forEach(([key, item]) => pmoAddCloudRecord(records, 'guided_invite_session', key, item));
+	      pmoCloudObjectEntries(whatsappMessageHistory).forEach(([key, item]) => pmoAddCloudRecord(records, 'whatsapp_message_history', key, { key, items:item }));
+	      (Array.isArray(whatsappMessageTemplates) ? whatsappMessageTemplates : []).forEach((item, index) => pmoAddCloudRecord(records, 'whatsapp_message_template', item.id || `template|${index}|${pmoShortHash(item)}`, item));
+	      if (matchpointData) pmoAddCloudRecord(records, 'matchpoint_data', 'main', matchpointData);
+	      [
+	        'potentialSlotSchedule',
+	        'dailyAssistantState',
+	        'assessmentSettings',
+	        'whatsappOpenSettings',
+	        'postMatchFeedbackSettings'
+	      ].forEach(key => {
+	        const value = window[key] !== undefined ? window[key] : ({ potentialSlotSchedule, dailyAssistantState, assessmentSettings, whatsappOpenSettings, postMatchFeedbackSettings })[key];
+	        if (value !== undefined) pmoAddCloudRecord(records, 'app_setting', key, { key, value });
+	      });
+	      return records;
+	    }
+	    function pmoFormatDateTime(value) {
+	      if (!value) return 'Mai';
+	      const d = new Date(value);
+	      return isNaN(d.getTime()) ? String(value) : d.toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+	    }
+	    function pmoSetCloudStatus(message, type='info') {
+	      const box = document.getElementById('pmoCloudStatus');
+	      if (!box) return;
+	      box.className = `info-box alert-${type}`;
+	      box.textContent = message;
+	    }
+	    function pmoLocalNextGroupDate(group) {
+	      if (!group) return '';
+	      return getNextDateForAssistantGroupDay(group.day || null, group.startTime || '12:30');
+	    }
+	    function pmoGroupMatchDateTime(group, dateValue='') {
+	      const date = dateValue || pmoLocalNextGroupDate(group);
+	      const match = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	      if (!match) return null;
+	      const time = parseTimeValue(group?.startTime || '12:30') || '12:30';
+	      const [hour, minute] = time.split(':').map(n => parseInt(n, 10));
+	      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour || 0, minute || 0, 0, 0);
+	    }
+	    function pmoGroupCreationDateTime(group, dateValue='') {
+	      const matchDate = pmoGroupMatchDateTime(group, dateValue);
+	      if (!matchDate) return null;
+	      const hoursBefore = Math.max(1, parseInt(group?.autoCreateHoursBefore || '48', 10) || 48);
+	      return new Date(matchDate.getTime() - hoursBefore * 60 * 60 * 1000);
+	    }
+	    function pmoFormatRoutineDateTime(value) {
+	      if (!value) return '-';
+	      const d = value instanceof Date ? value : new Date(value);
+	      return isNaN(d.getTime()) ? String(value) : d.toLocaleString('it-IT', { weekday:'short', day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+	    }
+	    function pmoRoutineGroupsHint(groups) {
+	      const activeGroups = (groups || []).filter(g => g.autoCreateEnabled);
+	      const source = activeGroups.length ? activeGroups : (groups || []);
+	      const hours = [...new Set(source.map(g => Math.max(1, parseInt(g.autoCreateHoursBefore || '48', 10) || 48)))].sort((a,b) => a - b);
+	      const hoursText = hours.length === 1 ? `${hours[0]} ore prima` : `con anticipi diversi: ${hours.map(h => `${h}h`).join(', ')}`;
+	      return `La routine crea automaticamente la partita in Chiudi Partite ${hoursText}. In tabella vedi sia la data partita sia l'orario previsto di creazione.`;
+	    }
+	    function pmoToggleGroupRoutine(groupId, enabled) {
+	      const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
+	      if (!group) return;
+	      group.autoCreateEnabled = !!enabled;
+	      group.autoCreateHoursBefore = Math.max(1, parseInt(group.autoCreateHoursBefore || '48', 10) || 48);
+	      group.updatedAt = new Date().toISOString();
+	      save('dailyPlayerGroups', dailyPlayerGroups);
+	      renderPmoRoutineCenter();
+	      renderAssistantGroups();
+	      pmoSetCloudStatus('⚠️ Routine modificata in locale. Clicca “Sincronizza routine gruppi” per aggiornare Supabase.', 'warning');
+	    }
+	    function pmoChangeGroupRoutineHours(groupId, value) {
+	      const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
+	      if (!group) return;
+	      group.autoCreateHoursBefore = Math.max(1, parseInt(value || '48', 10) || 48);
+	      group.updatedAt = new Date().toISOString();
+	      save('dailyPlayerGroups', dailyPlayerGroups);
+	      renderPmoRoutineCenter();
+	      renderAssistantGroups();
+	      pmoSetCloudStatus('⚠️ Anticipo modificato in locale. Clicca “Sincronizza routine gruppi” per aggiornare Supabase.', 'warning');
+	    }
+	    function pmoOpenGroupFromRoutine(groupId) {
+	      const id = String(groupId || '');
+	      if (!id) return showAlert('⚠️ Gruppo non trovato.', 'warning');
+	      const groupsButton = document.getElementById('groupsSideTabButton');
+	      switchTab('groups', groupsButton || null, { scrollTop:false });
+	      requestAnimationFrame(() => {
+	        editAssistantGroup(id);
+	        const overlay = document.getElementById('assistantGroupEditorOverlay');
+	        if (overlay) scrollGroupEditorOverlayIntoView(overlay);
+	      });
+	    }
+	    function renderPmoRoutineCenter() {
+	      const pin = document.getElementById('pmoCloudAdminPin');
+	      if (pin && !pin.value) pin.value = assessmentSettings.adminPin || '';
+	      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
+	      const activeGroups = groups.filter(g => g.autoCreateEnabled);
+	      const localRecordsCount = pmoBuildCloudRecordsFromLocalState().length;
+	      const routines = Array.isArray(pmoCloudState?.routines) ? pmoCloudState.routines : [];
+	      const hint = document.getElementById('routineGroupsHint');
+	      if (hint) hint.textContent = pmoRoutineGroupsHint(groups);
+	      const kpis = document.getElementById('routineCloudKpis');
+	      if (kpis) {
+	        kpis.innerHTML = `
+	          <div class="routine-cloud-card"><div class="label">Record locali pronti</div><div class="value">${localRecordsCount}</div></div>
+	          <div class="routine-cloud-card success"><div class="label">Gruppi con routine</div><div class="value">${activeGroups.length}</div></div>
+	          <div class="routine-cloud-card info"><div class="label">Routine cloud lette</div><div class="value">${routines.length}</div></div>
+	          <div class="routine-cloud-card warning"><div class="label">Ultimo sync</div><div class="value" style="font-size:16px">${escapeHtml(pmoFormatDateTime(pmoCloudState.lastSyncAt))}</div></div>
+	        `;
+	      }
+	      const lastSync = document.getElementById('pmoCloudLastSync');
+	      if (lastSync) lastSync.textContent = `${pmoFormatDateTime(pmoCloudState.lastSyncAt)} · ${pmoCloudState.lastSyncCount || 0} record`;
+	      renderPmoRoutineGroupsTable();
+	      renderPmoCloudRoutinesTable();
+	    }
+	    function renderPmoRoutineGroupsTable() {
+	      const target = document.getElementById('routineGroupsTable');
+	      if (!target) return;
+	      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
+	      if (!groups.length) {
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun gruppo salvato.</strong><br>Crea i gruppi soci prima di attivare routine.</div>';
+	        return;
+	      }
+	      const rows = groups.map(group => {
+	        const resolved = resolveAssistantGroup(group);
+	        const blocked = resolved.missing.length || !resolved.matched.filter(p => p && p.active !== false).length;
+	        const nextDate = pmoLocalNextGroupDate(group);
+	        const creationAt = pmoGroupCreationDateTime(group, nextDate);
+	        return `<tr>
+	          <td><strong>${escapeHtml(group.name || 'Gruppo')}</strong><div class="routine-mini">${escapeHtml(assistantGroupDayLabel(group.day))} · ${escapeHtml(group.startTime || '12:30')}-${escapeHtml(group.endTime || '14:00')}</div></td>
+	          <td><span class="routine-status ${group.autoCreateEnabled ? 'active' : 'paused'}">${group.autoCreateEnabled ? 'Attiva' : 'In pausa'}</span></td>
+	          <td><select onchange="pmoChangeGroupRoutineHours('${escapeJs(String(group.id))}', this.value)">
+	            ${[24,36,48,72].map(h => `<option value="${h}" ${String(group.autoCreateHoursBefore || 48) === String(h) ? 'selected' : ''}>${h}h</option>`).join('')}
+	          </select></td>
+	          <td>
+	            ${escapeHtml(formatDateWithWeekdayForWhatsApp(nextDate) || nextDate || '-')} · ${escapeHtml(group.startTime || '12:30')}
+	            <div class="routine-mini">Creazione prevista: ${escapeHtml(pmoFormatRoutineDateTime(creationAt))}</div>
+	            <div class="routine-mini">${blocked ? 'Blocco: verifica nominativi/soci attivi' : 'Pronta per sync cloud'}</div>
+	          </td>
+	          <td><div class="routine-actions">
+	            <button class="${group.autoCreateEnabled ? 'btn-warning' : 'btn-success'} small-btn" onclick="setActionAnchor(this); pmoToggleGroupRoutine('${escapeJs(String(group.id))}', ${group.autoCreateEnabled ? 'false' : 'true'})">${group.autoCreateEnabled ? 'Pausa' : 'Attiva'}</button>
+	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoOpenGroupFromRoutine('${escapeJs(String(group.id))}')">Apri gruppo</button>
+	          </div></td>
+	        </tr>`;
+	      }).join('');
+	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Gruppo</th><th>Stato</th><th>Anticipo</th><th>Prossima partita</th><th>Azioni</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	    }
+	    function renderPmoCloudRoutinesTable() {
+	      const target = document.getElementById('routineCloudTable');
+	      if (!target) return;
+	      const routines = Array.isArray(pmoCloudState?.routines) ? pmoCloudState.routines : [];
+	      if (!routines.length) {
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessuna routine cloud letta.</strong><br>Clicca “Aggiorna stato cloud” dopo avere sincronizzato le routine.</div>';
+	        return;
+	      }
+	      const rows = routines.map(r => `<tr>
+	        <td><strong>${escapeHtml(r.name || r.local_key || 'Routine')}</strong><div class="routine-mini">${escapeHtml(r.routine_type || '')} · ${escapeHtml(r.source_local_key || '')}</div></td>
+	        <td><span class="routine-status ${escapeHtml(r.status || 'paused')}">${escapeHtml(r.status || 'paused')}</span></td>
+	        <td>${escapeHtml(String(r.config?.hoursBefore || r.config?.hours_before || '-'))}h</td>
+	        <td>${escapeHtml(pmoFormatDateTime(r.last_checked_at))}<div class="routine-mini">${escapeHtml(r.last_message || r.last_status || '')}</div></td>
+	      </tr>`).join('');
+	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Routine</th><th>Stato</th><th>Anticipo</th><th>Ultimo controllo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	    }
+	    async function pmoUploadLocalDataToCloud() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('sincronizzare i dati locali su Supabase');
+	        if (!adminPin) return;
+	        const records = pmoBuildCloudRecordsFromLocalState();
+	        if (!records.length) return showAlert('⚠️ Nessun dato locale da sincronizzare.', 'warning');
+	        pmoSetCloudStatus(`Sincronizzazione in corso: 0/${records.length}`, 'info');
+	        const chunkSize = 200;
+	        let uploaded = 0;
+	        for (let i = 0; i < records.length; i += chunkSize) {
+	          const chunk = records.slice(i, i + chunkSize);
+	          const result = await pmoCloudRpc('pmo_upsert_records_admin', { p_admin_pin: adminPin, p_records: chunk });
+	          if (!result || result.ok !== true) {
+	            if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
+	            throw new Error(result?.error || 'Sync dati non riuscito.');
+	          }
+	          uploaded += result.count || chunk.length;
+	          pmoSetCloudStatus(`Sincronizzazione in corso: ${Math.min(i + chunk.length, records.length)}/${records.length}`, 'info');
+	        }
+	        pmoCloudState.lastSyncAt = new Date().toISOString();
+	        pmoCloudState.lastSyncCount = uploaded;
+	        save('pmoCloudState', pmoCloudState);
+	        renderPmoRoutineCenter();
+	        pmoSetCloudStatus(`✅ Dati locali sincronizzati su Supabase: ${uploaded} record.`, 'success');
+	      } catch (err) {
+	        pmoSetCloudStatus('❌ Sync dati non riuscito: ' + (err.message || err), 'danger');
+	        showAlert('❌ Sync Supabase non riuscito: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function pmoSyncGroupRoutinesToCloud() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('sincronizzare le routine gruppi');
+	        if (!adminPin) return;
+	        const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
+	        if (!groups.length) return showAlert('⚠️ Nessun gruppo da sincronizzare.', 'warning');
+	        pmoSetCloudStatus(`Sincronizzazione routine in corso: 0/${groups.length}`, 'info');
+	        let count = 0;
+	        for (const group of groups) {
+	          const result = await pmoCloudRpc('pmo_set_group_match_routine_admin', {
+	            p_admin_pin: adminPin,
+	            p_group_id: String(group.id || ''),
+	            p_group_name: group.name || 'Gruppo soci',
+	            p_enabled: !!group.autoCreateEnabled,
+	            p_hours_before: Math.max(1, parseInt(group.autoCreateHoursBefore || '48', 10) || 48),
+	            p_config: {
+	              day: group.day || '',
+	              startTime: group.startTime || '12:30',
+	              endTime: group.endTime || '14:00',
+	              matchType: group.matchType || 'mista',
+	              createOnlyIfFieldFree: true,
+	              timezone: 'Europe/Rome'
+	            }
+	          });
+	          if (!result || result.ok !== true) {
+	            if (result?.error === 'INVALID_ADMIN_PIN') throw new Error('PIN staff non valido.');
+	            throw new Error(result?.error || `Routine non sincronizzata: ${group.name || group.id}`);
+	          }
+	          count += 1;
+	          pmoSetCloudStatus(`Sincronizzazione routine in corso: ${count}/${groups.length}`, 'info');
+	        }
+	        pmoCloudState.lastRoutineSyncAt = new Date().toISOString();
+	        save('pmoCloudState', pmoCloudState);
+	        await pmoRefreshCloudRoutines(false);
+	        pmoSetCloudStatus(`✅ Routine gruppi sincronizzate su Supabase: ${count}.`, 'success');
+	      } catch (err) {
+	        pmoSetCloudStatus('❌ Sync routine non riuscito: ' + (err.message || err), 'danger');
+	        showAlert('❌ Sync routine non riuscito: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function pmoRefreshCloudRoutines(showOk=true) {
+	      try {
+	        const adminPin = pmoRequireAdminPin('leggere le routine cloud');
+	        if (!adminPin) return;
+	        const rows = await pmoCloudRpc('pmo_get_routines_admin', { p_admin_pin: adminPin });
+	        pmoCloudState.routines = Array.isArray(rows) ? rows : [];
+	        pmoCloudState.lastRoutineReadAt = new Date().toISOString();
+	        save('pmoCloudState', pmoCloudState);
+	        renderPmoRoutineCenter();
+	        if (showOk) pmoSetCloudStatus(`✅ Routine cloud aggiornate: ${pmoCloudState.routines.length}.`, 'success');
+	      } catch (err) {
+	        pmoSetCloudStatus('❌ Lettura routine non riuscita: ' + (err.message || err), 'danger');
+	        showAlert('❌ Lettura routine non riuscita: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    function pmoIsCloudPayloadNewer(localUpdatedAt, cloudUpdatedAt, fallbackCloudAt) {
+	      const local = new Date(localUpdatedAt || 0).getTime() || 0;
+	      const cloud = new Date(cloudUpdatedAt || fallbackCloudAt || 0).getTime() || 0;
+	      return cloud >= local;
+	    }
+	    function pmoMergeCloudRecord(row) {
+	      const type = row?.record_type || '';
+	      const key = cleanCell(row?.local_key || '');
+	      const payload = row?.payload || {};
+	      if (!type || !key || !payload || row.deleted) return { merged:false, type, key };
+	      if (type === 'match_invitation') {
+	        const record = { ...payload, key: payload.key || key };
+	        const existing = lunchMatchInvitations[record.key];
+	        if (!existing || pmoIsCloudPayloadNewer(existing.updatedAt, record.updatedAt, row.updated_at)) {
+	          lunchMatchInvitations[record.key] = record;
+	          return { merged:true, type, key:record.key };
+	        }
+	      }
+	      if (type === 'player_group') {
+	        const group = { ...payload, id: payload.id || key };
+	        const index = (dailyPlayerGroups || []).findIndex(g => String(g.id) === String(group.id));
+	        if (index < 0) {
+	          dailyPlayerGroups.push(group);
+	          return { merged:true, type, key:group.id };
+	        }
+	        if (pmoIsCloudPayloadNewer(dailyPlayerGroups[index].updatedAt, group.updatedAt, row.updated_at)) {
+	          dailyPlayerGroups[index] = { ...dailyPlayerGroups[index], ...group };
+	          return { merged:true, type, key:group.id };
+	        }
+	      }
+	      return { merged:false, type, key };
+	    }
+	    async function pmoPullOperationalCloudRecords() {
+	      try {
+	        const adminPin = pmoRequireAdminPin('scaricare le novità cloud');
+	        if (!adminPin) return;
+	        pmoSetCloudStatus('Scarico partite e gruppi dal cloud...', 'info');
+	        const rows = await pmoCloudRpc('pmo_get_records_admin', {
+	          p_admin_pin: adminPin,
+	          p_record_types: ['match_invitation', 'player_group'],
+	          p_since: null
+	        });
+	        const list = Array.isArray(rows) ? rows : [];
+	        let mergedMatches = 0;
+	        let mergedGroups = 0;
+	        list.forEach(row => {
+	          const result = pmoMergeCloudRecord(row);
+	          if (!result.merged) return;
+	          if (result.type === 'match_invitation') mergedMatches += 1;
+	          if (result.type === 'player_group') mergedGroups += 1;
+	        });
+	        save('lunchMatchInvitations', lunchMatchInvitations);
+	        save('dailyPlayerGroups', dailyPlayerGroups);
+	        pmoCloudState.lastPullAt = new Date().toISOString();
+	        pmoCloudState.lastPullCount = list.length;
+	        save('pmoCloudState', pmoCloudState);
+	        normalizeDailyPlayerGroupsArchive();
+	        renderPmoRoutineCenter();
+	        renderAssistantGroups();
+	        renderInviteResponsesDashboard();
+	        pmoSetCloudStatus(`✅ Novità cloud scaricate. Partite aggiornate: ${mergedMatches}. Gruppi aggiornati: ${mergedGroups}.`, 'success');
+	      } catch (err) {
+	        pmoSetCloudStatus('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
+	        showAlert('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function registerAssessmentTokensInSupabase() {
       try {
         saveAssessmentSettings();
         const records = Object.values(assessmentTokens || {});
@@ -17037,6 +17608,320 @@ Per confermare scrivi ELIMINA.`);
         }
         showAlert('❌ Aggiornamento risposte non riuscito: ' + msg, 'danger');
         return { ok:false, error:msg };
+      }
+    }
+
+
+    // v5.329 - Feedback post-partita WhatsApp
+    function isPostMatchFeedbackPublicRequest() {
+      let params;
+      try { params = new URLSearchParams(window.location.search || ''); }
+      catch { return false; }
+      return params.get('feedbackPartita') === '1' || params.get('postMatchFeedback') === '1' || params.get('feedback') === 'post_match';
+    }
+    function postMatchFeedbackLabel(value, type='level') {
+      const maps = {
+        level: { too_easy:'Troppo facile', right:'Giusto', too_hard:'Troppo difficile', too_mixed:'Troppo disomogeneo' },
+        composition: { mixed_gender:'Mista uomini/donne', homogeneous:'Omogenea', indifferent:'Indifferente' },
+        interest: { yes:'Si', less_often:'Si, ma meno spesso', no:'No' }
+      };
+      return maps[type]?.[value] || value || '-';
+    }
+    function getPostMatchFeedbackTokenRecord(recordKey, memberId) {
+      const key = String(recordKey || '') + '::' + String(memberId || '');
+      return postMatchFeedbackTokens[key] || null;
+    }
+    function getPostMatchFeedbackResponseByToken(token) {
+      return (postMatchFeedbackResponses || []).find(r => normalizeText(r.token) === normalizeText(token || '')) || null;
+    }
+    function postMatchFeedbackConfirmedPlayers(record) {
+      return Object.values(record?.players || {}).filter(p => (p.status || '') === 'confirmed').slice(0, 4);
+    }
+    function makePostMatchFeedbackToken(record, member) {
+      const seed = [record?.key || makeId(), member?.id || makeId(), Date.now(), Math.random().toString(36).slice(2)].join('|');
+      return 'pmf_' + btoa(unescape(encodeURIComponent(seed))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 30);
+    }
+    function ensurePostMatchFeedbackToken(record, playerId) {
+      if (!record) return null;
+      const player = getInvitationPlayerFromRecord(record, playerId);
+      const member = liveMemberForLunchRecordPlayer(record, playerId, record.players?.[String(playerId)]) || player;
+      const key = String(record.key || '') + '::' + String(playerId || member?.id || '');
+      if (!postMatchFeedbackTokens[key]) {
+        postMatchFeedbackTokens[key] = {
+          token: makePostMatchFeedbackToken(record, member),
+          matchKey: String(record.key || ''),
+          memberId: String(member?.id || playerId || ''),
+          memberName: playerFullName(member) || playerFullName(player) || player?.name || 'Socio',
+          phone: member?.phone || player?.phone || '',
+          matchLabel: invitationRecordTitle(record),
+          status: 'created',
+          createdAt: new Date().toISOString(),
+          sentAt: null,
+          completedAt: null,
+          registeredToSupabase: false,
+          registeredAt: null
+        };
+        save('postMatchFeedbackTokens', postMatchFeedbackTokens);
+      }
+      return postMatchFeedbackTokens[key];
+    }
+    function postMatchFeedbackBaseUrl() {
+      return cleanCell(postMatchFeedbackSettings.baseUrl || 'https://padelvillage.github.io/padel-match-organizer/feedback-partita.html');
+    }
+    function getPostMatchFeedbackLink(rec) {
+      const url = new URL(postMatchFeedbackBaseUrl(), window.location.href);
+      url.searchParams.set('feedbackPartita', '1');
+      url.searchParams.set('t', rec.token);
+      url.searchParams.set('nome', rec.memberName || 'Socio');
+      url.searchParams.set('match', rec.matchLabel || 'Partita');
+      return url.toString();
+    }
+    function buildPostMatchFeedbackWhatsAppMessage(member, record, link) {
+      const firstName = displayFirstName(member);
+      return `Ciao ${firstName}, grazie per aver giocato con noi.\nTi va di lasciarci un feedback rapido sulla partita? Sono 3 domande e ci aiuta a organizzare meglio le prossime.\n${link}\n\nGrazie,\nPadel Village`;
+    }
+    function postMatchFeedbackRegistrationPayload(recordKey='') {
+      const records = Object.values(postMatchFeedbackTokens || {}).filter(r => !recordKey || String(r.matchKey) === String(recordKey));
+      return records.map(r => ({
+        token: cleanCell(r.token),
+        member_local_id: cleanCell(r.memberId || ''),
+        member_name: cleanCell(r.memberName || 'Socio'),
+        phone_last4: String(r.phone || '').replace(/\D/g, '').slice(-4),
+        match_key: cleanCell(r.matchKey || ''),
+        match_label: cleanCell(r.matchLabel || '')
+      })).filter(r => r.token && r.member_local_id && r.match_key);
+    }
+    async function registerPostMatchFeedbackTokens(recordKey='') {
+      try {
+        const payload = postMatchFeedbackRegistrationPayload(recordKey);
+        if (!payload.length) return showAlert('Genera prima almeno un link feedback per questa partita.', 'warning');
+        const adminPin = requireAssessmentAdminPin('registrare i token feedback in Supabase');
+        if (!adminPin) return;
+        showAlert('Registro token feedback in Supabase...', 'info');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_post_match_feedback_tokens_admin`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+          body: JSON.stringify({ p_admin_pin: adminPin, p_tokens: payload })
+        });
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { throw new Error(text || 'Risposta Supabase non leggibile'); }
+        if (!response.ok || data?.ok !== true) {
+          if (data?.error === 'INVALID_ADMIN_PIN') throw new Error('Codice staff non valido.');
+          throw new Error(data?.error || data?.message || text || 'Registrazione non riuscita');
+        }
+        const now = new Date().toISOString();
+        payload.forEach(item => {
+          const rec = Object.values(postMatchFeedbackTokens || {}).find(r => cleanCell(r.token) === item.token);
+          if (rec) { rec.registeredToSupabase = true; rec.registeredAt = now; }
+        });
+        save('postMatchFeedbackTokens', postMatchFeedbackTokens);
+        renderCurrentMatchManagementView();
+        showAlert(`Token feedback registrati: ${data.count || payload.length}.`, 'success');
+      } catch (err) {
+        showAlert('Registrazione feedback non riuscita: ' + (err.message || err), 'danger');
+      }
+    }
+    function openPostMatchFeedbackWhatsApp(recordKey, playerId) {
+      const record = lunchMatchInvitations?.[recordKey];
+      if (!record) return showAlert('Partita non trovata.', 'warning');
+      if (getLunchRecordOperationalStatus(record) !== 'closed') return showAlert('Invia il feedback solo dopo la chiusura della partita.', 'warning');
+      const rec = ensurePostMatchFeedbackToken(record, playerId);
+      if (!rec.registeredToSupabase) return showAlert('Prima registra i token feedback in Supabase da questa scheda partita.', 'warning');
+      if (getPostMatchFeedbackResponseByToken(rec.token)) return showAlert('Feedback gia ricevuto da questo giocatore.', 'info');
+      const member = getInvitationPlayerFromRecord(record, playerId);
+      const phoneCheck = validateWhatsAppPhone(member.phone || rec.phone || '');
+      if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
+      openWhatsAppWebSameTab(phoneCheck.digits, buildPostMatchFeedbackWhatsAppMessage(member, record, getPostMatchFeedbackLink(rec)));
+      rec.status = 'sent';
+      rec.sentAt = new Date().toISOString();
+      save('postMatchFeedbackTokens', postMatchFeedbackTokens);
+      renderCurrentMatchManagementView();
+    }
+    function renderPostMatchFeedbackPanel(record) {
+      if (!record || getLunchRecordOperationalStatus(record) !== 'closed') return '';
+      const confirmed = postMatchFeedbackConfirmedPlayers(record);
+      const created = confirmed.map(p => ensurePostMatchFeedbackToken(record, p.id)).filter(Boolean);
+      const completed = created.filter(r => getPostMatchFeedbackResponseByToken(r.token));
+      const registered = created.filter(r => r.registeredToSupabase).length;
+      return `<div class="post-match-feedback-panel">
+        <strong>Feedback post-partita WhatsApp</strong>
+        <div class="post-match-feedback-mini">Link personali per i confermati. Risposte ricevute: ${completed.length}/${created.length}. Token Supabase: ${registered}/${created.length}.</div>
+        <div class="post-match-feedback-actions" style="justify-content:flex-start; flex-wrap:wrap;">
+          <button class="btn-success small-btn" onclick="setActionAnchor(this); registerPostMatchFeedbackTokens('${escapeJs(record.key)}')">Registra token feedback</button>
+          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); syncPostMatchFeedbackResponsesFromSupabase('${escapeJs(record.key)}')">Aggiorna feedback ricevuti</button>
+        </div>
+      </div>`;
+    }
+    function renderPostMatchFeedbackMemberSummary(member) {
+      const profile = member?.postMatchFeedbackProfile || {};
+      const history = Array.isArray(member?.postMatchFeedbackHistory) ? member.postMatchFeedbackHistory : [];
+      if (!profile.updatedAt && !history.length) return '<div class="member-source-line"><span>Feedback partite</span><strong>Nessun feedback ricevuto</strong></div>';
+      const when = profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString('it-IT') : '-';
+      return `<div class="member-source-lines">
+        <div class="member-source-line"><span>Ultimo feedback</span><strong>${escapeHtml(when)}</strong></div>
+        <div class="member-source-line"><span>Livello percepito</span><strong>${escapeHtml(postMatchFeedbackLabel(profile.levelExperience, 'level'))}</strong></div>
+        <div class="member-source-line"><span>Composizione preferita</span><strong>${escapeHtml(postMatchFeedbackLabel(profile.compositionPreference, 'composition'))}</strong></div>
+        <div class="member-source-line"><span>Proposte future</span><strong>${escapeHtml(postMatchFeedbackLabel(profile.futureInterest, 'interest'))}</strong></div>
+        <div class="member-source-line"><span>Storico risposte</span><strong>${escapeHtml(String(history.length))}</strong></div>
+      </div>`;
+    }
+    function normalizePostMatchFeedbackResponse(row) {
+      const raw = row.raw_response || row.rawResponse || row.raw || {};
+      return {
+        token: cleanCell(row.token || ''),
+        submitted_at: cleanCell(row.submitted_at || row.submittedAt || new Date().toISOString()),
+        match_key: cleanCell(row.match_key || row.matchKey || raw.match_key || raw.matchKey || ''),
+        member_local_id: cleanCell(row.member_local_id || row.memberLocalId || raw.member_local_id || raw.memberLocalId || ''),
+        level_experience: cleanCell(row.level_experience || row.levelExperience || raw.level_experience || raw.levelExperience || ''),
+        composition_preference: cleanCell(row.composition_preference || row.compositionPreference || raw.composition_preference || raw.compositionPreference || ''),
+        future_interest: cleanCell(row.future_interest || row.futureInterest || raw.future_interest || raw.futureInterest || ''),
+        note: cleanCell(row.note || raw.note || ''),
+        raw_response: raw && typeof raw === 'object' ? raw : {}
+      };
+    }
+    function applyPostMatchFeedbackToMember(response) {
+      const rec = Object.values(postMatchFeedbackTokens || {}).find(r => normalizeText(r.token) === normalizeText(response.token || '')) || null;
+      const memberId = response.member_local_id || rec?.memberId || '';
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return false;
+      member.postMatchFeedbackProfile = {
+        levelExperience: response.level_experience || '',
+        compositionPreference: response.composition_preference || '',
+        futureInterest: response.future_interest || '',
+        note: response.note || '',
+        matchKey: response.match_key || rec?.matchKey || '',
+        source: 'feedback post-partita',
+        updatedAt: response.submitted_at || new Date().toISOString()
+      };
+      member.postMatchFeedbackHistory = Array.isArray(member.postMatchFeedbackHistory) ? member.postMatchFeedbackHistory : [];
+      const item = { token: response.token, submittedAt: response.submitted_at, matchKey: member.postMatchFeedbackProfile.matchKey, levelExperience: response.level_experience, compositionPreference: response.composition_preference, futureInterest: response.future_interest, note: response.note };
+      const idx = member.postMatchFeedbackHistory.findIndex(x => normalizeText(x.token) === normalizeText(item.token));
+      if (idx >= 0) member.postMatchFeedbackHistory[idx] = { ...member.postMatchFeedbackHistory[idx], ...item };
+      else member.postMatchFeedbackHistory.unshift(item);
+      member.postMatchFeedbackHistory = member.postMatchFeedbackHistory.slice(0, 20);
+      member.organizedMatchesInterest = response.future_interest || member.organizedMatchesInterest || '';
+      member.preferredMatchComposition = response.composition_preference || member.preferredMatchComposition || '';
+      if (rec) { rec.status = 'completed'; rec.completedAt = response.submitted_at || new Date().toISOString(); }
+      return true;
+    }
+    function importPostMatchFeedbackResponses(rows, options={}) {
+      if (!Array.isArray(rows)) return showAlert('Risposte feedback non valide.', 'danger');
+      let added = 0, updated = 0, applied = 0;
+      rows.forEach(row => {
+        const normalized = normalizePostMatchFeedbackResponse(row);
+        if (!normalized.token) return;
+        const idx = postMatchFeedbackResponses.findIndex(r => normalizeText(r.token) === normalizeText(normalized.token));
+        if (idx >= 0) { postMatchFeedbackResponses[idx] = { ...postMatchFeedbackResponses[idx], ...normalized }; updated++; }
+        else { postMatchFeedbackResponses.push(normalized); added++; }
+        if (applyPostMatchFeedbackToMember(normalized)) applied++;
+      });
+      save('postMatchFeedbackResponses', postMatchFeedbackResponses);
+      save('postMatchFeedbackTokens', postMatchFeedbackTokens);
+      save('giocatori', giocatori);
+      if (!options.silent) showAlert(`Feedback importati: ${added} nuovi, ${updated} aggiornati, ${applied} applicati alle schede.`, 'success');
+      renderCurrentMatchManagementView();
+    }
+    async function syncPostMatchFeedbackResponsesFromSupabase(recordKey='') {
+      try {
+        const tokens = Object.values(postMatchFeedbackTokens || {}).filter(r => !recordKey || String(r.matchKey) === String(recordKey)).map(r => cleanCell(r.token)).filter(Boolean);
+        if (!tokens.length) return showAlert('Nessun token feedback locale da aggiornare.', 'warning');
+        showAlert('Aggiorno feedback post-partita...', 'info');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_post_match_feedback_by_tokens`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+          body: JSON.stringify({ p_tokens: tokens })
+        });
+        const text = await response.text();
+        let data = [];
+        try { data = text ? JSON.parse(text) : []; } catch { throw new Error(text || 'Risposta non leggibile'); }
+        if (!response.ok) throw new Error(data?.message || data?.error || text || 'Errore Supabase');
+        const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        if (!rows.length) return showAlert('Nessun nuovo feedback trovato.', 'info');
+        importPostMatchFeedbackResponses(rows, { silent:true });
+        showAlert(`Feedback aggiornati: ${rows.length}.`, 'success');
+      } catch (err) {
+        showAlert('Aggiornamento feedback non riuscito: ' + (err.message || err), 'danger');
+      }
+    }
+    function setupPostMatchFeedbackPublicForm() {
+      const form = document.getElementById('postMatchFeedbackPublicForm');
+      if (!form) return;
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        submitPostMatchFeedbackPublic();
+      });
+    }
+    function handlePostMatchFeedbackPublicDeepLink() {
+      if (!isPostMatchFeedbackPublicRequest()) return;
+      const params = new URLSearchParams(window.location.search || '');
+      const token = cleanCell(params.get('t') || params.get('token') || '');
+      document.body.classList.add('post-match-feedback-public-mode');
+      switchTab('assessment', null, { scrollTop:false });
+      const form = document.getElementById('postMatchFeedbackPublicForm');
+      if (form) form.dataset.token = token;
+      const nameBox = document.getElementById('postMatchFeedbackPlayerName');
+      if (nameBox) nameBox.textContent = cleanCell(params.get('nome') || params.get('name') || 'Socio Padel Village');
+      const matchBox = document.getElementById('postMatchFeedbackMatchLabel');
+      if (matchBox) matchBox.textContent = cleanCell(params.get('match') || 'Partita appena giocata');
+      if (postMatchFeedbackPublicAlreadySubmitted(token)) lockPostMatchFeedbackPublic('Feedback gia inviato da questo dispositivo. Grazie!');
+    }
+    function postMatchFeedbackPublicSubmittedKey(token) { return `postMatchFeedbackSubmitted_${cleanCell(token || 'missing')}`; }
+    function postMatchFeedbackPublicAlreadySubmitted(token) { try { return !!localStorage.getItem(postMatchFeedbackPublicSubmittedKey(token)); } catch { return false; } }
+    function markPostMatchFeedbackPublicSubmitted(token) { try { localStorage.setItem(postMatchFeedbackPublicSubmittedKey(token), new Date().toISOString()); } catch {} }
+    function lockPostMatchFeedbackPublic(message) {
+      const btn = document.getElementById('postMatchFeedbackSubmit');
+      const success = document.getElementById('postMatchFeedbackSuccess');
+      if (btn) { btn.disabled = true; btn.textContent = 'Feedback inviato'; }
+      if (success) { success.textContent = message || 'Feedback inviato correttamente. Grazie!'; success.style.display = 'block'; }
+    }
+    async function submitPostMatchFeedbackPublic() {
+      const form = document.getElementById('postMatchFeedbackPublicForm');
+      const errorBox = document.getElementById('postMatchFeedbackError');
+      if (!form) return;
+      if (errorBox) errorBox.style.display = 'none';
+      if (!form.checkValidity()) { if (errorBox) errorBox.style.display = 'block'; return; }
+      const params = new URLSearchParams(window.location.search || '');
+      const token = cleanCell(form.dataset.token || params.get('t') || params.get('token') || '');
+      if (!token) { if (errorBox) { errorBox.textContent = 'Link non valido: token mancante.'; errorBox.style.display = 'block'; } return; }
+      if (postMatchFeedbackPublicAlreadySubmitted(token)) return lockPostMatchFeedbackPublic('Feedback gia inviato da questo dispositivo. Grazie!');
+      const data = Object.fromEntries(new FormData(form).entries());
+      const payload = {
+        token,
+        submitted_at: new Date().toISOString(),
+        match_key: cleanCell(params.get('matchKey') || ''),
+        member_local_id: cleanCell(params.get('memberId') || ''),
+        level_experience: cleanCell(data.levelExperience || ''),
+        composition_preference: cleanCell(data.compositionPreference || ''),
+        future_interest: cleanCell(data.futureInterest || ''),
+        note: cleanCell(data.note || ''),
+        raw_response: {
+          token,
+          levelExperience: cleanCell(data.levelExperience || ''),
+          compositionPreference: cleanCell(data.compositionPreference || ''),
+          futureInterest: cleanCell(data.futureInterest || ''),
+          note: cleanCell(data.note || ''),
+          matchLabel: cleanCell(params.get('match') || ''),
+          source: 'feedback post-partita'
+        }
+      };
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/submit_post_match_feedback_public`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+          body: JSON.stringify({ p_response: payload })
+        });
+        const text = await response.text();
+        let result = null;
+        try { result = text ? JSON.parse(text) : null; } catch { result = null; }
+        if (!response.ok || result?.ok === false) throw new Error(result?.message || result?.error || text || 'Invio non riuscito');
+        markPostMatchFeedbackPublicSubmitted(token);
+        lockPostMatchFeedbackPublic('Feedback inviato correttamente. Grazie!');
+      } catch (err) {
+        if (errorBox) { errorBox.textContent = 'Invio non riuscito: ' + (err.message || err) + '. Riprova tra poco oppure contatta lo staff.'; errorBox.style.display = 'block'; }
       }
     }
 
@@ -17266,10 +18151,13 @@ Per confermare scrivi ELIMINA.`);
       displayMembers();
       displayAssessment();
       setupAssessmentPublicForm();
+      setupPostMatchFeedbackPublicForm();
+      handlePostMatchFeedbackPublicDeepLink();
       handleAssessmentPublicDeepLink();
-      renderInitialDashboard();
-      renderPlayerAvailabilityPreview();
-      refreshAssistantGroupsCountBadge();
+	      renderInitialDashboard();
+	      renderPlayerAvailabilityPreview();
+	      renderPmoRoutineCenter();
+	      refreshAssistantGroupsCountBadge();
       checkLocalDataSafetyOnStartup();
       if (createdChiudiTestMatch) {
         switchTab('inviteResponses');
