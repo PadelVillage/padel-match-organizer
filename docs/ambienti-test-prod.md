@@ -31,8 +31,22 @@ App con ?env=test   -> config-test.js -> Supabase TEST
 2. Pubblicare/aprire la versione TEST con `?env=test`.
 3. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
 4. Verificare login, routine, permessi, sync e form pubblici su TEST.
-5. Solo dopo verifica, applicare gli stessi cambi database/Auth/funzioni su Supabase PROD.
-6. Usare Git/GitHub per storico, commit e tag versione.
+5. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
+6. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
+7. Usare Git/GitHub per storico, commit e tag versione.
+
+## Regola autorizzazione PROD
+
+L'ambiente TEST e il repository GitHub possono essere usati per sviluppo, verifica e collaudo.
+
+La replica in PROD non e' automatica: prima di ogni passaggio verso produzione bisogna chiedere e ricevere autorizzazione esplicita da Maurizio. La regola vale per:
+
+- pubblicazione o promozione dell'app da TEST a PROD;
+- esecuzione di SQL, funzioni, Auth, policy o configurazioni su Supabase PROD;
+- sincronizzazione di dati o routine che possono modificare lo stato operativo reale;
+- qualunque modifica che renda disponibile ai soci o allo staff una nuova versione in produzione.
+
+L'autorizzazione deve essere chiara nella conversazione prima dell'intervento su PROD.
 
 ## Configurazione Auth Supabase TEST
 
