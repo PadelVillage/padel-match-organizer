@@ -84,8 +84,9 @@ Il computer locale resta un workspace pulito: non si creano piu' copie HTML di v
 - Git/GitHub conserva lo storico del codice.
 - `index.html` e' sempre l'app corrente.
 - TEST e PROD sono separati in Supabase, non in copie diverse dell'app.
-- TEST si apre con `https://padelvillage.github.io/padel-match-organizer/?env=test` e usa `config-test.js`.
+- TEST si apre con `https://padelvillage.github.io/padel-match-organizer/test/?env=test` e usa `config-test.js`.
 - PROD si apre con `https://padelvillage.github.io/padel-match-organizer/` e usa `config.js`.
+- La branch `test` viene pubblicata automaticamente nella cartella Pages `/test/`.
 - Ogni modifica pronta per verifica viene pubblicata automaticamente in TEST.
 - Ogni modifica passa prima da Supabase TEST; prima di replicarla su PROD serve autorizzazione esplicita di Maurizio.
 - Le operazioni amministrative usano Supabase Auth e i permessi del profilo staff, senza PIN operativo.

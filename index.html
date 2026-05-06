@@ -4683,14 +4683,27 @@ body.assessment-public-mode .assessment-public-only-card {
     'use strict';
 
     const APP_VERSION = '5.333';
-    const PMO_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
+    const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
+    function pmoDetectPublicBaseUrl() {
+      try {
+        const forced = String(window.PMO_PUBLIC_BASE_URL || '').trim();
+        if (forced) return forced.endsWith('/') ? forced : `${forced}/`;
+        const current = new URL(window.location.href);
+        const path = current.pathname || '/';
+        const testMarker = '/test/';
+        const markerIndex = path.indexOf(testMarker);
+        if (markerIndex >= 0) return `${current.origin}${path.slice(0, markerIndex + testMarker.length)}`;
+      } catch {}
+      return PMO_PROD_PUBLIC_BASE_URL;
+    }
+    const PMO_PUBLIC_BASE_URL = pmoDetectPublicBaseUrl();
     const PMO_PROD_SUPABASE_PROJECT_REF = 'qqbfphyslczzkxoncgex';
     function pmoDetectRuntimeEnv() {
       try {
         const params = new URLSearchParams(window.location.search || '');
         const requested = String(params.get('env') || params.get('ambiente') || window.PMO_FORCE_ENV || '').trim().toLowerCase();
         if (['test', 'staging', 'collaudo'].includes(requested)) return 'test';
-        if (/\/(?:test|staging|collaudo)\.html?$/i.test(window.location.pathname || '')) return 'test';
+        if (/\/(?:test|staging|collaudo)(?:\/|\.html?$)/i.test(window.location.pathname || '')) return 'test';
       } catch {}
       return 'prod';
     }

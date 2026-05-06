@@ -6,6 +6,7 @@
 - Semplificata la gestione quotidiana con preset ruolo e riepilogo permessi visibile.
 - Spostate le checkbox avanzate dietro "Personalizza permessi", lasciando invariata la logica Supabase Auth + permessi.
 - Rinominata l'azione principale in "Autorizza email" per chiarire che la password viene scelta dalla persona dalla schermata iniziale.
+- Preparata la versione TEST per funzionare anche dal canale Pages `/test/?env=test`.
 
 ## v5.332 / Admin Supabase senza PIN staff
 
