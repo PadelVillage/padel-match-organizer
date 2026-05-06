@@ -3644,7 +3644,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
     <form class="pmo-login-card" onsubmit="return handleStaffLoginSubmit(event)">
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
-      <p>Accesso staff. Usa l'email personale quando sara attivata in Amministrazione, oppure la password beta.</p>
+      <p>Accesso staff. Usa l'email personale quando sara attivata in Amministrazione, oppure la password login beta.</p>
       <div class="pmo-login-row">
         <div class="pmo-login-field">
           <label for="pmoStaffEmail">Email staff</label>
@@ -3658,7 +3658,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-login-divider">oppure accesso beta</div>
       <div class="pmo-login-secondary">
         <div class="pmo-login-field">
-          <label for="pmoStaffPassword">Password staff beta</label>
+          <label for="pmoStaffPassword">Password login beta</label>
           <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
         </div>
       </div>
@@ -4446,7 +4446,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="admin-panel-head">
             <div>
               <h3>Accesso sicuro</h3>
-              <p>Stato della sessione corrente e passaggio dalla password beta agli utenti personali.</p>
+              <p>Stato della sessione corrente e passaggio dalla password login beta agli utenti personali.</p>
             </div>
             <div class="admin-actions">
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshMyStaffProfile()">Aggiorna profilo</button>
@@ -17593,7 +17593,7 @@ Per confermare scrivi ELIMINA.`);
 	          <tr><th>Stato</th><td><span class="admin-status-pill ${escapeHtml(session.profile?.status || 'active')}">${escapeHtml(session.status)}</span></td></tr>
 	          <tr><th>Permessi</th><td>${escapeHtml(permissionLabels)}</td></tr>
 	        </tbody></table></div>
-	        <div class="admin-note">Finche usi la password beta, chi conosce quella password entra come staff condiviso. Con Supabase Auth ogni persona avra email, password e permessi propri.</div>
+	        <div class="admin-note">Finche usi la password login beta, chi conosce quella password entra come staff condiviso. Con Supabase Auth ogni persona avra email, password e permessi propri.</div>
 	      `;
 	    }
 	    function pmoSetAdminStatus(message, type='info') {
@@ -17747,7 +17747,7 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoRefreshMyStaffProfile() {
 	      try {
 	        const profile = await pmoLoadMyStaffProfile();
-	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password beta e' normale.", 'info');
+	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password login beta e' normale.", 'info');
 	        renderPmoAdministration();
 	        showAlert('Profilo staff aggiornato.', 'success');
 	      } catch (err) {
