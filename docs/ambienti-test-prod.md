@@ -28,12 +28,27 @@ App con ?env=test   -> config-test.js -> Supabase TEST
 ## Procedura consigliata
 
 1. Sviluppare nel repo locale lavorando su `index.html`, senza creare nuove copie `padel_match_organizer_v5_*.html`.
-2. Pubblicare/aprire la versione TEST con `?env=test`.
-3. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
-4. Verificare login, routine, permessi, sync e form pubblici su TEST.
-5. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
-6. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
-7. Usare Git/GitHub per storico, commit e tag versione.
+2. Pubblicare automaticamente ogni modifica pronta per verifica nell'ambiente TEST.
+3. Aprire/verificare la versione TEST con `?env=test`.
+4. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
+5. Verificare login, routine, permessi, sync e form pubblici su TEST.
+6. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
+7. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
+8. Usare Git/GitHub per storico, commit e tag versione.
+
+## Regola pubblicazione TEST
+
+Ogni modifica sviluppata deve essere pubblicata automaticamente in TEST appena e' pronta per la verifica di Maurizio.
+
+La pubblicazione TEST serve a vedere e provare le modifiche reali prima della produzione. La regola vale per:
+
+- modifiche dell'interfaccia app;
+- correzioni di flusso e testi;
+- nuove funzioni applicative;
+- SQL, Auth, policy e configurazioni Supabase, sempre prima su Supabase TEST;
+- routine cloud o sincronizzazioni da validare.
+
+PROD non deve ricevere automaticamente le modifiche di TEST. Se TEST e PROD condividono temporaneamente lo stesso file pubblicato, ogni modifica non ancora approvata deve restare attiva solo con `?env=test` o comunque non deve cambiare il comportamento visibile di PROD.
 
 ## Regola autorizzazione PROD
 
