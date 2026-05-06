@@ -4864,9 +4864,25 @@ body.assessment-public-mode .assessment-public-only-card {
       try { localStorage.removeItem(PMO_STAFF_PROFILE_KEY); } catch {}
       pmoStaffProfile = null;
     }
-    async function pmoSupabaseAuthFetch(path, body) {
+    function pmoStaffAuthRedirectUrl() {
+      try {
+        const current = new URL(window.location.href);
+        if (current.protocol === 'http:' || current.protocol === 'https:') {
+          current.hash = '';
+          current.search = '';
+          return current.toString();
+        }
+      } catch {}
+      return 'https://padelvillage.github.io/padel-match-organizer/';
+    }
+    async function pmoSupabaseAuthFetch(path, body, options={}) {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const response = await fetch(`${supabaseUrl}/auth/v1/${path}`, {
+      let authUrl = `${supabaseUrl}/auth/v1/${path}`;
+      if (options.redirectTo) {
+        const separator = authUrl.includes('?') ? '&' : '?';
+        authUrl += `${separator}redirect_to=${encodeURIComponent(options.redirectTo)}`;
+      }
+      const response = await fetch(authUrl, {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'apikey':supabaseKey },
         body: JSON.stringify(body || {})
@@ -4926,7 +4942,7 @@ body.assessment-public-mode .assessment-public-only-card {
         if (button) button.disabled = true;
         if (!email || !password) throw new Error('Inserisci email e password personale da creare.');
         if (password.length < 8) throw new Error('Scegli una password di almeno 8 caratteri.');
-        const data = await pmoSupabaseAuthFetch('signup', { email, password });
+        const data = await pmoSupabaseAuthFetch('signup', { email, password }, { redirectTo: pmoStaffAuthRedirectUrl() });
         if (data?.access_token) {
           pmoStoreSupabaseStaffSession(data);
           const profile = await pmoLoadMyStaffProfile();
@@ -4942,6 +4958,38 @@ body.assessment-public-mode .assessment-public-only-card {
         if (message) message.textContent = err.message || 'Creazione accesso non riuscita.';
       } finally {
         if (button) button.disabled = false;
+      }
+    }
+    async function pmoConsumeSupabaseAuthRedirect() {
+      if (!window.location.hash || !window.location.hash.includes('access_token=')) return false;
+      const message = document.getElementById('pmoLoginMessage');
+      try {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const accessToken = params.get('access_token') || '';
+        const refreshToken = params.get('refresh_token') || '';
+        if (!accessToken) return false;
+        pmoStoreSupabaseStaffSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_in: params.get('expires_in') || 3600,
+          expires_at: params.get('expires_at') || null,
+          user: null
+        });
+        const profile = await pmoLoadMyStaffProfile();
+        if (!pmoIsStaffProfileActive(profile)) {
+          pmoClearSupabaseStaffSession();
+          if (message) message.textContent = 'Email confermata, ma utente non attivo in Amministrazione.';
+          return false;
+        }
+        rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
+        setStaffAuthState(true);
+        renderPmoAdministration();
+        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+        showAlert('Email confermata. Accesso personale attivo.', 'success');
+        return true;
+      } catch (err) {
+        if (message) message.textContent = 'Conferma email ricevuta, ma accesso non completato: ' + (err.message || err);
+        return false;
       }
     }
 
@@ -18685,6 +18733,7 @@ Per confermare scrivi ELIMINA.`);
 
     document.addEventListener('DOMContentLoaded', () => {
       initStaffAccessGate();
+      pmoConsumeSupabaseAuthRedirect();
       initSidebarNavigation();
       migrateMemberIds();
       try { normalizeDailyPlayerGroupsArchive(); } catch {}
