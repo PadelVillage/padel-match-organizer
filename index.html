@@ -3535,6 +3535,7 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     .pmo-login-actions {
       display:flex;
+      flex-wrap:wrap;
       justify-content:flex-end;
       gap:10px;
       margin-top:18px;
@@ -3547,6 +3548,9 @@ body.assessment-public-mode .assessment-public-only-card {
       margin-top:12px;
       font-weight:800;
       color:#b42318;
+    }
+    .pmo-login-message.pmo-login-message-success {
+      color:#1f7a3f;
     }
     .pmo-login-divider {
       display:flex;
@@ -3572,11 +3576,20 @@ body.assessment-public-mode .assessment-public-only-card {
       padding:12px;
       margin-top:12px;
     }
+    .pmo-login-secondary[hidden] {
+      display:none;
+    }
     .pmo-login-secondary .pmo-login-field input {
       font-size:16px;
       padding:11px 12px;
     }
-    @media (max-width:620px) { .pmo-login-row { grid-template-columns:1fr; } }
+    .pmo-login-recovery-actions {
+      margin-top:12px;
+    }
+    @media (max-width:620px) {
+      .pmo-login-row { grid-template-columns:1fr; }
+      .pmo-login-actions button { flex:1 1 100%; }
+    }
     .side-nav-auth-logout {
       background:rgba(255,255,255,.14);
       color:#fff;
@@ -3666,6 +3679,23 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-login-actions">
         <button id="pmoLoginButton" type="submit" class="btn-primary">Entra</button>
         <button id="pmoSignupButton" type="button" class="btn-secondary" onclick="pmoHandleStaffSignup()">Crea accesso</button>
+        <button id="pmoRecoverButton" type="button" class="btn-secondary" onclick="pmoHandlePasswordRecovery()">Recupera password</button>
+      </div>
+      <div id="pmoPasswordRecoveryPanel" class="pmo-login-secondary" hidden>
+        <div class="pmo-login-row">
+          <div class="pmo-login-field">
+            <label for="pmoNewPassword">Nuova password</label>
+            <input id="pmoNewPassword" type="password" autocomplete="new-password" />
+          </div>
+          <div class="pmo-login-field">
+            <label for="pmoNewPasswordConfirm">Conferma nuova password</label>
+            <input id="pmoNewPasswordConfirm" type="password" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="pmo-login-actions pmo-login-recovery-actions">
+          <button id="pmoSaveNewPasswordButton" type="button" class="btn-primary" onclick="pmoHandlePasswordUpdate()">Salva nuova password</button>
+          <button type="button" class="btn-secondary" onclick="pmoCancelPasswordRecovery()">Annulla</button>
+        </div>
       </div>
       <p>La creazione accesso funziona solo per email gia abilitate nella sezione Amministrazione.</p>
     </form>
@@ -4797,7 +4827,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const email = cleanCell(emailInput?.value || '');
       const authPassword = authPasswordInput ? authPasswordInput.value : '';
       const password = input ? input.value : '';
-      if (message) message.textContent = '';
+      pmoSetLoginMessage('');
       if (button) button.disabled = true;
       if (email || authPassword) {
         pmoHandleStaffEmailLogin(email, authPassword).finally(() => {
@@ -4812,14 +4842,14 @@ body.assessment-public-mode .assessment-public-only-card {
           setStaffAuthState(true);
         } else {
           clearStaffSession();
-          if (message) message.textContent = 'Password non corretta.';
+          pmoSetLoginMessage('Password non corretta.');
           if (input) {
             input.select();
             input.focus();
           }
         }
       }).catch(() => {
-        if (message) message.textContent = 'Accesso non disponibile. Riprova.';
+        pmoSetLoginMessage('Accesso non disponibile. Riprova.');
       }).finally(() => {
         if (button) button.disabled = false;
       });
@@ -4829,6 +4859,13 @@ body.assessment-public-mode .assessment-public-only-card {
     function staffLogout() {
       clearStaffSession();
       setStaffAuthState(false);
+    }
+
+    function pmoSetLoginMessage(text='', tone='error') {
+      const message = document.getElementById('pmoLoginMessage');
+      if (!message) return;
+      message.textContent = text || '';
+      message.classList.toggle('pmo-login-message-success', tone === 'success');
     }
 
     function pmoReadSupabaseStaffSession() {
@@ -4901,6 +4938,52 @@ body.assessment-public-mode .assessment-public-only-card {
       session = pmoStoreSupabaseStaffSession(refreshed);
       return session?.access_token || '';
     }
+    function pmoSetPasswordRecoveryPanelVisible(visible) {
+      const panel = document.getElementById('pmoPasswordRecoveryPanel');
+      if (panel) panel.hidden = !visible;
+      if (visible) {
+        setTimeout(() => {
+          const input = document.getElementById('pmoNewPassword');
+          if (input) input.focus();
+        }, 0);
+      }
+    }
+    function pmoClearPasswordRecoveryFields() {
+      const passwordInput = document.getElementById('pmoNewPassword');
+      const confirmInput = document.getElementById('pmoNewPasswordConfirm');
+      if (passwordInput) passwordInput.value = '';
+      if (confirmInput) confirmInput.value = '';
+    }
+    function pmoCancelPasswordRecovery() {
+      pmoClearPasswordRecoveryFields();
+      pmoClearSupabaseStaffSession();
+      pmoSetPasswordRecoveryPanelVisible(false);
+      pmoSetLoginMessage('');
+      try { history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch {}
+      setTimeout(() => {
+        const emailInput = document.getElementById('pmoStaffEmail');
+        if (emailInput) emailInput.focus();
+      }, 0);
+    }
+    async function pmoUpdateSupabasePassword(password) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const accessToken = await pmoGetSupabaseStaffAccessToken();
+      if (!accessToken) throw new Error('Link recupero scaduto. Richiedi una nuova email.');
+      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ password })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok) throw new Error((data && (data.msg || data.message || data.error_description || data.error)) || text || `Errore HTTP ${response.status}`);
+      return data;
+    }
     async function pmoLoadMyStaffProfile() {
       const accessToken = await pmoGetSupabaseStaffAccessToken();
       if (!accessToken) return null;
@@ -4929,7 +5012,7 @@ body.assessment-public-mode .assessment-public-only-card {
         renderPmoAdministration();
       } catch (err) {
         pmoClearSupabaseStaffSession();
-        if (message) message.textContent = err.message || 'Accesso non riuscito.';
+        pmoSetLoginMessage(err.message || 'Accesso non riuscito.');
       }
     }
     async function pmoHandleStaffSignup() {
@@ -4938,7 +5021,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const email = cleanCell(document.getElementById('pmoStaffEmail')?.value || '');
       const password = document.getElementById('pmoStaffAuthPassword')?.value || '';
       try {
-        if (message) message.textContent = '';
+        pmoSetLoginMessage('');
         if (button) button.disabled = true;
         if (!email || !password) throw new Error('Inserisci email e password personale da creare.');
         if (password.length < 8) throw new Error('Scegli una password di almeno 8 caratteri.');
@@ -4953,9 +5036,63 @@ body.assessment-public-mode .assessment-public-only-card {
             return;
           }
         }
-        if (message) message.textContent = 'Accesso creato. Se Supabase richiede conferma email, confermala e poi entra.';
+        pmoSetLoginMessage('Accesso creato. Se Supabase richiede conferma email, confermala e poi entra.', 'success');
       } catch (err) {
-        if (message) message.textContent = err.message || 'Creazione accesso non riuscita.';
+        pmoSetLoginMessage(err.message || 'Creazione accesso non riuscita.');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+    async function pmoHandlePasswordRecovery() {
+      const button = document.getElementById('pmoRecoverButton');
+      const message = document.getElementById('pmoLoginMessage');
+      const emailInput = document.getElementById('pmoStaffEmail');
+      const email = cleanCell(emailInput?.value || '');
+      try {
+        pmoSetLoginMessage('');
+        pmoSetPasswordRecoveryPanelVisible(false);
+        if (button) button.disabled = true;
+        if (!email) {
+          if (emailInput) emailInput.focus();
+          throw new Error('Inserisci prima la tua email utente.');
+        }
+        await pmoSupabaseAuthFetch('recover', { email }, { redirectTo: pmoStaffAuthRedirectUrl() });
+        pmoSetLoginMessage('Ti ho inviato una email per reimpostare la password. Apri il link e poi scegli la nuova password.', 'success');
+      } catch (err) {
+        pmoSetLoginMessage(err.message || 'Recupero password non riuscito.');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+    async function pmoHandlePasswordUpdate() {
+      const button = document.getElementById('pmoSaveNewPasswordButton');
+      const message = document.getElementById('pmoLoginMessage');
+      const passwordInput = document.getElementById('pmoNewPassword');
+      const confirmInput = document.getElementById('pmoNewPasswordConfirm');
+      const password = passwordInput?.value || '';
+      const confirm = confirmInput?.value || '';
+      try {
+        pmoSetLoginMessage('');
+        if (button) button.disabled = true;
+        if (password.length < 8) throw new Error('Scegli una nuova password di almeno 8 caratteri.');
+        if (password !== confirm) throw new Error('Le due password non coincidono.');
+        await pmoUpdateSupabasePassword(password);
+        const profile = await pmoLoadMyStaffProfile();
+        if (!pmoIsStaffProfileActive(profile)) {
+          pmoClearSupabaseStaffSession();
+          pmoSetPasswordRecoveryPanelVisible(false);
+          pmoSetLoginMessage('Password aggiornata, ma utente non attivo in Amministrazione.');
+          return;
+        }
+        rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
+        pmoClearPasswordRecoveryFields();
+        pmoSetPasswordRecoveryPanelVisible(false);
+        setStaffAuthState(true);
+        renderPmoAdministration();
+        try { history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch {}
+        showAlert('Password aggiornata. Accesso personale attivo.', 'success');
+      } catch (err) {
+        pmoSetLoginMessage(err.message || 'Aggiornamento password non riuscito.');
       } finally {
         if (button) button.disabled = false;
       }
@@ -4967,6 +5104,7 @@ body.assessment-public-mode .assessment-public-only-card {
         const params = new URLSearchParams(window.location.hash.slice(1));
         const accessToken = params.get('access_token') || '';
         const refreshToken = params.get('refresh_token') || '';
+        const authType = params.get('type') || '';
         if (!accessToken) return false;
         pmoStoreSupabaseStaffSession({
           access_token: accessToken,
@@ -4975,10 +5113,17 @@ body.assessment-public-mode .assessment-public-only-card {
           expires_at: params.get('expires_at') || null,
           user: null
         });
+        if (authType === 'recovery') {
+          setStaffAuthState(false);
+          pmoSetPasswordRecoveryPanelVisible(true);
+          try { history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch {}
+          pmoSetLoginMessage('Link recupero ricevuto. Inserisci e salva la nuova password.', 'success');
+          return true;
+        }
         const profile = await pmoLoadMyStaffProfile();
         if (!pmoIsStaffProfileActive(profile)) {
           pmoClearSupabaseStaffSession();
-          if (message) message.textContent = 'Email confermata, ma utente non attivo in Amministrazione.';
+          pmoSetLoginMessage('Email confermata, ma utente non attivo in Amministrazione.');
           return false;
         }
         rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
@@ -4988,7 +5133,7 @@ body.assessment-public-mode .assessment-public-only-card {
         showAlert('Email confermata. Accesso personale attivo.', 'success');
         return true;
       } catch (err) {
-        if (message) message.textContent = 'Conferma email ricevuta, ma accesso non completato: ' + (err.message || err);
+        pmoSetLoginMessage('Conferma email ricevuta, ma accesso non completato: ' + (err.message || err));
         return false;
       }
     }
