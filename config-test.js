@@ -1,10 +1,11 @@
 // Configurazione ambiente TEST.
-// Dopo aver creato il progetto Supabase TEST, inserisci qui URL e anon/publishable key del progetto TEST.
+// Progetto Supabase TEST: cudiqnrrlbyqryrtaprd.
 // Non usare qui le chiavi del progetto di produzione.
+// Project ref PROD da evitare qui: qqbfphyslczzkxoncgex
 
 window.PADEL_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_URL: "https://cudiqnrrlbyqryrtaprd.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_ewpTKg4yQVxoK8-wA9XhOA_5voSNLuQ",
   CLUB_NAME: "Padel Village TEST",
   ENVIRONMENT: "test"
 };
