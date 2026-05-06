@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer TEST</title>
+  <title>Autovalutazione TEST</title>
   <style>
     body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:Arial,sans-serif; background:#f6f8fb; color:#1f4788; }
     .loader { width:min(520px, calc(100vw - 32px)); background:#fff; border:1px solid #dfe8f3; border-radius:10px; padding:22px; box-shadow:0 8px 28px rgba(15,23,42,.08); }
@@ -14,14 +14,14 @@
 </head>
 <body>
   <main class="loader">
-    <h1>Padel Match Organizer TEST</h1>
-    <p>Caricamento dell'ultima versione pubblicata sul canale test-preview...</p>
+    <h1>Autovalutazione TEST</h1>
+    <p>Caricamento dell'ultima scheda pubblicata sul canale test-preview...</p>
     <p id="testLoaderError" class="error" hidden></p>
   </main>
   <script>
     (async function loadTestPreview() {
       const branch = 'test-preview';
-      const sourceUrl = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/index.html?cache=${Date.now()}`;
+      const sourceUrl = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/autovalutazione.html?cache=${Date.now()}`;
       try {
         const response = await fetch(sourceUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -35,7 +35,7 @@
         const target = document.getElementById('testLoaderError');
         if (target) {
           target.hidden = false;
-          target.textContent = `TEST non caricato: ${err && err.message ? err.message : err}`;
+          target.textContent = `Scheda TEST non caricata: ${err && err.message ? err.message : err}`;
         }
       }
     })();
