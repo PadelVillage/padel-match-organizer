@@ -3586,24 +3586,36 @@ body.assessment-public-mode .assessment-public-only-card {
       position:relative;
     }
     .pmo-password-input input {
-      padding-right:88px;
+      padding-right:48px;
     }
     .pmo-password-toggle {
       position:absolute;
-      right:7px;
+      right:8px;
       top:50%;
       transform:translateY(-50%);
-      border:1px solid #ccd6e4;
-      border-radius:7px;
-      background:#f8fbff;
+      width:34px;
+      height:34px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:0;
+      border-radius:50%;
+      background:transparent;
       color:#243b5a;
-      font-size:12px;
-      font-weight:900;
-      padding:7px 9px;
       cursor:pointer;
     }
-    .pmo-password-toggle:hover {
+    .pmo-password-toggle:hover,
+    .pmo-password-toggle:focus-visible {
+      outline:none;
       background:#edf3fb;
+    }
+    .pmo-password-toggle svg {
+      width:21px;
+      height:21px;
+      stroke:currentColor;
+      stroke-width:2.2;
+      fill:none;
+      pointer-events:none;
     }
     .pmo-login-actions {
       display:flex;
@@ -3759,7 +3771,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <label id="pmoLoginPasswordLabel" for="pmoStaffAuthPassword">Password personale</label>
           <div class="pmo-password-input">
             <input id="pmoStaffAuthPassword" type="password" autocomplete="current-password" />
-            <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoStaffAuthPassword', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+            <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoStaffAuthPassword', this)" aria-label="Mostra password" title="Mostra password" data-password-visible="false"></button>
           </div>
         </div>
       </div>
@@ -3779,14 +3791,14 @@ body.assessment-public-mode .assessment-public-only-card {
             <label for="pmoNewPassword">Nuova password</label>
             <div class="pmo-password-input">
               <input id="pmoNewPassword" type="password" autocomplete="new-password" />
-              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPassword', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPassword', this)" aria-label="Mostra password" title="Mostra password" data-password-visible="false"></button>
             </div>
           </div>
           <div class="pmo-login-field">
             <label for="pmoNewPasswordConfirm">Conferma nuova password</label>
             <div class="pmo-password-input">
               <input id="pmoNewPasswordConfirm" type="password" autocomplete="new-password" />
-              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPasswordConfirm', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPasswordConfirm', this)" aria-label="Mostra password" title="Mostra password" data-password-visible="false"></button>
             </div>
           </div>
         </div>
@@ -4722,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.335';
+    const APP_VERSION = '5.336';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4929,12 +4941,23 @@ body.assessment-public-mode .assessment-public-only-card {
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       if (button) {
-        button.textContent = show ? 'Nascondi' : 'Mostra';
+        button.dataset.passwordVisible = show ? 'true' : 'false';
+        button.innerHTML = pmoPasswordToggleIcon(show);
         button.setAttribute('aria-pressed', show ? 'true' : 'false');
         button.setAttribute('aria-label', show ? 'Nascondi password' : 'Mostra password');
         button.title = show ? 'Nascondi password' : 'Mostra password';
       }
       input.focus();
+    }
+    function pmoPasswordToggleIcon(visible=false) {
+      return visible
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"></path><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 4.4A9.8 9.8 0 0 1 12 4c5 0 8.5 4.2 10 8a13.7 13.7 0 0 1-2.2 3.5"></path><path d="M6.2 6.2A13.7 13.7 0 0 0 2 12c1.5 3.8 5 8 10 8a9.8 9.8 0 0 0 4.1-.9"></path></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    }
+    function pmoInitPasswordToggleIcons() {
+      document.querySelectorAll('.pmo-password-toggle').forEach(button => {
+        button.innerHTML = pmoPasswordToggleIcon(button.dataset.passwordVisible === 'true');
+      });
     }
     function pmoSetStaffEmailValue(email) {
       const emailInput = document.getElementById('pmoStaffEmail');
@@ -19266,6 +19289,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      pmoInitPasswordToggleIcons();
       initStaffAccessGate();
       pmoConsumeSupabaseAuthRedirect();
       initSidebarNavigation();

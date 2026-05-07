@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.336 / Icona mostra password
+
+- Sostituito il pulsante testuale "Mostra" con una piccola icona occhio dentro i campi password.
+- Allineato il controllo mostra/nascondi a destra del campo per evitare sovrapposizioni tra email e password.
+
 ## v5.335 / Login solo accesso personale
 
 - Rimossa dalla login la sezione "Oppure accesso beta".
