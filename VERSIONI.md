@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.341 / Permesso solo consultazione
+
+- Rinominata la dicitura del permesso `read_all` da "Lettura completa" a "Solo consultazione".
+- Allineato il mockup Amministrazione alla nuova etichetta.
+
 ## v5.340 / Amministrazione in TEST ottimizzata
 
 - Riorganizzata Amministrazione in due sottosezioni: Utenti e Supabase.

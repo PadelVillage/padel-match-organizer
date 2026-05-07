@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.340';
+    const APP_VERSION = '5.341';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -17999,7 +17999,7 @@ Per confermare scrivi ELIMINA.`);
 	        matches_write:'Modifica partite',
 	        messages_write:'Messaggi WhatsApp',
 	        data_export:'Esportazione/importazione dati',
-	        read_all:'Lettura completa'
+	        read_all:'Solo consultazione'
 	      })[permission] || String(permission || '').replace(/_/g, ' ');
 	    }
 	    function pmoStaffPermissionCheckboxesHtml() {
@@ -18011,7 +18011,7 @@ Per confermare scrivi ELIMINA.`);
 	        ['matches_write', 'Modifica partite'],
 	        ['messages_write', 'Messaggi WhatsApp'],
 	        ['data_export', 'Export/import dati'],
-	        ['read_all', 'Lettura completa']
+	        ['read_all', 'Solo consultazione']
 	      ];
 	      return items.map(([key, label]) => `<label><input type="checkbox" data-admin-permission="${escapeHtml(key)}" onchange="pmoRenderStaffRoleSummary()" /> ${escapeHtml(label)}</label>`).join('');
 	    }
