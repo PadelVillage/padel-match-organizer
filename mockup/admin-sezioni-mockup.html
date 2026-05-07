@@ -154,7 +154,7 @@
     .muted { color:var(--muted); line-height:1.45; }
     .quick-stats {
       display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
+      grid-template-columns:repeat(3,minmax(0,1fr));
       gap:12px;
       margin:14px 0;
     }
@@ -305,12 +305,27 @@
     th { background:#f3f7fc; color:var(--primary); font-weight:900; }
     tr:last-child td { border-bottom:0; }
     .mini { display:block; margin-top:3px; color:var(--muted); font-size:12px; font-weight:700; }
-    .session-grid {
+    .account-strip {
       display:grid;
-      grid-template-columns:1.2fr .8fr .8fr;
+      grid-template-columns:minmax(0,1fr) auto;
       gap:12px;
-      margin-top:8px;
+      align-items:center;
+      border:1px solid var(--border);
+      border-left:4px solid var(--primary);
+      border-radius:8px;
+      padding:11px 12px;
+      background:#f8fbff;
+      margin:12px 0 14px;
     }
+    .account-main { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+    .account-label {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .account-email { color:#111827; font-weight:900; overflow-wrap:anywhere; }
+    .account-note { margin-top:5px; color:var(--muted); font-size:12px; font-weight:700; line-height:1.35; }
     .info-card {
       border:1px solid var(--border);
       border-radius:8px;
@@ -320,6 +335,15 @@
     }
     .info-card .label { color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; }
     .info-card .value { margin-top:6px; color:#111827; font-size:15px; font-weight:900; overflow-wrap:anywhere; }
+    .table-toolbar {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+      margin-top:14px;
+    }
+    .table-toolbar strong { color:var(--primary); }
     .supabase-grid {
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
@@ -356,8 +380,8 @@
     @media (max-width:1050px) {
       .quick-stats,
       .supabase-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .form-grid,
-      .session-grid { grid-template-columns:1fr 1fr; }
+      .form-grid { grid-template-columns:1fr 1fr; }
+      .account-strip { grid-template-columns:1fr; }
       .permission-grid { grid-template-columns:1fr 1fr; }
     }
     @media (max-width:800px) {
@@ -373,7 +397,6 @@
       .section { padding:12px; }
       .quick-stats,
       .form-grid,
-      .session-grid,
       .supabase-grid,
       .permission-grid { grid-template-columns:1fr; }
       table { min-width:680px; }
@@ -400,12 +423,11 @@
         <div class="side-nav-section-label">Gestione</div>
         <div class="side-nav-parent active">
           <span class="nav-main">Amministrazione</span>
-          <span class="nav-sub">Utenti, sessione e Supabase</span>
+          <span class="nav-sub">Utenti e Supabase</span>
           <span class="nav-caret">v</span>
         </div>
         <div class="side-submenu">
           <a class="side-sub-link active" href="#anchor-admin-utenti">Utenti</a>
-          <a class="side-sub-link" href="#anchor-admin-sessione">Sessione</a>
           <a class="side-sub-link" href="#anchor-admin-supabase">Supabase</a>
         </div>
       </div>
@@ -424,16 +446,31 @@
         <div class="dashboard-page-title">
           <div>
             <h2>Amministrazione</h2>
-            <p>Utenti, sessione personale e controlli Supabase in tre capitoli separati.</p>
+            <p>Gestione staff e controlli tecnici separati, con account corrente sempre visibile.</p>
           </div>
           <span class="env-pill">Supabase Auth attivo</span>
+        </div>
+
+        <div class="account-strip">
+          <div>
+            <div class="account-main">
+              <span class="account-label">Account</span>
+              <span class="account-email">padelvillage.club@gmail.com</span>
+              <span class="chip">Proprietario</span>
+              <span class="chip success">Attivo</span>
+            </div>
+            <div class="account-note">Permessi attivi: gestione utenti, sync cloud, routine, dati e lettura completa.</div>
+          </div>
+          <div class="actions">
+            <button class="btn-secondary">Aggiorna profilo</button>
+            <button class="btn-secondary">Esci</button>
+          </div>
         </div>
 
         <div class="quick-stats">
           <div class="stat-card"><div class="label">Utenti attivi</div><div class="value">3</div></div>
           <div class="stat-card"><div class="label">Invitati</div><div class="value">1</div></div>
           <div class="stat-card"><div class="label">Sospesi</div><div class="value">0</div></div>
-          <div class="stat-card"><div class="label">Sessione</div><div class="value" style="font-size:18px;">Owner</div></div>
         </div>
 
         <article id="anchor-admin-utenti" class="admin-chapter">
@@ -441,9 +478,6 @@
             <div>
               <h3>Utenti</h3>
               <p>Autorizza email staff e gestisci ruoli operativi.</p>
-            </div>
-            <div class="actions">
-              <button class="btn-primary">Carica lista</button>
             </div>
           </div>
 
@@ -506,6 +540,13 @@
           </div>
           <div class="compact-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
 
+          <div class="table-toolbar">
+            <div>
+              <strong>Utenti autorizzati</strong>
+              <span class="mini">La lista si carica automaticamente quando entri nella sezione.</span>
+            </div>
+            <button class="btn-secondary">Aggiorna</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -541,47 +582,6 @@
                 </tr>
               </tbody>
             </table>
-          </div>
-        </article>
-
-        <article id="anchor-admin-sessione" class="admin-chapter">
-          <div class="panel-head">
-            <div>
-              <h3>Sessione</h3>
-              <p>Profilo personale e permessi caricati da Supabase Auth.</p>
-            </div>
-            <div class="actions">
-              <button class="btn-secondary">Aggiorna profilo</button>
-              <button class="btn-secondary">Esci</button>
-            </div>
-          </div>
-
-          <div class="session-grid">
-            <div class="info-card">
-              <div class="label">Email</div>
-              <div class="value">padelvillage.club@gmail.com</div>
-            </div>
-            <div class="info-card">
-              <div class="label">Ruolo</div>
-              <div class="value">Proprietario</div>
-            </div>
-            <div class="info-card">
-              <div class="label">Stato</div>
-              <div class="value"><span class="chip success">Attivo</span></div>
-            </div>
-          </div>
-          <div class="role-summary">
-            <strong>Permessi attivi</strong>
-            <div class="chip-row">
-              <span class="chip">Gestione utenti</span>
-              <span class="chip">Sincronizzazione dati cloud</span>
-              <span class="chip">Routine</span>
-              <span class="chip">Modifica soci</span>
-              <span class="chip">Modifica partite</span>
-              <span class="chip">Messaggi WhatsApp</span>
-              <span class="chip">Export/import dati</span>
-              <span class="chip">Lettura completa</span>
-            </div>
           </div>
         </article>
 
