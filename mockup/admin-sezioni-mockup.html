@@ -318,15 +318,23 @@
     }
     table {
       width:100%;
-      min-width:760px;
+      min-width:0;
       border-collapse:collapse;
       margin:0;
       font-size:13px;
+      table-layout:fixed;
     }
     th, td { padding:10px; border-bottom:1px solid #edf2f7; text-align:left; vertical-align:middle; }
     th { background:#f3f7fc; color:var(--primary); font-weight:900; }
     tr:last-child td { border-bottom:0; }
+    th:nth-child(1), td:nth-child(1) { width:31%; }
+    th:nth-child(2), td:nth-child(2) { width:16%; }
+    th:nth-child(3), td:nth-child(3) { width:14%; }
+    th:nth-child(4), td:nth-child(4) { width:20%; }
+    th:nth-child(5), td:nth-child(5) { width:19%; }
     .mini { display:block; margin-top:3px; color:var(--muted); font-size:12px; font-weight:700; }
+    .row-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
+    .row-actions button { margin:0; padding:8px 10px; }
     .account-strip {
       display:grid;
       grid-template-columns:minmax(0,1fr) auto;
@@ -609,21 +617,21 @@
                   <td><span class="chip">Proprietario</span></td>
                   <td><span class="chip success">Attivo</span></td>
                   <td>07/05/2026 14:42</td>
-                  <td><button class="btn-secondary">Modifica</button></td>
+                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button></div></td>
                 </tr>
                 <tr>
                   <td><strong>Staff segreteria</strong><span class="mini">staff@padelvillage.it</span></td>
                   <td><span class="chip">Staff</span></td>
                   <td><span class="chip warning">Invitato</span></td>
                   <td>-</td>
-                  <td><button class="btn-secondary">Modifica</button> <button class="btn-success">Attiva</button></td>
+                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button><button class="btn-success">Attiva</button></div></td>
                 </tr>
                 <tr>
                   <td><strong>Responsabile tornei</strong><span class="mini">tornei@padelvillage.it</span></td>
                   <td><span class="chip">Admin</span></td>
                   <td><span class="chip success">Attivo</span></td>
                   <td>06/05/2026 19:08</td>
-                  <td><button class="btn-secondary">Modifica</button> <button class="btn-warning">Sospendi</button></td>
+                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button><button class="btn-warning">Sospendi</button></div></td>
                 </tr>
               </tbody>
             </table>
