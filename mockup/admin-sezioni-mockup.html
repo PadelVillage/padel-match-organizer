@@ -208,6 +208,26 @@
     .btn-secondary { background:#eef3fb; color:var(--primary); }
     .btn-success { background:#20a943; color:#fff; }
     .btn-warning { background:#f59e0b; color:#fff; }
+    .form-mode {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px 12px;
+      background:#fbfdff;
+      margin-bottom:10px;
+    }
+    .form-mode strong { color:#111827; }
+    .action-hint {
+      align-self:center;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      line-height:1.35;
+    }
     .form-grid {
       display:grid;
       grid-template-columns:minmax(220px,1.15fr) minmax(190px,.95fr) minmax(150px,.7fr) minmax(140px,.65fr);
@@ -377,6 +397,16 @@
       font-weight:900;
     }
     .technical-details .table-wrap { margin:0 12px 12px; }
+    .diagnostic-note {
+      margin:10px 0 12px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fbfdff;
+      color:#475467;
+      font-size:13px;
+      line-height:1.45;
+    }
     @media (max-width:1050px) {
       .quick-stats,
       .supabase-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -423,7 +453,7 @@
         <div class="side-nav-section-label">Gestione</div>
         <div class="side-nav-parent active">
           <span class="nav-main">Amministrazione</span>
-          <span class="nav-sub">Utenti e Supabase</span>
+          <span class="nav-sub">Utenti e controlli tecnici</span>
           <span class="nav-caret">v</span>
         </div>
         <div class="side-submenu">
@@ -481,6 +511,15 @@
             </div>
           </div>
 
+          <div class="form-mode">
+            <div>
+              <span class="chip">Nuovo utente</span>
+              <strong>Autorizza una nuova email staff</strong>
+              <span class="mini">Per cambiare ruolo, stato o permessi di un utente esistente, clicca Modifica nella tabella.</span>
+            </div>
+            <span class="chip warning">Da Modifica: Salva modifiche</span>
+          </div>
+
           <div class="form-grid">
             <div>
               <label>Email</label>
@@ -521,7 +560,7 @@
           </div>
 
           <details class="advanced">
-            <summary>Personalizza permessi</summary>
+            <summary>Personalizza permessi opzionali</summary>
             <div class="permission-grid">
               <span>Gestione utenti</span>
               <span>Sync dati cloud</span>
@@ -532,11 +571,15 @@
               <span>Export/import dati</span>
               <span>Lettura completa</span>
             </div>
+            <div style="padding:0 12px 12px;">
+              <span class="mini">Apri questi dettagli solo se il preset del ruolo non basta.</span>
+            </div>
           </details>
 
           <div class="actions" style="margin-top:12px;">
             <button class="btn-success">Autorizza email</button>
             <button class="btn-secondary">Svuota</button>
+            <span class="action-hint">Quando stai modificando un utente, il pulsante principale diventa Salva modifiche.</span>
           </div>
           <div class="compact-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
 
@@ -589,11 +632,15 @@
           <div class="panel-head">
             <div>
               <h3>Supabase</h3>
-              <p>Ambiente, schema e registro tecnico in un capitolo separato.</p>
+              <p>Solo diagnostica: controlla collegamento, ambiente e funzioni tecniche.</p>
             </div>
             <div class="actions">
-              <button class="btn-primary">Verifica ambiente</button>
+              <button class="btn-primary">Verifica TEST/PROD</button>
             </div>
+          </div>
+
+          <div class="diagnostic-note">
+            Usa questa sezione solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.
           </div>
 
           <div class="supabase-grid">
