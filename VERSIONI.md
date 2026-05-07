@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.339 / Occhio password in angolo destro
+
+- Spostata l'icona mostra/nascondi password sul bordo inferiore destro del campo.
+- Rimossa l'interferenza del tooltip globale `button[title]` dal controllo password.
+
 ## v5.338 / Fix rendering icona password
 
 - Azzerati padding e margin globali sul bottone icona password, che schiacciavano l'SVG e lasciavano visibile solo un puntino.
