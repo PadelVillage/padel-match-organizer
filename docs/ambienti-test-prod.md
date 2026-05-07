@@ -37,6 +37,23 @@ App TEST in /test/   -> config-test.js -> Supabase TEST
 8. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
 9. Usare Git/GitHub per storico, commit e tag versione.
 
+## Regola mockup per modifiche grafiche
+
+Ogni modifica visibile dell'interfaccia deve avere un mockup approvato prima dello sviluppo sull'app reale.
+
+Per modifica grafica si intende qualunque cambiamento visibile: layout, colori, testi UI, spaziature, sezioni, navigazione, bottoni, tabelle, modali, card o responsive.
+
+Regola operativa:
+
+1. Analizzare prima il codice e la sezione interessata.
+2. Creare un mockup visivo in `mockup/` con nome descrittivo.
+3. Fermarsi e chiedere approvazione esplicita a Maurizio.
+4. Modificare `index.html`, `autovalutazione.html`, CSS o UI reale solo dopo approvazione del mockup.
+5. Pubblicare la modifica sviluppata in TEST.
+6. Chiedere conferma separata prima di qualunque passaggio in PROD.
+
+Documento completo: `docs/regola-mockup-grafici.md`.
+
 ## Regola pubblicazione TEST
 
 Ogni modifica sviluppata deve essere pubblicata automaticamente in TEST appena e' pronta per la verifica di Maurizio.

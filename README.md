@@ -93,6 +93,17 @@ Il computer locale resta un workspace pulito: non si creano piu' copie HTML di v
 
 Regola operativa: GitHub e TEST sono ambienti di sviluppo/collaudo; TEST viene aggiornato automaticamente per la verifica, mentre PROD non va aggiornato, pubblicato o modificato senza conferma esplicita nella conversazione.
 
+## Regola grafica: mockup obbligatorio
+
+Ogni modifica grafica o di layout deve partire da un mockup visivo approvabile prima dello sviluppo sull'app reale.
+
+- Prima si analizza il codice e si prepara un mockup in `mockup/`.
+- Il mockup deve essere approvato esplicitamente da Maurizio in chat.
+- Finche' il mockup non e' approvato, non si modificano `index.html`, `autovalutazione.html`, CSS o UI reale.
+- Dopo l'approvazione si sviluppa l'app, si pubblica in TEST e si chiede conferma separata prima di PROD.
+
+Per procedura completa: `docs/regola-mockup-grafici.md`.
+
 ## Flusso di lavoro a sezioni
 
 La branch `main` deve rimanere stabile. Ogni sezione va lavorata su una branch dedicata, validata, poi consolidata su `main`.
