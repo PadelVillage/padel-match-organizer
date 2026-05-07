@@ -1,5 +1,13 @@
 # Versioni
 
+## v5.334 / Registrazione staff guidata
+
+- Separata la login staff in due stati: accesso e registrazione.
+- Aggiunto mostra/nascondi password nei campi personali e nel recupero password.
+- La registrazione controlla prima la nuova RPC `pmo_can_register_staff`: solo email gia autorizzate in Amministrazione possono creare l'accesso Supabase.
+- Dopo la conferma email l'app collega il profilo staff, chiude la sessione temporanea e torna alla login con email precompilata.
+- La password resta quella scelta nella schermata di registrazione e non viene inviata via email.
+
 ## v5.333 / Accessi staff guidati in TEST
 
 - Ridisegnata in ambiente TEST la sezione Amministrazione > Accessi staff come flusso guidato: autorizza email, crea accesso, lavora con permessi.

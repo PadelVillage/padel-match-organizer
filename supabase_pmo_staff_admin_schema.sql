@@ -138,6 +138,37 @@ as $$
     or coalesce(p_permissions->>coalesce(p_permission, ''), 'false') = 'true';
 $$;
 
+create or replace function public.pmo_can_register_staff(p_email text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text := lower(trim(coalesce(p_email, '')));
+  v_profile public.pmo_staff_profiles%rowtype;
+begin
+  if v_email = '' or position('@' in v_email) <= 1 then
+    return jsonb_build_object('ok', false, 'reason', 'INVALID_EMAIL');
+  end if;
+
+  select * into v_profile
+  from public.pmo_staff_profiles p
+  where p.email = v_email
+    and p.status in ('invited', 'active')
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'EMAIL_NOT_AUTHORIZED');
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'registered', v_profile.auth_user_id is not null
+  );
+end;
+$$;
+
 create or replace function public.pmo_current_staff_profile()
 returns table (
   id uuid,
@@ -633,6 +664,7 @@ revoke all on public.pmo_audit_log from anon, authenticated;
 
 grant usage on schema public to anon, authenticated;
 grant execute on function public.pmo_staff_permission_ok(text, jsonb, text) to authenticated;
+grant execute on function public.pmo_can_register_staff(text) to anon, authenticated;
 grant execute on function public.pmo_current_staff_profile() to authenticated;
 grant execute on function public.pmo_get_my_staff_profile() to authenticated;
 grant execute on function public.pmo_upsert_staff_user_admin(text, text, text, text, jsonb) to authenticated;

@@ -3541,6 +3541,16 @@ body.assessment-public-mode .assessment-public-only-card {
       font-size:15px;
       line-height:1.45;
     }
+    .pmo-login-mode-name {
+      margin-top:18px;
+      color:#243b5a;
+      font-size:18px;
+      font-weight:900;
+    }
+    .pmo-login-card[data-pmo-login-mode="signup"] [data-login-only],
+    .pmo-login-card[data-pmo-login-mode="login"] [data-signup-only] {
+      display:none !important;
+    }
     .pmo-login-field {
       margin-top:22px;
     }
@@ -3571,6 +3581,29 @@ body.assessment-public-mode .assessment-public-only-card {
       outline:none;
       border-color:var(--primary);
       box-shadow:0 0 0 3px rgba(33,80,150,.16);
+    }
+    .pmo-password-input {
+      position:relative;
+    }
+    .pmo-password-input input {
+      padding-right:88px;
+    }
+    .pmo-password-toggle {
+      position:absolute;
+      right:7px;
+      top:50%;
+      transform:translateY(-50%);
+      border:1px solid #ccd6e4;
+      border-radius:7px;
+      background:#f8fbff;
+      color:#243b5a;
+      font-size:12px;
+      font-weight:900;
+      padding:7px 9px;
+      cursor:pointer;
+    }
+    .pmo-password-toggle:hover {
+      background:#edf3fb;
     }
     .pmo-login-actions {
       display:flex;
@@ -3713,41 +3746,55 @@ body.assessment-public-mode .assessment-public-only-card {
 </head>
 <body class="pmo-auth-locked">
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
-    <form class="pmo-login-card" onsubmit="return handleStaffLoginSubmit(event)">
+    <form id="pmoLoginCard" class="pmo-login-card" data-pmo-login-mode="login" onsubmit="return handleStaffLoginSubmit(event)">
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
-      <p>Accesso operatori. Usa l'email personale quando sara attivata in Amministrazione, oppure la password accesso beta.</p>
+      <p id="pmoLoginIntro">Accedi con l'email autorizzata in Amministrazione e la password personale. Se non hai ancora creato l'accesso, registrati.</p>
+      <div id="pmoLoginModeName" class="pmo-login-mode-name">Accesso</div>
       <div class="pmo-login-row">
         <div class="pmo-login-field">
           <label for="pmoStaffEmail">Email utente</label>
           <input id="pmoStaffEmail" type="email" autocomplete="username" placeholder="nome@padelvillage.it" />
         </div>
         <div class="pmo-login-field">
-          <label for="pmoStaffAuthPassword">Password personale</label>
-          <input id="pmoStaffAuthPassword" type="password" autocomplete="current-password" />
+          <label id="pmoLoginPasswordLabel" for="pmoStaffAuthPassword">Password personale</label>
+          <div class="pmo-password-input">
+            <input id="pmoStaffAuthPassword" type="password" autocomplete="current-password" />
+            <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoStaffAuthPassword', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+          </div>
         </div>
       </div>
-      <div class="pmo-login-divider">oppure accesso beta</div>
-      <div class="pmo-login-secondary">
+      <div class="pmo-login-divider" data-login-only>oppure accesso beta</div>
+      <div class="pmo-login-secondary" data-login-only>
         <div class="pmo-login-field">
           <label for="pmoStaffPassword">Password accesso beta</label>
           <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
         </div>
       </div>
       <div id="pmoLoginMessage" class="pmo-login-message" aria-live="polite"></div>
-      <div class="pmo-login-actions">
+      <div class="pmo-login-actions" data-login-only>
         <button id="pmoLoginButton" type="submit" class="btn-primary">Entra</button>
-        <button id="pmoSignupButton" type="button" class="btn-secondary" onclick="pmoHandleStaffSignup()">Crea accesso</button>
+        <button id="pmoOpenSignupButton" type="button" class="btn-secondary" onclick="pmoSetLoginMode('signup')">Registrati</button>
         <button id="pmoRecoverButton" type="button" class="btn-secondary" onclick="pmoHandlePasswordRecovery()">Recupera password</button>
+      </div>
+      <div class="pmo-login-actions" data-signup-only>
+        <button id="pmoSignupButton" type="button" class="btn-primary" onclick="pmoHandleStaffSignup()">Crea accesso</button>
+        <button type="button" class="btn-secondary" onclick="pmoSetLoginMode('login')">Torna alla login</button>
       </div>
       <div id="pmoPasswordRecoveryPanel" class="pmo-login-secondary" hidden>
         <div class="pmo-login-row">
           <div class="pmo-login-field">
             <label for="pmoNewPassword">Nuova password</label>
-            <input id="pmoNewPassword" type="password" autocomplete="new-password" />
+            <div class="pmo-password-input">
+              <input id="pmoNewPassword" type="password" autocomplete="new-password" />
+              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPassword', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+            </div>
           </div>
           <div class="pmo-login-field">
             <label for="pmoNewPasswordConfirm">Conferma nuova password</label>
-            <input id="pmoNewPasswordConfirm" type="password" autocomplete="new-password" />
+            <div class="pmo-password-input">
+              <input id="pmoNewPasswordConfirm" type="password" autocomplete="new-password" />
+              <button type="button" class="pmo-password-toggle" onclick="pmoTogglePasswordVisibility('pmoNewPasswordConfirm', this)" aria-label="Mostra password" title="Mostra password">Mostra</button>
+            </div>
           </div>
         </div>
         <div class="pmo-login-actions pmo-login-recovery-actions">
@@ -3755,7 +3802,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button type="button" class="btn-secondary" onclick="pmoCancelPasswordRecovery()">Annulla</button>
         </div>
       </div>
-      <p>La creazione accesso funziona solo per email gia abilitate nella sezione Amministrazione.</p>
+      <p id="pmoLoginFootnote">La registrazione e' disponibile solo per email autorizzate in Amministrazione.</p>
     </form>
   </div>
   <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
@@ -4682,7 +4729,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.333';
+    const APP_VERSION = '5.334';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4716,6 +4763,7 @@ body.assessment-public-mode .assessment-public-only-card {
     const PMO_STAFF_AUTH_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffAccessV1`;
     const PMO_STAFF_SUPABASE_SESSION_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffSupabaseSessionV1`;
     const PMO_STAFF_PROFILE_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffProfileV1`;
+    const PMO_STAFF_PENDING_EMAIL_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffPendingEmailV1`;
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
     const PMO_STAFF_AUTH_SALT = 'pmo-village-beta';
     const PMO_STAFF_PASSWORD_SHA256 = '4ec9587b325c496c64e25e10333550e67e6d3b4dd68fb3137eadb09eabfa217f';
@@ -4851,6 +4899,70 @@ body.assessment-public-mode .assessment-public-only-card {
       return !!String(params.get('t') || params.get('token') || '').trim();
     }
 
+    function pmoGetLoginMode() {
+      const card = document.getElementById('pmoLoginCard');
+      return card?.dataset?.pmoLoginMode === 'signup' ? 'signup' : 'login';
+    }
+    function pmoSetLoginMode(mode='login', options={}) {
+      const nextMode = mode === 'signup' ? 'signup' : 'login';
+      const card = document.getElementById('pmoLoginCard');
+      if (card) card.dataset.pmoLoginMode = nextMode;
+      const intro = document.getElementById('pmoLoginIntro');
+      const modeName = document.getElementById('pmoLoginModeName');
+      const passwordLabel = document.getElementById('pmoLoginPasswordLabel');
+      const footnote = document.getElementById('pmoLoginFootnote');
+      const passwordInput = document.getElementById('pmoStaffAuthPassword');
+      if (intro) {
+        intro.textContent = nextMode === 'signup'
+          ? "Crea l'accesso solo con un'email gia autorizzata in Amministrazione. Scegli una password, poi conferma la mail ricevuta."
+          : "Accedi con l'email autorizzata in Amministrazione e la password personale. Se non hai ancora creato l'accesso, registrati.";
+      }
+      if (modeName) modeName.textContent = nextMode === 'signup' ? 'Registrazione' : 'Accesso';
+      if (passwordLabel) passwordLabel.textContent = nextMode === 'signup' ? 'Password da scegliere' : 'Password personale';
+      if (footnote) {
+        footnote.textContent = nextMode === 'signup'
+          ? 'Dopo la conferma email tornerai alla login con email precompilata.'
+          : "La registrazione e' disponibile solo per email autorizzate in Amministrazione.";
+      }
+      if (passwordInput) passwordInput.setAttribute('autocomplete', nextMode === 'signup' ? 'new-password' : 'current-password');
+      if (nextMode === 'signup') pmoSetPasswordRecoveryPanelVisible(false);
+      if (!options.keepMessage) pmoSetLoginMessage('');
+      setTimeout(() => {
+        const emailInput = document.getElementById('pmoStaffEmail');
+        const focusTarget = nextMode === 'signup' && emailInput?.value ? passwordInput : emailInput;
+        if (focusTarget) focusTarget.focus();
+      }, 0);
+    }
+    function pmoTogglePasswordVisibility(inputId, button) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      if (button) {
+        button.textContent = show ? 'Nascondi' : 'Mostra';
+        button.setAttribute('aria-pressed', show ? 'true' : 'false');
+        button.setAttribute('aria-label', show ? 'Nascondi password' : 'Mostra password');
+        button.title = show ? 'Nascondi password' : 'Mostra password';
+      }
+      input.focus();
+    }
+    function pmoSetStaffEmailValue(email) {
+      const emailInput = document.getElementById('pmoStaffEmail');
+      if (emailInput && email) emailInput.value = email;
+    }
+    function pmoRememberPendingStaffEmail(email) {
+      const value = cleanCell(email || '').toLowerCase();
+      try {
+        if (value) localStorage.setItem(PMO_STAFF_PENDING_EMAIL_KEY, value);
+        else localStorage.removeItem(PMO_STAFF_PENDING_EMAIL_KEY);
+      } catch {}
+      return value;
+    }
+    function pmoReadPendingStaffEmail() {
+      try { return cleanCell(localStorage.getItem(PMO_STAFF_PENDING_EMAIL_KEY) || ''); }
+      catch { return ''; }
+    }
+
     function setStaffAuthState(unlocked) {
       document.body.classList.toggle('pmo-auth-unlocked', !!unlocked);
       document.body.classList.toggle('pmo-auth-locked', !unlocked);
@@ -4926,10 +5038,17 @@ body.assessment-public-mode .assessment-public-only-card {
       }
       clearStaffSession();
       setStaffAuthState(false);
+      const pendingEmail = pmoReadPendingStaffEmail();
+      if (pendingEmail) pmoSetStaffEmailValue(pendingEmail);
+      pmoSetLoginMode('login', { keepMessage: true });
     }
 
     function handleStaffLoginSubmit(event) {
       if (event) event.preventDefault();
+      if (pmoGetLoginMode() === 'signup') {
+        pmoHandleStaffSignup();
+        return false;
+      }
       const input = document.getElementById('pmoStaffPassword');
       const emailInput = document.getElementById('pmoStaffEmail');
       const authPasswordInput = document.getElementById('pmoStaffAuthPassword');
@@ -4969,6 +5088,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function staffLogout() {
       clearStaffSession();
+      pmoSetLoginMode('login', { keepMessage: true });
       setStaffAuthState(false);
     }
 
@@ -5130,6 +5250,20 @@ body.assessment-public-mode .assessment-public-only-card {
         pmoSetLoginMessage(err.message || 'Accesso non riuscito.');
       }
     }
+    async function pmoCanRegisterStaff(email) {
+      const result = await pmoCloudRpc('pmo_can_register_staff', { p_email: email });
+      if (result?.ok) return result;
+      if (result?.reason === 'INVALID_EMAIL') throw new Error('Inserisci una email valida.');
+      throw new Error('Email non autorizzata. Chiedi a un amministratore di abilitarla prima della registrazione.');
+    }
+    function pmoIsAlreadyRegisteredSignupResponse(data) {
+      const identities = data?.user?.identities;
+      return Array.isArray(identities) && identities.length === 0;
+    }
+    function pmoIsAlreadyRegisteredSignupError(err) {
+      const text = String(err?.message || err || '').toLowerCase();
+      return text.includes('already registered') || text.includes('already exists') || text.includes('user already') || text.includes('registered user');
+    }
     async function pmoHandleStaffSignup() {
       const button = document.getElementById('pmoSignupButton');
       const message = document.getElementById('pmoLoginMessage');
@@ -5140,20 +5274,42 @@ body.assessment-public-mode .assessment-public-only-card {
         if (button) button.disabled = true;
         if (!email || !password) throw new Error('Inserisci email e password personale da creare.');
         if (password.length < 8) throw new Error('Scegli una password di almeno 8 caratteri.');
+        const authorization = await pmoCanRegisterStaff(email);
+        pmoRememberPendingStaffEmail(email);
+        if (authorization?.registered) {
+          pmoSetLoginMode('login', { keepMessage: true });
+          pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
+          return;
+        }
         const data = await pmoSupabaseAuthFetch('signup', { email, password }, { redirectTo: pmoStaffAuthRedirectUrl() });
+        if (pmoIsAlreadyRegisteredSignupResponse(data)) {
+          pmoSetLoginMode('login', { keepMessage: true });
+          pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
+          return;
+        }
         if (data?.access_token) {
           pmoStoreSupabaseStaffSession(data);
           const profile = await pmoLoadMyStaffProfile();
           if (pmoIsStaffProfileActive(profile)) {
-            rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
-            setStaffAuthState(true);
-            renderPmoAdministration();
+            const confirmedEmail = cleanCell(profile.email || email).toLowerCase();
+            clearStaffSession();
+            pmoRememberPendingStaffEmail(confirmedEmail);
+            pmoSetStaffEmailValue(confirmedEmail);
+            const passwordInput = document.getElementById('pmoStaffAuthPassword');
+            if (passwordInput) passwordInput.value = '';
+            pmoSetLoginMode('login', { keepMessage: true });
+            pmoSetLoginMessage('Email confermata. Inserisci la password scelta per entrare.', 'success');
             return;
           }
         }
-        pmoSetLoginMessage('Accesso creato. Se Supabase richiede conferma email, confermala e poi entra.', 'success');
+        pmoSetLoginMessage('Ti ho inviato una email di conferma. Apri il link, poi torna qui e inserisci la password scelta.', 'success');
       } catch (err) {
-        pmoSetLoginMessage(err.message || 'Creazione accesso non riuscita.');
+        if (pmoIsAlreadyRegisteredSignupError(err)) {
+          pmoSetLoginMode('login', { keepMessage: true });
+          pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
+        } else {
+          pmoSetLoginMessage(err.message || 'Creazione accesso non riuscita.');
+        }
       } finally {
         if (button) button.disabled = false;
       }
@@ -5164,6 +5320,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const emailInput = document.getElementById('pmoStaffEmail');
       const email = cleanCell(emailInput?.value || '');
       try {
+        pmoSetLoginMode('login', { keepMessage: true });
         pmoSetLoginMessage('');
         pmoSetPasswordRecoveryPanelVisible(false);
         if (button) button.disabled = true;
@@ -5230,24 +5387,37 @@ body.assessment-public-mode .assessment-public-only-card {
         });
         if (authType === 'recovery') {
           setStaffAuthState(false);
+          pmoSetLoginMode('login', { keepMessage: true });
           pmoSetPasswordRecoveryPanelVisible(true);
           try { history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch {}
           pmoSetLoginMessage('Link recupero ricevuto. Inserisci e salva la nuova password.', 'success');
           return true;
         }
         const profile = await pmoLoadMyStaffProfile();
+        const confirmedEmail = cleanCell(profile?.email || pmoReadPendingStaffEmail() || '').toLowerCase();
         if (!pmoIsStaffProfileActive(profile)) {
-          pmoClearSupabaseStaffSession();
+          clearStaffSession();
+          if (confirmedEmail) pmoSetStaffEmailValue(confirmedEmail);
+          pmoSetLoginMode('login', { keepMessage: true });
           pmoSetLoginMessage('Email confermata, ma utente non attivo in Amministrazione.');
+          try { history.replaceState(null, document.title, window.location.pathname + window.location.search); } catch {}
           return false;
         }
-        rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
-        setStaffAuthState(true);
-        renderPmoAdministration();
+        clearStaffSession();
+        if (confirmedEmail) {
+          pmoRememberPendingStaffEmail(confirmedEmail);
+          pmoSetStaffEmailValue(confirmedEmail);
+        }
+        const passwordInput = document.getElementById('pmoStaffAuthPassword');
+        if (passwordInput) passwordInput.value = '';
+        setStaffAuthState(false);
+        pmoSetLoginMode('login', { keepMessage: true });
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        showAlert('Email confermata. Accesso personale attivo.', 'success');
+        pmoSetLoginMessage('Email confermata. Inserisci la password scelta per entrare.', 'success');
         return true;
       } catch (err) {
+        clearStaffSession();
+        pmoSetLoginMode('login', { keepMessage: true });
         pmoSetLoginMessage('Conferma email ricevuta, ma accesso non completato: ' + (err.message || err));
         return false;
       }
