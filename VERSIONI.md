@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.337 / Icona password sempre visibile
+
+- Inserita l'icona occhio direttamente nel markup dei campi password, senza dipendere dall'inizializzazione JavaScript.
+- Mantenuto il toggle mostra/nascondi con icona coerente e label accessibile.
+
 ## v5.336 / Icona mostra password
 
 - Sostituito il pulsante testuale "Mostra" con una piccola icona occhio dentro i campi password.
