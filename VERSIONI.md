@@ -1,5 +1,12 @@
 # Versioni
 
+## v5.340 / Amministrazione in TEST ottimizzata
+
+- Riorganizzata Amministrazione in due sottosezioni: Utenti e Supabase.
+- Spostata la sessione personale in un box account compatto, senza capitolo dedicato.
+- Semplificata la gestione Utenti: lista caricata automaticamente, tabella piu leggera e modifiche ruolo/stato/permessi tramite Modifica.
+- Chiarita la sezione Supabase come area diagnostica TEST/PROD senza modifiche ai dati.
+
 ## v5.339 / Occhio password in angolo destro
 
 - Spostata l'icona mostra/nascondi password sul bordo inferiore destro del campo.
