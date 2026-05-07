@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.335 / Login solo accesso personale
+
+- Rimossa dalla login la sezione "Oppure accesso beta".
+- Disattivato il fallback tecnico con password beta condivisa: l'accesso staff passa solo da email e password personale Supabase.
+- Aggiornati i testi in Amministrazione per mostrare solo lo stato della sessione personale.
+
 ## v5.334 / Registrazione staff guidata
 
 - Separata la login staff in due stati: accesso e registrazione.

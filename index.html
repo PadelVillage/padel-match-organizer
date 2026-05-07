@@ -3763,13 +3763,6 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
         </div>
       </div>
-      <div class="pmo-login-divider" data-login-only>oppure accesso beta</div>
-      <div class="pmo-login-secondary" data-login-only>
-        <div class="pmo-login-field">
-          <label for="pmoStaffPassword">Password accesso beta</label>
-          <input id="pmoStaffPassword" type="password" autocomplete="current-password" />
-        </div>
-      </div>
       <div id="pmoLoginMessage" class="pmo-login-message" aria-live="polite"></div>
       <div class="pmo-login-actions" data-login-only>
         <button id="pmoLoginButton" type="submit" class="btn-primary">Entra</button>
@@ -4587,7 +4580,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="admin-panel-head">
             <div>
               <h3>Accesso sicuro</h3>
-              <p>Stato della sessione corrente e passaggio dalla password accesso beta agli utenti personali.</p>
+              <p>Stato della sessione corrente e permessi dell'utente personale.</p>
             </div>
             <div class="admin-actions">
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshMyStaffProfile()">Aggiorna profilo</button>
@@ -4729,7 +4722,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.334';
+    const APP_VERSION = '5.335';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4765,9 +4758,6 @@ body.assessment-public-mode .assessment-public-only-card {
     const PMO_STAFF_PROFILE_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffProfileV1`;
     const PMO_STAFF_PENDING_EMAIL_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffPendingEmailV1`;
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
-    const PMO_STAFF_AUTH_SALT = 'pmo-village-beta';
-    const PMO_STAFF_PASSWORD_SHA256 = '4ec9587b325c496c64e25e10333550e67e6d3b4dd68fb3137eadb09eabfa217f';
-    const PMO_STAFF_PASSWORD_FALLBACK_HASH = '0062f1c1';
     const HISTORY_RETENTION_MONTHS = 12;
     document.body.classList.toggle('pmo-env-test', PMO_IS_TEST_ENV);
     document.title = `Padel Match Organizer v${APP_VERSION}${PMO_IS_TEST_ENV ? ' TEST' : ''}`;
@@ -4970,7 +4960,7 @@ body.assessment-public-mode .assessment-public-only-card {
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
       if (!unlocked) {
         setTimeout(() => {
-          const input = document.getElementById('pmoStaffEmail') || document.getElementById('pmoStaffPassword');
+          const input = document.getElementById('pmoStaffEmail');
           if (input) input.focus();
         }, 0);
       }
@@ -4980,13 +4970,10 @@ body.assessment-public-mode .assessment-public-only-card {
       if (isAssessmentPublicRequest()) return true;
       const supabaseSession = pmoReadSupabaseStaffSession();
       if (pmoIsSupabaseSessionFresh(supabaseSession) && pmoIsStaffProfileActive(pmoStaffProfile)) return true;
-      let session = null;
-      try { session = JSON.parse(localStorage.getItem(PMO_STAFF_AUTH_KEY) || 'null'); }
-      catch { session = null; }
-      return !!session && session.mode === 'legacy_password' && Number(session.expiresAt || 0) > Date.now();
+      return false;
     }
 
-    function rememberStaffSession(mode='legacy_password', meta={}) {
+    function rememberStaffSession(mode='supabase_auth', meta={}) {
       const now = Date.now();
       try {
         localStorage.setItem(PMO_STAFF_AUTH_KEY, JSON.stringify({
@@ -5002,31 +4989,6 @@ body.assessment-public-mode .assessment-public-only-card {
     function clearStaffSession() {
       try { localStorage.removeItem(PMO_STAFF_AUTH_KEY); } catch {}
       pmoClearSupabaseStaffSession();
-    }
-
-    function pmoStaffFallbackHash(value) {
-      let hash = 2166136261;
-      const text = `${PMO_STAFF_AUTH_SALT}|${value}|staff`;
-      for (let i = 0; i < text.length; i++) {
-        hash ^= text.charCodeAt(i);
-        hash = Math.imul(hash, 16777619);
-      }
-      return (hash >>> 0).toString(16).padStart(8, '0');
-    }
-
-    async function pmoStaffPasswordDigest(value) {
-      const text = `${PMO_STAFF_AUTH_SALT}|${value}`;
-      if (window.crypto && window.crypto.subtle && window.TextEncoder) {
-        const buffer = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-        return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-      }
-      return `fallback:${pmoStaffFallbackHash(value)}`;
-    }
-
-    async function isStaffPasswordValid(value) {
-      const digest = await pmoStaffPasswordDigest(value || '');
-      if (digest.startsWith('fallback:')) return digest.slice(9) === PMO_STAFF_PASSWORD_FALLBACK_HASH;
-      return digest === PMO_STAFF_PASSWORD_SHA256;
     }
 
     function initStaffAccessGate() {
@@ -5049,38 +5011,14 @@ body.assessment-public-mode .assessment-public-only-card {
         pmoHandleStaffSignup();
         return false;
       }
-      const input = document.getElementById('pmoStaffPassword');
       const emailInput = document.getElementById('pmoStaffEmail');
       const authPasswordInput = document.getElementById('pmoStaffAuthPassword');
-      const message = document.getElementById('pmoLoginMessage');
       const button = document.getElementById('pmoLoginButton');
       const email = cleanCell(emailInput?.value || '');
       const authPassword = authPasswordInput ? authPasswordInput.value : '';
-      const password = input ? input.value : '';
       pmoSetLoginMessage('');
       if (button) button.disabled = true;
-      if (email || authPassword) {
-        pmoHandleStaffEmailLogin(email, authPassword).finally(() => {
-          if (button) button.disabled = false;
-        });
-        return false;
-      }
-      isStaffPasswordValid(password).then(valid => {
-        if (valid) {
-          rememberStaffSession('legacy_password');
-          if (input) input.value = '';
-          setStaffAuthState(true);
-        } else {
-          clearStaffSession();
-          pmoSetLoginMessage('Password non corretta.');
-          if (input) {
-            input.select();
-            input.focus();
-          }
-        }
-      }).catch(() => {
-        pmoSetLoginMessage('Accesso non disponibile. Riprova.');
-      }).finally(() => {
+      pmoHandleStaffEmailLogin(email, authPassword).finally(() => {
         if (button) button.disabled = false;
       });
       return false;
@@ -18135,11 +18073,8 @@ Per confermare scrivi ELIMINA.`);
 	      `;
 	    }
 	    function pmoCurrentSessionSummary() {
-	      let stored = null;
-	      try { stored = JSON.parse(localStorage.getItem(PMO_STAFF_AUTH_KEY) || 'null'); } catch { stored = null; }
 	      const profile = pmoStaffProfile || pmoReadStaffProfile();
 	      if (pmoIsStaffProfileActive(profile)) return { mode:'Accesso personale Supabase', user:profile.email || '-', role:pmoRoleLabel(profile.role), status:pmoStatusLabel(profile.status), profile };
-	      if (stored?.mode === 'legacy_password') return { mode:'Password beta', user:'Staff condiviso', role:'Accesso beta', status:'Attivo', profile:null };
 	      return { mode:'Non autenticato', user:'-', role:'-', status:'-', profile:null };
 	    }
 	    function pmoCurrentConfigUrl() {
@@ -18222,7 +18157,7 @@ Per confermare scrivi ELIMINA.`);
 	          <tr><th>Stato</th><td><span class="admin-status-pill ${escapeHtml(session.profile?.status || 'active')}">${escapeHtml(session.status)}</span></td></tr>
 	          <tr><th>Permessi</th><td>${escapeHtml(permissionLabels)}</td></tr>
 	        </tbody></table></div>
-	        <div class="admin-note">Finche usi la password accesso beta, chi conosce quella password entra come utente condiviso. Con Supabase ogni persona avra email, password e permessi propri.</div>
+	        <div class="admin-note">Ogni persona entra con email, password e permessi propri gestiti da Supabase Auth.</div>
 	      `;
 	    }
 	    function pmoSetAdminStatus(message, type='info') {
@@ -18472,7 +18407,7 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoRefreshMyStaffProfile() {
 	      try {
 	        const profile = await pmoLoadMyStaffProfile();
-	        if (!profile) return showAlert("Profilo Supabase non trovato. Se stai usando password accesso beta e' normale.", 'info');
+	        if (!profile) return showAlert('Profilo Supabase non trovato. Accedi di nuovo con email e password personale.', 'info');
 	        renderPmoAdministration();
 	        showAlert('Profilo utente aggiornato.', 'success');
 	      } catch (err) {
