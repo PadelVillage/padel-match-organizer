@@ -3595,14 +3595,19 @@ body.assessment-public-mode .assessment-public-only-card {
       transform:translateY(-50%);
       width:34px;
       height:34px;
+      min-width:34px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       border:0;
       border-radius:50%;
+      margin:0;
+      padding:0;
       background:transparent;
       color:#243b5a;
       cursor:pointer;
+      line-height:0;
+      z-index:1;
     }
     .pmo-password-toggle:hover,
     .pmo-password-toggle:focus-visible {
@@ -4734,7 +4739,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.337';
+    const APP_VERSION = '5.338';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {

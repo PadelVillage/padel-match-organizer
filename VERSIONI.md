@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.338 / Fix rendering icona password
+
+- Azzerati padding e margin globali sul bottone icona password, che schiacciavano l'SVG e lasciavano visibile solo un puntino.
+- Bloccata la dimensione del controllo a 34px per renderlo stabile dentro il campo password.
+
 ## v5.337 / Icona password sempre visibile
 
 - Inserita l'icona occhio direttamente nel markup dei campi password, senza dipendere dall'inizializzazione JavaScript.
