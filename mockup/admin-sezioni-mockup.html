@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup Amministrazione - 3 sottosezioni</title>
+  <style>
+    :root {
+      --primary:#17386f;
+      --primary-2:#235296;
+      --nav-dark:#143269;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --border:#dfe8f3;
+      --muted:#667085;
+      --text:#1f2937;
+      --success:#1f7a35;
+      --success-bg:#e7f8ec;
+      --warning:#8a5b00;
+      --warning-bg:#fff7df;
+      --danger:#b42318;
+      --danger-bg:#ffecec;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100vh;
+      font-family:Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .app-shell { display:flex; min-height:100vh; }
+    .side-nav {
+      width:304px;
+      flex:0 0 304px;
+      background:var(--primary);
+      color:#fff;
+      height:100vh;
+      position:sticky;
+      top:0;
+      overflow:auto;
+      box-shadow:2px 0 16px rgba(0,0,0,.16);
+    }
+    .side-nav-header { padding:18px 18px 14px; border-bottom:1px solid rgba(255,255,255,.15); }
+    .side-nav-title { font-size:19px; font-weight:900; line-height:1.15; }
+    .side-nav-subtitle { margin-top:4px; color:rgba(255,255,255,.76); font-size:12px; }
+    .side-nav-content { padding:12px 12px 34px; }
+    .side-nav-section-label {
+      color:#a9c2e6;
+      font-size:10px;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+      font-weight:900;
+      padding:14px 9px 7px;
+    }
+    .side-nav-item,
+    .side-nav-parent {
+      position:relative;
+      width:100%;
+      display:block;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      margin:0 0 8px;
+      padding:11px 42px 11px 14px;
+      background:var(--primary-2);
+      color:#fff;
+      text-align:left;
+      min-height:58px;
+    }
+    .side-nav-parent.active {
+      background:#fff;
+      color:var(--primary);
+      border-color:#fff;
+      box-shadow:0 2px 12px rgba(0,0,0,.18);
+    }
+    .nav-order { position:absolute; right:14px; top:19px; opacity:.75; font-size:13px; font-weight:900; }
+    .nav-main { display:block; font-size:14px; font-weight:900; line-height:1.2; }
+    .nav-sub { display:block; margin-top:4px; font-size:10.5px; line-height:1.25; color:rgba(255,255,255,.72); }
+    .side-nav-parent.active .nav-sub { color:#667085; }
+    .nav-caret { position:absolute; right:14px; top:20px; opacity:.85; font-size:13px; }
+    .side-submenu {
+      margin:-2px 0 12px 16px;
+      padding:7px 0 7px 10px;
+      border-left:1px solid rgba(255,255,255,.20);
+      background:var(--nav-dark);
+      border-radius:0 0 12px 12px;
+    }
+    .side-sub-link {
+      display:block;
+      width:calc(100% - 6px);
+      border:0;
+      border-radius:10px;
+      margin:0 6px 4px 0;
+      padding:8px 10px;
+      color:#d9e8ff;
+      background:transparent;
+      text-decoration:none;
+      font-size:12.5px;
+      font-weight:800;
+    }
+    .side-sub-link.active { background:#fff; color:var(--primary); }
+    .main-content { flex:1; min-width:0; padding:18px; overflow:auto; }
+    .top-nav-bar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:0 0 18px;
+      padding:10px 12px;
+      background:#fff;
+      border:1px solid #e1e7ef;
+      border-radius:10px;
+      box-shadow:0 1px 4px rgba(0,0,0,.06);
+    }
+    .menu-toggle {
+      border:0;
+      border-radius:8px;
+      padding:9px 12px;
+      background:var(--primary);
+      color:#fff;
+      font-weight:900;
+    }
+    .current-section { color:var(--primary); font-weight:900; }
+    .env-pill {
+      display:inline-flex;
+      align-items:center;
+      min-height:28px;
+      border-radius:999px;
+      padding:5px 10px;
+      background:#eef3fb;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+    }
+    .section {
+      max-width:1180px;
+      margin:0 auto;
+      background:#fff;
+      border-radius:10px;
+      padding:18px;
+      box-shadow:0 2px 10px rgba(15,23,42,.06);
+    }
+    .dashboard-page-title {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:14px;
+      margin-bottom:14px;
+    }
+    h1, h2, h3, h4, p { margin-top:0; }
+    h2 { margin-bottom:5px; color:var(--primary); }
+    .dashboard-page-title p,
+    .panel-head p,
+    .muted { color:var(--muted); line-height:1.45; }
+    .quick-stats {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:14px 0;
+    }
+    .stat-card {
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:13px;
+      box-shadow:0 1px 4px rgba(15,23,42,.04);
+    }
+    .stat-card .label {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .stat-card .value {
+      margin-top:5px;
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .admin-chapter {
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:16px;
+      margin:14px 0;
+      background:#fff;
+      box-shadow:0 1px 4px rgba(15,23,42,.04);
+    }
+    .panel-head {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .panel-head h3 { margin:0 0 4px; color:var(--primary); }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+    button {
+      border:0;
+      border-radius:8px;
+      padding:9px 12px;
+      font-weight:900;
+      cursor:default;
+      font-family:inherit;
+    }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:#eef3fb; color:var(--primary); }
+    .btn-success { background:#20a943; color:#fff; }
+    .btn-warning { background:#f59e0b; color:#fff; }
+    .form-grid {
+      display:grid;
+      grid-template-columns:minmax(220px,1.15fr) minmax(190px,.95fr) minmax(150px,.7fr) minmax(140px,.65fr);
+      gap:10px;
+      align-items:end;
+    }
+    label {
+      display:block;
+      margin-bottom:5px;
+      color:#475467;
+      font-size:12px;
+      font-weight:900;
+    }
+    input, select {
+      width:100%;
+      border:1px solid #cfd8e6;
+      border-radius:8px;
+      padding:10px 11px;
+      font:inherit;
+      color:#1f2937;
+      background:#fff;
+    }
+    .compact-note {
+      margin:11px 0 0;
+      padding:10px 12px;
+      border-left:4px solid var(--primary);
+      border-radius:8px;
+      background:#f8fbff;
+      color:#475467;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .role-summary {
+      margin-top:10px;
+      padding:11px 12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#f8fbff;
+    }
+    .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .chip {
+      display:inline-flex;
+      align-items:center;
+      min-height:28px;
+      border-radius:999px;
+      padding:5px 8px;
+      background:#eef3fb;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+    }
+    .chip.success { background:var(--success-bg); color:var(--success); }
+    .chip.warning { background:var(--warning-bg); color:var(--warning); }
+    .chip.danger { background:var(--danger-bg); color:var(--danger); }
+    .advanced {
+      margin-top:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fbfdff;
+    }
+    .advanced summary {
+      padding:10px 12px;
+      color:var(--primary);
+      font-weight:900;
+    }
+    .permission-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+      padding:0 12px 12px;
+    }
+    .permission-grid span {
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 9px;
+      color:#344054;
+      background:#fff;
+      font-size:13px;
+      font-weight:800;
+    }
+    .table-wrap {
+      border:1px solid #e1e7ef;
+      border-radius:8px;
+      overflow:auto;
+      margin-top:12px;
+    }
+    table {
+      width:100%;
+      min-width:760px;
+      border-collapse:collapse;
+      margin:0;
+      font-size:13px;
+    }
+    th, td { padding:10px; border-bottom:1px solid #edf2f7; text-align:left; vertical-align:middle; }
+    th { background:#f3f7fc; color:var(--primary); font-weight:900; }
+    tr:last-child td { border-bottom:0; }
+    .mini { display:block; margin-top:3px; color:var(--muted); font-size:12px; font-weight:700; }
+    .session-grid {
+      display:grid;
+      grid-template-columns:1.2fr .8fr .8fr;
+      gap:12px;
+      margin-top:8px;
+    }
+    .info-card {
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:12px;
+      background:#fbfdff;
+      min-width:0;
+    }
+    .info-card .label { color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; }
+    .info-card .value { margin-top:6px; color:#111827; font-size:15px; font-weight:900; overflow-wrap:anywhere; }
+    .supabase-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+      margin-top:8px;
+    }
+    .check-list { display:grid; gap:7px; margin-top:10px; }
+    .check-row {
+      display:grid;
+      grid-template-columns:86px minmax(0,1fr);
+      gap:10px;
+      align-items:start;
+      border:1px solid #e6edf5;
+      border-radius:8px;
+      padding:9px 10px;
+      background:#fff;
+      font-size:13px;
+    }
+    .check-state { font-weight:900; }
+    .check-row.ok .check-state { color:var(--success); }
+    .check-row.warn .check-state { color:var(--warning); }
+    .technical-details {
+      margin-top:12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fbfdff;
+    }
+    .technical-details summary {
+      padding:11px 12px;
+      color:var(--primary);
+      font-weight:900;
+    }
+    .technical-details .table-wrap { margin:0 12px 12px; }
+    @media (max-width:1050px) {
+      .quick-stats,
+      .supabase-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .form-grid,
+      .session-grid { grid-template-columns:1fr 1fr; }
+      .permission-grid { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:800px) {
+      .app-shell { display:block; }
+      .side-nav { position:relative; width:100%; height:auto; max-height:none; }
+      .main-content { padding:12px; }
+      .dashboard-page-title,
+      .panel-head,
+      .top-nav-bar { align-items:flex-start; flex-direction:column; }
+      .actions { justify-content:flex-start; }
+    }
+    @media (max-width:620px) {
+      .section { padding:12px; }
+      .quick-stats,
+      .form-grid,
+      .session-grid,
+      .supabase-grid,
+      .permission-grid { grid-template-columns:1fr; }
+      table { min-width:680px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side-nav">
+      <div class="side-nav-header">
+        <div class="side-nav-title">Padel Match Organizer</div>
+        <div class="side-nav-subtitle">v5.340 TEST</div>
+      </div>
+      <div class="side-nav-content">
+        <div class="side-nav-section-label">Operativo</div>
+        <div class="side-nav-item"><span class="nav-main">Apri Partite</span><span class="nav-sub">Slot liberi e proposte</span><span class="nav-order">1</span></div>
+        <div class="side-nav-item"><span class="nav-main">Chiudi Partite</span><span class="nav-sub">Inviti e chiusura</span><span class="nav-order">2</span></div>
+        <div class="side-nav-item"><span class="nav-main">Autovalutazioni</span><span class="nav-sub">Invii e risposte</span><span class="nav-order">3</span></div>
+        <div class="side-nav-item"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Database e gruppi</span><span class="nav-order">4</span></div>
+        <div class="side-nav-item"><span class="nav-main">DATI (in/out)</span><span class="nav-sub">Matchpoint e backup</span><span class="nav-order">5</span></div>
+        <div class="side-nav-item"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Template</span><span class="nav-order">6</span></div>
+        <div class="side-nav-item"><span class="nav-main">Routine</span><span class="nav-sub">Automazioni e cloud</span><span class="nav-order">7</span></div>
+
+        <div class="side-nav-section-label">Gestione</div>
+        <div class="side-nav-parent active">
+          <span class="nav-main">Amministrazione</span>
+          <span class="nav-sub">Utenti, sessione e Supabase</span>
+          <span class="nav-caret">v</span>
+        </div>
+        <div class="side-submenu">
+          <a class="side-sub-link active" href="#anchor-admin-utenti">Utenti</a>
+          <a class="side-sub-link" href="#anchor-admin-sessione">Sessione</a>
+          <a class="side-sub-link" href="#anchor-admin-supabase">Supabase</a>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="top-nav-bar">
+        <div>
+          <button class="menu-toggle">Menu</button>
+          <span class="current-section">Amministrazione</span>
+        </div>
+        <span class="env-pill">Ambiente TEST</span>
+      </div>
+
+      <section class="section">
+        <div class="dashboard-page-title">
+          <div>
+            <h2>Amministrazione</h2>
+            <p>Utenti, sessione personale e controlli Supabase in tre capitoli separati.</p>
+          </div>
+          <span class="env-pill">Supabase Auth attivo</span>
+        </div>
+
+        <div class="quick-stats">
+          <div class="stat-card"><div class="label">Utenti attivi</div><div class="value">3</div></div>
+          <div class="stat-card"><div class="label">Invitati</div><div class="value">1</div></div>
+          <div class="stat-card"><div class="label">Sospesi</div><div class="value">0</div></div>
+          <div class="stat-card"><div class="label">Sessione</div><div class="value" style="font-size:18px;">Owner</div></div>
+        </div>
+
+        <article id="anchor-admin-utenti" class="admin-chapter">
+          <div class="panel-head">
+            <div>
+              <h3>Utenti</h3>
+              <p>Autorizza email staff e gestisci ruoli operativi.</p>
+            </div>
+            <div class="actions">
+              <button class="btn-primary">Carica lista</button>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div>
+              <label>Email</label>
+              <input type="email" value="nome@padelvillage.it" />
+            </div>
+            <div>
+              <label>Nome</label>
+              <input value="Nome staff" />
+            </div>
+            <div>
+              <label>Ruolo</label>
+              <select>
+                <option>Staff</option>
+                <option>Admin</option>
+                <option>Proprietario</option>
+                <option>Solo lettura</option>
+              </select>
+            </div>
+            <div>
+              <label>Stato</label>
+              <select>
+                <option>Invitato</option>
+                <option>Attivo</option>
+                <option>Sospeso</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="role-summary">
+            <strong>Preset Staff</strong>
+            <span class="mini">Soci, partite, messaggi e lettura completa. Nessuna gestione utenti.</span>
+            <div class="chip-row">
+              <span class="chip">Modifica soci</span>
+              <span class="chip">Modifica partite</span>
+              <span class="chip">Messaggi WhatsApp</span>
+              <span class="chip">Lettura completa</span>
+            </div>
+          </div>
+
+          <details class="advanced">
+            <summary>Personalizza permessi</summary>
+            <div class="permission-grid">
+              <span>Gestione utenti</span>
+              <span>Sync dati cloud</span>
+              <span>Routine</span>
+              <span>Modifica soci</span>
+              <span>Modifica partite</span>
+              <span>Messaggi WhatsApp</span>
+              <span>Export/import dati</span>
+              <span>Lettura completa</span>
+            </div>
+          </details>
+
+          <div class="actions" style="margin-top:12px;">
+            <button class="btn-success">Autorizza email</button>
+            <button class="btn-secondary">Svuota</button>
+          </div>
+          <div class="compact-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Utente</th>
+                  <th>Ruolo</th>
+                  <th>Stato</th>
+                  <th>Ultimo accesso</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Maurizio Aprea</strong><span class="mini">padelvillage.club@gmail.com</span></td>
+                  <td><span class="chip">Proprietario</span></td>
+                  <td><span class="chip success">Attivo</span></td>
+                  <td>07/05/2026 14:42</td>
+                  <td><button class="btn-secondary">Modifica</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Staff segreteria</strong><span class="mini">staff@padelvillage.it</span></td>
+                  <td><span class="chip">Staff</span></td>
+                  <td><span class="chip warning">Invitato</span></td>
+                  <td>-</td>
+                  <td><button class="btn-secondary">Modifica</button> <button class="btn-success">Attiva</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Responsabile tornei</strong><span class="mini">tornei@padelvillage.it</span></td>
+                  <td><span class="chip">Admin</span></td>
+                  <td><span class="chip success">Attivo</span></td>
+                  <td>06/05/2026 19:08</td>
+                  <td><button class="btn-secondary">Modifica</button> <button class="btn-warning">Sospendi</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="anchor-admin-sessione" class="admin-chapter">
+          <div class="panel-head">
+            <div>
+              <h3>Sessione</h3>
+              <p>Profilo personale e permessi caricati da Supabase Auth.</p>
+            </div>
+            <div class="actions">
+              <button class="btn-secondary">Aggiorna profilo</button>
+              <button class="btn-secondary">Esci</button>
+            </div>
+          </div>
+
+          <div class="session-grid">
+            <div class="info-card">
+              <div class="label">Email</div>
+              <div class="value">padelvillage.club@gmail.com</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Ruolo</div>
+              <div class="value">Proprietario</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Stato</div>
+              <div class="value"><span class="chip success">Attivo</span></div>
+            </div>
+          </div>
+          <div class="role-summary">
+            <strong>Permessi attivi</strong>
+            <div class="chip-row">
+              <span class="chip">Gestione utenti</span>
+              <span class="chip">Sincronizzazione dati cloud</span>
+              <span class="chip">Routine</span>
+              <span class="chip">Modifica soci</span>
+              <span class="chip">Modifica partite</span>
+              <span class="chip">Messaggi WhatsApp</span>
+              <span class="chip">Export/import dati</span>
+              <span class="chip">Lettura completa</span>
+            </div>
+          </div>
+        </article>
+
+        <article id="anchor-admin-supabase" class="admin-chapter">
+          <div class="panel-head">
+            <div>
+              <h3>Supabase</h3>
+              <p>Ambiente, schema e registro tecnico in un capitolo separato.</p>
+            </div>
+            <div class="actions">
+              <button class="btn-primary">Verifica ambiente</button>
+            </div>
+          </div>
+
+          <div class="supabase-grid">
+            <div class="info-card"><div class="label">Ambiente app</div><div class="value">TEST</div></div>
+            <div class="info-card"><div class="label">Config</div><div class="value">config-test.js</div></div>
+            <div class="info-card"><div class="label">Project ref</div><div class="value">cudiqnrrlbyqryrtaprd</div></div>
+            <div class="info-card"><div class="label">Ultima verifica</div><div class="value">07/05/2026 14:44</div></div>
+          </div>
+
+          <div class="check-list">
+            <div class="check-row ok"><div class="check-state">OK</div><div><strong>Separazione TEST/PROD</strong><span class="mini">TEST punta al progetto Supabase dedicato.</span></div></div>
+            <div class="check-row ok"><div class="check-state">OK</div><div><strong>Auth raggiungibile</strong><span class="mini">Endpoint Auth disponibile.</span></div></div>
+            <div class="check-row ok"><div class="check-state">OK</div><div><strong>RPC staff admin</strong><span class="mini">Funzioni no-PIN disponibili per utenti autenticati.</span></div></div>
+            <div class="check-row warn"><div class="check-state">Nota</div><div><strong>URL Authentication</strong><span class="mini">Site URL e redirect da verificare solo se cambia dominio.</span></div></div>
+          </div>
+
+          <details class="technical-details">
+            <summary>Registro attivita</summary>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Utente</th>
+                    <th>Azione</th>
+                    <th>Dettaglio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>07/05/2026 14:41</td>
+                    <td>padelvillage.club@gmail.com</td>
+                    <td>staff_user_upsert</td>
+                    <td>Email staff autorizzata</td>
+                  </tr>
+                  <tr>
+                    <td>07/05/2026 14:38</td>
+                    <td>padelvillage.club@gmail.com</td>
+                    <td>staff_login</td>
+                    <td>Accesso personale Supabase</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="technical-details">
+            <summary>Dettagli schema e RPC</summary>
+            <div style="padding:0 12px 12px;">
+              <div class="chip-row">
+                <span class="chip success">pmo_get_my_staff_profile</span>
+                <span class="chip success">pmo_get_staff_users_admin</span>
+                <span class="chip success">pmo_get_routines_admin</span>
+                <span class="chip success">upsert_assessment_tokens_admin</span>
+              </div>
+            </div>
+          </details>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
