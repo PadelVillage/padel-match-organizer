@@ -228,6 +228,20 @@
       font-weight:800;
       line-height:1.35;
     }
+    .user-save-bar {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-top:12px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fbfdff;
+    }
+    .user-save-copy strong { display:block; color:#111827; margin-bottom:3px; }
+    .user-save-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .form-grid {
       display:grid;
       grid-template-columns:minmax(0,1fr) minmax(0,1fr);
@@ -327,11 +341,11 @@
     th, td { padding:10px; border-bottom:1px solid #edf2f7; text-align:left; vertical-align:middle; }
     th { background:#f3f7fc; color:var(--primary); font-weight:900; }
     tr:last-child td { border-bottom:0; }
-    th:nth-child(1), td:nth-child(1) { width:31%; }
-    th:nth-child(2), td:nth-child(2) { width:16%; }
-    th:nth-child(3), td:nth-child(3) { width:14%; }
+    th:nth-child(1), td:nth-child(1) { width:34%; }
+    th:nth-child(2), td:nth-child(2) { width:17%; }
+    th:nth-child(3), td:nth-child(3) { width:15%; }
     th:nth-child(4), td:nth-child(4) { width:20%; }
-    th:nth-child(5), td:nth-child(5) { width:19%; }
+    th:nth-child(5), td:nth-child(5) { width:14%; }
     .mini { display:block; margin-top:3px; color:var(--muted); font-size:12px; font-weight:700; }
     .row-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
     .row-actions button { margin:0; padding:8px 10px; }
@@ -586,10 +600,15 @@
             </div>
           </details>
 
-          <div class="actions" style="margin-top:12px;">
-            <button class="btn-success">Autorizza email</button>
-            <button class="btn-secondary">Svuota</button>
-            <span class="action-hint">Quando stai modificando un utente, il pulsante principale diventa Salva modifiche.</span>
+          <div class="user-save-bar">
+            <div class="user-save-copy">
+              <strong>Salvataggio utente</strong>
+              <span class="mini">Da Modifica puoi cambiare ruolo, stato e permessi; il pulsante principale diventa Salva modifiche.</span>
+            </div>
+            <div class="user-save-actions">
+              <button class="btn-success">Autorizza email</button>
+              <button class="btn-secondary">Svuota</button>
+            </div>
           </div>
           <div class="compact-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
 
@@ -624,14 +643,14 @@
                   <td><span class="chip">Staff</span></td>
                   <td><span class="chip warning">Invitato</span></td>
                   <td>-</td>
-                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button><button class="btn-success">Attiva</button></div></td>
+                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button></div></td>
                 </tr>
                 <tr>
                   <td><strong>Responsabile tornei</strong><span class="mini">tornei@padelvillage.it</span></td>
                   <td><span class="chip">Admin</span></td>
                   <td><span class="chip success">Attivo</span></td>
                   <td>06/05/2026 19:08</td>
-                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button><button class="btn-warning">Sospendi</button></div></td>
+                  <td><div class="row-actions"><button class="btn-secondary">Modifica</button></div></td>
                 </tr>
               </tbody>
             </table>
