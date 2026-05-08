@@ -118,7 +118,7 @@ Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
 - ambiente iniziale: solo Supabase TEST;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 14, `verify_jwt=true`;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 18, `verify_jwt=true`;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
@@ -137,6 +137,7 @@ Funzione server:
 - da versione funzione 14, la Edge Function passa al worker le credenziali Matchpoint lette dai secret Supabase solo nella chiamata server-to-server protetta da API key; il worker non deve duplicare `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD` salvo test locali isolati.
 - da versione funzione 16, se il fallback browser/headless dovrebbe partire ma i secret worker non sono disponibili nella Edge Function, la risposta distingue l'errore `MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING` senza esporre i valori segreti.
 - da versione funzione 17, se il file esportato dal worker non supera la validazione clienti, la funzione salva una diagnostica sanificata in `matchpoint_clients_auto_diagnostic_last` con intestazioni trovate, colonne mancanti, nome/dimensione file e diagnostica worker. Nessun dato cliente viene scritto quando la validazione fallisce.
+- da versione funzione 18, la validazione resta allineata al formato clienti corretto esportato da Matchpoint: `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso` e `Livello`. La colonna `Posizione` viene letta come riferimento operativo quando presente. `Codice` e `N. socio` non vengono usati come chiave cliente: il match resta su telefono, email e nome normalizzato.
 - worker browser/headless iniziale: `tools/matchpoint-browser-worker`, Node/Playwright, endpoint `POST /export-clients`, protetto da `MATCHPOINT_WORKER_API_KEY`. Le credenziali Matchpoint non vengono salvate in HTML, repository o localStorage.
 - deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `free` per il primo test senza carta di pagamento. Se il cold start risulta troppo lento, passare a `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase TEST.
 
@@ -145,6 +146,7 @@ Validazioni bloccanti:
 - il file esportato deve essere Excel;
 - deve esistere il foglio `Risultati`;
 - colonne minime: `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso`, `Livello`;
+- `Posizione` e' letta quando presente, ma non viene usata come chiave di identificazione;
 - deve esserci almeno una riga cliente importabile;
 - la riga tecnica `TPC app NON CANCELLARE` viene esclusa;
 - se il file non supera i controlli, la funzione non scrive record `member`.

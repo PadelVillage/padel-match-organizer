@@ -37,6 +37,7 @@ type ParsedMember = {
   birthDate: string;
   age: number | null;
   level: number;
+  playingPosition: string;
   city: string;
   cap: string;
   province: string;
@@ -56,6 +57,9 @@ const CORS_HEADERS = {
 };
 
 const REQUIRED_CLIENT_COLUMNS = ['Cliente', 'Telefono cellulare', 'E-mail', 'Eta', 'Sesso', 'Livello'];
+const CLIENT_FULL_NAME_COLUMNS = ['Cliente', 'Nominativo', 'Nome e cognome', 'Nome completo', 'Full Name'];
+const CLIENT_FIRST_NAME_COLUMNS = ['Nome', 'First Name'];
+const CLIENT_SURNAME_COLUMNS = ['Cognome', 'Last Name', 'Surname'];
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
 const DEFAULT_CLIENTS_PATH = '/clientes/Listadoclientes.aspx?pagesize=15';
 const DEFAULT_EXPORT_TARGET = 'ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar';
@@ -229,9 +233,9 @@ function getCell(row: JsonMap, names: string[]) {
 }
 
 function parseMemberRow(row: JsonMap, importedAt: string): ParsedMember | null {
-  const cliente = clean(getCell(row, ['Cliente', 'Nominativo', 'Nome e cognome', 'Nome completo', 'Full Name']));
-  let firstName = clean(getCell(row, ['Nome', 'First Name']));
-  let surname = clean(getCell(row, ['Cognome', 'Last Name', 'Surname']));
+  const cliente = clean(getCell(row, CLIENT_FULL_NAME_COLUMNS));
+  let firstName = clean(getCell(row, CLIENT_FIRST_NAME_COLUMNS));
+  let surname = clean(getCell(row, CLIENT_SURNAME_COLUMNS));
   if ((!firstName || !surname) && cliente) {
     const split = splitClienteName(cliente);
     firstName = firstName || split.firstName;
@@ -254,7 +258,8 @@ function parseMemberRow(row: JsonMap, importedAt: string): ParsedMember | null {
     gender: genderFromValue(getCell(row, ['Sesso', 'Genere', 'Gender']), firstName),
     birthDate: parseDateValue(getCell(row, ['Data di nascita', 'Data nascita', 'Nascita', 'Birth Date', 'Birthday', 'DOB'])),
     age: parseAgeValue(getCell(row, ['Eta', 'Età', 'Age'])),
-    level: parseLevel(getCell(row, ['Livello', 'Level', 'Livello Padel']), 3),
+    level: parseLevel(getCell(row, ['Livello', 'Level', 'Livello Padel']), 0.5),
+    playingPosition: clean(getCell(row, ['Posizione', 'Position', 'Lato', 'Lato preferito', 'Posizione preferita'])),
     city: clean(getCell(row, ['Comune', 'Citta', 'Città', 'City', 'Localita', 'Località', 'Zona'])),
     cap: clean(getCell(row, ['CAP', 'Cap', 'Codice postale', 'Zip'])),
     province: clean(getCell(row, ['Provincia', 'Province', 'Prov.'])),
@@ -279,7 +284,7 @@ function workbookRows(bytes: Uint8Array) {
   const normalizedHeaders = new Set(headers.map(normalizeHeader));
   const missing = REQUIRED_CLIENT_COLUMNS.filter((name) => !normalizedHeaders.has(normalizeHeader(name)));
   if (missing.length) {
-    return { ok: false as const, error: 'CLIENT_COLUMNS_MISSING', message: 'Il file non contiene le colonne minime clienti.', missing, headers };
+    return { ok: false as const, error: 'CLIENT_COLUMNS_MISSING', message: 'Il file non contiene le colonne minime clienti.', missing, headers, sheetNames: workbook.SheetNames };
   }
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) as JsonMap[];
   return { ok: true as const, rows, headers, sheetName: 'Risultati' };
@@ -293,7 +298,7 @@ function validateClientWorkbook(bytes: Uint8Array, importedAt: string) {
   let technicalSkipped = 0;
   const members: ParsedMember[] = [];
   for (const row of parsed.rows) {
-    const label = compactSpaces(getCell(row, ['Cliente', 'Nominativo', 'Nome e cognome', 'Nome completo', 'Full Name']));
+    const label = compactSpaces(getCell(row, CLIENT_FULL_NAME_COLUMNS) || `${getCell(row, CLIENT_FIRST_NAME_COLUMNS)} ${getCell(row, CLIENT_SURNAME_COLUMNS)}`);
     if (normalizeKey(label).includes('tpcappnoncancellare')) technicalSkipped += 1;
     const member = parseMemberRow(row, importedAt);
     if (!member) {
@@ -365,7 +370,8 @@ function mergeProtectedMember(existing: JsonMap, imported: ParsedMember, importe
     cap: existing.cap || imported.cap || '',
     province: existing.province || imported.province || '',
     address: existing.address || imported.address || '',
-    level: existing.level || imported.level || 3,
+    level: existing.level || imported.level || 0.5,
+    playingPosition: existing.playingPosition || existing.position || imported.playingPosition || '',
     active: existing.active !== false,
     prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
     prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : [],
