@@ -1409,6 +1409,7 @@
     .matchpoint-action-state:empty { display:none; }
     .matchpoint-action-state.pending { color:#b7791f; }
     .matchpoint-action-state.done { color:#168a53; }
+    .matchpoint-action-state.error { color:#b42318; }
     .matchpoint-action-state.import-date { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     #matchpointBackupActionState.done { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     .matchpoint-data-info { display:grid; grid-template-columns:1.3fr .7fr; gap:14px; }
@@ -4057,13 +4058,12 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="matchpoint-data-grid">
           <article class="matchpoint-data-box clients" id="anchor-matchpoint-clienti">
             <h3><span class="matchpoint-data-step">1</span> Clienti Matchpoint</h3>
-            <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base senza sovrascrivere i dati operativi curati nell'app.</p>
+            <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
             <div class="matchpoint-data-file">
-              <label for="matchpointFile">Scarica clienti da Matchpoint</label>
-              <input type="file" id="matchpointFile" accept=".xlsx,.xls,.csv" onchange="markDataActionPending('clients')" />
-              <div class="matchpoint-data-hint">Di solito: out.xlsx dalla cartella dei download Matchpoint.</div>
+              <label>Aggiorna clienti da Matchpoint</label>
+              <div class="matchpoint-data-hint">Avvia login, export e validazione clienti sul server TEST.</div>
               <div class="matchpoint-data-actions">
-                <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointData()">Importa clienti</button>
+                <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti da Matchpoint</button>
                 <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
               </div>
             </div>
@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.341';
+    const APP_VERSION = '5.342';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7465,6 +7465,163 @@ body.assessment-public-mode .assessment-public-only-card {
       `;
     }
 
+    function applyMatchpointMembersToLocal(importedMembers, options={}) {
+      const members = Array.isArray(importedMembers) ? importedMembers : [];
+      const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
+      const sourceRows = Math.max(0, parseInt(options.sourceRows, 10) || 0);
+      const source = cleanCell(options.source || 'manual');
+      const diff = compareMembers(giocatori, members);
+      let added = 0, updated = 0;
+
+      members.forEach(member => {
+        const idx = findMatchingMemberIndex(member);
+        if (idx >= 0) {
+          // Matchpoint integra l'anagrafica senza sovrascrivere dati operativi curati nella app.
+          const existing = giocatori[idx] || {};
+          const hasExistingGender = existing.gender && existing.gender !== 'NA';
+          giocatori[idx] = {
+            ...existing,
+            id: existing.id || member.id || makeId(),
+            memberId: existing.memberId || member.memberId || nextMemberId(),
+            firstName: titleCaseNamePart(existing.firstName || member.firstName),
+            surname: titleCaseNamePart(existing.surname || member.surname),
+            name: compactSpaces(`${titleCaseNamePart(existing.firstName || member.firstName)} ${titleCaseNamePart(existing.surname || member.surname)}`),
+            phone: existing.phone || member.phone || '',
+            email: existing.email || member.email || '',
+            gender: hasExistingGender ? existing.gender : (member.gender !== 'NA' ? member.gender : (existing.gender || 'NA')),
+            birthDate: existing.birthDate || member.birthDate || '',
+            age: parseAgeValue(member.age) !== null ? parseAgeValue(member.age) : (parseAgeValue(existing.age) !== null ? parseAgeValue(existing.age) : null),
+            city: existing.city || member.city || '',
+            cap: existing.cap || member.cap || '',
+            province: existing.province || member.province || '',
+            address: existing.address || member.address || '',
+            level: existing.level || member.level || 3,
+            active: existing.active !== false,
+            prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
+            prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : []
+          };
+          updated++;
+        } else {
+          ensureMemberId(member);
+          giocatori.push(member);
+          added++;
+        }
+      });
+
+      save('giocatori', giocatori);
+      const importedAt = new Date();
+      matchpointData = {
+        ...(matchpointData || {}),
+        lastSync: importedAt.toLocaleString('it-IT'),
+        clientCount: members.length,
+        lastClientsSource: source,
+        lastClientsImportedAt: importedAt.toISOString()
+      };
+      save('matchpointData', matchpointData);
+      saveDailyDiff({
+        type:'clienti',
+        label:'clienti',
+        source,
+        sourceRows,
+        importedRows: members.length,
+        added: diff.added,
+        removed: diff.removed,
+        modified: diff.modified,
+        skipped
+      });
+      saveLastMatchpointImportSummary({
+        type: 'clienti',
+        label: source === 'automatic' ? 'clienti automatici' : 'clienti',
+        source,
+        metrics: {
+          'Soci letti': members.length,
+          'Nuovi soci': added,
+          'Soci aggiornati': updated,
+          'Righe saltate': skipped,
+          'Differenze nuovi': diff.added.length,
+          'Differenze assenti': diff.removed.length,
+          'Differenze modificate': diff.modified.length
+        },
+        message: options.message || (members.length ? 'Import clienti completato senza sovrascrivere i dati operativi gia presenti.' : 'File clienti letto, ma nessun socio importato.')
+      });
+      refreshAfterDataImport();
+      markDataActionDone('clients', source === 'automatic' ? 'Clienti aggiornati da Matchpoint' : 'Clienti importati e salvati');
+      saveLocalDataSnapshot('import-storico');
+      return { added, updated, diff, imported: members.length, skipped };
+    }
+
+    async function pmoInvokeMatchpointClientsSync(accessToken) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ source: 'pmo_dati_in_out', version: APP_VERSION })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || data?.ok === false) {
+        throw new Error(pmoFriendlyMatchpointAutoError(data || text || `Errore HTTP ${response.status}`));
+      }
+      return data;
+    }
+
+    function pmoFriendlyMatchpointAutoError(value) {
+      const raw = cleanCell(value?.message || value?.error || value || '');
+      if (raw.includes('MATCHPOINT_SECRETS_MISSING')) return 'Credenziali Matchpoint non configurate nei secret Supabase TEST.';
+      if (raw.includes('MATCHPOINT_LOGIN_FAILED')) return 'Login Matchpoint non riuscito. Verifica credenziali e account dedicato.';
+      if (raw.includes('MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND')) return 'Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto.';
+      if (raw.includes('MATCHPOINT_EXPORT_FAILED')) return 'Export clienti Matchpoint non riuscito via postback HTTP. Serve passare al fallback browser headless.';
+      if (raw.includes('CLIENT_COLUMNS_MISSING')) return 'Il file esportato non contiene le colonne clienti minime.';
+      if (raw.includes('SHEET_MISSING')) return 'Il file esportato non contiene il foglio Risultati.';
+      if (raw.includes('AUTH_REQUIRED')) return 'Accesso staff Supabase richiesto.';
+      if (raw.includes('PERMISSION_DENIED')) return 'Il tuo profilo non ha il permesso per sincronizzare dati cloud.';
+      return raw || 'Aggiornamento clienti Matchpoint non riuscito.';
+    }
+
+    async function pmoLoadMatchpointMembersFromCloud() {
+      const rows = await pmoStaffRpc('pmo_get_records_admin', {
+        p_record_types: ['member', 'matchpoint_data'],
+        p_since: null
+      }, 'cloud_sync', 'scaricare clienti Matchpoint dal cloud');
+      const list = Array.isArray(rows) ? rows : [];
+      const members = list
+        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload)
+        .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
+      const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_clients_auto_import_last')?.payload || null;
+      return { members, summary };
+    }
+
+    async function importMatchpointClientsAutomatic() {
+      const button = document.getElementById('matchpointClientsImportButton');
+      try {
+        setDataActionStatus('clients', 'pending', 'Aggiornamento automatico in corso');
+        if (button) button.disabled = true;
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare clienti da Matchpoint');
+        const syncResult = await pmoInvokeMatchpointClientsSync(staff.accessToken);
+        const cloud = await pmoLoadMatchpointMembersFromCloud();
+        if (!cloud.members.length) throw new Error('Nessun cliente trovato nel cloud dopo l’export Matchpoint.');
+        const rows = syncResult?.summary?.rows || cloud.summary?.rows || {};
+        const localResult = applyMatchpointMembersToLocal(cloud.members, {
+          source: 'automatic',
+          sourceRows: rows.sourceRows || cloud.members.length,
+          skipped: rows.skipped || 0,
+          message: 'Clienti aggiornati da Matchpoint automatico e sincronizzati in locale.'
+        });
+        showAlert(`✅ Clienti Matchpoint aggiornati: ${localResult.added} nuovi, ${localResult.updated} aggiornati. Righe cloud lette: ${cloud.members.length}.`, 'success');
+      } catch (err) {
+        const message = pmoFriendlyMatchpointAutoError(err);
+        setDataActionStatus('clients', 'error', message);
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
     function importMatchpointData() {
       const file = document.getElementById('matchpointFile')?.files?.[0];
       if (!file) return showAlert('❌ Seleziona il file clienti Excel', 'danger');
@@ -7479,71 +7636,9 @@ body.assessment-public-mode .assessment-public-only-card {
         });
         if (!validateParsedMatchpointData('clients', file, { members: importedMembers, skipped, sourceRows: rows.length })) return;
 
-        const diff = compareMembers(giocatori, importedMembers);
-        let added = 0, updated = 0;
-
-        importedMembers.forEach(member => {
-          const idx = findMatchingMemberIndex(member);
-          if (idx >= 0) {
-            // v5.14.7.7 - Import prenotazioni verificato:
-            // Matchpoint integra l'anagrafica senza sovrascrivere i dati già curati nella app.
-            // NON sovrascrive livello, preferenze, note, storico inviti/autovalutazione o stato operativo.
-            const existing = giocatori[idx] || {};
-            const hasExistingGender = existing.gender && existing.gender !== 'NA';
-            giocatori[idx] = {
-              ...existing,
-              id: existing.id || member.id || makeId(),
-              memberId: existing.memberId || member.memberId || nextMemberId(),
-              firstName: titleCaseNamePart(existing.firstName || member.firstName),
-              surname: titleCaseNamePart(existing.surname || member.surname),
-              name: compactSpaces(`${titleCaseNamePart(existing.firstName || member.firstName)} ${titleCaseNamePart(existing.surname || member.surname)}`),
-              phone: existing.phone || member.phone || '',
-              email: existing.email || member.email || '',
-              gender: hasExistingGender ? existing.gender : (member.gender !== 'NA' ? member.gender : (existing.gender || 'NA')),
-              birthDate: existing.birthDate || member.birthDate || '',
-              // v5.81 - Matchpoint clienti: salva/aggiorna l'età letta dalla colonna "Età" anche sui soci già esistenti.
-              // Se il file non contiene un'età valida, mantieni il dato eventualmente già salvato.
-              age: parseAgeValue(member.age) !== null ? parseAgeValue(member.age) : (parseAgeValue(existing.age) !== null ? parseAgeValue(existing.age) : null),
-              city: existing.city || member.city || '',
-              cap: existing.cap || member.cap || '',
-              province: existing.province || member.province || '',
-              address: existing.address || member.address || '',
-              level: existing.level || member.level || 3,
-              active: existing.active !== false,
-              prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
-              prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : []
-            };
-            updated++;
-          } else {
-            ensureMemberId(member);
-            giocatori.push(member);
-            added++;
-          }
-        });
-
-        save('giocatori', giocatori);
-        matchpointData = { lastSync: new Date().toLocaleString('it-IT'), clientCount: importedMembers.length };
-        save('matchpointData', matchpointData);
-        saveDailyDiff({ type:'clienti', added: diff.added, removed: diff.removed, modified: diff.modified, skipped });
-        saveLastMatchpointImportSummary({
-          type: 'clienti',
-          label: 'clienti',
-          metrics: {
-            'Soci letti': importedMembers.length,
-            'Nuovi soci': added,
-            'Soci aggiornati': updated,
-            'Righe saltate': skipped,
-            'Differenze nuovi': diff.added.length,
-            'Differenze assenti': diff.removed.length,
-            'Differenze modificate': diff.modified.length
-          },
-          message: importedMembers.length ? 'Import clienti completato senza sovrascrivere i dati operativi gia presenti.' : 'File clienti letto, ma nessun socio importato.'
-        });
-        refreshAfterDataImport();
-        markDataActionDone('clients', 'Clienti importati e salvati');
-        saveLocalDataSnapshot('import-storico');
+        const result = applyMatchpointMembersToLocal(importedMembers, { source:'manual', sourceRows:rows.length, skipped });
         if (!importedMembers.length) showAlert('⚠️ File clienti letto, ma nessun socio importato. Apri Console F12 per vedere le colonne.', 'warning');
-        else showAlert(`✅ Clienti importati: ${added} nuovi, ${updated} aggiornati. Differenze: ${diff.added.length} nuovi, ${diff.removed.length} non più nel file, ${diff.modified.length} modificati.`, 'success');
+        else showAlert(`✅ Clienti importati: ${result.added} nuovi, ${result.updated} aggiornati. Differenze: ${result.diff.added.length} nuovi, ${result.diff.removed.length} non più nel file, ${result.diff.modified.length} modificati.`, 'success');
       });
     }
 
@@ -8351,7 +8446,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
     const DATA_ACTION_CONFIG = {
-      clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Importa clienti', pendingText:'Importa clienti', doneText:'Clienti importati' },
+      clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti da Matchpoint', pendingText:'Aggiornamento in corso', doneText:'Clienti aggiornati' },
       bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Importa prenotazioni', pendingText:'Importa prenotazioni', doneText:'Prenotazioni importate' },
       history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Importa storico', pendingText:'Importa storico', doneText:'Storico importato' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
@@ -8371,7 +8466,14 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     function formatDataActionImportStatus(key) {
-      const when = formatImportDateTime(getDataActionImportSummary(key));
+      const summary = getDataActionImportSummary(key);
+      const when = formatImportDateTime(summary);
+      if (key === 'clients' && summary?.source === 'automatic') {
+        const rows = parseInt(summary.importedRows ?? summary.metrics?.['Soci letti'] ?? summary.metrics?.['Righe importate'] ?? 0, 10) || 0;
+        return when && when !== 'non disponibile'
+          ? `Ultimo automatico: ${when}${rows ? ` • ${rows} righe` : ''}`
+          : 'Ultimo automatico: non disponibile';
+      }
       return when && when !== 'non disponibile' ? `Ultimo import: ${when}` : 'Ultimo import: non disponibile';
     }
 
@@ -8394,6 +8496,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const state = document.getElementById(cfg.stateId);
       const isPending = status === 'pending';
       const isDone = status === 'done';
+      const isError = status === 'error';
       if (button) {
         button.className = isPending ? 'btn-warning' : (isDone ? (cfg.doneClass || 'btn-success') : cfg.defaultClass);
         button.textContent = isPending ? cfg.pendingText : (isDone ? cfg.doneText : cfg.defaultText);
@@ -8404,9 +8507,10 @@ body.assessment-public-mode .assessment-public-only-card {
         const stateClasses = ['matchpoint-action-state'];
         if (isPending) stateClasses.push('pending');
         else if (isDone) stateClasses.push('done');
+        else if (isError) stateClasses.push('error');
         if (isImportDateStatus || isBackupDateStatus) stateClasses.push('import-date');
         state.className = stateClasses.join(' ');
-        const fallbackMessage = isPending ? 'Da confermare' : (isDone ? 'Salvato' : '');
+        const fallbackMessage = isPending ? 'Da confermare' : (isDone ? 'Salvato' : (isError ? 'Errore' : ''));
         state.textContent = isImportDateStatus ? formatDataActionImportStatus(key) : (isBackupDateStatus ? formatDataActionBackupStatus() : (message || fallbackMessage));
       }
     }

@@ -103,6 +103,74 @@ Prima di salvare dati locali, l'app deve controllare:
 
 Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage.
 
+## Clienti automatici Matchpoint
+
+Stato: integrata in app v5.342 dopo approvazione mockup; funzione server gia pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
+
+Obiettivo della prima fase:
+
+- automatizzare solo il flusso `Clienti Matchpoint`;
+- mantenere manuali prenotazioni future, storico e backup;
+- non introdurre cron o schedulazioni automatiche;
+- non salvare credenziali Matchpoint in HTML, repository o localStorage.
+
+Funzione server:
+
+- `supabase/functions/matchpoint-clients-sync`;
+- ambiente iniziale: solo Supabase TEST;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 2, `verify_jwt=true`;
+- invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
+- credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
+- URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
+- pagina clienti predefinita: `/clientes/Listadoclientes.aspx?pagesize=15`;
+- postback export predefinito: `ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar`.
+
+Validazioni bloccanti:
+
+- il file esportato deve essere Excel;
+- deve esistere il foglio `Risultati`;
+- colonne minime: `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso`, `Livello`;
+- deve esserci almeno una riga cliente importabile;
+- la riga tecnica `TPC app NON CANCELLARE` viene esclusa;
+- se il file non supera i controlli, la funzione non scrive record `member`.
+
+Scrittura cloud:
+
+- i clienti validi vengono salvati in `pmo_cloud_records` con `record_type = member`;
+- la chiave cloud e' deterministica su telefono, email o nome;
+- se esiste gia un socio cloud compatibile, i dati operativi vengono preservati;
+- il riepilogo dell'ultimo import automatico viene salvato come `record_type = matchpoint_data`, `local_key = matchpoint_clients_auto_import_last`;
+- il salvataggio diagnostico del file esportato e' opzionale tramite secret `MATCHPOINT_EXPORT_BUCKET`.
+
+Permessi:
+
+- la funzione richiede token staff Supabase valido;
+- la funzione richiede permesso `cloud_sync` oppure ruolo `owner/admin`;
+- `SUPABASE_SERVICE_ROLE_KEY` resta solo nella funzione server e non viene mai esposto al browser.
+
+Mockup UI:
+
+- file: `mockup/dati-clienti-automatici-mockup.html`;
+- approvato prima dell'integrazione reale;
+- mostra il box `Clienti Matchpoint` con pulsante `Aggiorna clienti da Matchpoint`;
+- mostra stato ultimo import automatico, data/ora, righe importate ed eventuale errore bloccante;
+- non collega il mockup a Supabase o dati reali.
+
+Integrazione app v5.342:
+
+- il box Clienti non usa piu il selettore file manuale nella UI principale;
+- il click invoca la funzione Edge `matchpoint-clients-sync`;
+- dopo la scrittura cloud l'app legge i record `member` tramite RPC staff e aggiorna `giocatori` in localStorage;
+- restano preservati livello, preferenze, stato operativo e dati curati localmente dove gia presenti;
+- lo stato sotto al box mostra `Ultimo automatico`, data/ora e righe lette quando l'import riesce;
+- gli errori bloccanti vengono mostrati nel box e non scrivono dati locali.
+
+Nota di verifica:
+
+- il deploy TEST della funzione e' riuscito;
+- il test reale login/export richiede secret Matchpoint configurati nel progetto Supabase TEST;
+- senza secret la funzione deve rispondere con errore esplicito `MATCHPOINT_SECRETS_MISSING`.
+
 ## Test locali v5.228
 
 File verificati in `dati scaricati`:

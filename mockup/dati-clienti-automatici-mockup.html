@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup DATI - Clienti Matchpoint automatici</title>
+  <style>
+    :root {
+      --primary: #1f4788;
+      --blue: #2563eb;
+      --purple: #7c3aed;
+      --green: #168a53;
+      --amber: #b7791f;
+      --border: #d9e0ea;
+      --muted: #667085;
+      --text: #101828;
+      --soft: #f7f9fc;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: #fff;
+    }
+    .page {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 12px 0 24px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 22px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    .box {
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-top: 5px solid var(--primary);
+      border-radius: 8px;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(31, 71, 136, .08);
+    }
+    .box.bookings { border-top-color: var(--blue); }
+    .box.history { border-top-color: var(--purple); }
+    .box.backup { border-top-color: var(--green); }
+    .step-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 14px;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .step {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: var(--primary);
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .bookings .step { background: var(--blue); }
+    .history .step { background: var(--purple); }
+    .backup .step { background: var(--green); }
+    .copy {
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    .operation {
+      margin-top: auto;
+      display: grid;
+      gap: 12px;
+    }
+    .label {
+      font-weight: 800;
+      color: #344054;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    .button {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 17px 18px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      background: var(--primary);
+      text-align: center;
+    }
+    .button.secondary { background: #667085; }
+    .status {
+      display: grid;
+      gap: 5px;
+      min-height: 56px;
+      padding-top: 4px;
+      color: var(--green);
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+    .status span {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .status.error { color: var(--danger); }
+    .slot {
+      grid-column: 1 / -1;
+      min-height: 250px;
+      border-top-color: var(--amber);
+      background: #fffdf8;
+    }
+    .slot .step { background: var(--amber); }
+    .slot-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .9fr) minmax(420px, 1.2fr);
+      gap: 20px;
+    }
+    .placeholder {
+      height: 130px;
+      border: 1px dashed #d6a650;
+      border-radius: 8px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font: 16px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      resize: vertical;
+      color: #344054;
+      background: #fff;
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .slot-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 18px; }
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>DATI (in/out)</h1>
+    <p class="subtitle">Importa i file scaricati da Matchpoint e crea un backup locale quando serve.</p>
+
+    <section class="grid" aria-label="Operazioni dati">
+      <article class="box clients">
+        <h2 class="step-title"><span class="step">1</span> Clienti Matchpoint</h2>
+        <p class="copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+        <div class="operation">
+          <div class="label">Aggiorna clienti da Matchpoint</div>
+          <button class="button" type="button">Aggiorna clienti da Matchpoint</button>
+          <div class="status">
+            Ultimo automatico: 07/05/2026 - 23:58
+            <span>944 righe importate. Nessun errore bloccante.</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="box bookings">
+        <h2 class="step-title"><span class="step">2</span> Prenotazioni future Matchpoint</h2>
+        <p class="copy">Sostituisce la fotografia delle prenotazioni future e aggiorna gli slot occupati.</p>
+        <div class="operation">
+          <div class="label">Scarica prenotazioni future da Matchpoint</div>
+          <button class="button" type="button">Importa prenotazioni</button>
+          <div class="status">Ultimo import: 07/05/2026 - 23:24</div>
+        </div>
+      </article>
+
+      <article class="box history">
+        <h2 class="step-title"><span class="step">3</span> Storico Matchpoint</h2>
+        <p class="copy">Aggiunge le prenotazioni storiche mancanti. I record gia presenti restano protetti.</p>
+        <div class="operation">
+          <div class="label">Scarica storico da Matchpoint</div>
+          <button class="button" type="button">Importa storico</button>
+          <div class="status error">Ultimo import non disponibile</div>
+        </div>
+      </article>
+
+      <article class="box backup">
+        <h2 class="step-title"><span class="step">4</span> Backup dati</h2>
+        <p class="copy">Scarica un file di backup locale con i dati operativi salvati nel browser.</p>
+        <div class="operation">
+          <button class="button secondary" type="button">Scarica backup</button>
+          <button class="button secondary" type="button">Ripristina backup</button>
+          <div class="status">Ultimo backup scaricato: 07/05/2026 - 22:40</div>
+        </div>
+      </article>
+
+      <article class="box slot">
+        <h2 class="step-title"><span class="step">5</span> Slot potenziali Matchpoint</h2>
+        <p class="copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
+        <div class="slot-grid">
+          <div>
+            <div class="label">Immagine griglia slot</div>
+            <div class="placeholder">Riferimento visivo locale</div>
+          </div>
+          <div>
+            <div class="label">Griglia slot operativa</div>
+            <textarea readonly>Lunedi: 12:30-14:00, 14:00-15:30, 18:00-19:30
+Martedi: 12:30-14:00, 14:00-15:30, 18:00-19:30
+Sabato: 09:00-10:30, 10:30-12:00, 12:00-13:30</textarea>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
