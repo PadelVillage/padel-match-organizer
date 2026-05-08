@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.344';
+    const APP_VERSION = '5.345';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4770,6 +4770,7 @@ body.assessment-public-mode .assessment-public-only-card {
     const PMO_STAFF_PROFILE_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffProfileV1`;
     const PMO_STAFF_PENDING_EMAIL_KEY = `${PMO_ENV_STORAGE_PREFIX}pmoStaffPendingEmailV1`;
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
+    const PMO_SUPABASE_AUTH_TIMEOUT_MS = 20000;
     const HISTORY_RETENTION_MONTHS = 12;
     document.body.classList.toggle('pmo-env-test', PMO_IS_TEST_ENV);
     document.title = `Padel Match Organizer v${APP_VERSION}${PMO_IS_TEST_ENV ? ' TEST' : ''}`;
@@ -4911,6 +4912,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const nextMode = mode === 'signup' ? 'signup' : 'login';
       const card = document.getElementById('pmoLoginCard');
       if (card) card.dataset.pmoLoginMode = nextMode;
+      pmoResetLoginActionButtons();
       const intro = document.getElementById('pmoLoginIntro');
       const modeName = document.getElementById('pmoLoginModeName');
       const passwordLabel = document.getElementById('pmoLoginPasswordLabel');
@@ -4988,6 +4990,7 @@ body.assessment-public-mode .assessment-public-only-card {
       const overlay = document.getElementById('pmoLoginOverlay');
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
       if (!unlocked) {
+        pmoResetLoginActionButtons();
         setTimeout(() => {
           const input = document.getElementById('pmoStaffEmail');
           if (input) input.focus();
@@ -5065,6 +5068,23 @@ body.assessment-public-mode .assessment-public-only-card {
       message.textContent = text || '';
       message.classList.toggle('pmo-login-message-success', tone === 'success');
     }
+    function pmoResetLoginActionButtons() {
+      [
+        ['pmoLoginButton', 'Entra'],
+        ['pmoSignupButton', 'Crea accesso'],
+        ['pmoRecoverButton', 'Recupera password'],
+        ['pmoSaveNewPasswordButton', 'Salva nuova password']
+      ].forEach(([id, label]) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        button.textContent = label;
+      });
+    }
+    window.addEventListener('pageshow', () => {
+      if (document.body.classList.contains('pmo-auth-locked')) pmoResetLoginActionButtons();
+    });
 
     function pmoReadStaffProfile() {
       try { return JSON.parse(localStorage.getItem(PMO_STAFF_PROFILE_KEY) || 'null'); }
@@ -5121,16 +5141,27 @@ body.assessment-public-mode .assessment-public-only-card {
         const separator = authUrl.includes('?') ? '&' : '?';
         authUrl += `${separator}redirect_to=${encodeURIComponent(options.redirectTo)}`;
       }
-      const response = await fetch(authUrl, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey },
-        body: JSON.stringify(body || {})
-      });
-      const text = await response.text();
-      let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-      if (!response.ok) throw new Error((data && (data.msg || data.message || data.error_description || data.error)) || text || `Errore HTTP ${response.status}`);
-      return data;
+      const timeoutMs = Number(options.timeoutMs || PMO_SUPABASE_AUTH_TIMEOUT_MS);
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller && timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+      try {
+        const response = await fetch(authUrl, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey },
+          body: JSON.stringify(body || {}),
+          ...(controller ? { signal: controller.signal } : {})
+        });
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+        if (!response.ok) throw new Error((data && (data.msg || data.message || data.error_description || data.error)) || text || `Errore HTTP ${response.status}`);
+        return data;
+      } catch (err) {
+        if (err?.name === 'AbortError') throw new Error('Accesso non completato entro 20 secondi. Aggiorna la pagina e riprova.');
+        throw err;
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
     }
     async function pmoGetSupabaseStaffAccessToken() {
       let session = pmoReadSupabaseStaffSession();
