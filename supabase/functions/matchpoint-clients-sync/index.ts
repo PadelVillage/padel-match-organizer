@@ -1065,14 +1065,20 @@ function shouldFallbackToBrowserWorker(error: unknown) {
 }
 
 async function exportClientsViaBrowserWorker(originalError: unknown): Promise<MatchpointExport> {
+  const fallbackFrom = parseErrorInfo(originalError);
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
-  if (!workerUrl || !workerApiKey) throw originalError;
+  if (!workerUrl || !workerApiKey) {
+    throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING', {
+      fallbackFrom: fallbackFrom.code,
+      hasWorkerUrl: !!workerUrl,
+      hasWorkerApiKey: !!workerApiKey,
+    });
+  }
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
   const password = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
   if (!username || !password) throw new Error('MATCHPOINT_SECRETS_MISSING');
 
-  const fallbackFrom = parseErrorInfo(originalError);
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
   const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
@@ -1405,6 +1411,12 @@ Deno.serve(async (req) => {
     }
     if (errorInfo.code === 'MATCHPOINT_BROWSER_WORKER_FAILED') {
       return errorResponse(500, errorInfo.code, 'Worker browser/headless Matchpoint non riuscito.', {
+        diagnosticSaved,
+        diagnostic: errorInfo.diagnostic || null,
+      });
+    }
+    if (errorInfo.code === 'MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING') {
+      return errorResponse(500, errorInfo.code, 'Mancano i secret del worker browser/headless Matchpoint su Supabase TEST.', {
         diagnosticSaved,
         diagnostic: errorInfo.diagnostic || null,
       });
