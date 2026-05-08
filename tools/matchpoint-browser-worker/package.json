@@ -1,0 +1,18 @@
+{
+  "name": "pmo-matchpoint-browser-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Worker browser/headless per esportare i clienti Matchpoint per Padel Match Organizer.",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs",
+    "install-browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -17,6 +17,7 @@ type MatchpointExport = {
   contentType: string;
   finalUrl: string;
   diagnostic: JsonMap;
+  mode?: string;
 };
 
 type ExportDiscovery = {
@@ -894,7 +895,7 @@ function isExcelResponse(bytes: Uint8Array, contentType: string, disposition: st
   return zip || xls || cd.includes('.xls') || ct.includes('spreadsheet') || ct.includes('excel');
 }
 
-async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
+async function exportClientsViaHttp(): Promise<MatchpointExport> {
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
   const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
@@ -1027,7 +1028,9 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
     filename: filenameFromDisposition(disposition) || `matchpoint-clienti-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`,
     contentType: contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     finalUrl: exportResponse.url,
+    mode: 'http_postback',
     diagnostic: {
+      mode: 'http_postback',
       loginFinalUrl: login.finalUrl,
       clientsFinalUrl: response.url,
       exportFinalUrl: exportResponse.url,
@@ -1037,6 +1040,90 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
       exportLink: exportLink.url,
     },
   };
+}
+
+function bytesFromBase64(value: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function workerExportUrl(rawUrl: string) {
+  const url = rawUrl.replace(/\/+$/, '');
+  return /\/export-clients$/i.test(url) ? url : `${url}/export-clients`;
+}
+
+function shouldFallbackToBrowserWorker(error: unknown) {
+  const code = parseErrorInfo(error).code;
+  return [
+    'MATCHPOINT_LOGIN_FAILED',
+    'MATCHPOINT_CLIENTS_PAGE_NOT_AUTHENTICATED',
+    'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
+    'MATCHPOINT_EXPORT_FAILED',
+  ].includes(code);
+}
+
+async function exportClientsViaBrowserWorker(originalError: unknown): Promise<MatchpointExport> {
+  const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
+  const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
+  if (!workerUrl || !workerApiKey) throw originalError;
+
+  const fallbackFrom = parseErrorInfo(originalError);
+  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
+  const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const endpoint = workerExportUrl(workerUrl);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${workerApiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      baseUrl,
+      clientsPath,
+      exportTarget,
+      fallbackFrom: fallbackFrom.code,
+    }),
+  });
+
+  const text = await response.text();
+  let payload: JsonMap = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { raw: text.slice(0, 800) }; }
+  if (!response.ok || payload.ok !== true || !payload.base64) {
+    throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', {
+      status: response.status,
+      endpoint,
+      fallbackFrom: fallbackFrom.code,
+      workerError: payload.error || '',
+      workerMessage: payload.message || '',
+      workerDiagnostic: payload.diagnostic || null,
+    });
+  }
+
+  return {
+    bytes: bytesFromBase64(clean(payload.base64)),
+    filename: clean(payload.filename) || `matchpoint-clienti-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`,
+    contentType: clean(payload.contentType) || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    finalUrl: clean(payload.diagnostic?.clientsUrl || payload.diagnostic?.downloadUrl || endpoint),
+    mode: 'browser_worker_headless',
+    diagnostic: {
+      mode: 'browser_worker_headless',
+      fallbackFrom: fallbackFrom.code,
+      worker: payload.diagnostic || null,
+    },
+  };
+}
+
+async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
+  try {
+    return await exportClientsViaHttp();
+  } catch (error) {
+    if (!shouldFallbackToBrowserWorker(error)) throw error;
+    return await exportClientsViaBrowserWorker(error);
+  }
 }
 
 async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: string): Promise<StaffActor> {
@@ -1262,7 +1349,7 @@ Deno.serve(async (req) => {
 
     return okResponse({
       importedAt,
-      mode: 'http_postback',
+      mode: exported.mode || exported.diagnostic?.mode || 'http_postback',
       recordType: 'member',
       summary: summaryPayload,
       cloud: {
@@ -1292,7 +1379,7 @@ Deno.serve(async (req) => {
       message: errorInfo.publicMessage,
       code: errorInfo.code,
       diagnosticSaved,
-      fallback: message.includes('MATCHPOINT_EXPORT_FAILED') ? 'browser_worker_headless' : null,
+      fallback: shouldFallbackToBrowserWorker(error) ? 'browser_worker_headless' : null,
     }).catch(() => {});
     if (message === 'AUTH_REQUIRED') return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff Supabase richiesto.');
     if (message === 'MATCHPOINT_SECRETS_MISSING') {
@@ -1309,6 +1396,12 @@ Deno.serve(async (req) => {
     }
     if (errorInfo.code === 'MATCHPOINT_EXPORT_FAILED') {
       return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, diagnostic: errorInfo.diagnostic || null, fallback: 'browser_worker_headless' });
+    }
+    if (errorInfo.code === 'MATCHPOINT_BROWSER_WORKER_FAILED') {
+      return errorResponse(500, errorInfo.code, 'Worker browser/headless Matchpoint non riuscito.', {
+        diagnosticSaved,
+        diagnostic: errorInfo.diagnostic || null,
+      });
     }
     return errorResponse(500, 'MATCHPOINT_CLIENTS_SYNC_FAILED', message);
   }
