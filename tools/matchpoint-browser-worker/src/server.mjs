@@ -109,6 +109,79 @@ async function clickFirstVisibleWithDownload(page, selector, diagnostic) {
   return null;
 }
 
+async function clickFirstVisibleLocator(locator, actionName, diagnostic, timeout = 10000) {
+  const count = await locator.count().catch(() => 0);
+  diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
+  diagnostic.navigationAttempts.push({ action: actionName, count });
+  for (let i = 0; i < Math.min(count, 12); i += 1) {
+    const item = locator.nth(i);
+    if (!(await item.isVisible().catch(() => false))) continue;
+    await item.click({ timeout });
+    diagnostic.navigationAttempts.push({ action: actionName, clickedIndex: i });
+    return true;
+  }
+  return false;
+}
+
+async function clickMenuEntry(page, label, actionName, diagnostic) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  const locators = [
+    page.getByText(label, { exact: true }),
+    page.locator(`a:has-text("${label}"), button:has-text("${label}"), [role="button"]:has-text("${label}")`),
+    page.locator(`text=/${escaped}/i`),
+  ];
+  for (const locator of locators) {
+    if (await clickFirstVisibleLocator(locator, actionName, diagnostic)) return true;
+  }
+  return false;
+}
+
+async function navigateToPlayersList(page, diagnostic) {
+  diagnostic.steps.push('players_menu_open');
+  const menuClicked = await clickMenuEntry(page, 'Programmazione', 'open_programmazione_menu', diagnostic);
+  if (!menuClicked) {
+    throw fail('MATCHPOINT_PLAYERS_MENU_NOT_FOUND', 'Menu Programmazione non trovato nel worker browser.', {
+      url: page.url(),
+      title: await page.title().catch(() => ''),
+      navigationAttempts: diagnostic.navigationAttempts || [],
+    });
+  }
+  await page.waitForTimeout(800);
+
+  diagnostic.steps.push('players_menu_click');
+  const playersClicked = await clickMenuEntry(page, 'Elenco dei giocatori', 'click_elenco_giocatori', diagnostic);
+  if (!playersClicked) {
+    throw fail('MATCHPOINT_PLAYERS_LIST_NOT_FOUND', 'Voce Elenco dei giocatori non trovata nel menu Programmazione.', {
+      url: page.url(),
+      title: await page.title().catch(() => ''),
+      navigationAttempts: diagnostic.navigationAttempts || [],
+    });
+  }
+
+  await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => {
+    const text = document.body?.innerText || '';
+    return text.includes('Giocatori') && /Esportare\s+in\s+excel/i.test(text);
+  }, { timeout: 45000 }).catch(() => {});
+
+  const bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
+  diagnostic.playersUrl = page.url();
+  diagnostic.playersTitle = await page.title().catch(() => '');
+  diagnostic.playersPageFound = bodyText.includes('Giocatori');
+  diagnostic.playersExportFound = /Esportare\s+in\s+excel/i.test(bodyText);
+  if (!diagnostic.playersPageFound || !diagnostic.playersExportFound) {
+    throw fail('MATCHPOINT_PLAYERS_PAGE_NOT_READY', 'Pagina Elenco giocatori non pronta o pulsante export non trovato.', {
+      url: page.url(),
+      title: diagnostic.playersTitle,
+      playersPageFound: diagnostic.playersPageFound,
+      playersExportFound: diagnostic.playersExportFound,
+      bodySample: bodyText.replace(/\s+/g, ' ').slice(0, 800),
+      navigationAttempts: diagnostic.navigationAttempts || [],
+    });
+  }
+}
+
 async function triggerPostbackDownload(page, target, diagnostic) {
   if (!target) return null;
   diagnostic.exportPostbackTarget = target;
@@ -132,6 +205,8 @@ async function triggerPostbackDownload(page, target, diagnostic) {
 async function triggerExportDownload(page, exportTarget, diagnostic) {
   diagnostic.exportSelectorAttempts = [];
   const selectors = [
+    'button:has-text("Esportare in excel"), a:has-text("Esportare in excel"), input[value*="Esportare in excel"]',
+    'button:has-text("Esportare"), a:has-text("Esportare"), input[value*="Esportare"]',
     '#ctl01_ctl00_CC_ContentPlaceHolderAcciones_LinkButtonExportar',
     '[id$="LinkButtonExportar"]',
     '[name$="LinkButtonExportar"]',
@@ -213,10 +288,12 @@ async function exportClientsWithBrowser(options = {}) {
   const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
   const clientsPath = clean(options.clientsPath) || env('MATCHPOINT_CLIENTS_PATH', DEFAULT_CLIENTS_PATH);
   const exportTarget = clean(options.exportTarget) || env('MATCHPOINT_EXPORT_TARGET', DEFAULT_EXPORT_TARGET);
+  const navigationMode = clean(options.navigationMode) || env('MATCHPOINT_BROWSER_NAVIGATION_MODE', 'players_menu');
   const diagnostic = {
     mode: 'browser_worker_headless',
     baseUrl,
     clientsPath,
+    navigationMode,
     startedAt: new Date().toISOString(),
     steps: [],
   };
@@ -265,23 +342,27 @@ async function exportClientsWithBrowser(options = {}) {
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
-    diagnostic.steps.push('clients_page');
-    await page.goto(absoluteUrl(baseUrl, clientsPath), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
-    diagnostic.clientsUrl = page.url();
-    diagnostic.clientsTitle = await page.title().catch(() => '');
+    if (navigationMode === 'direct_clients') {
+      diagnostic.steps.push('clients_page');
+      await page.goto(absoluteUrl(baseUrl, clientsPath), { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+      diagnostic.clientsUrl = page.url();
+      diagnostic.clientsTitle = await page.title().catch(() => '');
 
-    if (/Login\.aspx/i.test(page.url())) {
-      throw fail('MATCHPOINT_BROWSER_CLIENTS_NOT_AUTHENTICATED', 'Pagina clienti non autenticata nel worker browser.', {
-        url: page.url(),
-        title: diagnostic.clientsTitle,
-      });
-    }
-    if (/Error\.aspx|aspxerrorpath=/i.test(page.url())) {
-      throw fail('MATCHPOINT_BROWSER_CLIENTS_PAGE_ERROR', 'Matchpoint ha aperto una pagina errore al posto dei clienti.', {
-        url: page.url(),
-        title: diagnostic.clientsTitle,
-      });
+      if (/Login\.aspx/i.test(page.url())) {
+        throw fail('MATCHPOINT_BROWSER_CLIENTS_NOT_AUTHENTICATED', 'Pagina clienti non autenticata nel worker browser.', {
+          url: page.url(),
+          title: diagnostic.clientsTitle,
+        });
+      }
+      if (/Error\.aspx|aspxerrorpath=/i.test(page.url())) {
+        throw fail('MATCHPOINT_BROWSER_CLIENTS_PAGE_ERROR', 'Matchpoint ha aperto una pagina errore al posto dei clienti.', {
+          url: page.url(),
+          title: diagnostic.clientsTitle,
+        });
+      }
+    } else {
+      await navigateToPlayersList(page, diagnostic);
     }
 
     diagnostic.steps.push('export_click');
