@@ -950,13 +950,13 @@ function parseErrorInfo(error: unknown) {
 }
 
 async function saveFailureDiagnostic(admin: any, actor: StaffActor | null, importedAt: string, errorInfo: JsonMap) {
-  if (!actor || !String(errorInfo.code || '').startsWith('MATCHPOINT_')) return { saved: false, reason: 'SKIPPED' };
+  if (!String(errorInfo.code || '').startsWith('MATCHPOINT_')) return { saved: false, reason: 'SKIPPED' };
   const payload = {
     id: 'matchpoint_clients_auto_diagnostic_last',
     type: 'clienti',
     source: 'matchpoint_auto',
     importedAt,
-    actorEmail: actor.email,
+    actorEmail: actor?.email || '',
     code: errorInfo.code,
     message: errorInfo.publicMessage,
     diagnostic: errorInfo.diagnostic || null,
@@ -1101,6 +1101,15 @@ Deno.serve(async (req) => {
       saved: false,
       error: diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError),
     }));
+    console.log(JSON.stringify({
+      event: 'matchpoint_clients_auto_import_error',
+      importedAt,
+      actorEmail: actor?.email || '',
+      code: errorInfo.code,
+      message: errorInfo.publicMessage,
+      diagnosticSaved,
+      diagnostic: errorInfo.diagnostic || null,
+    }));
     await logAudit(admin, actor, 'matchpoint_clients_auto_import_error', {
       message: errorInfo.publicMessage,
       code: errorInfo.code,
@@ -1112,10 +1121,10 @@ Deno.serve(async (req) => {
       return errorResponse(500, 'MATCHPOINT_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nei secret Supabase TEST.');
     }
     if (errorInfo.code === 'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND') {
-      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved });
+      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, diagnostic: errorInfo.diagnostic || null });
     }
     if (errorInfo.code === 'MATCHPOINT_EXPORT_FAILED') {
-      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, fallback: 'browser_worker_headless' });
+      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, diagnostic: errorInfo.diagnostic || null, fallback: 'browser_worker_headless' });
     }
     return errorResponse(500, 'MATCHPOINT_CLIENTS_SYNC_FAILED', message);
   }
