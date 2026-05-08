@@ -443,18 +443,43 @@ class MatchpointSession {
   }
 
   async postForm(pathOrUrl: string, fields: JsonMap, referer = '') {
+    const targetUrl = this.resolve(pathOrUrl);
     const body = new URLSearchParams();
     Object.entries(fields).forEach(([key, value]) => body.set(key, clean(value)));
-    return this.fetch(pathOrUrl, {
+    return this.fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Origin': new URL(targetUrl).origin,
         ...(referer ? { Referer: referer } : {}),
       },
       body,
     });
   }
+}
+
+function alignLoginLanguage(fields: JsonMap) {
+  const hiddenLang = clean(fields.HiddenFieldLang);
+  if (hiddenLang && Object.prototype.hasOwnProperty.call(fields, 'ddlLenguaje')) {
+    fields.ddlLenguaje = hiddenLang;
+  }
+  return hiddenLang;
+}
+
+async function syncLoginLanguage(session: MatchpointSession, currentUrl: string, lang: string) {
+  if (!lang) return;
+  const endpoint = new URL('Login.aspx/CambiarLenguaje', currentUrl).toString();
+  await session.fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Accept': 'application/json, text/javascript, */*; q=0.01',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Referer': currentUrl,
+    },
+    body: JSON.stringify({ lang }),
+  }).catch(() => {});
 }
 
 function extractForms(html: string, currentUrl: string) {
@@ -815,6 +840,8 @@ async function loginToMatchpoint(session: MatchpointSession) {
     throw new Error(`MATCHPOINT_LOGIN_FIELDS_NOT_FOUND:${JSON.stringify({ userNameFound: !!userName, passwordNameFound: !!passwordName })}`);
   }
   const fields = { ...loginForm.fields, [userName]: username, [passwordName]: password };
+  const loginLang = alignLoginLanguage(fields);
+  await syncLoginLanguage(session, currentUrl, loginLang);
   const submit = submitControl(loginForm.html, /entra|entrar|login|accedi|acceder|iniciar/i);
   if (submit.eventTarget) {
     fields.__EVENTTARGET = submit.eventTarget;

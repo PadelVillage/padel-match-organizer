@@ -132,6 +132,7 @@ Funzione server:
 - da versione funzione 9, il login ASP.NET invia anche `__EVENTTARGET` quando il pulsante usa `__doPostBack('btnLogin','')`, oltre al valore del bottone.
 - da versione funzione 10, se il bottone login usa `__doPostBack`, vengono inviati `__EVENTTARGET` e `__EVENTARGUMENT` senza aggiungere il bottone come submit normale.
 - da versione funzione 11, i secret `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD` vengono ripuliti da spazi iniziali/finali prima del login.
+- da versione funzione 12, il login HTTP allinea `ddlLenguaje` al valore runtime `HiddenFieldLang` e replica la chiamata leggera `CambiarLenguaje`, per non inviare la prima lingua della select (`es-ES`) quando la pagina Matchpoint imposta `it-IT` via JavaScript.
 
 Validazioni bloccanti:
 
@@ -187,7 +188,7 @@ Nota di verifica:
 - il deploy TEST della funzione e' riuscito;
 - il test reale login/export richiede secret Matchpoint configurati nel progetto Supabase TEST;
 - senza secret la funzione deve rispondere con errore esplicito `MATCHPOINT_SECRETS_MISSING`.
-- con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`; se questo stato resta invariato, la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano, invece di continuare a inseguire solo il POST HTTP.
+- con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`; la funzione v12 prova l'allineamento lingua rilevato nel form. Se anche v12 resta bloccata sul login, la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano.
 
 ## Test locali v5.228
 
