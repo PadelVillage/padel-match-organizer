@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud pronto in v5.347.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19.
 
 ## Obiettivo
 
@@ -141,6 +141,7 @@ Funzione server:
 - da versione funzione 16, se il fallback browser/headless dovrebbe partire ma i secret worker non sono disponibili nella Edge Function, la risposta distingue l'errore `MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING` senza esporre i valori segreti.
 - da versione funzione 17, se il file esportato dal worker non supera la validazione clienti, la funzione salva una diagnostica sanificata in `matchpoint_clients_auto_diagnostic_last` con intestazioni trovate, colonne mancanti, nome/dimensione file e diagnostica worker. Nessun dato cliente viene scritto quando la validazione fallisce.
 - da versione funzione 18, la validazione resta allineata al formato clienti corretto esportato da Matchpoint: `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso` e `Livello`. La colonna `Posizione` viene letta come riferimento operativo quando presente. `Codice` e `N. socio` non vengono usati come chiave cliente: il match resta su telefono, email e nome normalizzato.
+- da versione funzione 19, prima dell'upsert in `pmo_cloud_records`, la funzione deduplica i clienti che generano la stessa chiave cloud (`phone:...`, `email:...`, `name:...`). Questo evita l'errore Postgres `21000` quando il file Matchpoint contiene righe diverse con stessa chiave cliente. Il riepilogo salva `duplicateRows`.
 - worker browser/headless iniziale: `tools/matchpoint-browser-worker`, Node/Playwright, endpoint `POST /export-clients`, protetto da `MATCHPOINT_WORKER_API_KEY`. Le credenziali Matchpoint non vengono salvate in HTML, repository o localStorage.
 - da aggiornamento worker 2026-05-08, l'export clienti corretto non viene scaricato dalla sezione `Clienti`, ma dalla navigazione Matchpoint `Programmazione` -> `Elenco dei giocatori` -> `Esportare in excel`. Il worker usa questa navigazione menu-driven come modalita' predefinita e mantiene `direct_clients` solo come fallback diagnostico configurabile.
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.
@@ -195,6 +196,13 @@ Hotfix app v5.347:
 - `Scarica novità cloud` ora propaga anche le cancellazioni cloud;
 - se Supabase restituisce record `player_group` o `match_invitation` con `deleted=true`, la app rimuove il record corrispondente dal localStorage;
 - senza questa correzione, i gruppi eliminati dal cloud potevano restare visibili nel browser che li aveva gia' scaricati.
+
+Hotfix app v5.348 / funzione v19:
+
+- dopo la configurazione dei secret PROD, il primo test ha superato il blocco `MATCHPOINT_SECRETS_MISSING` ma ha restituito errore database `21000`;
+- causa tecnica: piu' righe clienti potevano generare la stessa chiave cloud nello stesso upsert;
+- la funzione ora scarta le righe duplicate nello stesso batch, registra `duplicateRows` e prosegue con le righe uniche;
+- la app converte gli errori-oggetto in testo leggibile, evitando la visualizzazione `[object Object]`.
 
 ### Navigazione Matchpoint per scaricare Clienti/Giocatori
 

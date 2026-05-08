@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.347';
+    const APP_VERSION = '5.348';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7603,7 +7603,9 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     function pmoFriendlyMatchpointAutoError(value) {
-      const raw = cleanCell(value?.message || value?.error || value || '');
+      const rawValue = value?.message || value?.error || value || '';
+      const raw = cleanCell(typeof rawValue === 'object' ? JSON.stringify(rawValue) : rawValue);
+      if (raw.includes('21000')) return 'Import clienti non completato: il file Matchpoint contiene righe duplicate sulla stessa chiave cliente. Riprova dopo aggiornamento funzione server.';
       if (raw.includes('MATCHPOINT_SECRETS_MISSING')) return `Credenziali Matchpoint non configurate nei secret Supabase ${PMO_IS_TEST_ENV ? 'TEST' : 'PROD'}.`;
       if (raw.includes('MATCHPOINT_LOGIN_FAILED')) return 'Login Matchpoint non riuscito. Verifica credenziali e account dedicato.';
       if (raw.includes('MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND')) return 'Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto.';

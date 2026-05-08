@@ -76,11 +76,20 @@ function okResponse(body: JsonMap) {
 }
 
 function errorResponse(status: number, code: string, message: string, extra: JsonMap = {}) {
-  return json({ ok: false, error: code, message, ...extra }, status);
+  return json({ ok: false, error: code, message: errorText(message), ...extra }, status);
 }
 
 function clean(value: unknown) {
   return String(value ?? '').trim();
+}
+
+function errorText(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (value instanceof Error) return value.message || value.name || String(value);
+  if (value && typeof value === 'object') {
+    try { return JSON.stringify(value); } catch { return String(value); }
+  }
+  return String(value ?? '');
 }
 
 function compactSpaces(value: unknown) {
@@ -1213,7 +1222,10 @@ async function logAudit(admin: any, actor: StaffActor | null, action: string, de
 }
 
 function parseErrorInfo(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
+  const messageValue = error instanceof Error
+    ? error.message
+    : (error && typeof error === 'object' && Object.prototype.hasOwnProperty.call(error, 'message') ? (error as any).message : error);
+  const message = errorText(messageValue);
   const attachedDiagnostic = error && typeof error === 'object' ? (error as any).diagnostic : null;
   const attachedCode = error && typeof error === 'object' ? clean((error as any).code || '') : '';
   const splitIndex = message.indexOf(':');
@@ -1353,13 +1365,21 @@ Deno.serve(async (req) => {
 
     const existing = await loadExistingMemberRecords(admin);
     const records = [];
+    const memberRecordKeys = new Set<string>();
     let added = 0;
     let updated = 0;
+    let duplicateRows = 0;
 
     for (const member of validation.members) {
       const match = memberLookupKeys(member).map((key) => existing.byKey.get(key)).find(Boolean);
       const localKey = match?.local_key || memberCloudKey(member) || `member:${member.id}`;
       const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
+      const memberRecordKey = `member|${localKey}`;
+      if (memberRecordKeys.has(memberRecordKey)) {
+        duplicateRows += 1;
+        continue;
+      }
+      memberRecordKeys.add(memberRecordKey);
       if (match) updated += 1;
       else added += 1;
       records.push({
@@ -1384,6 +1404,7 @@ Deno.serve(async (req) => {
         importableRows: validation.importableRows,
         skipped: validation.skipped,
         technicalSkipped: validation.technicalSkipped,
+        duplicateRows,
         added,
         updated,
       },
@@ -1421,6 +1442,7 @@ Deno.serve(async (req) => {
       added,
       updated,
       skipped: validation.skipped,
+      duplicateRows,
       diagnosticFile,
     });
 
@@ -1432,6 +1454,7 @@ Deno.serve(async (req) => {
       cloud: {
         upserted: records.length,
         members: validation.members.length,
+        duplicateRows,
         added,
         updated,
       },
