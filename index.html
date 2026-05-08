@@ -4061,7 +4061,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
             <div class="matchpoint-data-file">
               <label>Aggiorna clienti da Matchpoint</label>
-              <div class="matchpoint-data-hint">Avvia login, export e validazione clienti sul server TEST.</div>
+              <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
               <div class="matchpoint-data-actions">
                 <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti da Matchpoint</button>
                 <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.345';
+    const APP_VERSION = '5.346';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7604,7 +7604,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function pmoFriendlyMatchpointAutoError(value) {
       const raw = cleanCell(value?.message || value?.error || value || '');
-      if (raw.includes('MATCHPOINT_SECRETS_MISSING')) return 'Credenziali Matchpoint non configurate nei secret Supabase TEST.';
+      if (raw.includes('MATCHPOINT_SECRETS_MISSING')) return `Credenziali Matchpoint non configurate nei secret Supabase ${PMO_IS_TEST_ENV ? 'TEST' : 'PROD'}.`;
       if (raw.includes('MATCHPOINT_LOGIN_FAILED')) return 'Login Matchpoint non riuscito. Verifica credenziali e account dedicato.';
       if (raw.includes('MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND')) return 'Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto.';
       if (raw.includes('MATCHPOINT_EXPORT_FAILED')) return 'Export clienti Matchpoint non riuscito via postback HTTP. Serve passare al fallback browser headless.';

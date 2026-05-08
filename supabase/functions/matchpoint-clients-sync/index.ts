@@ -1460,10 +1460,10 @@ Deno.serve(async (req) => {
     }).catch(() => {});
     if (message === 'AUTH_REQUIRED') return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff Supabase richiesto.');
     if (message === 'MATCHPOINT_SECRETS_MISSING') {
-      return errorResponse(500, 'MATCHPOINT_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nei secret Supabase TEST.');
+      return errorResponse(500, 'MATCHPOINT_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nei secret Supabase.');
     }
     if (errorInfo.code === 'MATCHPOINT_LOGIN_FAILED') {
-      return errorResponse(500, errorInfo.code, 'Login Matchpoint non riuscito con i secret configurati su Supabase TEST.', {
+      return errorResponse(500, errorInfo.code, 'Login Matchpoint non riuscito con i secret configurati su Supabase.', {
         diagnosticSaved,
         diagnostic: errorInfo.diagnostic || null,
       });
@@ -1481,7 +1481,7 @@ Deno.serve(async (req) => {
       });
     }
     if (errorInfo.code === 'MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING') {
-      return errorResponse(500, errorInfo.code, 'Mancano i secret del worker browser/headless Matchpoint su Supabase TEST.', {
+      return errorResponse(500, errorInfo.code, 'Mancano i secret del worker browser/headless Matchpoint su Supabase.', {
         diagnosticSaved,
         diagnostic: errorInfo.diagnostic || null,
       });

@@ -14,6 +14,22 @@ Serve quando il login HTTP puro della Supabase Edge Function viene rimandato a `
   - `MATCHPOINT_BROWSER_WORKER_URL`;
   - `MATCHPOINT_BROWSER_WORKER_API_KEY`.
 
+## Percorso Matchpoint usato dal worker
+
+Il file clienti corretto per Padel Match Organizer non arriva dal menu alto `Clienti`.
+
+Percorso validato:
+
+1. login su Matchpoint;
+2. apertura menu `Programmazione`;
+3. click su `Elenco dei giocatori`;
+4. attesa della vista `Giocatori`;
+5. click su `Esportare in excel`.
+
+Matchpoint mantiene spesso la URL `default.aspx` durante questa navigazione e puo' caricare la vista in frame interni. Per questo il worker controlla il testo visibile della pagina e degli iframe, cercando `Giocatori` e `Esportare in excel`, invece di basarsi solo sul cambio URL.
+
+Il file scaricato deve contenere il foglio `Risultati` con colonne minime `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso`, `Livello`. La validazione vera resta nella Edge Function Supabase.
+
 ## Avvio locale
 
 ```bash
@@ -44,7 +60,7 @@ La risposta contiene `base64`, `filename`, `contentType` e diagnostica tecnica s
 
 Il repository contiene un Blueprint Render in `render.yaml` e un `Dockerfile` dedicato al worker.
 
-Configurazione prevista:
+Configurazione TEST prevista:
 
 - servizio web Docker `pmo-matchpoint-browser-worker-test`;
 - branch `test-preview`;
@@ -56,20 +72,20 @@ Secret richiesto in Render:
 
 | Nome | Valore |
 |---|---|
-| `MATCHPOINT_WORKER_API_KEY` | chiave lunga casuale condivisa solo con Supabase TEST |
+| `MATCHPOINT_WORKER_API_KEY` | chiave lunga casuale condivisa solo con le Edge Function Supabase autorizzate |
 
 Non salvare in Render:
 
 - `MATCHPOINT_USERNAME`;
 - `MATCHPOINT_PASSWORD`.
 
-Le credenziali Matchpoint restano nei secret Supabase TEST e vengono inviate al worker solo dalla Edge Function, con chiamata server-to-server protetta.
+Le credenziali Matchpoint restano nei secret Supabase dell'ambiente chiamante e vengono inviate al worker solo dalla Edge Function, con chiamata server-to-server protetta.
 
 Dopo il primo deploy Render:
 
 1. aprire `https://<servizio-render>.onrender.com/health`;
 2. verificare risposta `{ "ok": true, "service": "pmo-matchpoint-browser-worker" }`;
-3. salvare in Supabase TEST:
+3. salvare nell'ambiente Supabase che deve usare il worker:
    - `MATCHPOINT_BROWSER_WORKER_URL=https://<servizio-render>.onrender.com`;
    - `MATCHPOINT_BROWSER_WORKER_API_KEY=<stessa chiave impostata su Render>`.
 
@@ -78,8 +94,8 @@ Dopo il primo deploy Render:
 | Nome | Obbligatoria | Note |
 |---|---:|---|
 | `MATCHPOINT_WORKER_API_KEY` | si | Token server-to-server tra Supabase e worker. |
-| `MATCHPOINT_USERNAME` | no | Fallback solo per test locali; in TEST arrivano dalla Edge Function. |
-| `MATCHPOINT_PASSWORD` | no | Fallback solo per test locali; in TEST arrivano dalla Edge Function. |
+| `MATCHPOINT_USERNAME` | no | Fallback solo per test locali; in produzione arrivano dalla Edge Function. |
+| `MATCHPOINT_PASSWORD` | no | Fallback solo per test locali; in produzione arrivano dalla Edge Function. |
 | `MATCHPOINT_BASE_URL` | no | Default `https://app-padelvillage-it.matchpoint.com.es`. |
 | `MATCHPOINT_CLIENTS_PATH` | no | Default `/clientes/Listadoclientes.aspx?pagesize=15`. |
 | `MATCHPOINT_EXPORT_TARGET` | no | Target postback noto del pulsante export. |

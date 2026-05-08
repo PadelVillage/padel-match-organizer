@@ -105,7 +105,7 @@ Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage
 
 ## Clienti automatici Matchpoint
 
-Stato: integrata e pubblicata in TEST con app v5.344 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
+Stato: integrata e validata in TEST con app v5.344-v5.346 dopo approvazione mockup; pronta per pubblicazione PROD con funzione server Supabase e worker browser/headless.
 
 Obiettivo della prima fase:
 
@@ -117,8 +117,11 @@ Obiettivo della prima fase:
 Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
-- ambiente iniziale: solo Supabase TEST;
+- ambienti:
+  - TEST: progetto Supabase `cudiqnrrlbyqryrtaprd`;
+  - PROD: progetto Supabase `qqbfphyslczzkxoncgex`;
 - deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 18, `verify_jwt=true`;
+- deploy PROD: deve usare la stessa funzione `matchpoint-clients-sync`, `verify_jwt=true`, con secret dedicati nel progetto PROD;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
@@ -142,7 +145,27 @@ Funzione server:
 - da aggiornamento worker 2026-05-08, l'export clienti corretto non viene scaricato dalla sezione `Clienti`, ma dalla navigazione Matchpoint `Programmazione` -> `Elenco dei giocatori` -> `Esportare in excel`. Il worker usa questa navigazione menu-driven come modalita' predefinita e mantiene `direct_clients` solo come fallback diagnostico configurabile.
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.
 - da aggiornamento worker 2026-05-08 successivo, la ricerca della vista `Giocatori` e del pulsante `Esportare in excel` controlla anche gli iframe interni di Matchpoint, non solo il corpo principale di `default.aspx`.
-- deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `free` per il primo test senza carta di pagamento. Se il cold start risulta troppo lento, passare a `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase TEST.
+- deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `free` per il primo test senza carta di pagamento. Se il cold start risulta troppo lento, passare a `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase dell'ambiente chiamante.
+
+### Navigazione Matchpoint per scaricare Clienti/Giocatori
+
+Percorso corretto validato il 2026-05-08:
+
+1. Aprire `https://app-padelvillage-it.matchpoint.com.es/default.aspx`.
+2. Fare login con l'account Matchpoint dedicato.
+3. Nel menu alto non usare `Clienti`.
+4. Aprire `Programmazione`.
+5. Nel gruppo `Giocatori, classifica e Sistema partite aperte`, scegliere `Elenco dei giocatori`.
+6. Attendere la vista `Giocatori`, che mantiene spesso la URL `default.aspx` senza cambio pagina visibile.
+7. Cliccare `Esportare in excel`.
+8. Il file corretto deve avere foglio `Risultati` e colonne come `Cliente`, `Telefono cellulare`, `E-mail`, `Età`, `Sesso`, `Disciplina sportiva`, `Centro`, `Posizione`, `Livello`.
+
+Note tecniche:
+
+- Matchpoint non sempre cambia URL durante la navigazione: il worker deve verificare il contenuto della pagina, non la URL.
+- La vista e il pulsante export possono comparire in frame/iframe interni.
+- La sezione `Clienti` di Matchpoint esporta un file diverso con colonne come `Codice`, `Identificazione`, `Nome`, `Cognome`, `N. socio`; quel file non va usato per l'import automatico soci dell'app.
+- `Codice` e `N. socio` non sono chiavi identificative nell'app: il match resta su telefono, email e nome normalizzato.
 
 Validazioni bloccanti:
 
@@ -167,7 +190,8 @@ Permessi:
 - la funzione richiede token staff Supabase valido;
 - la funzione richiede permesso `cloud_sync` oppure ruolo `owner/admin`;
 - `SUPABASE_SERVICE_ROLE_KEY` resta solo nella funzione server e non viene mai esposto al browser.
-- permessi database TEST verificati il 2026-05-08: `service_role` deve avere `usage` sullo schema `public` e `select, insert, update, delete` su `pmo_cloud_records` e `pmo_audit_log`; senza questi grant la funzione non riesce a salvare diagnostica o import e restituisce errori tipo `permission denied for table pmo_cloud_records`.
+- permessi database verificati il 2026-05-08: `service_role` deve avere `usage` sullo schema `public` e `select, insert, update, delete` su `pmo_cloud_records` e `pmo_audit_log`; senza questi grant la funzione non riesce a salvare diagnostica o import e restituisce errori tipo `permission denied for table pmo_cloud_records`.
+- PROD verificato il 2026-05-08: tabelle, RPC profilo staff e grant `service_role` risultano presenti sul progetto `qqbfphyslczzkxoncgex`.
 
 Mockup UI:
 
