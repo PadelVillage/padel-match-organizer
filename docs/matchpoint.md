@@ -105,7 +105,7 @@ Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage
 
 ## Clienti automatici Matchpoint
 
-Stato: integrata in app v5.342 dopo approvazione mockup; funzione server gia pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
+Stato: integrata e pubblicata in TEST con app v5.342 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
 
 Obiettivo della prima fase:
 
