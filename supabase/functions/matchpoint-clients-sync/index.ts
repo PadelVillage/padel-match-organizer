@@ -1252,6 +1252,50 @@ async function saveFailureDiagnostic(admin: any, actor: StaffActor | null, impor
   return { saved: true };
 }
 
+async function saveValidationDiagnostic(
+  admin: any,
+  actor: StaffActor | null,
+  importedAt: string,
+  exported: MatchpointExport,
+  validation: JsonMap,
+  diagnosticFile: JsonMap,
+) {
+  const payload = {
+    id: 'matchpoint_clients_auto_diagnostic_last',
+    type: 'clienti',
+    source: 'matchpoint_auto',
+    importedAt,
+    actorEmail: actor?.email || '',
+    code: validation.error || 'CLIENT_VALIDATION_FAILED',
+    message: validation.message || 'Validazione file clienti non superata.',
+    validation: {
+      error: validation.error || '',
+      missing: validation.missing || [],
+      headers: validation.headers || [],
+      sheetNames: validation.sheetNames || [],
+    },
+    file: {
+      filename: exported.filename,
+      size: exported.bytes.byteLength,
+      contentType: exported.contentType,
+      diagnosticFile,
+    },
+    diagnostic: exported.diagnostic || null,
+  };
+  const { error } = await admin
+    .from('pmo_cloud_records')
+    .upsert([{
+      record_type: 'matchpoint_data',
+      local_key: 'matchpoint_clients_auto_diagnostic_last',
+      payload,
+      payload_hash: null,
+      deleted: false,
+      synced_at: importedAt,
+    }], { onConflict: 'record_type,local_key' });
+  if (error) return { saved: false, error: error.message || String(error) };
+  return { saved: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Usa POST per avviare import clienti Matchpoint.');
@@ -1276,13 +1320,28 @@ Deno.serve(async (req) => {
     const exported = await exportClientsFromMatchpoint();
     const validation = validateClientWorkbook(exported.bytes, importedAt);
     if (!validation.ok) {
+      const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
+      const diagnosticSaved = await saveValidationDiagnostic(admin, actor, importedAt, exported, validation, diagnosticFile);
       await logAudit(admin, actor, 'matchpoint_clients_auto_import_blocked', {
         error: validation.error,
         message: validation.message,
         source: 'matchpoint_auto',
+        diagnosticSaved,
+        file: {
+          filename: exported.filename,
+          size: exported.bytes.byteLength,
+          contentType: exported.contentType,
+          diagnosticFile,
+        },
+        validation: {
+          missing: validation.missing || [],
+          headers: validation.headers || [],
+          sheetNames: validation.sheetNames || [],
+        },
       });
       return errorResponse(422, validation.error, validation.message, {
         validation,
+        diagnosticSaved,
       });
     }
 
