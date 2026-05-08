@@ -724,6 +724,75 @@ function looksLikeCashSelection(html: string, url = '') {
   return /Temas\/Matchpoint_2_5\/Login\.aspx/i.test(url) || (text.includes('cassa') && (text.includes('entra') || text.includes('entrar')));
 }
 
+function looksLikeMatchpointErrorPage(html: string, url = '') {
+  if (/\/Error\.aspx/i.test(url) || /aspxerrorpath=/i.test(url)) return true;
+  const text = normalizeKey(stripTags(html).slice(0, 1600));
+  return text.includes('error') && (text.includes('aspx') || text.includes('matchpoint'));
+}
+
+function titleFromHtml(html: string) {
+  return stripTags((html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '').slice(0, 240));
+}
+
+function clientPageProbeSummary(requestedUrl: string, response: Response, html: string) {
+  return {
+    requestedUrl,
+    finalUrl: response.url,
+    status: response.status,
+    title: titleFromHtml(html),
+    htmlSize: html.length,
+    hasViewState: html.includes('__VIEWSTATE'),
+    isLogin: looksLikeLoginPage(html, response.url),
+    isError: looksLikeMatchpointErrorPage(html, response.url),
+  };
+}
+
+function normalizeCandidateUrl(raw: string, currentUrl: string) {
+  const value = htmlDecode(raw).replace(/\\\//g, '/').trim();
+  if (!value || /^javascript:/i.test(value) || value === '#') return '';
+  try {
+    return new URL(value, currentUrl).toString();
+  } catch {
+    return '';
+  }
+}
+
+function collectClientPageCandidates(html: string, currentUrl: string) {
+  const candidates: string[] = [];
+  const add = (raw: string) => {
+    const url = normalizeCandidateUrl(raw, currentUrl);
+    if (!url || !/client/i.test(url) || !/\.aspx/i.test(url)) return;
+    if (/Login\.aspx|Error\.aspx/i.test(url)) return;
+    if (!candidates.includes(url)) candidates.push(url);
+  };
+
+  for (const match of html.matchAll(/\b(?:href|src|action)\s*=\s*["']([^"']*client[^"']*\.aspx[^"']*)["']/gi)) add(match[1]);
+  for (const match of html.matchAll(/["']([^"']*client[^"']*\.aspx[^"']*)["']/gi)) add(match[1]);
+  for (const match of html.matchAll(/(\/[A-Za-z0-9_.~/%-]*client[A-Za-z0-9_.~/%-]*\.aspx(?:\?[^"'\s<>)]*)?)/gi)) add(match[1]);
+
+  return candidates.slice(0, 20);
+}
+
+function configuredClientCandidates(session: MatchpointSession, clientsPath: string) {
+  const paths = [
+    clientsPath,
+    '/clientes/Listadoclientes.aspx?pagesize=15',
+    '/clientes/ListadoClientes.aspx?pagesize=15',
+    '/Clientes/Listadoclientes.aspx?pagesize=15',
+    '/Clientes/ListadoClientes.aspx?pagesize=15',
+    '/clientes/Listadoclientes.aspx',
+    '/clientes/ListadoClientes.aspx',
+    '/clientes/clientes.aspx',
+    '/Clientes/Clientes.aspx',
+  ];
+  const urls: string[] = [];
+  for (const path of paths) {
+    const url = session.resolve(path);
+    if (!urls.includes(url)) urls.push(url);
+  }
+  return urls;
+}
+
 async function loginToMatchpoint(session: MatchpointSession) {
   const username = Deno.env.get('MATCHPOINT_USERNAME') || '';
   const password = Deno.env.get('MATCHPOINT_PASSWORD') || '';
@@ -766,7 +835,7 @@ async function loginToMatchpoint(session: MatchpointSession) {
     currentUrl = response.url;
   }
 
-  return { finalUrl: currentUrl, htmlSample: text.slice(0, 1000) };
+  return { finalUrl: currentUrl, html: text, htmlSample: text.slice(0, 1000) };
 }
 
 function filenameFromDisposition(value: string) {
@@ -789,12 +858,78 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
   const session = new MatchpointSession(baseUrl);
 
   const login = await loginToMatchpoint(session);
-  let { response, text } = await session.text(clientsPath);
+  let homeResponse: Response | null = null;
+  let homeText = '';
+  try {
+    const home = await session.text('/default.aspx');
+    homeResponse = home.response;
+    homeText = home.text;
+  } catch {
+    homeResponse = null;
+    homeText = '';
+  }
+
+  const candidateUrls = [
+    ...configuredClientCandidates(session, clientsPath),
+    ...collectClientPageCandidates(login.html || '', login.finalUrl),
+    ...collectClientPageCandidates(homeText, homeResponse?.url || login.finalUrl),
+  ].filter((url, index, list) => !!url && list.indexOf(url) === index);
+
+  const clientPageAttempts: JsonMap[] = [];
+  let response: Response | null = null;
+  let text = '';
+  for (const candidateUrl of candidateUrls) {
+    const probe = await session.text(candidateUrl);
+    clientPageAttempts.push(clientPageProbeSummary(candidateUrl, probe.response, probe.text));
+    if (
+      probe.response.ok
+      && !looksLikeLoginPage(probe.text, probe.response.url)
+      && !looksLikeMatchpointErrorPage(probe.text, probe.response.url)
+      && probe.text.includes('__VIEWSTATE')
+    ) {
+      response = probe.response;
+      text = probe.text;
+      break;
+    }
+  }
+
+  if (!response) {
+    throw errorWithDiagnostic(
+      'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
+      {
+        loginFinalUrl: login.finalUrl,
+        homeFinalUrl: homeResponse?.url || '',
+        configuredClientsPath: clientsPath,
+        candidateUrls,
+        clientPageAttempts,
+        homeClientCandidates: collectClientPageCandidates(homeText, homeResponse?.url || login.finalUrl),
+      },
+    );
+  }
+
   if (looksLikeLoginPage(text, response.url)) throw new Error('MATCHPOINT_CLIENTS_PAGE_NOT_AUTHENTICATED');
+  if (looksLikeMatchpointErrorPage(text, response.url)) {
+    throw errorWithDiagnostic(
+      'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
+      {
+        loginFinalUrl: login.finalUrl,
+        homeFinalUrl: homeResponse?.url || '',
+        configuredClientsPath: clientsPath,
+        clientPageAttempts,
+        selectedErrorPage: clientPageProbeSummary(response.url, response, text),
+      },
+    );
+  }
   if (!text.includes('__VIEWSTATE')) {
     throw errorWithDiagnostic(
       'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
-      collectExportDiagnostics(text, response.url, exportTarget),
+      {
+        loginFinalUrl: login.finalUrl,
+        homeFinalUrl: homeResponse?.url || '',
+        configuredClientsPath: clientsPath,
+        clientPageAttempts,
+        exportPageDiagnostic: collectExportDiagnostics(text, response.url, exportTarget),
+      },
     );
   }
 
