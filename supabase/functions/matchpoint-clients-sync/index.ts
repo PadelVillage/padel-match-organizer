@@ -795,8 +795,8 @@ function configuredClientCandidates(session: MatchpointSession, clientsPath: str
 }
 
 async function loginToMatchpoint(session: MatchpointSession) {
-  const username = Deno.env.get('MATCHPOINT_USERNAME') || '';
-  const password = Deno.env.get('MATCHPOINT_PASSWORD') || '';
+  const username = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
+  const password = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
   if (!username || !password) throw new Error('MATCHPOINT_SECRETS_MISSING');
 
   let { response, text } = await session.text('/Login.aspx');
