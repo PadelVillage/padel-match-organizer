@@ -105,7 +105,7 @@ Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage
 
 ## Clienti automatici Matchpoint
 
-Stato: integrata e pubblicata in TEST con app v5.342 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
+Stato: integrata e pubblicata in TEST con app v5.343 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
 
 Obiettivo della prima fase:
 
@@ -118,7 +118,7 @@ Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
 - ambiente iniziale: solo Supabase TEST;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 5, `verify_jwt=true`;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 6, `verify_jwt=true`;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
@@ -126,6 +126,7 @@ Funzione server:
 - postback export predefinito: `ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar`.
 - da versione funzione 4, se il postback predefinito non compare nella pagina, la funzione cerca automaticamente un comando export/Excel/XLS/CSV nella pagina clienti;
 - da versione funzione 5, se il comando export non viene riconosciuto, la funzione salva una diagnostica tecnica sanificata in `pmo_cloud_records` con `record_type = matchpoint_data` e `local_key = matchpoint_clients_auto_diagnostic_last`. La diagnostica non deve contenere credenziali, HTML completo o file clienti: solo URL, campi ASP.NET, target postback e possibili controlli tecnici.
+- da versione funzione 6, la diagnostica di errore non dipende dall'attore staff e viene tracciata anche nei log tecnici della funzione, cosi' si puo' leggere il dettaglio del problema quando la UI mostra solo il messaggio sintetico.
 
 Validazioni bloccanti:
 
@@ -166,6 +167,13 @@ Integrazione app v5.342:
 - restano preservati livello, preferenze, stato operativo e dati curati localmente dove gia presenti;
 - lo stato sotto al box mostra `Ultimo automatico`, data/ora e righe lette quando l'import riesce;
 - gli errori bloccanti vengono mostrati nel box e non scrivono dati locali.
+
+Integrazione app v5.343:
+
+- versione TEST diagnostica, senza modifiche visibili alla UI;
+- quando la funzione clienti automatici risponde con errore, l'app scrive in console `PMO_MATCHPOINT_CLIENTS_SYNC_ERROR` con la risposta completa ricevuta;
+- lo scopo e' leggere il dettaglio server dell'errore `Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto` e correggere il riconoscimento export;
+- non modifica import prenotazioni, storico, backup, slot potenziali, dati locali o logica giocatori.
 
 Nota di verifica:
 
