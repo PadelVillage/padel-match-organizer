@@ -793,6 +793,9 @@ revoke all on pmo_routine_runs from anon, authenticated;
 revoke all on pmo_routine_skips from anon, authenticated;
 
 grant usage on schema public to anon, authenticated;
+grant usage on schema public to service_role;
+grant select, insert, update, delete on pmo_cloud_records to service_role;
+grant select, insert, update, delete on pmo_audit_log to service_role;
 grant execute on function public.pmo_admin_pin_ok(text) to anon, authenticated;
 grant execute on function public.pmo_upsert_records_admin(jsonb) to authenticated;
 grant execute on function public.pmo_get_records_admin(text[], timestamptz) to authenticated;

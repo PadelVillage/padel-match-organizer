@@ -155,6 +155,7 @@ Permessi:
 - la funzione richiede token staff Supabase valido;
 - la funzione richiede permesso `cloud_sync` oppure ruolo `owner/admin`;
 - `SUPABASE_SERVICE_ROLE_KEY` resta solo nella funzione server e non viene mai esposto al browser.
+- permessi database TEST verificati il 2026-05-08: `service_role` deve avere `usage` sullo schema `public` e `select, insert, update, delete` su `pmo_cloud_records` e `pmo_audit_log`; senza questi grant la funzione non riesce a salvare diagnostica o import e restituisce errori tipo `permission denied for table pmo_cloud_records`.
 
 Mockup UI:
 
@@ -186,6 +187,7 @@ Nota di verifica:
 - il deploy TEST della funzione e' riuscito;
 - il test reale login/export richiede secret Matchpoint configurati nel progetto Supabase TEST;
 - senza secret la funzione deve rispondere con errore esplicito `MATCHPOINT_SECRETS_MISSING`.
+- con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`; se questo stato resta invariato, la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano, invece di continuare a inseguire solo il POST HTTP.
 
 ## Test locali v5.228
 
