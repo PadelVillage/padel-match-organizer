@@ -721,7 +721,7 @@ function looksLikeLoginPage(html: string, url = '') {
 
 function looksLikeCashSelection(html: string, url = '') {
   const text = normalizeKey(html.replace(/<[^>]+>/g, ' '));
-  return /Temas\/Matchpoint_2_5\/Login\.aspx/i.test(url) || (text.includes('cassa') && (text.includes('entra') || text.includes('entrar')));
+  return !/type\s*=\s*["']?password/i.test(html) && text.includes('cassa') && (text.includes('entra') || text.includes('entrar'));
 }
 
 function looksLikeMatchpointErrorPage(html: string, url = '') {
@@ -821,7 +821,12 @@ async function loginToMatchpoint(session: MatchpointSession) {
   text = await response.text();
   currentUrl = response.url;
   if (looksLikeLoginPage(text, currentUrl) && !looksLikeCashSelection(text, currentUrl)) {
-    throw new Error('MATCHPOINT_LOGIN_FAILED');
+    throw errorWithDiagnostic('MATCHPOINT_LOGIN_FAILED', {
+      finalUrl: currentUrl,
+      title: titleFromHtml(text),
+      hasPasswordField: /type\s*=\s*["']?password/i.test(text),
+      formCount: extractForms(text, currentUrl).length,
+    });
   }
 
   if (looksLikeCashSelection(text, currentUrl)) {
@@ -1254,6 +1259,12 @@ Deno.serve(async (req) => {
     if (message === 'AUTH_REQUIRED') return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff Supabase richiesto.');
     if (message === 'MATCHPOINT_SECRETS_MISSING') {
       return errorResponse(500, 'MATCHPOINT_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nei secret Supabase TEST.');
+    }
+    if (errorInfo.code === 'MATCHPOINT_LOGIN_FAILED') {
+      return errorResponse(500, errorInfo.code, 'Login Matchpoint non riuscito con i secret configurati su Supabase TEST.', {
+        diagnosticSaved,
+        diagnostic: errorInfo.diagnostic || null,
+      });
     }
     if (errorInfo.code === 'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND') {
       return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, diagnostic: errorInfo.diagnostic || null });

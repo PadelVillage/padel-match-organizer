@@ -118,7 +118,7 @@ Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
 - ambiente iniziale: solo Supabase TEST;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 7, `verify_jwt=true`;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 8, `verify_jwt=true`;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
@@ -128,6 +128,7 @@ Funzione server:
 - da versione funzione 5, se il comando export non viene riconosciuto, la funzione salva una diagnostica tecnica sanificata in `pmo_cloud_records` con `record_type = matchpoint_data` e `local_key = matchpoint_clients_auto_diagnostic_last`. La diagnostica non deve contenere credenziali, HTML completo o file clienti: solo URL, campi ASP.NET, target postback e possibili controlli tecnici.
 - da versione funzione 6, la diagnostica di errore non dipende dall'attore staff e viene tracciata anche nei log tecnici della funzione, cosi' si puo' leggere il dettaglio del problema quando la UI mostra solo il messaggio sintetico.
 - da versione funzione 7, prima di aprire la pagina clienti viene fatto un warm-up su `default.aspx`; la funzione cerca URL clienti anche nella home Matchpoint e scarta `Error.aspx` anche quando la pagina errore contiene `__VIEWSTATE`.
+- da versione funzione 8, una pagina `Login.aspx` con campo password non viene piu' scambiata per scelta cassa: il login fallito viene bloccato e restituito come diagnostica esplicita.
 
 Validazioni bloccanti:
 
