@@ -535,6 +535,69 @@ function submitControl(formHtml: string, pattern: RegExp) {
   return { name: '', value: '' };
 }
 
+function stripTags(value: string) {
+  return compactSpaces(value.replace(/<script\b[\s\S]*?<\/script>/gi, ' ').replace(/<style\b[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' '));
+}
+
+function exportPattern() {
+  return /export|exportar|excel|xls|xlsx|csv|descargar|download|scarica|esporta/i;
+}
+
+function discoverExportPostbackTarget(html: string, configuredTarget: string) {
+  if (configuredTarget && html.includes(configuredTarget)) {
+    return { target: configuredTarget, candidates: [{ target: configuredTarget, score: 999, reason: 'configured' }] };
+  }
+  const decoded = htmlDecode(html);
+  const candidates: Array<{ target: string; score: number; reason: string }> = [];
+  const addCandidate = (target: string, context: string, reason: string) => {
+    const cleanTarget = htmlDecode(target);
+    if (!cleanTarget) return;
+    const haystack = `${cleanTarget} ${stripTags(context)}`;
+    let score = 0;
+    if (/exportar/i.test(haystack)) score += 80;
+    if (/export/i.test(haystack)) score += 70;
+    if (/excel|xls|xlsx/i.test(haystack)) score += 60;
+    if (/csv/i.test(haystack)) score += 35;
+    if (/descargar|download|scarica|esporta/i.test(haystack)) score += 30;
+    if (/LinkButton|Button|ImageButton/i.test(cleanTarget)) score += 10;
+    if (/delete|eliminar|remove|borrar|logout|login|page|sort/i.test(haystack)) score -= 100;
+    if (score > 0) candidates.push({ target: cleanTarget, score, reason });
+  };
+
+  for (const match of decoded.matchAll(/__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"][^'"]*['"]\s*\)/gi)) {
+    const index = match.index || 0;
+    addCandidate(match[1], decoded.slice(Math.max(0, index - 500), index + 500), '__doPostBack');
+  }
+  for (const match of decoded.matchAll(/WebForm_DoPostBackWithOptions\(\s*new\s+WebForm_PostBackOptions\(\s*['"]([^'"]+)['"]/gi)) {
+    const index = match.index || 0;
+    addCandidate(match[1], decoded.slice(Math.max(0, index - 500), index + 500), 'WebForm_PostBackOptions');
+  }
+
+  const bestByTarget = new Map<string, { target: string; score: number; reason: string }>();
+  for (const candidate of candidates) {
+    const previous = bestByTarget.get(candidate.target);
+    if (!previous || candidate.score > previous.score) bestByTarget.set(candidate.target, candidate);
+  }
+  const sorted = [...bestByTarget.values()].sort((a, b) => b.score - a.score);
+  return { target: sorted[0]?.target || '', candidates: sorted.slice(0, 10) };
+}
+
+function discoverExportSubmitControl(formHtml: string) {
+  const pattern = exportPattern();
+  for (const match of formHtml.matchAll(/<(input|button)\b[^>]*>(?:[\s\S]*?<\/button>)?/gi)) {
+    const tag = match[0];
+    const type = attr(tag, 'type').toLocaleLowerCase('it-IT');
+    if (match[1].toLocaleLowerCase('it-IT') === 'input' && !['submit', 'button', 'image'].includes(type)) continue;
+    const name = attr(tag, 'name');
+    const value = attr(tag, 'value');
+    const context = `${name} ${attr(tag, 'id')} ${value} ${stripTags(tag)}`;
+    if (name && pattern.test(context) && !/delete|eliminar|remove|borrar|logout|login/i.test(context)) {
+      return { name, value: value || stripTags(tag) || 'Export' };
+    }
+  }
+  return { name: '', value: '' };
+}
+
 function looksLikeLoginPage(html: string, url = '') {
   return /type\s*=\s*["']?password/i.test(html) || /Login\.aspx/i.test(url);
 }
@@ -611,20 +674,31 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
   const login = await loginToMatchpoint(session);
   let { response, text } = await session.text(clientsPath);
   if (looksLikeLoginPage(text, response.url)) throw new Error('MATCHPOINT_CLIENTS_PAGE_NOT_AUTHENTICATED');
-  if (!text.includes('__VIEWSTATE') || !text.includes(exportTarget)) {
+  if (!text.includes('__VIEWSTATE')) {
     throw new Error(`MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND:${JSON.stringify({
       url: response.url,
       hasViewState: text.includes('__VIEWSTATE'),
-      hasExportTarget: text.includes(exportTarget),
+      hasExportTarget: false,
     })}`);
   }
 
   const form = extractForms(text, response.url).find((item) => item.html.includes('__VIEWSTATE')) || extractForms(text, response.url)[0];
+  const discoveredPostback = discoverExportPostbackTarget(text, exportTarget);
+  const submitExport = discoveredPostback.target ? { name: '', value: '' } : discoverExportSubmitControl(form.html);
+  if (!discoveredPostback.target && !submitExport.name) {
+    throw new Error(`MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND:${JSON.stringify({
+      url: response.url,
+      hasViewState: text.includes('__VIEWSTATE'),
+      hasExportTarget: false,
+      candidates: discoveredPostback.candidates,
+    })}`);
+  }
   const fields = {
     ...form.fields,
-    __EVENTTARGET: exportTarget,
+    __EVENTTARGET: discoveredPostback.target,
     __EVENTARGUMENT: '',
   };
+  if (submitExport.name) fields[submitExport.name] = submitExport.value;
   const exportResponse = await session.postForm(form.actionUrl, fields, response.url);
   const bytes = new Uint8Array(await exportResponse.arrayBuffer());
   const contentType = exportResponse.headers.get('content-type') || '';
@@ -652,6 +726,8 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
       clientsFinalUrl: response.url,
       exportFinalUrl: exportResponse.url,
       exportStatus: exportResponse.status,
+      exportPostbackTarget: discoveredPostback.target,
+      exportSubmitControl: submitExport.name,
     },
   };
 }

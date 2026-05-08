@@ -118,12 +118,13 @@ Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
 - ambiente iniziale: solo Supabase TEST;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 2, `verify_jwt=true`;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 4, `verify_jwt=true`;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
 - pagina clienti predefinita: `/clientes/Listadoclientes.aspx?pagesize=15`;
 - postback export predefinito: `ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar`.
+- da versione funzione 4, se il postback predefinito non compare nella pagina, la funzione cerca automaticamente un comando export/Excel/XLS/CSV nella pagina clienti.
 
 Validazioni bloccanti:
 
