@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.343';
+    const APP_VERSION = '5.344';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7565,7 +7565,7 @@ body.assessment-public-mode .assessment-public-only-card {
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
       if (!response.ok || data?.ok === false) {
-        console.warn('PMO_MATCHPOINT_CLIENTS_SYNC_ERROR', data || text || `Errore HTTP ${response.status}`);
+        console.warn('PMO_MATCHPOINT_CLIENTS_SYNC_ERROR', JSON.stringify(data || text || `Errore HTTP ${response.status}`));
         throw new Error(pmoFriendlyMatchpointAutoError(data || text || `Errore HTTP ${response.status}`));
       }
       return data;

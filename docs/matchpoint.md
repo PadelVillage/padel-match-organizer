@@ -105,7 +105,7 @@ Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage
 
 ## Clienti automatici Matchpoint
 
-Stato: integrata e pubblicata in TEST con app v5.343 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
+Stato: integrata e pubblicata in TEST con app v5.344 dopo approvazione mockup; funzione server pubblicata su Supabase TEST. La validazione reale login/export richiede secret Matchpoint configurati nel progetto TEST.
 
 Obiettivo della prima fase:
 
@@ -168,10 +168,11 @@ Integrazione app v5.342:
 - lo stato sotto al box mostra `Ultimo automatico`, data/ora e righe lette quando l'import riesce;
 - gli errori bloccanti vengono mostrati nel box e non scrivono dati locali.
 
-Integrazione app v5.343:
+Integrazione app v5.343-v5.344:
 
 - versione TEST diagnostica, senza modifiche visibili alla UI;
 - quando la funzione clienti automatici risponde con errore, l'app scrive in console `PMO_MATCHPOINT_CLIENTS_SYNC_ERROR` con la risposta completa ricevuta;
+- da v5.344 il dettaglio viene stampato come JSON testuale, per evitare che Chrome mostri solo `Object`;
 - lo scopo e' leggere il dettaglio server dell'errore `Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto` e correggere il riconoscimento export;
 - non modifica import prenotazioni, storico, backup, slot potenziali, dati locali o logica giocatori.
 
