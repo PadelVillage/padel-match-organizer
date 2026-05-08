@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud pronto in v5.347.
 
 ## Obiettivo
 
@@ -105,7 +105,7 @@ Se il controllo blocca l'import, nessun dato deve essere salvato in localStorage
 
 ## Clienti automatici Matchpoint
 
-Stato: integrata e validata in TEST con app v5.344-v5.346 dopo approvazione mockup; pronta per pubblicazione PROD con funzione server Supabase e worker browser/headless.
+Stato: integrata e validata in TEST con app v5.344-v5.346 dopo approvazione mockup; pubblicata in PROD v5.346 con funzione server Supabase e worker browser/headless.
 
 Obiettivo della prima fase:
 
@@ -146,6 +146,55 @@ Funzione server:
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.
 - da aggiornamento worker 2026-05-08 successivo, la ricerca della vista `Giocatori` e del pulsante `Esportare in excel` controlla anche gli iframe interni di Matchpoint, non solo il corpo principale di `default.aspx`.
 - deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `free` per il primo test senza carta di pagamento. Se il cold start risulta troppo lento, passare a `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase dell'ambiente chiamante.
+
+### Secret Supabase richiesti
+
+Ogni progetto Supabase ha secret separati. Averli configurati in TEST non li rende disponibili in PROD.
+
+Secret obbligatori per `matchpoint-clients-sync`:
+
+- `MATCHPOINT_USERNAME`: utente Matchpoint dedicato;
+- `MATCHPOINT_PASSWORD`: password Matchpoint dedicata;
+- `MATCHPOINT_BROWSER_WORKER_URL`: URL HTTPS del worker browser/headless Render;
+- `MATCHPOINT_BROWSER_WORKER_API_KEY`: stessa chiave impostata nel worker Render.
+
+Secret opzionali, perché hanno default nel codice:
+
+- `MATCHPOINT_BASE_URL`;
+- `MATCHPOINT_CLIENTS_PATH`;
+- `MATCHPOINT_EXPORT_TARGET`.
+
+Errore atteso se mancano username/password:
+
+`MATCHPOINT_SECRETS_MISSING`
+
+In questo caso l'import non arriva neanche al worker: bisogna configurare i secret nel progetto Supabase dell'ambiente in uso e poi riprovare dal box `Clienti Matchpoint`.
+
+Nota PROD 2026-05-08/09:
+
+- la funzione PROD `matchpoint-clients-sync` e' attiva sul progetto `qqbfphyslczzkxoncgex`;
+- il primo tentativo in PROD e' stato bloccato da `MATCHPOINT_SECRETS_MISSING`;
+- causa: i secret TEST non vengono ereditati da PROD;
+- prima di considerare chiuso un deploy PROD Matchpoint, verificare sempre che PROD abbia almeno `MATCHPOINT_USERNAME`, `MATCHPOINT_PASSWORD`, `MATCHPOINT_BROWSER_WORKER_URL`, `MATCHPOINT_BROWSER_WORKER_API_KEY`.
+
+## Pulizia gruppi cloud PROD 2026-05-09
+
+Durante la verifica PROD sono stati trovati 10 record `player_group` attivi, mentre l'operativita' attesa era di 5 gruppi.
+
+Operazione eseguita:
+
+- backup tecnico creato in `pmo_cloud_records` con:
+  - `record_type = app_setting`;
+  - `local_key = prod_player_group_cleanup_2026_05_09_extra_groups_backup`;
+- marcati `deleted=true` i 5 gruppi extra;
+- mantenuti solo i 5 gruppi `Gioca con LoZio (partita)` da lunedi a venerdi;
+- verifica post-pulizia: 5 gruppi attivi, 72 nominativi totali, 0 nominativi non agganciati a soci cloud.
+
+Hotfix app v5.347:
+
+- `Scarica novità cloud` ora propaga anche le cancellazioni cloud;
+- se Supabase restituisce record `player_group` o `match_invitation` con `deleted=true`, la app rimuove il record corrispondente dal localStorage;
+- senza questa correzione, i gruppi eliminati dal cloud potevano restare visibili nel browser che li aveva gia' scaricati.
 
 ### Navigazione Matchpoint per scaricare Clienti/Giocatori
 

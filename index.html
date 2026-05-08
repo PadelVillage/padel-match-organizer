@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.346';
+    const APP_VERSION = '5.347';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18711,7 +18711,20 @@ Per confermare scrivi ELIMINA.`);
 	      const type = row?.record_type || '';
 	      const key = cleanCell(row?.local_key || '');
 	      const payload = row?.payload || {};
-	      if (!type || !key || !payload || row.deleted) return { merged:false, type, key };
+	      if (!type || !key) return { merged:false, type, key };
+	      if (row.deleted) {
+	        if (type === 'match_invitation' && lunchMatchInvitations[key]) {
+	          delete lunchMatchInvitations[key];
+	          return { merged:true, deleted:true, type, key };
+	        }
+	        if (type === 'player_group') {
+	          const before = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups.length : 0;
+	          dailyPlayerGroups = (Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : []).filter(g => String(g.id || '') !== String(key));
+	          if (dailyPlayerGroups.length !== before) return { merged:true, deleted:true, type, key };
+	        }
+	        return { merged:false, deleted:true, type, key };
+	      }
+	      if (!payload) return { merged:false, type, key };
 	      if (type === 'match_invitation') {
 	        const record = { ...payload, key: payload.key || key };
 	        const existing = lunchMatchInvitations[record.key];
@@ -18744,11 +18757,19 @@ Per confermare scrivi ELIMINA.`);
 	        const list = Array.isArray(rows) ? rows : [];
 	        let mergedMatches = 0;
 	        let mergedGroups = 0;
+	        let deletedMatches = 0;
+	        let deletedGroups = 0;
 	        list.forEach(row => {
 	          const result = pmoMergeCloudRecord(row);
 	          if (!result.merged) return;
-	          if (result.type === 'match_invitation') mergedMatches += 1;
-	          if (result.type === 'player_group') mergedGroups += 1;
+	          if (result.type === 'match_invitation') {
+	            if (result.deleted) deletedMatches += 1;
+	            else mergedMatches += 1;
+	          }
+	          if (result.type === 'player_group') {
+	            if (result.deleted) deletedGroups += 1;
+	            else mergedGroups += 1;
+	          }
 	        });
 	        save('lunchMatchInvitations', lunchMatchInvitations);
 	        save('dailyPlayerGroups', dailyPlayerGroups);
@@ -18759,7 +18780,7 @@ Per confermare scrivi ELIMINA.`);
 	        renderPmoRoutineCenter();
 	        renderAssistantGroups();
 	        renderInviteResponsesDashboard();
-	        pmoSetCloudStatus(`✅ Novità cloud scaricate. Partite aggiornate: ${mergedMatches}. Gruppi aggiornati: ${mergedGroups}.`, 'success');
+	        pmoSetCloudStatus(`✅ Novità cloud scaricate. Partite aggiornate: ${mergedMatches}${deletedMatches ? `, eliminate: ${deletedMatches}` : ''}. Gruppi aggiornati: ${mergedGroups}${deletedGroups ? `, eliminati: ${deletedGroups}` : ''}.`, 'success');
 	      } catch (err) {
 	        pmoSetCloudStatus('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
 	        showAlert('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
