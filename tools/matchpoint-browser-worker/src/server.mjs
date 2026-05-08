@@ -192,10 +192,10 @@ async function bufferFromDownload(download) {
 }
 
 async function exportClientsWithBrowser(options = {}) {
-  const username = env('MATCHPOINT_USERNAME');
-  const password = env('MATCHPOINT_PASSWORD');
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
   if (!username || !password) {
-    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nel worker.');
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker o nella richiesta server-to-server.');
   }
 
   const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);

@@ -6,7 +6,8 @@ Serve quando il login HTTP puro della Supabase Edge Function viene rimandato a `
 
 ## Sicurezza
 
-- Le credenziali Matchpoint stanno solo nelle variabili ambiente del worker.
+- Modalita' consigliata: le credenziali Matchpoint restano nei secret della Edge Function Supabase e vengono inviate al worker solo nella chiamata server-to-server protetta.
+- Le variabili ambiente `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD` del worker sono solo un fallback per test locali isolati.
 - Il worker accetta richieste solo con `Authorization: Bearer <MATCHPOINT_WORKER_API_KEY>`.
 - Il file Excel non viene salvato nel repository.
 - La Edge Function deve conoscere solo:
@@ -34,7 +35,7 @@ Export clienti:
 curl -X POST http://127.0.0.1:8787/export-clients \
   -H "Authorization: Bearer $MATCHPOINT_WORKER_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{"username":"utente-matchpoint","password":"password-matchpoint"}'
 ```
 
 La risposta contiene `base64`, `filename`, `contentType` e diagnostica tecnica sanificata. La validazione del foglio `Risultati` resta nella Edge Function Supabase.
@@ -44,8 +45,8 @@ La risposta contiene `base64`, `filename`, `contentType` e diagnostica tecnica s
 | Nome | Obbligatoria | Note |
 |---|---:|---|
 | `MATCHPOINT_WORKER_API_KEY` | si | Token server-to-server tra Supabase e worker. |
-| `MATCHPOINT_USERNAME` | si | Utente Matchpoint dedicato. |
-| `MATCHPOINT_PASSWORD` | si | Password Matchpoint dedicata. |
+| `MATCHPOINT_USERNAME` | no | Fallback solo per test locali; in TEST arrivano dalla Edge Function. |
+| `MATCHPOINT_PASSWORD` | no | Fallback solo per test locali; in TEST arrivano dalla Edge Function. |
 | `MATCHPOINT_BASE_URL` | no | Default `https://app-padelvillage-it.matchpoint.com.es`. |
 | `MATCHPOINT_CLIENTS_PATH` | no | Default `/clientes/Listadoclientes.aspx?pagesize=15`. |
 | `MATCHPOINT_EXPORT_TARGET` | no | Target postback noto del pulsante export. |

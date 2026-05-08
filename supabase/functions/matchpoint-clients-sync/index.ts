@@ -1068,6 +1068,9 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
   if (!workerUrl || !workerApiKey) throw originalError;
+  const username = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
+  const password = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
+  if (!username || !password) throw new Error('MATCHPOINT_SECRETS_MISSING');
 
   const fallbackFrom = parseErrorInfo(originalError);
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
@@ -1082,10 +1085,13 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
       'Accept': 'application/json',
     },
     body: JSON.stringify({
+      username,
+      password,
       baseUrl,
       clientsPath,
       exportTarget,
       fallbackFrom: fallbackFrom.code,
+      credentialSource: 'supabase_secret',
     }),
   });
 
