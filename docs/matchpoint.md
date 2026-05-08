@@ -188,7 +188,8 @@ Nota di verifica:
 - il deploy TEST della funzione e' riuscito;
 - il test reale login/export richiede secret Matchpoint configurati nel progetto Supabase TEST;
 - senza secret la funzione deve rispondere con errore esplicito `MATCHPOINT_SECRETS_MISSING`.
-- con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`; la funzione v12 prova l'allineamento lingua rilevato nel form. Se anche v12 resta bloccata sul login, la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano.
+- con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`;
+- test TEST 2026-05-08: la funzione v12 ha provato l'allineamento lingua rilevato nel form, ma Matchpoint ha restituito ancora `MATCHPOINT_LOGIN_FAILED` con diagnostica salvata; la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano.
 
 ## Test locali v5.228
 
