@@ -816,8 +816,12 @@ async function loginToMatchpoint(session: MatchpointSession) {
   }
   const fields = { ...loginForm.fields, [userName]: username, [passwordName]: password };
   const submit = submitControl(loginForm.html, /entra|entrar|login|accedi|acceder|iniciar/i);
-  if (submit.name) fields[submit.name] = submit.value;
-  if (submit.eventTarget) fields.__EVENTTARGET = submit.eventTarget;
+  if (submit.eventTarget) {
+    fields.__EVENTTARGET = submit.eventTarget;
+    fields.__EVENTARGUMENT = '';
+  } else if (submit.name) {
+    fields[submit.name] = submit.value;
+  }
 
   response = await session.postForm(loginForm.actionUrl, fields, currentUrl);
   text = await response.text();
@@ -836,8 +840,12 @@ async function loginToMatchpoint(session: MatchpointSession) {
     const enterForm = forms.find((form) => /entra|entrar|acceder/i.test(form.html)) || forms[0];
     const enterFields = { ...enterForm.fields };
     const enterSubmit = submitControl(enterForm.html, /entra|entrar|acceder/i);
-    if (enterSubmit.name) enterFields[enterSubmit.name] = enterSubmit.value;
-    if (enterSubmit.eventTarget) enterFields.__EVENTTARGET = enterSubmit.eventTarget;
+    if (enterSubmit.eventTarget) {
+      enterFields.__EVENTTARGET = enterSubmit.eventTarget;
+      enterFields.__EVENTARGUMENT = '';
+    } else if (enterSubmit.name) {
+      enterFields[enterSubmit.name] = enterSubmit.value;
+    }
     response = await session.postForm(enterForm.actionUrl, enterFields, currentUrl);
     text = await response.text();
     currentUrl = response.url;

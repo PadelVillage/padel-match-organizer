@@ -118,7 +118,7 @@ Funzione server:
 
 - `supabase/functions/matchpoint-clients-sync`;
 - ambiente iniziale: solo Supabase TEST;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 9, `verify_jwt=true`;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 10, `verify_jwt=true`;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
@@ -130,6 +130,7 @@ Funzione server:
 - da versione funzione 7, prima di aprire la pagina clienti viene fatto un warm-up su `default.aspx`; la funzione cerca URL clienti anche nella home Matchpoint e scarta `Error.aspx` anche quando la pagina errore contiene `__VIEWSTATE`.
 - da versione funzione 8, una pagina `Login.aspx` con campo password non viene piu' scambiata per scelta cassa: il login fallito viene bloccato e restituito come diagnostica esplicita.
 - da versione funzione 9, il login ASP.NET invia anche `__EVENTTARGET` quando il pulsante usa `__doPostBack('btnLogin','')`, oltre al valore del bottone.
+- da versione funzione 10, se il bottone login usa `__doPostBack`, vengono inviati `__EVENTTARGET` e `__EVENTARGUMENT` senza aggiungere il bottone come submit normale.
 
 Validazioni bloccanti:
 
