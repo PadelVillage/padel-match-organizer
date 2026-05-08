@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: pmo-matchpoint-browser-worker-test
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    branch: test-preview
+    autoDeployTrigger: commit
+    dockerfilePath: ./tools/matchpoint-browser-worker/Dockerfile
+    dockerContext: ./tools/matchpoint-browser-worker
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MATCHPOINT_WORKER_API_KEY
+        sync: false
+      - key: MATCHPOINT_HEADLESS
+        value: "true"
+      - key: MATCHPOINT_BASE_URL
+        value: https://app-padelvillage-it.matchpoint.com.es
+      - key: MATCHPOINT_CLIENTS_PATH
+        value: /clientes/Listadoclientes.aspx?pagesize=15
+      - key: MATCHPOINT_EXPORT_TARGET
+        value: ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar

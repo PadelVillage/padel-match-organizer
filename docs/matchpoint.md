@@ -136,6 +136,7 @@ Funzione server:
 - da versione funzione 13, se il flusso HTTP fallisce su login, pagina clienti o export, la funzione puo' delegare a un worker browser/headless esterno configurato con `MATCHPOINT_BROWSER_WORKER_URL` e `MATCHPOINT_BROWSER_WORKER_API_KEY`; senza questi secret il comportamento resta quello precedente.
 - da versione funzione 14, la Edge Function passa al worker le credenziali Matchpoint lette dai secret Supabase solo nella chiamata server-to-server protetta da API key; il worker non deve duplicare `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD` salvo test locali isolati.
 - worker browser/headless iniziale: `tools/matchpoint-browser-worker`, Node/Playwright, endpoint `POST /export-clients`, protetto da `MATCHPOINT_WORKER_API_KEY`. Le credenziali Matchpoint non vengono salvate in HTML, repository o localStorage.
+- deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase TEST.
 
 Validazioni bloccanti:
 
@@ -194,6 +195,7 @@ Nota di verifica:
 - con secret presenti e password confermate corrette dall'utente, la funzione v11 arriva al login Matchpoint ma viene rimandata a `Login.aspx`;
 - test TEST 2026-05-08: la funzione v12 ha provato l'allineamento lingua rilevato nel form, ma Matchpoint ha restituito ancora `MATCHPOINT_LOGIN_FAILED` con diagnostica salvata; la strada tecnica successiva e' il fallback con worker browser/headless, gia previsto dal piano.
 - sviluppo 2026-05-08: aggiunto il fallback worker/headless nella funzione v13 e creato il worker Node/Playwright. La v14 evita la duplicazione delle credenziali Matchpoint nel worker: le legge dai secret Supabase e le invia solo alla chiamata server-to-server protetta. L'import automatico completo richiede ancora un URL pubblico HTTPS del worker e la configurazione dei secret `MATCHPOINT_BROWSER_WORKER_URL` / `MATCHPOINT_BROWSER_WORKER_API_KEY` su Supabase TEST.
+- sviluppo worker Render 2026-05-08: aggiunta configurazione Docker/Render stabile per evitare tunnel temporanei. Prima del test finale occorre creare il servizio Render, recuperare l'URL `onrender.com` e impostare in Supabase TEST i secret `MATCHPOINT_BROWSER_WORKER_URL` e `MATCHPOINT_BROWSER_WORKER_API_KEY`.
 
 ## Test locali v5.228
 

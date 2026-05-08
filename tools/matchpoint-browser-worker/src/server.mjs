@@ -7,6 +7,7 @@ const { chromium } = require('playwright');
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
 const DEFAULT_CLIENTS_PATH = '/clientes/Listadoclientes.aspx?pagesize=15';
 const DEFAULT_EXPORT_TARGET = 'ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar';
+const MAX_BODY_BYTES = 64 * 1024;
 
 function clean(value) {
   return String(value ?? '').trim();
@@ -34,7 +35,18 @@ function json(res, status, body) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    let total = 0;
+    req.on('data', (chunk) => {
+      total += chunk.length;
+      if (total > MAX_BODY_BYTES) {
+        const error = new Error('REQUEST_BODY_TOO_LARGE');
+        error.status = 413;
+        reject(error);
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
       const text = Buffer.concat(chunks).toString('utf8');
       if (!text) return resolve({});

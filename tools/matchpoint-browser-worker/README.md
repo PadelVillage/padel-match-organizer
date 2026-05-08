@@ -40,6 +40,39 @@ curl -X POST http://127.0.0.1:8787/export-clients \
 
 La risposta contiene `base64`, `filename`, `contentType` e diagnostica tecnica sanificata. La validazione del foglio `Risultati` resta nella Edge Function Supabase.
 
+## Deploy stabile su Render
+
+Il repository contiene un Blueprint Render in `render.yaml` e un `Dockerfile` dedicato al worker.
+
+Configurazione prevista:
+
+- servizio web Docker `pmo-matchpoint-browser-worker-test`;
+- branch `test-preview`;
+- regione `frankfurt`;
+- health check `/health`;
+- piano `starter`, per evitare sleep/cold start lunghi durante l'import clienti.
+
+Secret richiesto in Render:
+
+| Nome | Valore |
+|---|---|
+| `MATCHPOINT_WORKER_API_KEY` | chiave lunga casuale condivisa solo con Supabase TEST |
+
+Non salvare in Render:
+
+- `MATCHPOINT_USERNAME`;
+- `MATCHPOINT_PASSWORD`.
+
+Le credenziali Matchpoint restano nei secret Supabase TEST e vengono inviate al worker solo dalla Edge Function, con chiamata server-to-server protetta.
+
+Dopo il primo deploy Render:
+
+1. aprire `https://<servizio-render>.onrender.com/health`;
+2. verificare risposta `{ "ok": true, "service": "pmo-matchpoint-browser-worker" }`;
+3. salvare in Supabase TEST:
+   - `MATCHPOINT_BROWSER_WORKER_URL=https://<servizio-render>.onrender.com`;
+   - `MATCHPOINT_BROWSER_WORKER_API_KEY=<stessa chiave impostata su Render>`.
+
 ## Variabili ambiente
 
 | Nome | Obbligatoria | Note |
