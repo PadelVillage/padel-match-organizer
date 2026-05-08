@@ -535,9 +535,10 @@ function submitControl(formHtml: string, pattern: RegExp) {
     if (match[1].toLocaleLowerCase('it-IT') === 'input' && !['submit', 'button', 'image'].includes(type)) continue;
     const label = compactSpaces(`${attr(tag, 'value')} ${tag.replace(/<[^>]+>/g, ' ')}`);
     if (!pattern.test(label)) continue;
-    return { name: attr(tag, 'name'), value: attr(tag, 'value') || label };
+    const eventTarget = htmlDecode(attr(tag, 'onclick')).match(/__doPostBack\(\s*['"]([^'"]+)['"]/i)?.[1] || '';
+    return { name: attr(tag, 'name'), value: attr(tag, 'value') || label, eventTarget };
   }
-  return { name: '', value: '' };
+  return { name: '', value: '', eventTarget: '' };
 }
 
 function stripTags(value: string) {
@@ -814,8 +815,9 @@ async function loginToMatchpoint(session: MatchpointSession) {
     throw new Error(`MATCHPOINT_LOGIN_FIELDS_NOT_FOUND:${JSON.stringify({ userNameFound: !!userName, passwordNameFound: !!passwordName })}`);
   }
   const fields = { ...loginForm.fields, [userName]: username, [passwordName]: password };
-  const submit = submitControl(loginForm.html, /entra|entrar|login|accedi|acceder/i);
+  const submit = submitControl(loginForm.html, /entra|entrar|login|accedi|acceder|iniciar/i);
   if (submit.name) fields[submit.name] = submit.value;
+  if (submit.eventTarget) fields.__EVENTTARGET = submit.eventTarget;
 
   response = await session.postForm(loginForm.actionUrl, fields, currentUrl);
   text = await response.text();
@@ -835,6 +837,7 @@ async function loginToMatchpoint(session: MatchpointSession) {
     const enterFields = { ...enterForm.fields };
     const enterSubmit = submitControl(enterForm.html, /entra|entrar|acceder/i);
     if (enterSubmit.name) enterFields[enterSubmit.name] = enterSubmit.value;
+    if (enterSubmit.eventTarget) enterFields.__EVENTTARGET = enterSubmit.eventTarget;
     response = await session.postForm(enterForm.actionUrl, enterFields, currentUrl);
     text = await response.text();
     currentUrl = response.url;
