@@ -2,7 +2,7 @@ services:
   - type: web
     name: pmo-matchpoint-browser-worker-test
     runtime: docker
-    plan: starter
+    plan: free
     region: frankfurt
     branch: test-preview
     autoDeployTrigger: commit

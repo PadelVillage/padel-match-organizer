@@ -50,7 +50,7 @@ Configurazione prevista:
 - branch `test-preview`;
 - regione `frankfurt`;
 - health check `/health`;
-- piano `starter`, per evitare sleep/cold start lunghi durante l'import clienti.
+- piano `free` per il primo test senza carta di pagamento; se il cold start risulta troppo lento, passare a `starter`.
 
 Secret richiesto in Render:
 
