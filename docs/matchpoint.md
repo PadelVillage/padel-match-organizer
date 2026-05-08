@@ -121,7 +121,7 @@ Funzione server:
   - TEST: progetto Supabase `cudiqnrrlbyqryrtaprd`;
   - PROD: progetto Supabase `qqbfphyslczzkxoncgex`;
 - deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 18, `verify_jwt=true`;
-- deploy PROD: deve usare la stessa funzione `matchpoint-clients-sync`, `verify_jwt=true`, con secret dedicati nel progetto PROD;
+- deploy PROD: attivo su progetto `qqbfphyslczzkxoncgex`, funzione `matchpoint-clients-sync`, versione 1, `verify_jwt=true`, con secret dedicati nel progetto PROD;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
