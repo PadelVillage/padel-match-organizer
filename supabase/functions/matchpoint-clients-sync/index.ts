@@ -19,6 +19,11 @@ type MatchpointExport = {
   diagnostic: JsonMap;
 };
 
+type ExportDiscovery = {
+  target: string;
+  candidates: Array<{ target: string; score: number; reason: string }>;
+};
+
 type ParsedMember = {
   id: string;
   memberId: string;
@@ -598,6 +603,118 @@ function discoverExportSubmitControl(formHtml: string) {
   return { name: '', value: '' };
 }
 
+function discoverExportLink(html: string, currentUrl: string) {
+  const pattern = exportPattern();
+  const candidates: Array<{ url: string; href: string; score: number; reason: string }> = [];
+  for (const match of htmlDecode(html).matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)) {
+    const tag = match[0];
+    const href = attr(tag, 'href');
+    if (!href || /^javascript:/i.test(href) || href === '#') continue;
+    const label = stripTags(tag);
+    const context = compactSpaces(`${href} ${attr(tag, 'id')} ${attr(tag, 'class')} ${attr(tag, 'title')} ${label}`);
+    if (!pattern.test(context) || /delete|eliminar|remove|borrar|logout|login/i.test(context)) continue;
+    let score = 0;
+    if (/exportar|export/i.test(context)) score += 70;
+    if (/excel|xls|xlsx/i.test(context)) score += 60;
+    if (/csv/i.test(context)) score += 35;
+    if (/descargar|download|scarica|esporta/i.test(context)) score += 30;
+    candidates.push({ url: new URL(href, currentUrl).toString(), href, score, reason: 'anchor' });
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0] || { url: '', href: '', score: 0, reason: '' };
+}
+
+function collectPostbackTargets(html: string) {
+  const decoded = htmlDecode(html);
+  const targets: string[] = [];
+  const add = (target: string) => {
+    const value = htmlDecode(target);
+    if (value && !targets.includes(value)) targets.push(value);
+  };
+  for (const match of decoded.matchAll(/__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"][^'"]*['"]\s*\)/gi)) add(match[1]);
+  for (const match of decoded.matchAll(/WebForm_DoPostBackWithOptions\(\s*new\s+WebForm_PostBackOptions\(\s*['"]([^'"]+)['"]/gi)) add(match[1]);
+  return targets.slice(0, 80);
+}
+
+function safeTagControl(tag: string) {
+  const name = attr(tag, 'name');
+  const id = attr(tag, 'id');
+  const type = attr(tag, 'type');
+  const className = attr(tag, 'class');
+  const title = attr(tag, 'title');
+  const alt = attr(tag, 'alt');
+  const href = attr(tag, 'href');
+  const onclick = attr(tag, 'onclick');
+  return {
+    tag: (tag.match(/^<\s*([a-z0-9]+)/i)?.[1] || '').toLocaleLowerCase('it-IT'),
+    name,
+    id,
+    type,
+    className,
+    title,
+    alt,
+    href: href ? href.slice(0, 240) : '',
+    onclickHint: onclick ? onclick.replace(/\s+/g, ' ').slice(0, 240) : '',
+  };
+}
+
+function collectTechnicalControls(html: string) {
+  const pattern = /export|exportar|excel|xls|xlsx|csv|descargar|download|scarica|esporta|acciones|accion|toolbar|tool|grid|listado/i;
+  const controls: JsonMap[] = [];
+  for (const match of htmlDecode(html).matchAll(/<(a|input|button|img|span)\b[^>]*(?:>[\s\S]*?<\/\1>)?/gi)) {
+    const tag = match[0];
+    const summary = safeTagControl(tag);
+    const label = stripTags(tag);
+    const context = compactSpaces(`${summary.name} ${summary.id} ${summary.type} ${summary.className} ${summary.title} ${summary.alt} ${summary.href} ${summary.onclickHint} ${label}`);
+    if (!pattern.test(context)) continue;
+    controls.push({
+      ...summary,
+      labelHint: exportPattern().test(label) ? label.slice(0, 120) : '',
+    });
+    if (controls.length >= 80) break;
+  }
+  return controls;
+}
+
+function collectExportDiagnostics(
+  html: string,
+  currentUrl: string,
+  configuredTarget: string,
+  discoveredPostback: ExportDiscovery | null = null,
+  submitExport: JsonMap | null = null,
+  exportLink: JsonMap | null = null,
+) {
+  const forms = extractForms(html, currentUrl);
+  const title = stripTags((html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '').slice(0, 240));
+  return {
+    url: currentUrl,
+    title,
+    htmlSize: html.length,
+    hasViewState: html.includes('__VIEWSTATE'),
+    hasEventValidation: html.includes('__EVENTVALIDATION'),
+    configuredTarget,
+    configuredTargetFound: !!configuredTarget && html.includes(configuredTarget),
+    formCount: forms.length,
+    formActions: forms.slice(0, 8).map((form) => ({
+      actionUrl: form.actionUrl,
+      fieldCount: Object.keys(form.fields || {}).length,
+      hasViewState: Object.prototype.hasOwnProperty.call(form.fields || {}, '__VIEWSTATE'),
+    })),
+    postbackTargets: collectPostbackTargets(html),
+    exportCandidates: discoveredPostback?.candidates || [],
+    submitControl: submitExport?.name ? submitExport : null,
+    exportLink: exportLink?.url ? exportLink : null,
+    technicalControls: collectTechnicalControls(html),
+  };
+}
+
+function errorWithDiagnostic(code: string, diagnostic: JsonMap) {
+  const error = new Error(`${code}:${JSON.stringify(diagnostic)}`);
+  (error as any).code = code;
+  (error as any).diagnostic = diagnostic;
+  return error;
+}
+
 function looksLikeLoginPage(html: string, url = '') {
   return /type\s*=\s*["']?password/i.test(html) || /Login\.aspx/i.test(url);
 }
@@ -675,31 +792,42 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
   let { response, text } = await session.text(clientsPath);
   if (looksLikeLoginPage(text, response.url)) throw new Error('MATCHPOINT_CLIENTS_PAGE_NOT_AUTHENTICATED');
   if (!text.includes('__VIEWSTATE')) {
-    throw new Error(`MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND:${JSON.stringify({
-      url: response.url,
-      hasViewState: text.includes('__VIEWSTATE'),
-      hasExportTarget: false,
-    })}`);
+    throw errorWithDiagnostic(
+      'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
+      collectExportDiagnostics(text, response.url, exportTarget),
+    );
   }
 
   const form = extractForms(text, response.url).find((item) => item.html.includes('__VIEWSTATE')) || extractForms(text, response.url)[0];
   const discoveredPostback = discoverExportPostbackTarget(text, exportTarget);
   const submitExport = discoveredPostback.target ? { name: '', value: '' } : discoverExportSubmitControl(form.html);
-  if (!discoveredPostback.target && !submitExport.name) {
-    throw new Error(`MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND:${JSON.stringify({
-      url: response.url,
-      hasViewState: text.includes('__VIEWSTATE'),
-      hasExportTarget: false,
-      candidates: discoveredPostback.candidates,
-    })}`);
+  const exportLink = (!discoveredPostback.target && !submitExport.name)
+    ? discoverExportLink(text, response.url)
+    : { url: '', href: '', score: 0, reason: '' };
+  if (!discoveredPostback.target && !submitExport.name && !exportLink.url) {
+    throw errorWithDiagnostic(
+      'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND',
+      collectExportDiagnostics(text, response.url, exportTarget, discoveredPostback, submitExport, exportLink),
+    );
   }
-  const fields = {
-    ...form.fields,
-    __EVENTTARGET: discoveredPostback.target,
-    __EVENTARGUMENT: '',
-  };
-  if (submitExport.name) fields[submitExport.name] = submitExport.value;
-  const exportResponse = await session.postForm(form.actionUrl, fields, response.url);
+  let exportResponse: Response;
+  if (exportLink.url) {
+    exportResponse = await session.fetch(exportLink.url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*',
+        Referer: response.url,
+      },
+    });
+  } else {
+    const fields = {
+      ...form.fields,
+      __EVENTTARGET: discoveredPostback.target,
+      __EVENTARGUMENT: '',
+    };
+    if (submitExport.name) fields[submitExport.name] = submitExport.value;
+    exportResponse = await session.postForm(form.actionUrl, fields, response.url);
+  }
   const bytes = new Uint8Array(await exportResponse.arrayBuffer());
   const contentType = exportResponse.headers.get('content-type') || '';
   const disposition = exportResponse.headers.get('content-disposition') || '';
@@ -728,6 +856,7 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
       exportStatus: exportResponse.status,
       exportPostbackTarget: discoveredPostback.target,
       exportSubmitControl: submitExport.name,
+      exportLink: exportLink.url,
     },
   };
 }
@@ -798,6 +927,52 @@ async function logAudit(admin: any, actor: StaffActor | null, action: string, de
     action,
     detail,
   });
+}
+
+function parseErrorInfo(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const attachedDiagnostic = error && typeof error === 'object' ? (error as any).diagnostic : null;
+  const attachedCode = error && typeof error === 'object' ? clean((error as any).code || '') : '';
+  const splitIndex = message.indexOf(':');
+  const code = attachedCode || (splitIndex > 0 && message.slice(0, splitIndex).startsWith('MATCHPOINT_')
+    ? message.slice(0, splitIndex)
+    : message);
+  let diagnostic = attachedDiagnostic || null;
+  if (!diagnostic && splitIndex > 0 && message.slice(0, splitIndex).startsWith('MATCHPOINT_')) {
+    try { diagnostic = JSON.parse(message.slice(splitIndex + 1)); } catch { diagnostic = null; }
+  }
+  return {
+    code,
+    message,
+    publicMessage: code.startsWith('MATCHPOINT_') ? code : message.slice(0, 500),
+    diagnostic,
+  };
+}
+
+async function saveFailureDiagnostic(admin: any, actor: StaffActor | null, importedAt: string, errorInfo: JsonMap) {
+  if (!actor || !String(errorInfo.code || '').startsWith('MATCHPOINT_')) return { saved: false, reason: 'SKIPPED' };
+  const payload = {
+    id: 'matchpoint_clients_auto_diagnostic_last',
+    type: 'clienti',
+    source: 'matchpoint_auto',
+    importedAt,
+    actorEmail: actor.email,
+    code: errorInfo.code,
+    message: errorInfo.publicMessage,
+    diagnostic: errorInfo.diagnostic || null,
+  };
+  const { error } = await admin
+    .from('pmo_cloud_records')
+    .upsert([{
+      record_type: 'matchpoint_data',
+      local_key: 'matchpoint_clients_auto_diagnostic_last',
+      payload,
+      payload_hash: null,
+      deleted: false,
+      synced_at: importedAt,
+    }], { onConflict: 'record_type,local_key' });
+  if (error) return { saved: false, error: error.message || String(error) };
+  return { saved: true };
 }
 
 Deno.serve(async (req) => {
@@ -920,14 +1095,27 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const errorInfo = parseErrorInfo(error);
+    const message = errorInfo.message;
+    const diagnosticSaved = await saveFailureDiagnostic(admin, actor, importedAt, errorInfo).catch((diagnosticError) => ({
+      saved: false,
+      error: diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError),
+    }));
     await logAudit(admin, actor, 'matchpoint_clients_auto_import_error', {
-      message,
+      message: errorInfo.publicMessage,
+      code: errorInfo.code,
+      diagnosticSaved,
       fallback: message.includes('MATCHPOINT_EXPORT_FAILED') ? 'browser_worker_headless' : null,
     }).catch(() => {});
     if (message === 'AUTH_REQUIRED') return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff Supabase richiesto.');
     if (message === 'MATCHPOINT_SECRETS_MISSING') {
       return errorResponse(500, 'MATCHPOINT_SECRETS_MISSING', 'Mancano MATCHPOINT_USERNAME o MATCHPOINT_PASSWORD nei secret Supabase TEST.');
+    }
+    if (errorInfo.code === 'MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND') {
+      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved });
+    }
+    if (errorInfo.code === 'MATCHPOINT_EXPORT_FAILED') {
+      return errorResponse(500, errorInfo.code, errorInfo.publicMessage, { diagnosticSaved, fallback: 'browser_worker_headless' });
     }
     return errorResponse(500, 'MATCHPOINT_CLIENTS_SYNC_FAILED', message);
   }
