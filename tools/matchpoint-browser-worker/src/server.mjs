@@ -95,15 +95,15 @@ async function visibleCount(locator) {
   return visible;
 }
 
-async function clickFirstVisibleWithDownload(page, selector, diagnostic) {
-  const locator = page.locator(selector);
+async function clickFirstVisibleWithDownload(page, targetContext, selector, diagnostic) {
+  const locator = targetContext.locator(selector);
   const count = await locator.count().catch(() => 0);
   diagnostic.exportSelectorAttempts.push({ selector, count });
   for (let i = 0; i < Math.min(count, 8); i += 1) {
     const item = locator.nth(i);
     if (!(await item.isVisible().catch(() => false))) continue;
     const downloadPromise = page.waitForEvent('download', { timeout: 45000 });
-    await item.click({ timeout: 10000 });
+    await item.click({ timeout: 10000, noWaitAfter: true });
     return downloadPromise;
   }
   return null;
@@ -126,14 +126,72 @@ async function clickFirstVisibleLocator(locator, actionName, diagnostic, timeout
 async function clickMenuEntry(page, label, actionName, diagnostic) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   const locators = [
-    page.getByText(label, { exact: true }),
     page.locator(`a:has-text("${label}"), button:has-text("${label}"), [role="button"]:has-text("${label}")`),
+    page.getByText(label, { exact: true }),
     page.locator(`text=/${escaped}/i`),
   ];
   for (const locator of locators) {
     if (await clickFirstVisibleLocator(locator, actionName, diagnostic)) return true;
   }
   return false;
+}
+
+function pageContentContexts(page) {
+  const frames = page.frames().filter((frame) => frame !== page.mainFrame());
+  return [
+    { kind: 'page', index: 0, target: page, url: page.url() },
+    ...frames.map((frame, index) => ({
+      kind: 'frame',
+      index,
+      target: frame,
+      url: frame.url(),
+    })),
+  ];
+}
+
+async function readContextTitle(target) {
+  if (typeof target.title === 'function') {
+    return target.title().catch(() => '');
+  }
+  return target.evaluate(() => document.title || '').catch(() => '');
+}
+
+async function readContextBody(target, timeout = 1200) {
+  return target.locator('body').innerText({ timeout }).catch(() => '');
+}
+
+async function findPlayersExportContext(page, diagnostic, timeout = 45000) {
+  const deadline = Date.now() + timeout;
+  let samples = [];
+  while (Date.now() < deadline) {
+    samples = [];
+    for (const entry of pageContentContexts(page)) {
+      const bodyText = await readContextBody(entry.target);
+      const compactText = bodyText.replace(/\s+/g, ' ').trim();
+      const playersPageFound = compactText.includes('Giocatori');
+      const playersExportFound = /Esportare\s+in\s+excel/i.test(compactText);
+      const sample = {
+        kind: entry.kind,
+        index: entry.index,
+        url: entry.url,
+        playersPageFound,
+        playersExportFound,
+        bodySample: compactText.slice(0, 500),
+      };
+      samples.push(sample);
+      if (playersPageFound && playersExportFound) {
+        diagnostic.playersContext = sample;
+        diagnostic.playersUrl = entry.url;
+        diagnostic.playersTitle = await readContextTitle(entry.target);
+        diagnostic.playersPageFound = true;
+        diagnostic.playersExportFound = true;
+        return entry.target;
+      }
+    }
+    await page.waitForTimeout(600);
+  }
+  diagnostic.playersContextSamples = samples;
+  return null;
 }
 
 async function navigateToPlayersList(page, diagnostic) {
@@ -160,33 +218,23 @@ async function navigateToPlayersList(page, diagnostic) {
 
   await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
   await page.waitForTimeout(1500);
-  await page.waitForFunction(() => {
-    const text = document.body?.innerText || '';
-    return text.includes('Giocatori') && /Esportare\s+in\s+excel/i.test(text);
-  }, { timeout: 45000 }).catch(() => {});
-
-  const bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
-  diagnostic.playersUrl = page.url();
-  diagnostic.playersTitle = await page.title().catch(() => '');
-  diagnostic.playersPageFound = bodyText.includes('Giocatori');
-  diagnostic.playersExportFound = /Esportare\s+in\s+excel/i.test(bodyText);
-  if (!diagnostic.playersPageFound || !diagnostic.playersExportFound) {
+  const exportContext = await findPlayersExportContext(page, diagnostic);
+  if (!exportContext) {
     throw fail('MATCHPOINT_PLAYERS_PAGE_NOT_READY', 'Pagina Elenco giocatori non pronta o pulsante export non trovato.', {
       url: page.url(),
-      title: diagnostic.playersTitle,
-      playersPageFound: diagnostic.playersPageFound,
-      playersExportFound: diagnostic.playersExportFound,
-      bodySample: bodyText.replace(/\s+/g, ' ').slice(0, 800),
+      title: await page.title().catch(() => ''),
+      playersContextSamples: diagnostic.playersContextSamples || [],
       navigationAttempts: diagnostic.navigationAttempts || [],
     });
   }
+  return exportContext;
 }
 
-async function triggerPostbackDownload(page, target, diagnostic) {
+async function triggerPostbackDownload(page, targetContext, target, diagnostic) {
   if (!target) return null;
   diagnostic.exportPostbackTarget = target;
   const downloadPromise = page.waitForEvent('download', { timeout: 45000 });
-  await page.evaluate((postbackTarget) => {
+  await targetContext.evaluate((postbackTarget) => {
     if (typeof window.__doPostBack === 'function') {
       window.__doPostBack(postbackTarget, '');
       return;
@@ -202,7 +250,7 @@ async function triggerPostbackDownload(page, target, diagnostic) {
   return downloadPromise;
 }
 
-async function triggerExportDownload(page, exportTarget, diagnostic) {
+async function triggerExportDownload(page, exportContext, exportTarget, diagnostic) {
   diagnostic.exportSelectorAttempts = [];
   const selectors = [
     'button:has-text("Esportare in excel"), a:has-text("Esportare in excel"), input[value*="Esportare in excel"]',
@@ -220,14 +268,14 @@ async function triggerExportDownload(page, exportTarget, diagnostic) {
   ];
 
   for (const selector of selectors) {
-    const download = await clickFirstVisibleWithDownload(page, selector, diagnostic).catch((error) => {
+    const download = await clickFirstVisibleWithDownload(page, exportContext, selector, diagnostic).catch((error) => {
       diagnostic.exportSelectorAttempts.push({ selector, error: error.message });
       return null;
     });
     if (download) return download;
   }
 
-  const postbackDownload = await triggerPostbackDownload(page, exportTarget, diagnostic).catch((error) => {
+  const postbackDownload = await triggerPostbackDownload(page, exportContext, exportTarget, diagnostic).catch((error) => {
     diagnostic.exportPostbackError = error.message;
     return null;
   });
@@ -342,6 +390,7 @@ async function exportClientsWithBrowser(options = {}) {
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
+    let exportContext = page;
     if (navigationMode === 'direct_clients') {
       diagnostic.steps.push('clients_page');
       await page.goto(absoluteUrl(baseUrl, clientsPath), { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -362,11 +411,11 @@ async function exportClientsWithBrowser(options = {}) {
         });
       }
     } else {
-      await navigateToPlayersList(page, diagnostic);
+      exportContext = await navigateToPlayersList(page, diagnostic);
     }
 
     diagnostic.steps.push('export_click');
-    const download = await triggerExportDownload(page, exportTarget, diagnostic);
+    const download = await triggerExportDownload(page, exportContext, exportTarget, diagnostic);
     const filename = download.suggestedFilename() || `matchpoint-clienti-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
     const bytes = await bufferFromDownload(download);
     diagnostic.downloadedAt = new Date().toISOString();
