@@ -5555,7 +5555,8 @@ body.assessment-public-mode .assessment-public-only-card {
       }
       DATA_KEYS.forEach(key => {
         if (Object.prototype.hasOwnProperty.call(snapshot, key)) {
-          pmoLocalSetItem(key, JSON.stringify(snapshot[key]));
+          const value = key === 'dailyDiffHistory' ? normalizeDailyDiffHistory(snapshot[key]) : snapshot[key];
+          pmoLocalSetItem(key, JSON.stringify(value));
         }
       });
       giocatori = safeLoad('giocatori', []);
@@ -5566,7 +5567,8 @@ body.assessment-public-mode .assessment-public-only-card {
       matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
       contactHistory = safeLoad('contactHistory', {});
       weeklyContactLog = safeLoad('weeklyContactLog', {});
-      dailyDiffHistory = safeLoad('dailyDiffHistory', []);
+      dailyDiffHistory = normalizeDailyDiffHistory(safeLoad('dailyDiffHistory', []));
+      saveDailyDiffHistory();
       lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
       dailyAssistantState = safeLoad('dailyAssistantState', {});
       dailyPlayerGroups = safeLoad('dailyPlayerGroups', []);
