@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto integrato in v5.357 TEST.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD.
 
 ## Obiettivo
 
@@ -78,7 +78,14 @@ Stato TEST:
 - bucket privato `pmo-app-backups` creato su `cudiqnrrlbyqryrtaprd`;
 - Edge Function `pmo-cloud-backup` attiva in versione 1 con `verify_jwt=true`;
 - UI `DATI (in/out)` collegata in `index.html` v5.357 dopo approvazione mockup;
-- nessun oggetto creato finche' la UI non invia il primo `save`.
+- salvataggio validato: due eventi `cloud_backup_save` hanno lasciato un solo oggetto `latest/browser-backup.json`.
+
+Stato PROD:
+
+- bucket privato `pmo-app-backups` creato su `qqbfphyslczzkxoncgex`;
+- Edge Function `pmo-cloud-backup` attiva in versione 1 con `verify_jwt=true`;
+- hash funzione uguale a TEST (`5b23ab7726948cc3247da83b2709e295b82f3093f00840e11824c002cf1d36e9`);
+- nessun oggetto presente finche' la UI PROD non invia il primo `save`.
 
 Metadati:
 
