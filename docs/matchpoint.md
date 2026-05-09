@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico candidato v5.358 TEST con funzione `matchpoint-history-sync`.
 
 ## Obiettivo
 
@@ -101,6 +101,53 @@ Ripristino:
 - la app deve creare prima uno snapshot locale di sicurezza;
 - il ripristino richiede conferma forte `RIPRISTINA`;
 - resta il controllo ambiente TEST/PROD gia presente per i backup locali.
+
+## Storico Matchpoint automatico v5.358 TEST
+
+Obiettivo:
+
+- scaricare automaticamente da Matchpoint lo storico prenotazioni degli ultimi 30 giorni;
+- aggiungere in Supabase solo le righe `booking_history` mancanti;
+- non sovrascrivere record storici gia presenti;
+- non archiviare il file Excel scaricato, ne' in locale ne' in Supabase Storage.
+
+Percorso Matchpoint validato il 2026-05-09:
+
+1. Pagina iniziale dopo login: `Pannello di controllo generale`.
+2. Aprire il menu alto `Inf. e statistiche`.
+3. Scorrere fino al capitolo `Occupazione`.
+4. Cliccare `Elenco degli spazi occupati`.
+5. Nella pagina `Utenti negli spazi`, impostare `Dal Giorno` e `Al Giorno` sugli ultimi 30 giorni.
+6. Lasciare vuoti/neutri gli altri filtri: ora, spazio, giorno settimana, provenienza, tipo, gruppo e tipo prenotazioni.
+7. Lasciare non selezionato `Solo clienti che hanno gia pagato`.
+8. Cliccare `Generare una relazione`.
+9. Cliccare `Esportare in Excel`.
+
+Validazione file:
+
+- foglio richiesto: `Risultati`;
+- colonne minime: `Nome`, `Numero`, `Giorno`, `Ora`, `Ore`, `Spazio`;
+- colonne viste nel file reale: `Cod.`, `Identificatore`, `Nome`, `Sesso`, `Età`, `E-mail`, `Telefono cellulare`, `Numero`, `Giorno`, `Ora`, `Ore`, `G. sett`, `Spazio`, `Descrizione`, `Tipo`, `Importo Totale`, `Riscossa`;
+- il parser salta righe senza giocatore/data/ora/campo, righe `Ospite` e duplicati `Numero + Giocatore`.
+
+Scrittura cloud:
+
+- Edge Function: `matchpoint-history-sync`;
+- worker browser/headless: nuova rotta `POST /export-booking-history`;
+- record normalizzati in `pmo_cloud_records`;
+- `record_type = booking_history`;
+- chiave cloud allineata all'app: `history|numero|data|ora|campo|giocatore|durata`;
+- riepilogo leggero: `record_type = matchpoint_data`, `local_key = matchpoint_history_auto_import_last`;
+- diagnostica leggera piu recente: `local_key = matchpoint_history_auto_diagnostic_last`;
+- audit: `matchpoint_history_auto_import_success`, `matchpoint_history_auto_import_blocked`, `matchpoint_history_auto_import_error`.
+
+Regola dati:
+
+- il dato storico ufficiale resta quello cloud PROD;
+- TEST va riallineato da PROD prima dei collaudi quando serve confrontare la stessa base storica;
+- lo storico non e' una fotografia sostitutiva come i clienti: e' cumulativo;
+- ogni import aggiunge solo righe mancanti e protegge eventuali righe esistenti con la stessa chiave;
+- l'Excel Matchpoint e' solo temporaneo durante download, parse e upsert. Non va salvato in repo, documentazione, cartelle locali permanenti o Supabase Storage.
 
 ## Slot potenziali v5.234
 

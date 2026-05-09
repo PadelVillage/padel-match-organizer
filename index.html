@@ -1391,6 +1391,9 @@
     .matchpoint-data-file label { color:#344054; font-size:12px; font-weight:800; }
     .matchpoint-data-file input[type="file"] { width:100%; min-width:0; border:1px solid #cfd9e7; border-radius:7px; background:#fbfdff; padding:8px; color:#344054; font-size:12px; }
     .matchpoint-data-hint { min-height:33px; color:#667085; font-size:12px; }
+    .matchpoint-history-metrics { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; color:#344054; font-size:11px; }
+    .matchpoint-history-metrics span { min-width:0; border:1px solid #e4ebf4; border-radius:7px; background:#fbfdff; padding:7px 8px; }
+    .matchpoint-history-metrics strong { display:block; margin-top:2px; color:#101828; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .potential-slot-reference { display:grid; gap:7px; border:1px dashed #d7b06d; border-radius:7px; background:#fffaf0; padding:8px; color:#667085; font-size:12px; }
     .potential-slot-reference img { width:100%; max-height:96px; object-fit:cover; border:1px solid #e4d4b4; border-radius:6px; background:#fff; }
     .potential-slot-reference strong { color:#344054; }
@@ -4089,11 +4092,15 @@ body.assessment-public-mode .assessment-public-only-card {
             <h3><span class="matchpoint-data-step">3</span> Storico Matchpoint</h3>
             <p class="matchpoint-data-copy">Aggiunge le prenotazioni storiche mancanti. I record gia presenti restano protetti.</p>
             <div class="matchpoint-data-file">
-              <label for="historicBookingsFile">Scarica storico da Matchpoint</label>
-              <input type="file" id="historicBookingsFile" accept=".xlsx,.xls,.csv" onchange="markDataActionPending('history')" />
-              <div class="matchpoint-data-hint">Consigliato: ultimi 30 giorni esportati da Matchpoint.</div>
+              <label>Aggiorna storico da Matchpoint</label>
+              <div class="matchpoint-data-hint" id="matchpointHistoryAutoHint">Scarica gli ultimi 30 giorni, aggiunge solo le righe mancanti e scarta il file temporaneo dopo il salvataggio.</div>
+              <div class="matchpoint-history-metrics" aria-live="polite">
+                <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
+                <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
+                <span>Totale storico<strong id="matchpointHistoryTotalRows">-</strong></span>
+              </div>
               <div class="matchpoint-data-actions">
-                <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importHistoricalBookings()">Importa storico</button>
+                <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico da Matchpoint</button>
                 <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
               </div>
             </div>
@@ -4742,7 +4749,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.357';
+    const APP_VERSION = '5.358';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7751,6 +7758,15 @@ body.assessment-public-mode .assessment-public-only-card {
       if (raw.includes('MATCHPOINT_LOGIN_FAILED')) return 'Login Matchpoint non riuscito. Verifica credenziali e account dedicato.';
       if (raw.includes('MATCHPOINT_CLIENTS_EXPORT_TARGET_NOT_FOUND')) return 'Pagina clienti Matchpoint trovata, ma il pulsante export non e riconosciuto.';
       if (raw.includes('MATCHPOINT_EXPORT_FAILED')) return 'Export clienti Matchpoint non riuscito via postback HTTP. Serve passare al fallback browser headless.';
+      if (raw.includes('MATCHPOINT_BROWSER_WORKER_SECRETS_MISSING')) return 'Worker browser/headless Matchpoint non configurato nei secret Supabase.';
+      if (raw.includes('MATCHPOINT_BROWSER_WORKER_FAILED')) return 'Worker browser/headless Matchpoint non riuscito. Controlla che il servizio sia attivo e che il percorso Matchpoint sia ancora valido.';
+      if (raw.includes('MATCHPOINT_STATS_MENU_NOT_FOUND')) return 'Menu Inf. e statistiche non trovato in Matchpoint durante il download storico.';
+      if (raw.includes('MATCHPOINT_HISTORY_LINK_NOT_FOUND')) return 'Voce Elenco degli spazi occupati non trovata in Matchpoint.';
+      if (raw.includes('MATCHPOINT_HISTORY_PAGE_NOT_READY')) return 'Pagina storico Matchpoint non pronta o pulsante Generare una relazione non trovato.';
+      if (raw.includes('MATCHPOINT_HISTORY_RESULTS_NOT_READY')) return 'Relazione storico generata, ma il pulsante Esportare in Excel non e stato trovato.';
+      if (raw.includes('HISTORY_COLUMNS_MISSING')) return 'Il file storico esportato non contiene le colonne minime attese.';
+      if (raw.includes('NO_IMPORTABLE_HISTORY_ROWS')) return 'Il file storico esportato non contiene prenotazioni importabili.';
+      if (raw.includes('LOW_HISTORY_ROW_RATIO')) return 'Troppe poche righe del file sembrano prenotazioni storiche valide: import bloccato.';
       if (raw.includes('CLIENT_COLUMNS_MISSING')) return 'Il file esportato non contiene le colonne clienti minime.';
       if (raw.includes('SHEET_MISSING')) return 'Il file esportato non contiene il foglio Risultati.';
       if (raw.includes('AUTH_REQUIRED')) return 'Accesso staff Supabase richiesto.';
@@ -7851,6 +7867,204 @@ body.assessment-public-mode .assessment-public-only-card {
       });
     }
 
+    function formatHistoryDateForMetric(value) {
+      const iso = cleanCell(value || '');
+      const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return match ? `${match[3]}/${match[2]}/${match[1]}` : (iso || '-');
+    }
+
+    function updateMatchpointHistoryMetrics(rows={}, totalRows=0) {
+      const data = rows && typeof rows === 'object' ? rows : {};
+      const fromDate = data.fromDate || data.requestedFromDate || '';
+      const toDate = data.toDate || data.requestedToDate || '';
+      const periodEl = document.getElementById('matchpointHistoryPeriod');
+      const newRowsEl = document.getElementById('matchpointHistoryNewRows');
+      const totalRowsEl = document.getElementById('matchpointHistoryTotalRows');
+      if (periodEl) periodEl.textContent = fromDate || toDate ? `${formatHistoryDateForMetric(fromDate)} - ${formatHistoryDateForMetric(toDate)}` : '-';
+      if (newRowsEl) newRowsEl.textContent = data.newRows !== undefined ? String(data.newRows) : '-';
+      if (totalRowsEl) totalRowsEl.textContent = String(data.totalAfter || totalRows || storicoPrenotazioni.length || '-');
+    }
+
+    function applyHistoricalBookingsToLocal(importedBookings, options={}) {
+      const imported = Array.isArray(importedBookings) ? importedBookings : [];
+      if (!imported.length) {
+        return {
+          ok:false,
+          message:'Nessuna prenotazione storica valida importata.',
+          newRows:0,
+          alreadyPresentRows:0,
+          protectedDifferentRows:0,
+          totalBefore:storicoPrenotazioni.length,
+          totalAfter:storicoPrenotazioni.length
+        };
+      }
+
+      const source = cleanCell(options.source || 'manual');
+      const dates = imported.map(p => p.data).filter(Boolean).sort();
+      const fromDate = cleanCell(options.fromDate || dates[0] || '');
+      const toDate = cleanCell(options.toDate || dates[dates.length - 1] || '');
+      const previousTotal = storicoPrenotazioni.length;
+      const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
+      const sourceRows = Math.max(0, parseInt(options.sourceRows, 10) || 0);
+      const importedRows = Math.max(0, parseInt(options.importedRows ?? imported.length, 10) || imported.length);
+      const cloudNewRows = options.cloudNewRows !== undefined ? Math.max(0, parseInt(options.cloudNewRows, 10) || 0) : null;
+
+      // Storico protetto: lo storico e cumulativo. L'import non cancella e non sostituisce
+      // righe gia presenti; aggiunge solo prenotazioni nuove evitando duplicati.
+      const existingMap = new Map(storicoPrenotazioni.map(p => [bookingKey(p), p]));
+
+      let newRows = 0;
+      let alreadyPresentRows = 0;
+      let protectedDifferentRows = 0;
+      const newHistoryRows = [];
+
+      imported.forEach(newBooking => {
+        const key = bookingKey(newBooking);
+        const oldBooking = existingMap.get(key);
+        if (!oldBooking) {
+          storicoPrenotazioni.push(newBooking);
+          existingMap.set(key, newBooking);
+          newRows++;
+          newHistoryRows.push(newBooking);
+          return;
+        }
+        if (JSON.stringify(oldBooking) === JSON.stringify(newBooking)) alreadyPresentRows++;
+        else protectedDifferentRows++;
+      });
+
+      storicoPrenotazioni.sort((a, b) => `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
+      const removedOld12Months = pruneHistoricalBookings(false);
+      save('storicoPrenotazioni', storicoPrenotazioni);
+      saveDailyDiff({
+        type: 'storico prenotazioni',
+        label: 'storico prenotazioni',
+        source,
+        sourceRows,
+        importedRows,
+        added: newHistoryRows,
+        addedCount: newRows,
+        removed: [],
+        modified: [],
+        skipped,
+        alreadyPresentRows,
+        protectedDifferentRows,
+        fromDate,
+        toDate,
+        totalBefore: previousTotal,
+        totalAfter: storicoPrenotazioni.length
+      });
+      const metrics = {
+        'Periodo file': `${fromDate} - ${toDate}`,
+        'Totale prima': previousTotal,
+        'Totale dopo': storicoPrenotazioni.length,
+        'Nuove righe': newRows,
+        'Gia presenti': alreadyPresentRows,
+        'Diverse protette': protectedDifferentRows,
+        'Eliminate oltre 12 mesi': removedOld12Months,
+        'Righe saltate o duplicate': skipped
+      };
+      if (cloudNewRows !== null) metrics['Nuove righe cloud'] = cloudNewRows;
+      saveLastMatchpointImportSummary({
+        type: 'storico prenotazioni',
+        label: source === 'automatic' ? 'storico prenotazioni automatico' : 'storico prenotazioni',
+        source,
+        metrics,
+        message: options.message || 'Storico aggiornato in modalita cumulativa, senza sovrascrivere record gia presenti.'
+      });
+      refreshAfterDataImport();
+      markDataActionDone('history', source === 'automatic' ? 'Storico aggiornato da Matchpoint' : 'Storico importato e salvato');
+      updateMatchpointHistoryMetrics({
+        fromDate,
+        toDate,
+        newRows: cloudNewRows !== null ? cloudNewRows : newRows,
+        totalAfter: storicoPrenotazioni.length
+      }, storicoPrenotazioni.length);
+      if (historicalBookingSearchHasActiveFilters()) searchHistoricalBookings();
+
+      return {
+        ok:true,
+        fromDate,
+        toDate,
+        previousTotal,
+        newRows,
+        alreadyPresentRows,
+        protectedDifferentRows,
+        removedOld12Months,
+        skipped,
+        totalAfter: storicoPrenotazioni.length
+      };
+    }
+
+    async function pmoInvokeMatchpointHistorySync(accessToken) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-history-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ source: 'pmo_dati_in_out', version: APP_VERSION })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || data?.ok === false) {
+        console.warn('PMO_MATCHPOINT_HISTORY_SYNC_ERROR', JSON.stringify(data || text || `Errore HTTP ${response.status}`));
+        throw new Error(pmoFriendlyMatchpointAutoError(data || text || `Errore HTTP ${response.status}`));
+      }
+      return data;
+    }
+
+    async function pmoLoadMatchpointHistoryFromCloud() {
+      const rows = await pmoStaffRpc('pmo_get_records_admin', {
+        p_record_types: ['booking_history', 'matchpoint_data'],
+        p_since: null
+      }, 'cloud_sync', 'scaricare storico Matchpoint dal cloud');
+      const list = Array.isArray(rows) ? rows : [];
+      const history = list
+        .filter(row => row?.record_type === 'booking_history' && !row.deleted && row.payload)
+        .map(row => ({ ...row.payload }))
+        .sort((a, b) => `${a.data || ''} ${a.ora || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''}`));
+      const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_history_auto_import_last')?.payload || null;
+      return { history, summary };
+    }
+
+    async function importMatchpointHistoryAutomatic() {
+      const button = document.getElementById('matchpointHistoryImportButton');
+      try {
+        setDataActionStatus('history', 'pending', 'Aggiornamento storico in corso');
+        if (button) button.disabled = true;
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare storico da Matchpoint');
+        const syncResult = await pmoInvokeMatchpointHistorySync(staff.accessToken);
+        const syncHistory = Array.isArray(syncResult?.cloud?.history) ? syncResult.cloud.history : [];
+        const cloud = syncHistory.length ? { history: syncHistory, summary: syncResult?.summary || null } : await pmoLoadMatchpointHistoryFromCloud();
+        if (!cloud.history.length) throw new Error('Nessuno storico trovato nel cloud dopo l’export Matchpoint.');
+        const rows = syncResult?.summary?.rows || cloud.summary?.rows || {};
+        const localResult = applyHistoricalBookingsToLocal(cloud.history, {
+          source: 'automatic',
+          sourceRows: rows.sourceRows || syncResult?.cloud?.historyRows || cloud.history.length,
+          importedRows: rows.importableRows || syncResult?.cloud?.historyRows || cloud.history.length,
+          skipped: rows.skipped || 0,
+          fromDate: rows.fromDate || rows.requestedFromDate || '',
+          toDate: rows.toDate || rows.requestedToDate || '',
+          cloudNewRows: rows.newRows || 0,
+          message: 'Storico aggiornato da Matchpoint automatico e sincronizzato in locale.'
+        });
+        updateMatchpointHistoryMetrics(rows, cloud.history.length);
+        showAlert(
+          `✅ Storico Matchpoint aggiornato. Nuove righe cloud: ${rows.newRows || 0}. Righe aggiunte in questo browser: ${localResult.newRows}. Totale storico locale: ${localResult.totalAfter}.`,
+          'success'
+        );
+      } catch (err) {
+        const message = pmoFriendlyMatchpointAutoError(err);
+        setDataActionStatus('history', 'error', message);
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
     function importHistoricalBookings() {
       const file = document.getElementById('historicBookingsFile')?.files?.[0];
       if (!file) return showAlert('❌ Seleziona il file storico prenotazioni Excel', 'danger');
@@ -7861,77 +8075,19 @@ body.assessment-public-mode .assessment-public-only-card {
         const imported = parsed.bookings;
         if (!validateParsedMatchpointData('history', file, { ...parsed, sourceRows: rows.length })) return;
 
-        if (!imported.length) {
+        const result = applyHistoricalBookingsToLocal(imported, {
+          source: 'manual',
+          sourceRows: rows.length,
+          importedRows: imported.length,
+          skipped: parsed.skipped
+        });
+        if (!result.ok) {
           showAlert('⚠️ File storico letto, ma nessuna prenotazione valida importata. Controlla colonne e date.', 'warning');
           return;
         }
 
-        const dates = imported.map(p => p.data).filter(Boolean).sort();
-        const fromDate = dates[0];
-        const toDate = dates[dates.length - 1];
-        const previousTotal = storicoPrenotazioni.length;
-
-        // v5.14.7.7 - Storico protetto:
-        // lo storico è cumulativo. L'import dei dati passati NON cancella e NON sostituisce
-        // le righe già presenti: aggiunge solo prenotazioni nuove, evitando duplicati.
-        const existingMap = new Map(storicoPrenotazioni.map(p => [bookingKey(p), p]));
-
-        let newRows = 0;
-        let alreadyPresentRows = 0;
-        let protectedDifferentRows = 0;
-        const newHistoryRows = [];
-
-        imported.forEach(newBooking => {
-          const key = bookingKey(newBooking);
-          const oldBooking = existingMap.get(key);
-          if (!oldBooking) {
-            storicoPrenotazioni.push(newBooking);
-            existingMap.set(key, newBooking);
-            newRows++;
-            newHistoryRows.push(newBooking);
-            return;
-          }
-          if (JSON.stringify(oldBooking) === JSON.stringify(newBooking)) alreadyPresentRows++;
-          else protectedDifferentRows++;
-        });
-
-        storicoPrenotazioni.sort((a, b) => `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
-        const removedOld12Months = pruneHistoricalBookings(false);
-        save('storicoPrenotazioni', storicoPrenotazioni);
-        saveDailyDiff({
-          type: 'storico prenotazioni',
-          added: newHistoryRows,
-          removed: [],
-          modified: [],
-          skipped: parsed.skipped,
-          alreadyPresentRows,
-          protectedDifferentRows,
-          fromDate,
-          toDate,
-          totalBefore: previousTotal,
-          totalAfter: storicoPrenotazioni.length
-        });
-        saveLastMatchpointImportSummary({
-          type: 'storico prenotazioni',
-          label: 'storico prenotazioni',
-          metrics: {
-            'Periodo file': `${fromDate} - ${toDate}`,
-            'Totale prima': previousTotal,
-            'Totale dopo': storicoPrenotazioni.length,
-            'Nuove righe': newRows,
-            'Gia presenti': alreadyPresentRows,
-            'Diverse protette': protectedDifferentRows,
-            'Eliminate oltre 12 mesi': removedOld12Months,
-            'Righe saltate o duplicate': parsed.skipped
-          },
-          message: 'Storico aggiornato in modalita cumulativa, senza sovrascrivere record gia presenti.'
-        });
-        refreshAfterDataImport();
-        markDataActionDone('history', 'Storico importato e salvato');
-        if (historicalBookingSearchHasActiveFilters()) searchHistoricalBookings();
-
         showAlert(
-          `✅ Archivio storico aggiornato in modalità cumulativa (${fromDate} → ${toDate}). Totale storico: ${previousTotal} → ${storicoPrenotazioni.length}. Aggiunte: ${newRows}, già presenti: ${alreadyPresentRows}, diverse ma protette/non sovrascritte: ${protectedDifferentRows}, eliminate oltre 12 mesi: ${removedOld12Months}. Righe saltate: ${parsed.skipped}`,
+          `✅ Archivio storico aggiornato in modalità cumulativa (${result.fromDate} → ${result.toDate}). Totale storico: ${result.previousTotal} → ${result.totalAfter}. Aggiunte: ${result.newRows}, già presenti: ${result.alreadyPresentRows}, diverse ma protette/non sovrascritte: ${result.protectedDifferentRows}, eliminate oltre 12 mesi: ${result.removedOld12Months}. Righe saltate: ${result.skipped}`,
           'success'
         );
       });
@@ -8735,7 +8891,7 @@ body.assessment-public-mode .assessment-public-only-card {
     const DATA_ACTION_CONFIG = {
       clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti da Matchpoint', pendingText:'Aggiornamento in corso', doneText:'Clienti aggiornati' },
       bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Importa prenotazioni', pendingText:'Importa prenotazioni', doneText:'Prenotazioni importate' },
-      history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Importa storico', pendingText:'Importa storico', doneText:'Storico importato' },
+      history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Aggiorna storico da Matchpoint', pendingText:'Aggiornamento storico...', doneText:'Storico aggiornato' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
       backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup', pendingText:'Scarica backup', doneText:'Scarica backup' },
       restore: { buttonId:'matchpointRestoreBackupButton', stateId:'matchpointRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup', pendingText:'Ripristina backup', doneText:'Backup ripristinato' },
@@ -8761,6 +8917,12 @@ body.assessment-public-mode .assessment-public-only-card {
         const rows = parseInt(summary.importedRows ?? summary.metrics?.['Soci letti'] ?? summary.metrics?.['Righe importate'] ?? 0, 10) || 0;
         return when && when !== 'non disponibile'
           ? `Ultimo automatico: ${when}${rows ? ` • ${rows} righe` : ''}`
+          : 'Ultimo automatico: non disponibile';
+      }
+      if (key === 'history' && summary?.source === 'automatic') {
+        const rows = parseInt(summary.metrics?.['Nuove righe cloud'] ?? summary.metrics?.['Nuove righe'] ?? summary.addedCount ?? 0, 10) || 0;
+        return when && when !== 'non disponibile'
+          ? `Ultimo automatico: ${when}${rows ? ` • +${rows}` : ''}`
           : 'Ultimo automatico: non disponibile';
       }
       return when && when !== 'non disponibile' ? `Ultimo import: ${when}` : 'Ultimo import: non disponibile';
