@@ -413,18 +413,20 @@ async function findHistoryReportContext(page, diagnostic, timeout = 45000) {
     for (const entry of pageContentContexts(page)) {
       const bodyText = await readContextBody(entry.target);
       const compactText = bodyText.replace(/\s+/g, ' ').trim();
-      const historyPageFound = /Utenti\s+negli\s+spazi|Elenco\s+degli\s+utenti\s+negli\s+spazi/i.test(compactText);
-      const generateButtonFound = /Generare\s+una\s+relazione/i.test(compactText);
+      const historyPageFound = /Utenti\s+negli\s+spazi|Elenco\s+degli\s+utenti\s+negli\s+spazi|Spazi\s+occupati|Elenco\s+degli\s+spazi\s+occupati/i.test(compactText);
+      const dateFiltersFound = /Dal\s+Giorno/i.test(compactText) && /Al\s+Giorno/i.test(compactText);
+      const generateButtonFound = /Generare\s+una\s+relazione|Genera(?:re)?\s+relazione|Relazione/i.test(compactText);
       const sample = {
         kind: entry.kind,
         index: entry.index,
         url: entry.url,
         historyPageFound,
+        dateFiltersFound,
         generateButtonFound,
         bodySample: compactText.slice(0, 500),
       };
       samples.push(sample);
-      if (historyPageFound && generateButtonFound) {
+      if (historyPageFound && dateFiltersFound) {
         diagnostic.historyReportContext = sample;
         diagnostic.historyReportUrl = entry.url;
         diagnostic.historyReportTitle = await readContextTitle(entry.target);
@@ -560,17 +562,26 @@ async function generateHistoryReport(page, reportContext, range, diagnostic) {
   if (inputs[3]) await setVisibleInputValue(inputs[3], '').catch(() => {});
 
   diagnostic.steps.push('history_generate_click');
-  const generated = await clickFirstVisibleLocator(
+  let generated = false;
+  const generateLocators = [
     reportContext.locator('button:has-text("Generare una relazione"), a:has-text("Generare una relazione"), input[value*="Generare una relazione"]'),
-    'click_generare_relazione',
-    diagnostic,
-    15000,
-  );
+    reportContext.locator('button:has-text("Genera"), a:has-text("Genera"), input[value*="Genera"]'),
+    reportContext.locator('button:has-text("Relazione"), a:has-text("Relazione"), input[value*="Relazione"]'),
+    reportContext.locator('input[type="submit"], button[type="submit"]'),
+  ];
+  for (const locator of generateLocators) {
+    generated = await clickFirstVisibleLocator(locator, 'click_generare_relazione', diagnostic, 15000);
+    if (generated) break;
+  }
+  if (!generated) {
+    generated = await clickMenuEntry(reportContext, 'Generare una relazione', 'click_generare_relazione', diagnostic);
+  }
   if (!generated) {
     throw fail('MATCHPOINT_HISTORY_GENERATE_BUTTON_NOT_FOUND', 'Pulsante Generare una relazione non trovato.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
+      contextSamples: await contextSamples(page),
     });
   }
   await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
@@ -911,6 +922,7 @@ const server = http.createServer(async (req, res) => {
         routes: ['/export-clients', '/export-booking-history'],
         historyLabels: ['Elenco degli spazi occupati', 'Elenco degli utenti negli spazi'],
         historyNavigation: 'all-contexts-dom-fallback',
+        historyReportRecognition: 'spazi-occupati-date-filters',
         time: new Date().toISOString(),
       });
     }
