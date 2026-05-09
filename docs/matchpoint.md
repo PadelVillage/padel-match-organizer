@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353.
 
 ## Obiettivo
 
@@ -145,6 +145,7 @@ Funzione server:
 - da versione funzione 20, il file Excel clienti esportato da Matchpoint non viene archiviato in Supabase Storage, in locale o in altri percorsi permanenti. Anche se esiste un vecchio secret `MATCHPOINT_EXPORT_BUCKET`, la funzione non carica il file: conserva solo dati normalizzati, ultimo riepilogo import e diagnostica leggera.
 - da versione funzione 21, l'import clienti viene trattato come fotografia corrente Matchpoint: dopo un import riuscito, i vecchi record `member` provenienti da Matchpoint e non presenti nella fotografia appena importata vengono marcati `deleted=true`. Questo evita accumuli e discrepanze tra TEST e PROD. I record manuali/non Matchpoint non vengono cancellati automaticamente.
 - da versione funzione 22, quando la base cloud contiene duplicati storici, la funzione disattiva anche i record duplicati che combaciano con un cliente della fotografia appena importata ma non sono il record scelto come valido. Il riepilogo salva `duplicateDeleted`.
+- da app v5.353, il feedback verde del box clienti automatici mostra le righe importabili dell'export Matchpoint (`importableRows`) e non il numero di soci ritornati dal cloud dopo la sincronizzazione.
 - worker browser/headless iniziale: `tools/matchpoint-browser-worker`, Node/Playwright, endpoint `POST /export-clients`, protetto da `MATCHPOINT_WORKER_API_KEY`. Le credenziali Matchpoint non vengono salvate in HTML, repository o localStorage.
 - da aggiornamento worker 2026-05-08, l'export clienti corretto non viene scaricato dalla sezione `Clienti`, ma dalla navigazione Matchpoint `Programmazione` -> `Elenco dei giocatori` -> `Esportare in excel`. Il worker usa questa navigazione menu-driven come modalita' predefinita e mantiene `direct_clients` solo come fallback diagnostico configurabile.
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.

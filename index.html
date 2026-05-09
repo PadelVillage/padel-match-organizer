@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.352';
+    const APP_VERSION = '5.353';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7549,12 +7549,13 @@ body.assessment-public-mode .assessment-public-only-card {
         lastClientsImportedAt: importedAt.toISOString()
       };
       save('matchpointData', matchpointData);
+      const reportedRows = parseInt(options.importedRows ?? members.length, 10) || members.length;
       saveDailyDiff({
         type:'clienti',
         label:'clienti',
         source,
         sourceRows,
-        importedRows: members.length,
+        importedRows: reportedRows,
         added: diff.added,
         removed: diff.removed,
         modified: diff.modified,
@@ -7565,7 +7566,7 @@ body.assessment-public-mode .assessment-public-only-card {
         label: source === 'automatic' ? 'clienti automatici' : 'clienti',
         source,
         metrics: {
-          'Soci letti': members.length,
+          'Soci letti': reportedRows,
           'Nuovi soci': added,
           'Soci aggiornati': updated,
           'Righe saltate': skipped,
@@ -7643,6 +7644,7 @@ body.assessment-public-mode .assessment-public-only-card {
         const localResult = applyMatchpointMembersToLocal(cloud.members, {
           source: 'automatic',
           sourceRows: rows.sourceRows || cloud.members.length,
+          importedRows: rows.importableRows || syncResult?.cloud?.members || cloud.members.length,
           skipped: rows.skipped || 0,
           message: 'Clienti aggiornati da Matchpoint automatico e sincronizzati in locale.'
         });
