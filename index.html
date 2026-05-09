@@ -4734,7 +4734,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.354';
+    const APP_VERSION = '5.355';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4772,6 +4772,8 @@ body.assessment-public-mode .assessment-public-only-card {
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
     const PMO_SUPABASE_AUTH_TIMEOUT_MS = 20000;
     const HISTORY_RETENTION_MONTHS = 12;
+    const DAILY_DIFF_HISTORY_LIMIT = 10;
+    const DAILY_DIFF_DETAIL_LIMIT = 30;
     document.body.classList.toggle('pmo-env-test', PMO_IS_TEST_ENV);
     document.title = `Padel Match Organizer v${APP_VERSION}${PMO_IS_TEST_ENV ? ' TEST' : ''}`;
     document.querySelectorAll('[data-app-version]').forEach(el => { el.textContent = `v${APP_VERSION}`; });
@@ -4806,7 +4808,8 @@ body.assessment-public-mode .assessment-public-only-card {
     let matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
     let contactHistory = safeLoad('contactHistory', {});
     let weeklyContactLog = safeLoad('weeklyContactLog', {});
-    let dailyDiffHistory = safeLoad('dailyDiffHistory', []);
+    let dailyDiffHistory = normalizeDailyDiffHistory(safeLoad('dailyDiffHistory', []));
+    saveDailyDiffHistory();
     let lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
@@ -5493,7 +5496,10 @@ body.assessment-public-mode .assessment-public-only-card {
         createdAt: new Date().toISOString()
       };
       DATA_KEYS.forEach(key => {
-        try { payload[key] = JSON.parse(pmoLocalGetItem(key) || 'null'); }
+        try {
+          payload[key] = JSON.parse(pmoLocalGetItem(key) || 'null');
+          if (key === 'dailyDiffHistory') payload[key] = normalizeDailyDiffHistory(payload[key]);
+        }
         catch { payload[key] = null; }
       });
       payload.counts = localDataCounts(payload);
@@ -7122,11 +7128,129 @@ body.assessment-public-mode .assessment-public-only-card {
       return { added, removed, modified };
     }
 
-    function renderChangeRows(items, formatter, emptyText) {
+    function compactDailyDiffMember(item) {
+      const member = item || {};
+      const name = playerFullName(member) || member.name || '';
+      return {
+        firstName: cleanCell(member.firstName || ''),
+        surname: cleanCell(member.surname || ''),
+        name: cleanCell(name),
+        phone: cleanCell(member.phone || ''),
+        email: cleanCell(member.email || ''),
+        gender: cleanCell(member.gender || 'NA'),
+        level: member.level ?? ''
+      };
+    }
+
+    function compactDailyDiffBooking(item) {
+      const booking = item || {};
+      return {
+        giocatore: cleanCell(booking.giocatore || ''),
+        data: cleanCell(booking.data || ''),
+        ora: cleanCell(booking.ora || ''),
+        campo: cleanCell(booking.campo || ''),
+        tipo: cleanCell(booking.tipo || '')
+      };
+    }
+
+    function compactDailyDiffRow(type, row) {
+      const isMembers = normalizeText(type) === 'clienti';
+      const compactItem = item => isMembers ? compactDailyDiffMember(item) : compactDailyDiffBooking(item);
+      if (row && (row.item || row.oldItem || row.changes)) {
+        return {
+          item: compactItem(row.item || {}),
+          oldItem: compactItem(row.oldItem || {}),
+          changes: (Array.isArray(row.changes) ? row.changes : []).slice(0, 8).map(change => ({
+            label: cleanCell(change?.label || ''),
+            oldValue: cleanCell(change?.oldValue || ''),
+            newValue: cleanCell(change?.newValue || '')
+          }))
+        };
+      }
+      return compactItem(row);
+    }
+
+    function countGenderRows(rows) {
+      return (Array.isArray(rows) ? rows : []).reduce((acc, member) => {
+        const gender = cleanCell(member?.gender || 'NA') || 'NA';
+        acc[gender] = (acc[gender] || 0) + 1;
+        return acc;
+      }, {});
+    }
+
+    function compactDailyDiffEntry(diff) {
+      const source = diff && typeof diff === 'object' ? diff : {};
+      const added = Array.isArray(source.added) ? source.added : [];
+      const removed = Array.isArray(source.removed) ? source.removed : [];
+      const modified = Array.isArray(source.modified) ? source.modified : [];
+      const type = cleanCell(source.type || '');
+      const entry = {
+        type,
+        label: cleanCell(source.label || type),
+        source: cleanCell(source.source || ''),
+        sourceRows: parseInt(source.sourceRows, 10) || 0,
+        importedRows: parseInt(source.importedRows, 10) || 0,
+        skipped: parseInt(source.skipped, 10) || 0,
+        createdAt: source.createdAt || new Date().toISOString(),
+        createdAtDisplay: source.createdAtDisplay || new Date().toLocaleString('it-IT'),
+        addedCount: parseInt(source.addedCount, 10) || added.length,
+        removedCount: parseInt(source.removedCount, 10) || removed.length,
+        modifiedCount: parseInt(source.modifiedCount, 10) || modified.length,
+        added: added.slice(0, DAILY_DIFF_DETAIL_LIMIT).map(row => compactDailyDiffRow(type, row)),
+        removed: removed.slice(0, DAILY_DIFF_DETAIL_LIMIT).map(row => compactDailyDiffRow(type, row)),
+        modified: modified.slice(0, DAILY_DIFF_DETAIL_LIMIT).map(row => compactDailyDiffRow(type, row))
+      };
+      if (normalizeText(type) === 'clienti') {
+        entry.addedGenderCounts = source.addedGenderCounts || countGenderRows(added);
+      }
+      ['alreadyPresentRows', 'protectedDifferentRows'].forEach(key => {
+        if (source[key] !== undefined) entry[key] = parseInt(source[key], 10) || 0;
+      });
+      ['fromDate', 'toDate'].forEach(key => {
+        if (source[key] !== undefined) entry[key] = cleanCell(source[key] || '');
+      });
+      return entry;
+    }
+
+    function normalizeDailyDiffHistory(history) {
+      return (Array.isArray(history) ? history : [])
+        .filter(Boolean)
+        .slice(0, DAILY_DIFF_HISTORY_LIMIT)
+        .map(compactDailyDiffEntry);
+    }
+
+    function saveDailyDiffHistory() {
+      dailyDiffHistory = normalizeDailyDiffHistory(dailyDiffHistory);
+      const next = stableDataString(dailyDiffHistory);
+      if (pmoLocalGetItem('dailyDiffHistory') === next) return false;
+      try {
+        pmoLocalSetItem('dailyDiffHistory', next);
+        return true;
+      } catch (err) {
+        console.warn('dailyDiffHistory compatto dopo quota storage:', err);
+        try { pmoLocalRemoveItem('dailyDiffHistory'); } catch {}
+        const fallbacks = [
+          dailyDiffHistory.slice(0, 3),
+          dailyDiffHistory.slice(0, 1),
+          []
+        ];
+        for (const fallback of fallbacks) {
+          try {
+            dailyDiffHistory = normalizeDailyDiffHistory(fallback);
+            pmoLocalSetItem('dailyDiffHistory', stableDataString(dailyDiffHistory));
+            return true;
+          } catch {}
+        }
+        return false;
+      }
+    }
+
+    function renderChangeRows(items, formatter, emptyText, totalCount=null) {
       if (!items || !items.length) return `<div class="diff-empty">${emptyText}</div>`;
       const limit = 30;
       const rows = items.slice(0, limit).map(formatter).join('');
-      const more = items.length > limit ? `<div class="diff-mini">Mostro i primi ${limit} di ${items.length} risultati.</div>` : '';
+      const total = Math.max(items.length, parseInt(totalCount, 10) || 0);
+      const more = total > limit ? `<div class="diff-mini">Mostro i primi ${limit} di ${total} risultati.</div>` : '';
       return `<table>${rows}</table>${more}`;
     }
 
@@ -7149,30 +7273,36 @@ body.assessment-public-mode .assessment-public-only-card {
       const addedRows = Array.isArray(diff.added) ? diff.added : [];
       const removedRows = Array.isArray(diff.removed) ? diff.removed : [];
       const modifiedRows = Array.isArray(diff.modified) ? diff.modified : [];
+      const addedCount = parseInt(diff.addedCount, 10) || addedRows.length;
+      const removedCount = parseInt(diff.removedCount, 10) || removedRows.length;
+      const modifiedCount = parseInt(diff.modifiedCount, 10) || modifiedRows.length;
       const historicalExtra = isHistorical ? `<div class="diff-summary"><div class="diff-chip">Già presenti: <strong>${escapeHtml(String(diff.alreadyPresentRows || 0))}</strong></div><div class="diff-chip">Diverse protette: <strong>${escapeHtml(String(diff.protectedDifferentRows || 0))}</strong></div><div class="diff-chip">Periodo: <strong>${escapeHtml((diff.fromDate || '') + ' → ' + (diff.toDate || ''))}</strong></div></div>` : '';
       panel.innerHTML = `
         <h3>${title}</h3>
         <div class="muted">Ultimo controllo: ${escapeHtml(diff.createdAtDisplay || '')}</div>
         ${bookingNote}
         <div class="diff-summary">
-          <div class="diff-chip">${addedLabel}: <strong>${addedRows.length}</strong></div>
-          <div class="diff-chip">${removedLabel}: <strong>${removedRows.length}</strong></div>
-          <div class="diff-chip">${modifiedLabel}: <strong>${modifiedRows.length}</strong></div>
+          <div class="diff-chip">${addedLabel}: <strong>${addedCount}</strong></div>
+          <div class="diff-chip">${removedLabel}: <strong>${removedCount}</strong></div>
+          <div class="diff-chip">${modifiedLabel}: <strong>${modifiedCount}</strong></div>
         </div>
         ${historicalExtra}
-        <div class="diff-section"><h4>${addedLabel}</h4>${renderChangeRows(addedRows, isMembers ? fmtMember : fmtBooking, 'Nessuna novità.')}</div>
-        <div class="diff-section"><h4>${removedLabel}</h4>${renderChangeRows(removedRows, isMembers ? fmtMember : fmtBooking, 'Nessuna cancellazione o assenza.')}</div>
-        <div class="diff-section"><h4>${modifiedLabel}</h4>${renderChangeRows(modifiedRows, fmtModified, 'Nessuna modifica.')}</div>
+        <div class="diff-section"><h4>${addedLabel}</h4>${renderChangeRows(addedRows, isMembers ? fmtMember : fmtBooking, 'Nessuna novità.', addedCount)}</div>
+        <div class="diff-section"><h4>${removedLabel}</h4>${renderChangeRows(removedRows, isMembers ? fmtMember : fmtBooking, 'Nessuna cancellazione o assenza.', removedCount)}</div>
+        <div class="diff-section"><h4>${modifiedLabel}</h4>${renderChangeRows(modifiedRows, fmtModified, 'Nessuna modifica.', modifiedCount)}</div>
       `;
     }
 
     function saveDailyDiff(diff) {
-      diff.createdAt = new Date().toISOString();
-      diff.createdAtDisplay = new Date().toLocaleString('it-IT');
-      dailyDiffHistory.unshift(diff);
-      dailyDiffHistory = dailyDiffHistory.slice(0, 20);
-      save('dailyDiffHistory', dailyDiffHistory);
-      renderDiffPanel(diff);
+      const entry = compactDailyDiffEntry({
+        ...diff,
+        createdAt: new Date().toISOString(),
+        createdAtDisplay: new Date().toLocaleString('it-IT')
+      });
+      dailyDiffHistory.unshift(entry);
+      dailyDiffHistory = dailyDiffHistory.slice(0, DAILY_DIFF_HISTORY_LIMIT);
+      saveDailyDiffHistory();
+      renderDiffPanel(entry);
     }
 
     function renderLastDailyDiff() {
@@ -7923,13 +8053,13 @@ body.assessment-public-mode .assessment-public-only-card {
           }
           if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return;
           giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
-          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = data.dailyDiffHistory || []; assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
           if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
             if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
             else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
           }
           const removedOld12Months = pruneHistoricalBookings(false);
-          save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+          save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
           renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone('restore', 'Backup ripristinato'); saveLocalDataSnapshot('restore-backup');
           showAlert(`✅ Backup ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
         } catch (err) { showAlert('❌ Errore backup: ' + err.message, 'danger'); }
@@ -15088,6 +15218,11 @@ Grazie!`
       }).filter(v => typeof v === 'number' && !Number.isNaN(v));
       const avgAge = ages.length ? Math.round((ages.reduce((sum, v) => sum + v, 0) / ages.length) * 10) / 10 : null;
       const lastDiff = getLatestClientDiff();
+      const addedGenderCounts = lastDiff?.addedGenderCounts || {};
+      const addedRows = (lastDiff?.added || []).filter(m => !isTechnicalMemberRecord(m));
+      const addedGenderCount = gender => Object.prototype.hasOwnProperty.call(addedGenderCounts, gender)
+        ? (parseInt(addedGenderCounts[gender], 10) || 0)
+        : memberDeltaByGender(addedRows, gender).added;
       return {
         total: activeMembers.length,
         males,
@@ -15096,9 +15231,9 @@ Grazie!`
         femalePct: pctValue(females, activeMembers.length),
         avgAge,
         ageSamples: ages.length,
-        deltaTotal: lastDiff ? { added: (lastDiff.added || []).filter(m => !isTechnicalMemberRecord(m)).length } : null,
-        deltaMales: lastDiff ? memberDeltaByGender((lastDiff.added || []).filter(m => !isTechnicalMemberRecord(m)), 'M') : null,
-        deltaFemales: lastDiff ? memberDeltaByGender((lastDiff.added || []).filter(m => !isTechnicalMemberRecord(m)), 'F') : null
+        deltaTotal: lastDiff ? { added: parseInt(lastDiff.addedCount, 10) || addedRows.length } : null,
+        deltaMales: lastDiff ? { added: addedGenderCount('M') } : null,
+        deltaFemales: lastDiff ? { added: addedGenderCount('F') } : null
       };
     }
 

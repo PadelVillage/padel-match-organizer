@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` in v5.355 TEST.
 
 ## Obiettivo
 
@@ -28,6 +28,13 @@ Nei box `Clienti Matchpoint`, `Prenotazioni future Matchpoint` e `Storico Matchp
 `Ultimo import: gg/mm/aaaa • hh:mm`
 
 La fonte e' lo storico locale degli import (`dailyDiffHistory`) gia aggiornato dalle funzioni di import. Il feedback resta sintetico: non deve diventare un riepilogo, non deve mostrare metriche e non deve duplicare la Dashboard.
+
+Da v5.355 lo storico locale `dailyDiffHistory` viene salvato in forma compatta per non saturare localStorage:
+
+- massimo 10 import recenti;
+- massimo 30 righe di dettaglio per nuovi/assenti/modificati;
+- conteggi completi conservati separatamente;
+- nessun salvataggio di liste complete di soci o prenotazioni dentro la cronologia locale.
 
 ## Feedback backup v5.310
 
