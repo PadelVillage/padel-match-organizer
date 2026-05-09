@@ -1254,11 +1254,11 @@ function shouldDeleteDuplicateMemberRecord(record: any) {
   return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
 }
 
-function buildStaleMatchpointMemberDeletes(records: any[], activeLocalKeys: Set<string>, importedAt: string) {
+function buildStaleMatchpointMemberDeletes(records: any[], excludedLocalKeys: Set<string>, importedAt: string) {
   const deletes = [];
   for (const record of records || []) {
     const localKey = clean(record?.local_key || '');
-    if (!localKey || activeLocalKeys.has(localKey)) continue;
+    if (!localKey || excludedLocalKeys.has(localKey)) continue;
     const payload = record.payload || {};
     const source = clean(payload.source || '');
     const isMatchpointRecord = source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
@@ -1266,6 +1266,30 @@ function buildStaleMatchpointMemberDeletes(records: any[], activeLocalKeys: Set<
     deletes.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
   }
   return deletes;
+}
+
+function cloudRecordBatchKey(record: any) {
+  const recordType = clean(record?.record_type || '');
+  const localKey = clean(record?.local_key || '');
+  return recordType && localKey ? `${recordType}|${localKey}` : '';
+}
+
+function dedupeCloudRecordBatch(records: any[]) {
+  const byKey = new Map<string, any>();
+  for (const record of records || []) {
+    const key = cloudRecordBatchKey(record);
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (existing && existing.deleted !== true && record.deleted === true) {
+      continue;
+    }
+    byKey.set(key, {
+      ...record,
+      local_key: clean(record.local_key || ''),
+      record_type: clean(record.record_type || ''),
+    });
+  }
+  return [...byKey.values()];
 }
 
 async function saveDiagnosticExport(_admin: any, exported: MatchpointExport, importedAt: string) {
@@ -1445,7 +1469,7 @@ Deno.serve(async (req) => {
     for (const member of validation.members) {
       const candidates = collectExistingMemberCandidates(existing, member);
       const match = chooseExistingMemberRecord(candidates, member);
-      const localKey = match?.local_key || memberCloudKey(member) || `member:${member.id}`;
+      const localKey = clean(match?.local_key || memberCloudKey(member) || `member:${member.id}`);
       const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
       const memberRecordKey = `member|${localKey}`;
       if (memberRecordKeys.has(memberRecordKey)) {
@@ -1476,7 +1500,8 @@ Deno.serve(async (req) => {
     const duplicateDeletes = [...duplicateDeletesByKey.values()];
     duplicateDeleted = duplicateDeletes.length;
     records.push(...duplicateDeletes);
-    const staleDeletes = buildStaleMatchpointMemberDeletes(existing.records, currentMemberLocalKeys, importedAt);
+    const staleDeleteExclusions = new Set([...currentMemberLocalKeys, ...duplicateDeletesByKey.keys()]);
+    const staleDeletes = buildStaleMatchpointMemberDeletes(existing.records, staleDeleteExclusions, importedAt);
     staleDeleted = staleDeletes.length;
     records.push(...staleDeletes);
 
@@ -1521,9 +1546,23 @@ Deno.serve(async (req) => {
       synced_at: importedAt,
     });
 
+    const finalRecords = dedupeCloudRecordBatch(records);
+    duplicateDeleted = finalRecords.filter((record) => (
+      record.record_type === 'member' &&
+      record.deleted === true &&
+      record.payload?.matchpointDeleteReason === 'matchpoint_snapshot_duplicate'
+    )).length;
+    staleDeleted = finalRecords.filter((record) => (
+      record.record_type === 'member' &&
+      record.deleted === true &&
+      record.payload?.matchpointDeleteReason === 'matchpoint_snapshot_stale'
+    )).length;
+    summaryPayload.rows.duplicateDeleted = duplicateDeleted;
+    summaryPayload.rows.staleDeleted = staleDeleted;
+
     const { error: upsertError } = await admin
       .from('pmo_cloud_records')
-      .upsert(records, { onConflict: 'record_type,local_key' });
+      .upsert(finalRecords, { onConflict: 'record_type,local_key' });
     if (upsertError) throw upsertError;
 
     await logAudit(admin, actor, 'matchpoint_clients_auto_import_success', {
@@ -1536,6 +1575,7 @@ Deno.serve(async (req) => {
       duplicateDeleted,
       staleDeleted,
       diagnosticFile,
+      upserted: finalRecords.length,
     });
 
     return okResponse({
@@ -1544,7 +1584,7 @@ Deno.serve(async (req) => {
       recordType: 'member',
       summary: summaryPayload,
       cloud: {
-        upserted: records.length,
+        upserted: finalRecords.length,
         members: validation.members.length,
         duplicateRows,
         duplicateDeleted,
