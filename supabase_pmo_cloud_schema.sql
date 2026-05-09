@@ -81,6 +81,22 @@ create index if not exists idx_pmo_cloud_records_group_date
   )
   where record_type = 'match_invitation' and deleted = false;
 
+-- Private Storage bucket for the single overwritten browser backup.
+-- The app does not access this bucket directly: reads/writes go through the
+-- pmo-cloud-backup Edge Function using service_role after staff auth checks.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'pmo-app-backups',
+  'pmo-app-backups',
+  false,
+  52428800,
+  array['application/json']
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 drop trigger if exists trg_pmo_cloud_records_updated_at on pmo_cloud_records;
 create trigger trg_pmo_cloud_records_updated_at
 before update on pmo_cloud_records

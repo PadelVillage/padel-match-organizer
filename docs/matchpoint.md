@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto integrato in v5.357 TEST.
 
 ## Obiettivo
 
@@ -55,6 +55,45 @@ Da v5.249:
 - da v5.310 il feedback sotto i bottoni mostra `Ultimo backup scaricato` con data e ora del download/salvataggio del file;
 - non devono comparire nella sezione DATI conteggi lunghi, liste di contenuti tecnici, nome file o riepiloghi interni del file;
 - il ripristino resta disponibile come azione separata nello stesso box.
+
+## Backup cloud sovrascritto v5.357
+
+Obiettivo:
+
+- conservare dentro l'ecosistema Supabase un backup completo dei dati del browser;
+- mantenere un solo file JSON per ambiente, sempre sovrascritto;
+- non creare versioni multiple e non appesantire Storage;
+- lasciare invariato il backup locale esistente.
+
+Destinazione:
+
+- bucket Supabase privato `pmo-app-backups`;
+- oggetto fisso `latest/browser-backup.json`;
+- accesso solo tramite Edge Function `pmo-cloud-backup`, non diretto dal browser;
+- `verify_jwt=true`;
+- permesso richiesto: `cloud_sync`, oppure ruolo `owner/admin`.
+
+Stato TEST:
+
+- bucket privato `pmo-app-backups` creato su `cudiqnrrlbyqryrtaprd`;
+- Edge Function `pmo-cloud-backup` attiva in versione 1 con `verify_jwt=true`;
+- UI `DATI (in/out)` collegata in `index.html` v5.357 dopo approvazione mockup;
+- nessun oggetto creato finche' la UI non invia il primo `save`.
+
+Metadati:
+
+- riepilogo leggero in `pmo_cloud_records`;
+- `record_type = app_setting`;
+- `local_key = cloud_backup_latest`;
+- payload con data, versione, ambiente, dimensione, hash, conteggi e utente staff;
+- il JSON completo resta solo in Storage.
+
+Ripristino:
+
+- la funzione `pmo-cloud-backup` legge il JSON unico da Storage;
+- la app deve creare prima uno snapshot locale di sicurezza;
+- il ripristino richiede conferma forte `RIPRISTINA`;
+- resta il controllo ambiente TEST/PROD gia presente per i backup locali.
 
 ## Slot potenziali v5.234
 

@@ -1405,6 +1405,8 @@
     .potential-slot-panel .matchpoint-data-actions { margin-top:0; }
     .matchpoint-data-actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:10px; }
     .matchpoint-data-actions button { width:100%; min-height:38px; border-radius:7px; padding:9px 11px; font-size:13px; }
+    .matchpoint-cloud-separator { height:1px; background:#e5e7eb; margin:2px 0; }
+    .matchpoint-cloud-note { color:#667085; font-size:11px; line-height:1.35; }
     .matchpoint-action-state { min-height:18px; color:#667085; font-size:11px; font-weight:800; }
     .matchpoint-action-state:empty { display:none; }
     .matchpoint-action-state.pending { color:#b7791f; }
@@ -4107,6 +4109,12 @@ body.assessment-public-mode .assessment-public-only-card {
                 <button id="matchpointRestoreBackupButton" class="btn-secondary" onclick="setActionAnchor(this); triggerImportBackup()">Ripristina backup</button>
                 <div id="matchpointBackupActionState" class="matchpoint-action-state"></div>
                 <div id="matchpointRestoreActionState" class="matchpoint-action-state"></div>
+                <div class="matchpoint-cloud-separator"></div>
+                <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
+                <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
+                <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
+                <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
+                <div class="matchpoint-cloud-note">Salvato in Supabase Storage come backup unico sovrascritto. Non crea versioni multiple.</div>
               </div>
             </div>
           </article>
@@ -4734,7 +4742,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.356';
+    const APP_VERSION = '5.357';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8041,6 +8049,132 @@ body.assessment-public-mode .assessment-public-only-card {
       }
       showAlert(ok ? `✅ Download riavviato: ${window.__lastBackupFilename}` : '❌ Il browser ha bloccato il download.', ok ? 'success' : 'danger');
     }
+
+    function getLastCloudBackupInfo() {
+      try { return JSON.parse(pmoLocalGetItem('lastCloudBackupInfo') || 'null'); } catch(e) { return null; }
+    }
+
+    function saveLastCloudBackupInfo(metadata={}) {
+      const savedAt = metadata.savedAt || metadata.createdAt || metadata.loadedAt || new Date().toISOString();
+      const lastCloudBackupInfo = { ...metadata, createdAt: savedAt, savedAt };
+      try { pmoLocalSetItem('lastCloudBackupInfo', JSON.stringify(lastCloudBackupInfo)); } catch(e) {}
+      renderMatchpointDataHeader();
+      return lastCloudBackupInfo;
+    }
+
+    function formatCloudBackupDateTime(info) {
+      const when = formatBackupDateTime(info);
+      return when && when !== 'non disponibile' ? `Ultimo backup cloud: ${when}` : 'Ultimo backup cloud: non disponibile';
+    }
+
+    function pmoFriendlyCloudBackupError(value, actionLabel='questa operazione') {
+      const rawValue = value?.message || value?.error || value?.msg || value || '';
+      const raw = cleanCell(typeof rawValue === 'object' ? JSON.stringify(rawValue) : rawValue);
+      if (raw.includes('AUTH_REQUIRED')) return `Accedi con email personale Supabase per ${actionLabel}.`;
+      if (raw.includes('PERMISSION_DENIED')) return `Il tuo profilo non ha il permesso per ${actionLabel}.`;
+      if (raw.includes('CLOUD_BACKUP_NOT_FOUND')) return 'Nessun backup cloud disponibile.';
+      if (raw.includes('INVALID_BACKUP_PAYLOAD') || raw.includes('INVALID_BACKUP_APP') || raw.includes('INVALID_BACKUP_MEMBERS')) return 'Backup cloud non valido.';
+      if (raw.includes('SUPABASE_ENV_MISSING')) return 'Configurazione Supabase Edge Function incompleta.';
+      return raw || 'Backup cloud non riuscito.';
+    }
+
+    async function pmoInvokeCloudBackup(action, payload=null) {
+      const actionLabel = action === 'save' ? 'salvare il backup cloud' : 'ripristinare il backup cloud';
+      const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/pmo-cloud-backup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`
+        },
+        body: JSON.stringify({ action, payload, source: 'pmo_dati_in_out', version: APP_VERSION })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || data?.ok === false) {
+        throw new Error(pmoFriendlyCloudBackupError(data || text || `Errore HTTP ${response.status}`, actionLabel));
+      }
+      return data;
+    }
+
+    async function saveCloudBackup() {
+      const button = document.getElementById('matchpointCloudBackupButton');
+      try {
+        setDataActionStatus('cloudBackup', 'pending', 'Salvataggio cloud in corso');
+        if (button) button.disabled = true;
+        const result = await pmoInvokeCloudBackup('save', createBackupPayload());
+        saveLastCloudBackupInfo(result?.metadata || {});
+        markDataActionDone('cloudBackup');
+        showAlert('✅ Backup cloud salvato e sovrascritto su Supabase.', 'success');
+      } catch (err) {
+        const message = pmoFriendlyCloudBackupError(err, 'salvare il backup cloud');
+        setDataActionStatus('cloudBackup', 'error', message);
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    async function restoreCloudBackup() {
+      const button = document.getElementById('matchpointCloudRestoreButton');
+      try {
+        setDataActionStatus('cloudRestore', 'pending', 'Scarico backup cloud');
+        if (button) button.disabled = true;
+        const result = await pmoInvokeCloudBackup('load');
+        const restored = restoreBackupPayload(result?.payload, {
+          actionKey: 'cloudRestore',
+          doneMessage: 'Backup cloud ripristinato',
+          sourceName: 'Backup cloud',
+          safetySnapshotReason: 'before-cloud-restore',
+          afterSnapshotReason: 'restore-cloud-backup',
+          strongConfirm: true,
+          strongConfirmMessage: 'Il backup cloud sostituira i dati attuali del browser. Per confermare scrivi RIPRISTINA.'
+        });
+        if (!restored) {
+          setDataActionStatus('cloudRestore', 'ready');
+          return;
+        }
+        saveLastCloudBackupInfo(result?.metadata || {});
+        markDataActionDone('cloudBackup');
+      } catch (err) {
+        const message = pmoFriendlyCloudBackupError(err, 'ripristinare il backup cloud');
+        setDataActionStatus('cloudRestore', 'error', message);
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function restoreBackupPayload(data, options={}) {
+      if (!data || !Array.isArray(data.giocatori)) throw new Error('Backup non valido');
+      if (options.safetySnapshotReason) saveLocalDataSnapshot(options.safetySnapshotReason);
+      const backupEnv = cleanCell(data.environment || 'prod');
+      if (!PMO_IS_TEST_ENV && backupEnv === 'test') {
+        if (!confirm('Questo backup arriva dall’ambiente TEST. Vuoi davvero ripristinarlo in PRODUZIONE?')) return null;
+      }
+      if (options.strongConfirm) {
+        const answer = prompt(options.strongConfirmMessage || 'Per ripristinare il backup scrivi RIPRISTINA.');
+        if (cleanCell(answer || '') !== 'RIPRISTINA') return null;
+      } else if (options.confirm !== false) {
+        if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
+      }
+      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
+      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+      if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
+        if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
+        else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
+      }
+      const removedOld12Months = pruneHistoricalBookings(false);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
+      const sourceName = options.sourceName || 'Backup';
+      showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
+      return { removedOld12Months };
+    }
+
     function triggerImportBackup() { const input = document.getElementById('backupFile'); input.value = ''; input.click(); }
     function importBackupFile(file) {
       if (!file) return;
@@ -8048,22 +8182,7 @@ body.assessment-public-mode .assessment-public-only-card {
       reader.onload = e => {
         try {
           const data = JSON.parse(e.target.result);
-          if (!Array.isArray(data.giocatori)) return showAlert('❌ Backup non valido', 'danger');
-          const backupEnv = cleanCell(data.environment || 'prod');
-          if (!PMO_IS_TEST_ENV && backupEnv === 'test') {
-            if (!confirm('Questo backup arriva dall’ambiente TEST. Vuoi davvero ripristinarlo in PRODUZIONE?')) return;
-          }
-          if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return;
-          giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
-          contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
-          if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
-            if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
-            else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
-          }
-          const removedOld12Months = pruneHistoricalBookings(false);
-          save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
-          renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone('restore', 'Backup ripristinato'); saveLocalDataSnapshot('restore-backup');
-          showAlert(`✅ Backup ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
+          restoreBackupPayload(data, { actionKey:'restore', doneMessage:'Backup ripristinato', sourceName:'Backup' });
         } catch (err) { showAlert('❌ Errore backup: ' + err.message, 'danger'); }
       };
       reader.readAsText(file);
@@ -8619,7 +8738,9 @@ body.assessment-public-mode .assessment-public-only-card {
       history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Importa storico', pendingText:'Importa storico', doneText:'Storico importato' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
       backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup', pendingText:'Scarica backup', doneText:'Scarica backup' },
-      restore: { buttonId:'matchpointRestoreBackupButton', stateId:'matchpointRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup', pendingText:'Ripristina backup', doneText:'Backup ripristinato' }
+      restore: { buttonId:'matchpointRestoreBackupButton', stateId:'matchpointRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup', pendingText:'Ripristina backup', doneText:'Backup ripristinato' },
+      cloudBackup: { buttonId:'matchpointCloudBackupButton', stateId:'matchpointCloudBackupActionState', defaultClass:'btn-primary', doneClass:'btn-primary', defaultText:'Salva backup cloud', pendingText:'Salvataggio cloud...', doneText:'Salva backup cloud' },
+      cloudRestore: { buttonId:'matchpointCloudRestoreButton', stateId:'matchpointCloudRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup cloud', pendingText:'Ripristino cloud...', doneText:'Ripristina backup cloud' }
     };
 
     const DATA_IMPORT_ACTION_TYPES = {
@@ -8672,14 +8793,15 @@ body.assessment-public-mode .assessment-public-only-card {
       if (state) {
         const isImportDateStatus = isDone && !!DATA_IMPORT_ACTION_TYPES[key];
         const isBackupDateStatus = isDone && key === 'backup';
+        const isCloudBackupDateStatus = isDone && key === 'cloudBackup';
         const stateClasses = ['matchpoint-action-state'];
         if (isPending) stateClasses.push('pending');
         else if (isDone) stateClasses.push('done');
         else if (isError) stateClasses.push('error');
-        if (isImportDateStatus || isBackupDateStatus) stateClasses.push('import-date');
+        if (isImportDateStatus || isBackupDateStatus || isCloudBackupDateStatus) stateClasses.push('import-date');
         state.className = stateClasses.join(' ');
         const fallbackMessage = isPending ? 'Da confermare' : (isDone ? 'Salvato' : (isError ? 'Errore' : ''));
-        state.textContent = isImportDateStatus ? formatDataActionImportStatus(key) : (isBackupDateStatus ? formatDataActionBackupStatus() : (message || fallbackMessage));
+        state.textContent = isImportDateStatus ? formatDataActionImportStatus(key) : (isBackupDateStatus ? formatDataActionBackupStatus() : (isCloudBackupDateStatus ? formatCloudBackupDateTime(getLastCloudBackupInfo()) : (message || fallbackMessage)));
       }
     }
 
@@ -8710,6 +8832,10 @@ body.assessment-public-mode .assessment-public-only-card {
       if (backup) setDataActionStatus('backup', 'done');
       else setDataActionStatus('backup', 'ready');
       setDataActionStatus('restore', 'ready');
+      const cloudBackup = getLastCloudBackupInfo();
+      if (cloudBackup) setDataActionStatus('cloudBackup', 'done');
+      else setDataActionStatus('cloudBackup', 'ready');
+      setDataActionStatus('cloudRestore', 'ready');
     }
 
     function potentialSlotDayLabels() {
