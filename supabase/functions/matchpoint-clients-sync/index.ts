@@ -1064,9 +1064,18 @@ function bytesFromBase64(value: string) {
   return bytes;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function workerExportUrl(rawUrl: string) {
   const url = rawUrl.replace(/\/+$/, '');
   return /\/export-clients$/i.test(url) ? url : `${url}/export-clients`;
+}
+
+function workerHealthUrl(rawUrl: string) {
+  const url = rawUrl.replace(/\/+$/, '').replace(/\/export-clients$/i, '');
+  return `${url}/health`;
 }
 
 function shouldFallbackToBrowserWorker(error: unknown) {
@@ -1098,36 +1107,65 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
   const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
   const endpoint = workerExportUrl(workerUrl);
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${workerApiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      username,
-      password,
-      baseUrl,
-      clientsPath,
-      exportTarget,
-      fallbackFrom: fallbackFrom.code,
-      credentialSource: 'supabase_secret',
-    }),
+  const healthEndpoint = workerHealthUrl(workerUrl);
+  const requestBody = JSON.stringify({
+    username,
+    password,
+    baseUrl,
+    clientsPath,
+    exportTarget,
+    fallbackFrom: fallbackFrom.code,
+    credentialSource: 'supabase_secret',
   });
-
-  const text = await response.text();
   let payload: JsonMap = {};
-  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { raw: text.slice(0, 800) }; }
-  if (!response.ok || payload.ok !== true || !payload.base64) {
-    throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', {
-      status: response.status,
+  let lastDiagnostic: JsonMap = {};
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (attempt > 1) {
+      await fetch(healthEndpoint, { headers: { Accept: 'application/json' } }).catch(() => null);
+      await sleep(attempt === 2 ? 3000 : 7000);
+    }
+
+    let response: Response | null = null;
+    let text = '';
+    let networkError = '';
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${workerApiKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
+      });
+      text = await response.text();
+    } catch (error) {
+      networkError = errorText(error);
+    }
+
+    payload = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { raw: text.slice(0, 800) }; }
+    lastDiagnostic = {
+      attempt,
+      status: response?.status || 0,
       endpoint,
+      healthEndpoint,
       fallbackFrom: fallbackFrom.code,
+      networkError,
       workerError: payload.error || '',
       workerMessage: payload.message || '',
       workerDiagnostic: payload.diagnostic || null,
-    });
+    };
+
+    if (response?.ok && payload.ok === true && payload.base64) break;
+    if (attempt >= 3) {
+      throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
+    }
+    const retryable = !response || response.status === 0 || [502, 503, 504].includes(response.status);
+    if (!retryable) {
+      throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
+    }
   }
 
   return {
