@@ -1183,19 +1183,72 @@ function hasPermission(actor: StaffActor, permission: string) {
 async function loadExistingMemberRecords(admin: any) {
   const { data, error } = await admin
     .from('pmo_cloud_records')
-    .select('record_type,local_key,payload,deleted')
+    .select('record_type,local_key,payload,deleted,synced_at')
     .eq('record_type', 'member')
     .eq('deleted', false);
   if (error) throw error;
   const records = Array.isArray(data) ? data : [];
-  const byKey = new Map<string, any>();
+  const byKey = new Map<string, any[]>();
   for (const record of records) {
     const payload = record.payload || {};
     for (const key of memberLookupKeys(payload)) {
-      if (!byKey.has(key)) byKey.set(key, record);
+      const list = byKey.get(key) || [];
+      list.push(record);
+      byKey.set(key, list);
     }
   }
   return { records, byKey };
+}
+
+function chooseExistingMemberRecord(existing: { byKey: Map<string, any[]> }, member: ParsedMember) {
+  const canonicalKey = memberCloudKey(member);
+  const candidates = new Map<string, any>();
+  for (const key of memberLookupKeys(member)) {
+    for (const record of existing.byKey.get(key) || []) {
+      if (record?.local_key) candidates.set(record.local_key, record);
+    }
+  }
+  const scored = [...candidates.values()].map((record) => {
+    const payload = record.payload || {};
+    const source = clean(payload.source || '');
+    let score = 0;
+    if (source && source !== 'matchpoint_auto') score += 120;
+    if (!source) score += 100;
+    if (record.local_key === canonicalKey) score += 70;
+    if (source === 'matchpoint_auto') score += 20;
+    if (payload.matchpointImportedAt) score += 5;
+    const syncedAt = new Date(record.synced_at || payload.updatedAt || 0).getTime() || 0;
+    return { record, score, syncedAt };
+  });
+  scored.sort((a, b) => (b.score - a.score) || (b.syncedAt - a.syncedAt));
+  return scored[0]?.record || null;
+}
+
+function buildStaleMatchpointMemberDeletes(records: any[], activeLocalKeys: Set<string>, importedAt: string) {
+  const deletes = [];
+  for (const record of records || []) {
+    const localKey = clean(record?.local_key || '');
+    if (!localKey || activeLocalKeys.has(localKey)) continue;
+    const payload = record.payload || {};
+    const source = clean(payload.source || '');
+    const isMatchpointRecord = source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
+    if (!isMatchpointRecord) continue;
+    deletes.push({
+      record_type: 'member',
+      local_key: localKey,
+      payload: {
+        ...payload,
+        active: false,
+        source: source || 'matchpoint_auto',
+        matchpointDeletedAt: importedAt,
+        updatedAt: importedAt,
+      },
+      payload_hash: null,
+      deleted: true,
+      synced_at: importedAt,
+    });
+  }
+  return deletes;
 }
 
 async function saveDiagnosticExport(_admin: any, exported: MatchpointExport, importedAt: string) {
@@ -1368,9 +1421,10 @@ Deno.serve(async (req) => {
     let added = 0;
     let updated = 0;
     let duplicateRows = 0;
+    let staleDeleted = 0;
 
     for (const member of validation.members) {
-      const match = memberLookupKeys(member).map((key) => existing.byKey.get(key)).find(Boolean);
+      const match = chooseExistingMemberRecord(existing, member);
       const localKey = match?.local_key || memberCloudKey(member) || `member:${member.id}`;
       const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
       const memberRecordKey = `member|${localKey}`;
@@ -1391,6 +1445,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    const currentMemberLocalKeys = new Set([...memberRecordKeys].map((key) => key.replace(/^member\|/, '')));
+    const staleDeletes = buildStaleMatchpointMemberDeletes(existing.records, currentMemberLocalKeys, importedAt);
+    staleDeleted = staleDeletes.length;
+    records.push(...staleDeletes);
+
     const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
     const summaryPayload = {
       id: 'matchpoint_clients_auto_import_last',
@@ -1404,6 +1463,7 @@ Deno.serve(async (req) => {
         skipped: validation.skipped,
         technicalSkipped: validation.technicalSkipped,
         duplicateRows,
+        staleDeleted,
         added,
         updated,
       },
@@ -1442,6 +1502,7 @@ Deno.serve(async (req) => {
       updated,
       skipped: validation.skipped,
       duplicateRows,
+      staleDeleted,
       diagnosticFile,
     });
 
@@ -1454,6 +1515,7 @@ Deno.serve(async (req) => {
         upserted: records.length,
         members: validation.members.length,
         duplicateRows,
+        staleDeleted,
         added,
         updated,
       },
