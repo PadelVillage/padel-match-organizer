@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` in v5.355 TEST; retry worker Render in v5.356/funzione v24 TEST.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD.
 
 ## Obiettivo
 
@@ -127,8 +127,8 @@ Funzione server:
 - ambienti:
   - TEST: progetto Supabase `cudiqnrrlbyqryrtaprd`;
   - PROD: progetto Supabase `qqbfphyslczzkxoncgex`;
-- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 23, `verify_jwt=true`;
-- deploy PROD: attivo su progetto `qqbfphyslczzkxoncgex`, funzione `matchpoint-clients-sync`, versione 7, `verify_jwt=true`, con secret dedicati nel progetto PROD;
+- deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 24, `verify_jwt=true`;
+- deploy PROD: attivo su progetto `qqbfphyslczzkxoncgex`, funzione `matchpoint-clients-sync`, versione 8, `verify_jwt=true`, con secret dedicati nel progetto PROD;
 - invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
