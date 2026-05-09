@@ -176,17 +176,73 @@ async function clickFirstVisibleLocator(locator, actionName, diagnostic, timeout
   return false;
 }
 
-async function clickMenuEntry(page, label, actionName, diagnostic) {
+async function clickMenuEntryByDomText(targetContext, label, actionName, diagnostic) {
+  const result = await targetContext.evaluate((wantedLabel) => {
+    const normalize = (value) => String(value || '')
+      .toLocaleLowerCase('it-IT')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const wanted = normalize(wantedLabel);
+    const isVisible = (el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const nodes = [...document.querySelectorAll('a, button, [role="button"], [onclick], li, span, div')];
+    const candidates = nodes
+      .filter((el) => isVisible(el) && normalize(el.textContent).includes(wanted))
+      .slice(0, 20)
+      .map((el) => {
+        const action = el.closest('a[href], button, [role="button"], [onclick]') || el;
+        return {
+          text: String(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+          tag: action.tagName,
+          href: action.getAttribute('href') || '',
+          id: action.id || '',
+          className: String(action.className || '').slice(0, 160),
+          hasOnclick: !!action.getAttribute('onclick'),
+        };
+      });
+    const found = nodes.find((el) => isVisible(el) && normalize(el.textContent).includes(wanted));
+    if (!found) return { clicked: false, candidates };
+    const action = found.closest('a[href], button, [role="button"], [onclick]') || found;
+    action.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window }));
+    action.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+    action.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+    action.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    return {
+      clicked: true,
+      candidate: {
+        text: String(found.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        tag: action.tagName,
+        href: action.getAttribute('href') || '',
+        id: action.id || '',
+        className: String(action.className || '').slice(0, 160),
+        hasOnclick: !!action.getAttribute('onclick'),
+      },
+      candidates,
+    };
+  }, label).catch((error) => ({ clicked: false, error: error.message, candidates: [] }));
+  diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
+  diagnostic.navigationAttempts.push({ action: `${actionName}_dom_text`, clicked: !!result.clicked, candidate: result.candidate || null, candidates: result.candidates || [], error: result.error || '' });
+  return !!result.clicked;
+}
+
+async function clickMenuEntry(targetContext, label, actionName, diagnostic) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  const labelRe = new RegExp(escaped, 'i');
   const locators = [
-    page.locator(`a:has-text("${label}"), button:has-text("${label}"), [role="button"]:has-text("${label}")`),
-    page.getByText(label, { exact: true }),
-    page.locator(`text=/${escaped}/i`),
+    targetContext.locator('a, button, [role="button"], [onclick]').filter({ hasText: labelRe }),
+    targetContext.locator(`a:has-text("${label}"), button:has-text("${label}"), [role="button"]:has-text("${label}")`),
+    targetContext.getByText(label, { exact: true }),
+    targetContext.locator(`text=/${escaped}/i`),
   ];
   for (const locator of locators) {
     if (await clickFirstVisibleLocator(locator, actionName, diagnostic)) return true;
   }
-  return false;
+  return clickMenuEntryByDomText(targetContext, label, actionName, diagnostic);
 }
 
 function pageContentContexts(page) {
@@ -211,6 +267,31 @@ async function readContextTitle(target) {
 
 async function readContextBody(target, timeout = 1200) {
   return target.locator('body').innerText({ timeout }).catch(() => '');
+}
+
+async function contextSamples(page, timeout = 1200) {
+  const samples = [];
+  for (const entry of pageContentContexts(page)) {
+    const bodyText = await readContextBody(entry.target, timeout);
+    samples.push({
+      kind: entry.kind,
+      index: entry.index,
+      url: entry.url,
+      bodySample: bodyText.replace(/\s+/g, ' ').trim().slice(0, 1400),
+    });
+  }
+  return samples;
+}
+
+async function clickMenuEntryEverywhere(page, label, actionName, diagnostic) {
+  for (const entry of pageContentContexts(page)) {
+    if (await clickMenuEntry(entry.target, label, `${actionName}_${entry.kind}_${entry.index}`, diagnostic)) {
+      diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
+      diagnostic.navigationAttempts.push({ action: actionName, contextKind: entry.kind, contextIndex: entry.index, contextUrl: entry.url });
+      return true;
+    }
+  }
+  return false;
 }
 
 async function findPlayersExportContext(page, diagnostic, timeout = 45000) {
@@ -392,16 +473,17 @@ async function findHistoryResultsContext(page, diagnostic, timeout = 45000) {
 
 async function navigateToHistoryReport(page, diagnostic) {
   diagnostic.steps.push('stats_menu_open');
-  const statsClicked = await clickMenuEntry(page, 'Inf. e statistiche', 'open_inf_statistiche_menu', diagnostic);
+  const statsClicked = await clickMenuEntryEverywhere(page, 'Inf. e statistiche', 'open_inf_statistiche_menu', diagnostic);
   if (!statsClicked) {
     throw fail('MATCHPOINT_STATS_MENU_NOT_FOUND', 'Menu Inf. e statistiche non trovato nel worker browser.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
+      contextSamples: await contextSamples(page),
     });
   }
   await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2500);
 
   diagnostic.steps.push('history_occupancy_click');
   let historyClicked = false;
@@ -410,7 +492,7 @@ async function navigateToHistoryReport(page, diagnostic) {
     'Elenco degli utenti negli spazi',
   ];
   for (const label of historyLabels) {
-    historyClicked = await clickMenuEntry(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
+    historyClicked = await clickMenuEntryEverywhere(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
     if (historyClicked) break;
   }
   if (!historyClicked) {
@@ -418,7 +500,7 @@ async function navigateToHistoryReport(page, diagnostic) {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
-      bodySample: (await readContextBody(page).catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 1400),
+      contextSamples: await contextSamples(page),
     });
   }
   await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
@@ -828,6 +910,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: ['/export-clients', '/export-booking-history'],
         historyLabels: ['Elenco degli spazi occupati', 'Elenco degli utenti negli spazi'],
+        historyNavigation: 'all-contexts-dom-fallback',
         time: new Date().toISOString(),
       });
     }
