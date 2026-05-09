@@ -1200,15 +1200,19 @@ async function loadExistingMemberRecords(admin: any) {
   return { records, byKey };
 }
 
-function chooseExistingMemberRecord(existing: { byKey: Map<string, any[]> }, member: ParsedMember) {
-  const canonicalKey = memberCloudKey(member);
+function collectExistingMemberCandidates(existing: { byKey: Map<string, any[]> }, member: ParsedMember) {
   const candidates = new Map<string, any>();
   for (const key of memberLookupKeys(member)) {
     for (const record of existing.byKey.get(key) || []) {
       if (record?.local_key) candidates.set(record.local_key, record);
     }
   }
-  const scored = [...candidates.values()].map((record) => {
+  return [...candidates.values()];
+}
+
+function chooseExistingMemberRecord(candidates: any[], member: ParsedMember) {
+  const canonicalKey = memberCloudKey(member);
+  const scored = candidates.map((record) => {
     const payload = record.payload || {};
     const source = clean(payload.source || '');
     let score = 0;
@@ -1224,6 +1228,32 @@ function chooseExistingMemberRecord(existing: { byKey: Map<string, any[]> }, mem
   return scored[0]?.record || null;
 }
 
+function buildDeletedMemberRecord(record: any, importedAt: string, reason: string) {
+  const payload = record.payload || {};
+  const source = clean(payload.source || '');
+  return {
+    record_type: 'member',
+    local_key: clean(record?.local_key || ''),
+    payload: {
+      ...payload,
+      active: false,
+      source: source || 'legacy_duplicate',
+      matchpointDeletedAt: importedAt,
+      matchpointDeleteReason: reason,
+      updatedAt: importedAt,
+    },
+    payload_hash: null,
+    deleted: true,
+    synced_at: importedAt,
+  };
+}
+
+function shouldDeleteDuplicateMemberRecord(record: any) {
+  const payload = record?.payload || {};
+  const source = clean(payload.source || '');
+  return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
+}
+
 function buildStaleMatchpointMemberDeletes(records: any[], activeLocalKeys: Set<string>, importedAt: string) {
   const deletes = [];
   for (const record of records || []) {
@@ -1233,20 +1263,7 @@ function buildStaleMatchpointMemberDeletes(records: any[], activeLocalKeys: Set<
     const source = clean(payload.source || '');
     const isMatchpointRecord = source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
     if (!isMatchpointRecord) continue;
-    deletes.push({
-      record_type: 'member',
-      local_key: localKey,
-      payload: {
-        ...payload,
-        active: false,
-        source: source || 'matchpoint_auto',
-        matchpointDeletedAt: importedAt,
-        updatedAt: importedAt,
-      },
-      payload_hash: null,
-      deleted: true,
-      synced_at: importedAt,
-    });
+    deletes.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
   }
   return deletes;
 }
@@ -1418,13 +1435,16 @@ Deno.serve(async (req) => {
     const existing = await loadExistingMemberRecords(admin);
     const records = [];
     const memberRecordKeys = new Set<string>();
+    const duplicateDeletesByKey = new Map<string, any>();
     let added = 0;
     let updated = 0;
     let duplicateRows = 0;
+    let duplicateDeleted = 0;
     let staleDeleted = 0;
 
     for (const member of validation.members) {
-      const match = chooseExistingMemberRecord(existing, member);
+      const candidates = collectExistingMemberCandidates(existing, member);
+      const match = chooseExistingMemberRecord(candidates, member);
       const localKey = match?.local_key || memberCloudKey(member) || `member:${member.id}`;
       const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
       const memberRecordKey = `member|${localKey}`;
@@ -1443,9 +1463,19 @@ Deno.serve(async (req) => {
         deleted: false,
         synced_at: importedAt,
       });
+      for (const candidate of candidates) {
+        const candidateKey = clean(candidate?.local_key || '');
+        if (!candidateKey || candidateKey === localKey) continue;
+        if (!shouldDeleteDuplicateMemberRecord(candidate)) continue;
+        duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
+      }
     }
 
     const currentMemberLocalKeys = new Set([...memberRecordKeys].map((key) => key.replace(/^member\|/, '')));
+    for (const key of currentMemberLocalKeys) duplicateDeletesByKey.delete(key);
+    const duplicateDeletes = [...duplicateDeletesByKey.values()];
+    duplicateDeleted = duplicateDeletes.length;
+    records.push(...duplicateDeletes);
     const staleDeletes = buildStaleMatchpointMemberDeletes(existing.records, currentMemberLocalKeys, importedAt);
     staleDeleted = staleDeletes.length;
     records.push(...staleDeletes);
@@ -1463,6 +1493,7 @@ Deno.serve(async (req) => {
         skipped: validation.skipped,
         technicalSkipped: validation.technicalSkipped,
         duplicateRows,
+        duplicateDeleted,
         staleDeleted,
         added,
         updated,
@@ -1502,6 +1533,7 @@ Deno.serve(async (req) => {
       updated,
       skipped: validation.skipped,
       duplicateRows,
+      duplicateDeleted,
       staleDeleted,
       diagnosticFile,
     });
@@ -1515,6 +1547,7 @@ Deno.serve(async (req) => {
         upserted: records.length,
         members: validation.members.length,
         duplicateRows,
+        duplicateDeleted,
         staleDeleted,
         added,
         updated,

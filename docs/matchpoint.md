@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22.
 
 ## Obiettivo
 
@@ -144,6 +144,7 @@ Funzione server:
 - da versione funzione 19, prima dell'upsert in `pmo_cloud_records`, la funzione deduplica i clienti che generano la stessa chiave cloud (`phone:...`, `email:...`, `name:...`). Questo evita l'errore Postgres `21000` quando il file Matchpoint contiene righe diverse con stessa chiave cliente. Il riepilogo salva `duplicateRows`.
 - da versione funzione 20, il file Excel clienti esportato da Matchpoint non viene archiviato in Supabase Storage, in locale o in altri percorsi permanenti. Anche se esiste un vecchio secret `MATCHPOINT_EXPORT_BUCKET`, la funzione non carica il file: conserva solo dati normalizzati, ultimo riepilogo import e diagnostica leggera.
 - da versione funzione 21, l'import clienti viene trattato come fotografia corrente Matchpoint: dopo un import riuscito, i vecchi record `member` provenienti da Matchpoint e non presenti nella fotografia appena importata vengono marcati `deleted=true`. Questo evita accumuli e discrepanze tra TEST e PROD. I record manuali/non Matchpoint non vengono cancellati automaticamente.
+- da versione funzione 22, quando la base cloud contiene duplicati storici, la funzione disattiva anche i record duplicati che combaciano con un cliente della fotografia appena importata ma non sono il record scelto come valido. Il riepilogo salva `duplicateDeleted`.
 - worker browser/headless iniziale: `tools/matchpoint-browser-worker`, Node/Playwright, endpoint `POST /export-clients`, protetto da `MATCHPOINT_WORKER_API_KEY`. Le credenziali Matchpoint non vengono salvate in HTML, repository o localStorage.
 - da aggiornamento worker 2026-05-08, l'export clienti corretto non viene scaricato dalla sezione `Clienti`, ma dalla navigazione Matchpoint `Programmazione` -> `Elenco dei giocatori` -> `Esportare in excel`. Il worker usa questa navigazione menu-driven come modalita' predefinita e mantiene `direct_clients` solo come fallback diagnostico configurabile.
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.
@@ -225,8 +226,10 @@ Regola fotografia da v5.351 / funzione v21:
 - il file clienti Matchpoint rappresenta lo stato corrente degli iscritti esportati da Matchpoint;
 - ogni import riuscito aggiorna i record presenti nella fotografia corrente;
 - i vecchi record `member` con `source = matchpoint_auto` o con `matchpointImportedAt` non piu' presenti nella fotografia corrente vengono marcati `deleted=true`;
-- i record manuali/non Matchpoint non vengono cancellati automaticamente;
+- i record duplicati storici senza `source` vengono marcati `deleted=true` solo se combaciano con un cliente della fotografia corrente e non sono il record scelto come valido;
+- i record manuali con `source` esplicita diversa da `matchpoint_auto` non vengono cancellati automaticamente;
 - il riepilogo dell'ultimo import salva anche `staleDeleted`, cioe' quanti vecchi record Matchpoint sono stati disattivati dalla fotografia corrente.
+- il riepilogo salva anche `duplicateDeleted`, cioe' quanti duplicati storici agganciati ai clienti correnti sono stati disattivati.
 
 ### Navigazione Matchpoint per scaricare Clienti/Giocatori
 
