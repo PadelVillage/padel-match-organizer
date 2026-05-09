@@ -1198,16 +1198,15 @@ async function loadExistingMemberRecords(admin: any) {
   return { records, byKey };
 }
 
-async function saveDiagnosticExport(admin: any, exported: MatchpointExport, importedAt: string) {
-  const bucket = clean(Deno.env.get('MATCHPOINT_EXPORT_BUCKET') || '');
-  if (!bucket) return { saved: false, reason: 'MATCHPOINT_EXPORT_BUCKET_NOT_SET' };
-  const path = `matchpoint/clienti/${importedAt.slice(0, 10)}/${exported.filename}`;
-  const { error } = await admin.storage.from(bucket).upload(path, exported.bytes, {
+async function saveDiagnosticExport(_admin: any, exported: MatchpointExport, importedAt: string) {
+  return {
+    saved: false,
+    reason: 'POLICY_NO_CLIENT_FILE_ARCHIVE',
+    filename: exported.filename,
+    size: exported.bytes.byteLength,
     contentType: exported.contentType,
-    upsert: true,
-  });
-  if (error) return { saved: false, bucket, path, error: error.message || String(error) };
-  return { saved: true, bucket, path };
+    importedAt,
+  };
 }
 
 async function logAudit(admin: any, actor: StaffActor | null, action: string, detail: JsonMap) {
