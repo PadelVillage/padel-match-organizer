@@ -491,7 +491,6 @@ async function navigateToHistoryReport(page, diagnostic) {
   let historyClicked = false;
   const historyLabels = [
     'Elenco degli utenti negli spazi',
-    'Elenco degli spazi occupati',
   ];
   for (const label of historyLabels) {
     historyClicked = await clickMenuEntryEverywhere(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
@@ -920,9 +919,9 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
         routes: ['/export-clients', '/export-booking-history'],
-        historyLabels: ['Elenco degli utenti negli spazi', 'Elenco degli spazi occupati'],
+        historyLabels: ['Elenco degli utenti negli spazi'],
         historyNavigation: 'all-contexts-dom-fallback',
-        historyReportRecognition: 'utenti-spazi-date-filters',
+        historyReportRecognition: 'utenti-spazi-only',
         time: new Date().toISOString(),
       });
     }
