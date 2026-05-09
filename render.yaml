@@ -22,5 +22,7 @@ services:
         value: players_menu
       - key: MATCHPOINT_CLIENTS_PATH
         value: /clientes/Listadoclientes.aspx?pagesize=15
+      - key: MATCHPOINT_PLAYERS_PATH
+        value: /Reservas/ListadoJugadores.aspx
       - key: MATCHPOINT_EXPORT_TARGET
         value: ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar

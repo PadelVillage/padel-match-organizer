@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350.
 
 ## Obiettivo
 
@@ -147,6 +147,7 @@ Funzione server:
 - da aggiornamento worker 2026-05-08, l'export clienti corretto non viene scaricato dalla sezione `Clienti`, ma dalla navigazione Matchpoint `Programmazione` -> `Elenco dei giocatori` -> `Esportare in excel`. Il worker usa questa navigazione menu-driven come modalita' predefinita e mantiene `direct_clients` solo come fallback diagnostico configurabile.
 - da aggiornamento worker 2026-05-08 successivo, i click sui menu Matchpoint vengono eseguiti senza attendere una navigazione classica della pagina: Matchpoint apre pannelli e viste interne mantenendo `default.aspx`, quindi l'attesa deve basarsi sulla comparsa di `Elenco dei giocatori` e del pulsante `Esportare in excel`.
 - da aggiornamento worker 2026-05-08 successivo, la ricerca della vista `Giocatori` e del pulsante `Esportare in excel` controlla anche gli iframe interni di Matchpoint, non solo il corpo principale di `default.aspx`.
+- da aggiornamento worker v5.350, se il menu `Programmazione` non compare o `Elenco dei giocatori` non e' cliccabile, il worker usa il fallback diretto `/Reservas/ListadoJugadores.aspx` e cerca comunque `Giocatori` / `Esportare in excel` nella pagina e negli iframe.
 - deploy stabile worker: predisposto `render.yaml` e `tools/matchpoint-browser-worker/Dockerfile` per pubblicare il worker come servizio web Docker su Render, branch `test-preview`, health check `/health`, piano `free` per il primo test senza carta di pagamento. Se il cold start risulta troppo lento, passare a `starter`. Render deve contenere solo `MATCHPOINT_WORKER_API_KEY`; username/password Matchpoint restano nei secret Supabase dell'ambiente chiamante.
 
 ### Secret Supabase richiesti
@@ -235,6 +236,7 @@ Note tecniche:
 
 - Matchpoint non sempre cambia URL durante la navigazione: il worker deve verificare il contenuto della pagina, non la URL.
 - La vista e il pulsante export possono comparire in frame/iframe interni.
+- Fallback tecnico worker: se il menu non e' disponibile, aprire direttamente `/Reservas/ListadoJugadores.aspx` dopo login e scelta cassa, poi cercare il pulsante export.
 - La sezione `Clienti` di Matchpoint esporta un file diverso con colonne come `Codice`, `Identificazione`, `Nome`, `Cognome`, `N. socio`; quel file non va usato per l'import automatico soci dell'app.
 - `Codice` e `N. socio` non sono chiavi identificative nell'app: il match resta su telefono, email e nome normalizzato.
 

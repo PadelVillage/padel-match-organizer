@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
 
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
 const DEFAULT_CLIENTS_PATH = '/clientes/Listadoclientes.aspx?pagesize=15';
+const DEFAULT_PLAYERS_PATH = '/Reservas/ListadoJugadores.aspx';
 const DEFAULT_EXPORT_TARGET = 'ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar';
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -194,14 +195,44 @@ async function findPlayersExportContext(page, diagnostic, timeout = 45000) {
   return null;
 }
 
-async function navigateToPlayersList(page, diagnostic) {
+async function navigateDirectToPlayersList(page, baseUrl, playersPath, diagnostic, reason) {
+  diagnostic.steps.push('players_direct_fallback');
+  diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
+  diagnostic.navigationAttempts.push({
+    action: 'direct_players_page',
+    reason,
+    path: playersPath,
+  });
+  await page.goto(absoluteUrl(baseUrl, playersPath), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  diagnostic.directPlayersUrl = page.url();
+  diagnostic.directPlayersTitle = await page.title().catch(() => '');
+
+  if (/Login\.aspx/i.test(page.url())) {
+    diagnostic.directPlayersError = 'MATCHPOINT_DIRECT_PLAYERS_NOT_AUTHENTICATED';
+    return null;
+  }
+  if (/Error\.aspx|aspxerrorpath=/i.test(page.url())) {
+    diagnostic.directPlayersError = 'MATCHPOINT_DIRECT_PLAYERS_PAGE_ERROR';
+    return null;
+  }
+  return findPlayersExportContext(page, diagnostic, 20000);
+}
+
+async function navigateToPlayersList(page, baseUrl, playersPath, diagnostic) {
   diagnostic.steps.push('players_menu_open');
   const menuClicked = await clickMenuEntry(page, 'Programmazione', 'open_programmazione_menu', diagnostic);
   if (!menuClicked) {
+    const directContext = await navigateDirectToPlayersList(page, baseUrl, playersPath, diagnostic, 'programmazione_menu_missing');
+    if (directContext) return directContext;
     throw fail('MATCHPOINT_PLAYERS_MENU_NOT_FOUND', 'Menu Programmazione non trovato nel worker browser.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
+      directPlayersUrl: diagnostic.directPlayersUrl || '',
+      directPlayersError: diagnostic.directPlayersError || '',
+      playersContextSamples: diagnostic.playersContextSamples || [],
     });
   }
   await page.waitForTimeout(800);
@@ -209,10 +240,15 @@ async function navigateToPlayersList(page, diagnostic) {
   diagnostic.steps.push('players_menu_click');
   const playersClicked = await clickMenuEntry(page, 'Elenco dei giocatori', 'click_elenco_giocatori', diagnostic);
   if (!playersClicked) {
+    const directContext = await navigateDirectToPlayersList(page, baseUrl, playersPath, diagnostic, 'elenco_giocatori_menu_missing');
+    if (directContext) return directContext;
     throw fail('MATCHPOINT_PLAYERS_LIST_NOT_FOUND', 'Voce Elenco dei giocatori non trovata nel menu Programmazione.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
+      directPlayersUrl: diagnostic.directPlayersUrl || '',
+      directPlayersError: diagnostic.directPlayersError || '',
+      playersContextSamples: diagnostic.playersContextSamples || [],
     });
   }
 
@@ -220,11 +256,17 @@ async function navigateToPlayersList(page, diagnostic) {
   await page.waitForTimeout(1500);
   const exportContext = await findPlayersExportContext(page, diagnostic);
   if (!exportContext) {
+    const directContext = await navigateDirectToPlayersList(page, baseUrl, playersPath, diagnostic, 'players_page_not_ready');
+    if (directContext) return directContext;
+  }
+  if (!exportContext) {
     throw fail('MATCHPOINT_PLAYERS_PAGE_NOT_READY', 'Pagina Elenco giocatori non pronta o pulsante export non trovato.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       playersContextSamples: diagnostic.playersContextSamples || [],
       navigationAttempts: diagnostic.navigationAttempts || [],
+      directPlayersUrl: diagnostic.directPlayersUrl || '',
+      directPlayersError: diagnostic.directPlayersError || '',
     });
   }
   return exportContext;
@@ -335,12 +377,14 @@ async function exportClientsWithBrowser(options = {}) {
 
   const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
   const clientsPath = clean(options.clientsPath) || env('MATCHPOINT_CLIENTS_PATH', DEFAULT_CLIENTS_PATH);
+  const playersPath = clean(options.playersPath) || env('MATCHPOINT_PLAYERS_PATH', DEFAULT_PLAYERS_PATH);
   const exportTarget = clean(options.exportTarget) || env('MATCHPOINT_EXPORT_TARGET', DEFAULT_EXPORT_TARGET);
   const navigationMode = clean(options.navigationMode) || env('MATCHPOINT_BROWSER_NAVIGATION_MODE', 'players_menu');
   const diagnostic = {
     mode: 'browser_worker_headless',
     baseUrl,
     clientsPath,
+    playersPath,
     navigationMode,
     startedAt: new Date().toISOString(),
     steps: [],
@@ -411,7 +455,7 @@ async function exportClientsWithBrowser(options = {}) {
         });
       }
     } else {
-      exportContext = await navigateToPlayersList(page, diagnostic);
+      exportContext = await navigateToPlayersList(page, baseUrl, playersPath, diagnostic);
     }
 
     diagnostic.steps.push('export_click');
