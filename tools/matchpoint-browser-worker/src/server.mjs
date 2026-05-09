@@ -404,12 +404,21 @@ async function navigateToHistoryReport(page, diagnostic) {
   await page.waitForTimeout(1500);
 
   diagnostic.steps.push('history_occupancy_click');
-  const historyClicked = await clickMenuEntry(page, 'Elenco degli spazi occupati', 'click_elenco_spazi_occupati', diagnostic);
+  let historyClicked = false;
+  const historyLabels = [
+    'Elenco degli spazi occupati',
+    'Elenco degli utenti negli spazi',
+  ];
+  for (const label of historyLabels) {
+    historyClicked = await clickMenuEntry(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
+    if (historyClicked) break;
+  }
   if (!historyClicked) {
     throw fail('MATCHPOINT_HISTORY_LINK_NOT_FOUND', 'Voce Elenco degli spazi occupati non trovata nel capitolo Occupazione.', {
       url: page.url(),
       title: await page.title().catch(() => ''),
       navigationAttempts: diagnostic.navigationAttempts || [],
+      bodySample: (await readContextBody(page).catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 1400),
     });
   }
   await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
@@ -817,6 +826,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
+        routes: ['/export-clients', '/export-booking-history'],
+        historyLabels: ['Elenco degli spazi occupati', 'Elenco degli utenti negli spazi'],
         time: new Date().toISOString(),
       });
     }
