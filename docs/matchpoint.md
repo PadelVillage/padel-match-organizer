@@ -116,7 +116,7 @@ Percorso Matchpoint validato il 2026-05-09:
 1. Pagina iniziale dopo login: `Pannello di controllo generale`.
 2. Aprire il menu alto `Inf. e statistiche`.
 3. Scorrere fino al capitolo `Occupazione`.
-4. Cliccare `Elenco degli spazi occupati`.
+4. Cliccare `Elenco degli utenti negli spazi`.
 5. Nella pagina `Utenti negli spazi`, impostare `Dal Giorno` e `Al Giorno` sugli ultimi 30 giorni.
 6. Lasciare vuoti/neutri gli altri filtri: ora, spazio, giorno settimana, provenienza, tipo, gruppo e tipo prenotazioni.
 7. Lasciare non selezionato `Solo clienti che hanno gia pagato`.
