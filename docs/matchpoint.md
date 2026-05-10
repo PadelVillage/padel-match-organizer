@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364.
 
 ## Obiettivo
 
@@ -186,6 +186,12 @@ Nota tecnica v5.363 TEST/PROD:
 - `Clienti Matchpoint` conta solo record `member` provenienti da Matchpoint (`source = matchpoint_auto` o `matchpointImportedAt`), evitando che record manuali o legacy sporchino il riepilogo;
 - anche `Storico Matchpoint` e `Scarica novita cloud` usano la stessa lettura paginata;
 - causa del disallineamento rilevato il 2026-05-10: in PROD la tabella `pmo_cloud_records` conteneva piu di 1000 record `member`, quindi la lettura non paginata vedeva solo una finestra parziale e mostrava 640 clienti invece della fotografia completa.
+
+Nota tecnica v5.364 TEST/PROD:
+
+- l'errore PROD `Paginazione cloud non applicata correttamente` ha confermato che gli header HTTP `Range` non sono affidabili sulla RPC PostgREST usata dall'app;
+- creata su TEST e PROD la RPC permanente `pmo_get_records_admin_page(p_record_types, p_since, p_limit, p_offset)`, con lo stesso controllo staff/cloud_sync di `pmo_get_records_admin`;
+- la app usa `p_limit`/`p_offset` nel payload della nuova RPC, quindi la paginazione non dipende piu dagli header e resta valida anche quando TEST superera 1000 record.
 
 Nota worker 2026-05-10:
 

@@ -4749,7 +4749,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.363';
+    const APP_VERSION = '5.364';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18402,12 +18402,16 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoCloudRpcPaged(functionName, payload, options={}) {
 	      const pageSize = Math.max(1, parseInt(options.pageSize, 10) || 1000);
 	      const maxPages = Math.max(1, parseInt(options.maxPages, 10) || 50);
+	      const pagedFunctionName = options.pageFunctionName || (functionName === 'pmo_get_records_admin' ? 'pmo_get_records_admin_page' : functionName);
+	      const usePayloadPagination = pagedFunctionName !== functionName || options.payloadPagination === true;
 	      const rows = [];
 	      const pageSignatures = new Set();
 	      for (let page = 0; page < maxPages; page += 1) {
 	        const from = page * pageSize;
 	        const to = from + pageSize - 1;
-	        const pageRows = await pmoCloudRpc(functionName, payload, { ...options, range:{ from, to } });
+	        const pagePayload = usePayloadPagination ? { ...(payload || {}), p_limit: pageSize, p_offset: from } : payload;
+	        const pageOptions = usePayloadPagination ? { ...options, range: null } : { ...options, range:{ from, to } };
+	        const pageRows = await pmoCloudRpc(pagedFunctionName, pagePayload, pageOptions);
 	        if (!Array.isArray(pageRows)) return pageRows;
 	        const signature = pageRows.length
 	          ? `${pageRows.length}|${pageRows[0]?.record_type || ''}|${pageRows[0]?.local_key || ''}|${pageRows[pageRows.length - 1]?.record_type || ''}|${pageRows[pageRows.length - 1]?.local_key || ''}`
