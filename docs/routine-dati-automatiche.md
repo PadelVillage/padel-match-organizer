@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; scheduler backend ancora da progettare e validare.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; scheduler backend ancora da progettare e validare.
 
 ## Obiettivo
 
@@ -18,8 +18,8 @@ La routine deve:
 
 | Orario | Routine | Scopo |
 |---|---|---|
-| 04:30 | Storico Matchpoint | Scarica gli ultimi 30 giorni e aggiunge solo righe storiche mancanti. |
-| 05:00 | Clienti Matchpoint | Aggiorna la fotografia anagrafica dei clienti. |
+| 04:30 | Clienti Matchpoint | Aggiorna la fotografia anagrafica dei clienti. |
+| 05:00 | Storico Matchpoint | Scarica gli ultimi 30 giorni e aggiunge solo righe storiche mancanti. |
 | 05:30 | Prenotazioni future Matchpoint | Aggiorna la fotografia dei prossimi 30 giorni. |
 | 05:45 | Controllo dati | Consolida esiti, ultimo dato valido, errori e alert visibili. |
 
@@ -115,6 +115,13 @@ La colonna `Prossima esecuzione` non usa piu' il testo relativo `domani`.
 Il formato visibile e' giorno abbreviato, data completa e ora:
 
 `Lun 11/05/2026 • 04:30`
+
+## Rifinitura UI v5.371
+
+Gli orari di `Clienti Matchpoint` e `Storico Matchpoint` sono invertiti:
+
+- `Clienti Matchpoint`: 04:30;
+- `Storico Matchpoint`: 05:00.
 
 ## Alert
 
