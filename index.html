@@ -4749,7 +4749,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.362';
+    const APP_VERSION = '5.363';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7782,14 +7782,18 @@ body.assessment-public-mode .assessment-public-only-card {
       return raw || 'Aggiornamento clienti Matchpoint non riuscito.';
     }
 
+    function isMatchpointCloudMemberPayload(payload) {
+      return cleanCell(payload?.source || '') === 'matchpoint_auto' || !!payload?.matchpointImportedAt;
+    }
+
     async function pmoLoadMatchpointMembersFromCloud() {
-      const rows = await pmoStaffRpc('pmo_get_records_admin', {
+      const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
         p_record_types: ['member', 'matchpoint_data'],
         p_since: null
       }, 'cloud_sync', 'scaricare clienti Matchpoint dal cloud');
       const list = Array.isArray(rows) ? rows : [];
       const members = list
-        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload)
+        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload && isMatchpointCloudMemberPayload(row.payload))
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
       const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_clients_auto_import_last')?.payload || null;
       return { members, summary };
@@ -8025,7 +8029,7 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     async function pmoLoadMatchpointHistoryFromCloud() {
-      const rows = await pmoStaffRpc('pmo_get_records_admin', {
+      const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
         p_record_types: ['booking_history', 'matchpoint_data'],
         p_since: null
       }, 'cloud_sync', 'scaricare storico Matchpoint dal cloud');
@@ -18368,15 +18372,25 @@ Per confermare scrivi ELIMINA.`);
 	      if (!pmoProfileHasPermission(profile, permission)) throw new Error(`Il tuo profilo non ha il permesso per ${actionLabel}.`);
 	      return { accessToken, profile };
 	    }
-	    async function pmoStaffRpc(functionName, payload={}, permission='', actionLabel='questa operazione') {
-	      const staff = await pmoRequireStaffPermission(permission, actionLabel);
-	      return pmoCloudRpc(functionName, payload, { accessToken: staff.accessToken });
-	    }
+    async function pmoStaffRpc(functionName, payload={}, permission='', actionLabel='questa operazione') {
+      const staff = await pmoRequireStaffPermission(permission, actionLabel);
+      return pmoCloudRpc(functionName, payload, { accessToken: staff.accessToken });
+    }
+    async function pmoStaffRpcPaged(functionName, payload={}, permission='', actionLabel='questa operazione', options={}) {
+      const staff = await pmoRequireStaffPermission(permission, actionLabel);
+      return pmoCloudRpcPaged(functionName, payload, { ...options, accessToken: staff.accessToken });
+    }
 	    async function pmoCloudRpc(functionName, payload, options={}) {
 	      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	      const headers = { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${options.accessToken || supabaseKey}` };
+	      if (options.range && Number.isFinite(options.range.from) && Number.isFinite(options.range.to)) {
+	        headers.Range = `${options.range.from}-${options.range.to}`;
+	        headers['Range-Unit'] = 'items';
+	        headers.Prefer = 'count=exact';
+	      }
 	      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
 	        method: 'POST',
-	        headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${options.accessToken || supabaseKey}` },
+	        headers,
 	        body: JSON.stringify(payload || {})
 	      });
 	      const text = await response.text();
@@ -18384,6 +18398,27 @@ Per confermare scrivi ELIMINA.`);
 	      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
 	      if (!response.ok) throw new Error(pmoFriendlyCloudError(data || text || `Errore HTTP ${response.status}`));
 	      return data;
+	    }
+	    async function pmoCloudRpcPaged(functionName, payload, options={}) {
+	      const pageSize = Math.max(1, parseInt(options.pageSize, 10) || 1000);
+	      const maxPages = Math.max(1, parseInt(options.maxPages, 10) || 50);
+	      const rows = [];
+	      const pageSignatures = new Set();
+	      for (let page = 0; page < maxPages; page += 1) {
+	        const from = page * pageSize;
+	        const to = from + pageSize - 1;
+	        const pageRows = await pmoCloudRpc(functionName, payload, { ...options, range:{ from, to } });
+	        if (!Array.isArray(pageRows)) return pageRows;
+	        const signature = pageRows.length
+	          ? `${pageRows.length}|${pageRows[0]?.record_type || ''}|${pageRows[0]?.local_key || ''}|${pageRows[pageRows.length - 1]?.record_type || ''}|${pageRows[pageRows.length - 1]?.local_key || ''}`
+	          : `empty-${page}`;
+	        if (pageRows.length && pageSignatures.has(signature)) throw new Error('Paginazione cloud non applicata correttamente.');
+	        pageSignatures.add(signature);
+	        rows.push(...pageRows);
+	        if (pageRows.length < pageSize) break;
+	        if (page === maxPages - 1) throw new Error('Troppi record cloud da scaricare in una sola operazione.');
+	      }
+	      return rows;
 	    }
 	    function pmoStableStringify(value) {
 	      if (Array.isArray(value)) return '[' + value.map(pmoStableStringify).join(',') + ']';
@@ -19226,7 +19261,7 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoPullOperationalCloudRecords() {
 	      try {
 	        pmoSetCloudStatus('Scarico partite e gruppi dal cloud...', 'info');
-	        const rows = await pmoStaffRpc('pmo_get_records_admin', {
+	        const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
 	          p_record_types: ['match_invitation', 'player_group'],
 	          p_since: null
 	        }, 'cloud_sync', 'scaricare le novità cloud');

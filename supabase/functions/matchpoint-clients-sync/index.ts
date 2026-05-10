@@ -60,6 +60,7 @@ const REQUIRED_CLIENT_COLUMNS = ['Cliente', 'Telefono cellulare', 'E-mail', 'Eta
 const CLIENT_FULL_NAME_COLUMNS = ['Cliente', 'Nominativo', 'Nome e cognome', 'Nome completo', 'Full Name'];
 const CLIENT_FIRST_NAME_COLUMNS = ['Nome', 'First Name'];
 const CLIENT_SURNAME_COLUMNS = ['Cognome', 'Last Name', 'Surname'];
+const SUPABASE_PAGE_SIZE = 1000;
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
 const DEFAULT_CLIENTS_PATH = '/clientes/Listadoclientes.aspx?pagesize=15';
 const DEFAULT_EXPORT_TARGET = 'ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar';
@@ -1219,13 +1220,22 @@ function hasPermission(actor: StaffActor, permission: string) {
 }
 
 async function loadExistingMemberRecords(admin: any) {
-  const { data, error } = await admin
-    .from('pmo_cloud_records')
-    .select('record_type,local_key,payload,deleted,synced_at')
-    .eq('record_type', 'member')
-    .eq('deleted', false);
-  if (error) throw error;
-  const records = Array.isArray(data) ? data : [];
+  const records: any[] = [];
+  for (let from = 0, page = 0; page < 50; page += 1, from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('pmo_cloud_records')
+      .select('record_type,local_key,payload,deleted,synced_at')
+      .eq('record_type', 'member')
+      .eq('deleted', false)
+      .order('synced_at', { ascending: true })
+      .order('local_key', { ascending: true })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const pageRecords = Array.isArray(data) ? data : [];
+    records.push(...pageRecords);
+    if (pageRecords.length < SUPABASE_PAGE_SIZE) break;
+    if (page === 49) throw new Error('SUPABASE_MEMBER_PAGE_LIMIT_EXCEEDED');
+  }
   const byKey = new Map<string, any[]>();
   for (const record of records) {
     const payload = record.payload || {};
@@ -1254,9 +1264,9 @@ function chooseExistingMemberRecord(candidates: any[], member: ParsedMember) {
     const payload = record.payload || {};
     const source = clean(payload.source || '');
     let score = 0;
+    if (record.local_key === canonicalKey) score += 220;
     if (source && source !== 'matchpoint_auto') score += 120;
     if (!source) score += 100;
-    if (record.local_key === canonicalKey) score += 70;
     if (source === 'matchpoint_auto') score += 20;
     if (payload.matchpointImportedAt) score += 5;
     const syncedAt = new Date(record.synced_at || payload.updatedAt || 0).getTime() || 0;
@@ -1288,6 +1298,13 @@ function buildDeletedMemberRecord(record: any, importedAt: string, reason: strin
 
 function shouldDeleteDuplicateMemberRecord(record: any) {
   const payload = record?.payload || {};
+  const source = clean(payload.source || '');
+  return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
+}
+
+function shouldNormalizeMemberLocalKey(record: any) {
+  if (!record) return false;
+  const payload = record.payload || {};
   const source = clean(payload.source || '');
   return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
 }
@@ -1507,7 +1524,10 @@ Deno.serve(async (req) => {
     for (const member of validation.members) {
       const candidates = collectExistingMemberCandidates(existing, member);
       const match = chooseExistingMemberRecord(candidates, member);
-      const localKey = clean(match?.local_key || memberCloudKey(member) || `member:${member.id}`);
+      const canonicalKey = memberCloudKey(member);
+      const localKey = clean((match && !shouldNormalizeMemberLocalKey(match) && match.local_key)
+        ? match.local_key
+        : (canonicalKey || match?.local_key || `member:${member.id}`));
       const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
       const memberRecordKey = `member|${localKey}`;
       if (memberRecordKeys.has(memberRecordKey)) {
