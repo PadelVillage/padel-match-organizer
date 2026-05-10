@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; scheduler backend ancora da progettare e validare.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; scheduler backend ancora da progettare e validare.
 
 ## Obiettivo
 
@@ -107,6 +107,14 @@ La prima integrazione in app e' solo visuale/operativa:
 Dopo approvazione del mockup `mockup/routine-dati-automatiche-mockup.html`, la sezione DATI non mostra piu' l'intestazione alta `DATI (in/out)`, il sottotitolo `Stato dati, aggiornamenti Matchpoint, backup e slot potenziali.` e la relativa linea divisoria.
 
 Il primo contenuto visibile deve essere il box `Stato routine automatiche`.
+
+## Rifinitura UI v5.370
+
+La colonna `Prossima esecuzione` non usa piu' il testo relativo `domani`.
+
+Il formato visibile e' giorno abbreviato, data completa e ora:
+
+`Lun 11/05/2026 • 04:30`
 
 ## Alert
 

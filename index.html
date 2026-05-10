@@ -4834,7 +4834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.369';
+    const APP_VERSION = '5.370';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9511,13 +9511,12 @@ body.assessment-public-mode .assessment-public-only-card {
       if (!candidates.length) return '-';
       candidates.sort((a, b) => a.date - b.date);
       const next = candidates[0];
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const nextDay = new Date(next.date);
-      nextDay.setHours(0, 0, 0, 0);
-      const diffDays = Math.round((nextDay - today) / 86400000);
-      const prefix = diffDays === 0 ? 'oggi' : (diffDays === 1 ? 'domani' : next.date.toLocaleDateString('it-IT'));
-      return `${prefix} ${next.value}`;
+      const dayLabels = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+      const dayName = dayLabels[next.date.getDay()] || '';
+      const day = String(next.date.getDate()).padStart(2, '0');
+      const month = String(next.date.getMonth() + 1).padStart(2, '0');
+      const year = next.date.getFullYear();
+      return `${dayName} ${day}/${month}/${year} • ${next.value}`;
     }
 
     function getMatchpointRoutineStatus(row) {
