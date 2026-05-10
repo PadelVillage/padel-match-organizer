@@ -4186,7 +4186,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
               <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
                 <h3><span class="matchpoint-data-step">5</span> Backup dati</h3>
-                <p class="matchpoint-data-copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
+                <p class="matchpoint-data-copy">Salva il backup cloud su Supabase e scarica una copia locale solo quando vuoi tu.</p>
                 <div class="matchpoint-data-file">
                   <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
                   <div class="matchpoint-data-actions">
@@ -4194,7 +4194,9 @@ body.assessment-public-mode .assessment-public-only-card {
                     <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
                     <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
                     <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
-                    <div class="matchpoint-cloud-note">Backup unico sovrascritto su Supabase.</div>
+                    <button id="matchpointBackupButton" class="btn-secondary" onclick="setActionAnchor(this); exportBackup()">Scarica backup locale</button>
+                    <div id="matchpointBackupActionState" class="matchpoint-action-state"></div>
+                    <div class="matchpoint-cloud-note">Backup cloud unico sovrascritto su Supabase. Copia locale solo su richiesta.</div>
                   </div>
                 </div>
               </article>
@@ -4834,7 +4836,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.371';
+    const APP_VERSION = '5.372';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8687,25 +8689,18 @@ body.assessment-public-mode .assessment-public-only-card {
 
     async function saveCloudBackup() {
       const button = document.getElementById('matchpointCloudBackupButton');
-      let localDownload = { ok: false, filename: '' };
       try {
         setDataActionStatus('cloudBackup', 'pending', 'Salvataggio cloud in corso');
         if (button) button.disabled = true;
         const backup = createBackupPayload();
-        localDownload = downloadBackupPayload(backup);
         const result = await pmoInvokeCloudBackup('save', backup);
         saveLastCloudBackupInfo(result?.metadata || {});
         markDataActionDone('cloudBackup');
-        if (localDownload.ok) {
-          showAlert(`✅ Backup cloud salvato. Copia locale scaricata: ${localDownload.filename}`, 'success');
-        } else {
-          showAlert('⚠️ Backup cloud salvato, ma il browser ha bloccato il download della copia locale.', 'warning');
-        }
+        showAlert('✅ Backup cloud salvato su Supabase.', 'success');
       } catch (err) {
         const message = pmoFriendlyCloudBackupError(err, 'salvare il backup cloud');
         setDataActionStatus('cloudBackup', 'error', message);
-        const prefix = localDownload.ok ? `Copia locale scaricata: ${localDownload.filename}. ` : '';
-        showAlert(`${localDownload.ok ? '⚠️' : '❌'} ${prefix}${message}`, localDownload.ok ? 'warning' : 'danger');
+        showAlert(`❌ ${message}`, 'danger');
       } finally {
         if (button) button.disabled = false;
       }
@@ -9330,7 +9325,7 @@ body.assessment-public-mode .assessment-public-only-card {
       bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna prenotazioni', pendingText:'Aggiornamento prenotazioni...', doneText:'Aggiorna prenotazioni' },
       history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Aggiorna storico', pendingText:'Aggiornamento storico...', doneText:'Aggiorna storico' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
-      backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup', pendingText:'Scarica backup', doneText:'Scarica backup' },
+      backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup locale', pendingText:'Scarica backup locale', doneText:'Scarica backup locale' },
       restore: { buttonId:'matchpointRestoreBackupButton', stateId:'matchpointRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup', pendingText:'Ripristina backup', doneText:'Backup ripristinato' },
       cloudBackup: { buttonId:'matchpointCloudBackupButton', stateId:'matchpointCloudBackupActionState', defaultClass:'btn-primary', doneClass:'btn-primary', defaultText:'Salva backup cloud', pendingText:'Salvataggio cloud...', doneText:'Salva backup cloud' },
       cloudRestore: { buttonId:'matchpointCloudRestoreButton', stateId:'matchpointCloudRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup cloud', pendingText:'Ripristino cloud...', doneText:'Ripristina backup cloud' }
@@ -9372,7 +9367,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     function formatDataActionBackupStatus() {
       const when = formatBackupDateTime(getLastBackupInfo());
-      return when && when !== 'non disponibile' ? `Ultimo backup scaricato: ${when}` : 'Ultimo backup scaricato: non disponibile';
+      return when && when !== 'non disponibile' ? `Ultimo backup locale: ${when}` : 'Ultimo backup locale: non disponibile';
     }
 
     function saveLastBackupDownloadInfo(filename, createdAt=new Date().toISOString()) {

@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; scheduler backend Matchpoint in attivazione su Supabase TEST, senza promozione PROD.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; scheduler backend Matchpoint in attivazione su Supabase TEST, senza promozione PROD.
 
 ## Obiettivo
 
@@ -123,6 +123,14 @@ Gli orari di `Clienti Matchpoint` e `Storico Matchpoint` sono invertiti:
 - `Clienti Matchpoint`: 04:30;
 - `Storico Matchpoint`: 05:00.
 
+## Rifinitura UI v5.372
+
+Dopo approvazione del mockup `mockup/backup-cloud-locale-separato-mockup.html`, nel box `Backup dati` il salvataggio cloud e il download locale tornano separati:
+
+- `Salva backup cloud` salva solo su Supabase Storage;
+- `Ripristina backup cloud` resta vicino all'azione cloud;
+- `Scarica backup locale` resta in basso come azione manuale su richiesta.
+
 ## Scheduler backend TEST
 
 Lo scheduler backend viene attivato prima solo sul progetto Supabase TEST `cudiqnrrlbyqryrtaprd`.
@@ -179,6 +187,7 @@ La routine deve rispettare la policy no-accumulo:
 - nessun Excel prenotazioni future conservato;
 - nessun Excel storico Matchpoint conservato;
 - backup cloud unico sovrascritto in Supabase Storage;
+- backup locale creato solo su richiesta manuale dello staff;
 - storico prenotazioni usato dall'algoritmo limitato agli ultimi 12 mesi;
 - restano solo record normalizzati, riepiloghi import e diagnostica leggera.
 
