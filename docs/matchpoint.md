@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico candidato v5.358 TEST con funzione `matchpoint-history-sync`; layout riepilogo storico compatto candidato v5.359 TEST.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico candidato v5.358 TEST con funzione `matchpoint-history-sync`; layout riepilogo storico compatto candidato v5.359 TEST; pulizia testi azione Clienti/Storico candidata v5.360 TEST.
 
 ## Obiettivo
 
@@ -155,6 +155,12 @@ Nota UI v5.359 TEST:
 - il riepilogo viene mostrato subito sotto la descrizione in tre righe label-valore: `Periodo file`, `Nuove righe`, `Totale prenotazioni storiche`;
 - il testo tecnico sul file temporaneo eliminato non viene mostrato nella UI, ma resta una regola tecnica della funzione/import.
 
+Nota UI v5.360 TEST:
+
+- nei box `Clienti Matchpoint` e `Storico Matchpoint` vengono rimosse le label duplicate sopra al bottone;
+- i bottoni restano azioni brevi anche dopo l'esito verde: `Aggiorna clienti` e `Aggiorna storico`;
+- lo stato sotto ai bottoni automatici usa `Ultimo aggiornamento automatico`, con data/ora e conteggi sintetici.
+
 ## Slot potenziali v5.234
 
 Il box `Slot potenziali` salva in localStorage la griglia teorica settimanale degli slot vendibili del club con chiave `potentialSlotSchedule`.
@@ -228,7 +234,7 @@ Funzione server:
   - PROD: progetto Supabase `qqbfphyslczzkxoncgex`;
 - deploy TEST: attivo su progetto `cudiqnrrlbyqryrtaprd`, funzione `matchpoint-clients-sync`, versione 24, `verify_jwt=true`;
 - deploy PROD: attivo su progetto `qqbfphyslczzkxoncgex`, funzione `matchpoint-clients-sync`, versione 8, `verify_jwt=true`, con secret dedicati nel progetto PROD;
-- invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti da Matchpoint`;
+- invocazione manuale dalla sezione `DATI (in/out)` con il pulsante `Aggiorna clienti`;
 - credenziali lette solo da secret Supabase: `MATCHPOINT_USERNAME` e `MATCHPOINT_PASSWORD`;
 - URL base predefinito: `https://app-padelvillage-it.matchpoint.com.es`;
 - pagina clienti predefinita: `/clientes/Listadoclientes.aspx?pagesize=15`;
@@ -391,7 +397,7 @@ Mockup UI:
 
 - file: `mockup/dati-clienti-automatici-mockup.html`;
 - approvato prima dell'integrazione reale;
-- mostra il box `Clienti Matchpoint` con pulsante `Aggiorna clienti da Matchpoint`;
+- mostra il box `Clienti Matchpoint` con pulsante automatico clienti; da v5.360 il testo visibile e' `Aggiorna clienti`;
 - mostra stato ultimo import automatico, data/ora, righe importate ed eventuale errore bloccante;
 - non collega il mockup a Supabase o dati reali.
 
@@ -401,7 +407,7 @@ Integrazione app v5.342:
 - il click invoca la funzione Edge `matchpoint-clients-sync`;
 - dopo la scrittura cloud l'app legge i record `member` tramite RPC staff e aggiorna `giocatori` in localStorage;
 - restano preservati livello, preferenze, stato operativo e dati curati localmente dove gia presenti;
-- lo stato sotto al box mostra `Ultimo automatico`, data/ora e righe lette quando l'import riesce;
+- lo stato sotto al box mostra `Ultimo aggiornamento automatico`, data/ora e righe lette quando l'import riesce;
 - gli errori bloccanti vengono mostrati nel box e non scrivono dati locali.
 
 Integrazione app v5.343-v5.344:

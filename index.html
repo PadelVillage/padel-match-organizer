@@ -4066,10 +4066,9 @@ body.assessment-public-mode .assessment-public-only-card {
             <h3><span class="matchpoint-data-step">1</span> Clienti Matchpoint</h3>
             <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
             <div class="matchpoint-data-file">
-              <label>Aggiorna clienti da Matchpoint</label>
               <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
               <div class="matchpoint-data-actions">
-                <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti da Matchpoint</button>
+                <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti</button>
                 <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
               </div>
             </div>
@@ -4098,9 +4097,8 @@ body.assessment-public-mode .assessment-public-only-card {
               <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
             </div>
             <div class="matchpoint-data-file">
-              <label>Aggiorna storico da Matchpoint</label>
               <div class="matchpoint-data-actions">
-                <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico da Matchpoint</button>
+                <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico</button>
                 <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
               </div>
             </div>
@@ -4749,7 +4747,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.359';
+    const APP_VERSION = '5.360';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8889,9 +8887,9 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
     const DATA_ACTION_CONFIG = {
-      clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti da Matchpoint', pendingText:'Aggiornamento in corso', doneText:'Clienti aggiornati' },
+      clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti', pendingText:'Aggiornamento in corso', doneText:'Aggiorna clienti' },
       bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Importa prenotazioni', pendingText:'Importa prenotazioni', doneText:'Prenotazioni importate' },
-      history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Aggiorna storico da Matchpoint', pendingText:'Aggiornamento storico...', doneText:'Storico aggiornato' },
+      history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Aggiorna storico', pendingText:'Aggiornamento storico...', doneText:'Aggiorna storico' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
       backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup', pendingText:'Scarica backup', doneText:'Scarica backup' },
       restore: { buttonId:'matchpointRestoreBackupButton', stateId:'matchpointRestoreActionState', defaultClass:'btn-secondary', defaultText:'Ripristina backup', pendingText:'Ripristina backup', doneText:'Backup ripristinato' },
@@ -8916,14 +8914,14 @@ body.assessment-public-mode .assessment-public-only-card {
       if (key === 'clients' && summary?.source === 'automatic') {
         const rows = parseInt(summary.importedRows ?? summary.metrics?.['Soci letti'] ?? summary.metrics?.['Righe importate'] ?? 0, 10) || 0;
         return when && when !== 'non disponibile'
-          ? `Ultimo automatico: ${when}${rows ? ` • ${rows} righe` : ''}`
-          : 'Ultimo automatico: non disponibile';
+          ? `Ultimo aggiornamento automatico: ${when}${rows ? ` • ${rows} righe` : ''}`
+          : 'Ultimo aggiornamento automatico: non disponibile';
       }
       if (key === 'history' && summary?.source === 'automatic') {
         const rows = parseInt(summary.metrics?.['Nuove righe cloud'] ?? summary.metrics?.['Nuove righe'] ?? summary.addedCount ?? 0, 10) || 0;
         return when && when !== 'non disponibile'
-          ? `Ultimo automatico: ${when}${rows ? ` • +${rows}` : ''}`
-          : 'Ultimo automatico: non disponibile';
+          ? `Ultimo aggiornamento automatico: ${when}${rows ? ` • +${rows}` : ''}`
+          : 'Ultimo aggiornamento automatico: non disponibile';
       }
       return when && when !== 'non disponibile' ? `Ultimo import: ${when}` : 'Ultimo import: non disponibile';
     }
