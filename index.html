@@ -4751,7 +4751,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.365';
+    const APP_VERSION = '5.366';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4791,6 +4791,9 @@ body.assessment-public-mode .assessment-public-only-card {
     const HISTORY_RETENTION_MONTHS = 12;
     const DAILY_DIFF_HISTORY_LIMIT = 10;
     const DAILY_DIFF_DETAIL_LIMIT = 30;
+    const PMO_COMPACT_BOOKING_STORAGE_KEYS = new Set(['prenotazioni', 'prenotazioniOccupazione', 'storicoPrenotazioni']);
+    const PMO_COMPACT_BOOKING_STORAGE_MARKER = 'pmo-bookings-v1';
+    const PMO_COMPACT_BOOKING_FIELDS = ['numero', 'giocatore', 'data', 'ora', 'durata', 'campo', 'tipo', 'descrizione'];
     document.body.classList.toggle('pmo-env-test', PMO_IS_TEST_ENV);
     document.title = `Padel Match Organizer v${APP_VERSION}${PMO_IS_TEST_ENV ? ' TEST' : ''}`;
     document.querySelectorAll('[data-app-version]').forEach(el => { el.textContent = `v${APP_VERSION}`; });
@@ -4822,6 +4825,9 @@ body.assessment-public-mode .assessment-public-only-card {
     let potentialSlotImage = safeLoad('potentialSlotImage', null);
     let potentialSlotEditorDirty = false;
     let storicoPrenotazioni = safeLoad('storicoPrenotazioni', []);
+    pmoMigrateCompactStorageKey('prenotazioni', prenotazioni);
+    pmoMigrateCompactStorageKey('prenotazioniOccupazione', prenotazioniOccupazione);
+    pmoMigrateCompactStorageKey('storicoPrenotazioni', storicoPrenotazioni);
     let matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
     let contactHistory = safeLoad('contactHistory', {});
     let weeklyContactLog = safeLoad('weeklyContactLog', {});
@@ -4898,8 +4904,62 @@ body.assessment-public-mode .assessment-public-only-card {
     function pmoLocalRemoveItem(key) {
       localStorage.removeItem(pmoStorageKey(key));
     }
+    function pmoStorageCleanCell(value) {
+      return String(value ?? '').replace(/\u00A0/g, ' ').trim();
+    }
+    function pmoCompactBookingItem(item) {
+      const row = item && typeof item === 'object' ? item : {};
+      return PMO_COMPACT_BOOKING_FIELDS.map(field => pmoStorageCleanCell(row[field] ?? ''));
+    }
+    function pmoExpandCompactBookingItem(row, fields=PMO_COMPACT_BOOKING_FIELDS) {
+      if (row && typeof row === 'object' && !Array.isArray(row)) return row;
+      if (!Array.isArray(row)) return null;
+      const item = {};
+      fields.forEach((field, index) => {
+        const value = pmoStorageCleanCell(row[index] ?? '');
+        if (value) item[field] = value;
+      });
+      return item.data && item.ora && item.campo ? item : null;
+    }
+    function pmoEncodeForStorage(key, value) {
+      if (PMO_COMPACT_BOOKING_STORAGE_KEYS.has(key) && Array.isArray(value)) {
+        return JSON.stringify({
+          __pmoCompact: PMO_COMPACT_BOOKING_STORAGE_MARKER,
+          fields: PMO_COMPACT_BOOKING_FIELDS,
+          rows: value.map(pmoCompactBookingItem)
+        });
+      }
+      return stableDataString(value);
+    }
+    function pmoDecodeFromStorage(key, value) {
+      if (!PMO_COMPACT_BOOKING_STORAGE_KEYS.has(key)) return value;
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+      if (value.__pmoCompact !== PMO_COMPACT_BOOKING_STORAGE_MARKER || !Array.isArray(value.rows)) return value;
+      const fields = Array.isArray(value.fields) && value.fields.length ? value.fields : PMO_COMPACT_BOOKING_FIELDS;
+      return value.rows.map(row => pmoExpandCompactBookingItem(row, fields)).filter(Boolean);
+    }
+    function pmoIsStorageQuotaError(error) {
+      const raw = String(error?.name || error?.message || error || '').toLowerCase();
+      return raw.includes('quota') || error?.code === 22 || error?.code === 1014;
+    }
+    function pmoSetStorageWithCompactFallback(key, next, error) {
+      const storageKey = pmoStorageKey(key);
+      const previous = localStorage.getItem(storageKey);
+      if (!PMO_COMPACT_BOOKING_STORAGE_KEYS.has(key) || !previous || next.length >= previous.length || !pmoIsStorageQuotaError(error)) throw error;
+      localStorage.removeItem(storageKey);
+      try {
+        localStorage.setItem(storageKey, next);
+        console.warn(`Storage locale ${storageKey} ricompattato: ${previous.length} -> ${next.length} caratteri.`);
+      } catch (retryError) {
+        try { localStorage.setItem(storageKey, previous); } catch {}
+        throw retryError;
+      }
+    }
     function safeLoad(key, fallback) {
-      try { return JSON.parse(pmoLocalGetItem(key)) || fallback; }
+      try {
+        const parsed = JSON.parse(pmoLocalGetItem(key));
+        return pmoDecodeFromStorage(key, parsed) || fallback;
+      }
       catch { return fallback; }
     }
     function stableDataString(value) {
@@ -4910,10 +4970,24 @@ body.assessment-public-mode .assessment-public-only-card {
       return stableDataString(a) === stableDataString(b);
     }
     function save(key, value) {
-      const next = stableDataString(value);
+      const next = pmoEncodeForStorage(key, value);
       if (pmoLocalGetItem(key) === next) return false;
-      pmoLocalSetItem(key, next);
+      try {
+        pmoLocalSetItem(key, next);
+      } catch (error) {
+        pmoSetStorageWithCompactFallback(key, next, error);
+      }
       return true;
+    }
+    function pmoMigrateCompactStorageKey(key, value) {
+      if (!PMO_COMPACT_BOOKING_STORAGE_KEYS.has(key) || !Array.isArray(value)) return;
+      try {
+        const current = pmoLocalGetItem(key) || '';
+        const next = pmoEncodeForStorage(key, value);
+        if (current && current !== next && next.length < current.length) save(key, value);
+      } catch (error) {
+        console.warn(`Migrazione compatta ${pmoStorageKey(key)} non completata:`, error);
+      }
     }
 
     function isAssessmentPublicRequest() {
