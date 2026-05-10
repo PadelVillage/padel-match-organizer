@@ -203,7 +203,8 @@ begin
       'routine', v_routine_key,
       'scheduledLocalDate', v_local_date,
       'scheduledLocalTime', v_local_time
-    )
+    ),
+    timeout_milliseconds := 300000
   ) into v_request_id;
 
   v_payload := v_payload || jsonb_build_object(

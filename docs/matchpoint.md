@@ -301,6 +301,8 @@ Scelte operative:
 - le funzioni `matchpoint-clients-sync`, `matchpoint-history-sync` e `matchpoint-bookings-sync` mantengono il flusso staff JWT gia validato e aggiungono solo il canale server-to-server per le routine;
 - gli Excel Matchpoint continuano a non essere archiviati in locale, GitHub o Storage.
 
+Nota sicurezza TEST: su autorizzazione esplicita del 2026-05-10, le tre funzioni Matchpoint TEST sono deployate con `verify_jwt=false` per permettere le chiamate `pg_net`. L'accesso resta protetto nel codice: JWT staff valido oppure secret interno Supabase Vault. PROD non e' stato modificato.
+
 Routine attivate in TEST:
 
 | Ora locale | Funzione |
@@ -308,6 +310,14 @@ Routine attivate in TEST:
 | 04:30 | `matchpoint-clients-sync` |
 | 05:00 | `matchpoint-history-sync` |
 | 05:30, 10:30, 14:30, 17:30, 21:30 | `matchpoint-bookings-sync` |
+
+Il dispatcher usa `timeout_milliseconds = 300000`, perche' il timeout default `pg_net` di 5 secondi non e' sufficiente per gli import Matchpoint.
+
+Validazione TEST del 2026-05-10:
+
+- `matchpoint-clients-sync` v26 TEST: esecuzione scheduler `200 OK`, actor `routine-dati@test.padel-match-organizer`, 949 clienti importabili;
+- `matchpoint-history-sync` v3 TEST: esecuzione scheduler `200 OK`, periodo 2026-04-10 / 2026-05-10;
+- `matchpoint-bookings-sync` v3 TEST: esecuzione scheduler `200 OK`, periodo 2026-05-10 / 2026-06-09.
 
 La riga `Backup cloud` non viene automatizzata in questa prima fase backend, perche' il backup completo attuale e' un backup del browser e include dati di localStorage non ricostruibili con certezza dal solo database cloud.
 

@@ -139,6 +139,8 @@ Componenti:
   - `matchpoint-history-sync`;
   - `matchpoint-bookings-sync`.
 
+Nota sicurezza TEST: su autorizzazione esplicita del 2026-05-10, queste tre Edge Function TEST sono deployate con `verify_jwt=false` per consentire le chiamate `pg_net`. L'autorizzazione non e' anonima: il codice della funzione accetta solo un JWT staff valido oppure il secret interno Vault `pmo_data_routine_secret`. La stessa modifica non e' autorizzata su PROD.
+
 Per gestire correttamente ora legale e ora solare, il job Cron non usa orari UTC fissi per ogni routine. Esegue invece un dispatcher ogni 5 minuti e confronta l'orario corrente in `Europe/Rome` con la tabella operativa:
 
 | Ora locale Europe/Rome | Funzione chiamata |
@@ -152,6 +154,14 @@ Per gestire correttamente ora legale e ora solare, il job Cron non usa orari UTC
 | 21:30 | `matchpoint-bookings-sync` |
 
 Ogni dispatch viene registrato in `pmo_cloud_records` come `record_type = matchpoint_data`, con chiave `data_routine_dispatch_*`, e viene aggiornata la chiave `data_routine_dispatch_last`.
+
+`pg_net` usa `timeout_milliseconds = 300000`, perche' gli import Matchpoint possono superare il timeout default di 5 secondi.
+
+Validazione TEST del 2026-05-10:
+
+- Clienti Matchpoint via scheduler: `200 OK`, actor `routine-dati@test.padel-match-organizer`, 949 clienti importabili, nessun Excel archiviato;
+- Storico Matchpoint via scheduler: `200 OK`, actor `routine-dati@test.padel-match-organizer`, periodo 2026-04-10 / 2026-05-10, nessun Excel archiviato;
+- Prenotazioni future via scheduler: `200 OK`, actor `routine-dati@test.padel-match-organizer`, periodo 2026-05-10 / 2026-06-09, nessun Excel archiviato.
 
 La riga `Backup cloud` resta manuale nella prima attivazione backend: il backup completo attuale nasce dal localStorage del browser e contiene anche dati non ricostruibili integralmente dal solo backend, quindi non viene generato automaticamente da Supabase per evitare backup incompleti o fuorvianti.
 

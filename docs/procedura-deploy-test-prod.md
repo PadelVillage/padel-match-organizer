@@ -132,9 +132,9 @@ Progetti:
 Per ogni Edge Function coinvolta:
 
 1. Verificare versione TEST e PROD.
-2. Verificare `verify_jwt=true`.
+2. Verificare `verify_jwt=true`, salvo eccezione approvata esplicitamente e documentata con autenticazione interna equivalente.
 3. Verificare hash o contenuto deploy quando deve essere identico tra TEST e PROD.
-4. Verificare accesso anonimo bloccato con `401`, quando la funzione richiede autenticazione.
+4. Verificare accesso anonimo bloccato con `401`, quando la funzione richiede autenticazione via gateway o via codice interno.
 5. Non stampare o salvare secret nei log, nei file o nella documentazione.
 
 ### Storage
