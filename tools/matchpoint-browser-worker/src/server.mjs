@@ -283,6 +283,28 @@ async function contextSamples(page, timeout = 1200) {
   return samples;
 }
 
+async function exportCandidates(targetContext) {
+  return targetContext.evaluate(() => {
+    const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const nodes = Array.from(document.querySelectorAll('a, button, input, img, [onclick], [title], [aria-label]'));
+    return nodes
+      .map((node) => {
+        const attrs = ['id', 'name', 'value', 'title', 'alt', 'aria-label', 'href', 'onclick']
+          .map((attr) => compact(node.getAttribute?.(attr)))
+          .filter(Boolean);
+        const label = compact([node.innerText, ...attrs].filter(Boolean).join(' '));
+        return {
+          tag: node.tagName,
+          id: compact(node.id),
+          name: compact(node.getAttribute?.('name')),
+          label: label.slice(0, 220),
+        };
+      })
+      .filter((entry) => /esport|excel|export/i.test(entry.label))
+      .slice(0, 20);
+  }).catch(() => []);
+}
+
 async function clickMenuEntryEverywhere(page, label, actionName, diagnostic) {
   for (const entry of pageContentContexts(page)) {
     if (await clickMenuEntry(entry.target, label, `${actionName}_${entry.kind}_${entry.index}`, diagnostic)) {
@@ -413,7 +435,7 @@ async function findHistoryReportContext(page, diagnostic, timeout = 45000) {
     for (const entry of pageContentContexts(page)) {
       const bodyText = await readContextBody(entry.target);
       const compactText = bodyText.replace(/\s+/g, ' ').trim();
-      const historyPageFound = /Utenti\s+negli\s+spazi|Elenco\s+degli\s+utenti\s+negli\s+spazi|Spazi\s+occupati|Elenco\s+degli\s+spazi\s+occupati/i.test(compactText);
+      const historyPageFound = /Utenti\s+negli\s+spazi|Elenco\s+degli\s+utenti\s+negli\s+spazi/i.test(compactText);
       const dateFiltersFound = /Dal\s+Giorno/i.test(compactText) && /Al\s+Giorno/i.test(compactText);
       const generateButtonFound = /Generare\s+una\s+relazione|Genera(?:re)?\s+relazione|Relazione/i.test(compactText);
       const sample = {
@@ -449,7 +471,8 @@ async function findHistoryResultsContext(page, diagnostic, timeout = 45000) {
     for (const entry of pageContentContexts(page)) {
       const bodyText = await readContextBody(entry.target);
       const compactText = bodyText.replace(/\s+/g, ' ').trim();
-      const exportFound = /Esportare\s+in\s+excel/i.test(compactText);
+      const candidates = await exportCandidates(entry.target);
+      const exportFound = /Esportare\s+in\s+excel|Excel|Exportar/i.test(compactText) || candidates.length > 0;
       const historyTableFound = /Utenti\s+negli\s+spazi|Cod\.\s+Identificatore\s+Nome|Giorno\s+Ora\s+Ore/i.test(compactText);
       const sample = {
         kind: entry.kind,
@@ -457,10 +480,11 @@ async function findHistoryResultsContext(page, diagnostic, timeout = 45000) {
         url: entry.url,
         exportFound,
         historyTableFound,
-        bodySample: compactText.slice(0, 500),
+        exportCandidates: candidates.slice(0, 6),
+        bodySample: compactText.slice(0, 900),
       };
       samples.push(sample);
-      if (exportFound && historyTableFound) {
+      if (historyTableFound) {
         diagnostic.historyResultsContext = sample;
         diagnostic.historyResultsUrl = entry.url;
         diagnostic.historyResultsTitle = await readContextTitle(entry.target);
@@ -617,6 +641,33 @@ async function triggerPostbackDownload(page, targetContext, target, diagnostic) 
   return downloadPromise;
 }
 
+async function exportPostbackTargets(targetContext) {
+  return targetContext.evaluate(() => {
+    const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const nodes = Array.from(document.querySelectorAll('a, button, input, img, [onclick], [href]'));
+    const targets = [];
+    for (const node of nodes) {
+      const fields = [
+        node.innerText,
+        node.getAttribute?.('id'),
+        node.getAttribute?.('name'),
+        node.getAttribute?.('value'),
+        node.getAttribute?.('title'),
+        node.getAttribute?.('alt'),
+        node.getAttribute?.('href'),
+        node.getAttribute?.('onclick'),
+      ].map(compact);
+      const haystack = fields.join(' ');
+      if (!/esport|excel|export/i.test(haystack)) continue;
+      const match = haystack.match(/__doPostBack\(['"]([^'"]+)['"]/i);
+      if (match?.[1]) targets.push(match[1]);
+      const name = compact(node.getAttribute?.('name'));
+      if (/LinkButtonExportar|Exportar/i.test(name) && name.includes('$')) targets.push(name);
+    }
+    return Array.from(new Set(targets)).slice(0, 12);
+  }).catch(() => []);
+}
+
 async function triggerExportDownload(page, exportContext, exportTarget, diagnostic, label = 'export') {
   diagnostic.exportSelectorAttempts = [];
   const selectors = [
@@ -632,6 +683,8 @@ async function triggerExportDownload(page, exportContext, exportTarget, diagnost
     'input[value*="Export"], button:has-text("Export"), a:has-text("Export")',
     'input[value*="Esporta"], button:has-text("Esporta"), a:has-text("Esporta")',
     'input[value*="Scarica"], button:has-text("Scarica"), a:has-text("Scarica")',
+    '[onclick*="Exportar"], [onclick*="exportar"], [onclick*="Excel"], [onclick*="excel"]',
+    '[title*="Excel"], [title*="excel"], [aria-label*="Excel"], [aria-label*="excel"], img[alt*="Excel"], img[alt*="excel"]',
   ];
 
   for (const selector of selectors) {
@@ -642,16 +695,23 @@ async function triggerExportDownload(page, exportContext, exportTarget, diagnost
     if (download) return download;
   }
 
-  const postbackDownload = await triggerPostbackDownload(page, exportContext, exportTarget, diagnostic).catch((error) => {
-    diagnostic.exportPostbackError = error.message;
-    return null;
-  });
-  if (postbackDownload) return postbackDownload;
+  const dynamicTargets = await exportPostbackTargets(exportContext);
+  const postbackTargets = Array.from(new Set([...dynamicTargets, exportTarget].filter(Boolean)));
+  diagnostic.exportPostbackTargets = postbackTargets;
+  for (const target of postbackTargets) {
+    const postbackDownload = await triggerPostbackDownload(page, exportContext, target, diagnostic).catch((error) => {
+      diagnostic.exportPostbackError = error.message;
+      return null;
+    });
+    if (postbackDownload) return postbackDownload;
+  }
 
   throw fail('MATCHPOINT_EXPORT_BUTTON_NOT_FOUND', `Pulsante ${label} non trovato nel browser worker.`, {
     url: page.url(),
     title: await page.title().catch(() => ''),
     exportSelectorAttempts: diagnostic.exportSelectorAttempts,
+    exportCandidates: await exportCandidates(exportContext),
+    exportPostbackTargets: diagnostic.exportPostbackTargets || [],
     exportPostbackError: diagnostic.exportPostbackError || '',
   });
 }
@@ -922,6 +982,7 @@ const server = http.createServer(async (req, res) => {
         historyLabels: ['Elenco degli utenti negli spazi'],
         historyNavigation: 'all-contexts-dom-fallback',
         historyReportRecognition: 'utenti-spazi-only',
+        historyExportRecognition: 'table-first-dom-export',
         time: new Date().toISOString(),
       });
     }
