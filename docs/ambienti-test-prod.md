@@ -34,7 +34,7 @@ App TEST in /test/   -> config-test.js -> Supabase TEST
 5. Se la modifica richiede database/Auth/funzioni, applicarla prima solo su Supabase TEST.
 6. Verificare login, routine, permessi, sync e form pubblici su TEST.
 7. Prima di replicare qualsiasi modifica su PROD, chiedere autorizzazione esplicita a Maurizio.
-8. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD.
+8. Solo dopo autorizzazione, applicare gli stessi cambi app/database/Auth/funzioni su Supabase PROD e/o pubblicare la versione PROD seguendo `docs/procedura-deploy-test-prod.md`.
 9. Usare Git/GitHub per storico, commit e tag versione.
 
 ## Regola mockup per modifiche grafiche
