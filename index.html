@@ -4836,7 +4836,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.372';
+    const APP_VERSION = '5.373';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7981,6 +7981,7 @@ body.assessment-public-mode .assessment-public-only-card {
           skipped: rows.skipped || 0,
           message: 'Clienti aggiornati da Matchpoint automatico e sincronizzati in locale.'
         });
+        await pmoSaveCloudBackupAfterDataUpdate('Clienti Matchpoint');
         showAlert(`✅ Clienti Matchpoint aggiornati: ${localResult.added} nuovi, ${localResult.updated} aggiornati. Righe cloud lette: ${cloud.members.length}.`, 'success');
       } catch (err) {
         const message = pmoFriendlyMatchpointAutoError(err);
@@ -8281,6 +8282,7 @@ body.assessment-public-mode .assessment-public-only-card {
           message: 'Prenotazioni future aggiornate da Matchpoint automatico e sincronizzate in locale.'
         });
         updateMatchpointBookingsMetrics(rows, cloud.occupancyBookings.length);
+        await pmoSaveCloudBackupAfterDataUpdate('Prenotazioni future Matchpoint');
         showAlert(
           `✅ Prenotazioni future Matchpoint aggiornate. Occupazioni future: ${localResult.totalOccupancies}. Righe file: ${rows.sourceRows || cloud.occupancyBookings.length}.`,
           'success'
@@ -8479,6 +8481,7 @@ body.assessment-public-mode .assessment-public-only-card {
           message: 'Storico aggiornato da Matchpoint automatico e sincronizzato in locale.'
         });
         updateMatchpointHistoryMetrics(rows, cloud.history.length);
+        await pmoSaveCloudBackupAfterDataUpdate('Storico Matchpoint');
         showAlert(
           `✅ Storico Matchpoint aggiornato. Nuove righe cloud: ${rows.newRows || 0}. Righe aggiunte in questo browser: ${localResult.newRows}. Totale prenotazioni storiche locale: ${localResult.totalAfter}.`,
           'success'
@@ -8703,6 +8706,32 @@ body.assessment-public-mode .assessment-public-only-card {
         showAlert(`❌ ${message}`, 'danger');
       } finally {
         if (button) button.disabled = false;
+      }
+    }
+
+    let pmoAutoCloudBackupInProgress = false;
+
+    async function pmoSaveCloudBackupAfterDataUpdate(reasonLabel='aggiornamento dati') {
+      if (pmoAutoCloudBackupInProgress) return { ok:false, skipped:true, message:'Backup cloud gia in corso' };
+      pmoAutoCloudBackupInProgress = true;
+      try {
+        setDataActionStatus('cloudBackup', 'pending', 'Salvataggio cloud in corso');
+        const backup = createBackupPayload();
+        const result = await pmoInvokeCloudBackup('save', backup);
+        saveLastCloudBackupInfo({
+          ...(result?.metadata || {}),
+          trigger: 'auto_data_update',
+          triggerLabel: reasonLabel
+        });
+        markDataActionDone('cloudBackup');
+        return { ok:true, result };
+      } catch (err) {
+        const message = pmoFriendlyCloudBackupError(err, 'salvare il backup cloud automatico');
+        setDataActionStatus('cloudBackup', 'error', message);
+        console.warn('PMO_AUTO_CLOUD_BACKUP_FAILED', reasonLabel, err);
+        return { ok:false, message };
+      } finally {
+        pmoAutoCloudBackupInProgress = false;
       }
     }
 

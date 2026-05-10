@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; scheduler backend Matchpoint in attivazione su Supabase TEST, senza promozione PROD.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati in TEST v5.373; scheduler backend Matchpoint in attivazione su Supabase TEST, senza promozione PROD.
 
 ## Obiettivo
 
@@ -130,6 +130,23 @@ Dopo approvazione del mockup `mockup/backup-cloud-locale-separato-mockup.html`, 
 - `Salva backup cloud` salva solo su Supabase Storage;
 - `Ripristina backup cloud` resta vicino all'azione cloud;
 - `Scarica backup locale` resta in basso come azione manuale su richiesta.
+
+## Auto-backup cloud app v5.373
+
+Quando lo staff usa l'app e un aggiornamento Matchpoint automatico va a buon fine, l'app salva subito un backup cloud completo usando lo stesso payload browser di `Salva backup cloud`.
+
+Trigger attivi:
+
+- `Clienti Matchpoint`;
+- `Prenotazioni future Matchpoint`;
+- `Storico Matchpoint`.
+
+Regole:
+
+- il backup cloud automatico non scarica file locali;
+- se il backup cloud fallisce, l'aggiornamento dati resta valido;
+- l'esito del backup viene riflesso nel box e nella riga `Backup cloud` del pannello routine;
+- lo scheduler backend puro non crea backup browser completi, perche' non vede il localStorage dell'app.
 
 ## Scheduler backend TEST
 

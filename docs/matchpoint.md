@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche candidato in v5.368; intestazione sezione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; scheduler backend Matchpoint in attivazione su Supabase TEST.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche candidato in v5.368; intestazione sezione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati in TEST v5.373; scheduler backend Matchpoint in attivazione su Supabase TEST.
 
 ## Obiettivo
 
@@ -118,6 +118,13 @@ Nota UI v5.372 TEST:
 - `Salva backup cloud` salva solo su Supabase Storage e non avvia piu' il download locale automatico;
 - `Ripristina backup cloud` resta vicino all'azione cloud;
 - `Scarica backup locale` resta in basso come download manuale del backup browser.
+
+Nota comportamento v5.373 TEST:
+
+- dopo un aggiornamento automatico riuscito da app per `Clienti Matchpoint`, `Prenotazioni future Matchpoint` o `Storico Matchpoint`, l'app esegue anche un backup cloud completo;
+- il backup usa lo stesso payload browser di `Salva backup cloud`, quindi include i dati locali dell'app;
+- non viene scaricata alcuna copia locale automatica;
+- un eventuale errore del backup cloud non annulla l'import dati gia riuscito, ma aggiorna lo stato del box Backup.
 
 ## Storico Matchpoint automatico v5.360 TEST/PROD
 
@@ -281,7 +288,7 @@ Nota worker 2026-05-10:
 - il worker ora tratta il timeout del click come voce non cliccabile e attiva il fallback diretto gia previsto su `/Reservas/ListadoJugadores.aspx`;
 - la modifica non cambia credenziali, salvataggio file, validazione Excel o logica di import: rende solo piu robusta la navigazione clienti.
 
-## Routine dati automatiche v5.368-v5.372
+## Routine dati automatiche v5.368-v5.373
 
 Dopo mockup approvato `mockup/routine-dati-automatiche-mockup.html`, la sezione `DATI (in/out)` viene riorganizzata cosi:
 
@@ -293,7 +300,7 @@ Dopo mockup approvato `mockup/routine-dati-automatiche-mockup.html`, la sezione 
 - `Aggiornamenti Matchpoint e backup` diventa un'area espandibile chiusa di default con le sezioni 2-5;
 - `Slot potenziali Matchpoint` diventa la sezione 6, espandibile e chiusa di default, mantenendo le opzioni reali gia presenti.
 
-Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. v5.369 rimuove l'intestazione visibile `DATI (in/out)`, il sottotitolo e la linea divisoria, cosi' la schermata DATI parte direttamente dal box `Stato routine automatiche`. v5.370 mostra nella colonna `Prossima esecuzione` giorno abbreviato, data completa e ora, per esempio `Lun 11/05/2026 • 04:30`, invece del testo relativo `domani`. v5.371 inverte gli orari proposti: `Clienti Matchpoint` alle 04:30 e `Storico Matchpoint` alle 05:00. v5.372 separa di nuovo backup cloud e backup locale: il salvataggio cloud non scarica file locali, mentre `Scarica backup locale` resta un'azione manuale in basso nel box Backup.
+Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. v5.369 rimuove l'intestazione visibile `DATI (in/out)`, il sottotitolo e la linea divisoria, cosi' la schermata DATI parte direttamente dal box `Stato routine automatiche`. v5.370 mostra nella colonna `Prossima esecuzione` giorno abbreviato, data completa e ora, per esempio `Lun 11/05/2026 • 04:30`, invece del testo relativo `domani`. v5.371 inverte gli orari proposti: `Clienti Matchpoint` alle 04:30 e `Storico Matchpoint` alle 05:00. v5.372 separa di nuovo backup cloud e backup locale: il salvataggio cloud non scarica file locali, mentre `Scarica backup locale` resta un'azione manuale in basso nel box Backup. v5.373 aggiunge auto-backup cloud post aggiornamento dati quando l'operazione viene avviata dall'app.
 
 ## Scheduler routine dati TEST
 
