@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; scheduler backend ancora da progettare e validare.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; scheduler backend Matchpoint in attivazione su Supabase TEST, senza promozione PROD.
 
 ## Obiettivo
 
@@ -122,6 +122,38 @@ Gli orari di `Clienti Matchpoint` e `Storico Matchpoint` sono invertiti:
 
 - `Clienti Matchpoint`: 04:30;
 - `Storico Matchpoint`: 05:00.
+
+## Scheduler backend TEST
+
+Lo scheduler backend viene attivato prima solo sul progetto Supabase TEST `cudiqnrrlbyqryrtaprd`.
+
+Componenti:
+
+- SQL di riferimento: `supabase_pmo_data_routines_scheduler.sql`;
+- estensioni Supabase: `pg_cron`, `pg_net` e `supabase_vault`;
+- funzione database `pmo_dispatch_data_routines(p_now timestamptz default now())`;
+- secret interno `pmo_data_routine_secret` generato in Supabase Vault, mai salvato in HTML, repo o documentazione;
+- verifica server-side tramite `pmo_verify_data_routine_secret(p_secret text)`;
+- Edge Function Matchpoint gia esistenti, aggiornate per accettare sia staff JWT sia richiesta routine firmata:
+  - `matchpoint-clients-sync`;
+  - `matchpoint-history-sync`;
+  - `matchpoint-bookings-sync`.
+
+Per gestire correttamente ora legale e ora solare, il job Cron non usa orari UTC fissi per ogni routine. Esegue invece un dispatcher ogni 5 minuti e confronta l'orario corrente in `Europe/Rome` con la tabella operativa:
+
+| Ora locale Europe/Rome | Funzione chiamata |
+|---|---|
+| 04:30 | `matchpoint-clients-sync` |
+| 05:00 | `matchpoint-history-sync` |
+| 05:30 | `matchpoint-bookings-sync` |
+| 10:30 | `matchpoint-bookings-sync` |
+| 14:30 | `matchpoint-bookings-sync` |
+| 17:30 | `matchpoint-bookings-sync` |
+| 21:30 | `matchpoint-bookings-sync` |
+
+Ogni dispatch viene registrato in `pmo_cloud_records` come `record_type = matchpoint_data`, con chiave `data_routine_dispatch_*`, e viene aggiornata la chiave `data_routine_dispatch_last`.
+
+La riga `Backup cloud` resta manuale nella prima attivazione backend: il backup completo attuale nasce dal localStorage del browser e contiene anche dati non ricostruibili integralmente dal solo backend, quindi non viene generato automaticamente da Supabase per evitare backup incompleti o fuorvianti.
 
 ## Alert
 

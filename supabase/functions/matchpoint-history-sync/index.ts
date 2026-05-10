@@ -34,7 +34,7 @@ type ParsedBooking = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-routine-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -516,6 +516,34 @@ async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: str
   };
 }
 
+async function verifyRoutineSecret(admin: any, secret: string) {
+  const value = clean(secret);
+  if (!value) return false;
+  const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
+  if (error) {
+    console.log(JSON.stringify({
+      event: 'pmo_data_routine_secret_verify_error',
+      function: 'matchpoint-history-sync',
+      message: error.message || String(error),
+    }));
+    return false;
+  }
+  return data === true;
+}
+
+async function authenticateStaffOrRoutine(req: Request, supabaseUrl: string, anonKey: string, admin: any): Promise<StaffActor> {
+  const routineSecret = req.headers.get('x-pmo-routine-secret') || '';
+  if (await verifyRoutineSecret(admin, routineSecret)) {
+    return {
+      userId: '00000000-0000-0000-0000-000000000000',
+      email: 'routine-dati@test.padel-match-organizer',
+      role: 'system',
+      permissions: { cloud_sync: true },
+    };
+  }
+  return authenticateStaff(req, supabaseUrl, anonKey);
+}
+
 function hasPermission(actor: StaffActor, permission: string) {
   if (['owner', 'admin'].includes(actor.role)) return true;
   return actor.permissions?.[permission] === true;
@@ -676,7 +704,7 @@ Deno.serve(async (req) => {
   const importedAt = new Date().toISOString();
 
   try {
-    actor = await authenticateStaff(req, supabaseUrl, anonKey);
+    actor = await authenticateStaffOrRoutine(req, supabaseUrl, anonKey, admin);
     if (!hasPermission(actor, 'cloud_sync')) {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }

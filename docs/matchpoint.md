@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche candidato in v5.368; intestazione sezione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche candidato in v5.368; intestazione sezione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; scheduler backend Matchpoint in attivazione su Supabase TEST.
 
 ## Obiettivo
 
@@ -286,7 +286,30 @@ Dopo mockup approvato `mockup/routine-dati-automatiche-mockup.html`, la sezione 
 - `Aggiornamenti Matchpoint e backup` diventa un'area espandibile chiusa di default con le sezioni 2-5;
 - `Slot potenziali Matchpoint` diventa la sezione 6, espandibile e chiusa di default, mantenendo le opzioni reali gia presenti.
 
-Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. v5.369 rimuove l'intestazione visibile `DATI (in/out)`, il sottotitolo e la linea divisoria, cosi' la schermata DATI parte direttamente dal box `Stato routine automatiche`. v5.370 mostra nella colonna `Prossima esecuzione` giorno abbreviato, data completa e ora, per esempio `Lun 11/05/2026 • 04:30`, invece del testo relativo `domani`. v5.371 inverte gli orari proposti: `Clienti Matchpoint` alle 04:30 e `Storico Matchpoint` alle 05:00. Non attiva ancora uno scheduler backend automatico.
+Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. v5.369 rimuove l'intestazione visibile `DATI (in/out)`, il sottotitolo e la linea divisoria, cosi' la schermata DATI parte direttamente dal box `Stato routine automatiche`. v5.370 mostra nella colonna `Prossima esecuzione` giorno abbreviato, data completa e ora, per esempio `Lun 11/05/2026 • 04:30`, invece del testo relativo `domani`. v5.371 inverte gli orari proposti: `Clienti Matchpoint` alle 04:30 e `Storico Matchpoint` alle 05:00.
+
+## Scheduler routine dati TEST
+
+Lo scheduler backend TEST usa `supabase_pmo_data_routines_scheduler.sql` e resta separato da PROD.
+
+Scelte operative:
+
+- `pg_cron` esegue il dispatcher `pmo_dispatch_data_routines()` ogni 5 minuti;
+- il dispatcher decide in base all'orario locale `Europe/Rome`, cosi' gli orari restano coerenti con ora legale e ora solare;
+- `pg_net` invoca direttamente le Edge Function esistenti, senza creare chiamate annidate tra Edge Function;
+- l'autorizzazione usa un secret generato in Supabase Vault (`pmo_data_routine_secret`) e verificato dalla RPC `pmo_verify_data_routine_secret`;
+- le funzioni `matchpoint-clients-sync`, `matchpoint-history-sync` e `matchpoint-bookings-sync` mantengono il flusso staff JWT gia validato e aggiungono solo il canale server-to-server per le routine;
+- gli Excel Matchpoint continuano a non essere archiviati in locale, GitHub o Storage.
+
+Routine attivate in TEST:
+
+| Ora locale | Funzione |
+|---|---|
+| 04:30 | `matchpoint-clients-sync` |
+| 05:00 | `matchpoint-history-sync` |
+| 05:30, 10:30, 14:30, 17:30, 21:30 | `matchpoint-bookings-sync` |
+
+La riga `Backup cloud` non viene automatizzata in questa prima fase backend, perche' il backup completo attuale e' un backup del browser e include dati di localStorage non ricostruibili con certezza dal solo database cloud.
 
 ## Slot potenziali v5.234
 
