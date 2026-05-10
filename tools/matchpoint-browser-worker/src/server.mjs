@@ -991,6 +991,7 @@ const server = http.createServer(async (req, res) => {
         historyNavigation: 'all-contexts-dom-fallback',
         historyReportRecognition: 'utenti-spazi-only',
         historyExportRecognition: 'table-first-dom-export',
+        clientsNavigationFallback: 'click-timeout-direct-players',
         time: new Date().toISOString(),
       });
     }
