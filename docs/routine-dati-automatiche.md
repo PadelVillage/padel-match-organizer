@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; scheduler backend ancora da progettare e validare.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; scheduler backend ancora da progettare e validare.
 
 ## Obiettivo
 
@@ -101,6 +101,12 @@ La prima integrazione in app e' solo visuale/operativa:
 - i pulsanti `Aggiorna ora` e `Salva ora` chiamano le stesse funzioni manuali gia validate;
 - gli orari mostrati sono una proposta di routine, non ancora un job schedulato;
 - nessuna nuova funzione Supabase o automazione backend viene attivata in questa fase.
+
+## Rifinitura UI v5.369
+
+Dopo approvazione del mockup `mockup/routine-dati-automatiche-mockup.html`, la sezione DATI non mostra piu' l'intestazione alta `DATI (in/out)`, il sottotitolo `Stato dati, aggiornamenti Matchpoint, backup e slot potenziali.` e la relativa linea divisoria.
+
+Il primo contenuto visibile deve essere il box `Stato routine automatiche`.
 
 ## Alert
 

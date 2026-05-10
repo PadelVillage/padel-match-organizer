@@ -1367,9 +1367,6 @@
     .dashboard-import-pill { display:flex; align-items:center; gap:9px; background:#fbfdff; border:1px solid #dbe4f0; border-radius:10px; padding:9px 12px; font-weight:bold; color:#334155; min-height:44px; }
     .dashboard-import-pill .pill-icon { color:var(--primary); font-size:18px; }
     .matchpoint-data-page { display:grid; gap:16px; }
-    .matchpoint-data-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; border-bottom:1px solid var(--border); padding-bottom:14px; }
-    .matchpoint-data-title h2 { margin:0; color:var(--primary); font-size:26px; line-height:1.15; letter-spacing:0; }
-    .matchpoint-data-title p { margin:5px 0 0; color:#667085; font-size:13px; }
     .matchpoint-data-status { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
     .matchpoint-data-pill { display:inline-flex; align-items:center; min-height:30px; border:1px solid #d7e2ef; border-radius:8px; padding:5px 9px; background:#f8fbff; color:#344054; font-size:12px; font-weight:800; white-space:nowrap; }
     .matchpoint-data-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:stretch; }
@@ -1473,7 +1470,6 @@
       .matchpoint-data-info { grid-template-columns:1fr; }
     }
     @media (max-width:680px) {
-      .matchpoint-data-head { display:block; }
       .matchpoint-data-status { justify-content:flex-start; margin-top:12px; }
       .matchpoint-data-grid { grid-template-columns:1fr; }
     }
@@ -4096,13 +4092,6 @@ body.assessment-public-mode .assessment-public-only-card {
 
     <div id="matchpoint" class="tab-content">
       <div class="section matchpoint-data-page">
-        <div class="matchpoint-data-head">
-          <div class="matchpoint-data-title">
-            <h2>DATI (in/out)</h2>
-            <p>Stato dati, aggiornamenti Matchpoint, backup e slot potenziali.</p>
-          </div>
-        </div>
-
         <article class="matchpoint-data-box routines wide" id="anchor-matchpoint-routine">
           <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
           <div class="matchpoint-routine-head">
@@ -4845,7 +4834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.368';
+    const APP_VERSION = '5.369';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
