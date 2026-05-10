@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti candidato TEST v5.362.
 
 ## Obiettivo
 
@@ -172,6 +172,13 @@ Nota UI v5.360 TEST/PROD:
 - nei box `Clienti Matchpoint` e `Storico Matchpoint` vengono rimosse le label duplicate sopra al bottone;
 - i bottoni restano azioni brevi anche dopo l'esito verde: `Aggiorna clienti` e `Aggiorna storico`;
 - lo stato sotto ai bottoni automatici usa `Ultimo aggiornamento automatico`, con data/ora e conteggi sintetici.
+
+Nota UI v5.362 TEST:
+
+- nel box `Clienti Matchpoint`, dopo mockup approvato `mockup/dati-clienti-automatici-mockup.html`, compare un riepilogo compatto con `Totale clienti database` e `Variazione ultimo import`;
+- il totale clienti viene letto da `matchpointData.clientCount`, aggiornato dopo la sincronizzazione cloud;
+- la variazione viene salvata in `matchpointData.lastClientsDelta` confrontando il totale appena importato con il totale dell'import clienti precedente;
+- lo stato sotto al bottone clienti resta solo `Ultimo aggiornamento automatico` con data e ora, senza duplicare il totale gia mostrato nel riepilogo.
 
 ## Slot potenziali v5.234
 

@@ -95,6 +95,37 @@
       font-size: 18px;
       line-height: 1.35;
     }
+    .client-metrics {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+      margin: 0 0 22px;
+      border: 1px solid #e4ebf4;
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 8px 14px;
+      color: #344054;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    .client-metrics span {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-top: 1px solid #e8eef6;
+      padding: 12px 0;
+    }
+    .client-metrics span:first-child { border-top: 0; }
+    .client-metrics strong {
+      color: var(--text);
+      font-size: 20px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .client-metrics strong.delta-up { color: var(--green); }
+    .client-metrics strong.delta-down { color: var(--danger); }
     .operation {
       margin-top: auto;
       display: grid;
@@ -187,12 +218,14 @@
       <article class="box clients">
         <h2 class="step-title"><span class="step">1</span> Clienti Matchpoint</h2>
         <p class="copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+        <div class="client-metrics" aria-label="Riepilogo clienti Matchpoint">
+          <span>Totale clienti database<strong>947</strong></span>
+          <span>Variazione ultimo import<strong class="delta-up">+3</strong></span>
+        </div>
         <div class="operation">
-          <div class="label">Aggiorna clienti da Matchpoint</div>
-          <button class="button" type="button">Aggiorna clienti da Matchpoint</button>
+          <button class="button" type="button">Aggiorna clienti</button>
           <div class="status">
-            Ultimo automatico: 07/05/2026 - 23:58
-            <span>944 righe importate. Nessun errore bloccante.</span>
+            Ultimo aggiornamento automatico: 10/05/2026 - 09:15
           </div>
         </div>
       </article>
