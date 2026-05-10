@@ -1,10 +1,14 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche candidato in v5.368.
 
 ## Obiettivo
 
 La sezione deve essere una schermata operativa rapida per importare dati e creare backup, senza trasformarsi in dashboard o report.
+
+## Documenti collegati
+
+- `docs/routine-dati-automatiche.md`: bozza operativa della routine automatica dati, con sequenza temporale, stati esito, gestione errori e pannello di controllo in `DATI (in/out)`.
 
 ## Struttura UI v5.236
 
@@ -269,6 +273,20 @@ Nota worker 2026-05-10:
 - dopo un errore PROD `MATCHPOINT_BROWSER_WORKER_FAILED`, la diagnostica ha indicato un timeout sul click del menu Matchpoint `Programmazione`;
 - il worker ora tratta il timeout del click come voce non cliccabile e attiva il fallback diretto gia previsto su `/Reservas/ListadoJugadores.aspx`;
 - la modifica non cambia credenziali, salvataggio file, validazione Excel o logica di import: rende solo piu robusta la navigazione clienti.
+
+## Routine dati automatiche v5.368
+
+Dopo mockup approvato `mockup/routine-dati-automatiche-mockup.html`, la sezione `DATI (in/out)` viene riorganizzata cosi:
+
+- la prima schermata diventa `Stato routine automatiche`;
+- la tabella mostra, in ordine, `Clienti Matchpoint`, `Storico Matchpoint`, `Prenotazioni future` e `Backup cloud`;
+- le colonne operative sono `Ultimo dato valido`, `Ultimo tentativo`, `Esito`, `Prossima esecuzione` e `Azione manuale`;
+- gli esiti sono letti dagli stati gia esistenti dei bottoni import/backup e dagli ultimi riepiloghi salvati;
+- le azioni manuali riusano le funzioni gia validate: aggiorna clienti, aggiorna storico, aggiorna prenotazioni e salva backup cloud;
+- `Aggiornamenti Matchpoint e backup` diventa un'area espandibile chiusa di default con le sezioni 2-5;
+- `Slot potenziali Matchpoint` diventa la sezione 6, espandibile e chiusa di default, mantenendo le opzioni reali gia presenti.
+
+Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. Non attiva ancora uno scheduler backend automatico.
 
 ## Slot potenziali v5.234
 

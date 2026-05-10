@@ -1374,19 +1374,56 @@
     .matchpoint-data-pill { display:inline-flex; align-items:center; min-height:30px; border:1px solid #d7e2ef; border-radius:8px; padding:5px 9px; background:#f8fbff; color:#344054; font-size:12px; font-weight:800; white-space:nowrap; }
     .matchpoint-data-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:stretch; }
     .matchpoint-data-box { display:flex; flex-direction:column; min-width:0; border:1px solid var(--border); border-top:4px solid var(--primary); border-radius:8px; background:#fff; padding:15px; box-shadow:0 1px 4px rgba(31,71,136,.05); }
+    .matchpoint-data-box.routines { border-top-color:#168a53; }
     .matchpoint-data-box.bookings { border-top-color:#2563eb; }
     .matchpoint-data-box.history { border-top-color:#7c3aed; }
     .matchpoint-data-box.backup { border-top-color:#168a53; }
     .matchpoint-data-box.potential { border-top-color:#b7791f; }
+    .matchpoint-data-box.routines.wide { grid-column:1 / -1; }
     .matchpoint-data-box.potential.wide { grid-column:1 / -1; }
     .matchpoint-data-box.potential.wide .matchpoint-data-copy { min-height:0; margin-bottom:10px; }
     .matchpoint-data-box h3 { display:flex; align-items:center; gap:8px; margin:0 0 8px; color:#111827; font-size:17px; line-height:1.2; letter-spacing:0; }
     .matchpoint-data-step { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; flex:0 0 24px; border-radius:50%; background:var(--primary); color:#fff; font-size:12px; font-weight:900; }
+    .matchpoint-data-box.routines .matchpoint-data-step { background:#168a53; }
     .matchpoint-data-box.bookings .matchpoint-data-step { background:#2563eb; }
     .matchpoint-data-box.history .matchpoint-data-step { background:#7c3aed; }
     .matchpoint-data-box.backup .matchpoint-data-step { background:#168a53; }
     .matchpoint-data-box.potential .matchpoint-data-step { background:#b7791f; }
     .matchpoint-data-copy { margin:0 0 14px; color:#667085; font-size:13px; min-height:38px; }
+    .matchpoint-routine-head { display:grid; grid-template-columns:minmax(240px,.85fr) minmax(320px,1.15fr); gap:14px; align-items:end; margin-bottom:12px; }
+    .matchpoint-routine-head .matchpoint-data-copy { min-height:0; margin:0; }
+    .matchpoint-routine-schedule { border:1px solid #e4ebf4; border-radius:8px; background:#fbfdff; padding:10px 12px; color:#344054; font-size:12px; line-height:1.35; }
+    .matchpoint-routine-schedule strong { display:block; margin-bottom:5px; color:#111827; font-size:13px; }
+    .matchpoint-routine-table-wrap { width:100%; overflow-x:auto; border:1px solid #e4ebf4; border-radius:8px; background:#fff; }
+    .matchpoint-routine-table { width:100%; min-width:930px; border-collapse:collapse; font-size:12px; line-height:1.3; }
+    .matchpoint-routine-table th { background:#f3f6fb; color:#344054; font-weight:900; text-align:left; padding:9px 10px; border-bottom:1px solid #e4ebf4; white-space:nowrap; }
+    .matchpoint-routine-table td { padding:10px; border-top:1px solid #e8eef6; vertical-align:middle; color:#344054; }
+    .matchpoint-routine-table tr:first-child td { border-top:0; }
+    .matchpoint-routine-name { color:#111827; font-weight:900; white-space:nowrap; }
+    .matchpoint-routine-note { display:block; margin-top:3px; color:#667085; font-size:11px; font-weight:700; white-space:normal; }
+    .matchpoint-routine-result { display:inline-flex; align-items:center; justify-content:center; min-width:78px; border-radius:999px; padding:4px 8px; font-size:11px; font-weight:900; text-align:center; white-space:nowrap; border:1px solid #d7e2ef; background:#f6f7f9; color:#475467; }
+    .matchpoint-routine-result.ok { border-color:#b7e4c7; background:#eefaf2; color:#168a53; }
+    .matchpoint-routine-result.warn { border-color:#f2d39b; background:#fff7e6; color:#8a5a00; }
+    .matchpoint-routine-result.fail { border-color:#f2b8b5; background:#fff1f0; color:#b42318; }
+    .matchpoint-routine-actions { display:flex; flex-wrap:wrap; gap:6px; }
+    .matchpoint-routine-action { border:1px solid #d7e2ef; border-radius:7px; background:#fff; color:#344054; min-height:28px; padding:5px 8px; font-size:11px; font-weight:900; cursor:pointer; }
+    .matchpoint-routine-action.primary { border-color:#b7e4c7; background:#eefaf2; color:#168a53; }
+    .matchpoint-routine-action.warning { border-color:#f2d39b; background:#fff7e6; color:#8a5a00; }
+    .matchpoint-routine-alert { display:none; margin-top:12px; border:1px solid #f2b8b5; border-left:4px solid #b42318; border-radius:8px; background:#fff1f0; color:#7a271a; padding:11px 12px; font-size:12px; line-height:1.35; }
+    .matchpoint-routine-alert.visible { display:grid; grid-template-columns:minmax(160px,.7fr) minmax(220px,1.3fr) auto; gap:10px; align-items:center; }
+    .matchpoint-routine-alert strong { color:#b42318; font-size:13px; }
+    .matchpoint-routine-rules { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+    .matchpoint-routine-rule { border:1px solid #e4ebf4; border-radius:999px; background:#fbfdff; color:#475467; padding:5px 9px; font-size:11px; font-weight:800; }
+    .matchpoint-data-accordion { border:1px solid var(--border); border-radius:8px; background:#fff; overflow:hidden; box-shadow:0 1px 4px rgba(31,71,136,.04); }
+    .matchpoint-data-accordion + .matchpoint-data-accordion { margin-top:0; }
+    .matchpoint-data-accordion-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; border:0; background:#fbfdff; padding:13px 15px; color:#111827; text-align:left; cursor:pointer; }
+    .matchpoint-data-accordion-title { display:flex; align-items:center; gap:8px; color:#111827; font-size:16px; font-weight:900; line-height:1.2; }
+    .matchpoint-data-accordion-subtitle { display:block; margin:4px 0 0 32px; color:#667085; font-size:12px; font-weight:700; }
+    .matchpoint-data-chevron { color:#667085; font-size:18px; font-weight:900; transform:rotate(0deg); transition:transform .18s ease; }
+    .matchpoint-data-accordion.open .matchpoint-data-chevron { transform:rotate(90deg); }
+    .matchpoint-data-accordion-panel { display:none; padding:14px; border-top:1px solid #e4ebf4; background:#fff; }
+    .matchpoint-data-accordion.open .matchpoint-data-accordion-panel { display:block; }
+    .matchpoint-data-accordion .matchpoint-data-grid { margin:0; }
     .matchpoint-data-file { margin-top:auto; display:grid; gap:8px; }
     .matchpoint-data-file label { color:#344054; font-size:12px; font-weight:800; }
     .matchpoint-data-file input[type="file"] { width:100%; min-width:0; border:1px solid #cfd9e7; border-radius:7px; background:#fbfdff; padding:8px; color:#344054; font-size:12px; }
@@ -1430,6 +1467,8 @@
     .matchpoint-data-last-row strong { color:#111827; text-align:right; }
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .matchpoint-routine-head { grid-template-columns:1fr; }
+      .matchpoint-routine-alert.visible { grid-template-columns:1fr; }
       .potential-slot-horizontal { grid-template-columns:1fr; }
       .matchpoint-data-info { grid-template-columns:1fr; }
     }
@@ -4060,100 +4099,155 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="matchpoint-data-head">
           <div class="matchpoint-data-title">
             <h2>DATI (in/out)</h2>
-            <p>Importa i file scaricati da Matchpoint e crea un backup locale quando serve.</p>
+            <p>Stato dati, aggiornamenti Matchpoint, backup e slot potenziali.</p>
           </div>
         </div>
 
-        <div class="matchpoint-data-grid">
-          <article class="matchpoint-data-box clients" id="anchor-matchpoint-clienti">
-            <h3><span class="matchpoint-data-step">1</span> Clienti Matchpoint</h3>
-            <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
-            <div class="matchpoint-history-metrics matchpoint-clients-metrics" aria-live="polite">
-              <span>Totale clienti database<strong id="matchpointClientsTotal">-</strong></span>
-              <span>Variazione ultimo import<strong id="matchpointClientsDelta" class="delta-neutral">-</strong></span>
+        <article class="matchpoint-data-box routines wide" id="anchor-matchpoint-routine">
+          <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
+          <div class="matchpoint-routine-head">
+            <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
+            <div class="matchpoint-routine-schedule">
+              <strong>Sequenza proposta</strong>
+              Storico 04:30, clienti 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo il controllo dati.
             </div>
-            <div class="matchpoint-data-file">
-              <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
-              <div class="matchpoint-data-actions">
-                <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti</button>
-                <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
-              </div>
-            </div>
-          </article>
+          </div>
+          <div class="matchpoint-routine-table-wrap" aria-live="polite">
+            <table class="matchpoint-routine-table">
+              <thead>
+                <tr>
+                  <th>Routine</th>
+                  <th>Ultimo dato valido</th>
+                  <th>Ultimo tentativo</th>
+                  <th>Esito</th>
+                  <th>Prossima esecuzione</th>
+                  <th>Azione manuale</th>
+                </tr>
+              </thead>
+              <tbody id="matchpointRoutineStatusBody">
+                <tr><td colspan="6">Stato routine non ancora caricato.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="matchpointRoutineAlert" class="matchpoint-routine-alert" aria-live="polite"></div>
+          <div class="matchpoint-routine-rules">
+            <span class="matchpoint-routine-rule">Se fallisce, resta attivo l'ultimo dato valido</span>
+            <span class="matchpoint-routine-rule">Nessun Excel Matchpoint viene archiviato</span>
+            <span class="matchpoint-routine-rule">Storico operativo limitato agli ultimi 12 mesi</span>
+          </div>
+        </article>
 
-          <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
-            <h3><span class="matchpoint-data-step">2</span> Prenotazioni future Matchpoint</h3>
-            <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
-            <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
-              <span>Periodo<strong id="matchpointBookingsPeriod">-</strong></span>
-              <span>Ore campo prenotate<strong id="matchpointBookingsBookedHours">-</strong></span>
-              <span>Occupazione stimata<strong id="matchpointBookingsOccupancyPercent">-</strong></span>
-            </div>
-            <div class="matchpoint-data-file">
-              <div class="matchpoint-data-actions">
-                <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointBookingsAutomatic()">Aggiorna prenotazioni</button>
-                <div id="matchpointBookingsActionState" class="matchpoint-action-state"></div>
-              </div>
-            </div>
-          </article>
-
-          <article class="matchpoint-data-box history" id="anchor-matchpoint-storico">
-            <h3><span class="matchpoint-data-step">3</span> Storico Matchpoint</h3>
-            <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
-            <div class="matchpoint-history-metrics" aria-live="polite">
-              <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
-              <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
-              <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
-            </div>
-            <div class="matchpoint-data-file">
-              <div class="matchpoint-data-actions">
-                <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico</button>
-                <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
-              </div>
-            </div>
-          </article>
-
-          <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
-            <h3><span class="matchpoint-data-step">4</span> Backup dati</h3>
-            <p class="matchpoint-data-copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
-            <div class="matchpoint-data-file">
-              <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
-              <div class="matchpoint-data-actions">
-                <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
-                <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
-                <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
-                <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
-                <div class="matchpoint-cloud-note">Backup unico sovrascritto su Supabase.</div>
-              </div>
-            </div>
-          </article>
-
-          <article class="matchpoint-data-box potential wide" id="anchor-matchpoint-slot-potenziali">
-            <h3><span class="matchpoint-data-step">5</span> Slot potenziali Matchpoint</h3>
-            <p class="matchpoint-data-copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
-            <div class="potential-slot-details">
-              <div class="potential-slot-horizontal">
-                <div class="potential-slot-panel">
-                  <label for="potentialSlotImageFile">Immagine griglia slot</label>
-                  <input type="file" id="potentialSlotImageFile" accept="image/*" onchange="importPotentialSlotImageFile(this.files && this.files[0])" />
-                  <div id="potentialSlotImagePreview" class="potential-slot-reference"></div>
-                  <div class="matchpoint-data-hint">Riferimento visivo locale: non viene letto automaticamente.</div>
+        <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
+          <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
+            <span>
+              <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti Matchpoint e backup</span>
+              <span class="matchpoint-data-accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud.</span>
+            </span>
+            <span class="matchpoint-data-chevron">›</span>
+          </button>
+          <div class="matchpoint-data-accordion-panel" id="matchpointUpdatesAccordionPanel">
+            <div class="matchpoint-data-grid">
+              <article class="matchpoint-data-box clients" id="anchor-matchpoint-clienti">
+                <h3><span class="matchpoint-data-step">2</span> Clienti Matchpoint</h3>
+                <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+                <div class="matchpoint-history-metrics matchpoint-clients-metrics" aria-live="polite">
+                  <span>Totale clienti database<strong id="matchpointClientsTotal">-</strong></span>
+                  <span>Variazione ultimo import<strong id="matchpointClientsDelta" class="delta-neutral">-</strong></span>
                 </div>
-                <div class="potential-slot-panel">
-                  <div class="potential-slot-editor">
-                    <label for="potentialSlotScheduleEditor">Griglia slot operativa</label>
-                    <textarea id="potentialSlotScheduleEditor" spellcheck="false" oninput="markPotentialSlotEditorDirty()" placeholder="Lunedì: 12:30-14:00, 14:00-15:30"></textarea>
-                    <div class="potential-slot-editor-help">Formato: un giorno per riga, orari separati da virgola. Questa griglia aggiorna Dashboard e Apri Partite.</div>
-                  </div>
+                <div class="matchpoint-data-file">
+                  <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
                   <div class="matchpoint-data-actions">
-                    <button id="potentialSlotSaveButton" class="btn-warning" onclick="setActionAnchor(this); savePotentialSlotScheduleFromEditor()">Salva griglia slot</button>
-                    <div id="potentialSlotActionState" class="matchpoint-action-state pending">Da salvare</div>
-                    <button class="btn-secondary" onclick="setActionAnchor(this); resetPotentialSlotScheduleEditorToDefault()">Ripristina standard</button>
+                    <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti</button>
+                    <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
+                <h3><span class="matchpoint-data-step">3</span> Prenotazioni future Matchpoint</h3>
+                <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
+                <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
+                  <span>Periodo<strong id="matchpointBookingsPeriod">-</strong></span>
+                  <span>Ore campo prenotate<strong id="matchpointBookingsBookedHours">-</strong></span>
+                  <span>Occupazione stimata<strong id="matchpointBookingsOccupancyPercent">-</strong></span>
+                </div>
+                <div class="matchpoint-data-file">
+                  <div class="matchpoint-data-actions">
+                    <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointBookingsAutomatic()">Aggiorna prenotazioni</button>
+                    <div id="matchpointBookingsActionState" class="matchpoint-action-state"></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="matchpoint-data-box history" id="anchor-matchpoint-storico">
+                <h3><span class="matchpoint-data-step">4</span> Storico Matchpoint</h3>
+                <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
+                <div class="matchpoint-history-metrics" aria-live="polite">
+                  <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
+                  <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
+                  <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
+                </div>
+                <div class="matchpoint-data-file">
+                  <div class="matchpoint-data-actions">
+                    <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico</button>
+                    <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
+                <h3><span class="matchpoint-data-step">5</span> Backup dati</h3>
+                <p class="matchpoint-data-copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
+                <div class="matchpoint-data-file">
+                  <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
+                  <div class="matchpoint-data-actions">
+                    <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
+                    <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
+                    <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
+                    <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
+                    <div class="matchpoint-cloud-note">Backup unico sovrascritto su Supabase.</div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="matchpoint-data-accordion" id="matchpointSlotAccordion">
+          <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointSlotAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointSlotAccordion')">
+            <span>
+              <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">6</span> Slot potenziali Matchpoint</span>
+              <span class="matchpoint-data-accordion-subtitle">Griglia teorica settimanale usata da Dashboard e Apri Partite.</span>
+            </span>
+            <span class="matchpoint-data-chevron">›</span>
+          </button>
+          <div class="matchpoint-data-accordion-panel" id="matchpointSlotAccordionPanel">
+            <article class="matchpoint-data-box potential wide" id="anchor-matchpoint-slot-potenziali">
+              <p class="matchpoint-data-copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
+              <div class="potential-slot-details">
+                <div class="potential-slot-horizontal">
+                  <div class="potential-slot-panel">
+                    <label for="potentialSlotImageFile">Immagine griglia slot</label>
+                    <input type="file" id="potentialSlotImageFile" accept="image/*" onchange="importPotentialSlotImageFile(this.files && this.files[0])" />
+                    <div id="potentialSlotImagePreview" class="potential-slot-reference"></div>
+                    <div class="matchpoint-data-hint">Riferimento visivo locale: non viene letto automaticamente.</div>
+                  </div>
+                  <div class="potential-slot-panel">
+                    <div class="potential-slot-editor">
+                      <label for="potentialSlotScheduleEditor">Griglia slot operativa</label>
+                      <textarea id="potentialSlotScheduleEditor" spellcheck="false" oninput="markPotentialSlotEditorDirty()" placeholder="Lunedì: 12:30-14:00, 14:00-15:30"></textarea>
+                      <div class="potential-slot-editor-help">Formato: un giorno per riga, orari separati da virgola. Questa griglia aggiorna Dashboard e Apri Partite.</div>
+                    </div>
+                    <div class="matchpoint-data-actions">
+                      <button id="potentialSlotSaveButton" class="btn-warning" onclick="setActionAnchor(this); savePotentialSlotScheduleFromEditor()">Salva griglia slot</button>
+                      <div id="potentialSlotActionState" class="matchpoint-action-state pending">Da salvare</div>
+                      <button class="btn-secondary" onclick="setActionAnchor(this); resetPotentialSlotScheduleEditorToDefault()">Ripristina standard</button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </article>
+            </article>
+          </div>
         </div>
         <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
       </div>
@@ -4751,7 +4845,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.367';
+    const APP_VERSION = '5.368';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9258,6 +9352,7 @@ body.assessment-public-mode .assessment-public-only-card {
       bookings: ['prenotazioni', 'prenotazioni future'],
       history: ['storico prenotazioni']
     };
+    let dataActionStatusRefreshInProgress = false;
 
     function getDataActionImportSummary(key) {
       const types = DATA_IMPORT_ACTION_TYPES[key];
@@ -9323,6 +9418,9 @@ body.assessment-public-mode .assessment-public-only-card {
         const fallbackMessage = isPending ? 'Da confermare' : (isDone ? 'Salvato' : (isError ? 'Errore' : ''));
         state.textContent = isImportDateStatus ? formatDataActionImportStatus(key) : (isBackupDateStatus ? formatDataActionBackupStatus() : (isCloudBackupDateStatus ? formatCloudBackupDateTime(getLastCloudBackupInfo()) : (message || fallbackMessage)));
       }
+      if (!dataActionStatusRefreshInProgress) {
+        try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+      }
     }
 
     function markDataActionPending(key) {
@@ -9340,22 +9438,201 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     function refreshDataActionStatuses() {
-      if (getLatestImportSummaryByTypes(['clienti'])) setDataActionStatus('clients', 'done');
-      else setDataActionStatus('clients', 'ready');
-      if (getLatestImportSummaryByTypes(['prenotazioni', 'prenotazioni future'])) setDataActionStatus('bookings', 'done');
-      else setDataActionStatus('bookings', 'ready');
-      if (getLatestImportSummaryByTypes(['storico prenotazioni'])) setDataActionStatus('history', 'done');
-      else setDataActionStatus('history', 'ready');
-      updatePotentialSlotSaveState();
-      let backup = null;
-      try { backup = JSON.parse(pmoLocalGetItem('lastBackupInfo') || 'null'); } catch { backup = null; }
-      if (backup) setDataActionStatus('backup', 'done');
-      else setDataActionStatus('backup', 'ready');
-      setDataActionStatus('restore', 'ready');
-      const cloudBackup = getLastCloudBackupInfo();
-      if (cloudBackup) setDataActionStatus('cloudBackup', 'done');
-      else setDataActionStatus('cloudBackup', 'ready');
-      setDataActionStatus('cloudRestore', 'ready');
+      dataActionStatusRefreshInProgress = true;
+      try {
+        if (getLatestImportSummaryByTypes(['clienti'])) setDataActionStatus('clients', 'done');
+        else setDataActionStatus('clients', 'ready');
+        if (getLatestImportSummaryByTypes(['prenotazioni', 'prenotazioni future'])) setDataActionStatus('bookings', 'done');
+        else setDataActionStatus('bookings', 'ready');
+        if (getLatestImportSummaryByTypes(['storico prenotazioni'])) setDataActionStatus('history', 'done');
+        else setDataActionStatus('history', 'ready');
+        updatePotentialSlotSaveState();
+        let backup = null;
+        try { backup = JSON.parse(pmoLocalGetItem('lastBackupInfo') || 'null'); } catch { backup = null; }
+        if (backup) setDataActionStatus('backup', 'done');
+        else setDataActionStatus('backup', 'ready');
+        setDataActionStatus('restore', 'ready');
+        const cloudBackup = getLastCloudBackupInfo();
+        if (cloudBackup) setDataActionStatus('cloudBackup', 'done');
+        else setDataActionStatus('cloudBackup', 'ready');
+        setDataActionStatus('cloudRestore', 'ready');
+      } finally {
+        dataActionStatusRefreshInProgress = false;
+      }
+      try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+    }
+
+    function toggleMatchpointDataAccordion(id, forceOpen) {
+      const panel = document.getElementById(id);
+      if (!panel) return false;
+      const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+      panel.classList.toggle('open', shouldOpen);
+      const button = panel.querySelector('.matchpoint-data-accordion-toggle');
+      if (button) button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      return shouldOpen;
+    }
+
+    function openMatchpointDataAccordion(id) {
+      return toggleMatchpointDataAccordion(id, true);
+    }
+
+    function focusMatchpointDataAnchor(anchorId) {
+      if (!anchorId) return;
+      const matchpointTab = document.getElementById('matchpoint');
+      if (matchpointTab && !matchpointTab.classList.contains('active')) {
+        switchTab('matchpoint', null, { scrollTop:false });
+      }
+      setTimeout(() => {
+        const target = document.getElementById(anchorId);
+        if (!target) return;
+        target.scrollIntoView({ behavior:'smooth', block:'start' });
+        target.classList.add('anchor-flash');
+        setTimeout(() => target.classList.remove('anchor-flash'), 1400);
+      }, 80);
+    }
+
+    function getMatchpointRoutineActionState(key) {
+      const cfg = DATA_ACTION_CONFIG[key];
+      const state = cfg ? document.getElementById(cfg.stateId) : null;
+      const text = cleanCell(state?.textContent || '');
+      if (state?.classList.contains('error')) return { status:'error', text:text || 'Errore' };
+      if (state?.classList.contains('pending')) return { status:'pending', text:text || 'Operazione in corso' };
+      if (state?.classList.contains('done')) return { status:'done', text:text || 'Completata' };
+      return { status:'ready', text };
+    }
+
+    function formatMatchpointRoutineDate(info, formatter=formatImportDateTime) {
+      const text = formatter(info);
+      return text && text !== 'non disponibile' ? text : '-';
+    }
+
+    function formatMatchpointRoutineNextExecution(times) {
+      const values = (times || []).map(value => cleanCell(value)).filter(Boolean);
+      if (!values.length) return '-';
+      const now = new Date();
+      const candidates = [];
+      values.forEach(value => {
+        const [hour, minute] = value.split(':').map(part => parseInt(part, 10));
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) return;
+        const candidate = new Date(now);
+        candidate.setHours(hour, minute, 0, 0);
+        if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 1);
+        candidates.push({ value, date:candidate });
+      });
+      if (!candidates.length) return '-';
+      candidates.sort((a, b) => a.date - b.date);
+      const next = candidates[0];
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const nextDay = new Date(next.date);
+      nextDay.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((nextDay - today) / 86400000);
+      const prefix = diffDays === 0 ? 'oggi' : (diffDays === 1 ? 'domani' : next.date.toLocaleDateString('it-IT'));
+      return `${prefix} ${next.value}`;
+    }
+
+    function getMatchpointRoutineStatus(row) {
+      const action = getMatchpointRoutineActionState(row.actionKey);
+      const hasInfo = !!row.info;
+      if (action.status === 'error') return { className:'fail', label:'Fallita', attempt:action.text || '-' };
+      if (action.status === 'pending') return { className:'warn', label:'In corso', attempt:action.text || '-' };
+      if (!hasInfo) return { className:'idle', label:'Mai', attempt:'-' };
+      return { className:'ok', label:'OK', attempt:row.lastValid };
+    }
+
+    function runMatchpointRoutineManual(key, trigger) {
+      setActionAnchor(trigger);
+      if (key === 'clients') return importMatchpointClientsAutomatic();
+      if (key === 'bookings') return importMatchpointBookingsAutomatic();
+      if (key === 'history') return importMatchpointHistoryAutomatic();
+      if (key === 'cloudBackup') return saveCloudBackup();
+    }
+
+    function renderMatchpointRoutinePanel() {
+      const tbody = document.getElementById('matchpointRoutineStatusBody');
+      if (!tbody) return;
+      const rows = [
+        {
+          key:'clients',
+          title:'Clienti Matchpoint',
+          note:'Anagrafica e contatti',
+          actionKey:'clients',
+          anchorId:'anchor-matchpoint-clienti',
+          info:getLatestImportSummaryByTypes(['clienti']),
+          lastValid:'',
+          nextTimes:['05:00'],
+          manualLabel:'Aggiorna ora'
+        },
+        {
+          key:'history',
+          title:'Storico Matchpoint',
+          note:'Prenotazioni ultimi 12 mesi',
+          actionKey:'history',
+          anchorId:'anchor-matchpoint-storico',
+          info:getLatestImportSummaryByTypes(['storico prenotazioni']),
+          lastValid:'',
+          nextTimes:['04:30'],
+          manualLabel:'Aggiorna ora'
+        },
+        {
+          key:'bookings',
+          title:'Prenotazioni future',
+          note:'Occupazioni prossimi 30 giorni',
+          actionKey:'bookings',
+          anchorId:'anchor-matchpoint-prenotazioni',
+          info:getLatestImportSummaryByTypes(['prenotazioni future', 'prenotazioni']),
+          lastValid:'',
+          nextTimes:['05:30','10:30','14:30','17:30','21:30'],
+          manualLabel:'Aggiorna ora'
+        },
+        {
+          key:'cloudBackup',
+          title:'Backup cloud',
+          note:'Backup unico sovrascritto',
+          actionKey:'cloudBackup',
+          anchorId:'anchor-matchpoint-backup',
+          info:getLastCloudBackupInfo(),
+          lastValid:'',
+          nextTimes:['05:45'],
+          manualLabel:'Salva ora',
+          formatter:formatBackupDateTime
+        }
+      ];
+      rows.forEach(row => {
+        row.lastValid = formatMatchpointRoutineDate(row.info, row.formatter || formatImportDateTime);
+        row.status = getMatchpointRoutineStatus(row);
+        row.next = formatMatchpointRoutineNextExecution(row.nextTimes);
+      });
+      tbody.innerHTML = rows.map(row => `
+        <tr>
+          <td><span class="matchpoint-routine-name">${escapeHtml(row.title)}</span><span class="matchpoint-routine-note">${escapeHtml(row.note)}</span></td>
+          <td>${escapeHtml(row.lastValid)}</td>
+          <td>${escapeHtml(row.status.attempt || '-')}</td>
+          <td><span class="matchpoint-routine-result ${escapeHtml(row.status.className)}">${escapeHtml(row.status.label)}</span></td>
+          <td>${escapeHtml(row.next)}</td>
+          <td>
+            <div class="matchpoint-routine-actions">
+              <button type="button" class="matchpoint-routine-action" onclick="openMatchpointDataAccordion('matchpointUpdatesAccordion'); focusMatchpointDataAnchor('${escapeJs(row.anchorId)}')">Dettagli</button>
+              <button type="button" class="matchpoint-routine-action primary" onclick="runMatchpointRoutineManual('${escapeJs(row.actionKey)}', this)">${escapeHtml(row.manualLabel)}</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+      const alert = document.getElementById('matchpointRoutineAlert');
+      if (!alert) return;
+      const failed = rows.filter(row => row.status.className === 'fail');
+      if (!failed.length) {
+        alert.className = 'matchpoint-routine-alert';
+        alert.innerHTML = '';
+        return;
+      }
+      const first = failed[0];
+      alert.className = 'matchpoint-routine-alert visible';
+      alert.innerHTML = `
+        <strong>Routine da controllare</strong>
+        <span>${escapeHtml(failed.map(row => row.title).join(', '))}. L'ultimo dato valido resta in uso.</span>
+        <button type="button" class="matchpoint-routine-action warning" onclick="openMatchpointDataAccordion('matchpointUpdatesAccordion'); focusMatchpointDataAnchor('${escapeJs(first.anchorId)}')">Apri dettagli</button>
+      `;
     }
 
     function formatMetricNumber(value) {

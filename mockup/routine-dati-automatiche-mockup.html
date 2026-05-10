@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup DATI - Routine automatiche</title>
+  <style>
+    :root {
+      --primary: #1f4788;
+      --blue: #2563eb;
+      --purple: #7c3aed;
+      --green: #168a53;
+      --amber: #b7791f;
+      --red: #b42318;
+      --border: #d9e0ea;
+      --soft-border: #e7edf6;
+      --muted: #667085;
+      --text: #101828;
+      --soft: #fbfdff;
+      --green-soft: #eefaf3;
+      --amber-soft: #fff7e6;
+      --red-soft: #fff1f0;
+      --gray-soft: #f6f7f9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: #fff;
+    }
+    .page {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 12px 0 24px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 22px;
+    }
+    .box {
+      border: 1px solid var(--border);
+      border-top: 5px solid var(--green);
+      border-radius: 8px;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(31, 71, 136, .08);
+    }
+    .box.clients { border-top-color: var(--primary); }
+    .box.bookings { border-top-color: var(--blue); }
+    .box.history { border-top-color: var(--purple); }
+    .box.backup { border-top-color: var(--green); }
+    .box.potential { border-top-color: var(--amber); }
+    .step-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 14px;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .step {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: var(--green);
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .clients .step { background: var(--primary); }
+    .bookings .step { background: var(--blue); }
+    .history .step { background: var(--purple); }
+    .backup .step { background: var(--green); }
+    .potential .step { background: var(--amber); }
+    .copy {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    .button {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 17px 18px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      background: var(--primary);
+      text-align: center;
+    }
+    .bookings .button { background: var(--blue); }
+    .history .button { background: var(--purple); }
+    .backup .button,
+    .routine-box .button { background: var(--green); }
+    .button.secondary { background: #667085; }
+    .button.warning { background: var(--amber); }
+    .button.small {
+      width: auto;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #344054;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 8px;
+    }
+    .button.small.primary {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+    }
+    .button.small.warn {
+      border-color: #f2d39b;
+      background: var(--amber-soft);
+      color: #7a4d00;
+    }
+    .routine-box {
+      margin-bottom: 18px;
+    }
+    .routines-head {
+      display: grid;
+      grid-template-columns: minmax(260px, .9fr) minmax(360px, 1.1fr);
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+    .routines-head .copy { margin: 0; }
+    .schedule {
+      border: 1px solid var(--soft-border);
+      border-radius: 8px;
+      background: var(--soft);
+      padding: 12px 14px;
+      color: #344054;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+    .schedule strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 16px;
+    }
+    .routine-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--soft-border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .routine-table {
+      width: 100%;
+      min-width: 1040px;
+      border-collapse: collapse;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+    .routine-table th {
+      background: #f3f6fb;
+      color: #344054;
+      font-weight: 800;
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--soft-border);
+      white-space: nowrap;
+    }
+    .routine-table td {
+      padding: 14px;
+      border-top: 1px solid var(--soft-border);
+      vertical-align: middle;
+    }
+    .routine-table tr:first-child td { border-top: 0; }
+    .routine-name {
+      color: var(--text);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .routine-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .result {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 14px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .result.ok {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid #b8e6ca;
+    }
+    .result.warn {
+      background: var(--amber-soft);
+      color: #8a5a00;
+      border: 1px solid #f2d39b;
+    }
+    .result.fail {
+      background: var(--red-soft);
+      color: var(--red);
+      border: 1px solid #f2b8b5;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    .error-strip {
+      margin-top: 16px;
+      border: 1px solid #f2b8b5;
+      border-left: 5px solid var(--red);
+      border-radius: 8px;
+      background: var(--red-soft);
+      padding: 14px 16px;
+      color: #7a271a;
+      display: grid;
+      grid-template-columns: minmax(220px, .8fr) minmax(320px, 1.2fr) auto;
+      gap: 14px;
+      align-items: center;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+    .error-strip strong {
+      display: block;
+      color: var(--red);
+      font-size: 16px;
+    }
+    .rules {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .rule {
+      border: 1px solid var(--soft-border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 8px 12px;
+      color: #344054;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .accordion {
+      margin-top: 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(31, 71, 136, .07);
+      overflow: hidden;
+    }
+    .accordion-toggle {
+      width: 100%;
+      border: 0;
+      background: #f8fbff;
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .accordion-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+    .accordion-title .step { width: 34px; height: 34px; font-size: 17px; }
+    .accordion-subtitle {
+      grid-column: 1 / -1;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+    .chevron {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #344054;
+      font-weight: 900;
+      transition: transform .18s ease;
+    }
+    .accordion.open .chevron { transform: rotate(90deg); }
+    .accordion-panel {
+      display: none;
+      padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .accordion.open .accordion-panel { display: block; }
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    .data-grid .box {
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+      margin: 0 0 22px;
+      border: 1px solid var(--soft-border);
+      border-radius: 8px;
+      background: var(--soft);
+      padding: 8px 14px;
+      color: #344054;
+      font-size: 17px;
+      line-height: 1.25;
+    }
+    .metrics span {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-top: 1px solid #e8eef6;
+      padding: 12px 0;
+    }
+    .metrics span:first-child { border-top: 0; }
+    .metrics strong {
+      color: var(--text);
+      font-size: 20px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .delta-up { color: var(--green) !important; }
+    .operation {
+      margin-top: auto;
+      display: grid;
+      gap: 12px;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.35;
+      margin: 0 0 8px;
+    }
+    .status {
+      min-height: 56px;
+      padding-top: 4px;
+      color: var(--green);
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 800;
+      text-align: center;
+    }
+    .cloud-note {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 700;
+      text-align: center;
+    }
+    .potential-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, .75fr) minmax(420px, 1.25fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+    .potential-panel {
+      border: 1px solid var(--soft-border);
+      border-radius: 8px;
+      background: var(--soft);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .potential-panel label {
+      color: #344054;
+      font-size: 17px;
+      font-weight: 900;
+    }
+    .file-control {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      color: #344054;
+      font-size: 15px;
+    }
+    .image-preview {
+      min-height: 230px;
+      border: 1px dashed #c8d2df;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(31,71,136,.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(31,71,136,.06) 1px, transparent 1px),
+        #fff;
+      background-size: 42px 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 800;
+      text-align: center;
+      padding: 18px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 230px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font: 15px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      resize: vertical;
+      color: #344054;
+      background: #fff;
+    }
+    .editor-help {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+    .potential-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .save-state {
+      border: 1px solid #f2d39b;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: #8a5a00;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    @media (max-width: 1100px) {
+      .data-grid { grid-template-columns: 1fr 1fr; }
+      .routines-head,
+      .potential-layout,
+      .error-strip { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 18px; }
+      .data-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+      .step-title,
+      .accordion-title { font-size: 21px; }
+      .routine-table { min-width: 860px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>DATI (in/out)</h1>
+    <p class="subtitle">Stato dati, aggiornamenti Matchpoint, backup e slot potenziali.</p>
+
+    <section class="box routine-box" aria-label="Stato routine automatiche">
+      <div class="routines-head">
+        <div>
+          <h2 class="step-title"><span class="step">1</span> Stato routine automatiche</h2>
+          <p class="copy">Controllo rapido degli aggiornamenti dati e degli eventuali errori.</p>
+        </div>
+        <div class="schedule" aria-label="Piano temporale routine">
+          <strong>Piano temporale proposto</strong>
+          04:30 storico, 05:00 clienti, 05:30 prenotazioni, 05:45 controllo dati. Prenotazioni future anche 10:30, 14:30, 17:30 e 21:30.
+        </div>
+      </div>
+
+      <div class="routine-table-wrap">
+        <table class="routine-table" aria-label="Stato routine automatiche dati">
+          <thead>
+            <tr>
+              <th>Routine</th>
+              <th>Ultimo valido</th>
+              <th>Ultimo tentativo</th>
+              <th>Esito</th>
+              <th>Prossima esecuzione</th>
+              <th>Azione</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="routine-name">Clienti Matchpoint</span><span class="routine-note">Aggiorna fotografia anagrafica</span></td>
+              <td>11/05/2026 - 05:02</td>
+              <td>11/05/2026 - 05:00</td>
+              <td><span class="result ok">OK</span></td>
+              <td>12/05/2026 - 05:00</td>
+              <td><div class="actions"><button class="button small" type="button">Dettagli</button></div></td>
+            </tr>
+            <tr>
+              <td><span class="routine-name">Storico Matchpoint</span><span class="routine-note">Aggiunge solo date mancanti</span></td>
+              <td>11/05/2026 - 04:31</td>
+              <td>11/05/2026 - 04:30</td>
+              <td><span class="result ok">OK</span></td>
+              <td>12/05/2026 - 04:30</td>
+              <td><div class="actions"><button class="button small" type="button">Dettagli</button></div></td>
+            </tr>
+            <tr>
+              <td><span class="routine-name">Prenotazioni future</span><span class="routine-note">Fotografia prossimi 30 giorni</span></td>
+              <td>10/05/2026 - 15:47</td>
+              <td>11/05/2026 - 10:30</td>
+              <td><span class="result fail">Fallita</span></td>
+              <td>11/05/2026 - 10:45</td>
+              <td><div class="actions"><button class="button small primary" type="button">Riprova ora</button><button class="button small" type="button">Dettagli</button></div></td>
+            </tr>
+            <tr>
+              <td><span class="routine-name">Backup cloud</span><span class="routine-note">Controllo eta backup</span></td>
+              <td>10/05/2026 - 11:11</td>
+              <td>11/05/2026 - 05:45</td>
+              <td><span class="result warn">Attenzione</span></td>
+              <td>12/05/2026 - 05:45</td>
+              <td><div class="actions"><button class="button small warn" type="button">Salva backup</button><button class="button small" type="button">Dettagli</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="error-strip" aria-label="Dettaglio errore routine">
+        <div>
+          <strong>Errore attivo</strong>
+          <span>Prenotazioni future Matchpoint</span>
+        </div>
+        <div>
+          <span>Worker browser/headless Matchpoint non riuscito. In uso resta l'ultima fotografia valida del 10/05/2026 - 15:47.</span>
+        </div>
+        <div class="actions">
+          <button class="button small primary" type="button">Riprova ora</button>
+          <button class="button small" type="button">Apri log</button>
+        </div>
+      </div>
+
+      <div class="rules" aria-label="Regole routine automatiche">
+        <span class="rule">Mantiene l'ultimo dato valido</span>
+        <span class="rule">Nessun Excel archiviato</span>
+        <span class="rule">Segnala errori persistenti</span>
+      </div>
+    </section>
+
+    <section class="accordion" id="accordion-updates">
+      <button class="accordion-toggle" type="button" onclick="toggleAccordion('accordion-updates')" aria-expanded="false">
+        <span>
+          <span class="accordion-title"><span class="step">2-5</span> Aggiornamenti Matchpoint e backup</span>
+          <span class="accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud restano disponibili ma chiusi in partenza.</span>
+        </span>
+        <span class="chevron" aria-hidden="true">&gt;</span>
+      </button>
+      <div class="accordion-panel">
+        <div class="data-grid">
+          <article class="box clients">
+            <h3 class="step-title"><span class="step">2</span> Clienti Matchpoint</h3>
+            <p class="copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+            <div class="metrics" aria-label="Riepilogo clienti Matchpoint">
+              <span>Totale clienti database<strong>947</strong></span>
+              <span>Variazione ultimo import<strong class="delta-up">+3</strong></span>
+            </div>
+            <div class="operation">
+              <p class="hint">Avvia login, export e validazione clienti sul server.</p>
+              <button class="button" type="button">Aggiorna clienti</button>
+              <div class="status">Ultimo aggiornamento automatico: 10/05/2026 - 13:16</div>
+            </div>
+          </article>
+
+          <article class="box bookings">
+            <h3 class="step-title"><span class="step">3</span> Prenotazioni future Matchpoint</h3>
+            <p class="copy">Fotografia occupazioni prossimi 30 giorni.</p>
+            <div class="metrics" aria-label="Riepilogo prenotazioni future Matchpoint">
+              <span>Periodo<strong>10/05/2026 - 09/06/2026</strong></span>
+              <span>Ore campo prenotate<strong>290,5</strong></span>
+              <span>Occupazione stimata<strong>28%</strong></span>
+            </div>
+            <div class="operation">
+              <button class="button" type="button">Aggiorna prenotazioni</button>
+              <div class="status">Ultimo aggiornamento automatico: 10/05/2026 - 15:47</div>
+            </div>
+          </article>
+
+          <article class="box history">
+            <h3 class="step-title"><span class="step">4</span> Storico Matchpoint</h3>
+            <p class="copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
+            <div class="metrics" aria-label="Riepilogo storico Matchpoint">
+              <span>Periodo file<strong>-</strong></span>
+              <span>Nuove righe<strong>-</strong></span>
+              <span>Totale prenotazioni storiche<strong>-</strong></span>
+            </div>
+            <div class="operation">
+              <button class="button" type="button">Aggiorna storico</button>
+              <div class="status">Ultimo aggiornamento automatico: 10/05/2026 - 11:12</div>
+            </div>
+          </article>
+
+          <article class="box backup">
+            <h3 class="step-title"><span class="step">5</span> Backup dati</h3>
+            <p class="copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
+            <div class="operation">
+              <p class="hint">Da fare prima di import importanti o prima di cancellare dati locali.</p>
+              <button class="button" type="button">Salva backup cloud</button>
+              <div class="status">Ultimo backup cloud: 10/05/2026 - 11:11</div>
+              <button class="button secondary" type="button">Ripristina backup cloud</button>
+              <div class="cloud-note">Backup unico sovrascritto su Supabase.</div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="accordion" id="accordion-slots">
+      <button class="accordion-toggle" type="button" onclick="toggleAccordion('accordion-slots')" aria-expanded="false">
+        <span>
+          <span class="accordion-title"><span class="step">6</span> Slot potenziali Matchpoint</span>
+          <span class="accordion-subtitle">Griglia teorica settimanale degli slot vendibili usata da Dashboard e Apri Partite.</span>
+        </span>
+        <span class="chevron" aria-hidden="true">&gt;</span>
+      </button>
+      <div class="accordion-panel">
+        <article class="box potential">
+          <p class="copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
+          <div class="potential-layout">
+            <div class="potential-panel">
+              <label for="potentialSlotImageFile">Immagine griglia slot</label>
+              <input class="file-control" type="file" id="potentialSlotImageFile" accept="image/*">
+              <div class="image-preview">Anteprima immagine griglia slot</div>
+              <div class="hint">Riferimento visivo locale: non viene letto automaticamente.</div>
+            </div>
+            <div class="potential-panel">
+              <label for="potentialSlotScheduleEditor">Griglia slot operativa</label>
+              <textarea id="potentialSlotScheduleEditor" spellcheck="false">Lunedi: 12:30-14:00, 14:00-15:30, 18:00-19:30, 19:30-21:00, 21:00-22:30
+Martedi: 12:30-14:00, 14:00-15:30, 18:00-19:30, 19:30-21:00, 21:00-22:30
+Mercoledi: 12:30-14:00, 14:00-15:30, 18:00-19:30, 19:30-21:00, 21:00-22:30
+Giovedi: 12:30-14:00, 14:00-15:30, 18:00-19:30, 19:30-21:00, 21:00-22:30
+Venerdi: 09:00-10:30, 10:30-12:00, 12:30-14:00, 14:00-15:30, 15:30-17:00, 17:00-18:30, 18:30-20:00, 20:00-21:30
+Sabato: 09:00-10:30, 10:30-12:00, 12:00-13:30, 13:30-15:00, 15:00-16:30, 16:30-18:00, 18:00-19:30
+Domenica: 09:00-10:30, 10:30-12:00, 15:00-16:30, 16:30-18:00, 18:00-19:30</textarea>
+              <div class="editor-help">Formato: un giorno per riga, orari separati da virgola. Questa griglia aggiorna Dashboard e Apri Partite.</div>
+              <div class="potential-actions">
+                <button class="button warning" type="button">Salva griglia slot</button>
+                <span class="save-state">Da salvare</span>
+                <button class="button secondary" type="button" style="width:auto;">Ripristina standard</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+  <script>
+    function toggleAccordion(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const nextOpen = !el.classList.contains('open');
+      el.classList.toggle('open', nextOpen);
+      const button = el.querySelector('.accordion-toggle');
+      if (button) button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+    }
+  </script>
+</body>
+</html>
