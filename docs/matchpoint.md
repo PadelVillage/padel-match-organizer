@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico candidato v5.358 TEST con funzione `matchpoint-history-sync`.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico candidato v5.358 TEST con funzione `matchpoint-history-sync`; layout riepilogo storico compatto candidato v5.359 TEST.
 
 ## Obiettivo
 
@@ -148,6 +148,12 @@ Regola dati:
 - lo storico non e' una fotografia sostitutiva come i clienti: e' cumulativo;
 - ogni import aggiunge solo righe mancanti e protegge eventuali righe esistenti con la stessa chiave;
 - l'Excel Matchpoint e' solo temporaneo durante download, parse e upsert. Non va salvato in repo, documentazione, cartelle locali permanenti o Supabase Storage.
+
+Nota UI v5.359 TEST:
+
+- nel box `Storico Matchpoint`, dopo mockup approvato, la descrizione diventa `Analisi prenotazioni degli ultimi 12 mesi.`;
+- il riepilogo viene mostrato subito sotto la descrizione in tre righe label-valore: `Periodo file`, `Nuove righe`, `Totale prenotazioni storiche`;
+- il testo tecnico sul file temporaneo eliminato non viene mostrato nella UI, ma resta una regola tecnica della funzione/import.
 
 ## Slot potenziali v5.234
 

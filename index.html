@@ -1391,9 +1391,10 @@
     .matchpoint-data-file label { color:#344054; font-size:12px; font-weight:800; }
     .matchpoint-data-file input[type="file"] { width:100%; min-width:0; border:1px solid #cfd9e7; border-radius:7px; background:#fbfdff; padding:8px; color:#344054; font-size:12px; }
     .matchpoint-data-hint { min-height:33px; color:#667085; font-size:12px; }
-    .matchpoint-history-metrics { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; color:#344054; font-size:11px; }
-    .matchpoint-history-metrics span { min-width:0; border:1px solid #e4ebf4; border-radius:7px; background:#fbfdff; padding:7px 8px; }
-    .matchpoint-history-metrics strong { display:block; margin-top:2px; color:#101828; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .matchpoint-history-metrics { display:grid; grid-template-columns:1fr; gap:0; margin:0 0 12px; border:1px solid #e4ebf4; border-radius:8px; background:#fbfdff; padding:8px 10px; color:#344054; font-size:12px; }
+    .matchpoint-history-metrics span { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #e8eef6; padding:7px 0; line-height:1.25; }
+    .matchpoint-history-metrics span:first-child { border-top:0; }
+    .matchpoint-history-metrics strong { color:#101828; font-size:13px; text-align:right; white-space:nowrap; }
     .potential-slot-reference { display:grid; gap:7px; border:1px dashed #d7b06d; border-radius:7px; background:#fffaf0; padding:8px; color:#667085; font-size:12px; }
     .potential-slot-reference img { width:100%; max-height:96px; object-fit:cover; border:1px solid #e4d4b4; border-radius:6px; background:#fff; }
     .potential-slot-reference strong { color:#344054; }
@@ -4090,15 +4091,14 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <article class="matchpoint-data-box history" id="anchor-matchpoint-storico">
             <h3><span class="matchpoint-data-step">3</span> Storico Matchpoint</h3>
-            <p class="matchpoint-data-copy">Aggiunge le prenotazioni storiche mancanti. I record gia presenti restano protetti.</p>
+            <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
+            <div class="matchpoint-history-metrics" aria-live="polite">
+              <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
+              <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
+              <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
+            </div>
             <div class="matchpoint-data-file">
               <label>Aggiorna storico da Matchpoint</label>
-              <div class="matchpoint-data-hint" id="matchpointHistoryAutoHint">Scarica gli ultimi 30 giorni, aggiunge solo le righe mancanti e scarta il file temporaneo dopo il salvataggio.</div>
-              <div class="matchpoint-history-metrics" aria-live="polite">
-                <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
-                <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
-                <span>Totale storico<strong id="matchpointHistoryTotalRows">-</strong></span>
-              </div>
               <div class="matchpoint-data-actions">
                 <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico da Matchpoint</button>
                 <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
@@ -4749,7 +4749,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.358';
+    const APP_VERSION = '5.359';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8053,7 +8053,7 @@ body.assessment-public-mode .assessment-public-only-card {
         });
         updateMatchpointHistoryMetrics(rows, cloud.history.length);
         showAlert(
-          `✅ Storico Matchpoint aggiornato. Nuove righe cloud: ${rows.newRows || 0}. Righe aggiunte in questo browser: ${localResult.newRows}. Totale storico locale: ${localResult.totalAfter}.`,
+          `✅ Storico Matchpoint aggiornato. Nuove righe cloud: ${rows.newRows || 0}. Righe aggiunte in questo browser: ${localResult.newRows}. Totale prenotazioni storiche locale: ${localResult.totalAfter}.`,
           'success'
         );
       } catch (err) {
@@ -8087,7 +8087,7 @@ body.assessment-public-mode .assessment-public-only-card {
         }
 
         showAlert(
-          `✅ Archivio storico aggiornato in modalità cumulativa (${result.fromDate} → ${result.toDate}). Totale storico: ${result.previousTotal} → ${result.totalAfter}. Aggiunte: ${result.newRows}, già presenti: ${result.alreadyPresentRows}, diverse ma protette/non sovrascritte: ${result.protectedDifferentRows}, eliminate oltre 12 mesi: ${result.removedOld12Months}. Righe saltate: ${result.skipped}`,
+          `✅ Archivio storico aggiornato in modalità cumulativa (${result.fromDate} → ${result.toDate}). Totale prenotazioni storiche: ${result.previousTotal} → ${result.totalAfter}. Aggiunte: ${result.newRows}, già presenti: ${result.alreadyPresentRows}, diverse ma protette/non sovrascritte: ${result.protectedDifferentRows}, eliminate oltre 12 mesi: ${result.removedOld12Months}. Righe saltate: ${result.skipped}`,
           'success'
         );
       });
