@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche in TEST v5.365 con funzione `matchpoint-bookings-sync`; hotfix quota localStorage per prenotazioni/storico in TEST v5.366; metriche operative prenotazioni future in TEST v5.367.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367.
 
 ## Obiettivo
 
@@ -193,7 +193,7 @@ Nota tecnica v5.364 TEST/PROD:
 - creata su TEST e PROD la RPC permanente `pmo_get_records_admin_page(p_record_types, p_since, p_limit, p_offset)`, con lo stesso controllo staff/cloud_sync di `pmo_get_records_admin`;
 - la app usa `p_limit`/`p_offset` nel payload della nuova RPC, quindi la paginazione non dipende piu dagli header e resta valida anche quando TEST superera 1000 record.
 
-## Prenotazioni future Matchpoint automatiche v5.365 TEST
+## Prenotazioni future Matchpoint automatiche v5.365-v5.367 TEST/PROD
 
 Obiettivo:
 
@@ -241,7 +241,7 @@ Regola dati:
 - la app rilegge il risultato cloud e sostituisce le liste locali `prenotazioni` e `prenotazioniOccupazione`;
 - l'Excel Matchpoint e' solo temporaneo durante download, parse e upsert. Non va salvato in repo, documentazione, cartelle locali permanenti o Supabase Storage.
 
-Hotfix localStorage v5.366 TEST:
+Hotfix localStorage v5.366 TEST/PROD:
 
 - dopo validazione utente del flusso automatico, TEST ha restituito `Failed to execute 'setItem' on 'Storage': Setting the value of 'test:prenotazioni' exceeded the quota`;
 - la causa era il salvataggio locale in JSON esteso di liste pesanti gia presenti: `prenotazioni`, `prenotazioniOccupazione` e `storicoPrenotazioni`;
@@ -249,12 +249,20 @@ Hotfix localStorage v5.366 TEST:
 - il contenuto logico dei record non cambia: restano disponibili `numero`, `giocatore`, `data`, `ora`, `durata`, `campo`, `tipo`, `descrizione`;
 - la migrazione compatta le chiavi esistenti quando la nuova versione viene caricata, riducendo lo spazio occupato senza cancellare dati.
 
-Nota UI v5.367 TEST:
+Nota UI v5.367 TEST/PROD:
 
 - dopo mockup approvato `mockup/prenotazioni-future-matchpoint-automatiche-mockup.html`, il riepilogo del box `Prenotazioni future Matchpoint` mostra tre metriche operative: `Periodo`, `Ore campo prenotate`, `Occupazione stimata`;
 - `Ore campo prenotate` somma la durata delle occupazioni future campo deduplicate;
 - `Occupazione stimata` confronta le ore prenotate con le ore potenziali calcolate dalla griglia `Slot potenziali` per lo stesso periodo;
 - rimossi dal box i dati tecnici `Righe importate` e `Totale occupazioni future`.
+
+Nota deploy PROD v5.367, 2026-05-10:
+
+- Edge Function `matchpoint-bookings-sync` pubblicata anche su PROD project ref `qqbfphyslczzkxoncgex`;
+- TEST e PROD hanno `verify_jwt=true`, versione `1` e hash Supabase identico `dca5a1c472a19628e10f47e4bbdf4d1a8a86737321d05590fab58ac74bce67e2`;
+- accesso anonimo senza JWT bloccato con `401` sia in TEST sia in PROD;
+- `main`, `test-preview` e `test/accessi-staff-guidati` allineati al commit finale di pubblicazione;
+- raw GitHub `main` e `test-preview` con stesso SHA-256 HTML `2af8dfdea7f0309f5b35bec5fb0d2dc2eb1380bd184f3144197ece41a2f14998` e `APP_VERSION = '5.367'`.
 
 Nota worker 2026-05-10:
 
