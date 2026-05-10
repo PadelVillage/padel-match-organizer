@@ -4085,9 +4085,9 @@ body.assessment-public-mode .assessment-public-only-card {
             <h3><span class="matchpoint-data-step">2</span> Prenotazioni future Matchpoint</h3>
             <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
             <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
-              <span>Periodo file<strong id="matchpointBookingsPeriod">-</strong></span>
-              <span>Righe importate<strong id="matchpointBookingsImportedRows">-</strong></span>
-              <span>Totale occupazioni future<strong id="matchpointBookingsTotalRows">-</strong></span>
+              <span>Periodo<strong id="matchpointBookingsPeriod">-</strong></span>
+              <span>Ore campo prenotate<strong id="matchpointBookingsBookedHours">-</strong></span>
+              <span>Occupazione stimata<strong id="matchpointBookingsOccupancyPercent">-</strong></span>
             </div>
             <div class="matchpoint-data-file">
               <div class="matchpoint-data-actions">
@@ -4751,7 +4751,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.366';
+    const APP_VERSION = '5.367';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7959,16 +7959,99 @@ body.assessment-public-mode .assessment-public-only-card {
       });
     }
 
-    function updateMatchpointBookingsMetrics(rows={}, totalRows=0) {
-      const data = rows && typeof rows === 'object' ? rows : {};
-      const fromDate = data.fromDate || data.requestedFromDate || '';
-      const toDate = data.toDate || data.requestedToDate || '';
+    function getMatchpointBookingsMetricRange(data={}, occupancyRows=[]) {
+      const source = data && typeof data === 'object' ? data : {};
+      let fromDate = cleanCell(source.fromDate || source.requestedFromDate || '');
+      let toDate = cleanCell(source.toDate || source.requestedToDate || '');
+      const dates = (Array.isArray(occupancyRows) ? occupancyRows : [])
+        .map(row => cleanCell(row?.data || ''))
+        .filter(Boolean)
+        .sort();
+      if (!fromDate && dates.length) fromDate = dates[0];
+      if (!toDate && dates.length) toDate = dates[dates.length - 1];
+      return { fromDate, toDate };
+    }
+
+    function isDateInMetricRange(dateStr, fromDate, toDate) {
+      const value = cleanCell(dateStr || '');
+      if (!value) return false;
+      if (fromDate && value < fromDate) return false;
+      if (toDate && value > toDate) return false;
+      return true;
+    }
+
+    function sumBookingCourtMinutes(bookings, fromDate='', toDate='') {
+      return (Array.isArray(bookings) ? bookings : []).reduce((sum, booking) => {
+        if (!booking?.data || !isDateInMetricRange(booking.data, fromDate, toDate)) return sum;
+        const multiplier = isAllFieldOccupancy(normalizeText(booking.campo || '')) ? FIELDS.length : 1;
+        return sum + (parseBookingDurationMinutes(booking.durata, 90) * multiplier);
+      }, 0);
+    }
+
+    function eachLocalDateInRange(fromDate, toDate, callback) {
+      const start = parseLocalISODateOnly(fromDate);
+      const end = parseLocalISODateOnly(toDate);
+      if (!start || !end || start > end) return;
+      for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        callback(new Date(cursor));
+      }
+    }
+
+    function sumPotentialCourtMinutes(fromDate, toDate) {
+      let total = 0;
+      eachLocalDateInRange(fromDate, toDate, date => {
+        getDaySlots(date)
+          .filter(slot => dashboardSlotWithinClubHoursForPotential(date, slot))
+          .forEach(slot => {
+            const minutes = Math.max(0, toMinutes(slot.end) - toMinutes(slot.start));
+            total += minutes * FIELDS.length;
+          });
+      });
+      return total;
+    }
+
+    function formatCourtHoursMetric(minutes) {
+      const parsed = Number(minutes || 0);
+      if (!Number.isFinite(parsed) || parsed <= 0) return '0';
+      const hours = parsed / 60;
+      const digits = Number.isInteger(hours) ? 0 : 1;
+      return hours.toLocaleString('it-IT', { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+    }
+
+    function formatOccupancyMetric(bookedMinutes, potentialMinutes) {
+      const booked = Number(bookedMinutes || 0);
+      const potential = Number(potentialMinutes || 0);
+      if (!Number.isFinite(potential) || potential <= 0) return '-';
+      return `${Math.round((booked / potential) * 100)}%`;
+    }
+
+    function calculateMatchpointBookingsMetrics(data={}) {
+      const occupancyRows = uniqueFieldOccupancyBookings(prenotazioniOccupazione, prenotazioni);
+      const range = getMatchpointBookingsMetricRange(data, occupancyRows);
+      const bookedMinutes = sumBookingCourtMinutes(occupancyRows, range.fromDate, range.toDate);
+      const potentialMinutes = sumPotentialCourtMinutes(range.fromDate, range.toDate);
+      const periodLabel = range.fromDate || range.toDate
+        ? `${formatHistoryDateForMetric(range.fromDate)} - ${formatHistoryDateForMetric(range.toDate)}`
+        : '-';
+      return {
+        ...range,
+        periodLabel,
+        bookedMinutes,
+        potentialMinutes,
+        bookedHoursLabel: formatCourtHoursMetric(bookedMinutes),
+        occupancyPercentLabel: formatOccupancyMetric(bookedMinutes, potentialMinutes)
+      };
+    }
+
+    function updateMatchpointBookingsMetrics(rows={}) {
+      const metrics = calculateMatchpointBookingsMetrics(rows);
       const periodEl = document.getElementById('matchpointBookingsPeriod');
-      const importedEl = document.getElementById('matchpointBookingsImportedRows');
-      const totalEl = document.getElementById('matchpointBookingsTotalRows');
-      if (periodEl) periodEl.textContent = fromDate || toDate ? `${formatHistoryDateForMetric(fromDate)} - ${formatHistoryDateForMetric(toDate)}` : '-';
-      if (importedEl) importedEl.textContent = formatMetricNumber(data.sourceRows || data.importedRows || data.importableRows || 0);
-      if (totalEl) totalEl.textContent = formatMetricNumber(data.totalOccupanciesAfter || data.occupancyRows || totalRows || prenotazioniOccupazione.length || 0);
+      const bookedHoursEl = document.getElementById('matchpointBookingsBookedHours');
+      const occupancyPercentEl = document.getElementById('matchpointBookingsOccupancyPercent');
+      if (periodEl) periodEl.textContent = metrics.periodLabel;
+      if (bookedHoursEl) bookedHoursEl.textContent = metrics.bookedHoursLabel;
+      if (occupancyPercentEl) occupancyPercentEl.textContent = metrics.occupancyPercentLabel;
+      return metrics;
     }
 
     function applyFutureBookingsToLocal(importedBookings, importedOccupancy, options={}) {
@@ -8000,6 +8083,7 @@ body.assessment-public-mode .assessment-public-only-card {
       prenotazioniOccupazione = occupancy;
       save('prenotazioni', prenotazioni);
       save('prenotazioniOccupazione', prenotazioniOccupazione);
+      const bookingMetrics = calculateMatchpointBookingsMetrics({ fromDate, toDate });
       saveDailyDiff({
         type: 'prenotazioni future',
         label: 'prenotazioni future',
@@ -8018,14 +8102,9 @@ body.assessment-public-mode .assessment-public-only-card {
         label: source === 'automatic' ? 'prenotazioni future automatiche' : 'prenotazioni future',
         source,
         metrics: {
-          'Periodo file': `${fromDate} - ${toDate}`,
-          'Righe importate': sourceRows || importedRows,
-          'Prenotazioni con giocatore': prenotazioni.length,
-          'Totale occupazioni future': prenotazioniOccupazione.length,
-          'Nuove prenotazioni': diff.added.length,
-          'Prenotazioni cancellate': diff.removed.length,
-          'Prenotazioni modificate': diff.modified.length,
-          'Righe saltate o duplicate': skipped
+          'Periodo': bookingMetrics.periodLabel,
+          'Ore campo prenotate': bookingMetrics.bookedHoursLabel,
+          'Occupazione stimata': bookingMetrics.occupancyPercentLabel
         },
         message: options.message || 'Fotografia prenotazioni future sostituita con i dati Matchpoint.'
       });
@@ -8042,6 +8121,10 @@ body.assessment-public-mode .assessment-public-only-card {
         ok:true,
         fromDate,
         toDate,
+        bookedMinutes: bookingMetrics.bookedMinutes,
+        potentialMinutes: bookingMetrics.potentialMinutes,
+        bookedHours: bookingMetrics.bookedHoursLabel,
+        occupancyPercent: bookingMetrics.occupancyPercentLabel,
         added: diff.added.length,
         removed: diff.removed.length,
         modified: diff.modified.length,
