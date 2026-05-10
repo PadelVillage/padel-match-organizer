@@ -4106,20 +4106,15 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
             <h3><span class="matchpoint-data-step">4</span> Backup dati</h3>
-            <p class="matchpoint-data-copy">Scarica un file di backup locale con i dati operativi salvati nel browser.</p>
+            <p class="matchpoint-data-copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
             <div class="matchpoint-data-file">
               <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
               <div class="matchpoint-data-actions">
-                <button id="matchpointBackupButton" class="btn-secondary" onclick="setActionAnchor(this); exportBackup()">Scarica backup</button>
-                <button id="matchpointRestoreBackupButton" class="btn-secondary" onclick="setActionAnchor(this); triggerImportBackup()">Ripristina backup</button>
-                <div id="matchpointBackupActionState" class="matchpoint-action-state"></div>
-                <div id="matchpointRestoreActionState" class="matchpoint-action-state"></div>
-                <div class="matchpoint-cloud-separator"></div>
                 <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
-                <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
                 <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
+                <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
                 <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
-                <div class="matchpoint-cloud-note">Salvato in Supabase Storage come backup unico sovrascritto. Non crea versioni multiple.</div>
+                <div class="matchpoint-cloud-note">Backup unico sovrascritto su Supabase.</div>
               </div>
             </div>
           </article>
@@ -4747,7 +4742,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.360';
+    const APP_VERSION = '5.361';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8147,17 +8142,21 @@ body.assessment-public-mode .assessment-public-only-card {
       };
     }
 
-    function exportBackup() {
-      const backup = createBackupPayload();
+    function downloadBackupPayload(backup=createBackupPayload(), options={}) {
       const text = JSON.stringify(backup, null, 2);
-      const filename = getBackupFilename();
+      const filename = options.filename || getBackupFilename();
 
       window.__lastBackupText = text;
       window.__lastBackupFilename = filename;
 
       const ok = downloadText(text, filename, 'application/octet-stream');
+      if (ok) saveLastBackupDownloadInfo(filename);
+      return { ok, filename };
+    }
+
+    function exportBackup() {
+      const { ok, filename } = downloadBackupPayload();
       if (ok) {
-        saveLastBackupDownloadInfo(filename);
         markDataActionDone('backup');
         showAlert(`✅ Backup creato. Cerca il file: ${filename}`, 'success');
       } else {
@@ -8256,17 +8255,25 @@ body.assessment-public-mode .assessment-public-only-card {
 
     async function saveCloudBackup() {
       const button = document.getElementById('matchpointCloudBackupButton');
+      let localDownload = { ok: false, filename: '' };
       try {
         setDataActionStatus('cloudBackup', 'pending', 'Salvataggio cloud in corso');
         if (button) button.disabled = true;
-        const result = await pmoInvokeCloudBackup('save', createBackupPayload());
+        const backup = createBackupPayload();
+        localDownload = downloadBackupPayload(backup);
+        const result = await pmoInvokeCloudBackup('save', backup);
         saveLastCloudBackupInfo(result?.metadata || {});
         markDataActionDone('cloudBackup');
-        showAlert('✅ Backup cloud salvato e sovrascritto su Supabase.', 'success');
+        if (localDownload.ok) {
+          showAlert(`✅ Backup cloud salvato. Copia locale scaricata: ${localDownload.filename}`, 'success');
+        } else {
+          showAlert('⚠️ Backup cloud salvato, ma il browser ha bloccato il download della copia locale.', 'warning');
+        }
       } catch (err) {
         const message = pmoFriendlyCloudBackupError(err, 'salvare il backup cloud');
         setDataActionStatus('cloudBackup', 'error', message);
-        showAlert('❌ ' + message, 'danger');
+        const prefix = localDownload.ok ? `Copia locale scaricata: ${localDownload.filename}. ` : '';
+        showAlert(`${localDownload.ok ? '⚠️' : '❌'} ${prefix}${message}`, localDownload.ok ? 'warning' : 'danger');
       } finally {
         if (button) button.disabled = false;
       }

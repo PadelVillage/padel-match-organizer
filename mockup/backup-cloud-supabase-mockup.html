@@ -11,9 +11,11 @@
       --text: #0f172a;
       --muted: #64748b;
       --button: #6c6c6c;
-      --blue: #2563eb;
-      --blue-dark: #1d4ed8;
+      --blue: #28509a;
+      --blue-dark: #1f4387;
       --bg: #f8fafc;
+      --success-bg: #eefaf2;
+      --success-border: #b7e4c7;
     }
     * { box-sizing: border-box; }
     body {
@@ -59,20 +61,20 @@
       flex: 0 0 auto;
     }
     .matchpoint-data-copy {
-      margin: 0 0 96px;
+      margin: 0 0 18px;
       font-size: 26px;
-      line-height: 1.45;
+      line-height: 1.42;
       color: #647086;
     }
     .matchpoint-data-hint {
-      margin: 0 0 34px;
-      font-size: 24px;
-      line-height: 1.55;
+      margin: 0 0 26px;
+      font-size: 22px;
+      line-height: 1.45;
       color: #647086;
     }
     .matchpoint-data-actions {
       display: grid;
-      gap: 14px;
+      gap: 16px;
     }
     button {
       min-height: 76px;
@@ -90,30 +92,34 @@
     .btn-primary { background: var(--blue); }
     .btn-primary:hover { background: var(--blue-dark); }
     .matchpoint-action-state {
-      display: block;
-      min-height: 30px;
-      margin: -2px 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 88px;
+      border: 1px solid var(--success-border);
+      border-radius: 14px;
+      background: var(--success-bg);
       color: var(--green);
-      font-size: 16px;
-      font-weight: 700;
-    }
-    .cloud-separator {
-      height: 1px;
-      background: #e5e7eb;
-      margin: 8px 0 4px;
+      font-size: 25px;
+      font-weight: 900;
+      line-height: 1.18;
+      text-align: center;
+      padding: 14px 18px;
     }
     .cloud-note {
+      margin: -2px 0 0;
       color: var(--muted);
-      font-size: 15px;
-      line-height: 1.35;
-      margin-top: -4px;
+      font-size: 20px;
+      line-height: 1.32;
     }
     @media (max-width: 520px) {
       .matchpoint-data-box { padding: 22px 22px 24px; }
       h3 { font-size: 28px; }
-      .matchpoint-data-copy { font-size: 22px; margin-bottom: 70px; }
-      .matchpoint-data-hint { font-size: 20px; }
+      .matchpoint-data-copy { font-size: 22px; }
+      .matchpoint-data-hint { font-size: 19px; }
       button { min-height: 64px; font-size: 22px; }
+      .matchpoint-action-state { min-height: 76px; font-size: 21px; }
+      .cloud-note { font-size: 17px; }
     }
   </style>
 </head>
@@ -121,20 +127,13 @@
   <main class="frame">
     <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
       <h3><span class="matchpoint-data-step">4</span> Backup dati</h3>
-      <p class="matchpoint-data-copy">Scarica un file di backup locale con i dati operativi salvati nel browser.</p>
-      <div class="matchpoint-data-file">
-        <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
-        <div class="matchpoint-data-actions">
-          <button class="btn-secondary">Scarica backup</button>
-          <button class="btn-secondary">Ripristina backup</button>
-          <div class="matchpoint-action-state">Ultimo backup scaricato: 09/05/2026 • 19:01</div>
-
-          <div class="cloud-separator"></div>
-          <button class="btn-primary">Salva backup cloud</button>
-          <button class="btn-secondary">Ripristina backup cloud</button>
-          <div class="matchpoint-action-state">Ultimo backup cloud: 09/05/2026 • 19:04</div>
-          <div class="cloud-note">Salvato in Supabase Storage come backup unico sovrascritto. Non crea versioni multiple.</div>
-        </div>
+      <p class="matchpoint-data-copy">Salva il backup cloud e scarica automaticamente una copia locale.</p>
+      <p class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</p>
+      <div class="matchpoint-data-actions">
+        <button class="btn-primary">Salva backup cloud</button>
+        <div class="matchpoint-action-state">Ultimo backup cloud:<br>10/05/2026 • 10:27</div>
+        <button class="btn-secondary">Ripristina backup cloud</button>
+        <p class="cloud-note">Backup unico sovrascritto su Supabase.</p>
       </div>
     </article>
   </main>
