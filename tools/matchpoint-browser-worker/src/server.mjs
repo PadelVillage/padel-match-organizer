@@ -169,9 +169,17 @@ async function clickFirstVisibleLocator(locator, actionName, diagnostic, timeout
   for (let i = 0; i < Math.min(count, 12); i += 1) {
     const item = locator.nth(i);
     if (!(await item.isVisible().catch(() => false))) continue;
-    await item.click({ timeout, noWaitAfter: true });
-    diagnostic.navigationAttempts.push({ action: actionName, clickedIndex: i });
-    return true;
+    try {
+      await item.click({ timeout, noWaitAfter: true });
+      diagnostic.navigationAttempts.push({ action: actionName, clickedIndex: i });
+      return true;
+    } catch (error) {
+      diagnostic.navigationAttempts.push({
+        action: actionName,
+        clickErrorIndex: i,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   return false;
 }

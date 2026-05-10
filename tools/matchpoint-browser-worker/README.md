@@ -28,7 +28,7 @@ Percorso validato:
 
 Matchpoint mantiene spesso la URL `default.aspx` durante questa navigazione e puo' caricare la vista in frame interni. Per questo il worker controlla il testo visibile della pagina e degli iframe, cercando `Giocatori` e `Esportare in excel`, invece di basarsi solo sul cambio URL.
 
-Se il menu `Programmazione` non compare o la voce `Elenco dei giocatori` non e' cliccabile, il worker usa un fallback diretto alla pagina validata `/Reservas/ListadoJugadores.aspx` e poi cerca comunque `Giocatori` e `Esportare in excel` nella pagina e negli iframe.
+Se il menu `Programmazione` non compare, va in timeout o la voce `Elenco dei giocatori` non e' cliccabile, il worker usa un fallback diretto alla pagina validata `/Reservas/ListadoJugadores.aspx` e poi cerca comunque `Giocatori` e `Esportare in excel` nella pagina e negli iframe.
 
 Il file scaricato deve contenere il foglio `Risultati` con colonne minime `Cliente`, `Telefono cellulare`, `E-mail`, `Eta/Età`, `Sesso`, `Livello`. La validazione vera resta nella Edge Function Supabase.
 

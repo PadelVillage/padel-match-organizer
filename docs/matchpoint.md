@@ -187,6 +187,12 @@ Nota tecnica v5.363 TEST/PROD:
 - anche `Storico Matchpoint` e `Scarica novita cloud` usano la stessa lettura paginata;
 - causa del disallineamento rilevato il 2026-05-10: in PROD la tabella `pmo_cloud_records` conteneva piu di 1000 record `member`, quindi la lettura non paginata vedeva solo una finestra parziale e mostrava 640 clienti invece della fotografia completa.
 
+Nota worker 2026-05-10:
+
+- dopo un errore PROD `MATCHPOINT_BROWSER_WORKER_FAILED`, la diagnostica ha indicato un timeout sul click del menu Matchpoint `Programmazione`;
+- il worker ora tratta il timeout del click come voce non cliccabile e attiva il fallback diretto gia previsto su `/Reservas/ListadoJugadores.aspx`;
+- la modifica non cambia credenziali, salvataggio file, validazione Excel o logica di import: rende solo piu robusta la navigazione clienti.
+
 ## Slot potenziali v5.234
 
 Il box `Slot potenziali` salva in localStorage la griglia teorica settimanale degli slot vendibili del club con chiave `potentialSlotSchedule`.
