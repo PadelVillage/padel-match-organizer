@@ -4083,13 +4083,15 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
             <h3><span class="matchpoint-data-step">2</span> Prenotazioni future Matchpoint</h3>
-            <p class="matchpoint-data-copy">Sostituisce la fotografia delle prenotazioni future e aggiorna gli slot occupati.</p>
+            <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
+            <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
+              <span>Periodo file<strong id="matchpointBookingsPeriod">-</strong></span>
+              <span>Righe importate<strong id="matchpointBookingsImportedRows">-</strong></span>
+              <span>Totale occupazioni future<strong id="matchpointBookingsTotalRows">-</strong></span>
+            </div>
             <div class="matchpoint-data-file">
-              <label for="bookingsFile">Scarica prenotazioni future da Matchpoint</label>
-              <input type="file" id="bookingsFile" accept=".xlsx,.xls,.csv" onchange="markDataActionPending('bookings')" />
-              <div class="matchpoint-data-hint">Di solito: out_prenotazioni.xlsx dalla cartella dei download Matchpoint.</div>
               <div class="matchpoint-data-actions">
-                <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importBookings()">Importa prenotazioni</button>
+                <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointBookingsAutomatic()">Aggiorna prenotazioni</button>
                 <div id="matchpointBookingsActionState" class="matchpoint-action-state"></div>
               </div>
             </div>
@@ -4749,7 +4751,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.364';
+    const APP_VERSION = '5.365';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7772,6 +7774,10 @@ body.assessment-public-mode .assessment-public-only-card {
       if (raw.includes('MATCHPOINT_HISTORY_LINK_NOT_FOUND')) return 'Voce Elenco degli utenti negli spazi non trovata in Matchpoint.';
       if (raw.includes('MATCHPOINT_HISTORY_PAGE_NOT_READY')) return 'Pagina storico Matchpoint non pronta o pulsante Generare una relazione non trovato.';
       if (raw.includes('MATCHPOINT_HISTORY_RESULTS_NOT_READY')) return 'Relazione storico generata, ma il pulsante Esportare in Excel non e stato trovato.';
+      if (raw.includes('BOOKINGS_COLUMNS_MISSING')) return 'Il file prenotazioni future esportato non contiene le colonne minime attese.';
+      if (raw.includes('NO_IMPORTABLE_BOOKING_ROWS')) return 'Il file prenotazioni future esportato non contiene occupazioni importabili.';
+      if (raw.includes('LOW_BOOKING_ROW_RATIO')) return 'Troppe poche righe del file sembrano prenotazioni future valide: import bloccato.';
+      if (raw.includes('ONLY_PAST_BOOKING_ROWS')) return 'Il file contiene solo date passate: sembra storico, non prenotazioni future.';
       if (raw.includes('HISTORY_COLUMNS_MISSING')) return 'Il file storico esportato non contiene le colonne minime attese.';
       if (raw.includes('NO_IMPORTABLE_HISTORY_ROWS')) return 'Il file storico esportato non contiene prenotazioni importabili.';
       if (raw.includes('LOW_HISTORY_ROW_RATIO')) return 'Troppe poche righe del file sembrano prenotazioni storiche valide: import bloccato.';
@@ -7779,7 +7785,7 @@ body.assessment-public-mode .assessment-public-only-card {
       if (raw.includes('SHEET_MISSING')) return 'Il file esportato non contiene il foglio Risultati.';
       if (raw.includes('AUTH_REQUIRED')) return 'Accesso staff Supabase richiesto.';
       if (raw.includes('PERMISSION_DENIED')) return 'Il tuo profilo non ha il permesso per sincronizzare dati cloud.';
-      return raw || 'Aggiornamento clienti Matchpoint non riuscito.';
+      return raw || 'Aggiornamento Matchpoint non riuscito.';
     }
 
     function isMatchpointCloudMemberPayload(payload) {
@@ -7877,6 +7883,173 @@ body.assessment-public-mode .assessment-public-only-card {
         if (!prenotazioni.length) showAlert('⚠️ File prenotazioni letto, ma nessuna prenotazione importata. Apri Console F12 per vedere le colonne.', 'warning');
         else showAlert(`✅ Prenotazioni importate: ${prenotazioni.length}. Differenze: ${diff.added.length} nuove, ${diff.removed.length} cancellate, ${diff.modified.length} modificate.`, 'success');
       });
+    }
+
+    function updateMatchpointBookingsMetrics(rows={}, totalRows=0) {
+      const data = rows && typeof rows === 'object' ? rows : {};
+      const fromDate = data.fromDate || data.requestedFromDate || '';
+      const toDate = data.toDate || data.requestedToDate || '';
+      const periodEl = document.getElementById('matchpointBookingsPeriod');
+      const importedEl = document.getElementById('matchpointBookingsImportedRows');
+      const totalEl = document.getElementById('matchpointBookingsTotalRows');
+      if (periodEl) periodEl.textContent = fromDate || toDate ? `${formatHistoryDateForMetric(fromDate)} - ${formatHistoryDateForMetric(toDate)}` : '-';
+      if (importedEl) importedEl.textContent = formatMetricNumber(data.sourceRows || data.importedRows || data.importableRows || 0);
+      if (totalEl) totalEl.textContent = formatMetricNumber(data.totalOccupanciesAfter || data.occupancyRows || totalRows || prenotazioniOccupazione.length || 0);
+    }
+
+    function applyFutureBookingsToLocal(importedBookings, importedOccupancy, options={}) {
+      const bookings = Array.isArray(importedBookings) ? importedBookings : [];
+      const occupancySource = Array.isArray(importedOccupancy) && importedOccupancy.length ? importedOccupancy : bookings;
+      const occupancy = uniqueFieldOccupancyBookings(occupancySource, bookings);
+      if (!occupancy.length) {
+        return {
+          ok:false,
+          message:'Nessuna occupazione futura valida importata.',
+          added:0,
+          removed:0,
+          modified:0,
+          totalBookings:prenotazioni.length,
+          totalOccupancies:prenotazioniOccupazione.length
+        };
+      }
+
+      const source = cleanCell(options.source || 'manual');
+      const dates = occupancy.map(p => p.data).filter(Boolean).sort();
+      const fromDate = cleanCell(options.fromDate || dates[0] || '');
+      const toDate = cleanCell(options.toDate || dates[dates.length - 1] || '');
+      const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
+      const sourceRows = Math.max(0, parseInt(options.sourceRows, 10) || 0);
+      const importedRows = Math.max(0, parseInt(options.importedRows ?? occupancy.length, 10) || occupancy.length);
+      const diff = compareBookings(prenotazioni, bookings);
+
+      prenotazioni = bookings;
+      prenotazioniOccupazione = occupancy;
+      save('prenotazioni', prenotazioni);
+      save('prenotazioniOccupazione', prenotazioniOccupazione);
+      saveDailyDiff({
+        type: 'prenotazioni future',
+        label: 'prenotazioni future',
+        source,
+        sourceRows,
+        importedRows,
+        added: diff.added,
+        removed: diff.removed,
+        modified: diff.modified,
+        skipped,
+        fromDate,
+        toDate
+      });
+      saveLastMatchpointImportSummary({
+        type: 'prenotazioni future',
+        label: source === 'automatic' ? 'prenotazioni future automatiche' : 'prenotazioni future',
+        source,
+        metrics: {
+          'Periodo file': `${fromDate} - ${toDate}`,
+          'Righe importate': sourceRows || importedRows,
+          'Prenotazioni con giocatore': prenotazioni.length,
+          'Totale occupazioni future': prenotazioniOccupazione.length,
+          'Nuove prenotazioni': diff.added.length,
+          'Prenotazioni cancellate': diff.removed.length,
+          'Prenotazioni modificate': diff.modified.length,
+          'Righe saltate o duplicate': skipped
+        },
+        message: options.message || 'Fotografia prenotazioni future sostituita con i dati Matchpoint.'
+      });
+      refreshAfterDataImport();
+      markDataActionDone('bookings', source === 'automatic' ? 'Prenotazioni aggiornate da Matchpoint' : 'Prenotazioni importate e salvate');
+      updateMatchpointBookingsMetrics({
+        fromDate,
+        toDate,
+        sourceRows: sourceRows || importedRows,
+        occupancyRows: prenotazioniOccupazione.length,
+        totalOccupanciesAfter: prenotazioniOccupazione.length
+      }, prenotazioniOccupazione.length);
+      return {
+        ok:true,
+        fromDate,
+        toDate,
+        added: diff.added.length,
+        removed: diff.removed.length,
+        modified: diff.modified.length,
+        skipped,
+        totalBookings: prenotazioni.length,
+        totalOccupancies: prenotazioniOccupazione.length
+      };
+    }
+
+    async function pmoInvokeMatchpointBookingsSync(accessToken) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ source: 'pmo_dati_in_out', version: APP_VERSION })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || data?.ok === false) {
+        console.warn('PMO_MATCHPOINT_BOOKINGS_SYNC_ERROR', JSON.stringify(data || text || `Errore HTTP ${response.status}`));
+        throw new Error(pmoFriendlyMatchpointAutoError(data || text || `Errore HTTP ${response.status}`));
+      }
+      return data;
+    }
+
+    async function pmoLoadMatchpointBookingsFromCloud() {
+      const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
+        p_record_types: ['booking', 'booking_occupancy', 'matchpoint_data'],
+        p_since: null
+      }, 'cloud_sync', 'scaricare prenotazioni future Matchpoint dal cloud');
+      const list = Array.isArray(rows) ? rows : [];
+      const sortBookings = items => (items || []).sort((a, b) => `${a.data || ''} ${a.ora || ''} ${a.campo || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''} ${b.campo || ''}`));
+      const bookings = sortBookings(list
+        .filter(row => row?.record_type === 'booking' && !row.deleted && row.payload)
+        .map(row => ({ ...row.payload })));
+      const occupancyBookings = sortBookings(list
+        .filter(row => row?.record_type === 'booking_occupancy' && !row.deleted && row.payload)
+        .map(row => ({ ...row.payload })));
+      const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_bookings_auto_import_last')?.payload || null;
+      return { bookings, occupancyBookings, summary };
+    }
+
+    async function importMatchpointBookingsAutomatic() {
+      const button = document.getElementById('matchpointBookingsImportButton');
+      try {
+        setDataActionStatus('bookings', 'pending', 'Aggiornamento prenotazioni in corso');
+        if (button) button.disabled = true;
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare prenotazioni future da Matchpoint');
+        const syncResult = await pmoInvokeMatchpointBookingsSync(staff.accessToken);
+        const syncBookings = Array.isArray(syncResult?.cloud?.bookings) ? syncResult.cloud.bookings : [];
+        const syncOccupancy = Array.isArray(syncResult?.cloud?.occupancyBookings) ? syncResult.cloud.occupancyBookings : [];
+        const cloud = syncOccupancy.length
+          ? { bookings: syncBookings, occupancyBookings: syncOccupancy, summary: syncResult?.summary || null }
+          : await pmoLoadMatchpointBookingsFromCloud();
+        if (!cloud.occupancyBookings.length) throw new Error('Nessuna occupazione futura trovata nel cloud dopo l’export Matchpoint.');
+        const rows = syncResult?.summary?.rows || cloud.summary?.rows || {};
+        const localResult = applyFutureBookingsToLocal(cloud.bookings, cloud.occupancyBookings, {
+          source: 'automatic',
+          sourceRows: rows.sourceRows || syncResult?.cloud?.occupancyRows || cloud.occupancyBookings.length,
+          importedRows: rows.occupancyRows || syncResult?.cloud?.occupancyRows || cloud.occupancyBookings.length,
+          skipped: rows.skipped || 0,
+          fromDate: rows.fromDate || rows.requestedFromDate || '',
+          toDate: rows.toDate || rows.requestedToDate || '',
+          message: 'Prenotazioni future aggiornate da Matchpoint automatico e sincronizzate in locale.'
+        });
+        updateMatchpointBookingsMetrics(rows, cloud.occupancyBookings.length);
+        showAlert(
+          `✅ Prenotazioni future Matchpoint aggiornate. Occupazioni future: ${localResult.totalOccupancies}. Righe file: ${rows.sourceRows || cloud.occupancyBookings.length}.`,
+          'success'
+        );
+      } catch (err) {
+        const message = pmoFriendlyMatchpointAutoError(err);
+        setDataActionStatus('bookings', 'error', message);
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
     }
 
     function formatHistoryDateForMetric(value) {
@@ -8914,7 +9087,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     const DATA_ACTION_CONFIG = {
       clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti', pendingText:'Aggiornamento in corso', doneText:'Aggiorna clienti' },
-      bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Importa prenotazioni', pendingText:'Importa prenotazioni', doneText:'Prenotazioni importate' },
+      bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna prenotazioni', pendingText:'Aggiornamento prenotazioni...', doneText:'Aggiorna prenotazioni' },
       history: { buttonId:'matchpointHistoryImportButton', stateId:'matchpointHistoryActionState', defaultClass:'btn-primary', defaultText:'Aggiorna storico', pendingText:'Aggiornamento storico...', doneText:'Aggiorna storico' },
       potential: { buttonId:'potentialSlotSaveButton', stateId:'potentialSlotActionState', defaultClass:'btn-success', defaultText:'Griglia salvata', pendingText:'Salva griglia slot', doneText:'Griglia salvata' },
       backup: { buttonId:'matchpointBackupButton', stateId:'matchpointBackupActionState', defaultClass:'btn-secondary', doneClass:'btn-secondary', defaultText:'Scarica backup', pendingText:'Scarica backup', doneText:'Scarica backup' },
@@ -8938,6 +9111,11 @@ body.assessment-public-mode .assessment-public-only-card {
       const summary = getDataActionImportSummary(key);
       const when = formatImportDateTime(summary);
       if (key === 'clients' && summary?.source === 'automatic') {
+        return when && when !== 'non disponibile'
+          ? `Ultimo aggiornamento automatico: ${when}`
+          : 'Ultimo aggiornamento automatico: non disponibile';
+      }
+      if (key === 'bookings' && summary?.source === 'automatic') {
         return when && when !== 'non disponibile'
           ? `Ultimo aggiornamento automatico: ${when}`
           : 'Ultimo aggiornamento automatico: non disponibile';
@@ -9049,6 +9227,18 @@ body.assessment-public-mode .assessment-public-only-card {
       if (Number.isFinite(parsed) && parsed > 0) deltaEl.classList.add('delta-up');
       else if (Number.isFinite(parsed) && parsed < 0) deltaEl.classList.add('delta-down');
       else deltaEl.classList.add('delta-neutral');
+    }
+
+    function renderMatchpointBookingsMetrics() {
+      const summary = getLatestImportSummaryByTypes(['prenotazioni future', 'prenotazioni']);
+      updateMatchpointBookingsMetrics({
+        fromDate: summary?.fromDate || '',
+        toDate: summary?.toDate || '',
+        sourceRows: summary?.sourceRows || summary?.importedRows || 0,
+        importedRows: summary?.importedRows || 0,
+        occupancyRows: prenotazioniOccupazione.length,
+        totalOccupanciesAfter: prenotazioniOccupazione.length
+      }, prenotazioniOccupazione.length);
     }
 
     function potentialSlotDayLabels() {
@@ -19991,6 +20181,7 @@ Per confermare scrivi ELIMINA.`);
       setText('matchpointLastImportDate', lastMatchpointImportSummary?.createdAtDisplay || 'Mai');
       setText('matchpointLastImportMessage', lastMatchpointImportSummary?.message || 'Da importare');
       renderMatchpointClientsMetrics();
+      renderMatchpointBookingsMetrics();
       refreshDataActionStatuses();
     }
 

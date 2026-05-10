@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche in TEST v5.365 con funzione `matchpoint-bookings-sync`.
 
 ## Obiettivo
 
@@ -192,6 +192,54 @@ Nota tecnica v5.364 TEST/PROD:
 - l'errore PROD `Paginazione cloud non applicata correttamente` ha confermato che gli header HTTP `Range` non sono affidabili sulla RPC PostgREST usata dall'app;
 - creata su TEST e PROD la RPC permanente `pmo_get_records_admin_page(p_record_types, p_since, p_limit, p_offset)`, con lo stesso controllo staff/cloud_sync di `pmo_get_records_admin`;
 - la app usa `p_limit`/`p_offset` nel payload della nuova RPC, quindi la paginazione non dipende piu dagli header e resta valida anche quando TEST superera 1000 record.
+
+## Prenotazioni future Matchpoint automatiche v5.365 TEST
+
+Obiettivo:
+
+- scaricare automaticamente da Matchpoint la fotografia delle prenotazioni/occupazioni future;
+- usare il periodo dinamico `oggi -> oggi + 30 giorni`;
+- sostituire la fotografia corrente solo dopo validazione positiva;
+- aggiornare sia `prenotazioni` sia `prenotazioniOccupazione`, usate da Dashboard, Slot Liberi e Apri Partite;
+- non archiviare il file Excel scaricato, ne' in locale ne' in Supabase Storage.
+
+Percorso Matchpoint validato il 2026-05-10:
+
+1. Pagina iniziale dopo login: `Pannello di controllo generale`.
+2. Aprire il menu alto `Inf. e statistiche`.
+3. Scorrere fino al capitolo `Occupazione`.
+4. Cliccare solo la voce ufficiale `Elenco degli utenti negli spazi`.
+5. Nella pagina `Utenti negli spazi`, impostare `Dal Giorno` sulla data odierna e `Al Giorno` su data odierna + 30 giorni.
+6. Lasciare vuoti/neutri gli altri filtri: ora, spazio, giorno settimana, provenienza, tipo, gruppo e tipo prenotazioni.
+7. Lasciare non selezionato `Solo clienti che hanno gia pagato`.
+8. Cliccare prima `Generare una relazione`.
+9. Cliccare poi `Esportare in Excel`.
+
+Validazione file:
+
+- foglio richiesto: `Risultati`;
+- colonne minime: `Nome`, `Numero`, `Giorno`, `Ora`, `Ore`, `Spazio`;
+- colonne viste nel file reale: `Cod.`, `Identificatore`, `Nome`, `Sesso`, `Età`, `E-mail`, `Telefono cellulare`, `Numero`, `Giorno`, `Ora`, `Ore`, `G. sett`, `Spazio`, `Descrizione`, `Tipo`, `Importo Totale`, `Riscossa`;
+- il parser salva le righe giocatore in `booking`, ma calcola le occupazioni campo da tutte le righe con data/ora/campo, inclusi eventuali `Ospite`;
+- se il file e' vuoto, non ha occupazioni valide o contiene solo date passate, l'import viene bloccato e non sostituisce la fotografia corrente.
+
+Scrittura cloud:
+
+- Edge Function: `matchpoint-bookings-sync`;
+- worker browser/headless: riusa la rotta `POST /export-booking-history` passando `fromDate = oggi` e `toDate = oggi + 30 giorni`;
+- record normalizzati in `pmo_cloud_records`;
+- `record_type = booking` per righe prenotazione con giocatore;
+- `record_type = booking_occupancy` per occupazioni campo deduplicate;
+- riepilogo leggero: `record_type = matchpoint_data`, `local_key = matchpoint_bookings_auto_import_last`;
+- diagnostica leggera piu recente: `local_key = matchpoint_bookings_auto_diagnostic_last`;
+- audit: `matchpoint_bookings_auto_import_success`, `matchpoint_bookings_auto_import_blocked`, `matchpoint_bookings_auto_import_error`.
+
+Regola dati:
+
+- le prenotazioni future sono una fotografia sostitutiva, non uno storico cumulativo;
+- a ogni import riuscito i record `booking` e `booking_occupancy` non piu presenti vengono marcati `deleted=true`;
+- la app rilegge il risultato cloud e sostituisce le liste locali `prenotazioni` e `prenotazioniOccupazione`;
+- l'Excel Matchpoint e' solo temporaneo durante download, parse e upsert. Non va salvato in repo, documentazione, cartelle locali permanenti o Supabase Storage.
 
 Nota worker 2026-05-10:
 
