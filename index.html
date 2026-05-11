@@ -914,7 +914,7 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.375 - Autovalutazione: pannello invio email e post-invio */
+    /* v5.376 - Autovalutazione: pannello invio email e post-invio */
     .assessment-email-page { max-width:1500px; margin:0 auto; }
     .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:14px; }
     .assessment-email-topbar h2 { margin:0 0 5px; color:var(--primary); font-size:28px; line-height:1.05; }
@@ -979,6 +979,7 @@
     .assessment-email-template-row strong { display:block; color:#101828; }
     .assessment-email-template-row span { display:block; color:#667085; font-size:12px; margin-top:3px; }
     .assessment-email-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .assessment-email-template-body { min-height:190px; overflow:hidden; resize:none; }
     .assessment-email-preview { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; color:#344054; white-space:pre-wrap; line-height:1.45; min-height:130px; margin-top:10px; }
     .assessment-email-footer-note { margin-top:14px; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; color:#667085; font-size:13px; line-height:1.35; }
     @media (max-width:1100px) {
@@ -4944,7 +4945,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.375';
+    const APP_VERSION = '5.376';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21616,7 +21617,7 @@ Per confermare scrivi ELIMINA.`);
             </select></div>
           </div>
           <label>Testo</label>
-          <textarea id="assessmentTemplateBody" oninput="refreshAssessmentCommunicationTemplatePreview()"></textarea>
+          <textarea id="assessmentTemplateBody" class="assessment-email-template-body" oninput="refreshAssessmentCommunicationTemplatePreview()"></textarea>
           <div id="assessmentTemplatePreview" class="assessment-email-preview"></div>
         </div>
       </div><div class="assessment-email-footer-note">In modalita prova il sistema inviera questi testi solo alla email personale staff. Il messaggio WhatsApp non contiene mai il link diretto alla scheda.</div>`;
@@ -21712,12 +21713,20 @@ Per confermare scrivi ELIMINA.`);
       if (subject) subject.value = template.subject || '';
       if (type) type.value = key;
       if (body) body.value = template.body || '';
+      resizeAssessmentCommunicationTemplateBody();
       refreshAssessmentCommunicationTemplatePreview();
+    }
+    function resizeAssessmentCommunicationTemplateBody() {
+      const body = document.getElementById('assessmentTemplateBody');
+      if (!body) return;
+      body.style.height = 'auto';
+      body.style.height = `${Math.max(190, body.scrollHeight + 2)}px`;
     }
     function refreshAssessmentCommunicationTemplatePreview() {
       const body = document.getElementById('assessmentTemplateBody')?.value || '';
       const preview = document.getElementById('assessmentTemplatePreview');
       if (!preview) return;
+      resizeAssessmentCommunicationTemplateBody();
       preview.textContent = 'Anteprima con dati esempio:\n\n' + body
         .replaceAll('{nome}', 'Mario')
         .replaceAll('{nome_completo}', 'Mario Rossi')
