@@ -4505,7 +4505,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="assessment-email-actions">
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Il controllo mancate consegne richiede il collegamento Gmail backend.')">Controlla mancate consegne</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La prova invio email verra attivata dopo il collegamento Gmail.')">Prova invio sulla mia email</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
               </div>
             </div>
             <div id="assessmentEmailRoutineContent" class="assessment-email-content"></div>
@@ -4519,7 +4519,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La selezione dei primi 20 sara attiva con il motore email.')">Seleziona primi 20</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La prova invio email verra attivata dopo il collegamento Gmail.')">Prova invio sulla mia email</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
               </div>
             </div>
             <div id="assessmentEmailQueueContent" class="assessment-email-content"></div>
@@ -5040,7 +5040,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.382';
+    const APP_VERSION = '5.383';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9027,6 +9027,43 @@ Grazie.`
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
       if (!response.ok || data?.ok === false) {
         throw new Error(pmoFriendlyCloudBackupError(data || text || `Errore HTTP ${response.status}`, actionLabel));
+      }
+      return data;
+    }
+
+    function pmoFriendlyAssessmentEmailError(value, actionLabel='inviare email autovalutazione') {
+      const rawValue = value?.message || value?.error || value?.msg || value || '';
+      const raw = cleanCell(typeof rawValue === 'object' ? JSON.stringify(rawValue) : rawValue);
+      if (raw.includes('AUTH_REQUIRED')) return `Accedi con email personale Supabase per ${actionLabel}.`;
+      if (raw.includes('PERMISSION_DENIED')) return `Il tuo profilo non ha il permesso per ${actionLabel}.`;
+      if (raw.includes('GMAIL_SECRETS_MISSING')) return 'Gmail Padel Village non e ancora configurato nei segreti Supabase.';
+      if (raw.includes('GMAIL_SENDER_EMAIL_MISSING')) return 'Email mittente Gmail non configurata nei segreti Supabase.';
+      if (raw.includes('TEST_RECIPIENT_MISSING')) return 'Destinatario prova non configurato.';
+      if (raw.includes('INVALID_ORIGINAL_RECIPIENT')) return 'Email del socio mancante o non valida.';
+      if (raw.includes('TOKEN_LINK_REQUIRED')) return 'Link personale non pronto.';
+      if (raw.includes('GMAIL_TOKEN_FAILED')) return 'Gmail non ha autorizzato l invio. Controllare il collegamento account.';
+      if (raw.includes('GMAIL_SEND_FAILED')) return 'Gmail ha rifiutato l invio email.';
+      return raw || 'Invio email autovalutazione non riuscito.';
+    }
+
+    async function pmoInvokeAssessmentEmail(payload={}) {
+      const actionLabel = 'inviare email autovalutazione';
+      const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`
+        },
+        body: JSON.stringify({ action:'send', ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || data?.ok === false) {
+        throw new Error(pmoFriendlyAssessmentEmailError(data || text || `Errore HTTP ${response.status}`, actionLabel));
       }
       return data;
     }
@@ -21327,6 +21364,37 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailFeaturePending(message) {
       showAlert(message || 'Funzione prevista nel prossimo step tecnico.', 'info');
     }
+    function assessmentEmailTemplate(key) {
+      return assessmentCommunicationTemplates[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
+    }
+    function assessmentEmailTemplateData(member, link='', extra={}) {
+      const firstName = displayFirstName(member) || member?.firstName || playerFullName(member).split(/\s+/)[0] || '';
+      return {
+        nome: firstName,
+        nome_completo: playerFullName(member),
+        link_autovalutazione: link || '',
+        livello_validato: cleanCell(extra.livello_validato || member?.level || ''),
+        telefono: cleanCell(member?.phone || ''),
+        email: cleanCell(member?.email || '')
+      };
+    }
+    function assessmentEmailRenderTemplate(member, key='primary-email', link='', extra={}) {
+      const template = assessmentEmailTemplate(key);
+      const data = assessmentEmailTemplateData(member, link, extra);
+      const replaceTokens = (text) => Object.entries(data).reduce((out, [token, value]) => out.replaceAll(`{${token}}`, value), String(text || ''));
+      return {
+        key,
+        subject: cleanCell(replaceTokens(template.subject || 'Autovalutazione Padel Village')),
+        body: replaceTokens(template.body || ''),
+        type: cleanCell(template.type || key)
+      };
+    }
+    async function assessmentEmailSendFirstReady() {
+      const rows = assessmentEmailQueueRows();
+      if (!rows.length) return showAlert('Nessun socio 0.5 con email valida da inviare in questo momento.', 'warning');
+      const ready = rows.find(row => row.rec?.token && row.rec.registeredToSupabase) || rows[0];
+      return assessmentEmailSendMember(ready.member.id, 'primary-email');
+    }
     function assessmentEmailMemberEmail(member) {
       return cleanCell(member?.email || member?.mail || member?.emailAddress || '');
     }
@@ -21530,10 +21598,10 @@ Per confermare scrivi ELIMINA.`);
       if (!box) return;
       const sentToday = getAssessmentRequestsSentTodayCount();
       const postRows = assessmentEmailPostRows();
-      const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Attivo','ok') : assessmentEmailBadge('Da confermare','warn');
-      const envDetail = PMO_IS_TEST_ENV ? 'In prova tutte le email arrivano solo alla mail staff.' : 'Prima del reale va confermato il collegamento Gmail.';
+      const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Prova sicura','ok') : assessmentEmailBadge('Da confermare','warn');
+      const envDetail = PMO_IS_TEST_ENV ? 'In prova non usa mai la mail reale del socio: manda alla mail staff o al destinatario prova server.' : 'Prima del reale va confermato il collegamento Gmail.';
       const rows = [
-        ['Email Padel Village', assessmentEmailBadge('Da collegare','warn'), 'Account che invia le email automatiche.', 'Collegare Gmail prima del test reale.'],
+        ['Email Padel Village', assessmentEmailBadge('Backend TEST','info'), 'Invio tramite funzione server Supabase e Gmail Padel Village.', 'Usa Prova invio sulla mia email per verificare la configurazione.'],
         ['Destinatario prova', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Verificare destinatari prima di attivare invii reali.'],
         ['Invio automatico', assessmentEmailBadge('Previsto','info'), 'Ogni giorno alle 07:00, massimo 20 soci con livello 0.5.', `Prossima esecuzione: ${assessmentEmailNextSevenAM()}.`],
         ['Limite giornaliero', assessmentEmailBadge(`${sentToday}/20`,'muted'), 'Email inviate oggi dal sistema.', 'Controllo automatico prima di ogni invio.'],
@@ -21577,7 +21645,8 @@ Per confermare scrivi ELIMINA.`);
       if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.'));
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.slice(0,80).map((row, idx) => {
         const email = assessmentEmailMemberEmail(row.member);
-        const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!row.rec?.token || !row.rec.registeredToSupabase ? 'Prepara link personale' : 'Primo invio alle 07:00');
+        const readyToSend = !!(row.rec?.token && row.rec.registeredToSupabase);
+        const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!readyToSend ? 'Prepara link personale' : (PMO_IS_TEST_ENV ? 'Prova invio email' : 'Primo invio alle 07:00'));
         return `<tr>
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
           <td data-label="Email reale">${escapeHtml(email || '-')}</td>
@@ -21587,6 +21656,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Prossima azione">${escapeHtml(action)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${(!row.rec?.token || !row.rec.registeredToSupabase) ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailPrepareMember('${escapeHtml(String(row.member.id))}')">Prepara</button>` : ''}
+            ${readyToSend ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendMember('${escapeHtml(String(row.member.id))}','primary-email')">Prova email</button>` : ''}
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda</button>
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
           </div></td>
@@ -21791,6 +21861,72 @@ Per confermare scrivi ELIMINA.`);
       } catch (err) {
         displayAssessment();
         showAlert('Link creato localmente, ma registrazione Supabase non riuscita: ' + (err.message || err), 'warning');
+      }
+    }
+    async function assessmentEmailSendMember(memberId, templateKey='primary-email') {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      if (!isLevelZeroPointFive(member)) return showAlert('Il socio non ha livello 0.5, quindi non entra nel giro email autovalutazione.', 'warning');
+      if (!assessmentEmailHasValidEmail(member)) return showAlert('Email del socio mancante o non valida. Usa prima il recupero WhatsApp.', 'warning');
+      if (getAssessmentRequestsSentTodayCount() >= DAILY_ASSESSMENT_REQUEST_LIMIT && !hasAssessmentRequestToday(member.id)) {
+        return showAlert(`Limite giornaliero raggiunto: ${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}.`, 'warning');
+      }
+      if (hasAssessmentRequestToday(member.id) && !confirm(`${playerFullName(member)} risulta gia inviato oggi. Vuoi inviare comunque una prova email?`)) return;
+
+      try {
+        let rec = getAssessmentTokenRecord(member.id);
+        if (!rec?.token || !rec.registeredToSupabase) {
+          showAlert(`Preparo il link personale per ${playerFullName(member)}...`, 'info');
+          await assessmentEmailPrepareMember(member.id);
+          rec = getAssessmentTokenRecord(member.id);
+        }
+        if (!rec?.token || !rec.registeredToSupabase) {
+          return showAlert('Link personale non ancora registrato in Supabase. Riprova dopo aver risolto la registrazione token.', 'warning');
+        }
+
+        const link = getAssessmentLink(rec.token, member);
+        const rendered = assessmentEmailRenderTemplate(member, templateKey, link);
+        if (!rendered.body) return showAlert('Testo email vuoto. Controlla la tab Testi.', 'warning');
+
+        showAlert(`Invio email di prova per ${playerFullName(member)}...`, 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          mode: templateKey,
+          memberId: String(member.id),
+          member: {
+            id: String(member.id),
+            memberId: cleanCell(member.memberId || ''),
+            name: playerFullName(member),
+            firstName: cleanCell(member.firstName || ''),
+            surname: cleanCell(member.surname || ''),
+            email: assessmentEmailMemberEmail(member),
+            phone: cleanCell(member.phone || ''),
+            level: cleanCell(member.level || '')
+          },
+          originalRecipient: assessmentEmailMemberEmail(member),
+          token: cleanCell(rec.token),
+          link,
+          subject: rendered.subject,
+          body: rendered.body
+        });
+
+        rec.status = 'sent';
+        rec.sentAt = result.sentAt || new Date().toISOString();
+        rec.emailStatus = 'sent';
+        rec.emailMode = templateKey;
+        rec.emailSubject = rendered.subject;
+        rec.emailOriginalRecipient = result.originalRecipient || assessmentEmailMemberEmail(member);
+        rec.emailActualRecipient = result.actualRecipient || '';
+        rec.gmailMessageId = result.gmailMessageId || '';
+        rec.gmailThreadId = result.gmailThreadId || '';
+        rec.emailTestMode = result.testMode === true;
+        rec.emailSentCount = (parseInt(rec.emailSentCount, 10) || 0) + 1;
+        recordAssessmentRequestSent(member.id);
+        save('assessmentTokens', assessmentTokens);
+        displayAssessment();
+        setAssessmentEmailPanel('pending');
+        showAlert(`Email inviata. In prova e' arrivata a: ${result.actualRecipient || 'destinatario prova'}.`, 'success');
+      } catch (err) {
+        showAlert('Invio email non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare email autovalutazione'), 'danger');
       }
     }
     function assessmentEmailPauseMember(memberId) {

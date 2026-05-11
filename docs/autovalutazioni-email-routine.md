@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase.
 
-Ultimo aggiornamento: 2026-05-11 22:22
+Ultimo aggiornamento: 2026-05-11 23:18
 
 ## Obiettivo
 
@@ -75,6 +75,32 @@ Dopo semplificazione del flusso manuale WhatsApp:
 - sotto l'azione compare `Ultimo WhatsApp aperto: gg/mm/aaaa, hh:mm`;
 - se lo staff apre di nuovo WhatsApp per lo stesso socio, viene aggiornata l'ultima data;
 - il comando non garantisce che il messaggio sia stato inviato dentro WhatsApp: registra il momento in cui lo staff ha aperto WhatsApp dalla scheda.
+
+## Nota tecnica TEST v5.383
+
+Prima integrazione backend per il test email:
+
+- nuova Edge Function Supabase TEST `assessment-email-send`;
+- `verify_jwt=true`;
+- accesso consentito solo a staff autenticato con permesso `cloud_sync`, oppure ruolo `owner/admin`;
+- invio tramite Gmail API usando solo segreti Supabase, mai HTML o repo;
+- in modalita prova il destinatario reale del socio viene sostituito lato server dal destinatario prova configurato oppure dall'email staff autenticata;
+- la mail di test aggiunge prefisso `[TEST]` nell'oggetto e una nota interna nel corpo;
+- ogni invio riuscito salva un log leggero in `pmo_cloud_records` con `record_type = assessment_email` e una riga audit `assessment_email_send`;
+- la UI `Da inviare 0.5` permette `Prepara` e poi `Prova email` sulla singola riga;
+- il bottone alto `Prova invio sulla mia email` usa il primo socio eleggibile della coda.
+
+Segreti richiesti nella Edge Function:
+
+- `GMAIL_CLIENT_ID`;
+- `GMAIL_CLIENT_SECRET`;
+- `GMAIL_REFRESH_TOKEN`;
+- `GMAIL_SENDER_EMAIL`;
+- opzionale `ASSESSMENT_EMAIL_TEST_TO`, se si vuole forzare un destinatario prova fisso invece dell'email staff autenticata;
+- opzionale `ASSESSMENT_EMAIL_FROM_NAME`;
+- opzionale `ASSESSMENT_EMAIL_REPLY_TO`.
+
+La funzione non attiva ancora scheduler email automatico delle 07:00 e non legge ancora le mancate consegne. Questi restano step successivi.
 
 ## Nota mockup 2026-05-11 19:05
 
