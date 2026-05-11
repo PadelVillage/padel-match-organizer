@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.377, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.378, senza backend Gmail automatico.
 
-Ultimo aggiornamento: 2026-05-11 18:46
+Ultimo aggiornamento: 2026-05-11 19:42
 
 ## Obiettivo
 
@@ -22,6 +22,47 @@ Regole grafiche:
 - testi, date, note e bottoni possono andare a capo;
 - su schermi stretti le righe tabellari diventano schede verticali con etichette leggibili;
 - la logica dati e le azioni operative restano invariate.
+
+## Nota UI TEST v5.378
+
+Dopo approvazione dei mockup grafici, in app TEST sono state integrate le sole rifiniture UI gia validate:
+
+- intestazione `Autovalutazione` compattata in un unico blocco con modalita prova e indicatori principali;
+- tab `Stato invio` trasformata in tabella `Controllo / Stato / Dettaglio / Prossima azione`;
+- intestazioni fisse nelle tabelle operative su desktop e tablet, con righe scrollabili nel riquadro;
+- su mobile resta la resa a schede verticali, senza scroll orizzontale interno.
+
+Non sono stati attivati backend Gmail, scheduler email o invii reali. Il mockup del controllo email mancanti con finestra WhatsApp resta una proposta separata non ancora integrata in app TEST.
+
+## Nota mockup 2026-05-11 19:05
+
+Il mockup `mockup/autovalutazioni-email-routine-mockup.html` viene aggiornato prima dell'integrazione app:
+
+- l'intestazione alta viene compattata in un solo blocco con titolo, descrizione breve, modalita prova e indicatori principali;
+- la tab `Stato invio` parte da una tabella operativa invece che da card separate;
+- la tabella usa le colonne `Controllo`, `Stato`, `Dettaglio`, `Prossima azione`;
+- le voci leggibili includono Email Padel Village, destinatario prova, invio automatico, limite giornaliero, secondo invio, mancate consegne, WhatsApp recupero e schede ricevute;
+- il mockup mantiene la resa responsive senza scroll orizzontale interno.
+
+## Nota mockup 2026-05-11 19:09
+
+Le tabelle operative del mockup hanno intestazione fissa su desktop e tablet: quando il contenuto e' lungo, dentro il riquadro scorrono solo le righe dei soci, mentre le colonne restano leggibili.
+
+Su mobile resta la resa a schede verticali, perche' ogni riga mostra gia' le proprie etichette e non serve una barra fissa separata.
+
+## Nota mockup 2026-05-11 19:16
+
+Il controllo email mancanti puo' essere fatto subito sull'anagrafica soci, senza attendere il collegamento Gmail.
+
+Regola operativa:
+
+- i soci livello `0.5` senza email valida entrano direttamente in `Problemi`;
+- il problema leggibile e' `Email mancante`;
+- l'azione WhatsApp apre una finestra sovrapposta di scelta messaggio;
+- i messaggi proposti nel mockup sono `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`;
+- il messaggio `Richiesta email mancante` spiega che l'email serve per inviare la scheda di autovalutazione e aggiornare correttamente il livello;
+- nessun messaggio WhatsApp contiene il link diretto alla scheda;
+- dopo l'invio reale del messaggio, lo staff usa `Segna verifica` per cambiare stato.
 
 ## Lettura rapida del flusso
 
@@ -338,11 +379,15 @@ Prima integrazione TEST v5.375:
 Blocchi proposti:
 
 1. Stato invio automatico
-   - invii oggi;
+   - tabella `Controllo / Stato / Dettaglio / Prossima azione`;
+   - Email Padel Village;
+   - destinatario prova;
+   - invio automatico alle `07:00`;
    - limite giornaliero 20;
-   - prossima esecuzione;
-   - ultimo invio;
-   - ultimo controllo mancate consegne.
+   - secondo invio dopo 7 giorni;
+   - mancate consegne;
+   - WhatsApp recupero;
+   - schede ricevute da mandare a Post-invio.
 
 2. Da inviare 0.5
    - soci livello `0.5` con email valida;

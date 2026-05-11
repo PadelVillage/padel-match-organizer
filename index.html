@@ -914,18 +914,17 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.377 - Autovalutazione: pannello invio email e post-invio */
+    /* v5.378 - Autovalutazione: intestazione compatta, stato tabellare e intestazioni fisse */
     .assessment-email-page { max-width:1500px; margin:0 auto; }
     .assessment-email-page, .assessment-email-panel, .assessment-email-content, .assessment-email-card { min-width:0; }
-    .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:14px; }
+    .assessment-email-compact-hero { border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:14px 16px; margin-bottom:12px; }
+    .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:0; }
     .assessment-email-topbar h2 { margin:0 0 5px; color:var(--primary); font-size:28px; line-height:1.05; }
     .assessment-email-topbar p { margin:0; color:#667085; font-size:15px; line-height:1.35; }
     .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:9px 13px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpis { display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:10px; margin:12px 0 16px; }
-    .assessment-email-kpi { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:12px 13px; min-height:82px; }
-    .assessment-email-kpi .label { color:#667085; font-size:12px; font-weight:800; text-transform:uppercase; }
-    .assessment-email-kpi .value { margin-top:5px; color:var(--primary); font-size:28px; font-weight:900; line-height:1; }
-    .assessment-email-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
+    .assessment-email-kpis { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 0; }
+    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:7px 10px; font-size:13px; font-weight:800; white-space:nowrap; }
+    .assessment-email-kpi strong { color:var(--primary); margin-right:6px; font-size:15px; line-height:1; }
     .assessment-email-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:10px 0 14px; padding-bottom:8px; }
     .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:9px 12px; font-weight:900; cursor:pointer; }
     .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -939,6 +938,12 @@
     .assessment-email-status-layout { display:grid; grid-template-columns:minmax(360px,.72fr) minmax(460px,1fr); gap:14px; align-items:start; }
     .assessment-email-card { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:14px; }
     .assessment-email-card h3 { margin:0 0 10px; color:var(--primary); font-size:17px; line-height:1.2; }
+    .assessment-email-routine-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:12px; }
+    .assessment-email-routine-title { margin:0 0 4px; color:var(--primary); font-size:20px; line-height:1.15; }
+    .assessment-email-status-table th:nth-child(1) { width:24%; }
+    .assessment-email-status-table th:nth-child(2) { width:16%; }
+    .assessment-email-status-table th:nth-child(3) { width:34%; }
+    .assessment-email-status-table th:nth-child(4) { width:26%; }
     .assessment-email-status-list { display:grid; gap:9px; }
     .assessment-email-status-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; border:1px solid #e7edf6; border-radius:8px; padding:10px 11px; background:#fbfdff; }
     .assessment-email-status-item strong { color:#101828; }
@@ -959,9 +964,9 @@
     .assessment-email-mini-kpi .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
     .assessment-email-mini-kpi .value { margin-top:5px; color:var(--primary); font-size:24px; line-height:1; font-weight:900; }
     .assessment-email-mini-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
-    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow-x:visible; background:#fff; }
-    .assessment-email-table { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:13px; }
-    .assessment-email-table th { text-align:left; background:#f3f6fb; color:#344054; padding:11px 10px; border-bottom:1px solid #e7edf6; white-space:normal; overflow-wrap:anywhere; line-height:1.25; }
+    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow:auto; background:#fff; max-height:min(58vh, 560px); }
+    .assessment-email-table { width:100%; min-width:0; table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:13px; }
+    .assessment-email-table th { position:sticky; top:0; z-index:3; text-align:left; background:#f3f6fb; color:#344054; padding:11px 10px; border-bottom:1px solid #e7edf6; white-space:normal; overflow-wrap:anywhere; line-height:1.25; box-shadow:inset 0 -1px 0 #e7edf6; }
     .assessment-email-table td { padding:11px 10px; border-top:1px solid #e7edf6; vertical-align:middle; overflow-wrap:anywhere; line-height:1.35; }
     .assessment-email-table tr:first-child td { border-top:0; }
     .assessment-email-name { font-weight:900; color:#101828; }
@@ -984,15 +989,17 @@
     .assessment-email-preview { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; color:#344054; white-space:pre-wrap; line-height:1.45; min-height:130px; margin-top:10px; }
     .assessment-email-footer-note { margin-top:14px; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; color:#667085; font-size:13px; line-height:1.35; }
     @media (max-width:1100px) {
-      .assessment-email-kpis, .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
-    @media (max-width:1100px) {
-      .assessment-email-table-wrap { border:0; background:transparent; overflow-x:visible; }
+    @media (max-width:720px) {
+      .assessment-email-kpi { width:100%; justify-content:space-between; white-space:normal; }
+      .assessment-email-table-wrap { border:0; background:transparent; overflow:visible; max-height:none; }
       .assessment-email-table { display:block; width:100%; overflow-x:visible; }
       .assessment-email-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+      .assessment-email-table th { position:static; box-shadow:none; }
       .assessment-email-table tbody { display:grid; gap:10px; width:100%; }
       .assessment-email-table tr { display:block; width:100%; border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:10px 12px; box-shadow:0 1px 3px rgba(31,71,136,.05); }
       .assessment-email-table td { display:grid; grid-template-columns:minmax(112px,.42fr) minmax(0,1fr); gap:8px; align-items:start; border-top:1px solid #edf2f7; padding:8px 0; }
@@ -1005,9 +1012,9 @@
       .assessment-email-mini-actions { justify-content:flex-start; }
     }
     @media (max-width:720px) {
-      .assessment-email-topbar, .assessment-email-panel-head { flex-direction:column; }
+      .assessment-email-topbar, .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
-      .assessment-email-kpis, .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
+      .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
       .assessment-email-env, .assessment-email-badge { white-space:normal; }
       .assessment-email-status-item { grid-template-columns:1fr; }
       .assessment-email-content { padding:12px; }
@@ -4444,15 +4451,17 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assessment" class="tab-content">
       <div class="section assessment-v5144-section assessment-compact-page">
         <div id="assessmentEmailRoot" class="assessment-email-page">
-          <div class="assessment-email-topbar">
-            <div>
-              <h2>Autovalutazione</h2>
-              <p>Invio automatico email per soci livello 0.5, con WhatsApp manuale come canale di recupero.</p>
+          <section class="assessment-email-compact-hero" aria-label="Sintesi autovalutazione">
+            <div class="assessment-email-topbar">
+              <div>
+                <h2>Autovalutazione</h2>
+                <p>Invio automatico email per soci livello 0.5, recupero WhatsApp manuale e gestione livelli post-invio.</p>
+              </div>
+              <div id="assessmentEmailEnvPill" class="assessment-email-env">Modalita prova: destinatari reali bloccati</div>
             </div>
-            <div id="assessmentEmailEnvPill" class="assessment-email-env">Modalita prova: destinatari reali bloccati</div>
-          </div>
 
-          <section id="assessmentEmailKpis" class="assessment-email-kpis" aria-label="Indicatori autovalutazione"></section>
+            <div id="assessmentEmailKpis" class="assessment-email-kpis" aria-label="Indicatori autovalutazione"></div>
+          </section>
 
           <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
             <button id="anchor-assessment-stato" class="assessment-email-tab active" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
@@ -4966,7 +4975,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.377';
+    const APP_VERSION = '5.378';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21422,15 +21431,14 @@ Per confermare scrivi ELIMINA.`);
       const queue = assessmentEmailQueueRows();
       const pending = assessmentEmailPendingRows();
       const problems = assessmentEmailProblemRows();
-      const post = assessmentEmailPostRows();
       const sentToday = getAssessmentRequestsSentTodayCount();
-      const card = (label, value, note) => `<div class="assessment-email-kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div><div class="note">${escapeHtml(note)}</div></div>`;
+      const card = (label, value) => `<span class="assessment-email-kpi"><strong>${escapeHtml(String(value))}</strong>${escapeHtml(label)}</span>`;
       box.innerHTML = [
-        card('Invio automatico', '07:00', 'Prossimo invio automatico'),
-        card('Invii oggi', `${sentToday}/20`, 'Limite previsto email'),
-        card('Da inviare 0.5', queue.length, 'Soci 0.5 non ancora chiusi'),
-        card('In attesa', pending.length, 'Inviate, scheda non compilata'),
-        card('Problemi', problems.length, 'Email, WhatsApp o nessuna risposta')
+        card('invio automatico', '07:00'),
+        card('invii oggi', `${sentToday}/20`),
+        card('da inviare 0.5', queue.length),
+        card('in attesa', pending.length),
+        card('problemi', problems.length)
       ].join('');
       const env = document.getElementById('assessmentEmailEnvPill');
       if (env) env.textContent = PMO_IS_TEST_ENV ? 'Modalita prova: TEST' : 'PROD: backend email non ancora attivo';
@@ -21440,25 +21448,38 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailRoutinePanel() {
       const box = document.getElementById('assessmentEmailRoutineContent');
       if (!box) return;
-      box.innerHTML = `<div class="assessment-email-status-layout">
-        <div class="assessment-email-card">
-          <h3>Configurazione attuale</h3>
-          <div class="assessment-email-status-list">
-            <div class="assessment-email-status-item"><div><strong>Email mittente</strong><br><span>Gmail Padel Village da collegare lato backend</span></div>${assessmentEmailBadge('Da attivare','warn')}</div>
-            <div class="assessment-email-status-item"><div><strong>Destinatario in prova</strong><br><span>Email personale staff, forzata su tutti gli invii di test</span></div>${assessmentEmailBadge('Prova','warn')}</div>
-            <div class="assessment-email-status-item"><div><strong>Prossimo invio automatico</strong><br><span>${escapeHtml(assessmentEmailNextSevenAM())}</span></div>${assessmentEmailBadge('Prevista','info')}</div>
-            <div class="assessment-email-status-item"><div><strong>Secondo invio</strong><br><span>Dopo 7 giorni senza compilazione o mancata consegna</span></div>${assessmentEmailBadge('Regola pronta','ok')}</div>
-            <div class="assessment-email-status-item"><div><strong>Dopo secondo invio</strong><br><span>Verifica WhatsApp manuale: chiede se la mail e' arrivata e recupera l'email corretta se serve.</span></div>${assessmentEmailBadge('Manuale','muted')}</div>
-          </div>
-        </div>
-        <div class="assessment-email-card">
-          <h3>Sequenza operativa</h3>
-          <div class="assessment-email-timeline">
-            <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Seleziona 0.5</strong><span>Prende solo soci attivi con livello 0.5 e email valida.</span></div>
-            <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara link</strong><span>Prepara il link personale del socio e lo registra nel sistema.</span></div>
-            <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Invia email</strong><span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span></div>
-            <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span></div>
-          </div>
+      const sentToday = getAssessmentRequestsSentTodayCount();
+      const postRows = assessmentEmailPostRows();
+      const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Attivo','ok') : assessmentEmailBadge('Da confermare','warn');
+      const envDetail = PMO_IS_TEST_ENV ? 'In prova tutte le email arrivano solo alla mail staff.' : 'Prima del reale va confermato il collegamento Gmail.';
+      const rows = [
+        ['Email Padel Village', assessmentEmailBadge('Da collegare','warn'), 'Account che invia le email automatiche.', 'Collegare Gmail prima del test reale.'],
+        ['Destinatario prova', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Verificare destinatari prima di attivare invii reali.'],
+        ['Invio automatico', assessmentEmailBadge('Previsto','info'), 'Ogni giorno alle 07:00, massimo 20 soci con livello 0.5.', `Prossima esecuzione: ${assessmentEmailNextSevenAM()}.`],
+        ['Limite giornaliero', assessmentEmailBadge(`${sentToday}/20`,'muted'), 'Email inviate oggi dal sistema.', 'Controllo automatico prima di ogni invio.'],
+        ['Secondo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 7 giorni senza scheda compilata.', 'Invio automatico, una sola volta.'],
+        ['Mancate consegne', assessmentEmailBadge('Da controllare','info'), 'Email non arrivate a destinazione o indirizzo errato.', 'Sposta il socio in Problemi per verifica WhatsApp.'],
+        ['WhatsApp recupero', assessmentEmailBadge('Manuale','muted'), 'Dopo secondo invio senza risposta o email da correggere.', 'Apri WhatsApp senza link diretto alla scheda.'],
+        ['Schede ricevute', assessmentEmailBadge(`${postRows.length} da gestire`,'muted'), 'Schede compilate e pronte per il controllo livello.', 'Vai a Post-invio e lavora dalla piu vecchia.']
+      ];
+      box.innerHTML = `<div class="assessment-email-table-wrap">
+        <table class="assessment-email-table assessment-email-status-table">
+          <thead><tr><th>Controllo</th><th>Stato</th><th>Dettaglio</th><th>Prossima azione</th></tr></thead>
+          <tbody>${rows.map(row => `<tr>
+            <td data-label="Controllo"><span class="assessment-email-name">${escapeHtml(row[0])}</span></td>
+            <td data-label="Stato">${row[1]}</td>
+            <td data-label="Dettaglio">${escapeHtml(row[2])}</td>
+            <td data-label="Prossima azione">${escapeHtml(row[3])}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div class="assessment-email-card" style="margin-top:14px;">
+        <h3>Sequenza operativa</h3>
+        <div class="assessment-email-timeline">
+          <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Seleziona 0.5</strong><span>Prende solo soci attivi con livello 0.5 e email valida.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara link</strong><span>Prepara il link personale del socio e lo registra nel sistema.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Invia email</strong><span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span></div>
         </div>
       </div>
       <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, mancata consegna e scheda compilata.</div>`;

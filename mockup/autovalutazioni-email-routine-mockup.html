@@ -54,6 +54,45 @@
       font-size: 15px;
       line-height: 1.35;
     }
+    .compact-hero {
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--primary);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 1px 5px rgba(31, 71, 136, .08);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .compact-hero-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .compact-copy { min-width: 0; }
+    .summary-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .summary-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--soft-line);
+      border-radius: 999px;
+      background: #fff;
+      color: #475467;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .summary-pill strong {
+      color: var(--primary);
+      margin-right: 6px;
+      font-size: 15px;
+    }
     .env-pill {
       flex: 0 0 auto;
       display: inline-flex;
@@ -178,6 +217,22 @@
     .content {
       padding: 16px 18px 18px;
     }
+    .routine-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .routine-table-title {
+      margin: 0 0 4px;
+      color: var(--primary);
+      font-size: 20px;
+      line-height: 1.15;
+    }
+    .rules-card {
+      margin-top: 14px;
+    }
     .status-layout {
       display: grid;
       grid-template-columns: minmax(360px, .72fr) minmax(460px, 1fr);
@@ -289,28 +344,39 @@
     .table-wrap {
       border: 1px solid var(--soft-line);
       border-radius: 8px;
-      overflow-x: auto;
+      overflow: auto;
       background: #fff;
+      max-height: min(58vh, 560px);
     }
     table {
       width: 100%;
-      min-width: 1060px;
-      border-collapse: collapse;
+      min-width: 0;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 14px;
     }
     th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
       text-align: left;
       background: #f3f6fb;
       color: #344054;
       padding: 11px 12px;
       border-bottom: 1px solid var(--soft-line);
-      white-space: nowrap;
+      white-space: normal;
+      box-shadow: inset 0 -1px 0 var(--soft-line);
     }
     td {
       padding: 12px;
       border-top: 1px solid var(--soft-line);
       vertical-align: middle;
+      overflow-wrap: anywhere;
     }
+    .status-table th:nth-child(1) { width: 24%; }
+    .status-table th:nth-child(2) { width: 16%; }
+    .status-table th:nth-child(3) { width: 34%; }
+    .status-table th:nth-child(4) { width: 26%; }
     tr:first-child td { border-top: 0; }
     .name { font-weight: 900; color: var(--ink); }
     .meta { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
@@ -420,6 +486,117 @@
       font-size: 13px;
       line-height: 1.35;
     }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(16, 24, 40, .42);
+    }
+    .modal-backdrop.open { display: flex; }
+    .whatsapp-modal {
+      width: min(920px, 100%);
+      max-height: calc(100vh - 44px);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 18px 60px rgba(16, 24, 40, .24);
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--soft-line);
+      background: var(--panel);
+    }
+    .modal-title {
+      margin: 0 0 4px;
+      color: var(--primary);
+      font-size: 20px;
+      line-height: 1.15;
+    }
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 16px 18px 18px;
+    }
+    .modal-summary {
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 11px 12px;
+      color: #344054;
+      line-height: 1.35;
+    }
+    .message-choice-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .message-choice {
+      text-align: left;
+      border: 1px solid var(--soft-line);
+      border-left: 5px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 11px 12px;
+      cursor: pointer;
+      font: inherit;
+    }
+    .message-choice.active {
+      border-color: #b9cbea;
+      border-left-color: var(--blue);
+      background: #f3f7ff;
+    }
+    .message-choice strong {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .message-choice span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+    .message-preview {
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+    .message-preview-title {
+      color: var(--primary);
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .message-preview-text {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #344054;
+      font: inherit;
+      line-height: 1.45;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 0 18px 18px;
+    }
+    .modal-feedback {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
     @media (max-width: 1100px) {
       .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .mini-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -431,6 +608,8 @@
     @media (max-width: 720px) {
       .page { padding: 14px; }
       .topbar,
+      .compact-hero-main,
+      .routine-head,
       .panel-head { flex-direction: column; }
       .actions { justify-content: flex-start; }
       .kpi-grid,
@@ -438,44 +617,82 @@
       .timeline,
       .form-grid,
       .filter-grid { grid-template-columns: 1fr; }
+      .summary-pill {
+        width: 100%;
+        justify-content: space-between;
+        white-space: normal;
+      }
+      .message-choice-grid { grid-template-columns: 1fr; }
+      .modal-actions { justify-content: flex-start; }
+      .table-wrap {
+        border: 0;
+        background: transparent;
+        max-height: none;
+        overflow: visible;
+      }
+      table,
+      thead,
+      tbody,
+      tr,
+      td {
+        display: block;
+        width: 100%;
+      }
+      thead {
+        position: absolute;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+      th {
+        position: static;
+        box-shadow: none;
+      }
+      tr {
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      td {
+        display: grid;
+        grid-template-columns: minmax(112px, 36%) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        border-top: 1px solid var(--soft-line);
+      }
+      tr:first-child td { border-top: 1px solid var(--soft-line); }
+      td:first-child { border-top: 0; }
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.25;
+      }
+      .mini-actions { justify-content: flex-start; }
     }
   </style>
 </head>
 <body>
   <main class="page">
-    <div class="topbar">
-      <div>
-        <h1>Autovalutazione</h1>
-        <p class="subtitle">Invio automatico email per soci livello 0.5, con WhatsApp manuale come canale di recupero.</p>
+    <section class="compact-hero" aria-label="Sintesi autovalutazione">
+      <div class="compact-hero-main">
+        <div class="compact-copy">
+          <h1>Autovalutazione</h1>
+          <p class="subtitle">Invio automatico email per soci livello 0.5, recupero WhatsApp manuale e gestione livelli post-invio.</p>
+        </div>
+        <div class="env-pill">Modalita prova: destinatari reali bloccati</div>
       </div>
-      <div class="env-pill">Modalita prova: destinatari reali bloccati</div>
-    </div>
-
-    <section class="kpi-grid" aria-label="Indicatori autovalutazione email">
-      <div class="kpi">
-        <div class="label">Invio automatico</div>
-        <div class="value">07:00</div>
-        <div class="note">Prossimo invio automatico</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Invii oggi</div>
-        <div class="value">0/20</div>
-        <div class="note">Limite giornaliero email</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Da inviare 0.5</div>
-        <div class="value">38</div>
-        <div class="note">Email valida e link personale pronto</div>
-      </div>
-      <div class="kpi">
-        <div class="label">In attesa</div>
-        <div class="value">14</div>
-        <div class="note">Inviate, scheda non compilata</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Problemi</div>
-        <div class="value">4</div>
-        <div class="note">Mancate consegne, WhatsApp o nessuna risposta</div>
+      <div class="summary-strip" aria-label="Indicatori principali">
+        <span class="summary-pill"><strong>07:00</strong> invio automatico</span>
+        <span class="summary-pill"><strong>0/20</strong> invii oggi</span>
+        <span class="summary-pill"><strong>38</strong> da inviare 0.5</span>
+        <span class="summary-pill"><strong>14</strong> in attesa</span>
+        <span class="summary-pill"><strong>4</strong> problemi</span>
       </div>
     </section>
 
@@ -490,68 +707,104 @@
     </nav>
 
     <section id="routine" class="panel active">
-      <div class="panel-head">
-        <div>
-          <h2 class="panel-title">Stato invio automatico</h2>
-          <p class="panel-copy">Controllo unico per invio automatico, mancate consegne, limite giornaliero e modalita prova.</p>
-        </div>
-        <div class="actions">
-          <button class="btn warning">Pausa invii email</button>
-          <button class="btn">Controlla mancate consegne</button>
-          <button class="btn success">Prova invio sulla mia email</button>
-        </div>
-      </div>
       <div class="content">
-        <div class="status-layout">
-          <div class="card">
-            <h3>Configurazione attuale</h3>
-            <div class="status-list">
-              <div class="status-item">
-                <div><strong>Email mittente</strong><br><span>padelvillage.club@gmail.com</span></div>
-                <span class="badge ok">Connesso</span>
-              </div>
-              <div class="status-item">
-                <div><strong>Destinatario in prova</strong><br><span>Email personale staff, forzata su tutti gli invii</span></div>
-                <span class="badge warn">Prova</span>
-              </div>
-              <div class="status-item">
-                <div><strong>Prossimo invio automatico</strong><br><span>Mar 12/05/2026 alle 07:00</span></div>
-                <span class="badge info">Programmata</span>
-              </div>
-              <div class="status-item">
-                <div><strong>Secondo invio</strong><br><span>Dopo 7 giorni senza compilazione o mancata consegna</span></div>
-                <span class="badge ok">Attivo</span>
-              </div>
-              <div class="status-item">
-                <div><strong>Dopo secondo invio</strong><br><span>Passa a verifica WhatsApp: lo staff chiede se la mail e' arrivata e recupera l'email corretta se serve.</span></div>
-                <span class="badge muted">Manuale</span>
-              </div>
-            </div>
+        <div class="routine-head">
+          <div>
+            <h2 class="routine-table-title">Stato invio automatico</h2>
+            <p class="panel-copy">Lettura rapida di invio, limiti, secondo invio, WhatsApp e schede ricevute.</p>
           </div>
+          <div class="actions">
+            <button class="btn warning">Pausa invii email</button>
+            <button class="btn">Controlla mancate consegne</button>
+            <button class="btn success">Prova invio sulla mia email</button>
+          </div>
+        </div>
 
-          <div class="card">
-            <h3>Sequenza operativa</h3>
-            <div class="timeline">
-              <div class="step">
-                <div class="step-num">1</div>
-                <strong>Seleziona 0.5</strong>
-                <span>Prende solo soci attivi con livello 0.5 e email valida.</span>
-              </div>
-              <div class="step">
-                <div class="step-num">2</div>
-                <strong>Prepara link</strong>
-                <span>Prepara il link personale del socio e lo salva nel sistema.</span>
-              </div>
-              <div class="step">
-                <div class="step-num">3</div>
-                <strong>Invia email</strong>
-                <span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span>
-              </div>
-              <div class="step">
-                <div class="step-num">4</div>
-                <strong>Controlla esiti</strong>
-                <span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span>
-              </div>
+        <div class="table-wrap status-table-wrap">
+          <table class="status-table">
+            <thead>
+              <tr>
+                <th>Controllo</th>
+                <th>Stato</th>
+                <th>Dettaglio</th>
+                <th>Prossima azione</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="name">Email Padel Village</span></td>
+                <td><span class="badge warn">Da collegare</span></td>
+                <td>Account che invia le email automatiche.</td>
+                <td>Collegare Gmail prima del test reale.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Destinatario prova</span></td>
+                <td><span class="badge ok">Attivo</span></td>
+                <td>In prova tutte le email arrivano solo alla mail staff.</td>
+                <td>Nessuna: resta cosi' finche' non si passa al test reale.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Invio automatico</span></td>
+                <td><span class="badge info">Previsto</span></td>
+                <td>Ogni giorno alle 07:00, massimo 20 soci con livello 0.5.</td>
+                <td>Attivare la programmazione quando il flusso e' pronto.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Limite giornaliero</span></td>
+                <td><span class="badge muted">0/20</span></td>
+                <td>Email inviate oggi dal sistema.</td>
+                <td>Controllo automatico prima di ogni invio.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Secondo invio</span></td>
+                <td><span class="badge ok">Pronto</span></td>
+                <td>Dopo 7 giorni senza scheda compilata.</td>
+                <td>Invio automatico, una sola volta.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Mancate consegne</span></td>
+                <td><span class="badge info">Da controllare</span></td>
+                <td>Email non arrivate a destinazione o indirizzo errato.</td>
+                <td>Sposta il socio in Problemi per verifica WhatsApp.</td>
+              </tr>
+              <tr>
+                <td><span class="name">WhatsApp recupero</span></td>
+                <td><span class="badge muted">Manuale</span></td>
+                <td>Dopo secondo invio senza risposta o email da correggere.</td>
+                <td>Apri WhatsApp senza link diretto alla scheda.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Schede ricevute</span></td>
+                <td><span class="badge muted">0 oggi</span></td>
+                <td>Schede compilate e pronte per il controllo livello.</td>
+                <td>Vai a Post-invio e lavora dalla piu' vecchia.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card rules-card">
+          <h3>Sequenza operativa</h3>
+          <div class="timeline">
+            <div class="step">
+              <div class="step-num">1</div>
+              <strong>Seleziona 0.5</strong>
+              <span>Prende solo soci attivi con livello 0.5 e email valida.</span>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <strong>Prepara link</strong>
+              <span>Prepara il link personale del socio e lo salva nel sistema.</span>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <strong>Invia email</strong>
+              <span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <strong>Controlla esiti</strong>
+              <span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span>
             </div>
           </div>
         </div>
@@ -681,7 +934,7 @@
         </div>
         <div class="actions">
           <button class="btn">Mostra mancate consegne</button>
-          <button class="btn warning">Prepara WhatsApp selezionati</button>
+          <button class="btn warning" data-whatsapp-problem data-player="Soci selezionati" data-problem-label="Problemi selezionati" data-whatsapp-default="whatsapp-email-missing">Prepara WhatsApp selezionati</button>
         </div>
       </div>
       <div class="content">
@@ -704,7 +957,7 @@
                 <td>andrea.costa@example.com</td>
                 <td>12/05/2026 07:18</td>
                 <td>Verifica ricezione e chiedi email corretta</td>
-                <td><div class="mini-actions"><button class="mini danger">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
+                <td><div class="mini-actions"><button class="mini danger" data-whatsapp-problem data-player="Andrea Costa" data-problem-label="Mancata consegna" data-whatsapp-default="whatsapp-check">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
               </tr>
               <tr>
                 <td><span class="name">Sara Ferri</span><span class="meta">liv. 0.5</span></td>
@@ -712,7 +965,7 @@
                 <td>sara.ferri@example.com</td>
                 <td>11/05/2026 07:00</td>
                 <td>Chiedi se ha ricevuto la mail; se no, recupera email</td>
-                <td><div class="mini-actions"><button class="mini danger">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
+                <td><div class="mini-actions"><button class="mini danger" data-whatsapp-problem data-player="Sara Ferri" data-problem-label="Secondo invio senza risposta" data-whatsapp-default="whatsapp-reminder">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
               </tr>
               <tr>
                 <td><span class="name">Luca Moretti</span><span class="meta">liv. 0.5</span></td>
@@ -720,7 +973,7 @@
                 <td>-</td>
                 <td>-</td>
                 <td>Aggiorna scheda socio o chiedi email via WhatsApp</td>
-                <td><div class="mini-actions"><button class="mini">Apri scheda</button><button class="mini danger">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
+                <td><div class="mini-actions"><button class="mini">Apri scheda</button><button class="mini danger" data-whatsapp-problem data-player="Luca Moretti" data-problem-label="Email mancante" data-whatsapp-default="whatsapp-email-missing">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
               </tr>
               <tr>
                 <td><span class="name">Martina Russo</span><span class="meta">liv. 0.5 - nessuna risposta</span></td>
@@ -954,6 +1207,10 @@
                 <span>Parte quando lo staff applica il livello.</span>
               </div>
               <div class="template-section-title">WhatsApp manuale</div>
+              <div class="template-row" data-template="whatsapp-email-missing">
+                <strong>Richiesta email mancante</strong>
+                <span>Chiede l'email corretta spiegando che serve per inviare la scheda di autovalutazione.</span>
+              </div>
               <div class="template-row" data-template="whatsapp-check">
                 <strong>Verifica ricezione email</strong>
                 <span>Chiede se la mail e' arrivata; se no, chiede l'email corretta per reinvio.</span>
@@ -982,6 +1239,7 @@
                   <option value="recall-email">Email - secondo invio dopo 7 giorni</option>
                   <option value="received-email">Email - conferma ricezione scheda</option>
                   <option value="level-email">Email - livello validato</option>
+                  <option value="whatsapp-email-missing">WhatsApp - richiesta email mancante</option>
                   <option value="whatsapp-check">WhatsApp - verifica ricezione email</option>
                   <option value="whatsapp-reminder">WhatsApp - promemoria controllo mail</option>
                   <option value="whatsapp-level">WhatsApp - livello validato</option>
@@ -1023,6 +1281,49 @@ Padel Village</div>
       </div>
     </section>
   </main>
+
+  <div id="whatsappChoiceModal" class="modal-backdrop" aria-hidden="true">
+    <div class="whatsapp-modal" role="dialog" aria-modal="true" aria-labelledby="whatsappModalTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="whatsappModalTitle" class="modal-title">Scegli messaggio WhatsApp</h2>
+          <p class="panel-copy">Usa il testo piu' adatto al problema del socio. Il messaggio non contiene il link diretto alla scheda.</p>
+        </div>
+        <button class="btn" type="button" data-close-whatsapp-modal>Chiudi</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-summary">
+          <strong id="whatsappModalPlayer">Luca Moretti</strong><br>
+          <span id="whatsappModalProblem">Email mancante</span>
+        </div>
+        <div class="message-choice-grid" aria-label="Messaggi WhatsApp disponibili">
+          <button class="message-choice" type="button" data-message-option="whatsapp-email-missing">
+            <strong>Richiesta email mancante</strong>
+            <span>Per soci senza email in anagrafica.</span>
+          </button>
+          <button class="message-choice" type="button" data-message-option="whatsapp-check">
+            <strong>Verifica ricezione email</strong>
+            <span>Per mancate consegne o dubbi sulla ricezione.</span>
+          </button>
+          <button class="message-choice" type="button" data-message-option="whatsapp-reminder">
+            <strong>Promemoria controllo mail</strong>
+            <span>Per chi ha ricevuto la mail ma non ha ancora compilato.</span>
+          </button>
+        </div>
+        <div class="message-preview">
+          <div id="whatsappSelectedTitle" class="message-preview-title">Richiesta email mancante</div>
+          <pre id="whatsappSelectedText" class="message-preview-text"></pre>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <span id="whatsappModalFeedback" class="modal-feedback">Dopo l'invio reale, usa `Segna verifica` per cambiare stato.</span>
+        <div class="actions">
+          <button class="btn" type="button" data-copy-whatsapp-message>Copia testo</button>
+          <button class="btn success" type="button" data-open-whatsapp-message>Apri WhatsApp</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const templateSamples = {
@@ -1087,6 +1388,19 @@ Useremo questo livello per proporti partite piu' equilibrate.
 Grazie,
 Padel Village`
       },
+      'whatsapp-email-missing': {
+        subject: 'Non previsto per WhatsApp',
+        type: 'WhatsApp - richiesta email mancante',
+        body: `Ciao {nome}, sono Maurizio di Padel Village.
+
+Stiamo aggiornando le schede dei soci per inviare la nuova autovalutazione del livello e organizzare partite piu' equilibrate.
+
+Nel gestionale non trovo la tua email aggiornata.
+
+Me la scrivi qui, cosi' ti mandiamo la scheda via email?
+
+Grazie.`
+      },
       'whatsapp-check': {
         subject: 'Non previsto per WhatsApp',
         type: 'WhatsApp - verifica ricezione email',
@@ -1143,12 +1457,90 @@ Grazie.`
       });
     }
 
+    function applyTableLabels() {
+      document.querySelectorAll('table').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim().replace(/\s+/g, ' '));
+        table.querySelectorAll('tbody tr').forEach(row => {
+          Array.from(row.children).forEach((cell, index) => {
+            cell.dataset.label = headers[index] || '';
+          });
+        });
+      });
+    }
+
+    applyTableLabels();
+
+    let currentWhatsappTemplateKey = 'whatsapp-email-missing';
+    let currentWhatsappPlayer = 'Luca Moretti';
+
+    function firstName(fullName) {
+      return (fullName || 'Mario').split(' ')[0] || 'Mario';
+    }
+
+    function renderWhatsappMessage(templateKey) {
+      currentWhatsappTemplateKey = templateKey || currentWhatsappTemplateKey;
+      const template = templateSamples[currentWhatsappTemplateKey] || templateSamples['whatsapp-email-missing'];
+      const previewTitle = document.getElementById('whatsappSelectedTitle');
+      const previewText = document.getElementById('whatsappSelectedText');
+      const readableTitle = template.type.replace('WhatsApp - ', '');
+      previewTitle.textContent = readableTitle.charAt(0).toUpperCase() + readableTitle.slice(1);
+      previewText.textContent = template.body.replaceAll('{nome}', firstName(currentWhatsappPlayer));
+      document.querySelectorAll('[data-message-option]').forEach(button => {
+        button.classList.toggle('active', button.dataset.messageOption === currentWhatsappTemplateKey);
+      });
+      document.getElementById('whatsappModalFeedback').textContent = "Dopo l'invio reale, usa `Segna verifica` per cambiare stato.";
+    }
+
+    function openWhatsappChoiceModal(trigger) {
+      const modal = document.getElementById('whatsappChoiceModal');
+      currentWhatsappPlayer = trigger.dataset.player || 'Mario Rossi';
+      const defaultTemplate = trigger.dataset.whatsappDefault || 'whatsapp-check';
+      document.getElementById('whatsappModalPlayer').textContent = currentWhatsappPlayer;
+      document.getElementById('whatsappModalProblem').textContent = trigger.dataset.problemLabel || 'Problema da verificare';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      renderWhatsappMessage(defaultTemplate);
+    }
+
+    function closeWhatsappChoiceModal() {
+      const modal = document.getElementById('whatsappChoiceModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
     document.querySelectorAll('.tab').forEach(button => {
       button.addEventListener('click', () => {
         const target = button.dataset.target;
         document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item === button));
         document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('active', panel.id === target));
       });
+    });
+    document.querySelectorAll('[data-whatsapp-problem]').forEach(button => {
+      button.addEventListener('click', () => openWhatsappChoiceModal(button));
+    });
+    document.querySelectorAll('[data-message-option]').forEach(button => {
+      button.addEventListener('click', () => renderWhatsappMessage(button.dataset.messageOption));
+    });
+    document.querySelectorAll('[data-close-whatsapp-modal]').forEach(button => {
+      button.addEventListener('click', closeWhatsappChoiceModal);
+    });
+    document.getElementById('whatsappChoiceModal').addEventListener('click', event => {
+      if (event.target.id === 'whatsappChoiceModal') closeWhatsappChoiceModal();
+    });
+    document.querySelector('[data-copy-whatsapp-message]').addEventListener('click', async () => {
+      const text = document.getElementById('whatsappSelectedText').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('whatsappModalFeedback').textContent = "Testo copiato. Dopo l'invio reale, usa `Segna verifica`.";
+      } catch (error) {
+        document.getElementById('whatsappModalFeedback').textContent = "Testo pronto da copiare. Nel gestionale il comando usera' la copia automatica quando disponibile.";
+      }
+    });
+    document.querySelector('[data-open-whatsapp-message]').addEventListener('click', () => {
+      document.getElementById('whatsappModalFeedback').textContent = "Nel gestionale questo comando aprira' WhatsApp con il testo selezionato.";
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeWhatsappChoiceModal();
     });
     document.querySelectorAll('.template-row').forEach(row => {
       row.addEventListener('click', () => renderTemplate(row.dataset.template));
