@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico attivo solo su Supabase TEST, senza promozione scheduler PROD.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11.
 
 ## Obiettivo
 
@@ -159,9 +159,14 @@ Quando si decide di promuovere lo scheduler in PROD:
 3. attivare poi il job pmo-data-routines-dispatcher-prod su Supabase PROD;
 4. non tenere TEST e PROD schedulati agli stessi orari, per evitare doppie chiamate allo stesso account Matchpoint.
 
+Stato attuale dal 2026-05-11:
+
+- Supabase TEST `cudiqnrrlbyqryrtaprd`: job `pmo-data-routines-dispatcher-test` rimosso da `cron.job`; TEST resta manuale dall'app.
+- Supabase PROD `qqbfphyslczzkxoncgex`: job `pmo-data-routines-dispatcher-prod` attivo ogni 5 minuti; il dispatcher esegue le routine solo agli orari locali previsti.
+
 ## Scheduler backend TEST
 
-Lo scheduler backend viene attivato prima solo sul progetto Supabase TEST `cudiqnrrlbyqryrtaprd`.
+Lo scheduler backend e' stato attivato prima solo sul progetto Supabase TEST `cudiqnrrlbyqryrtaprd`, validato, e poi disattivato il 2026-05-11 prima dell'attivazione PROD.
 
 Componenti:
 
@@ -175,7 +180,7 @@ Componenti:
   - `matchpoint-history-sync`;
   - `matchpoint-bookings-sync`.
 
-Nota sicurezza TEST: su autorizzazione esplicita del 2026-05-10, queste tre Edge Function TEST sono deployate con `verify_jwt=false` per consentire le chiamate `pg_net`. L'autorizzazione non e' anonima: il codice della funzione accetta solo un JWT staff valido oppure il secret interno Vault `pmo_data_routine_secret`. La stessa modifica non e' autorizzata su PROD.
+Nota sicurezza TEST/PROD: su autorizzazione esplicita del 2026-05-10 per TEST e del 2026-05-11 per PROD, queste tre Edge Function sono deployate con `verify_jwt=false` per consentire le chiamate `pg_net`. L'autorizzazione non e' anonima: il codice della funzione accetta solo un JWT staff valido oppure il secret interno Vault `pmo_data_routine_secret`.
 
 Per gestire correttamente ora legale e ora solare, il job Cron non usa orari UTC fissi per ogni routine. Esegue invece un dispatcher ogni 5 minuti e confronta l'orario corrente in `Europe/Rome` con la tabella operativa:
 
@@ -200,6 +205,34 @@ Validazione TEST del 2026-05-10:
 - Prenotazioni future via scheduler: `200 OK`, actor `routine-dati@test.padel-match-organizer`, periodo 2026-05-10 / 2026-06-09, nessun Excel archiviato.
 
 La riga `Backup cloud` resta manuale nella prima attivazione backend: il backup completo attuale nasce dal localStorage del browser e contiene anche dati non ricostruibili integralmente dal solo backend, quindi non viene generato automaticamente da Supabase per evitare backup incompleti o fuorvianti.
+
+## Scheduler backend PROD
+
+Attivo dal 2026-05-11 sul progetto Supabase PROD `qqbfphyslczzkxoncgex`.
+
+Attivazione eseguita:
+
+- disattivato prima lo scheduler TEST;
+- deployate in PROD con `verify_jwt=false` le funzioni `matchpoint-clients-sync` v9, `matchpoint-history-sync` v2 e `matchpoint-bookings-sync` v2;
+- create/verificate in Vault PROD le chiavi `pmo_data_routine_project_url`, `pmo_data_routine_publishable_key` e `pmo_data_routine_secret`;
+- creata la RPC `pmo_verify_data_routine_secret(p_secret text)`;
+- creato il dispatcher `pmo_dispatch_data_routines(p_now timestamptz default now())`;
+- attivato il job `pmo-data-routines-dispatcher-prod` con schedule `*/5 * * * *`.
+
+Verifiche 2026-05-11:
+
+- TEST: nessun job `pmo-data-routines-dispatcher-test` in `cron.job`;
+- PROD: job `pmo-data-routines-dispatcher-prod` attivo;
+- secret Vault PROD valido tramite `pmo_verify_data_routine_secret`;
+- dispatcher fuori orario (`04:31` locale) restituisce `dispatched=false`;
+- chiamata PROD senza JWT staff e senza secret routine respinta con `AUTH_REQUIRED`.
+
+Gli actor audit delle chiamate routine vengono etichettati in base all'ambiente:
+
+- `routine-dati@test.padel-match-organizer` su TEST;
+- `routine-dati@prod.padel-match-organizer` su PROD.
+
+Il backup cloud completo resta automatico solo quando un aggiornamento viene avviato dall'app, perche' il backend scheduler non vede il localStorage del browser.
 
 ## Alert
 

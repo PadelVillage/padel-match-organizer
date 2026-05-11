@@ -1,6 +1,6 @@
 # Matchpoint / DATI (in/out)
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche pubblicato in PROD v5.373; intestazione sezione DATI rimossa in PROD v5.373; formato prossime esecuzioni aggiornato in PROD v5.373; orari Clienti/Storico invertiti in PROD v5.373; backup cloud e backup locale separati in PROD v5.373; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico attivo solo su Supabase TEST.
+Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche pubblicato in PROD v5.373; intestazione sezione DATI rimossa in PROD v5.373; formato prossime esecuzioni aggiornato in PROD v5.373; orari Clienti/Storico invertiti in PROD v5.373; backup cloud e backup locale separati in PROD v5.373; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su TEST e attivo su Supabase PROD dal 2026-05-11.
 
 ## Obiettivo
 
@@ -287,7 +287,7 @@ Nota deploy PROD v5.373, 2026-05-11:
 - pubblicata in PROD la UI DATI validata in TEST da v5.368 a v5.373;
 - il box `Backup dati` mantiene separati cloud e locale: `Salva backup cloud` e auto-backup post aggiornamento non scaricano file locali;
 - l'auto-backup cloud post aggiornamento dati e' attivo quando l'aggiornamento viene avviato dall'app;
-- lo scheduler backend automatico resta attivo solo su Supabase TEST e non viene promosso su Supabase PROD con questo deploy.
+- in un secondo passaggio autorizzato il 2026-05-11, lo scheduler TEST e' stato spento e lo scheduler PROD e' stato attivato.
 
 Nota worker 2026-05-10:
 
@@ -309,9 +309,9 @@ Dopo mockup approvato `mockup/routine-dati-automatiche-mockup.html`, la sezione 
 
 Nota: v5.368 introduce il pannello di controllo e la predisposizione UI. v5.369 rimuove l'intestazione visibile `DATI (in/out)`, il sottotitolo e la linea divisoria, cosi' la schermata DATI parte direttamente dal box `Stato routine automatiche`. v5.370 mostra nella colonna `Prossima esecuzione` giorno abbreviato, data completa e ora, per esempio `Lun 11/05/2026 • 04:30`, invece del testo relativo `domani`. v5.371 inverte gli orari proposti: `Clienti Matchpoint` alle 04:30 e `Storico Matchpoint` alle 05:00. v5.372 separa di nuovo backup cloud e backup locale: il salvataggio cloud non scarica file locali, mentre `Scarica backup locale` resta un'azione manuale in basso nel box Backup. v5.373 aggiunge auto-backup cloud post aggiornamento dati quando l'operazione viene avviata dall'app.
 
-## Scheduler routine dati TEST
+## Scheduler routine dati TEST/PROD
 
-Lo scheduler backend TEST usa `supabase_pmo_data_routines_scheduler.sql` e resta separato da PROD.
+Lo scheduler backend e' stato validato prima su TEST con `supabase_pmo_data_routines_scheduler.sql`. Dal 2026-05-11 TEST resta manuale e lo scheduler automatico e' attivo solo su PROD.
 
 Scelte operative:
 
@@ -322,9 +322,9 @@ Scelte operative:
 - le funzioni `matchpoint-clients-sync`, `matchpoint-history-sync` e `matchpoint-bookings-sync` mantengono il flusso staff JWT gia validato e aggiungono solo il canale server-to-server per le routine;
 - gli Excel Matchpoint continuano a non essere archiviati in locale, GitHub o Storage.
 
-Nota sicurezza TEST: su autorizzazione esplicita del 2026-05-10, le tre funzioni Matchpoint TEST sono deployate con `verify_jwt=false` per permettere le chiamate `pg_net`. L'accesso resta protetto nel codice: JWT staff valido oppure secret interno Supabase Vault. PROD non e' stato modificato.
+Nota sicurezza: su autorizzazione esplicita, le tre funzioni Matchpoint sono deployate con `verify_jwt=false` dove serve lo scheduler `pg_net`. L'accesso resta protetto nel codice: JWT staff valido oppure secret interno Supabase Vault.
 
-Routine attivate in TEST:
+Routine attive in PROD:
 
 | Ora locale | Funzione |
 |---|---|
@@ -339,6 +339,14 @@ Validazione TEST del 2026-05-10:
 - `matchpoint-clients-sync` v26 TEST: esecuzione scheduler `200 OK`, actor `routine-dati@test.padel-match-organizer`, 949 clienti importabili;
 - `matchpoint-history-sync` v3 TEST: esecuzione scheduler `200 OK`, periodo 2026-04-10 / 2026-05-10;
 - `matchpoint-bookings-sync` v3 TEST: esecuzione scheduler `200 OK`, periodo 2026-05-10 / 2026-06-09.
+
+Attivazione PROD del 2026-05-11:
+
+- prima rimosso da TEST il job `pmo-data-routines-dispatcher-test`;
+- deployate in PROD `matchpoint-clients-sync` v9, `matchpoint-history-sync` v2 e `matchpoint-bookings-sync` v2 con `verify_jwt=false`;
+- creati/verificati i secret Vault PROD e la RPC `pmo_verify_data_routine_secret`;
+- attivato in PROD il job `pmo-data-routines-dispatcher-prod` ogni 5 minuti;
+- verificato che una chiamata senza JWT staff e senza secret routine venga respinta con `AUTH_REQUIRED`.
 
 La riga `Backup cloud` non viene automatizzata in questa prima fase backend, perche' il backup completo attuale e' un backup del browser e include dati di localStorage non ricostruibili con certezza dal solo database cloud.
 
