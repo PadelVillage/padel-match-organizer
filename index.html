@@ -5040,7 +5040,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.383';
+    const APP_VERSION = '5.384';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21360,6 +21360,7 @@ Per confermare scrivi ELIMINA.`);
       ].filter(Boolean).join(' · ') || '-';
     }
     window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || 'routine';
+    window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
     function assessmentEmailFeaturePending(message) {
       showAlert(message || 'Funzione prevista nel prossimo step tecnico.', 'info');
@@ -21390,7 +21391,7 @@ Per confermare scrivi ELIMINA.`);
       };
     }
     async function assessmentEmailSendFirstReady() {
-      const rows = assessmentEmailQueueRows();
+      const rows = assessmentEmailQueueFilteredRows();
       if (!rows.length) return showAlert('Nessun socio 0.5 con email valida da inviare in questo momento.', 'warning');
       const ready = rows.find(row => row.rec?.token && row.rec.registeredToSupabase) || rows[0];
       return assessmentEmailSendMember(ready.member.id, 'primary-email');
@@ -21481,6 +21482,15 @@ Per confermare scrivi ELIMINA.`);
         if (ar !== br) return ar - br;
         return playerFullName(a.member).localeCompare(playerFullName(b.member), 'it');
       });
+    }
+    function assessmentEmailQueueSearchValue() {
+      return cleanCell(document.getElementById('assessmentEmailQueueSearch')?.value || window.assessmentEmailQueueSearch || '');
+    }
+    function assessmentEmailQueueFilteredRows(rows=null) {
+      const sourceRows = rows || assessmentEmailQueueRows();
+      const search = assessmentEmailQueueSearchValue();
+      if (!search) return sourceRows;
+      return sourceRows.filter(row => assessmentSearchMatches(row.member, search));
     }
     function assessmentEmailPendingRows() {
       return assessmentEmailAllOperationalRows().filter(row => {
@@ -21641,9 +21651,19 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailQueuePanel() {
       const box = document.getElementById('assessmentEmailQueueContent');
       if (!box) return;
-      const rows = assessmentEmailQueueRows();
-      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.'));
-      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.slice(0,80).map((row, idx) => {
+      const allRows = assessmentEmailQueueRows();
+      const currentSearch = assessmentEmailQueueSearchValue();
+      window.assessmentEmailQueueSearch = currentSearch;
+      const rows = assessmentEmailQueueFilteredRows(allRows);
+      const filterHtml = `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px;">
+        <div style="flex:1 1 260px;min-width:0;"><label for="assessmentEmailQueueSearch">Cerca socio da inviare</label><input id="assessmentEmailQueueSearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="window.assessmentEmailQueueSearch=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.assessmentEmailQueueSearch=this.value; renderAssessmentEmailQueuePanel();}"></div>
+        <button class="assessment-email-mini success" type="button" onclick="window.assessmentEmailQueueSearch=document.getElementById('assessmentEmailQueueSearch')?.value || ''; renderAssessmentEmailQueuePanel()">Cerca</button>
+        <button class="assessment-email-mini" type="button" onclick="window.assessmentEmailQueueSearch=''; renderAssessmentEmailQueuePanel()">Pulisci</button>
+      </div>
+      <div class="assessment-email-footer-note" style="margin-top:-6px;margin-bottom:10px;">Mostrati ${rows.length} soci su ${allRows.length}. La lista non si ferma piu' ai primi nominativi.</div>`;
+      if (!allRows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.'));
+      if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun socio trovato con questa ricerca.'));
+      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map((row, idx) => {
         const email = assessmentEmailMemberEmail(row.member);
         const readyToSend = !!(row.rec?.token && row.rec.registeredToSupabase);
         const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!readyToSend ? 'Prepara link personale' : (PMO_IS_TEST_ENV ? 'Prova invio email' : 'Primo invio alle 07:00'));

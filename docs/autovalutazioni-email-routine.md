@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384.
 
-Ultimo aggiornamento: 2026-05-11 23:18
+Ultimo aggiornamento: 2026-05-11 23:21
 
 ## Obiettivo
 
@@ -101,6 +101,18 @@ Segreti richiesti nella Edge Function:
 - opzionale `ASSESSMENT_EMAIL_REPLY_TO`.
 
 La funzione non attiva ancora scheduler email automatico delle 07:00 e non legge ancora le mancate consegne. Questi restano step successivi.
+
+## Nota UI TEST v5.384
+
+La tab `Da inviare 0.5` non deve nascondere soci per limite di visualizzazione.
+
+Regole operative:
+
+- la lista completa dei soci eleggibili resta disponibile, anche quando i nominativi sono molti;
+- sopra la tabella c'e' una ricerca per nome, cognome, email o telefono;
+- il conteggio mostra quanti soci sono visibili rispetto al totale eleggibile;
+- il bottone alto `Prova invio sulla mia email` usa il socio filtrato quando e' attiva una ricerca, cosi' il test puo' essere fatto su un nominativo specifico;
+- l'ordine resta alfabetico, ma la visualizzazione non si ferma piu' ai primi nominativi.
 
 ## Nota mockup 2026-05-11 19:05
 
