@@ -4631,7 +4631,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 </div>
               </div>
               <div class="assessment-email-modal-actions">
-                <span id="assessmentEmailWhatsappFeedback" class="assessment-email-modal-feedback">Dopo l'invio reale, usa WhatsApp inviato per registrare data e ora.</span>
+                <span id="assessmentEmailWhatsappFeedback" class="assessment-email-modal-feedback">Apri WhatsApp registra data e ora sulla riga del socio.</span>
                 <div class="assessment-email-actions">
                   <button type="button" class="btn-secondary small-btn" onclick="copyAssessmentEmailWhatsappMessage()">Copia testo</button>
                   <button type="button" class="btn-success small-btn" onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
@@ -5040,7 +5040,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.381';
+    const APP_VERSION = '5.382';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21429,7 +21429,7 @@ Per confermare scrivi ELIMINA.`);
         if (!assessmentEmailHasValidEmail(row.member)) return true;
         if (!row.member.phone) return true;
         if (row.info.paused) return true;
-        if (row.rec?.status === 'sent' && assessmentEmailDateMs(row.rec.sentAt) && now - assessmentEmailDateMs(row.rec.sentAt) >= twoWeeks && !row.member.selfAssessmentWhatsappCheckAt) return true;
+        if (row.rec?.status === 'sent' && assessmentEmailDateMs(row.rec.sentAt) && now - assessmentEmailDateMs(row.rec.sentAt) >= twoWeeks) return true;
         return false;
       }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
     }
@@ -21602,7 +21602,7 @@ Per confermare scrivi ELIMINA.`);
         const sentAt = row.rec?.sentAt || row.rec?.createdAt;
         const whatsappAt = row.member.selfAssessmentWhatsappCheckAt || '';
         const contactText = whatsappAt
-          ? `WhatsApp verifica email<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
+          ? `WhatsApp aperto<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
           : `Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
         const contactBadge = whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info');
         const nextRule = whatsappAt ? 'Se non ha ricevuto, correggere email e reinviare' : 'Secondo invio dopo 7 giorni; poi WhatsApp manuale';
@@ -21628,8 +21628,8 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailWhatsappLastLabel(member) {
       return member?.selfAssessmentWhatsappCheckAt
-        ? `Ultimo WhatsApp: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
-        : 'WhatsApp non registrato';
+        ? `Ultimo WhatsApp aperto: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
+        : 'WhatsApp non ancora aperto';
     }
     function renderAssessmentEmailProblemsPanel() {
       const box = document.getElementById('assessmentEmailProblemsContent');
@@ -21647,7 +21647,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Soluzione proposta">${escapeHtml(problem.solution)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')">Scheda</button>
-            ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${escapeJs(problem.templateKey)}','${escapeJs(problem.label)}')">Apri WhatsApp</button><button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailMarkWhatsappVerification('${escapeJs(String(row.member.id))}')">WhatsApp inviato</button><span class="assessment-email-action-state">${escapeHtml(whatsappState)}</span>` : ''}
+            ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${escapeJs(problem.templateKey)}','${escapeJs(problem.label)}')">Apri WhatsApp</button><span class="assessment-email-action-state">${escapeHtml(whatsappState)}</span>` : ''}
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeJs(String(row.member.id))}')">Metti in pausa</button>
           </div></td>
         </tr>`;
@@ -21833,7 +21833,7 @@ Per confermare scrivi ELIMINA.`);
       if (problem) problem.textContent = state.problemLabel || 'Problema da verificare';
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
       if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
-      if (feedback) feedback.textContent = "Dopo l'invio reale, usa WhatsApp inviato per registrare data e ora.";
+      if (feedback) feedback.textContent = "Apri WhatsApp registra data e ora sulla riga del socio.";
       document.querySelectorAll('[data-assessment-whatsapp-template]').forEach(button => {
         button.classList.toggle('active', button.dataset.assessmentWhatsappTemplate === key);
       });
@@ -21880,14 +21880,20 @@ Per confermare scrivi ELIMINA.`);
         setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
       }, 0);
     }
+    function assessmentEmailRegisterWhatsappOpen(member) {
+      if (!member) return '';
+      member.selfAssessmentWhatsappCheckAt = new Date().toISOString();
+      save('giocatori', giocatori);
+      return member.selfAssessmentWhatsappCheckAt;
+    }
     function copyAssessmentEmailWhatsappMessage() {
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
-      copyTextWithFallback(text, "Testo WhatsApp copiato. Dopo l'invio reale usa WhatsApp inviato.");
+      copyTextWithFallback(text, "Testo WhatsApp copiato. La data viene registrata solo con Apri WhatsApp.");
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
-      if (feedback) feedback.textContent = "Testo copiato. Dopo l'invio reale usa WhatsApp inviato.";
+      if (feedback) feedback.textContent = "Testo copiato. La data viene registrata solo con Apri WhatsApp.";
     }
     function openSelectedAssessmentEmailWhatsapp() {
       const state = window.assessmentEmailWhatsappModalState || {};
@@ -21897,18 +21903,10 @@ Per confermare scrivi ELIMINA.`);
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
       const returnMemberId = String(member.id);
+      assessmentEmailRegisterWhatsappOpen(member);
       closeAssessmentEmailWhatsappModal();
       assessmentEmailReturnToProblemMember(returnMemberId);
-      const openedWindow = openWhatsAppWebSameTab(phoneCheck.digits, text);
-      if (openedWindow) showAlert('WhatsApp aperto. Dopo l\'invio reale usa WhatsApp inviato.', 'success');
-    }
-    function assessmentEmailMarkWhatsappVerification(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) return showAlert('Socio non trovato.', 'warning');
-      member.selfAssessmentWhatsappCheckAt = new Date().toISOString();
-      save('giocatori', giocatori);
-      renderAssessmentEmailPanels();
-      showAlert(`WhatsApp registrato per ${playerFullName(member)} alle ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}.`, 'success');
+      openWhatsAppWebSameTab(phoneCheck.digits, text);
     }
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeAssessmentEmailWhatsappModal();

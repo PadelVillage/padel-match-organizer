@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.381, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382, senza backend Gmail automatico.
 
-Ultimo aggiornamento: 2026-05-11 21:53
+Ultimo aggiornamento: 2026-05-11 22:22
 
 ## Obiettivo
 
@@ -44,24 +44,18 @@ Regole operative integrate:
 - quando lo staff inserisce una email valida nella scheda socio, il socio esce automaticamente da `Problemi` e rientra in `Da inviare 0.5`, se non e' gia stato chiuso, messo in pausa o contattato nel ciclo corrente;
 - il pulsante `Apri WhatsApp` nei problemi apre una finestra sovrapposta con tre testi selezionabili: `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`;
 - i messaggi WhatsApp non contengono il link diretto alla scheda di autovalutazione;
-- aprire WhatsApp o copiare il testo non cambia da solo lo stato del socio;
-- dopo l'invio reale del messaggio, lo staff usa `WhatsApp inviato` per salvare la data della verifica WhatsApp;
-- per le richieste email gia inviate e senza risposta da oltre soglia, `WhatsApp inviato` sposta il socio in `Contattati / in attesa` come verifica WhatsApp aperta;
+- copiare il testo non cambia lo stato del socio;
+- quando lo staff preme `Apri WhatsApp`, l'app salva subito data e ora come ultimo WhatsApp aperto;
+- per le richieste email gia inviate e senza risposta da oltre soglia, il socio resta visibile nei problemi con la data dell'ultimo WhatsApp aperto finche' non risponde, viene corretto il dato o viene messo in pausa;
 - per le email mancanti, il socio resta in `Problemi` finche non viene salvata una email valida.
 
 Anche questa integrazione resta solo UI/localStorage: Gmail, lettura mancate consegne e scheduler email automatico saranno un passaggio backend separato.
 
 ## Nota UI TEST v5.380
 
-Dopo revisione del testo operativo, il comando di conferma manuale viene stabilizzato come `WhatsApp inviato`.
+Dopo revisione del testo operativo, viene introdotto un secondo comando di conferma manuale.
 
-Regole visibili:
-
-- sotto le azioni WhatsApp nei problemi compare `WhatsApp non registrato` se lo staff non ha ancora confermato l'invio reale;
-- dopo il click su `WhatsApp inviato`, viene salvata la data e ora in `selfAssessmentWhatsappCheckAt`;
-- sotto le azioni compare `Ultimo WhatsApp: gg/mm/aaaa, hh:mm`;
-- se lo staff invia di nuovo WhatsApp e ripreme il bottone, viene aggiornata l'ultima data;
-- il bottone non invia messaggi: registra solo che lo staff ha gia scritto davvero al socio.
+Questa regola e' superata dalla semplificazione v5.382, che registra direttamente il click su `Apri WhatsApp`.
 
 ## Nota UI TEST v5.381
 
@@ -70,7 +64,17 @@ Dopo il click su `Apri WhatsApp` nella finestra di scelta messaggio:
 - la finestra si chiude automaticamente;
 - la sezione torna alla tab `Problemi`;
 - la riga del socio appena lavorato viene centrata ed evidenziata brevemente;
-- lo stato del socio non cambia finche' lo staff non preme `WhatsApp inviato` dopo l'invio reale del messaggio.
+- la data dell'ultimo WhatsApp aperto e' gia visibile sotto l'azione del socio.
+
+## Nota UI TEST v5.382
+
+Dopo semplificazione del flusso manuale WhatsApp:
+
+- nella tab `Problemi` resta un solo comando operativo: `Apri WhatsApp`;
+- quando lo staff preme `Apri WhatsApp` nella finestra di scelta messaggio, l'app salva subito data e ora in `selfAssessmentWhatsappCheckAt`;
+- sotto l'azione compare `Ultimo WhatsApp aperto: gg/mm/aaaa, hh:mm`;
+- se lo staff apre di nuovo WhatsApp per lo stesso socio, viene aggiornata l'ultima data;
+- il comando non garantisce che il messaggio sia stato inviato dentro WhatsApp: registra il momento in cui lo staff ha aperto WhatsApp dalla scheda.
 
 ## Nota mockup 2026-05-11 19:05
 
@@ -100,7 +104,7 @@ Regola operativa:
 - i messaggi proposti nel mockup sono `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`;
 - il messaggio `Richiesta email mancante` spiega che l'email serve per inviare la scheda di autovalutazione e aggiornare correttamente il livello;
 - nessun messaggio WhatsApp contiene il link diretto alla scheda;
-- dopo l'invio reale del messaggio, lo staff usa `WhatsApp inviato` per registrare data e ora.
+- quando lo staff preme `Apri WhatsApp`, l'app registra data e ora sotto la riga del socio.
 
 ## Lettura rapida del flusso
 
@@ -117,7 +121,7 @@ Regola operativa:
 | 13 | Attesa/compilazione | Se non ci sono mancate consegne, il socio resta in attesa; se compila, passa a completato. | Non diciamo "consegnata con certezza", solo "inviata/in attesa" finche' non compila. |
 | 14 | Secondo invio | Se dopo 7 giorni non c'e' compilazione ne' mancata consegna, parte un secondo invio automatico. | Il secondo invio usa lo stesso link personale. |
 | 15 | WhatsApp manuale | Se dopo altri 7 giorni dal secondo invio non c'e' compilazione, il socio passa a `da contattare via WhatsApp`. | Il sistema non insiste oltre via email. |
-| 15A | Verifica WhatsApp | Aprire WhatsApp non basta a cambiare stato: lo staff deve premere `WhatsApp inviato` dopo aver inviato davvero il messaggio. | Il socio passa a `Verifica WhatsApp - in attesa risposta` e resta visibile l'ultima data WhatsApp registrata. |
+| 15A | Verifica WhatsApp | Lo staff apre WhatsApp dal pannello problemi e l'app registra subito data e ora dell'apertura. | Il socio resta gestibile con l'ultima data WhatsApp aperta visibile, senza un secondo bottone di conferma. |
 | 15B | Nessuna risposta | Se il socio non risponde ne' alle email ne' a WhatsApp, lo staff puo' chiudere il tentativo in pausa. | Stato leggibile: `Autovalutazione in pausa - nessuna risposta`. Il socio resta attivo e livello `0.5`. |
 | 16 | Conferma compilazione | Quando il socio compila la scheda, viene inviata una email automatica di conferma ricezione. | La conferma non comunica ancora il livello validato. |
 | 17-19 | Validazione | La risposta passa in Post-invio, lo staff valida e applica il livello. | Il socio esce dal bacino `0.5`, riceve una email automatica con il livello validato e poi va nello storico. |
@@ -286,8 +290,8 @@ Regola WhatsApp:
 - cliccare `Apri WhatsApp` prepara o apre il messaggio, ma non cambia automaticamente lo stato del socio;
 - il messaggio WhatsApp chiede se la mail e' stata ricevuta, non contiene il link di autovalutazione;
 - se il socio non ha ricevuto la mail, lo staff chiede l'email corretta;
-- dopo l'invio reale del messaggio, lo staff deve premere `WhatsApp inviato`;
-- a quel punto il socio passa a `Verifica WhatsApp - in attesa risposta` e resta visibile l'ultima data WhatsApp registrata;
+- quando lo staff preme `Apri WhatsApp`, l'app registra data e ora sotto il socio;
+- il socio resta gestibile nei pannelli operativi con l'ultima data WhatsApp aperta visibile;
 - quando arriva una email corretta, lo staff aggiorna la scheda socio e rimette il socio nel giro di invio email;
 - il livello del socio resta `0.5` finche' la scheda non viene compilata, controllata e applicata dallo staff;
 - se la scheda non arriva ma la mail era stata ricevuta, il socio resta gestibile con solleciti WhatsApp manuali senza link diretto.
@@ -444,7 +448,7 @@ Blocchi proposti:
    - email mancante o non valida;
    - errore invio;
    - azione WhatsApp manuale per verificare ricezione email o recuperare email corretta;
-   - comando `WhatsApp inviato` dopo l'invio reale del messaggio;
+   - data e ora dell'ultimo `Apri WhatsApp`;
    - stato `Autovalutazione in pausa - nessuna risposta` per chi non risponde mai.
 
 5. Post-invio e risposte
