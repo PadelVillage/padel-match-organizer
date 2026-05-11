@@ -914,7 +914,7 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.379 - Autovalutazione: recupero email mancante e scelta messaggio WhatsApp */
+    /* v5.380 - Autovalutazione: storico ultimo WhatsApp nei problemi */
     .assessment-email-page { max-width:1500px; margin:0 auto; }
     .assessment-email-page, .assessment-email-panel, .assessment-email-content, .assessment-email-card { min-width:0; }
     .assessment-email-compact-hero { border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:14px 16px; margin-bottom:12px; }
@@ -972,6 +972,7 @@
     .assessment-email-name { font-weight:900; color:#101828; }
     .assessment-email-meta { display:block; color:#667085; font-size:12px; margin-top:3px; }
     .assessment-email-mini-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .assessment-email-action-state { flex:1 0 100%; color:#667085; font-size:11px; line-height:1.3; text-align:right; margin-top:1px; }
     .assessment-email-mini { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 9px; font-size:12px; font-weight:900; white-space:normal; line-height:1.15; cursor:pointer; }
     .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
@@ -1028,6 +1029,7 @@
       .assessment-email-table td[data-label="Azioni"] { display:block; }
       .assessment-email-table td[data-label="Azioni"]::before { display:block; margin-bottom:7px; }
       .assessment-email-mini-actions { justify-content:flex-start; }
+      .assessment-email-action-state { text-align:left; }
     }
     @media (max-width:720px) {
       .assessment-email-topbar, .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
@@ -4628,7 +4630,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 </div>
               </div>
               <div class="assessment-email-modal-actions">
-                <span id="assessmentEmailWhatsappFeedback" class="assessment-email-modal-feedback">Dopo l'invio reale, usa Segna verifica per cambiare stato.</span>
+                <span id="assessmentEmailWhatsappFeedback" class="assessment-email-modal-feedback">Dopo l'invio reale, usa WhatsApp inviato per registrare data e ora.</span>
                 <div class="assessment-email-actions">
                   <button type="button" class="btn-secondary small-btn" onclick="copyAssessmentEmailWhatsappMessage()">Copia testo</button>
                   <button type="button" class="btn-success small-btn" onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
@@ -5037,7 +5039,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.379';
+    const APP_VERSION = '5.380';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21623,6 +21625,11 @@ Per confermare scrivi ELIMINA.`);
       if (!row.member.phone) return { badge:assessmentEmailBadge('Telefono mancante','err'), label:'Telefono mancante', templateKey:'whatsapp-check', solution:'Aggiorna telefono per usare WhatsApp di recupero.' };
       return { badge:assessmentEmailBadge('Secondo invio scaduto','warn'), label:'Secondo invio senza risposta', templateKey:'whatsapp-reminder', solution:'Chiedi se ha ricevuto la mail; se no, recupera email corretta.' };
     }
+    function assessmentEmailWhatsappLastLabel(member) {
+      return member?.selfAssessmentWhatsappCheckAt
+        ? `Ultimo WhatsApp: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
+        : 'WhatsApp non registrato';
+    }
     function renderAssessmentEmailProblemsPanel() {
       const box = document.getElementById('assessmentEmailProblemsContent');
       if (!box) return;
@@ -21630,6 +21637,7 @@ Per confermare scrivi ELIMINA.`);
       if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun problema operativo rilevato.'));
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const problem = assessmentEmailProblemText(row);
+        const whatsappState = assessmentEmailWhatsappLastLabel(row.member);
         return `<tr>
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
           <td data-label="Problema">${problem.badge}</td>
@@ -21638,7 +21646,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Soluzione proposta">${escapeHtml(problem.solution)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')">Scheda</button>
-            ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${escapeJs(problem.templateKey)}','${escapeJs(problem.label)}')">Apri WhatsApp</button><button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailMarkWhatsappVerification('${escapeJs(String(row.member.id))}')">Segna verifica</button>` : ''}
+            ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${escapeJs(problem.templateKey)}','${escapeJs(problem.label)}')">Apri WhatsApp</button><button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailMarkWhatsappVerification('${escapeJs(String(row.member.id))}')">WhatsApp inviato</button><span class="assessment-email-action-state">${escapeHtml(whatsappState)}</span>` : ''}
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeJs(String(row.member.id))}')">Metti in pausa</button>
           </div></td>
         </tr>`;
@@ -21824,7 +21832,7 @@ Per confermare scrivi ELIMINA.`);
       if (problem) problem.textContent = state.problemLabel || 'Problema da verificare';
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
       if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
-      if (feedback) feedback.textContent = "Dopo l'invio reale, usa Segna verifica per cambiare stato.";
+      if (feedback) feedback.textContent = "Dopo l'invio reale, usa WhatsApp inviato per registrare data e ora.";
       document.querySelectorAll('[data-assessment-whatsapp-template]').forEach(button => {
         button.classList.toggle('active', button.dataset.assessmentWhatsappTemplate === key);
       });
@@ -21865,9 +21873,9 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
-      copyTextWithFallback(text, "Testo WhatsApp copiato. Dopo l'invio reale usa Segna verifica.");
+      copyTextWithFallback(text, "Testo WhatsApp copiato. Dopo l'invio reale usa WhatsApp inviato.");
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
-      if (feedback) feedback.textContent = "Testo copiato. Dopo l'invio reale usa Segna verifica.";
+      if (feedback) feedback.textContent = "Testo copiato. Dopo l'invio reale usa WhatsApp inviato.";
     }
     function openSelectedAssessmentEmailWhatsapp() {
       const state = window.assessmentEmailWhatsappModalState || {};
@@ -21878,7 +21886,7 @@ Per confermare scrivi ELIMINA.`);
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
       openWhatsAppWebSameTab(phoneCheck.digits, text);
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
-      if (feedback) feedback.textContent = "WhatsApp aperto. Dopo l'invio reale usa Segna verifica.";
+      if (feedback) feedback.textContent = "WhatsApp aperto. Dopo l'invio reale usa WhatsApp inviato.";
     }
     function assessmentEmailMarkWhatsappVerification(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
@@ -21886,7 +21894,7 @@ Per confermare scrivi ELIMINA.`);
       member.selfAssessmentWhatsappCheckAt = new Date().toISOString();
       save('giocatori', giocatori);
       renderAssessmentEmailPanels();
-      showAlert(`Verifica WhatsApp registrata per ${playerFullName(member)}.`, 'success');
+      showAlert(`WhatsApp registrato per ${playerFullName(member)} alle ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}.`, 'success');
     }
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeAssessmentEmailWhatsappModal();
