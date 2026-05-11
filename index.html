@@ -4836,7 +4836,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.373';
+    const APP_VERSION = '5.374';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6594,6 +6594,7 @@ body.assessment-public-mode .assessment-public-only-card {
             if (tabName === 'assessment') displayAssessment();
             if (tabName === 'groups') { renderAssistantGroups(); renderPlayerAvailabilityPreview(); }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
+            if (tabName === 'matchpoint') refreshDataActionStatuses();
             if (tabName === 'routines') renderPmoRoutineCenter();
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
@@ -9366,6 +9367,7 @@ body.assessment-public-mode .assessment-public-only-card {
       history: ['storico prenotazioni']
     };
     let dataActionStatusRefreshInProgress = false;
+    let matchpointRoutinePanelRefreshTimer = null;
 
     function getDataActionImportSummary(key) {
       const types = DATA_IMPORT_ACTION_TYPES[key];
@@ -9475,6 +9477,21 @@ body.assessment-public-mode .assessment-public-only-card {
       try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
     }
 
+    function isMatchpointDataTabActive() {
+      const tab = document.getElementById('matchpoint');
+      return !!tab && tab.classList.contains('active');
+    }
+
+    function refreshMatchpointRoutinePanelIfVisible() {
+      if (document.hidden || !isMatchpointDataTabActive()) return;
+      try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+    }
+
+    function ensureMatchpointRoutinePanelAutoRefresh() {
+      if (matchpointRoutinePanelRefreshTimer) return;
+      matchpointRoutinePanelRefreshTimer = setInterval(refreshMatchpointRoutinePanelIfVisible, 30000);
+    }
+
     function toggleMatchpointDataAccordion(id, forceOpen) {
       const panel = document.getElementById(id);
       if (!panel) return false;
@@ -9561,6 +9578,7 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
     function renderMatchpointRoutinePanel() {
+      ensureMatchpointRoutinePanelAutoRefresh();
       const tbody = document.getElementById('matchpointRoutineStatusBody');
       if (!tbody) return;
       const rows = [
@@ -9646,6 +9664,9 @@ body.assessment-public-mode .assessment-public-only-card {
         <button type="button" class="matchpoint-routine-action warning" onclick="openMatchpointDataAccordion('matchpointUpdatesAccordion'); focusMatchpointDataAnchor('${escapeJs(first.anchorId)}')">Apri dettagli</button>
       `;
     }
+
+    document.addEventListener('visibilitychange', refreshMatchpointRoutinePanelIfVisible);
+    window.addEventListener('focus', refreshMatchpointRoutinePanelIfVisible);
 
     function formatMetricNumber(value) {
       const parsed = parseInt(value, 10);

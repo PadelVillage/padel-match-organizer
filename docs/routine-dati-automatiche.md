@@ -1,6 +1,6 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 in TEST per ricalcolo automatico della colonna `Prossima esecuzione`.
 
 ## Obiettivo
 
@@ -122,6 +122,16 @@ Gli orari di `Clienti Matchpoint` e `Storico Matchpoint` sono invertiti:
 
 - `Clienti Matchpoint`: 04:30;
 - `Storico Matchpoint`: 05:00.
+
+## Hotfix UI v5.374
+
+La colonna `Prossima esecuzione` deve ricalcolarsi anche mentre la pagina resta aperta.
+
+Regola corretta:
+
+- se un orario della stessa giornata e' gia passato, non deve restare visibile;
+- per `Prenotazioni future`, dopo le 14:30 la prossima esecuzione deve diventare 17:30, poi 21:30, poi 05:30 del giorno successivo;
+- il pannello viene aggiornato all'apertura della sezione DATI, ogni 30 secondi mentre la sezione e' visibile e quando la finestra torna in primo piano.
 
 ## Rifinitura UI v5.372
 
