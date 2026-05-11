@@ -914,8 +914,9 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.376 - Autovalutazione: pannello invio email e post-invio */
+    /* v5.377 - Autovalutazione: pannello invio email e post-invio */
     .assessment-email-page { max-width:1500px; margin:0 auto; }
+    .assessment-email-page, .assessment-email-panel, .assessment-email-content, .assessment-email-card { min-width:0; }
     .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:14px; }
     .assessment-email-topbar h2 { margin:0 0 5px; color:var(--primary); font-size:28px; line-height:1.05; }
     .assessment-email-topbar p { margin:0; color:#667085; font-size:15px; line-height:1.35; }
@@ -958,15 +959,15 @@
     .assessment-email-mini-kpi .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
     .assessment-email-mini-kpi .value { margin-top:5px; color:var(--primary); font-size:24px; line-height:1; font-weight:900; }
     .assessment-email-mini-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
-    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow-x:auto; background:#fff; }
-    .assessment-email-table { width:100%; min-width:1060px; border-collapse:collapse; font-size:14px; }
-    .assessment-email-table th { text-align:left; background:#f3f6fb; color:#344054; padding:11px 12px; border-bottom:1px solid #e7edf6; white-space:nowrap; }
-    .assessment-email-table td { padding:12px; border-top:1px solid #e7edf6; vertical-align:middle; }
+    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow-x:visible; background:#fff; }
+    .assessment-email-table { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:13px; }
+    .assessment-email-table th { text-align:left; background:#f3f6fb; color:#344054; padding:11px 10px; border-bottom:1px solid #e7edf6; white-space:normal; overflow-wrap:anywhere; line-height:1.25; }
+    .assessment-email-table td { padding:11px 10px; border-top:1px solid #e7edf6; vertical-align:middle; overflow-wrap:anywhere; line-height:1.35; }
     .assessment-email-table tr:first-child td { border-top:0; }
     .assessment-email-name { font-weight:900; color:#101828; }
     .assessment-email-meta { display:block; color:#667085; font-size:12px; margin-top:3px; }
     .assessment-email-mini-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
-    .assessment-email-mini { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 9px; font-size:12px; font-weight:900; white-space:nowrap; cursor:pointer; }
+    .assessment-email-mini { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 9px; font-size:12px; font-weight:900; white-space:normal; line-height:1.15; cursor:pointer; }
     .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
     .assessment-email-mini.danger { border-color:#f1b9b3; background:#fff1f0; color:#b42318; }
@@ -988,10 +989,30 @@
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
+    @media (max-width:1100px) {
+      .assessment-email-table-wrap { border:0; background:transparent; overflow-x:visible; }
+      .assessment-email-table { display:block; width:100%; overflow-x:visible; }
+      .assessment-email-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+      .assessment-email-table tbody { display:grid; gap:10px; width:100%; }
+      .assessment-email-table tr { display:block; width:100%; border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:10px 12px; box-shadow:0 1px 3px rgba(31,71,136,.05); }
+      .assessment-email-table td { display:grid; grid-template-columns:minmax(112px,.42fr) minmax(0,1fr); gap:8px; align-items:start; border-top:1px solid #edf2f7; padding:8px 0; }
+      .assessment-email-table tr:first-child td { border-top:1px solid #edf2f7; }
+      .assessment-email-table td:first-child { border-top:0; padding-top:0; }
+      .assessment-email-table td:last-child { padding-bottom:0; }
+      .assessment-email-table td::before { content:attr(data-label); color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; line-height:1.25; }
+      .assessment-email-table td[data-label="Azioni"] { display:block; }
+      .assessment-email-table td[data-label="Azioni"]::before { display:block; margin-bottom:7px; }
+      .assessment-email-mini-actions { justify-content:flex-start; }
+    }
     @media (max-width:720px) {
       .assessment-email-topbar, .assessment-email-panel-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
       .assessment-email-kpis, .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
+      .assessment-email-env, .assessment-email-badge { white-space:normal; }
+      .assessment-email-status-item { grid-template-columns:1fr; }
+      .assessment-email-content { padding:12px; }
+      .assessment-email-table td { grid-template-columns:1fr; gap:4px; }
+      .assessment-email-table td::before { margin-bottom:2px; }
     }
 
 
@@ -4945,7 +4966,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.376';
+    const APP_VERSION = '5.377';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21457,13 +21478,13 @@ Per confermare scrivi ELIMINA.`);
         const email = assessmentEmailMemberEmail(row.member);
         const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!row.rec?.token || !row.rec.registeredToSupabase ? 'Prepara link personale' : 'Primo invio alle 07:00');
         return `<tr>
-          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
-          <td>${escapeHtml(email || '-')}</td>
-          <td>${escapeHtml(PMO_IS_TEST_ENV ? 'Email personale prova' : 'Email reale dopo attivazione')}</td>
-          <td>${assessmentEmailQueueStatus(row)}</td>
-          <td>${idx + 1}</td>
-          <td>${escapeHtml(action)}</td>
-          <td><div class="assessment-email-mini-actions">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
+          <td data-label="Email reale">${escapeHtml(email || '-')}</td>
+          <td data-label="Destinatario in prova">${escapeHtml(PMO_IS_TEST_ENV ? 'Email personale prova' : 'Email reale dopo attivazione')}</td>
+          <td data-label="Link personale">${assessmentEmailQueueStatus(row)}</td>
+          <td data-label="Ordine">${idx + 1}</td>
+          <td data-label="Prossima azione">${escapeHtml(action)}</td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${(!row.rec?.token || !row.rec.registeredToSupabase) ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailPrepareMember('${escapeHtml(String(row.member.id))}')">Prepara</button>` : ''}
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda</button>
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
@@ -21479,12 +21500,12 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Contatto</th><th>Stato contatto</th><th>Scheda</th><th>Prossima regola</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const sentAt = row.rec?.sentAt || row.rec?.createdAt;
         return `<tr>
-          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
-          <td>Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span></td>
-          <td>${assessmentEmailBadge('Inviata','info')}</td>
-          <td>${assessmentEmailBadge('Non compilato','muted')}</td>
-          <td>Secondo invio dopo 7 giorni; poi WhatsApp manuale</td>
-          <td><div class="assessment-email-mini-actions">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
+          <td data-label="Contatto">Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span></td>
+          <td data-label="Stato contatto">${assessmentEmailBadge('Inviata','info')}</td>
+          <td data-label="Scheda">${assessmentEmailBadge('Non compilato','muted')}</td>
+          <td data-label="Prossima regola">Secondo invio dopo 7 giorni; poi WhatsApp manuale</td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeHtml(String(row.member.id))}')">WhatsApp</button>
             <button class="assessment-email-mini danger" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
@@ -21506,12 +21527,12 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const problem = assessmentEmailProblemText(row);
         return `<tr>
-          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
-          <td>${problem.badge}</td>
-          <td>${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
-          <td>${escapeHtml(assessmentEmailFormatDateTime(row.rec?.sentAt || row.rec?.createdAt || row.member.selfAssessmentWhatsappCheckAt))}</td>
-          <td>${escapeHtml(problem.solution)}</td>
-          <td><div class="assessment-email-mini-actions">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
+          <td data-label="Problema">${problem.badge}</td>
+          <td data-label="Email">${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
+          <td data-label="Ultimo controllo">${escapeHtml(assessmentEmailFormatDateTime(row.rec?.sentAt || row.rec?.createdAt || row.member.selfAssessmentWhatsappCheckAt))}</td>
+          <td data-label="Soluzione proposta">${escapeHtml(problem.solution)}</td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda</button>
             ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeHtml(String(row.member.id))}')">Apri WhatsApp</button>` : ''}
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Metti in pausa</button>
@@ -21538,13 +21559,13 @@ Per confermare scrivi ELIMINA.`);
         const diff = assessmentEmailLevelDiff(row.response);
         const auto = assessmentEmailIsAutoApplicable(row.response);
         return `<tr>
-          <td>${assessmentEmailMemberCell(row.member, auto ? 'scheda completa - nessun blocco' : 'scostamento alto da controllare')}</td>
-          <td>${escapeHtml(assessmentEmailFormatDateTime(row.response?.submitted_at))}</td>
-          <td>${escapeHtml(row.response?.declared_level || '-')}</td>
-          <td>${escapeHtml(row.response?.calculated_level || row.response?.declared_level || '-')}</td>
-          <td>${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
-          <td>${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Validazione staff necessaria')}</td>
-          <td><div class="assessment-email-mini-actions">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, auto ? 'scheda completa - nessun blocco' : 'scostamento alto da controllare')}</td>
+          <td data-label="Compilata il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.submitted_at))}</td>
+          <td data-label="Dichiarato">${escapeHtml(row.response?.declared_level || '-')}</td>
+          <td data-label="Calcolato">${escapeHtml(row.response?.calculated_level || row.response?.declared_level || '-')}</td>
+          <td data-label="Differenza">${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
+          <td data-label="Esito proposto">${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Validazione staff necessaria')}</td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Applica' : 'Valida'}</button>
             <button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')">Dettagli</button>
           </div></td>
@@ -21575,13 +21596,13 @@ Per confermare scrivi ELIMINA.`);
         const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
         const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Validazione manuale staff');
         return `<tr>
-          <td>${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
-          <td>${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
-          <td>${statusBadge}</td>
-          <td>${escapeHtml(row.member.level ?? '-')}</td>
-          <td>${escapeHtml(row.member.selfAssessmentWhatsappCheckAt || paused ? 'Email + WhatsApp' : 'Email')}</td>
-          <td>${escapeHtml(note)}</td>
-          <td><div class="assessment-email-mini-actions">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
+          <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
+          <td data-label="Stato">${statusBadge}</td>
+          <td data-label="Livello">${escapeHtml(row.member.level ?? '-')}</td>
+          <td data-label="Canale">${escapeHtml(row.member.selfAssessmentWhatsappCheckAt || paused ? 'Email + WhatsApp' : 'Email')}</td>
+          <td data-label="Nota">${escapeHtml(note)}</td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
           </div></td>

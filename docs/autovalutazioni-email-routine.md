@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.377, senza backend Gmail automatico.
 
-Ultimo aggiornamento: 2026-05-11 18:21
+Ultimo aggiornamento: 2026-05-11 18:46
 
 ## Obiettivo
 
@@ -11,6 +11,17 @@ Affiancare al canale WhatsApp manuale un invio email automatico del modulo di au
 Il perimetro iniziale considera solo i soci che nel gestionale Padel Match Organizer hanno livello `0.5`, cioe' soci ancora da valutare.
 
 WhatsApp resta disponibile come canale manuale di controllo e recupero.
+
+## Nota UI TEST v5.377
+
+Le tabelle operative della sezione Autovalutazione devono adattarsi alla larghezza dello schermo senza scroll orizzontale interno.
+
+Regole grafiche:
+
+- niente larghezza minima fissa sulle tabelle del nuovo flusso email;
+- testi, date, note e bottoni possono andare a capo;
+- su schermi stretti le righe tabellari diventano schede verticali con etichette leggibili;
+- la logica dati e le azioni operative restano invariate.
 
 ## Lettura rapida del flusso
 
