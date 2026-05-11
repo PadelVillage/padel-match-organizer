@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.380, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.381, senza backend Gmail automatico.
 
-Ultimo aggiornamento: 2026-05-11 21:40
+Ultimo aggiornamento: 2026-05-11 21:53
 
 ## Obiettivo
 
@@ -45,15 +45,15 @@ Regole operative integrate:
 - il pulsante `Apri WhatsApp` nei problemi apre una finestra sovrapposta con tre testi selezionabili: `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`;
 - i messaggi WhatsApp non contengono il link diretto alla scheda di autovalutazione;
 - aprire WhatsApp o copiare il testo non cambia da solo lo stato del socio;
-- dopo l'invio reale del messaggio, lo staff usa `Segna verifica` per salvare la data della verifica WhatsApp;
-- per le richieste email gia inviate e senza risposta da oltre soglia, `Segna verifica` sposta il socio in `Contattati / in attesa` come verifica WhatsApp aperta;
+- dopo l'invio reale del messaggio, lo staff usa `WhatsApp inviato` per salvare la data della verifica WhatsApp;
+- per le richieste email gia inviate e senza risposta da oltre soglia, `WhatsApp inviato` sposta il socio in `Contattati / in attesa` come verifica WhatsApp aperta;
 - per le email mancanti, il socio resta in `Problemi` finche non viene salvata una email valida.
 
 Anche questa integrazione resta solo UI/localStorage: Gmail, lettura mancate consegne e scheduler email automatico saranno un passaggio backend separato.
 
 ## Nota UI TEST v5.380
 
-Dopo revisione del testo operativo, il pulsante `Segna verifica` viene rinominato in `WhatsApp inviato`.
+Dopo revisione del testo operativo, il comando di conferma manuale viene stabilizzato come `WhatsApp inviato`.
 
 Regole visibili:
 
@@ -62,6 +62,15 @@ Regole visibili:
 - sotto le azioni compare `Ultimo WhatsApp: gg/mm/aaaa, hh:mm`;
 - se lo staff invia di nuovo WhatsApp e ripreme il bottone, viene aggiornata l'ultima data;
 - il bottone non invia messaggi: registra solo che lo staff ha gia scritto davvero al socio.
+
+## Nota UI TEST v5.381
+
+Dopo il click su `Apri WhatsApp` nella finestra di scelta messaggio:
+
+- la finestra si chiude automaticamente;
+- la sezione torna alla tab `Problemi`;
+- la riga del socio appena lavorato viene centrata ed evidenziata brevemente;
+- lo stato del socio non cambia finche' lo staff non preme `WhatsApp inviato` dopo l'invio reale del messaggio.
 
 ## Nota mockup 2026-05-11 19:05
 

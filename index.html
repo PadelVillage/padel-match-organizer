@@ -914,7 +914,7 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.380 - Autovalutazione: storico ultimo WhatsApp nei problemi */
+    /* v5.381 - Autovalutazione: chiusura modale WhatsApp e ritorno riga */
     .assessment-email-page { max-width:1500px; margin:0 auto; }
     .assessment-email-page, .assessment-email-panel, .assessment-email-content, .assessment-email-card { min-width:0; }
     .assessment-email-compact-hero { border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:14px 16px; margin-bottom:12px; }
@@ -973,6 +973,7 @@
     .assessment-email-meta { display:block; color:#667085; font-size:12px; margin-top:3px; }
     .assessment-email-mini-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
     .assessment-email-action-state { flex:1 0 100%; color:#667085; font-size:11px; line-height:1.3; text-align:right; margin-top:1px; }
+    .assessment-email-row-focus { box-shadow:inset 0 0 0 3px rgba(37,99,235,.28); background:#f8fbff; }
     .assessment-email-mini { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 9px; font-size:12px; font-weight:900; white-space:normal; line-height:1.15; cursor:pointer; }
     .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
@@ -5039,7 +5040,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.380';
+    const APP_VERSION = '5.381';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21638,7 +21639,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const problem = assessmentEmailProblemText(row);
         const whatsappState = assessmentEmailWhatsappLastLabel(row.member);
-        return `<tr>
+        return `<tr data-assessment-problem-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
           <td data-label="Problema">${problem.badge}</td>
           <td data-label="Email">${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
@@ -21868,6 +21869,17 @@ Per confermare scrivi ELIMINA.`);
         modal.setAttribute('aria-hidden', 'true');
       }
     }
+    function assessmentEmailReturnToProblemMember(memberId) {
+      setAssessmentEmailPanel('problems');
+      setTimeout(() => {
+        const row = Array.from(document.querySelectorAll('[data-assessment-problem-member]'))
+          .find(el => String(el.dataset.assessmentProblemMember || '') === String(memberId || ''));
+        if (!row) return;
+        row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
+        row.classList.add('assessment-email-row-focus');
+        setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
+      }, 0);
+    }
     function copyAssessmentEmailWhatsappMessage() {
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
@@ -21884,9 +21896,11 @@ Per confermare scrivi ELIMINA.`);
       const phoneCheck = validateWhatsAppPhone(member.phone || '');
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
-      openWhatsAppWebSameTab(phoneCheck.digits, text);
-      const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
-      if (feedback) feedback.textContent = "WhatsApp aperto. Dopo l'invio reale usa WhatsApp inviato.";
+      const returnMemberId = String(member.id);
+      closeAssessmentEmailWhatsappModal();
+      assessmentEmailReturnToProblemMember(returnMemberId);
+      const openedWindow = openWhatsAppWebSameTab(phoneCheck.digits, text);
+      if (openedWindow) showAlert('WhatsApp aperto. Dopo l\'invio reale usa WhatsApp inviato.', 'success');
     }
     function assessmentEmailMarkWhatsappVerification(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
