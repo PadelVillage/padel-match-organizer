@@ -914,6 +914,85 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
+    /* v5.375 - Autovalutazione: pannello invio email e post-invio */
+    .assessment-email-page { max-width:1500px; margin:0 auto; }
+    .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:14px; }
+    .assessment-email-topbar h2 { margin:0 0 5px; color:var(--primary); font-size:28px; line-height:1.05; }
+    .assessment-email-topbar p { margin:0; color:#667085; font-size:15px; line-height:1.35; }
+    .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:9px 13px; font-weight:800; white-space:nowrap; }
+    .assessment-email-kpis { display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:10px; margin:12px 0 16px; }
+    .assessment-email-kpi { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:12px 13px; min-height:82px; }
+    .assessment-email-kpi .label { color:#667085; font-size:12px; font-weight:800; text-transform:uppercase; }
+    .assessment-email-kpi .value { margin-top:5px; color:var(--primary); font-size:28px; font-weight:900; line-height:1; }
+    .assessment-email-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
+    .assessment-email-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:10px 0 14px; padding-bottom:8px; }
+    .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:9px 12px; font-weight:900; cursor:pointer; }
+    .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
+    .assessment-email-panel.active { display:block; }
+    .assessment-email-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:17px 18px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
+    .assessment-email-panel-title { margin:0 0 4px; color:var(--primary); font-size:21px; line-height:1.15; }
+    .assessment-email-panel-copy { margin:0; color:#667085; font-size:14px; line-height:1.35; }
+    .assessment-email-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+    .assessment-email-content { padding:16px 18px 18px; }
+    .assessment-email-status-layout { display:grid; grid-template-columns:minmax(360px,.72fr) minmax(460px,1fr); gap:14px; align-items:start; }
+    .assessment-email-card { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:14px; }
+    .assessment-email-card h3 { margin:0 0 10px; color:var(--primary); font-size:17px; line-height:1.2; }
+    .assessment-email-status-list { display:grid; gap:9px; }
+    .assessment-email-status-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; border:1px solid #e7edf6; border-radius:8px; padding:10px 11px; background:#fbfdff; }
+    .assessment-email-status-item strong { color:#101828; }
+    .assessment-email-status-item span { color:#667085; font-size:13px; }
+    .assessment-email-badge { display:inline-flex; align-items:center; justify-content:center; min-width:84px; border-radius:999px; padding:6px 9px; font-size:12px; font-weight:900; white-space:nowrap; }
+    .assessment-email-badge.ok { color:#168a53; background:#eefaf3; border:1px solid #b8e6ca; }
+    .assessment-email-badge.warn { color:#7a4d00; background:#fff7e6; border:1px solid #f2d39b; }
+    .assessment-email-badge.err { color:#b42318; background:#fff1f0; border:1px solid #f1b9b3; }
+    .assessment-email-badge.info { color:#2563eb; background:#eef5ff; border:1px solid #bdd5ff; }
+    .assessment-email-badge.muted { color:#475467; background:#f6f7f9; border:1px solid #d9e0ea; }
+    .assessment-email-timeline { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .assessment-email-step { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; min-height:126px; }
+    .assessment-email-step-num { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--primary); color:#fff; font-weight:900; margin-bottom:8px; }
+    .assessment-email-step strong { display:block; margin-bottom:5px; color:#101828; }
+    .assessment-email-step span { color:#667085; font-size:13px; line-height:1.35; }
+    .assessment-email-mini-kpis { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+    .assessment-email-mini-kpi { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; min-height:74px; }
+    .assessment-email-mini-kpi .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
+    .assessment-email-mini-kpi .value { margin-top:5px; color:var(--primary); font-size:24px; line-height:1; font-weight:900; }
+    .assessment-email-mini-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
+    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow-x:auto; background:#fff; }
+    .assessment-email-table { width:100%; min-width:1060px; border-collapse:collapse; font-size:14px; }
+    .assessment-email-table th { text-align:left; background:#f3f6fb; color:#344054; padding:11px 12px; border-bottom:1px solid #e7edf6; white-space:nowrap; }
+    .assessment-email-table td { padding:12px; border-top:1px solid #e7edf6; vertical-align:middle; }
+    .assessment-email-table tr:first-child td { border-top:0; }
+    .assessment-email-name { font-weight:900; color:#101828; }
+    .assessment-email-meta { display:block; color:#667085; font-size:12px; margin-top:3px; }
+    .assessment-email-mini-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .assessment-email-mini { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 9px; font-size:12px; font-weight:900; white-space:nowrap; cursor:pointer; }
+    .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
+    .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
+    .assessment-email-mini.danger { border-color:#f1b9b3; background:#fff1f0; color:#b42318; }
+    .assessment-email-filter-grid { display:grid; grid-template-columns:1.2fr repeat(4,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+    .assessment-email-template-grid { display:grid; grid-template-columns:minmax(260px,.62fr) minmax(420px,1fr); gap:14px; align-items:start; }
+    .assessment-email-template-list { display:grid; gap:8px; }
+    .assessment-email-template-section { color:var(--primary); font-size:12px; font-weight:900; text-transform:uppercase; margin:5px 0 0; }
+    .assessment-email-template-row { border:1px solid #e7edf6; border-left:5px solid var(--primary); border-radius:8px; background:#fff; padding:11px 12px; cursor:pointer; }
+    .assessment-email-template-row.active { background:#f3f7ff; border-color:#b9cbea; border-left-color:#2563eb; }
+    .assessment-email-template-row strong { display:block; color:#101828; }
+    .assessment-email-template-row span { display:block; color:#667085; font-size:12px; margin-top:3px; }
+    .assessment-email-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .assessment-email-preview { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; color:#344054; white-space:pre-wrap; line-height:1.45; min-height:130px; margin-top:10px; }
+    .assessment-email-footer-note { margin-top:14px; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; color:#667085; font-size:13px; line-height:1.35; }
+    @media (max-width:1100px) {
+      .assessment-email-kpis, .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
+      .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width:720px) {
+      .assessment-email-topbar, .assessment-email-panel-head { flex-direction:column; }
+      .assessment-email-actions { justify-content:flex-start; }
+      .assessment-email-kpis, .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
+    }
+
 
     /* v5.97 - Autovalutazioni: invio WhatsApp minimal */
     .assessment-whatsapp-layout { display:grid; grid-template-columns: 0.85fr 1.25fr 0.9fr; gap:14px; align-items:start; margin-top:12px; }
@@ -3928,14 +4007,19 @@ body.assessment-public-mode .assessment-public-only-card {
 
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
           <span class="nav-order">3</span>
-          <span class="nav-copy"><span class="nav-main">Autovalutazioni</span><span class="nav-sub">Invii e risposte</span></span>
+          <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAssessment" class="side-submenu">
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Pre-invio')">Pre-invio</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Post-invio')">Post-invio e risposte</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Demo scheda autovalutazione')">Demo scheda autovalutazione</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Impostazioni link')">Token e Supabase</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Stato invio')">Stato invio</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Da inviare 0.5')">Da inviare 0.5</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Contattati in attesa')">Contattati / in attesa</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Problemi')">Problemi</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Post-invio')">Post-invio</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Storico')">Storico</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Testi')">Testi</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
         </div>
 
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subGroups" aria-expanded="false" onclick="switchSidebarParent('members','subGroups')">
@@ -4337,98 +4421,135 @@ body.assessment-public-mode .assessment-public-only-card {
 
     <div id="assessment" class="tab-content">
       <div class="section assessment-v5144-section assessment-compact-page">
-        <div class="assessment-sticky-head compact-stats-only">
-          <div id="assessmentOpsDashboard" class="assessment-ops-dashboard compact"></div>
-        </div>
-        <div id="assessmentActionBanner" class="assessment-banner"></div>
+        <div id="assessmentEmailRoot" class="assessment-email-page">
+          <div class="assessment-email-topbar">
+            <div>
+              <h2>Autovalutazione</h2>
+              <p>Invio automatico email per soci livello 0.5, con WhatsApp manuale come canale di recupero.</p>
+            </div>
+            <div id="assessmentEmailEnvPill" class="assessment-email-env">Modalita prova: destinatari reali bloccati</div>
+          </div>
 
-        <h3 id="anchor-assessment-invii" class="assessment-section-title compact">📨 Pre-invio</h3>
-        <div class="assessment-flow-card pre">
-          <div class="assessment-flow-header compact">
-            <div>
-              <h4>Invia modulo autovalutazione</h4>
-              <p class="muted">Cerca il socio, controlla lo stato, invia tramite WhatsApp.</p>
-            </div>
-            <div class="assessment-limit-chip" id="assessmentDailyLimitChip" style="display:none">Invii oggi: 0/10</div>
-          </div>
-          <div class="assessment-whatsapp-layout">
-            <div class="assessment-whatsapp-panel">
-              <h5>🔎 Cerca</h5>
-              <p class="panel-sub">Trova il socio da contattare. La lista si popola solo dopo ricerca o filtro.</p>
-              <div class="field">
-                <label>Ricerca libera</label>
-                <input id="assessmentPreSearch" placeholder="nome, telefono o email" oninput="assessmentClearPreQuickFilter(); renderAssessmentPrePanel()" />
-              </div>
-              <div class="assessment-pre-quick-actions" aria-label="Ricerche rapide pre-invio">
-                <button type="button" id="assessmentQuickReady" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('ready')">0.5 da inviare</button>
-                <button type="button" id="assessmentQuickNoPhone" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentSetPreQuickFilter('noPhone')">Senza telefono</button>
-              </div>
-            </div>
-            <div class="assessment-whatsapp-panel">
-              <h5>👤 Controlla</h5>
-              <p class="panel-sub">Clicca una riga per selezionare il socio. Vedi solo lo stato essenziale.</p>
-              <div id="assessmentPreList" class="assessment-clean-list minimal assessment-whatsapp-results"></div>
-            </div>
-            <div class="assessment-whatsapp-panel">
-              <h5>💬 Invia</h5>
-              <p class="panel-sub">Invia il modulo al socio selezionato.</p>
-              <div id="assessmentPreSelectedSummary" class="assessment-main-send-box"></div>
-              <button id="assessmentPreMainSend" class="btn-success assessment-main-send-btn" onclick="setActionAnchor(this); assessmentSendSelectedPreWhatsApp()">💬 Invia modulo WhatsApp</button>
-              <button id="assessmentPrePrepareButton" class="btn-warning assessment-main-send-btn" style="display:none" onclick="setActionAnchor(this); assessmentPrepareSelectedPreInvites()">🛠️ Prepara token e Supabase</button>
-              <div id="assessmentPreQueue" class="assessment-guided-box"></div>
-            </div>
-          </div>
-          <details id="assessmentPreparationDetails" class="assessment-preparation-details">
-            <summary>Azioni tecniche</summary>
-            <div class="assessment-technical-steps">
-              <div class="assessment-technical-step">
-                <span class="step-number">1</span>
-                <strong>Token</strong>
-                <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentCreateOrRegenerateSelectedTokens()">🔁 Crea / rigenera token</button>
-              </div>
-              <div class="assessment-technical-step">
-                <span class="step-number">2</span>
-                <strong>Supabase</strong>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentRegisterSelectedTokens()">☁️ Registra Supabase</button>
-              </div>
-            </div>
-            <div class="info-box" style="margin-top:10px;">La registrazione su Supabase usa l’accesso personale e i permessi del profilo staff.</div>
-          </details>
-        </div>
+          <section id="assessmentEmailKpis" class="assessment-email-kpis" aria-label="Indicatori autovalutazione"></section>
 
-        <h3 id="anchor-assessment-post" class="assessment-section-title">📬 Post-invio e risposte</h3>
-        <div class="assessment-flow-card post">
-          <div class="assessment-flow-header">
-            <div>
-              <h4>Post-invio e risposte</h4>
-              <p class="muted">Controlla chi ha risposto e reinvia solo quando serve.</p>
+          <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
+            <button id="anchor-assessment-stato" class="assessment-email-tab active" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
+            <button id="anchor-assessment-da-inviare" class="assessment-email-tab" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
+            <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')">Contattati / in attesa</button>
+            <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')">Problemi</button>
+            <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
+            <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
+            <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
+          </nav>
+
+          <section id="assessmentEmailRoutinePanel" class="assessment-email-panel active" data-assessment-email-panel="routine">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Stato invio automatico</h3>
+                <p class="assessment-email-panel-copy">Controllo unico per invio automatico, mancate consegne, limite giornaliero e modalita prova.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Il controllo mancate consegne richiede il collegamento Gmail backend.')">Controlla mancate consegne</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La prova invio email verra attivata dopo il collegamento Gmail.')">Prova invio sulla mia email</button>
+              </div>
             </div>
-            <div class="assessment-sync-box">
-              <button id="assessmentSyncTopButton" class="assessment-sync-status-btn visible" onclick="handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
-              <div id="assessmentSyncLastCheck" class="assessment-sync-meta">Ultimo controllo: mai eseguito</div>
+            <div id="assessmentEmailRoutineContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailQueuePanel" class="assessment-email-panel" data-assessment-email-panel="queue">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Da inviare 0.5</h3>
+                <p class="assessment-email-panel-copy">Soci attivi con livello 0.5, ordinati per priorita operativa. Per ora l'invio email automatico non e' ancora attivo.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La selezione dei primi 20 sara attiva con il motore email.')">Seleziona primi 20</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La prova invio email verra attivata dopo il collegamento Gmail.')">Prova invio sulla mia email</button>
+              </div>
             </div>
-          </div>
-          <div class="assessment-filter-grid">
-            <div>
-              <label>Ricerca</label>
-              <input id="assessmentPostSearch" placeholder="nome, telefono, email" oninput="renderAssessmentPostPanel()" />
+            <div id="assessmentEmailQueueContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailPendingPanel" class="assessment-email-panel" data-assessment-email-panel="pending">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Contattati / in attesa</h3>
+                <p class="assessment-email-panel-copy">Soci con richiesta gia inviata e scheda non ancora compilata.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Il controllo mancate consegne richiede il collegamento Gmail backend.')">Controlla mancate consegne</button>
+              </div>
             </div>
-            <div>
-              <label>Stato risposta</label>
-              <select id="assessmentPostStatus" onchange="renderAssessmentPostPanel()">
-                <option value="all">Tutti</option>
-                <option value="pendingResponses">Risposte da gestire</option>
-                <option value="noResponse">Senza risposta</option>
-                <option value="paused">In pausa</option>
-                <option value="levelApplied">Livello applicato</option>
-              </select>
+            <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailProblemsPanel" class="assessment-email-panel" data-assessment-email-panel="problems">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Problemi</h3>
+                <p class="assessment-email-panel-copy">Email mancanti, link da preparare, richieste senza risposta e verifiche WhatsApp manuali.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Le mancate consegne Gmail saranno lette dal backend email.')">Mostra mancate consegne</button>
+                <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('WhatsApp resta manuale: aprilo dalla riga del singolo socio.')">Prepara WhatsApp selezionati</button>
+              </div>
             </div>
-          </div>
-          <div id="assessmentPostBulkActions" class="assessment-actions-row" style="display:none;">
-            <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentStartGuidedSendFromPost()">💬 Reinvia selezionati</button>
-          </div>
-          <div id="assessmentPostQueue" class="assessment-guided-box"></div>
-          <div id="assessmentPostList" class="assessment-clean-list"></div>
+            <div id="assessmentEmailProblemsContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailPostPanel" class="assessment-email-panel" data-assessment-email-panel="post">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Post-invio e risposte</h3>
+                <p class="assessment-email-panel-copy">Coda operativa solo per schede compilate e ricevute correttamente. Le piu vecchie restano in alto.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button id="assessmentSyncTopButton" class="assessment-sync-status-btn visible" onclick="handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentApplyAutoApplicableResponses()">Applica auto-applicabili</button>
+              </div>
+            </div>
+            <div id="assessmentSyncLastCheck" class="assessment-sync-meta" style="padding:0 18px 12px;">Ultimo controllo: mai eseguito</div>
+            <div id="assessmentEmailPostContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailHistoryPanel" class="assessment-email-panel" data-assessment-email-panel="history">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Storico</h3>
+                <p class="assessment-email-panel-copy">Archivio ricercabile dei giri chiusi: livelli applicati, auto-applicati e soci messi in pausa.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailClearHistoryFilters()">Pulisci filtri</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('L esportazione della vista storico sara collegata in una fase successiva.')">Esporta vista</button>
+              </div>
+            </div>
+            <div id="assessmentEmailHistoryContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailTextsPanel" class="assessment-email-panel" data-assessment-email-panel="texts">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Testi</h3>
+                <p class="assessment-email-panel-copy">Sottosezione per gestire testi email automatici e messaggi WhatsApp manuali dello stesso flusso.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); resetAssessmentCommunicationTemplate()">Ripristina testo base</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); saveAssessmentCommunicationTemplate()">Salva testi</button>
+              </div>
+            </div>
+            <div id="assessmentEmailTextsContent" class="assessment-email-content"></div>
+          </section>
+
+          <div id="assessmentActionBanner" class="assessment-banner"></div>
+          <div id="assessmentPreList" style="display:none"></div>
+          <div id="assessmentPreSelectedSummary" style="display:none"></div>
+          <div id="assessmentPreQueue" style="display:none"></div>
+          <div id="assessmentPostList" style="display:none"></div>
+          <div id="assessmentPostQueue" style="display:none"></div>
+          <div id="assessmentOpsDashboard" style="display:none"></div>
+          <span id="assessmentDailyLimitChip" style="display:none"></span>
         </div>
 
 
@@ -4489,18 +4610,6 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select required name="overhead"><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
             </div>
 
-            <div class="assessment-public-form-card">
-              <h4>Disponibilità di gioco</h4>
-              <p class="assessment-public-note">Indicazione sintetica per aiutarci a organizzare meglio le partite.</p>
-              <div class="assessment-public-grid">
-                <div class="field"><label for="assessmentPublicAvailabilityTime">Quando giochi più volentieri? <span class="assessment-public-required">*</span></label><select id="assessmentPublicAvailabilityTime" required name="availabilityTime"><option value="" selected disabled>Seleziona</option><option>Mattina</option><option>Pranzo</option><option>Pomeriggio</option><option>Sera</option><option>Indifferente</option></select></div>
-                <div class="field"><label for="assessmentPublicPreferredDays">Giorni preferiti <span class="assessment-public-required">*</span></label><select id="assessmentPublicPreferredDays" required name="preferredDays"><option value="" selected disabled>Seleziona</option><option>In settimana</option><option>Weekend</option><option>Entrambi</option><option>Indifferente</option></select></div>
-                <div class="field"><label for="assessmentPublicDesiredFrequency">Frequenza desiderata <span class="assessment-public-required">*</span></label><select id="assessmentPublicDesiredFrequency" required name="desiredFrequency"><option value="" selected disabled>Seleziona</option><option>1 volta a settimana</option><option>2 volte a settimana</option><option>3+ volte a settimana</option><option>Quando capita</option></select></div>
-                <div class="field"><label for="assessmentPublicNotice">Preavviso minimo <span class="assessment-public-required">*</span></label><select id="assessmentPublicNotice" required name="notice"><option value="" selected disabled>Seleziona</option><option>Anche in giornata</option><option>Almeno 1 giorno prima</option><option>Almeno 2 giorni prima</option><option>Solo con largo anticipo</option></select></div>
-                <div class="field"><label for="assessmentPublicMatchType">Tipo partita preferita <span class="assessment-public-required">*</span></label><select id="assessmentPublicMatchType" required name="matchType"><option value="" selected disabled>Seleziona</option><option>Maschile</option><option>Femminile</option><option>Mista</option><option>Indifferente</option></select></div>
-              </div>
-            </div>
-
             <div class="assessment-public-message error" id="assessmentPublicError">Compila i campi obbligatori prima di inviare.</div>
             <div class="assessment-public-message success" id="assessmentPublicSuccess">Autovalutazione inviata correttamente. Grazie!</div>
             <div class="assessment-public-form-card"><div class="assessment-public-actions"><button type="button" class="btn-primary" id="assessmentPublicOpenConfirm">Invia autovalutazione</button></div></div>
@@ -4527,7 +4636,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-primary" onclick="setActionAnchor(this); saveAssessmentSettings(); displayAssessment()">💾 Salva impostazioni</button>
             <button class="btn-success" onclick="setActionAnchor(this); registerAssessmentTokensInSupabase()">🚀 Registra tutti i token in Supabase</button>
             <button class="btn-success" onclick="setActionAnchor(this); syncAssessmentResponsesFromSupabase()">🔄 Sincronizza risposte da Supabase</button>
-            <button class="btn-warning" onclick="setActionAnchor(this); repairAppliedAssessmentAvailabilities()">🔧 Ripristina disponibilità applicate</button>
             <button class="btn-secondary" onclick="setActionAnchor(this); triggerAssessmentResponsesImport()">📥 Importa risposte da Excel/CSV</button>
             <button class="btn-secondary" onclick="setActionAnchor(this); buildAssessmentTokensSql()">⚙️ SQL manuale emergenza</button>
             <input type="file" id="assessmentResponsesFile" accept=".xlsx,.xls,.csv,.json" style="display:none" onchange="importAssessmentResponsesFile(this.files[0])" />
@@ -4836,7 +4944,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.374';
+    const APP_VERSION = '5.375';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -4931,6 +5039,120 @@ body.assessment-public-mode .assessment-public-only-card {
     let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: PMO_DEFAULT_FEEDBACK_BASE_URL });
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let assessmentPausedTokens = safeLoad('assessmentPausedTokens', {});
+    const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
+      'primary-email': {
+        subject: 'Completa la tua autovalutazione Padel Village',
+        type: 'Email - primo invio autovalutazione',
+        body: `Ciao {nome},
+
+stiamo aggiornando i livelli dei soci Padel Village per organizzare partite sempre piu equilibrate.
+
+Ti chiediamo di compilare questa breve scheda di autovalutazione:
+{link_autovalutazione}
+
+Richiede circa 2 minuti.
+
+Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
+
+Grazie,
+Padel Village`
+      },
+      'recall-email': {
+        subject: 'Promemoria autovalutazione Padel Village',
+        type: 'Email - secondo invio dopo 7 giorni',
+        body: `Ciao {nome},
+
+ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato qualche giorno fa.
+
+Se non l'hai ancora compilata, puoi farlo da questo link:
+{link_autovalutazione}
+
+Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.
+
+Grazie,
+Padel Village`
+      },
+      'received-email': {
+        subject: 'Scheda autovalutazione ricevuta',
+        type: 'Email - conferma ricezione scheda',
+        body: `Ciao {nome},
+
+abbiamo ricevuto correttamente la tua scheda di autovalutazione.
+
+Lo staff la controllera e aggiornera il tuo livello nel gestionale Padel Village.
+
+Riceverai una nuova conferma quando il livello sara stato validato.
+
+Grazie,
+Padel Village`
+      },
+      'level-email': {
+        subject: 'Livello Padel Village aggiornato',
+        type: 'Email - livello validato',
+        body: `Ciao {nome},
+
+la tua autovalutazione e' stata controllata.
+
+Il livello aggiornato nel gestionale Padel Village e':
+{livello_validato}
+
+Useremo questo livello per proporti partite piu equilibrate.
+
+Grazie,
+Padel Village`
+      },
+      'whatsapp-check': {
+        subject: 'Non previsto per WhatsApp',
+        type: 'WhatsApp - verifica ricezione email',
+        body: `Ciao {nome}, sono Maurizio di Padel Village.
+
+Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello.
+
+Puoi controllare anche in spam o promozioni?
+
+Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.
+
+Grazie.`
+      },
+      'whatsapp-reminder': {
+        subject: 'Non previsto per WhatsApp',
+        type: 'WhatsApp - promemoria controllo mail',
+        body: `Ciao {nome}, sono Maurizio di Padel Village.
+
+Ti ricordiamo di controllare la mail che ti abbiamo inviato per la scheda di autovalutazione.
+
+Quando riesci, compilala dalla mail ricevuta.
+
+Grazie.`
+      },
+      'whatsapp-level': {
+        subject: 'Non previsto per WhatsApp',
+        type: 'WhatsApp - livello validato',
+        body: `Ciao {nome}, ti confermo che abbiamo aggiornato il tuo livello Padel Village.
+
+Il livello validato e':
+{livello_validato}
+
+Lo useremo per organizzare partite piu equilibrate.
+
+Grazie.`
+      }
+    };
+    function normalizeAssessmentCommunicationTemplates(input) {
+      const source = input && typeof input === 'object' ? input : {};
+      const out = {};
+      Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).forEach(([key, base]) => {
+        const saved = source[key] && typeof source[key] === 'object' ? source[key] : {};
+        out[key] = {
+          subject: cleanCell(saved.subject || base.subject),
+          type: cleanCell(saved.type || base.type),
+          body: String(saved.body || base.body)
+        };
+      });
+      return out;
+    }
+    let assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(safeLoad('assessmentCommunicationTemplates', null));
+    let assessmentCommunicationTemplateState = { selected:'primary-email' };
     let dailyAssistantState = safeLoad('dailyAssistantState', {});
     let dailyPlayerGroups = safeLoad('dailyPlayerGroups', []);
     function normalizeDailyPlayerGroupsArchive() {
@@ -5616,6 +5838,7 @@ body.assessment-public-mode .assessment-public-only-card {
       'dailyDiffHistory',
       'lastMatchpointImportSummary',
       'assessmentDailySendLog',
+      'assessmentCommunicationTemplates',
       'dailyAssistantState',
       'dailyPlayerGroups',
       'lunchMatchInvitations',
@@ -6162,7 +6385,7 @@ body.assessment-public-mode .assessment-public-only-card {
       dashboard: '🏠 Dashboard',
       matchpoint: 'DATI (in/out)',
       members: '👥 Database soci',
-      assessment: '📝 Autovalutazione Livelli',
+      assessment: 'Autovalutazione',
       groups: '👥 Gruppi soci',
       fillSlots: '🎯 Apri Partite',
       contact: '💬 Messaggi WhatsApp',
@@ -6295,15 +6518,17 @@ body.assessment-public-mode .assessment-public-only-card {
         'filtri': '#anchor-members-filtri'
       },
       assessment: {
-        'pre invio': '#anchor-assessment-invii',
-        'pre-invio': '#anchor-assessment-invii',
-        'invii autovalutazione': '#anchor-assessment-invii',
-        'invii e prova singola': '#anchor-assessment-invii',
-        'prova singola': '#anchor-assessment-invii',
+        'stato invio': '#anchor-assessment-stato',
+        'da inviare 0.5': '#anchor-assessment-da-inviare',
+        'contattati in attesa': '#anchor-assessment-attesa',
+        'contattati': '#anchor-assessment-attesa',
+        'problemi': '#anchor-assessment-problemi',
         'post invio': '#anchor-assessment-post',
         'post-invio': '#anchor-assessment-post',
-        'post invio e risposte': '#anchor-assessment-post',
-        'post-invio e risposte': '#anchor-assessment-post',
+        'storico': '#anchor-assessment-storico',
+        'testi': '#anchor-assessment-testi',
+        'scheda pubblica': '#anchor-assessment-scheda',
+        'strumenti tecnici': '#anchor-assessment-impostazioni',
         'impostazioni link': '#anchor-assessment-impostazioni',
         'token e supabase': '#anchor-assessment-impostazioni',
         'sincronizza': '#anchor-assessment-post, #assessmentActionBanner, .assessment-toolbar',
@@ -6359,16 +6584,21 @@ body.assessment-public-mode .assessment-public-only-card {
         try { showAddMember(); } catch (err) { console.warn(err); }
       }
       if (tabName === 'assessment' && key.includes('da verificare')) {
+        if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('post');
         const filter = document.getElementById('assessmentFilter');
         if (filter) filter.value = 'review';
         try { displayAssessment(); } catch (err) { console.warn(err); }
+      }
+      if (tabName === 'assessment' && typeof assessmentEmailPanelFromAnchorKey === 'function') {
+        const panel = assessmentEmailPanelFromAnchorKey(key);
+        if (panel) setAssessmentEmailPanel(panel);
       }
       if (tabName === 'assessment' && (key.includes('sincronizza') || key.includes('risposte supabase'))) {
         const filter = document.getElementById('assessmentFilter');
         if (filter) filter.value = 'newResponses';
         try { displayAssessment(); } catch (err) { console.warn(err); }
       }
-      if (tabName === 'assessment' && (key.includes('impostazioni link') || key.includes('token e supabase'))) {
+      if (tabName === 'assessment' && (key.includes('impostazioni link') || key.includes('token e supabase') || key.includes('strumenti tecnici'))) {
         const details = document.querySelector('.assessment-tech-details');
         if (details) details.open = true;
       }
@@ -8567,6 +8797,7 @@ body.assessment-public-mode .assessment-public-only-card {
         assessmentSettings,
         assessmentDailySendLog,
         assessmentPausedTokens,
+        assessmentCommunicationTemplates,
         dailyAssistantState,
         dailyPlayerGroups,
         lunchMatchInvitations,
@@ -8780,13 +9011,13 @@ body.assessment-public-mode .assessment-public-only-card {
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
       giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
-      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
       renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
@@ -16868,8 +17099,8 @@ Grazie!`
         </section>
         <section class="dashboard-ops-box assessments">
           <div class="dashboard-ops-head">
-            <h3>📝 Autovalutazioni</h3>
-            <button class="btn-primary small-btn" onclick="setActionAnchor(this); switchTab('assessment')">Apri Autovalutazioni ›</button>
+            <h3>Autovalutazione</h3>
+            <button class="btn-primary small-btn" onclick="setActionAnchor(this); switchTab('assessment')">Apri Autovalutazione</button>
           </div>
           <div class="dashboard-ops-metrics">
             ${dashboardOpsMetric('Pronti da inviare', toSend)}
@@ -20982,6 +21213,536 @@ Per confermare scrivi ELIMINA.`);
         cleanCell(profile.matchType || '')
       ].filter(Boolean).join(' · ') || '-';
     }
+    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || 'routine';
+    function assessmentEmailFeaturePending(message) {
+      showAlert(message || 'Funzione prevista nel prossimo step tecnico.', 'info');
+    }
+    function assessmentEmailMemberEmail(member) {
+      return cleanCell(member?.email || member?.mail || member?.emailAddress || '');
+    }
+    function assessmentEmailHasValidEmail(member) {
+      const email = assessmentEmailMemberEmail(member);
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+    function assessmentEmailDateMs(value) {
+      const time = value ? new Date(value).getTime() : 0;
+      return Number.isFinite(time) ? time : 0;
+    }
+    function assessmentEmailFormatDateTime(value) {
+      const time = assessmentEmailDateMs(value);
+      if (!time) return '-';
+      return new Date(time).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function assessmentEmailFormatDate(value) {
+      const time = assessmentEmailDateMs(value);
+      if (!time) return '-';
+      return new Date(time).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+    function assessmentEmailNextSevenAM() {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(7, 0, 0, 0);
+      if (next <= now) next.setDate(next.getDate() + 1);
+      const weekday = next.toLocaleDateString('it-IT', { weekday:'short' });
+      const day = weekday ? weekday.charAt(0).toUpperCase() + weekday.slice(1).replace('.', '') : '';
+      return `${day} ${next.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' })} alle 07:00`;
+    }
+    function assessmentEmailAddDays(value, days) {
+      const base = assessmentEmailDateMs(value) ? new Date(value) : new Date();
+      base.setDate(base.getDate() + days);
+      return base.toISOString();
+    }
+    function assessmentEmailLevelValue(value) {
+      const n = parseFloat(String(value || '').replace(',', '.'));
+      return Number.isFinite(n) ? n : NaN;
+    }
+    function assessmentEmailLevelDiff(response) {
+      const declared = assessmentEmailLevelValue(response?.declared_level);
+      const calculated = assessmentEmailLevelValue(response?.calculated_level || response?.declared_level);
+      if (!Number.isFinite(declared) || !Number.isFinite(calculated)) return null;
+      return Math.abs(declared - calculated);
+    }
+    function assessmentEmailDiffText(diff) {
+      if (diff === null || diff === undefined) return '-';
+      return String(Math.round(diff * 10) / 10);
+    }
+    function assessmentEmailIsAutoApplicable(response) {
+      const diff = assessmentEmailLevelDiff(response);
+      return diff !== null && diff <= 0.5;
+    }
+    function assessmentEmailMemberApplied(member, info) {
+      return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
+    }
+    function assessmentEmailCycleDate(member, info) {
+      return assessmentEmailDateMs(info?.response?.submitted_at)
+        || assessmentEmailDateMs(info?.rec?.completedAt)
+        || assessmentEmailDateMs(info?.rec?.sentAt)
+        || assessmentEmailDateMs(info?.rec?.createdAt)
+        || assessmentEmailDateMs(member?.selfAssessmentDate)
+        || assessmentEmailDateMs(member?.createdAt);
+    }
+    function assessmentEmailAllOperationalRows() {
+      return assessmentAllActiveMembers().filter(member => !isTechnicalMemberRecord(member)).map(member => {
+        const info = assessmentRecordFor(member);
+        return { member, info, rec:info.rec, response:info.response };
+      });
+    }
+    function assessmentEmailQueueRows() {
+      return assessmentEmailAllOperationalRows().filter(row => {
+        if (!isLevelZeroPointFive(row.member)) return false;
+        if (row.response || assessmentEmailMemberApplied(row.member, row.info) || row.info.paused) return false;
+        if (row.rec?.status === 'sent') return false;
+        return true;
+      }).sort((a,b) => {
+        const ae = assessmentEmailHasValidEmail(a.member) ? 0 : 1;
+        const be = assessmentEmailHasValidEmail(b.member) ? 0 : 1;
+        if (ae !== be) return ae - be;
+        const ar = a.rec?.registeredToSupabase ? 0 : 1;
+        const br = b.rec?.registeredToSupabase ? 0 : 1;
+        if (ar !== br) return ar - br;
+        return playerFullName(a.member).localeCompare(playerFullName(b.member), 'it');
+      });
+    }
+    function assessmentEmailPendingRows() {
+      return assessmentEmailAllOperationalRows().filter(row => {
+        if (row.response || row.info.paused || assessmentEmailMemberApplied(row.member, row.info)) return false;
+        return row.rec?.status === 'sent';
+      }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
+    }
+    function assessmentEmailProblemRows() {
+      const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      return assessmentEmailAllOperationalRows().filter(row => {
+        if (!isLevelZeroPointFive(row.member)) return false;
+        if (row.response || assessmentEmailMemberApplied(row.member, row.info)) return false;
+        if (!assessmentEmailHasValidEmail(row.member)) return true;
+        if (!row.member.phone) return true;
+        if (row.info.paused) return true;
+        if (row.rec?.status === 'sent' && assessmentEmailDateMs(row.rec.sentAt) && now - assessmentEmailDateMs(row.rec.sentAt) >= twoWeeks) return true;
+        return false;
+      }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
+    }
+    function assessmentEmailPostRows() {
+      return assessmentEmailAllOperationalRows().filter(row => {
+        return !!row.response && !assessmentEmailMemberApplied(row.member, row.info);
+      }).sort((a,b) => assessmentEmailDateMs(a.response?.submitted_at) - assessmentEmailDateMs(b.response?.submitted_at));
+    }
+    function assessmentEmailHistoryRows() {
+      const search = cleanCell(document.getElementById('assessmentHistorySearch')?.value || '');
+      const status = document.getElementById('assessmentHistoryStatus')?.value || 'all';
+      const period = document.getElementById('assessmentHistoryPeriod')?.value || '30';
+      const channel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
+      const level = document.getElementById('assessmentHistoryLevel')?.value || 'all';
+      const now = new Date();
+      const periodStart = new Date(now);
+      if (period === '30') periodStart.setDate(now.getDate() - 30);
+      if (period === '90') periodStart.setDate(now.getDate() - 90);
+      if (period === 'year') periodStart.setMonth(0, 1);
+      periodStart.setHours(0, 0, 0, 0);
+      return assessmentEmailAllOperationalRows().filter(row => {
+        const applied = assessmentEmailMemberApplied(row.member, row.info);
+        const paused = row.info.paused;
+        const cycleTime = assessmentEmailCycleDate(row.member, row.info);
+        const withWhatsapp = !!(row.member.selfAssessmentWhatsappCheckAt || paused);
+        if (!applied && !paused) return false;
+        if (search && !assessmentSearchMatches(row.member, search)) return false;
+        if (status === 'applied' && !applied) return false;
+        if (status === 'auto' && (!applied || !assessmentEmailIsAutoApplicable(row.response))) return false;
+        if (status === 'paused' && !paused) return false;
+        if (period !== 'all' && cycleTime && cycleTime < periodStart.getTime()) return false;
+        if (channel === 'email' && withWhatsapp) return false;
+        if (channel === 'email_whatsapp' && !withWhatsapp) return false;
+        if (level === 'still05' && !isLevelZeroPointFive(row.member)) return false;
+        if (level === '2-2.5') {
+          const n = assessmentEmailLevelValue(row.member.level);
+          if (!(n >= 2 && n <= 2.5)) return false;
+        }
+        if (level === '3-3.5') {
+          const n = assessmentEmailLevelValue(row.member.level);
+          if (!(n >= 3 && n <= 3.5)) return false;
+        }
+        if (level === '4plus') {
+          const n = assessmentEmailLevelValue(row.member.level);
+          if (!(n >= 4)) return false;
+        }
+        return true;
+      }).sort((a,b) => assessmentEmailCycleDate(b.member, b.info) - assessmentEmailCycleDate(a.member, a.info));
+    }
+    function assessmentEmailBadge(label, cls='info') {
+      return `<span class="assessment-email-badge ${cls}">${escapeHtml(label)}</span>`;
+    }
+    function assessmentEmailEmpty(message) {
+      return `<div class="assessment-empty">${escapeHtml(message)}</div>`;
+    }
+    function assessmentEmailMemberCell(member, meta='') {
+      const line = meta || `liv. ${member?.level ?? '-'} - ${assessmentEmailMemberEmail(member) || 'email mancante'}`;
+      return `<span class="assessment-email-name">${escapeHtml(playerFullName(member))}</span><span class="assessment-email-meta">${escapeHtml(line)}</span>`;
+    }
+    function setAssessmentEmailPanel(panel='routine') {
+      window.assessmentEmailActivePanel = panel || 'routine';
+      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === window.assessmentEmailActivePanel));
+      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
+      renderAssessmentEmailPanels();
+    }
+    function assessmentEmailPanelFromAnchorKey(key) {
+      if (key.includes('da inviare')) return 'queue';
+      if (key.includes('attesa') || key.includes('contattati')) return 'pending';
+      if (key.includes('problemi')) return 'problems';
+      if (key.includes('post')) return 'post';
+      if (key.includes('storico')) return 'history';
+      if (key.includes('testi')) return 'texts';
+      if (key.includes('stato')) return 'routine';
+      return '';
+    }
+    function renderAssessmentEmailKpis() {
+      const box = document.getElementById('assessmentEmailKpis');
+      if (!box) return;
+      const queue = assessmentEmailQueueRows();
+      const pending = assessmentEmailPendingRows();
+      const problems = assessmentEmailProblemRows();
+      const post = assessmentEmailPostRows();
+      const sentToday = getAssessmentRequestsSentTodayCount();
+      const card = (label, value, note) => `<div class="assessment-email-kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div><div class="note">${escapeHtml(note)}</div></div>`;
+      box.innerHTML = [
+        card('Invio automatico', '07:00', 'Prossimo invio automatico'),
+        card('Invii oggi', `${sentToday}/20`, 'Limite previsto email'),
+        card('Da inviare 0.5', queue.length, 'Soci 0.5 non ancora chiusi'),
+        card('In attesa', pending.length, 'Inviate, scheda non compilata'),
+        card('Problemi', problems.length, 'Email, WhatsApp o nessuna risposta')
+      ].join('');
+      const env = document.getElementById('assessmentEmailEnvPill');
+      if (env) env.textContent = PMO_IS_TEST_ENV ? 'Modalita prova: TEST' : 'PROD: backend email non ancora attivo';
+      const chip = document.getElementById('assessmentDailyLimitChip');
+      if (chip) chip.textContent = `Invii oggi: ${sentToday}/20`;
+    }
+    function renderAssessmentEmailRoutinePanel() {
+      const box = document.getElementById('assessmentEmailRoutineContent');
+      if (!box) return;
+      box.innerHTML = `<div class="assessment-email-status-layout">
+        <div class="assessment-email-card">
+          <h3>Configurazione attuale</h3>
+          <div class="assessment-email-status-list">
+            <div class="assessment-email-status-item"><div><strong>Email mittente</strong><br><span>Gmail Padel Village da collegare lato backend</span></div>${assessmentEmailBadge('Da attivare','warn')}</div>
+            <div class="assessment-email-status-item"><div><strong>Destinatario in prova</strong><br><span>Email personale staff, forzata su tutti gli invii di test</span></div>${assessmentEmailBadge('Prova','warn')}</div>
+            <div class="assessment-email-status-item"><div><strong>Prossimo invio automatico</strong><br><span>${escapeHtml(assessmentEmailNextSevenAM())}</span></div>${assessmentEmailBadge('Prevista','info')}</div>
+            <div class="assessment-email-status-item"><div><strong>Secondo invio</strong><br><span>Dopo 7 giorni senza compilazione o mancata consegna</span></div>${assessmentEmailBadge('Regola pronta','ok')}</div>
+            <div class="assessment-email-status-item"><div><strong>Dopo secondo invio</strong><br><span>Verifica WhatsApp manuale: chiede se la mail e' arrivata e recupera l'email corretta se serve.</span></div>${assessmentEmailBadge('Manuale','muted')}</div>
+          </div>
+        </div>
+        <div class="assessment-email-card">
+          <h3>Sequenza operativa</h3>
+          <div class="assessment-email-timeline">
+            <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Seleziona 0.5</strong><span>Prende solo soci attivi con livello 0.5 e email valida.</span></div>
+            <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara link</strong><span>Prepara il link personale del socio e lo registra nel sistema.</span></div>
+            <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Invia email</strong><span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span></div>
+            <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, mancata consegna e scheda compilata.</div>`;
+    }
+    function assessmentEmailQueueStatus(row) {
+      if (!assessmentEmailHasValidEmail(row.member)) return assessmentEmailBadge('Email mancante','err');
+      if (!row.rec?.token) return assessmentEmailBadge('Link da preparare','warn');
+      if (!row.rec.registeredToSupabase) return assessmentEmailBadge('Da registrare','warn');
+      return assessmentEmailBadge('Pronto','ok');
+    }
+    function renderAssessmentEmailQueuePanel() {
+      const box = document.getElementById('assessmentEmailQueueContent');
+      if (!box) return;
+      const rows = assessmentEmailQueueRows();
+      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.'));
+      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.slice(0,80).map((row, idx) => {
+        const email = assessmentEmailMemberEmail(row.member);
+        const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!row.rec?.token || !row.rec.registeredToSupabase ? 'Prepara link personale' : 'Primo invio alle 07:00');
+        return `<tr>
+          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
+          <td>${escapeHtml(email || '-')}</td>
+          <td>${escapeHtml(PMO_IS_TEST_ENV ? 'Email personale prova' : 'Email reale dopo attivazione')}</td>
+          <td>${assessmentEmailQueueStatus(row)}</td>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(action)}</td>
+          <td><div class="assessment-email-mini-actions">
+            ${(!row.rec?.token || !row.rec.registeredToSupabase) ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailPrepareMember('${escapeHtml(String(row.member.id))}')">Prepara</button>` : ''}
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda</button>
+            <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    function renderAssessmentEmailPendingPanel() {
+      const box = document.getElementById('assessmentEmailPendingContent');
+      if (!box) return;
+      const rows = assessmentEmailPendingRows();
+      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun socio contattato in attesa di compilazione.'));
+      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Contatto</th><th>Stato contatto</th><th>Scheda</th><th>Prossima regola</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+        const sentAt = row.rec?.sentAt || row.rec?.createdAt;
+        return `<tr>
+          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
+          <td>Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span></td>
+          <td>${assessmentEmailBadge('Inviata','info')}</td>
+          <td>${assessmentEmailBadge('Non compilato','muted')}</td>
+          <td>Secondo invio dopo 7 giorni; poi WhatsApp manuale</td>
+          <td><div class="assessment-email-mini-actions">
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+            <button class="assessment-email-mini warn" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeHtml(String(row.member.id))}')">WhatsApp</button>
+            <button class="assessment-email-mini danger" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    function assessmentEmailProblemText(row) {
+      if (row.info.paused) return { badge:assessmentEmailBadge('Nessuna risposta','muted'), solution:'Resta in storico finche non viene riattivato.' };
+      if (!assessmentEmailHasValidEmail(row.member)) return { badge:assessmentEmailBadge('Email mancante','err'), solution:'Aggiorna scheda socio o chiedi email via WhatsApp.' };
+      if (!row.member.phone) return { badge:assessmentEmailBadge('Telefono mancante','err'), solution:'Aggiorna telefono per usare WhatsApp di recupero.' };
+      return { badge:assessmentEmailBadge('Secondo invio scaduto','warn'), solution:'Chiedi se ha ricevuto la mail; se no, recupera email corretta.' };
+    }
+    function renderAssessmentEmailProblemsPanel() {
+      const box = document.getElementById('assessmentEmailProblemsContent');
+      if (!box) return;
+      const rows = assessmentEmailProblemRows();
+      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun problema operativo rilevato.'));
+      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+        const problem = assessmentEmailProblemText(row);
+        return `<tr>
+          <td>${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
+          <td>${problem.badge}</td>
+          <td>${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
+          <td>${escapeHtml(assessmentEmailFormatDateTime(row.rec?.sentAt || row.rec?.createdAt || row.member.selfAssessmentWhatsappCheckAt))}</td>
+          <td>${escapeHtml(problem.solution)}</td>
+          <td><div class="assessment-email-mini-actions">
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda</button>
+            ${row.member.phone ? `<button class="assessment-email-mini danger" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeHtml(String(row.member.id))}')">Apri WhatsApp</button>` : ''}
+            <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Metti in pausa</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    function renderAssessmentEmailPostPanel() {
+      const box = document.getElementById('assessmentEmailPostContent');
+      if (!box) return;
+      const rows = assessmentEmailPostRows();
+      const autoRows = rows.filter(row => assessmentEmailIsAutoApplicable(row.response));
+      const reviewRows = rows.filter(row => !assessmentEmailIsAutoApplicable(row.response));
+      const oldest = rows[0]?.response?.submitted_at || '';
+      const mini = (label, value, note) => `<div class="assessment-email-mini-kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div><div class="note">${escapeHtml(note)}</div></div>`;
+      const summary = `<div class="assessment-email-mini-kpis">${[
+        mini('Ricevute da gestire', rows.length, 'Solo schede compilate'),
+        mini('Auto-applicabili', autoRows.length, 'Differenza 0 o 0.5'),
+        mini('Da validare staff', reviewRows.length, 'Differenza 1.0 o piu'),
+        mini('Piu vecchia', oldest ? assessmentEmailFormatDate(oldest).slice(0,5) : '-', 'Prima da lavorare')
+      ].join('')}</div>`;
+      if (!rows.length) return void (box.innerHTML = summary + assessmentEmailEmpty('Nessuna scheda ricevuta da gestire.'));
+      box.innerHTML = `${summary}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Compilata il</th><th>Dichiarato</th><th>Calcolato</th><th>Differenza</th><th>Esito proposto</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+        const diff = assessmentEmailLevelDiff(row.response);
+        const auto = assessmentEmailIsAutoApplicable(row.response);
+        return `<tr>
+          <td>${assessmentEmailMemberCell(row.member, auto ? 'scheda completa - nessun blocco' : 'scostamento alto da controllare')}</td>
+          <td>${escapeHtml(assessmentEmailFormatDateTime(row.response?.submitted_at))}</td>
+          <td>${escapeHtml(row.response?.declared_level || '-')}</td>
+          <td>${escapeHtml(row.response?.calculated_level || row.response?.declared_level || '-')}</td>
+          <td>${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
+          <td>${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Validazione staff necessaria')}</td>
+          <td><div class="assessment-email-mini-actions">
+            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Applica' : 'Valida'}</button>
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
+    }
+    function renderAssessmentEmailHistoryPanel() {
+      const box = document.getElementById('assessmentEmailHistoryContent');
+      if (!box) return;
+      const currentSearch = document.getElementById('assessmentHistorySearch')?.value || '';
+      const currentStatus = document.getElementById('assessmentHistoryStatus')?.value || 'all';
+      const currentPeriod = document.getElementById('assessmentHistoryPeriod')?.value || '30';
+      const currentChannel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
+      const currentLevel = document.getElementById('assessmentHistoryLevel')?.value || 'all';
+      const rows = assessmentEmailHistoryRows();
+      const filterHtml = `<div class="assessment-email-filter-grid">
+        <div><label>Cerca socio</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="renderAssessmentEmailHistoryPanel()"></div>
+        <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="applied" ${currentStatus === 'applied' ? 'selected' : ''}>Livello applicato</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
+        <div><label>Periodo</label><select id="assessmentHistoryPeriod" onchange="renderAssessmentEmailHistoryPanel()"><option value="30" ${currentPeriod === '30' ? 'selected' : ''}>Ultimi 30 giorni</option><option value="90" ${currentPeriod === '90' ? 'selected' : ''}>Ultimi 90 giorni</option><option value="year" ${currentPeriod === 'year' ? 'selected' : ''}>Anno corrente</option><option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Tutto</option></select></div>
+        <div><label>Canale</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email" ${currentChannel === 'email' ? 'selected' : ''}>Email</option><option value="email_whatsapp" ${currentChannel === 'email_whatsapp' ? 'selected' : ''}>Email + WhatsApp</option></select></div>
+        <div><label>Livello</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
+      </div>`;
+      if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.'));
+      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Canale</th><th>Nota</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+        const applied = assessmentEmailMemberApplied(row.member, row.info);
+        const paused = row.info.paused;
+        const auto = applied && assessmentEmailIsAutoApplicable(row.response);
+        const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
+        const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Validazione manuale staff');
+        return `<tr>
+          <td>${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
+          <td>${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
+          <td>${statusBadge}</td>
+          <td>${escapeHtml(row.member.level ?? '-')}</td>
+          <td>${escapeHtml(row.member.selfAssessmentWhatsappCheckAt || paused ? 'Email + WhatsApp' : 'Email')}</td>
+          <td>${escapeHtml(note)}</td>
+          <td><div class="assessment-email-mini-actions">
+            ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
+    }
+    function renderAssessmentEmailTextsPanel() {
+      const box = document.getElementById('assessmentEmailTextsContent');
+      if (!box) return;
+      const selected = assessmentCommunicationTemplateState.selected || 'primary-email';
+      const row = (key, title, note) => `<div class="assessment-email-template-row ${selected === key ? 'active' : ''}" data-template="${escapeHtml(key)}" onclick="selectAssessmentCommunicationTemplate('${escapeHtml(key)}')"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(note)}</span></div>`;
+      box.innerHTML = `<div class="assessment-email-template-grid">
+        <div class="assessment-email-card">
+          <h3>Testi disponibili</h3>
+          <div class="assessment-email-template-list">
+            <div class="assessment-email-template-section">Email automatiche</div>
+            ${row('primary-email','Primo invio autovalutazione','Usato dall invio automatico delle 07:00.')}
+            ${row('recall-email','Secondo invio dopo 7 giorni','Promemoria automatico, massimo una volta.')}
+            ${row('received-email','Conferma ricezione scheda','Parte subito dopo la compilazione.')}
+            ${row('level-email','Livello validato','Parte quando lo staff applica il livello.')}
+            <div class="assessment-email-template-section">WhatsApp manuale</div>
+            ${row('whatsapp-check','Verifica ricezione email','Chiede se la mail e arrivata; se no, chiede l email corretta.')}
+            ${row('whatsapp-reminder','Promemoria controllo mail','Ricorda di controllare la mail gia inviata.')}
+            ${row('whatsapp-level','Livello validato WhatsApp','Messaggio manuale opzionale dopo livello applicato.')}
+          </div>
+        </div>
+        <div class="assessment-email-card">
+          <h3>Modifica testo</h3>
+          <div class="assessment-email-form-grid">
+            <div><label>Oggetto</label><input id="assessmentTemplateSubject"></div>
+            <div><label>Canale e tipo testo</label><select id="assessmentTemplateType" onchange="selectAssessmentCommunicationTemplate(this.value)">
+              ${Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).map(([key, template]) => `<option value="${escapeHtml(key)}">${escapeHtml(template.type)}</option>`).join('')}
+            </select></div>
+          </div>
+          <label>Testo</label>
+          <textarea id="assessmentTemplateBody" oninput="refreshAssessmentCommunicationTemplatePreview()"></textarea>
+          <div id="assessmentTemplatePreview" class="assessment-email-preview"></div>
+        </div>
+      </div><div class="assessment-email-footer-note">In modalita prova il sistema inviera questi testi solo alla email personale staff. Il messaggio WhatsApp non contiene mai il link diretto alla scheda.</div>`;
+      hydrateAssessmentCommunicationTemplateForm();
+    }
+    function renderAssessmentEmailPanels() {
+      renderAssessmentEmailKpis();
+      renderAssessmentEmailRoutinePanel();
+      renderAssessmentEmailQueuePanel();
+      renderAssessmentEmailPendingPanel();
+      renderAssessmentEmailProblemsPanel();
+      renderAssessmentEmailPostPanel();
+      renderAssessmentEmailHistoryPanel();
+      renderAssessmentEmailTextsPanel();
+      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'routine')));
+      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'routine')));
+    }
+    async function assessmentEmailPrepareMember(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const rec = ensureAssessmentToken(member);
+      save('assessmentTokens', assessmentTokens);
+      if (rec.registeredToSupabase) {
+        displayAssessment();
+        return showAlert('Link personale gia pronto.', 'success');
+      }
+      try {
+        const payload = [{ token:cleanCell(rec.token), member_local_id:cleanCell(rec.memberId || member.id), member_name:playerFullName(member), phone_last4:String(member.phone || '').replace(/\D/g, '').slice(-4) }];
+        const data = await pmoStaffRpc('upsert_assessment_tokens_admin', { p_tokens: payload }, 'cloud_sync', 'registrare il link autovalutazione in Supabase');
+        if (!data || data.ok !== true) throw new Error(pmoFriendlyCloudError(data?.error || 'Registrazione non riuscita', 'registrare il link autovalutazione in Supabase'));
+        rec.registeredAt = new Date().toISOString();
+        rec.registeredToSupabase = true;
+        save('assessmentTokens', assessmentTokens);
+        displayAssessment();
+        showAlert(`Link personale preparato per ${playerFullName(member)}.`, 'success');
+      } catch (err) {
+        displayAssessment();
+        showAlert('Link creato localmente, ma registrazione Supabase non riuscita: ' + (err.message || err), 'warning');
+      }
+    }
+    function assessmentEmailPauseMember(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const rec = getAssessmentTokenRecord(member.id);
+      const key = assessmentPauseKeyFor(member, rec);
+      assessmentPausedTokens[key] = {
+        token: cleanCell(rec?.token || ''),
+        memberId: String(member.id),
+        memberName: playerFullName(member),
+        reason: 'nessuna_risposta',
+        pausedAt: new Date().toISOString()
+      };
+      save('assessmentPausedTokens', assessmentPausedTokens);
+      displayAssessment();
+      showAlert(`${playerFullName(member)} messo in pausa senza sospendere il socio.`, 'info');
+    }
+    function openAssessmentEmailWhatsAppCheck(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const phoneCheck = validateWhatsAppPhone(member.phone || '');
+      if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
+      const template = assessmentCommunicationTemplates['whatsapp-check'] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['whatsapp-check'];
+      const text = String(template.body || '').replaceAll('{nome}', displayFirstName(member) || playerFullName(member)).replaceAll('{nome_completo}', playerFullName(member)).replaceAll('{livello_validato}', cleanCell(member.level || ''));
+      openWhatsAppWebSameTab(phoneCheck.digits, text);
+      member.selfAssessmentWhatsappCheckAt = new Date().toISOString();
+      save('giocatori', giocatori);
+      renderAssessmentEmailPanels();
+    }
+    function assessmentApplyAutoApplicableResponses() {
+      const rows = assessmentEmailPostRows().filter(row => assessmentEmailIsAutoApplicable(row.response));
+      if (!rows.length) return showAlert('Nessuna scheda auto-applicabile da applicare.', 'info');
+      if (!confirm(`Applicare automaticamente ${rows.length} livello/i con differenza massima 0.5?`)) return;
+      rows.forEach(row => applyAssessmentLevel(row.member.id));
+    }
+    function assessmentEmailClearHistoryFilters() {
+      ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryLevel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = id === 'assessmentHistorySearch' ? '' : 'all';
+      });
+      renderAssessmentEmailHistoryPanel();
+    }
+    function selectAssessmentCommunicationTemplate(key) {
+      assessmentCommunicationTemplateState.selected = key || 'primary-email';
+      renderAssessmentEmailTextsPanel();
+    }
+    function hydrateAssessmentCommunicationTemplateForm() {
+      const key = assessmentCommunicationTemplateState.selected || 'primary-email';
+      const template = assessmentCommunicationTemplates[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
+      const subject = document.getElementById('assessmentTemplateSubject');
+      const type = document.getElementById('assessmentTemplateType');
+      const body = document.getElementById('assessmentTemplateBody');
+      if (subject) subject.value = template.subject || '';
+      if (type) type.value = key;
+      if (body) body.value = template.body || '';
+      refreshAssessmentCommunicationTemplatePreview();
+    }
+    function refreshAssessmentCommunicationTemplatePreview() {
+      const body = document.getElementById('assessmentTemplateBody')?.value || '';
+      const preview = document.getElementById('assessmentTemplatePreview');
+      if (!preview) return;
+      preview.textContent = 'Anteprima con dati esempio:\n\n' + body
+        .replaceAll('{nome}', 'Mario')
+        .replaceAll('{nome_completo}', 'Mario Rossi')
+        .replaceAll('{link_autovalutazione}', 'https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?t=ABC123')
+        .replaceAll('{livello_validato}', '3.0');
+    }
+    function saveAssessmentCommunicationTemplate() {
+      const key = assessmentCommunicationTemplateState.selected || 'primary-email';
+      const base = DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
+      assessmentCommunicationTemplates[key] = {
+        subject: cleanCell(document.getElementById('assessmentTemplateSubject')?.value || base.subject),
+        type: base.type,
+        body: String(document.getElementById('assessmentTemplateBody')?.value || base.body)
+      };
+      save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      renderAssessmentEmailTextsPanel();
+      showAlert('Testo autovalutazione salvato.', 'success');
+    }
+    function resetAssessmentCommunicationTemplate() {
+      const key = assessmentCommunicationTemplateState.selected || 'primary-email';
+      assessmentCommunicationTemplates[key] = { ...DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] };
+      save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      renderAssessmentEmailTextsPanel();
+      showAlert('Testo base ripristinato.', 'success');
+    }
     function assessmentPostRows() {
       const search = document.getElementById('assessmentPostSearch')?.value || '';
       const filter = document.getElementById('assessmentPostStatus')?.value || 'all';
@@ -21224,6 +21985,7 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentPrePanel();
       renderAssessmentPostPanel();
       renderAssessmentArchivePanel();
+      renderAssessmentEmailPanels();
       updateAssessmentAdminDemoPreview();
     }
     function updateAssessmentAdminDemoPreview() {
@@ -21514,6 +22276,7 @@ Per confermare scrivi ELIMINA.`);
 
     function assessmentGoToPre(options = {}) {
       switchTab('assessment');
+      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
       renderAssessmentPrePanel();
       setTimeout(() => {
         const search = document.getElementById('assessmentPreSearch');
@@ -21521,7 +22284,7 @@ Per confermare scrivi ELIMINA.`);
           search.value = options.searchText;
           renderAssessmentPrePanel();
         }
-        const anchor = document.getElementById('anchor-assessment-invii');
+        const anchor = document.getElementById('anchor-assessment-da-inviare') || document.getElementById('anchor-assessment-stato');
         if (anchor) scrollMainContentToElement(anchor);
         if (search && options.focusSearch !== false) search.focus();
       }, 120);
@@ -21529,6 +22292,7 @@ Per confermare scrivi ELIMINA.`);
 
     function assessmentGoToPost(options = {}) {
       switchTab('assessment');
+      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('post');
       renderAssessmentPostPanel();
       setTimeout(() => {
         const search = document.getElementById('assessmentPostSearch');
@@ -21575,12 +22339,13 @@ Per confermare scrivi ELIMINA.`);
       if (!member) return showAlert('❌ Socio non trovato', 'danger');
       restartAssessmentForMember(memberId);
       setTimeout(() => {
+        if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
         const search = document.getElementById('assessmentPreSearch');
         if (search) {
           search.value = playerFullName(member);
           renderAssessmentPrePanel();
         }
-        const anchor = document.getElementById('anchor-assessment-invii');
+        const anchor = document.getElementById('anchor-assessment-da-inviare') || document.getElementById('anchor-assessment-stato');
         if (anchor) scrollMainContentToElement(anchor);
         if (search && options.focusSearch !== false) search.focus();
       }, 180);
@@ -21739,12 +22504,6 @@ Per confermare scrivi ELIMINA.`);
       member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
       member.selfAssessmentToken = rec.token;
       member.lastLevelUpdateAt = new Date().toISOString();
-      const availabilityProfile = getAssessmentAvailabilityFromResponse(response);
-      const availabilityApplied = applyAvailabilityProfileToMember(member, availabilityProfile, response.submitted_at);
-      if (!availabilityApplied) {
-        member.availabilityMissingFromAssessment = true;
-        member.availabilityMissingAt = new Date().toISOString();
-      }
 
       response.staff_status = 'applied';
       response.applied_level = String(level);
@@ -21759,10 +22518,7 @@ Per confermare scrivi ELIMINA.`);
       try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
       updateStats();
       try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      showAlert(availabilityApplied
-        ? `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità salvate nella scheda socio. Ora puoi usare “Avvisa socio” per preparare il messaggio WhatsApp.`
-        : `✅ Livello applicato a ${playerFullName(member)}: ${level}. Disponibilità non salvate perché non presenti nella risposta ricevuta. Ora puoi usare “Avvisa socio” per preparare il messaggio WhatsApp.`,
-        availabilityApplied ? 'success' : 'warning');
+      showAlert(`✅ Livello applicato a ${playerFullName(member)}: ${level}. Ora puoi inviare la conferma livello.`, 'success');
     }
 
 
@@ -21806,6 +22562,7 @@ Per confermare scrivi ELIMINA.`);
       save('assessmentDailySendLog', assessmentDailySendLog);
 
       switchTab('assessment');
+      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
       const search = document.getElementById('assessmentPreSearch');
       if (search) search.value = playerFullName(member);
       window.assessmentPreQuickFilter = '';
@@ -21813,12 +22570,12 @@ Per confermare scrivi ELIMINA.`);
       setTimeout(() => {
         document.querySelectorAll('.assessment-pre-check').forEach(el => { el.checked = String(el.value) === String(member.id); });
         assessmentUpdatePreSelectedCount();
-        const anchor = document.getElementById('anchor-assessment-invii');
+        const anchor = document.getElementById('anchor-assessment-da-inviare') || document.getElementById('anchor-assessment-stato');
         if (anchor) {
           scrollMainContentToElement(anchor);
         }
       }, 50);
-      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Completa Token/Supabase se richiesto, poi invia WhatsApp.`, 'success');
+      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Completa il link personale, poi procedi con il flusso email.`, 'success');
     }
     function setupAssessmentPublicForm() {
       const help = document.getElementById('assessmentPublicWhatsappHelp');
@@ -22143,7 +22900,6 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       const name = cleanCell(document.getElementById('assessmentPublicPlayerName')?.textContent || params.get('nome') || params.get('name') || '');
       const levelCalc = calculateAssessmentPublicLevel(data);
       const split = assessmentPublicSplitName(name);
-      const availabilityProfile = buildAvailabilityProfileFromFormData(data);
       return {
         token,
         first_name: split.first_name,
@@ -22154,18 +22910,12 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         consistency_status: levelCalc.coherence,
         staff_status: levelCalc.staff_status,
         submitted_at: new Date().toISOString(),
-        availability_time: availabilityProfile.time,
-        preferred_days: availabilityProfile.days,
-        desired_frequency: availabilityProfile.frequency,
-        notice: availabilityProfile.notice,
-        preferred_match_type: availabilityProfile.matchType,
         raw_response: {
           balanced_level: levelCalc.balanced_level,
           technical_average: levelCalc.technical_average,
           technical_scores: levelCalc.technical_scores,
           raw_score: levelCalc.raw_score,
           calculation_note: levelCalc.note,
-          availability_profile: availabilityProfile,
           answers: data
         }
       };

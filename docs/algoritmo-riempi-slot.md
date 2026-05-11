@@ -14,7 +14,7 @@ L'algoritmo incrocia progressivamente queste fonti:
 - Excel Matchpoint prenotazioni future: occupazione campi, conflitti giocatore, carico nei prossimi giorni.
 - Excel Matchpoint storico: abitudini reali per giorno, fascia oraria e ricorrenza.
 - Gruppi salvati: bacini gia curati dallo staff, con compatibilita, giorno e orario indicativo.
-- Autovalutazioni: livello validato e disponibilita dichiarata dal giocatore.
+- Autovalutazione: livello validato dal giocatore; il nuovo modulo email non raccoglie disponibilita.
 - Programmazione Partite: partite aperte, conferme, riposo settimanale, contatti gia avviati.
 - Richieste giocatore: input manuali dello staff quando un socio chiede di aprire una partita in un giorno/orario o come promemoria operativo.
 
@@ -169,7 +169,7 @@ Questa assegnazione non viene mostrata nel calendario come default: viene gestit
 Le proposte possono avere origini diverse:
 
 - Gruppo staff: gruppo creato manualmente dallo staff, gia curato per compatibilita, giorno e orario.
-- Proposta algoritmo: gruppo potenziale generato da storico, prenotazioni future, disponibilita dichiarata e regole anti-spam.
+- Proposta algoritmo: gruppo potenziale generato da storico, prenotazioni future, eventuali preferenze operative gia presenti e regole anti-spam.
 
 Un gruppo staff compatibile ha priorita operativa alta, perche nasce da una scelta umana gia validata. Se in uno slot orario esiste un solo campo libero e un gruppo staff compatibile, la scheda puo aprire direttamente quel gruppo.
 
@@ -241,16 +241,16 @@ Per ogni coppia giocatore-slot l'algoritmo considera:
 - numero totale di presenze storiche;
 - partite future nei prossimi 10 giorni;
 - conflitti diretti su quello slot;
-- disponibilita dichiarata in autovalutazione.
+- eventuali disponibilita o preferenze operative gia presenti fuori dal nuovo modulo email di autovalutazione.
 
-Le disponibilita dichiarate aggiungono o tolgono peso:
+Quando esistono disponibilita o preferenze operative gia valide, aggiungono o tolgono peso:
 
 - bonus se la fascia dichiarata combacia con lo slot;
 - bonus se il tipo giorno dichiarato combacia, per esempio settimana o weekend;
 - bonus leggero se il tipo partita dichiarato e coerente con il filtro sesso/tipo;
 - penalita leggera se fascia o giorni dichiarati sono diversi.
 
-Lo storico resta importante perche misura comportamento reale; l'autovalutazione aggiunge intenzione dichiarata.
+Lo storico resta importante perche misura comportamento reale; l'autovalutazione aggiorna soprattutto il livello tecnico. Dal flusso email 2026-05-11 non deve arrivare una nuova disponibilita, perche la scheda pubblica non la richiede piu'.
 
 ## Score proposta partita
 
@@ -294,7 +294,7 @@ La rigenerazione della proposta deve:
 
 ## Coerenza livello proposta algoritmo
 
-Le proposte generate dall'algoritmo devono essere coerenti per livello. Lo storico e la disponibilita non possono far entrare un giocatore tecnicamente fuori partita.
+Le proposte generate dall'algoritmo devono essere coerenti per livello. Lo storico e le eventuali preferenze operative non possono far entrare un giocatore tecnicamente fuori partita.
 
 Regola attuale:
 
@@ -455,7 +455,7 @@ Implementato:
 - priorita operativa slot;
 - candidati per slot da giocatori, prenotazioni future e storico;
 - regola anti-spam massimo 2 slot in giorni diversi;
-- uso iniziale delle disponibilita dichiarate da autovalutazione nello score;
+- uso solo di eventuali disponibilita/preferenze operative gia presenti, senza richiederle nel nuovo modulo email di autovalutazione;
 - distinzione interna tra candidati grezzi e prioritari;
 - base per proposte da gruppi salvati e da storico/candidati.
 - mockup approvato del calendario aggregato per slot orario multi-campo;
