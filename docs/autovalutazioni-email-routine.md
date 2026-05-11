@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.378, senza backend Gmail automatico.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.379, senza backend Gmail automatico.
 
-Ultimo aggiornamento: 2026-05-11 19:42
+Ultimo aggiornamento: 2026-05-11 20:15
 
 ## Obiettivo
 
@@ -32,7 +32,24 @@ Dopo approvazione dei mockup grafici, in app TEST sono state integrate le sole r
 - intestazioni fisse nelle tabelle operative su desktop e tablet, con righe scrollabili nel riquadro;
 - su mobile resta la resa a schede verticali, senza scroll orizzontale interno.
 
-Non sono stati attivati backend Gmail, scheduler email o invii reali. Il mockup del controllo email mancanti con finestra WhatsApp resta una proposta separata non ancora integrata in app TEST.
+Non sono stati attivati backend Gmail, scheduler email o invii reali.
+
+## Nota UI TEST v5.379
+
+Dopo approvazione del mockup `Problemi / email mancante / WhatsApp`, in app TEST viene integrato il recupero manuale delle email mancanti.
+
+Regole operative integrate:
+
+- i soci attivi con livello `0.5` e senza email valida non compaiono in `Da inviare 0.5`, ma entrano direttamente in `Problemi`;
+- quando lo staff inserisce una email valida nella scheda socio, il socio esce automaticamente da `Problemi` e rientra in `Da inviare 0.5`, se non e' gia stato chiuso, messo in pausa o contattato nel ciclo corrente;
+- il pulsante `Apri WhatsApp` nei problemi apre una finestra sovrapposta con tre testi selezionabili: `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`;
+- i messaggi WhatsApp non contengono il link diretto alla scheda di autovalutazione;
+- aprire WhatsApp o copiare il testo non cambia da solo lo stato del socio;
+- dopo l'invio reale del messaggio, lo staff usa `Segna verifica` per salvare la data della verifica WhatsApp;
+- per le richieste email gia inviate e senza risposta da oltre soglia, `Segna verifica` sposta il socio in `Contattati / in attesa` come verifica WhatsApp aperta;
+- per le email mancanti, il socio resta in `Problemi` finche non viene salvata una email valida.
+
+Anche questa integrazione resta solo UI/localStorage: Gmail, lettura mancate consegne e scheduler email automatico saranno un passaggio backend separato.
 
 ## Nota mockup 2026-05-11 19:05
 
