@@ -549,9 +549,10 @@ async function verifyRoutineSecret(admin: any, secret: string) {
 async function authenticateStaffOrRoutine(req: Request, supabaseUrl: string, anonKey: string, admin: any): Promise<StaffActor> {
   const routineSecret = req.headers.get('x-pmo-routine-secret') || '';
   if (await verifyRoutineSecret(admin, routineSecret)) {
+    const routineEnv = supabaseUrl.includes('qqbfphyslczzkxoncgex') ? 'prod' : 'test';
     return {
       userId: '00000000-0000-0000-0000-000000000000',
-      email: 'routine-dati@test.padel-match-organizer',
+      email: 'routine-dati@' + routineEnv + '.padel-match-organizer',
       role: 'system',
       permissions: { cloud_sync: true },
     };

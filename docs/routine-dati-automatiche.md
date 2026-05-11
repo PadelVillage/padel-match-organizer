@@ -148,6 +148,17 @@ Regole:
 - l'esito del backup viene riflesso nel box e nella riga `Backup cloud` del pannello routine;
 - lo scheduler backend puro non crea backup browser completi, perche' non vede il localStorage dell'app.
 
+## Regola scheduler TEST/PROD
+
+Lo scheduler automatico deve essere attivo in un solo ambiente alla volta.
+
+Quando si decide di promuovere lo scheduler in PROD:
+
+1. disattivare prima il job pmo-data-routines-dispatcher-test su Supabase TEST;
+2. lasciare TEST utilizzabile solo con azioni manuali dall'app;
+3. attivare poi il job pmo-data-routines-dispatcher-prod su Supabase PROD;
+4. non tenere TEST e PROD schedulati agli stessi orari, per evitare doppie chiamate allo stesso account Matchpoint.
+
 ## Scheduler backend TEST
 
 Lo scheduler backend viene attivato prima solo sul progetto Supabase TEST `cudiqnrrlbyqryrtaprd`.
