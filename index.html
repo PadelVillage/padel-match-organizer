@@ -914,27 +914,34 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.381 - Autovalutazione: chiusura modale WhatsApp e ritorno riga */
+    /* v5.386 - Autovalutazione: ricerca trasversale e area alta compatta */
+    body.assessment-view .top-nav-bar { margin-bottom:10px; padding:8px 10px; }
+    body.assessment-view .menu-toggle { padding:7px 10px; }
     .assessment-email-page { max-width:1500px; margin:0 auto; }
     .assessment-email-page, .assessment-email-panel, .assessment-email-content, .assessment-email-card { min-width:0; }
-    .assessment-email-compact-hero { border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:14px 16px; margin-bottom:12px; }
-    .assessment-email-topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:0; }
-    .assessment-email-topbar h2 { margin:0 0 5px; color:var(--primary); font-size:28px; line-height:1.05; }
-    .assessment-email-topbar p { margin:0; color:#667085; font-size:15px; line-height:1.35; }
-    .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:9px 13px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpis { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 0; }
-    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:7px 10px; font-size:13px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpi strong { color:var(--primary); margin-right:6px; font-size:15px; line-height:1; }
-    .assessment-email-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:10px 0 14px; padding-bottom:8px; }
-    .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:9px 12px; font-weight:900; cursor:pointer; }
+    #assessment .assessment-compact-page { padding-top:8px; }
+    .assessment-v5144-section .assessment-email-panel-title,
+    .assessment-v5144-section .assessment-email-card h3,
+    .assessment-v5144-section .assessment-email-routine-title { margin-top:0 !important; }
+    .assessment-email-compact-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:9px 13px; margin-bottom:8px; }
+    .assessment-email-topbar { flex:1 1 390px; display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:0; min-width:0; }
+    .assessment-email-topbar > div:first-child { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; min-width:0; }
+    .assessment-email-topbar h2 { margin:0; color:var(--primary); font-size:22px; line-height:1.1; }
+    .assessment-email-topbar p { margin:0; color:#667085; font-size:13px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:620px; }
+    .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:800; white-space:nowrap; }
+    .assessment-email-kpis { flex:1 1 520px; display:flex; justify-content:flex-end; gap:7px; flex-wrap:wrap; margin:0; min-width:0; }
+    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:6px 9px; font-size:12px; font-weight:800; white-space:nowrap; }
+    .assessment-email-kpi strong { color:var(--primary); margin-right:6px; font-size:14px; line-height:1; }
+    .assessment-email-tabs { display:flex; gap:7px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:8px 0 10px; padding-bottom:7px; }
+    .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:8px 11px; font-weight:900; cursor:pointer; }
     .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
-    .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:5px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
+    .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
     .assessment-email-panel.active { display:block; }
-    .assessment-email-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:17px 18px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
-    .assessment-email-panel-title { margin:0 0 4px; color:var(--primary); font-size:21px; line-height:1.15; }
-    .assessment-email-panel-copy { margin:0; color:#667085; font-size:14px; line-height:1.35; }
+    .assessment-email-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
+    .assessment-email-panel-title { margin:0 0 2px; color:var(--primary); font-size:20px; line-height:1.15; }
+    .assessment-email-panel-copy { margin:0; color:#667085; font-size:13px; line-height:1.3; }
     .assessment-email-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
-    .assessment-email-content { padding:16px 18px 18px; }
+    .assessment-email-content { padding:12px 14px 14px; }
     .assessment-email-status-layout { display:grid; grid-template-columns:minmax(360px,.72fr) minmax(460px,1fr); gap:14px; align-items:start; }
     .assessment-email-card { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:14px; }
     .assessment-email-card h3 { margin:0 0 10px; color:var(--primary); font-size:17px; line-height:1.2; }
@@ -959,12 +966,12 @@
     .assessment-email-step-num { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--primary); color:#fff; font-weight:900; margin-bottom:8px; }
     .assessment-email-step strong { display:block; margin-bottom:5px; color:#101828; }
     .assessment-email-step span { color:#667085; font-size:13px; line-height:1.35; }
-    .assessment-email-mini-kpis { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
-    .assessment-email-mini-kpi { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; min-height:74px; }
+    .assessment-email-mini-kpis { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:8px; margin-bottom:10px; }
+    .assessment-email-mini-kpi { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; min-height:60px; }
     .assessment-email-mini-kpi .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
-    .assessment-email-mini-kpi .value { margin-top:5px; color:var(--primary); font-size:24px; line-height:1; font-weight:900; }
+    .assessment-email-mini-kpi .value { margin-top:4px; color:var(--primary); font-size:21px; line-height:1; font-weight:900; }
     .assessment-email-mini-kpi .note { margin-top:5px; color:#667085; font-size:12px; line-height:1.25; }
-    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow:auto; background:#fff; max-height:min(58vh, 560px); }
+    .assessment-email-table-wrap { border:1px solid #e7edf6; border-radius:8px; overflow:auto; background:#fff; max-height:min(64vh, 660px); }
     .assessment-email-table { width:100%; min-width:0; table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:13px; }
     .assessment-email-table th { position:sticky; top:0; z-index:3; text-align:left; background:#f3f6fb; color:#344054; padding:11px 10px; border-bottom:1px solid #e7edf6; white-space:normal; overflow-wrap:anywhere; line-height:1.25; box-shadow:inset 0 -1px 0 #e7edf6; }
     .assessment-email-table td { padding:11px 10px; border-top:1px solid #e7edf6; vertical-align:middle; overflow-wrap:anywhere; line-height:1.35; }
@@ -978,7 +985,7 @@
     .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
     .assessment-email-mini.danger { border-color:#f1b9b3; background:#fff1f0; color:#b42318; }
-    .assessment-email-filter-grid { display:grid; grid-template-columns:1.2fr repeat(4,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+    .assessment-email-filter-grid { display:grid; grid-template-columns:1.2fr repeat(4,minmax(150px,1fr)); gap:8px; margin-bottom:10px; }
     .assessment-email-template-grid { display:grid; grid-template-columns:minmax(260px,.62fr) minmax(420px,1fr); gap:14px; align-items:start; }
     .assessment-email-template-list { display:grid; gap:8px; }
     .assessment-email-template-section { color:var(--primary); font-size:12px; font-weight:900; text-transform:uppercase; margin:5px 0 0; }
@@ -989,7 +996,11 @@
     .assessment-email-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
     .assessment-email-template-body { min-height:190px; overflow:hidden; resize:none; }
     .assessment-email-preview { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; color:#344054; white-space:pre-wrap; line-height:1.45; min-height:130px; margin-top:10px; }
-    .assessment-email-footer-note { margin-top:14px; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; color:#667085; font-size:13px; line-height:1.35; }
+    .assessment-email-footer-note { margin-top:9px; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; color:#667085; font-size:13px; line-height:1.35; }
+    .assessment-email-search-redirect { border:1px solid #d9e0ea; border-radius:8px; background:#fbfdff; padding:14px; color:#344054; }
+    .assessment-email-search-redirect > strong { display:block; color:var(--primary); font-size:16px; margin-bottom:4px; }
+    .assessment-email-search-redirect p { margin:0 0 10px; color:#667085; }
+    .assessment-email-search-result { display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:10px 11px; margin-top:8px; }
     .assessment-email-modal { display:none; position:fixed; inset:0; z-index:10020; align-items:center; justify-content:center; padding:22px; background:rgba(16,24,40,.42); }
     .assessment-email-modal.open { display:flex; }
     .assessment-email-modal-card { width:min(920px,100%); max-height:calc(100vh - 44px); overflow:auto; border:1px solid #d9e0ea; border-radius:8px; background:#fff; box-shadow:0 18px 60px rgba(16,24,40,.24); }
@@ -1008,6 +1019,8 @@
     .assessment-email-modal-actions { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:0 18px 18px; }
     .assessment-email-modal-feedback { color:#667085; font-size:13px; line-height:1.35; }
     @media (max-width:1100px) {
+      .assessment-email-compact-hero { align-items:stretch; flex-direction:column; }
+      .assessment-email-kpis { justify-content:flex-start; }
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -1015,6 +1028,8 @@
       .assessment-email-message-grid { grid-template-columns:1fr; }
     }
     @media (max-width:720px) {
+      .assessment-email-topbar p { white-space:normal; max-width:none; }
+      .assessment-email-search-result { align-items:flex-start; flex-direction:column; }
       .assessment-email-kpi { width:100%; justify-content:space-between; white-space:normal; }
       .assessment-email-table-wrap { border:0; background:transparent; overflow:visible; max-height:none; }
       .assessment-email-table { display:block; width:100%; overflow-x:visible; }
@@ -5040,7 +5055,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.385';
+    const APP_VERSION = '5.386';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6588,6 +6603,7 @@ Grazie.`
       const updateBadge = document.getElementById('dashboardTopUpdate');
       const assessmentSyncBtn = document.getElementById('assessmentSyncTopButton');
       document.body.classList.toggle('dashboard-view', tabName === 'dashboard');
+      document.body.classList.toggle('assessment-view', tabName === 'assessment');
       if (tabName === 'dashboard' && window.innerWidth > 800 && document.body.classList.contains('sidebar-collapsed')) {
         document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('pmoSidebarCollapsed', '0');
@@ -21516,6 +21532,11 @@ Per confermare scrivi ELIMINA.`);
         return !!row.response && !assessmentEmailMemberApplied(row.member, row.info);
       }).sort((a,b) => assessmentEmailDateMs(a.response?.submitted_at) - assessmentEmailDateMs(b.response?.submitted_at));
     }
+    function assessmentEmailHistoryBaseRows() {
+      return assessmentEmailAllOperationalRows().filter(row => {
+        return assessmentEmailMemberApplied(row.member, row.info) || row.info.paused;
+      }).sort((a,b) => assessmentEmailCycleDate(b.member, b.info) - assessmentEmailCycleDate(a.member, a.info));
+    }
     function assessmentEmailHistoryRows() {
       const search = cleanCell(document.getElementById('assessmentHistorySearch')?.value || '');
       const status = document.getElementById('assessmentHistoryStatus')?.value || 'all';
@@ -21528,7 +21549,7 @@ Per confermare scrivi ELIMINA.`);
       if (period === '90') periodStart.setDate(now.getDate() - 90);
       if (period === 'year') periodStart.setMonth(0, 1);
       periodStart.setHours(0, 0, 0, 0);
-      return assessmentEmailAllOperationalRows().filter(row => {
+      return assessmentEmailHistoryBaseRows().filter(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const cycleTime = assessmentEmailCycleDate(row.member, row.info);
@@ -21562,6 +21583,63 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailEmpty(message) {
       return `<div class="assessment-empty">${escapeHtml(message)}</div>`;
+    }
+    function assessmentEmailSearchMemberKey(member) {
+      return String(member?.id || member?.memberId || playerFullName(member) || '');
+    }
+    function assessmentEmailSearchLocations(search) {
+      const query = cleanCell(search);
+      if (!query) return [];
+      const sources = [
+        { panel:'post', label:'Post-invio', reason:'Scheda ricevuta, da gestire prima dello storico.', rows:assessmentEmailPostRows() },
+        { panel:'history', label:'Storico', reason:'Giro chiuso o socio messo in pausa.', rows:assessmentEmailHistoryBaseRows() },
+        { panel:'problems', label:'Problemi', reason:'Serve sistemare email, telefono o recupero manuale.', rows:assessmentEmailProblemRows() },
+        { panel:'pending', label:'Contattati / in attesa', reason:'Email gia inviata, scheda non ancora compilata.', rows:assessmentEmailPendingRows() },
+        { panel:'queue', label:'Da inviare 0.5', reason:'Ancora pronto per il primo invio.', rows:assessmentEmailQueueRows() }
+      ];
+      const seen = new Set();
+      const matches = [];
+      sources.forEach(source => {
+        source.rows.forEach(row => {
+          if (!assessmentSearchMatches(row.member, query)) return;
+          const key = assessmentEmailSearchMemberKey(row.member);
+          if (seen.has(key)) return;
+          seen.add(key);
+          matches.push({ panel:source.panel, label:source.label, reason:source.reason, member:row.member });
+        });
+      });
+      return matches;
+    }
+    function assessmentEmailSearchRedirectHtml(search, currentPanel='queue') {
+      const query = cleanCell(search);
+      if (!query) return assessmentEmailEmpty('Nessun socio trovato con questa ricerca.');
+      const matches = assessmentEmailSearchLocations(query).filter(match => match.panel !== currentPanel);
+      if (!matches.length) return assessmentEmailEmpty('Nessun socio trovato con questa ricerca.');
+      const intro = matches.length === 1
+        ? 'Il socio cercato esiste, ma non e in questa sottosezione.'
+        : `Ho trovato ${matches.length} soci, ma non in questa sottosezione.`;
+      return `<div class="assessment-email-search-redirect">
+        <strong>Risultato trovato in un'altra sottosezione</strong>
+        <p>${escapeHtml(intro)} Usa il pulsante qui sotto per aprire il punto giusto.</p>
+        ${matches.slice(0, 4).map(match => `<div class="assessment-email-search-result">
+          <div>
+            ${assessmentEmailMemberCell(match.member, `liv. ${match.member?.level ?? '-'} - ${match.label}`)}
+            <span class="assessment-email-meta">${escapeHtml(match.reason)}</span>
+          </div>
+          <button class="assessment-email-mini success" type="button" onclick="assessmentEmailGoToMemberPanel('${escapeJs(match.panel)}','${escapeJs(String(match.member?.id || ''))}')">Vai a ${escapeHtml(match.label)}</button>
+        </div>`).join('')}
+      </div>`;
+    }
+    function assessmentEmailGoToMemberPanel(panel, memberId) {
+      setAssessmentEmailPanel(panel || 'routine');
+      setTimeout(() => {
+        const row = Array.from(document.querySelectorAll('[data-assessment-email-member], [data-assessment-problem-member]'))
+          .find(el => String(el.dataset.assessmentEmailMember || el.dataset.assessmentProblemMember || '') === String(memberId || ''));
+        if (!row) return;
+        row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
+        row.classList.add('assessment-email-row-focus');
+        setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
+      }, 0);
     }
     function assessmentEmailMemberCell(member, meta='') {
       const line = meta || `liv. ${member?.level ?? '-'} - ${assessmentEmailMemberEmail(member) || 'email mancante'}`;
@@ -21661,13 +21739,13 @@ Per confermare scrivi ELIMINA.`);
         <button class="assessment-email-mini" type="button" onclick="window.assessmentEmailQueueSearch=''; renderAssessmentEmailQueuePanel()">Pulisci</button>
       </div>
       <div class="assessment-email-footer-note" style="margin-top:-6px;margin-bottom:10px;">Mostrati ${rows.length} soci su ${allRows.length}. La lista non si ferma piu' ai primi nominativi.</div>`;
-      if (!allRows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.'));
-      if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun socio trovato con questa ricerca.'));
+      if (!allRows.length) return void (box.innerHTML = filterHtml + (currentSearch ? assessmentEmailSearchRedirectHtml(currentSearch, 'queue') : assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.')));
+      if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailSearchRedirectHtml(currentSearch, 'queue'));
       box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map((row, idx) => {
         const email = assessmentEmailMemberEmail(row.member);
         const readyToSend = !!(row.rec?.token && row.rec.registeredToSupabase);
         const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!readyToSend ? 'Prepara link personale' : (PMO_IS_TEST_ENV ? 'Prova invio email' : 'Primo invio alle 07:00'));
-        return `<tr>
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
           <td data-label="Email reale">${escapeHtml(email || '-')}</td>
           <td data-label="Destinatario in prova">${escapeHtml(PMO_IS_TEST_ENV ? 'Email personale prova' : 'Email reale dopo attivazione')}</td>
@@ -21696,7 +21774,7 @@ Per confermare scrivi ELIMINA.`);
           : `Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
         const contactBadge = whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info');
         const nextRule = whatsappAt ? 'Se non ha ricevuto, correggere email e reinviare' : 'Secondo invio dopo 7 giorni; poi WhatsApp manuale';
-        return `<tr>
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
           <td data-label="Contatto">${contactText}</td>
           <td data-label="Stato contatto">${contactBadge}</td>
@@ -21729,7 +21807,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const problem = assessmentEmailProblemText(row);
         const whatsappState = assessmentEmailWhatsappLastLabel(row.member);
-        return `<tr data-assessment-problem-member="${escapeHtml(String(row.member.id))}">
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}" data-assessment-problem-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
           <td data-label="Problema">${problem.badge}</td>
           <td data-label="Email">${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
@@ -21761,7 +21839,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `${summary}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Compilata il</th><th>Dichiarato</th><th>Calcolato</th><th>Differenza</th><th>Esito proposto</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const diff = assessmentEmailLevelDiff(row.response);
         const auto = assessmentEmailIsAutoApplicable(row.response);
-        return `<tr>
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, auto ? 'scheda completa - nessun blocco' : 'scostamento alto da controllare')}</td>
           <td data-label="Compilata il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.submitted_at))}</td>
           <td data-label="Dichiarato">${escapeHtml(row.response?.declared_level || '-')}</td>
@@ -21798,7 +21876,7 @@ Per confermare scrivi ELIMINA.`);
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
         const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
         const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Validazione manuale staff');
-        return `<tr>
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
           <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
           <td data-label="Stato">${statusBadge}</td>

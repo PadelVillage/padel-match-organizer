@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386.
 
-Ultimo aggiornamento: 2026-05-12 09:06
+Ultimo aggiornamento: 2026-05-12 12:31
 
 ## Obiettivo
 
@@ -125,6 +125,17 @@ Dopo il primo test reale di invio Gmail:
 - su Supabase TEST il vincolo `pmo_cloud_records_type_check` accetta anche `record_type = assessment_email`, necessario per registrare gli invii.
 
 Nota test del 2026-05-12: le copie viste nella casella Gmail Padel Village sono coerenti con i tentativi manuali fatti durante la configurazione. Il mittente appare come `me` perche' l'account Gmail visualizza le proprie email inviate.
+
+## Nota UI TEST v5.386
+
+La parte alta della sezione `Autovalutazione` viene resa piu compatta per lasciare piu spazio operativo alle tabelle:
+
+- barra superiore della sezione piu bassa quando si lavora in Autovalutazione;
+- blocco di sintesi, indicatori, tab e testate delle sottosezioni con padding ridotto;
+- rimozione del margine alto ereditato dagli `h3`, che aumentava inutilmente l'altezza delle testate interne;
+- riquadri tabellari con piu altezza utile prima dello scroll interno.
+
+La ricerca in `Da inviare 0.5` ora distingue il caso in cui il socio esiste ma non appartiene piu alla coda da inviare. Se il socio cercato e' gia stato contattato, e' in `Contattati / in attesa`, `Post-invio`, `Storico` o `Problemi`, l'app mostra un rimando leggibile alla sottosezione corretta e un pulsante per aprirla ed evidenziare la riga.
 
 ## Nota mockup 2026-05-11 19:05
 
