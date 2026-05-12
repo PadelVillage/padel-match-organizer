@@ -95,11 +95,11 @@ function escapeHtml(value: unknown) {
 
 function linkifyHtml(value: string) {
   return value
+    .replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#1f4f9a;word-break:break-all;">${url}</a>`)
     .replaceAll(
       ASSESSMENT_SUPPORT_PHONE_DISPLAY,
-      `<a href="${ASSESSMENT_SUPPORT_WHATSAPP_URL}" style="color:#1f4f9a;font-weight:700;text-decoration:none;">${ASSESSMENT_SUPPORT_PHONE_DISPLAY}</a>`,
-    )
-    .replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#1f4f9a;word-break:break-all;">${url}</a>`);
+      `<a href="${ASSESSMENT_SUPPORT_WHATSAPP_URL}" style="color:#1f4f9a;font-weight:700;text-decoration:underline;">${ASSESSMENT_SUPPORT_PHONE_DISPLAY}</a>`,
+    );
 }
 
 function paragraphHtml(value: string) {
@@ -108,7 +108,11 @@ function paragraphHtml(value: string) {
 
 function assessmentLinkButtonHtml(link: string) {
   const safeLink = escapeHtml(link);
-  return `<p style="margin:22px 0;"><a href="${safeLink}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:8px;">Compila la scheda</a></p><p style="margin:8px 0 22px;color:#64748b;font-size:13px;line-height:1.45;">Se il pulsante non si apre, copia questo link:<br><a href="${safeLink}" style="color:#1f4f9a;word-break:break-all;">${safeLink}</a></p>`;
+  return `<p style="margin:22px 0;"><a href="${safeLink}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:8px;">Compila la scheda</a></p><p style="margin:8px 0 22px;color:#64748b;font-size:13px;line-height:1.45;">Se il pulsante non si apre, puoi usare questo link:<br><a href="${safeLink}" style="color:#1f4f9a;word-break:break-all;">${safeLink}</a></p>`;
+}
+
+function supportWhatsappHtml() {
+  return `<p style="margin:8px 0 18px;"><a href="${ASSESSMENT_SUPPORT_WHATSAPP_URL}" style="display:inline-block;background:#25d366;color:#ffffff;text-decoration:none;font-weight:700;padding:11px 16px;border-radius:8px;">Scrivi alla segreteria su WhatsApp</a></p>`;
 }
 
 function buildHtmlBody(params: {
@@ -124,17 +128,23 @@ function buildHtmlBody(params: {
     .map((block) => clean(block))
     .filter(Boolean);
   const bodyHtml = blocks.map((block) => {
+    const lines = block
+      .split(/\n+/)
+      .map((line) => clean(line))
+      .filter(Boolean);
     if (link) {
-      const lines = block
-        .split(/\n+/)
-        .map((line) => clean(line))
-        .filter(Boolean);
       const linkIndex = lines.findIndex((line) => line === link);
       if (linkIndex >= 0) {
         const before = lines.slice(0, linkIndex).join('\n');
         const after = lines.slice(linkIndex + 1).join('\n');
         return `${before ? `<p style="margin:0 0 18px;">${paragraphHtml(before)}</p>` : ''}${assessmentLinkButtonHtml(link)}${after ? `<p style="margin:0 0 18px;">${paragraphHtml(after)}</p>` : ''}`;
       }
+    }
+    const supportWhatsappIndex = lines.findIndex((line) => line === ASSESSMENT_SUPPORT_WHATSAPP_URL);
+    if (supportWhatsappIndex >= 0) {
+      const before = lines.slice(0, supportWhatsappIndex).join('\n');
+      const after = lines.slice(supportWhatsappIndex + 1).join('\n');
+      return `${before ? `<p style="margin:0 0 12px;">${paragraphHtml(before)}</p>` : ''}${supportWhatsappHtml()}${after ? `<p style="margin:0 0 18px;">${paragraphHtml(after)}</p>` : ''}`;
     }
     return `<p style="margin:0 0 18px;">${paragraphHtml(block)}</p>`;
   }).join('');

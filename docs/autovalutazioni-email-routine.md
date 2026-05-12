@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390.
 
-Ultimo aggiornamento: 2026-05-12 16:21
+Ultimo aggiornamento: 2026-05-12 18:13
 
 ## Obiettivo
 
@@ -170,6 +170,15 @@ Le email del flusso Autovalutazione vengono aggiornate per essere piu leggibili:
 - nel formato HTML il numero segreteria diventa un link WhatsApp cliccabile;
 - il link personale della scheda viene trasformato nel pulsante `Compila la scheda`, con link di fallback sotto al pulsante;
 - la versione solo testo resta disponibile come alternativa tecnica per i client email che non leggono HTML.
+
+## Nota email TEST v5.390
+
+Dopo il primo controllo visuale della mail ricevuta:
+
+- il contatto segreteria viene reso piu evidente nel formato HTML con il bottone `Scrivi alla segreteria su WhatsApp`;
+- il numero `+39 379 115 1472` resta visibile nel testo e viene collegato a WhatsApp quando il client email lo supporta;
+- il testo sopra al link di fallback della scheda non dice piu di copiare il link, ma indica che si puo usare il link se il pulsante non si apre;
+- i testi email salvati in locale vengono normalizzati aggiungendo `{whatsapp_segreteria}` quando avevano gia il telefono ma non ancora il link WhatsApp.
 
 ## Nota mockup 2026-05-11 19:05
 
@@ -592,6 +601,7 @@ Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestional
 
 Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
 {telefono_segreteria}
+{whatsapp_segreteria}
 
 Grazie,
 Padel Village
@@ -617,6 +627,7 @@ Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
 
 Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
 {telefono_segreteria}
+{whatsapp_segreteria}
 
 Grazie,
 Padel Village

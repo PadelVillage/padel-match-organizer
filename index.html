@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.389';
+    const APP_VERSION = '5.390';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5154,7 +5154,8 @@ body.assessment-public-mode .assessment-public-only-card {
     const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
     const ASSESSMENT_SUPPORT_WHATSAPP_URL = 'https://wa.me/393791151472';
     const ASSESSMENT_EMAIL_SUPPORT_FOOTER = `Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
-{telefono_segreteria}`;
+{telefono_segreteria}
+{whatsapp_segreteria}`;
     const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'received-email', 'level-email']);
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
@@ -5284,6 +5285,10 @@ Grazie.`
         .replaceAll('Richiede meno di 2 minuti.', 'Richiede meno di 1 minuto.');
       if (!ASSESSMENT_EMAIL_TEMPLATE_KEYS.has(key)) return body;
       const hasSupportContact = /\{telefono_segreteria\}|379\s*115\s*1472/i.test(body);
+      const hasSupportWhatsapp = /\{whatsapp_segreteria\}|wa\.me\/393791151472/i.test(body);
+      if (hasSupportContact && !hasSupportWhatsapp) {
+        return body.replace(/(\{telefono_segreteria\}|\+39\s*379\s*115\s*1472)/i, '$1\n{whatsapp_segreteria}');
+      }
       if (hasSupportContact) return body;
       const footer = `\n\n${ASSESSMENT_EMAIL_SUPPORT_FOOTER}\n\nGrazie,\nPadel Village`;
       if (/Grazie,\s*\nPadel Village\s*$/i.test(body)) {
