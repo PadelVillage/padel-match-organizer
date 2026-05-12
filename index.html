@@ -932,7 +932,10 @@
     .assessment-email-kpis { flex:1 1 520px; display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap; margin:0; min-width:0; }
     .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:4px 7px; font-size:11px; font-weight:800; white-space:nowrap; line-height:1.1; }
     .assessment-email-kpi strong { color:var(--primary); margin-right:5px; font-size:13px; line-height:1; }
-    .assessment-email-tabs { display:flex; gap:7px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:8px 0 10px; padding-bottom:7px; }
+    .assessment-email-tabs { display:flex; gap:7px; flex-wrap:wrap; align-items:stretch; border-bottom:1px solid #d9e0ea; margin:8px 0 10px; padding-bottom:7px; }
+    .assessment-email-tab-group { display:flex; align-items:center; gap:7px; flex-wrap:wrap; min-width:0; }
+    .assessment-email-tab-group-title { display:inline-flex; align-items:center; align-self:center; color:#667085; padding:0 2px; font-size:11px; font-weight:900; line-height:1; white-space:nowrap; }
+    .assessment-email-tab-separator { width:1px; min-height:36px; align-self:stretch; background:#d9e0ea; margin:0 2px; }
     .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:8px 11px; font-weight:900; cursor:pointer; }
     .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
     .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
@@ -1031,6 +1034,8 @@
       .assessment-email-topbar p { white-space:normal; max-width:none; }
       .assessment-email-search-result { align-items:flex-start; flex-direction:column; }
       .assessment-email-kpi { width:100%; justify-content:space-between; white-space:normal; }
+      .assessment-email-tab-group { width:100%; }
+      .assessment-email-tab-separator { width:100%; height:1px; min-height:0; margin:2px 0; }
       .assessment-email-table-wrap { border:0; background:transparent; overflow:visible; max-height:none; }
       .assessment-email-table { display:block; width:100%; overflow-x:visible; }
       .assessment-email-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
@@ -4502,14 +4507,21 @@ body.assessment-public-mode .assessment-public-only-card {
           </section>
 
           <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
-            <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
-            <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')">Contattati / in attesa</button>
-            <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')">Problemi</button>
-            <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
-            <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
-            <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
-            <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')">Scheda pubblica</button>
-            <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
+            <div class="assessment-email-tab-group" aria-label="Processi operativi">
+              <span class="assessment-email-tab-group-title">Operativi</span>
+              <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
+              <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')">Contattati / in attesa</button>
+              <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')">Problemi</button>
+              <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
+              <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
+            </div>
+            <span class="assessment-email-tab-separator" aria-hidden="true"></span>
+            <div class="assessment-email-tab-group" aria-label="Consultazione e impostazioni">
+              <span class="assessment-email-tab-group-title">Consultazione</span>
+              <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
+              <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')">Scheda pubblica</button>
+              <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
+            </div>
           </nav>
 
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
@@ -5056,7 +5068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.396';
+    const APP_VERSION = '5.397';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
