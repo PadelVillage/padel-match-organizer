@@ -914,7 +914,7 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.387 - Autovalutazione: reinvio email e scheda pubblica come pannello */
+    /* v5.388 - Autovalutazione: tab operative prima, stato invio in fondo */
     body.assessment-view .top-nav-bar { margin-bottom:10px; padding:8px 10px; }
     body.assessment-view .menu-toggle { padding:7px 10px; }
     .assessment-email-page { max-width:1500px; margin:0 auto; }
@@ -4078,7 +4078,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAssessment" class="side-submenu">
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Stato invio')">Stato invio</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Da inviare 0.5')">Da inviare 0.5</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Contattati in attesa')">Contattati / in attesa</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Problemi')">Problemi</button>
@@ -4086,6 +4085,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('assessment','Storico')">Storico</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Testi')">Testi</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Stato invio')">Stato invio</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
         </div>
 
@@ -4502,17 +4502,17 @@ body.assessment-public-mode .assessment-public-only-card {
           </section>
 
           <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
-            <button id="anchor-assessment-stato" class="assessment-email-tab active" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
-            <button id="anchor-assessment-da-inviare" class="assessment-email-tab" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
+            <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
             <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')">Contattati / in attesa</button>
             <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')">Problemi</button>
             <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
             <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
             <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
             <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')">Scheda pubblica</button>
+            <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
           </nav>
 
-          <section id="assessmentEmailRoutinePanel" class="assessment-email-panel active" data-assessment-email-panel="routine">
+          <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Stato invio automatico</h3>
@@ -4527,7 +4527,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div id="assessmentEmailRoutineContent" class="assessment-email-content"></div>
           </section>
 
-          <section id="assessmentEmailQueuePanel" class="assessment-email-panel" data-assessment-email-panel="queue">
+          <section id="assessmentEmailQueuePanel" class="assessment-email-panel active" data-assessment-email-panel="queue">
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Da inviare 0.5</h3>
@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.387';
+    const APP_VERSION = '5.388';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21376,7 +21376,7 @@ Per confermare scrivi ELIMINA.`);
         cleanCell(profile.matchType || '')
       ].filter(Boolean).join(' · ') || '-';
     }
-    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || 'routine';
+    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || 'queue';
     window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
     function assessmentEmailFeaturePending(message) {
@@ -21632,7 +21632,7 @@ Per confermare scrivi ELIMINA.`);
       </div>`;
     }
     function assessmentEmailGoToMemberPanel(panel, memberId) {
-      setAssessmentEmailPanel(panel || 'routine');
+      setAssessmentEmailPanel(panel || 'queue');
       setTimeout(() => {
         const row = Array.from(document.querySelectorAll('[data-assessment-email-member], [data-assessment-problem-member]'))
           .find(el => String(el.dataset.assessmentEmailMember || el.dataset.assessmentProblemMember || '') === String(memberId || ''));
@@ -21646,8 +21646,8 @@ Per confermare scrivi ELIMINA.`);
       const line = meta || `liv. ${member?.level ?? '-'} - ${assessmentEmailMemberEmail(member) || 'email mancante'}`;
       return `<span class="assessment-email-name">${escapeHtml(playerFullName(member))}</span><span class="assessment-email-meta">${escapeHtml(line)}</span>`;
     }
-    function setAssessmentEmailPanel(panel='routine') {
-      window.assessmentEmailActivePanel = panel || 'routine';
+    function setAssessmentEmailPanel(panel='queue') {
+      window.assessmentEmailActivePanel = panel || 'queue';
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === window.assessmentEmailActivePanel));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
       renderAssessmentEmailPanels();
@@ -21940,8 +21940,8 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailPostPanel();
       renderAssessmentEmailHistoryPanel();
       renderAssessmentEmailTextsPanel();
-      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'routine')));
-      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'routine')));
+      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'queue')));
+      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'queue')));
     }
     async function assessmentEmailPrepareMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));

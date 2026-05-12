@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388.
 
-Ultimo aggiornamento: 2026-05-12 15:41
+Ultimo aggiornamento: 2026-05-12 16:01
 
 ## Obiettivo
 
@@ -149,6 +149,17 @@ Regole integrate:
 - il reinvio usa il testo `Secondo invio dopo 7 giorni`;
 - in TEST il reinvio resta protetto: la mail va al destinatario prova, non direttamente al socio reale;
 - dopo il reinvio la riga resta in attesa, aggiorna data/ora dell'ultimo invio e mostra il conteggio degli invii.
+
+## Nota UI TEST v5.388
+
+L'ordine delle tab della sezione `Autovalutazione` viene riallineato al lavoro quotidiano.
+
+Regole integrate:
+
+- la prima tab aperta e' `Da inviare 0.5`;
+- l'ordine operativo diventa `Da inviare 0.5`, `Contattati / in attesa`, `Problemi`, `Post-invio`, `Storico`, `Testi`, `Scheda pubblica`, `Stato invio`;
+- anche il sottomenu laterale segue lo stesso ordine;
+- `Stato invio` resta disponibile, ma come controllo finale a destra invece che come punto di partenza.
 
 ## Nota mockup 2026-05-11 19:05
 
