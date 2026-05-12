@@ -1014,6 +1014,7 @@
     .assessment-email-message-preview-text { margin:0; white-space:pre-wrap; color:#344054; font:inherit; line-height:1.45; }
     .assessment-email-modal-actions { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:0 18px 18px; }
     .assessment-email-modal-feedback { color:#667085; font-size:13px; line-height:1.35; }
+    .assessment-email-reply-text { margin:0; white-space:pre-wrap; color:#344054; font:inherit; line-height:1.45; max-height:42vh; overflow:auto; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; }
     @media (max-width:1100px) {
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
@@ -4635,6 +4636,29 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
             </div>
           </div>
+          <div id="assessmentEmailReplyModal" class="assessment-email-modal" aria-hidden="true" onclick="if(event.target.id==='assessmentEmailReplyModal') closeAssessmentEmailReplyModal();">
+            <div class="assessment-email-modal-card" role="dialog" aria-modal="true" aria-labelledby="assessmentEmailReplyModalTitle">
+              <div class="assessment-email-modal-head">
+                <div>
+                  <h3 id="assessmentEmailReplyModalTitle" class="assessment-email-modal-title">Risposta email del socio</h3>
+                  <p class="assessment-email-panel-copy">Quando il socio risponde prima di compilare, gli invii automatici restano sospesi finche lo staff gestisce la risposta.</p>
+                </div>
+                <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailReplyModal()">Chiudi</button>
+              </div>
+              <div class="assessment-email-modal-body">
+                <div id="assessmentEmailReplySummary" class="assessment-email-modal-summary">-</div>
+                <pre id="assessmentEmailReplyText" class="assessment-email-reply-text"></pre>
+              </div>
+              <div class="assessment-email-modal-actions">
+                <span id="assessmentEmailReplyFeedback" class="assessment-email-modal-feedback">La risposta resta collegata al socio finche il giro non viene chiuso.</span>
+                <div class="assessment-email-actions">
+                  <button type="button" class="btn-secondary small-btn" onclick="copyAssessmentEmailReplyText()">Copia risposta</button>
+                  <button type="button" class="btn-warning small-btn" onclick="openAssessmentEmailReplyWhatsapp()">Apri WhatsApp</button>
+                  <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailReplyModal()">Chiudi</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div id="assessmentPreList" style="display:none"></div>
           <div id="assessmentPreSelectedSummary" style="display:none"></div>
           <div id="assessmentPreQueue" style="display:none"></div>
@@ -5036,7 +5060,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.404';
+    const APP_VERSION = '5.405';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21767,9 +21791,23 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailHistoryChannelLabel(row) {
       return row?.info?.paused ? 'Email + recupero WhatsApp' : 'Email';
     }
+    function assessmentEmailReplyAtForRow(row) {
+      return cleanCell(row?.info?.rec?.emailReplyAt || row?.member?.selfAssessmentEmailReplyAt || '');
+    }
+    function assessmentEmailReplyTextFor(member, rec={}) {
+      return cleanCell(
+        rec?.emailReplyText
+        || rec?.emailReplyBody
+        || member?.selfAssessmentEmailReplyText
+        || member?.selfAssessmentEmailReplyBody
+        || rec?.emailReplySnippet
+        || member?.selfAssessmentEmailReplySnippet
+        || ''
+      );
+    }
     function assessmentEmailReplySummaryHtml(row) {
       const rec = row?.info?.rec || {};
-      const replyAt = cleanCell(rec.emailReplyAt || row?.member?.selfAssessmentEmailReplyAt || '');
+      const replyAt = assessmentEmailReplyAtForRow(row);
       const replyFrom = cleanCell(rec.emailReplyFrom || row?.member?.selfAssessmentEmailReplyFrom || '');
       const replySnippet = cleanCell(rec.emailReplySnippet || row?.member?.selfAssessmentEmailReplySnippet || '');
       if (!replyAt) return '<span class="assessment-email-meta">Nessuna risposta email registrata</span>';
@@ -21879,10 +21917,13 @@ Per confermare scrivi ELIMINA.`);
         rec.emailReplyFrom = item.replyFrom || '';
         rec.emailReplySubject = item.replySubject || '';
         rec.emailReplySnippet = item.replySnippet || '';
+        rec.emailReplyText = item.replyText || item.replyBody || '';
         rec.emailReplyGmailMessageId = item.replyGmailMessageId || '';
         member.selfAssessmentEmailReplyAt = rec.emailReplyAt;
         member.selfAssessmentEmailReplyFrom = rec.emailReplyFrom;
+        member.selfAssessmentEmailReplySubject = rec.emailReplySubject;
         member.selfAssessmentEmailReplySnippet = rec.emailReplySnippet;
+        member.selfAssessmentEmailReplyText = rec.emailReplyText;
         updatedRows.push({
           memberId:String(member.id),
           memberName:playerFullName(member),
@@ -21972,6 +22013,7 @@ Per confermare scrivi ELIMINA.`);
       return assessmentEmailAllOperationalRows().filter(row => {
         if (!assessmentEmailIsCycleCandidate(row)) return false;
         if (row.response || assessmentEmailMemberApplied(row.member, row.info)) return false;
+        if (assessmentEmailReplyAtForRow(row)) return false;
         if (row.rec?.emailStatus === 'bounced') return true;
         if (!assessmentEmailHasValidEmail(row.member)) return true;
         if (!row.member.phone) return true;
@@ -22226,7 +22268,7 @@ Per confermare scrivi ELIMINA.`);
       return 'Reinvia terza email';
     }
     function assessmentEmailNextPendingRule(sentCount, replyAt, whatsappAt) {
-      if (replyAt) return 'Leggi la risposta su Gmail e gestiscila manualmente';
+      if (replyAt) return 'Risposta ricevuta: invii automatici sospesi, leggi e gestisci manualmente';
       if (whatsappAt) return 'Se non ha ricevuto, correggere email e reinviare';
       if (sentCount >= 3) return 'Dopo 2 giorni dal terzo invio: recupero WhatsApp manuale';
       if (sentCount >= 2) return 'Terzo invio dopo 2 giorni dal secondo';
@@ -22253,6 +22295,12 @@ Per confermare scrivi ELIMINA.`);
         const contactBadge = replyAt ? assessmentEmailBadge('Ha risposto via email','ok') : (whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info'));
         const nextRule = assessmentEmailNextPendingRule(sentCount, replyAt, whatsappAt);
         const resendLabel = assessmentEmailNextResendLabel(sentCount);
+        const replyAction = replyAt
+          ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); openAssessmentEmailReplyModal('${escapeJs(String(row.member.id))}')">Leggi risposta</button>`
+          : '';
+        const resendAction = replyAt
+          ? ''
+          : `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailResendMember('${escapeJs(String(row.member.id))}')">${escapeHtml(resendLabel)}</button>`;
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
           <td data-label="Contatto">${contactText}</td>
@@ -22261,7 +22309,8 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Prossima regola">${escapeHtml(nextRule)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
-            <button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailResendMember('${escapeJs(String(row.member.id))}')">${escapeHtml(resendLabel)}</button>
+            ${replyAction}
+            ${resendAction}
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${whatsappAt ? 'whatsapp-reminder' : 'whatsapp-check'}','${whatsappAt ? 'Verifica WhatsApp aperta' : 'Email inviata, scheda non compilata'}')">WhatsApp</button>
             <button class="assessment-email-mini danger" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
           </div></td>
@@ -22366,6 +22415,9 @@ Per confermare scrivi ELIMINA.`);
         const restoreAction = assessmentMemberNeedsLevelRestore(row.member)
           ? `<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentRestoreValidatedLevel('${escapeJs(String(row.member.id))}')">Ripristina livello validato</button>`
           : '';
+        const replyReadAction = assessmentEmailReplyAtForRow(row)
+          ? `<button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentEmailReplyModal('${escapeJs(String(row.member.id))}')">Leggi risposta</button>`
+          : '';
         const levelHtml = restoreAction && restoreInfo
           ? `${escapeHtml(row.member.level ?? '-')}<span class="assessment-email-meta">Validato: ${escapeHtml(String(restoreInfo.level))}</span>`
           : escapeHtml(row.member.level ?? '-');
@@ -22381,6 +22433,7 @@ Per confermare scrivi ELIMINA.`);
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
             ${restoreAction}
             ${confirmationAction}
+            ${replyReadAction}
             <button class="assessment-email-mini success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(row.member.id))}')">Apri WhatsApp</button>
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda socio</button>
           </div></td>
@@ -22467,6 +22520,11 @@ Per confermare scrivi ELIMINA.`);
       const cycleInfo = assessmentRecordFor(member);
       if (!isLevelZeroPointFive(member) && !assessmentEmailIsExplicitNewCycle(member, cycleInfo)) return showAlert('Il socio non ha livello 0.5. Per inviare una nuova valutazione, avviala prima dalla scheda socio.', 'warning');
       if (!assessmentEmailHasValidEmail(member)) return showAlert('Email del socio mancante o non valida. Usa prima il recupero WhatsApp.', 'warning');
+      const currentRec = getAssessmentTokenRecord(member.id);
+      if ((templateKey === 'recall-email' || templateKey === 'third-email') && cleanCell(currentRec?.emailReplyAt || member.selfAssessmentEmailReplyAt || '')) {
+        openAssessmentEmailReplyModal(member.id);
+        return showAlert('Il socio ha gia risposto via email: secondo e terzo invio restano sospesi.', 'info');
+      }
       if (getAssessmentRequestsSentTodayCount() >= DAILY_ASSESSMENT_REQUEST_LIMIT && !hasAssessmentRequestToday(member.id)) {
         return showAlert(`Limite giornaliero raggiunto: ${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}.`, 'warning');
       }
@@ -22540,6 +22598,10 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const rec = getAssessmentTokenRecord(member.id);
+      if (cleanCell(rec?.emailReplyAt || member.selfAssessmentEmailReplyAt || '')) {
+        openAssessmentEmailReplyModal(member.id);
+        return showAlert('Il socio ha gia risposto via email: gli invii automatici sono sospesi finche lo staff gestisce la risposta.', 'info');
+      }
       const sentCount = parseInt(rec?.emailSentCount, 10) || (rec?.sentAt ? 1 : 0);
       const templateKey = assessmentEmailNextResendTemplate(sentCount);
       const label = assessmentEmailNextResendLabel(sentCount).toLocaleLowerCase('it-IT');
@@ -22572,6 +22634,57 @@ Per confermare scrivi ELIMINA.`);
         .replaceAll('{nome}', displayFirstName(member) || playerFullName(member))
         .replaceAll('{nome_completo}', playerFullName(member))
         .replaceAll('{livello_validato}', cleanCell(member?.level || ''));
+    }
+    function assessmentEmailReplyData(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return null;
+      const rec = getAssessmentTokenRecord(member.id) || {};
+      const replyAt = cleanCell(rec.emailReplyAt || member.selfAssessmentEmailReplyAt || '');
+      const replyFrom = cleanCell(rec.emailReplyFrom || member.selfAssessmentEmailReplyFrom || '');
+      const replySubject = cleanCell(rec.emailReplySubject || member.selfAssessmentEmailReplySubject || '');
+      const replyText = assessmentEmailReplyTextFor(member, rec);
+      return { member, rec, replyAt, replyFrom, replySubject, replyText };
+    }
+    function openAssessmentEmailReplyModal(memberId) {
+      const data = assessmentEmailReplyData(memberId);
+      if (!data) return showAlert('Socio non trovato.', 'warning');
+      if (!data.replyAt && !data.replyText) return showAlert('Nessuna risposta email registrata per questo socio.', 'info');
+      window.assessmentEmailReplyModalState = { memberId:String(data.member.id) };
+      const modal = document.getElementById('assessmentEmailReplyModal');
+      const summary = document.getElementById('assessmentEmailReplySummary');
+      const text = document.getElementById('assessmentEmailReplyText');
+      const feedback = document.getElementById('assessmentEmailReplyFeedback');
+      if (summary) {
+        summary.innerHTML = `<strong>${escapeHtml(playerFullName(data.member))}</strong><br>
+          <span>Ricevuta: ${escapeHtml(assessmentEmailFormatDateTime(data.replyAt))}</span>${data.replyFrom ? `<br><span>Da: ${escapeHtml(data.replyFrom)}</span>` : ''}${data.replySubject ? `<br><span>Oggetto: ${escapeHtml(data.replySubject)}</span>` : ''}
+          <br><span class="assessment-email-meta">Scheda non compilata: secondo e terzo invio restano sospesi finche lo staff gestisce la risposta.</span>`;
+      }
+      if (text) text.textContent = data.replyText || 'Testo completo non disponibile. Usa Gmail per leggere la conversazione completa.';
+      if (feedback) feedback.textContent = 'Dopo aver letto, puoi rispondere manualmente, aprire WhatsApp, mettere in pausa o attendere la compilazione.';
+      if (modal) {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    }
+    function closeAssessmentEmailReplyModal() {
+      const modal = document.getElementById('assessmentEmailReplyModal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    }
+    function copyAssessmentEmailReplyText() {
+      const state = window.assessmentEmailReplyModalState || {};
+      const data = assessmentEmailReplyData(state.memberId || '');
+      if (!data) return showAlert('Socio non trovato.', 'warning');
+      copyTextWithFallback(data.replyText || '', 'Risposta email copiata.');
+    }
+    function openAssessmentEmailReplyWhatsapp() {
+      const state = window.assessmentEmailReplyModalState || {};
+      const data = assessmentEmailReplyData(state.memberId || '');
+      if (!data) return showAlert('Socio non trovato.', 'warning');
+      closeAssessmentEmailReplyModal();
+      openAssessmentEmailWhatsAppCheck(data.member.id, 'whatsapp-check', 'Risposta email ricevuta, da gestire');
     }
     function renderAssessmentEmailWhatsappModal() {
       const state = window.assessmentEmailWhatsappModalState || {};

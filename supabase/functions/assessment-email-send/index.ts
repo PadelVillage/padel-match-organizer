@@ -399,6 +399,25 @@ function gmailMessageInfo(message: JsonMap) {
   };
 }
 
+function compactReplyText(text: unknown, snippet: unknown) {
+  const source = clean(text || snippet).replace(/\r/g, '').replace(/\u00a0/g, ' ');
+  if (!source) return '';
+  const kept: string[] = [];
+  for (const rawLine of source.split('\n')) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+    if (/^On .+wrote:$/i.test(trimmed) || /^Il .+ ha scritto:$/i.test(trimmed)) break;
+    if (/^-{2,}\s*Original Message\s*-{2,}$/i.test(trimmed)) break;
+    if (/^(Da|From|Inviato|Sent|A|To|Oggetto|Subject):\s+/i.test(trimmed) && kept.length > 0) break;
+    if (/^>/.test(trimmed) && kept.length > 0) break;
+    kept.push(line);
+  }
+  const normalized = clean(kept.join('\n'))
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+  return clean(normalized || snippet || source).slice(0, 5000);
+}
+
 function matchGmailInfoToSent(info: JsonMap, sentRecords: JsonMap[]) {
   const haystack = `${info.from || ''}\n${info.to || ''}\n${info.subject || ''}\n${info.snippet || ''}\n${info.text || ''}`.toLocaleLowerCase('it-IT');
   return sentRecords.find((record) => {
@@ -485,6 +504,7 @@ async function scanGmailReplies(accessToken: string, sentRecords: JsonMap[]) {
       replySubject: info.subject,
       replyDate: info.date,
       replySnippet: info.snippet,
+      replyText: compactReplyText(info.text, info.snippet),
     };
   }).filter((item): item is JsonMap => !!item);
   return { scanned: infos.length, matches };
