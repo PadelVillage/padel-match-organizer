@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393.
 
-Ultimo aggiornamento: 2026-05-12 19:17
+Ultimo aggiornamento: 2026-05-12 20:02
 
 ## Obiettivo
 
@@ -200,6 +200,18 @@ Dopo il primo passaggio in `Storico`, viene chiarita la parte finale del giro:
 - se la conferma non parte, nello storico resta il pulsante `Invia conferma email`;
 - se la conferma e' gia partita, nello storico resta `Reinvia conferma email`;
 - WhatsApp resta solo canale manuale di recupero prima della compilazione, non canale di notifica finale del livello validato.
+
+## Nota tecnica TEST v5.393
+
+Dopo l'approvazione del flusso finale, `Post-invio` viene automatizzato per i casi semplici:
+
+- quando lo staff preme `Aggiorna risposte`, l'app importa le schede compilate da Supabase;
+- le schede coerenti con differenza livello `0` o `0.5` vengono chiuse automaticamente;
+- la chiusura automatica applica il livello calcolato alla scheda socio e sposta il giro nello `Storico`;
+- subito dopo l'app prova a inviare via email la conferma del livello validato;
+- se l'email di conferma non parte, lo storico conserva lo stato `Email da inviare` e il pulsante manuale;
+- le schede con differenza alta o dati dubbi restano in `Post-invio` per controllo staff;
+- il bottone `Applica automatiche ora` resta come recupero manuale se serve rilanciare la chiusura delle schede automatiche gia importate.
 
 ## Nota mockup 2026-05-11 19:05
 

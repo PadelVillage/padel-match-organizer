@@ -4573,11 +4573,11 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Post-invio e risposte</h3>
-                <p class="assessment-email-panel-copy">Coda operativa solo per schede compilate e ricevute correttamente. Le piu vecchie restano in alto.</p>
+                <p class="assessment-email-panel-copy">Schede ricevute correttamente. Quelle coerenti con differenza 0 o 0.5 vengono chiuse in automatico dopo Aggiorna risposte; le altre restano qui da controllare.</p>
               </div>
               <div class="assessment-email-actions">
                 <button id="assessmentSyncTopButton" class="assessment-sync-status-btn visible" onclick="handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentApplyAutoApplicableResponses()">Applica auto-applicabili</button>
+                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentApplyAutoApplicableResponses()">Applica automatiche ora</button>
               </div>
             </div>
             <div id="assessmentSyncLastCheck" class="assessment-sync-meta" style="padding:0 18px 12px;">Ultimo controllo: mai eseguito</div>
@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.392';
+    const APP_VERSION = '5.393';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -20571,13 +20571,23 @@ Per confermare scrivi ELIMINA.`);
           return { ok:true, count:0 };
         }
         importAssessmentResponses(rows, { silent:true });
+        const autoResult = assessmentEmailAutoPostProcessingEnabled()
+          ? await assessmentEmailRunAutoPostProcessing({ silent:true, suppressSuccessAlert:true, source:'sync' })
+          : { applied:0, emailSent:0, emailFailed:0, failed:0 };
         window.__assessmentResponsesSyncedThisSession = true;
         pmoLocalSetItem('assessmentResponsesLastSyncAt', new Date().toISOString());
         updateAssessmentSyncTopButton();
         try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-        displayAssessment();
-        showAlert(`✅ Risposte aggiornate: ${rows.length} risposta/e lette.`, 'success');
-        return { ok:true, count:rows.length };
+        if (!autoResult.applied) displayAssessment();
+        const issueCount = (autoResult.emailFailed || 0) + (autoResult.failed || 0);
+        if (autoResult.applied) {
+          showAlert(`✅ Risposte aggiornate: ${rows.length}. Auto-applicate: ${autoResult.applied}. Conferme email inviate: ${autoResult.emailSent}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
+        } else if (issueCount) {
+          showAlert(`⚠️ Risposte aggiornate: ${rows.length}. Chiusura automatica non completata: ${issueCount} da controllare.`, 'warning');
+        } else {
+          showAlert(`✅ Risposte aggiornate: ${rows.length} risposta/e lette.`, 'success');
+        }
+        return { ok:true, count:rows.length, autoApplied:autoResult.applied || 0, autoEmailSent:autoResult.emailSent || 0 };
       } catch (err) {
         displayAssessment();
         try { renderInitialDashboard(); } catch (dashErr) { console.warn('Dashboard non aggiornata:', dashErr); }
@@ -21478,18 +21488,18 @@ Per confermare scrivi ELIMINA.`);
     async function assessmentEmailSendLevelConfirmation(memberId, options={}) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) {
-        showAlert('Socio non trovato.', 'warning');
+        if (!options.suppressFailureAlert) showAlert('Socio non trovato.', 'warning');
         return false;
       }
       const rec = getAssessmentTokenRecord(member.id);
       const response = rec?.token ? getAssessmentResponseByToken(rec.token) : null;
       const info = assessmentRecordFor(member);
       if (!assessmentEmailMemberApplied(member, info)) {
-        showAlert('Prima applica il livello alla scheda socio, poi invia la conferma email.', 'warning');
+        if (!options.suppressFailureAlert) showAlert('Prima applica il livello alla scheda socio, poi invia la conferma email.', 'warning');
         return false;
       }
       if (!assessmentEmailHasValidEmail(member)) {
-        showAlert('Email del socio mancante o non valida: non posso inviare la conferma livello.', 'warning');
+        if (!options.suppressFailureAlert) showAlert('Email del socio mancante o non valida: non posso inviare la conferma livello.', 'warning');
         return false;
       }
       const alreadySentAt = assessmentEmailLevelConfirmationSentAt(member, response, rec);
@@ -21506,7 +21516,7 @@ Per confermare scrivi ELIMINA.`);
           livello_validato: cleanCell(response?.applied_level || member.level || '')
         });
         if (!rendered.body) {
-          showAlert('Testo email livello validato vuoto. Controlla la tab Testi.', 'warning');
+          if (!options.suppressFailureAlert) showAlert('Testo email livello validato vuoto. Controlla la tab Testi.', 'warning');
           return false;
         }
         if (!options.silentStart) showAlert(`Invio conferma livello via email per ${playerFullName(member)}...`, 'info');
@@ -21552,17 +21562,21 @@ Per confermare scrivi ELIMINA.`);
         save('giocatori', giocatori);
         save('assessmentResponses', assessmentResponses);
         save('assessmentTokens', assessmentTokens);
-        displayAssessment();
-        setAssessmentEmailPanel('history');
-        showAlert(options.fromApply
-          ? `Livello applicato a ${playerFullName(member)} e conferma email inviata.`
-          : `Conferma livello inviata via email a ${playerFullName(member)}.`,
-          'success');
+        if (!options.suppressRender) {
+          displayAssessment();
+          setAssessmentEmailPanel('history');
+        }
+        if (!options.suppressSuccessAlert) {
+          showAlert(options.fromApply
+            ? `Livello applicato a ${playerFullName(member)} e conferma email inviata.`
+            : `Conferma livello inviata via email a ${playerFullName(member)}.`,
+            'success');
+        }
         return true;
       } catch (err) {
         const message = 'Invio conferma livello non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare conferma livello');
         if (options.throwOnError) throw new Error(message);
-        showAlert(message, 'danger');
+        if (!options.suppressFailureAlert) showAlert(message, 'danger');
         return false;
       }
     }
@@ -21617,7 +21631,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailIsAutoApplicable(response) {
       const diff = assessmentEmailLevelDiff(response);
-      return diff !== null && diff <= 0.5;
+      return diff !== null && diff <= 0.5 && normalizeText(response?.consistency_status || '') !== 'low';
     }
     function assessmentEmailMemberApplied(member, info) {
       return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
@@ -22017,8 +22031,8 @@ Per confermare scrivi ELIMINA.`);
       const mini = (label, value, note) => `<div class="assessment-email-mini-kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div><div class="note">${escapeHtml(note)}</div></div>`;
       const summary = `<div class="assessment-email-mini-kpis">${[
         mini('Ricevute da gestire', rows.length, 'Solo schede compilate'),
-        mini('Auto-applicabili', autoRows.length, 'Differenza 0 o 0.5'),
-        mini('Da controllare', reviewRows.length, 'Differenza 1.0 o piu'),
+        mini('Automatiche', autoRows.length, 'Differenza 0 o 0.5'),
+        mini('Da controllare', reviewRows.length, 'Differenza alta o dubbia'),
         mini('Piu vecchia', oldest ? assessmentEmailFormatDate(oldest).slice(0,5) : '-', 'Prima da lavorare')
       ].join('')}</div>`;
       if (!rows.length) return void (box.innerHTML = summary + assessmentEmailEmpty('Nessuna scheda ricevuta da gestire.'));
@@ -22031,9 +22045,9 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Dichiarato">${escapeHtml(row.response?.declared_level || '-')}</td>
           <td data-label="Calcolato">${escapeHtml(row.response?.calculated_level || row.response?.declared_level || '-')}</td>
           <td data-label="Differenza">${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
-          <td data-label="Esito proposto">${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Controllo manuale necessario')}</td>
+          <td data-label="Esito proposto">${escapeHtml(auto ? 'Chiusura automatica attiva' : 'Controllo manuale necessario')}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
-            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Applica' : 'Controlla'}</button>
+            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Chiudi ora' : 'Controlla'}</button>
             <button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')">Dettagli</button>
           </div></td>
         </tr>`;
@@ -22346,11 +22360,72 @@ Per confermare scrivi ELIMINA.`);
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeAssessmentEmailWhatsappModal();
     });
+    function assessmentEmailAutoPostProcessingEnabled() {
+      return true;
+    }
+    async function assessmentEmailRunAutoPostProcessing(options = {}) {
+      if (!assessmentEmailAutoPostProcessingEnabled() && !options.force) {
+        return { ok:true, disabled:true, total:0, applied:0, emailSent:0, emailFailed:0, failed:0, remainingPost:assessmentEmailPostRows().length };
+      }
+      if (window.__assessmentEmailAutoPostRunning) {
+        return { ok:false, reason:'running', total:0, applied:0, emailSent:0, emailFailed:0, failed:0, remainingPost:assessmentEmailPostRows().length };
+      }
+      const rows = assessmentEmailPostRows().filter(row => assessmentEmailIsAutoApplicable(row.response));
+      const result = { ok:true, total:rows.length, applied:0, emailSent:0, emailFailed:0, failed:0, errors:[], remainingPost:0 };
+      if (!rows.length) {
+        result.remainingPost = assessmentEmailPostRows().length;
+        if (!options.silent && !options.silentNoRows) showAlert('Nessuna scheda automatica da chiudere.', 'info');
+        return result;
+      }
+      window.__assessmentEmailAutoPostRunning = true;
+      try {
+        for (const row of rows) {
+          try {
+            const applied = await applyAssessmentLevel(row.member.id, {
+              automated: true,
+              skipLowConfirm: true,
+              suppressRender: true,
+              suppressMemberCard: true,
+              suppressSuccessAlert: true,
+              silent: true
+            });
+            if (applied?.ok && applied.applied) {
+              result.applied++;
+              if (applied.emailSent) result.emailSent++;
+              else if (applied.emailError) result.emailFailed++;
+            } else {
+              result.failed++;
+              result.errors.push(applied?.message || applied?.reason || playerFullName(row.member));
+            }
+          } catch (err) {
+            result.failed++;
+            result.errors.push(err?.message || String(err));
+          }
+        }
+      } finally {
+        window.__assessmentEmailAutoPostRunning = false;
+      }
+      pmoLocalSetItem('assessmentAutoPostLastRunAt', new Date().toISOString());
+      result.remainingPost = assessmentEmailPostRows().length;
+      displayAssessment();
+      try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
+      try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
+      try { displayMembers(); } catch (err) { console.warn('Anagrafica non aggiornata:', err); }
+      updateStats();
+      if (result.applied) {
+        setAssessmentEmailPanel(result.remainingPost ? 'post' : 'history');
+      }
+      if (!options.silent && !options.suppressSuccessAlert) {
+        const issueCount = result.emailFailed + result.failed;
+        showAlert(`Schede chiuse automaticamente: ${result.applied}. Conferme email inviate: ${result.emailSent}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
+      }
+      return result;
+    }
     async function assessmentApplyAutoApplicableResponses() {
       const rows = assessmentEmailPostRows().filter(row => assessmentEmailIsAutoApplicable(row.response));
-      if (!rows.length) return showAlert('Nessuna scheda auto-applicabile da applicare.', 'info');
-      if (!confirm(`Applicare automaticamente ${rows.length} livello/i con differenza massima 0.5?`)) return;
-      for (const row of rows) await applyAssessmentLevel(row.member.id);
+      if (!rows.length) return showAlert('Nessuna scheda automatica da chiudere.', 'info');
+      if (!confirm(`Chiudere automaticamente ${rows.length} scheda/e con differenza massima 0.5 e inviare la conferma livello via email?`)) return;
+      await assessmentEmailRunAutoPostProcessing({ source:'manual' });
     }
     function assessmentEmailClearHistoryFilters() {
       ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryLevel'].forEach(id => {
@@ -23155,18 +23230,23 @@ Per confermare scrivi ELIMINA.`);
       return true;
     }
 
-    async function applyAssessmentLevel(memberId) {
+    async function applyAssessmentLevel(memberId, options = {}) {
+      const silent = options.silent === true;
+      const failApply = (message, type='danger', reason='error') => {
+        if (!silent) showAlert(message, type);
+        return { ok:false, applied:false, reason, message };
+      };
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
       const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-      if (!member || !response) return showAlert('❌ Risposta non trovata', 'danger');
-      if (response.consistency_status === 'low') {
+      if (!member || !response) return failApply('❌ Risposta non trovata', 'danger', 'missing_response');
+      if (response.consistency_status === 'low' && !options.skipLowConfirm) {
         const ok = confirm('⚠️ Questa autovalutazione ha coerenza bassa. Vuoi comunque applicare il livello calcolato?');
-        if (!ok) return;
+        if (!ok) return { ok:false, applied:false, reason:'cancelled', message:'Applicazione annullata dallo staff.' };
       }
       const rawLevel = response.calculated_level || response.declared_level || '';
       const level = parseLevel(String(rawLevel).replace(',', '.'), NaN);
-      if (isNaN(level)) return showAlert('❌ Livello calcolato non valido', 'danger');
+      if (isNaN(level)) return failApply('❌ Livello calcolato non valido', 'danger', 'invalid_level');
 
       member.level = level;
       member.levelSource = 'autovalutazione';
@@ -23184,27 +23264,36 @@ Per confermare scrivi ELIMINA.`);
 
       save('giocatori', giocatori);
       save('assessmentResponses', assessmentResponses);
-      displayAssessment();
-      try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
-      displayMembers();
-      try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
-      updateStats();
-      try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      if (!assessmentEmailHasValidEmail(member)) {
-        showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata perche manca una email valida.`, 'warning');
-        return;
+      if (!options.suppressRender) {
+        displayAssessment();
+        try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
+        displayMembers();
+        if (!options.suppressMemberCard) {
+          try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
+        }
+        updateStats();
+        try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
       }
-      showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Invio conferma email in corso...`, 'info');
+      if (!assessmentEmailHasValidEmail(member)) {
+        if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata perche manca una email valida.`, 'warning');
+        return { ok:true, applied:true, level, emailSent:false, emailError:'Email mancante' };
+      }
+      if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Invio conferma email in corso...`, 'info');
       try {
-        await assessmentEmailSendLevelConfirmation(member.id, {
+        const sent = await assessmentEmailSendLevelConfirmation(member.id, {
           fromApply: true,
           silentStart: true,
           skipConfirm: true,
           skipIfAlreadySent: true,
-          throwOnError: true
+          throwOnError: true,
+          suppressRender: options.suppressRender,
+          suppressSuccessAlert: silent || options.suppressSuccessAlert,
+          suppressFailureAlert: silent || options.suppressFailureAlert
         });
+        return { ok:true, applied:true, level, emailSent:!!sent, emailError: sent ? '' : 'Invio conferma email non riuscito' };
       } catch (err) {
-        showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata: ${err.message || err}`, 'warning');
+        if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata: ${err.message || err}`, 'warning');
+        return { ok:true, applied:true, level, emailSent:false, emailError:err?.message || String(err) };
       }
     }
 
