@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST v5.405.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST v5.405; pubblicata in PROD v5.405 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`.
 
-Ultimo aggiornamento: 2026-05-13 01:14
+Ultimo aggiornamento: 2026-05-13 01:26
 
 ## Obiettivo
 
@@ -321,7 +321,7 @@ Anche nello `Storico` deve essere visibile se il socio ha risposto via email dop
 - `Risposta socio` mostra `Risposta ricevuta`, data/ora, mittente e anteprima del testo quando Gmail ha agganciato una risposta;
 - se non esiste risposta email agganciata, la riga indica `Nessuna risposta email registrata`.
 
-## Nota UI TEST v5.405
+## Nota UI TEST/PROD v5.405
 
 Se un socio risponde via email prima di compilare la scheda:
 
@@ -329,7 +329,8 @@ Se un socio risponde via email prima di compilare la scheda:
 - secondo e terzo invio restano sospesi finche lo staff gestisce la risposta;
 - la colonna `Contatto` mostra che la risposta email e' stata ricevuta;
 - nelle azioni compare `Leggi risposta`, che apre una scheda sopra con data, mittente, oggetto e testo letto da Gmail;
-- la funzione TEST `assessment-email-send` restituisce anche `replyText`, oltre all'anteprima, per permettere la lettura direttamente in app.
+- la funzione `assessment-email-send` restituisce anche `replyText`, oltre all'anteprima, per permettere la lettura direttamente in app;
+- la funzione e' pubblicata con `verify_jwt=true` sia in TEST sia in PROD.
 
 ## Nota mockup 2026-05-11 19:05
 
