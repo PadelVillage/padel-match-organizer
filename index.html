@@ -5036,7 +5036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.403';
+    const APP_VERSION = '5.404';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21767,6 +21767,14 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailHistoryChannelLabel(row) {
       return row?.info?.paused ? 'Email + recupero WhatsApp' : 'Email';
     }
+    function assessmentEmailReplySummaryHtml(row) {
+      const rec = row?.info?.rec || {};
+      const replyAt = cleanCell(rec.emailReplyAt || row?.member?.selfAssessmentEmailReplyAt || '');
+      const replyFrom = cleanCell(rec.emailReplyFrom || row?.member?.selfAssessmentEmailReplyFrom || '');
+      const replySnippet = cleanCell(rec.emailReplySnippet || row?.member?.selfAssessmentEmailReplySnippet || '');
+      if (!replyAt) return '<span class="assessment-email-meta">Nessuna risposta email registrata</span>';
+      return `${assessmentEmailBadge('Risposta ricevuta','info')}<span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}${replyFrom ? ` · ${escapeHtml(replyFrom)}` : ''}</span>${replySnippet ? `<span class="assessment-email-meta">${escapeHtml(replySnippet.slice(0, 120))}${replySnippet.length > 120 ? '...' : ''}</span>` : ''}`;
+    }
     function assessmentEmailCycleDate(member, info) {
       return assessmentEmailDateMs(info?.response?.submitted_at)
         || assessmentEmailDateMs(info?.rec?.completedAt)
@@ -22343,7 +22351,7 @@ Per confermare scrivi ELIMINA.`);
         <div><label>Livello</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
       </div>`;
       if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.'));
-      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Invio scheda</th><th>Conferma livello</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
@@ -22367,6 +22375,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Stato">${statusBadge}</td>
           <td data-label="Livello">${levelHtml}</td>
           <td data-label="Invio scheda">${escapeHtml(assessmentEmailHistoryChannelLabel(row))}</td>
+          <td data-label="Risposta socio">${assessmentEmailReplySummaryHtml(row)}</td>
           <td data-label="Conferma livello">${confirmationHtml}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}

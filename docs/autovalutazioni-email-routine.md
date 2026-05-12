@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404.
 
-Ultimo aggiornamento: 2026-05-13 00:45
+Ultimo aggiornamento: 2026-05-13 00:56
 
 ## Obiettivo
 
@@ -312,6 +312,14 @@ Quando `Aggiorna risposte email` trova una risposta Gmail, la UI deve essere esp
 - l'app porta alla sottosezione in cui quel socio si trova davvero, invece di indicare sempre `Contattati / in attesa`;
 - se il socio e' ancora in `Contattati / in attesa`, la riga mostra `Risposta email ricevuta`, data/ora, mittente e anteprima del testo;
 - se il socio e' gia in `Post-invio`, `Storico` o `Problemi`, la risposta viene comunque registrata ma il messaggio rimanda alla sottosezione corretta.
+
+## Nota UI TEST v5.404
+
+Anche nello `Storico` deve essere visibile se il socio ha risposto via email dopo la chiusura del giro:
+
+- la tabella storico separa `Invio scheda`, `Risposta socio` e `Conferma livello`;
+- `Risposta socio` mostra `Risposta ricevuta`, data/ora, mittente e anteprima del testo quando Gmail ha agganciato una risposta;
+- se non esiste risposta email agganciata, la riga indica `Nessuna risposta email registrata`.
 
 ## Nota mockup 2026-05-11 19:05
 
