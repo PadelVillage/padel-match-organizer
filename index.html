@@ -4463,7 +4463,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
                 <div><label>Livello giocatore</label><select id="levelFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
                 <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">N/A da completare</option></select></div>
-                <div><label>Attenzione dati</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutte le attenzioni</option><option value="toComplete">Da completare</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option></select></div>
+                <div><label>Attenzione dati</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutte le attenzioni</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option></select></div>
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.393';
+    const APP_VERSION = '5.394';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9400,10 +9400,14 @@ Grazie.`
     function memberNeedsAttention(g, type) {
       if (!type) return true;
       const gender = g.gender || 'NA';
-      if (type === 'toComplete') return !g.memberId || !g.phone || gender === 'NA' || String(g.level ?? '') === '0.5';
+      const noEmail = !assessmentEmailHasValidEmail(g);
+      const level05AfterAssessment = assessmentMemberNeedsLevelRestore(g);
+      if (type === 'toComplete') return !g.memberId || noEmail || !g.phone || gender === 'NA' || String(g.level ?? '') === '0.5' || level05AfterAssessment;
+      if (type === 'noEmail') return noEmail;
       if (type === 'noPhone') return !g.phone;
       if (type === 'level05') return String(g.level ?? '') === '0.5';
       if (type === 'noId') return !g.memberId;
+      if (type === 'level05AfterAssessment') return level05AfterAssessment;
       return true;
     }
     function applyFilters() {
@@ -9555,22 +9559,31 @@ Grazie.`
       const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(g, assessmentResponse, assessmentRec);
       const levelEmailText = levelEmailSentAt ? `Email inviata ${assessmentEmailFormatDateTime(levelEmailSentAt)}` : 'Email da inviare';
       const levelEmailButton = levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email';
-      const notificationText = g.selfAssessmentToken ? (levelEmailSentAt ? 'Conferma email inviata' : 'Conferma email da inviare') : 'Autovalutazione non applicata';
-      const notificationClass = g.selfAssessmentToken ? (levelEmailSentAt ? 'badge-success' : 'badge-warning') : 'badge-muted';
+      const levelRestoreInfo = assessmentLatestAppliedLevelInfo(g);
+      const needsLevelRestore = assessmentMemberNeedsLevelRestore(g);
+      const notificationText = needsLevelRestore ? 'Livello validato da ripristinare' : (g.selfAssessmentToken ? (levelEmailSentAt ? 'Conferma email inviata' : 'Conferma email da inviare') : 'Autovalutazione non applicata');
+      const notificationClass = needsLevelRestore ? 'badge-danger' : (g.selfAssessmentToken ? (levelEmailSentAt ? 'badge-success' : 'badge-warning') : 'badge-muted');
+      const restoreLevelLine = needsLevelRestore && levelRestoreInfo
+        ? `<div class="member-source-line"><span>Attenzione</span><strong>Livello validato ${escapeHtml(String(levelRestoreInfo.level))}, scheda ora a 0.5</strong></div>`
+        : '';
+      const restoreLevelButton = needsLevelRestore
+        ? `<button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentRestoreValidatedLevel('${escapeHtml(String(g.id))}')">Ripristina livello validato</button>`
+        : '';
       const assessmentMeta = g.selfAssessmentToken
         ? `<section class="member-panel">
             <div class="member-panel-head">
               <h4>Autovalutazione</h4>
-              <span class="badge badge-success">Applicata</span>
+              <span class="badge ${needsLevelRestore ? 'badge-danger' : 'badge-success'}">${needsLevelRestore ? 'Da correggere' : 'Applicata'}</span>
             </div>
             <div class="member-source-lines">
               <div class="member-source-line"><span>Livello</span><strong>${escapeHtml(g.level ?? '-')} ${escapeHtml(g.levelSource ? '(' + g.levelSource + ')' : '')}</strong></div>
+              ${restoreLevelLine}
               <div class="member-source-line"><span>Data</span><strong>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</strong></div>
               <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(g.selfAssessmentConsistency || '-')}</strong></div>
               <div class="member-source-line"><span>Conferma livello</span><strong>${escapeHtml(levelEmailText)}</strong></div>
               ${availabilitySource}
             </div>
-            <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(g.id))}')">${escapeHtml(levelEmailButton)}</button></div>
+            <div class="actions" style="margin-top:10px;">${restoreLevelButton}<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(g.id))}')">${escapeHtml(levelEmailButton)}</button></div>
           </section>`
         : `<section class="member-panel">
             <div class="member-panel-head">
@@ -9655,7 +9668,7 @@ Grazie.`
             <section class="member-panel">
               <div class="member-panel-head"><h4>Azioni operative</h4></div>
               <div class="member-card-action-row">
-                <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Reinvia autovalutazione</button>
+                <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
               </div>
@@ -9750,9 +9763,9 @@ Grazie.`
         availabilityUpdatedAt: new Date().toISOString()
       };
       save('giocatori', giocatori);
-      const keepOpenMemberId = String(memberId);
-      displayMembers();
-      openMemberCard(keepOpenMemberId, { force:true });
+      closeMemberCard();
+      try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
+      updateStats();
       showAlert('✅ Scheda salvata', 'success');
     }
     function toggleMemberActive(memberId) {
@@ -21267,6 +21280,49 @@ Per confermare scrivi ELIMINA.`);
         || (member.selfAssessmentToken && normalizeText(member.selfAssessmentToken) === normalizeText(item.token || ''))
       );
     }
+    function assessmentResponseIsAppliedForMember(member, response) {
+      if (!member || !response) return false;
+      return normalizeText(response.staff_status || '') === 'applied'
+        || !!response.applied_at
+        || String(response.applied_member_id || '') === String(member.id)
+        || (!!member.selfAssessmentToken && normalizeText(member.selfAssessmentToken) === normalizeText(response.token || ''));
+    }
+    function assessmentLatestAppliedLevelInfo(member) {
+      if (!member) return null;
+      const rows = assessmentMemberResponses(member)
+        .filter(response => assessmentResponseIsAppliedForMember(member, response))
+        .map(response => {
+          const level = parseLevel(String(response.applied_level || response.calculated_level || response.declared_level || '').replace(',', '.'), NaN);
+          const time = assessmentDateMs(response.applied_at) || assessmentDateMs(response.submitted_at) || 0;
+          return { response, level, time };
+        })
+        .filter(item => Number.isFinite(item.level))
+        .sort((a,b) => b.time - a.time);
+      return rows[0] || null;
+    }
+    function assessmentMemberNeedsLevelRestore(member) {
+      const info = assessmentLatestAppliedLevelInfo(member);
+      return !!(member && isLevelZeroPointFive(member) && info && Math.abs(info.level - 0.5) > 0.001);
+    }
+    function assessmentRestoreValidatedLevel(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const info = assessmentLatestAppliedLevelInfo(member);
+      if (!info) return showAlert('Nessun livello validato trovato nello storico autovalutazione.', 'warning');
+      if (!confirm(`Ripristinare il livello validato ${info.level} per ${playerFullName(member)}?`)) return;
+      member.level = info.level;
+      member.levelSource = 'autovalutazione';
+      member.selfAssessmentConsistency = cleanCell(info.response.consistency_status || member.selfAssessmentConsistency || '');
+      member.selfAssessmentStaffStatus = 'applied';
+      member.selfAssessmentDate = info.response.submitted_at || info.response.applied_at || member.selfAssessmentDate || new Date().toISOString();
+      member.selfAssessmentToken = cleanCell(info.response.token || member.selfAssessmentToken || '');
+      member.lastLevelUpdateAt = new Date().toISOString();
+      save('giocatori', giocatori);
+      displayMembers();
+      try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
+      try { openMemberCard(member.id, { force:true }); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
+      showAlert(`✅ Livello validato ripristinato per ${playerFullName(member)}: ${info.level}.`, 'success');
+    }
     function assessmentPostHasAppliedStatus(member, info) {
       if (!member || !info) return false;
       if (info.applied) return true;
@@ -21672,6 +21728,13 @@ Per confermare scrivi ELIMINA.`);
         || assessmentEmailDateMs(member?.selfAssessmentDate)
         || assessmentEmailDateMs(member?.createdAt);
     }
+    function assessmentEmailIsExplicitNewCycle(member, info=null) {
+      const rec = info?.rec || getAssessmentTokenRecord(member?.id);
+      return !!(member && rec && rec.restartReason === 'nuova_autovalutazione');
+    }
+    function assessmentEmailIsCycleCandidate(row) {
+      return !!(row?.member && (isLevelZeroPointFive(row.member) || assessmentEmailIsExplicitNewCycle(row.member, row.info)));
+    }
     function assessmentEmailAllOperationalRows() {
       return assessmentAllActiveMembers().filter(member => !isTechnicalMemberRecord(member)).map(member => {
         const info = assessmentRecordFor(member);
@@ -21680,7 +21743,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailQueueRows() {
       return assessmentEmailAllOperationalRows().filter(row => {
-        if (!isLevelZeroPointFive(row.member)) return false;
+        if (!assessmentEmailIsCycleCandidate(row)) return false;
         if (row.response || assessmentEmailMemberApplied(row.member, row.info) || row.info.paused) return false;
         if (!assessmentEmailHasValidEmail(row.member)) return false;
         if (row.rec?.status === 'sent') return false;
@@ -21714,7 +21777,7 @@ Per confermare scrivi ELIMINA.`);
       const twoWeeks = 14 * 24 * 60 * 60 * 1000;
       const now = Date.now();
       return assessmentEmailAllOperationalRows().filter(row => {
-        if (!isLevelZeroPointFive(row.member)) return false;
+        if (!assessmentEmailIsCycleCandidate(row)) return false;
         if (row.response || assessmentEmailMemberApplied(row.member, row.info)) return false;
         if (!assessmentEmailHasValidEmail(row.member)) return true;
         if (!row.member.phone) return true;
@@ -22081,15 +22144,23 @@ Per confermare scrivi ELIMINA.`);
         const confirmationAction = canSendConfirmation
           ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(row.member.id))}')">${confirmation.sentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
           : '';
+        const restoreInfo = assessmentLatestAppliedLevelInfo(row.member);
+        const restoreAction = assessmentMemberNeedsLevelRestore(row.member)
+          ? `<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentRestoreValidatedLevel('${escapeJs(String(row.member.id))}')">Ripristina livello validato</button>`
+          : '';
+        const levelHtml = restoreAction && restoreInfo
+          ? `${escapeHtml(row.member.level ?? '-')}<span class="assessment-email-meta">Validato: ${escapeHtml(String(restoreInfo.level))}</span>`
+          : escapeHtml(row.member.level ?? '-');
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
           <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
           <td data-label="Stato">${statusBadge}</td>
-          <td data-label="Livello">${escapeHtml(row.member.level ?? '-')}</td>
+          <td data-label="Livello">${levelHtml}</td>
           <td data-label="Invio scheda">${escapeHtml(assessmentEmailHistoryChannelLabel(row))}</td>
           <td data-label="Conferma livello">${confirmationHtml}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
+            ${restoreAction}
             ${confirmationAction}
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda socio</button>
           </div></td>
@@ -22172,7 +22243,8 @@ Per confermare scrivi ELIMINA.`);
     async function assessmentEmailSendMember(memberId, templateKey='primary-email', options={}) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      if (!isLevelZeroPointFive(member)) return showAlert('Il socio non ha livello 0.5, quindi non entra nel giro email autovalutazione.', 'warning');
+      const cycleInfo = assessmentRecordFor(member);
+      if (!isLevelZeroPointFive(member) && !assessmentEmailIsExplicitNewCycle(member, cycleInfo)) return showAlert('Il socio non ha livello 0.5. Per inviare una nuova valutazione, avviala prima dalla scheda socio.', 'warning');
       if (!assessmentEmailHasValidEmail(member)) return showAlert('Email del socio mancante o non valida. Usa prima il recupero WhatsApp.', 'warning');
       if (getAssessmentRequestsSentTodayCount() >= DAILY_ASSESSMENT_REQUEST_LIMIT && !hasAssessmentRequestToday(member.id)) {
         return showAlert(`Limite giornaliero raggiunto: ${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}.`, 'warning');
@@ -23141,7 +23213,7 @@ Per confermare scrivi ELIMINA.`);
           <div class="assessment-archive-actions">
             <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentArchiveOpenMemberCard('${memberKey}')">📋 Apri scheda</button>
             ${notifyButton}
-            <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentArchiveRestartMember('${memberKey}')">📝 Reinvia</button>
+            <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentArchiveRestartMember('${memberKey}')">📝 Nuova valutazione</button>
           </div>
         </div>`;
       }).join('');
@@ -23319,6 +23391,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('❌ Socio non trovato', 'danger');
       if (!member.phone) return showAlert('⚠️ Telefono mancante: aggiorna la scheda socio prima di reinviare.', 'warning');
+      if (!assessmentEmailHasValidEmail(member)) return showAlert('⚠️ Email mancante: aggiorna la scheda socio prima di avviare una nuova autovalutazione.', 'warning');
       // Il reinvio è una nuova richiesta: non deve restare bloccata dal log “già inviato oggi”.
       clearAssessmentRequestSentToday(member.id);
       const existing = getAssessmentTokenRecord(member.id);
@@ -23339,13 +23412,12 @@ Per confermare scrivi ELIMINA.`);
 
       switchTab('assessment');
       if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
-      const search = document.getElementById('assessmentPreSearch');
-      if (search) search.value = playerFullName(member);
+      window.assessmentEmailQueueSearch = playerFullName(member);
       window.assessmentPreQuickFilter = '';
-      renderAssessmentPrePanel();
+      renderAssessmentEmailPanels();
       setTimeout(() => {
-        document.querySelectorAll('.assessment-pre-check').forEach(el => { el.checked = String(el.value) === String(member.id); });
-        assessmentUpdatePreSelectedCount();
+        const search = document.getElementById('assessmentEmailQueueSearch');
+        if (search) search.value = playerFullName(member);
         const anchor = document.getElementById('anchor-assessment-da-inviare') || document.getElementById('anchor-assessment-stato');
         if (anchor) {
           scrollMainContentToElement(anchor);

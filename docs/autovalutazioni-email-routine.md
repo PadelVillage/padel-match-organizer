@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394.
 
-Ultimo aggiornamento: 2026-05-12 20:02
+Ultimo aggiornamento: 2026-05-12 21:18
 
 ## Obiettivo
 
@@ -212,6 +212,18 @@ Dopo l'approvazione del flusso finale, `Post-invio` viene automatizzato per i ca
 - se l'email di conferma non parte, lo storico conserva lo stato `Email da inviare` e il pulsante manuale;
 - le schede con differenza alta o dati dubbi restano in `Post-invio` per controllo staff;
 - il bottone `Applica automatiche ora` resta come recupero manuale se serve rilanciare la chiusura delle schede automatiche gia importate.
+
+## Nota UI TEST v5.394
+
+Dopo i test su scheda socio e storico vengono aggiunti controlli di protezione dati:
+
+- in `Anagrafica soci`, il filtro `Attenzione dati` include anche `Senza email`;
+- in `Anagrafica soci`, il filtro include `Livello 0.5 dopo autovalutazione` per trovare soci gia valutati rimessi per errore a livello 0.5;
+- dopo `Salva` nella scheda socio, la scheda si chiude automaticamente e le liste operative vengono ricalcolate;
+- in `Storico` Autovalutazione, quando un socio risulta a livello 0.5 ma ha uno storico applicato con livello validato diverso, compare il bottone `Ripristina livello validato`;
+- nella scheda socio compare la stessa attenzione e lo stesso ripristino quando serve;
+- `Nuova autovalutazione` resta un'azione esplicita dalla scheda socio: serve per aprire un nuovo ciclo voluto, non per correggere un errore dati;
+- una nuova autovalutazione avviata dalla scheda socio puo' rientrare nella coda email anche se il socio non ha piu' livello 0.5, per gestire richieste reali di rivalutazione.
 
 ## Nota mockup 2026-05-11 19:05
 
