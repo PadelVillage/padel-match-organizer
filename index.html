@@ -914,7 +914,7 @@
     .assessment-edit-summary { background:#f8fbff; border:1px solid #e1e7ef; border-radius:12px; padding:12px; line-height:1.6; margin:10px 0; }
     .assessment-edit-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:14px; padding-top:12px; border-top:1px solid #e6ebf2; }
 
-    /* v5.386 - Autovalutazione: ricerca trasversale e area alta compatta */
+    /* v5.387 - Autovalutazione: reinvio email e scheda pubblica come pannello */
     body.assessment-view .top-nav-bar { margin-bottom:10px; padding:8px 10px; }
     body.assessment-view .menu-toggle { padding:7px 10px; }
     .assessment-email-page { max-width:1500px; margin:0 auto; }
@@ -4509,6 +4509,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
             <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
             <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
+            <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')">Scheda pubblica</button>
           </nav>
 
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel active" data-assessment-email-panel="routine">
@@ -4688,7 +4689,7 @@ body.assessment-public-mode .assessment-public-only-card {
           </form>
         </div>
 
-        <div id="anchor-assessment-scheda" class="assessment-flow-card archive assessment-public-only-card">
+        <div id="anchor-assessment-scheda" class="assessment-email-panel assessment-flow-card archive assessment-public-only-card" data-assessment-email-panel="public">
           <div class="assessment-public-form-card assessment-public-form-head">
             <div>
               <h4><span class="assessment-public-live-title">SCHEDA DI AUTOVALUTAZIONE</span><span class="assessment-public-demo-title">DEMO SCHEDA AUTOVALUTAZIONE</span></h4>
@@ -5055,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.386';
+    const APP_VERSION = '5.387';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21658,6 +21659,7 @@ Per confermare scrivi ELIMINA.`);
       if (key.includes('post')) return 'post';
       if (key.includes('storico')) return 'history';
       if (key.includes('testi')) return 'texts';
+      if (key.includes('scheda')) return 'public';
       if (key.includes('stato')) return 'routine';
       return '';
     }
@@ -21769,11 +21771,13 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Contatto</th><th>Stato contatto</th><th>Scheda</th><th>Prossima regola</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const sentAt = row.rec?.sentAt || row.rec?.createdAt;
         const whatsappAt = row.member.selfAssessmentWhatsappCheckAt || '';
+        const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
+        const sentLabel = sentCount > 1 ? `Email reinviata (${sentCount} invii)` : 'Richiesta inviata';
         const contactText = whatsappAt
           ? `WhatsApp aperto<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
-          : `Richiesta inviata<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
+          : `${escapeHtml(sentLabel)}<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
         const contactBadge = whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info');
-        const nextRule = whatsappAt ? 'Se non ha ricevuto, correggere email e reinviare' : 'Secondo invio dopo 7 giorni; poi WhatsApp manuale';
+        const nextRule = whatsappAt ? 'Se non ha ricevuto, correggere email e reinviare' : (sentCount > 1 ? 'Dopo il secondo invio: verifica WhatsApp manuale' : 'Secondo invio dopo 7 giorni; poi WhatsApp manuale');
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
           <td data-label="Contatto">${contactText}</td>
@@ -21782,6 +21786,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Prossima regola">${escapeHtml(nextRule)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+            <button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailResendMember('${escapeJs(String(row.member.id))}')">Reinvia email</button>
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${whatsappAt ? 'whatsapp-reminder' : 'whatsapp-check'}','${whatsappAt ? 'Verifica WhatsApp aperta' : 'Email inviata, scheda non compilata'}')">WhatsApp</button>
             <button class="assessment-email-mini danger" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
           </div></td>
@@ -21961,7 +21966,7 @@ Per confermare scrivi ELIMINA.`);
         showAlert('Link creato localmente, ma registrazione Supabase non riuscita: ' + (err.message || err), 'warning');
       }
     }
-    async function assessmentEmailSendMember(memberId, templateKey='primary-email') {
+    async function assessmentEmailSendMember(memberId, templateKey='primary-email', options={}) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       if (!isLevelZeroPointFive(member)) return showAlert('Il socio non ha livello 0.5, quindi non entra nel giro email autovalutazione.', 'warning');
@@ -21969,7 +21974,7 @@ Per confermare scrivi ELIMINA.`);
       if (getAssessmentRequestsSentTodayCount() >= DAILY_ASSESSMENT_REQUEST_LIMIT && !hasAssessmentRequestToday(member.id)) {
         return showAlert(`Limite giornaliero raggiunto: ${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}.`, 'warning');
       }
-      if (hasAssessmentRequestToday(member.id) && !confirm(`${playerFullName(member)} risulta gia inviato oggi. Vuoi inviare comunque una prova email?`)) return;
+      if (hasAssessmentRequestToday(member.id) && !options.skipSameDayConfirm && !confirm(`${playerFullName(member)} risulta gia inviato oggi. Vuoi inviare comunque una prova email?`)) return;
 
       try {
         let rec = getAssessmentTokenRecord(member.id);
@@ -21986,7 +21991,8 @@ Per confermare scrivi ELIMINA.`);
         const rendered = assessmentEmailRenderTemplate(member, templateKey, link);
         if (!rendered.body) return showAlert('Testo email vuoto. Controlla la tab Testi.', 'warning');
 
-        showAlert(`Invio email di prova per ${playerFullName(member)}...`, 'info');
+        const isRecall = templateKey === 'recall-email';
+        showAlert(`${isRecall ? 'Reinvio email di promemoria' : 'Invio email di prova'} per ${playerFullName(member)}...`, 'info');
         const result = await pmoInvokeAssessmentEmail({
           mode: templateKey,
           memberId: String(member.id),
@@ -22022,10 +22028,16 @@ Per confermare scrivi ELIMINA.`);
         save('assessmentTokens', assessmentTokens);
         displayAssessment();
         setAssessmentEmailPanel('pending');
-        showAlert(`Email inviata. In prova e' arrivata a: ${result.actualRecipient || 'destinatario prova'}.`, 'success');
+        showAlert(`${isRecall ? 'Email reinviata' : 'Email inviata'}. In prova e' arrivata a: ${result.actualRecipient || 'destinatario prova'}.`, 'success');
       } catch (err) {
         showAlert('Invio email non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare email autovalutazione'), 'danger');
       }
+    }
+    function assessmentEmailResendMember(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      if (!confirm(`Reinviare la mail di promemoria a ${playerFullName(member)}? In TEST arrivera alla tua email di prova.`)) return;
+      return assessmentEmailSendMember(member.id, 'recall-email', { skipSameDayConfirm:true });
     }
     function assessmentEmailPauseMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));

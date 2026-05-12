@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387.
 
-Ultimo aggiornamento: 2026-05-12 12:31
+Ultimo aggiornamento: 2026-05-12 15:41
 
 ## Obiettivo
 
@@ -136,6 +136,19 @@ La parte alta della sezione `Autovalutazione` viene resa piu compatta per lascia
 - riquadri tabellari con piu altezza utile prima dello scroll interno.
 
 La ricerca in `Da inviare 0.5` ora distingue il caso in cui il socio esiste ma non appartiene piu alla coda da inviare. Se il socio cercato e' gia stato contattato, e' in `Contattati / in attesa`, `Post-invio`, `Storico` o `Problemi`, l'app mostra un rimando leggibile alla sottosezione corretta e un pulsante per aprirla ed evidenziare la riga.
+
+## Nota UI TEST v5.387
+
+La demo della scheda di autovalutazione non resta piu visibile sotto tutti gli stati operativi.
+
+Regole integrate:
+
+- la tab `Scheda pubblica` diventa un pannello autonomo da controllare quando serve vedere l'anteprima del modulo;
+- le tab operative `Stato invio`, `Da inviare 0.5`, `Contattati / in attesa`, `Problemi`, `Post-invio`, `Storico` e `Testi` non mostrano piu la demo sotto le rispettive tabelle;
+- nella tab `Contattati / in attesa` e' disponibile `Reinvia email`;
+- il reinvio usa il testo `Secondo invio dopo 7 giorni`;
+- in TEST il reinvio resta protetto: la mail va al destinatario prova, non direttamente al socio reale;
+- dopo il reinvio la riga resta in attesa, aggiorna data/ora dell'ultimo invio e mostra il conteggio degli invii.
 
 ## Nota mockup 2026-05-11 19:05
 
