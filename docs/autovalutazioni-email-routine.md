@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391.
 
-Ultimo aggiornamento: 2026-05-12 18:13
+Ultimo aggiornamento: 2026-05-12 18:53
 
 ## Obiettivo
 
@@ -179,6 +179,16 @@ Dopo il primo controllo visuale della mail ricevuta:
 - il numero `+39 379 115 1472` resta visibile nel testo e viene collegato a WhatsApp quando il client email lo supporta;
 - il testo sopra al link di fallback della scheda non dice piu di copiare il link, ma indica che si puo usare il link se il pulsante non si apre;
 - i testi email salvati in locale vengono normalizzati aggiungendo `{whatsapp_segreteria}` quando avevano gia il telefono ma non ancora il link WhatsApp.
+
+## Nota UI TEST v5.391
+
+Dopo il primo test completo con risposta ricevuta in `Post-invio`:
+
+- nella finestra `Modifica valutazione` la tendina manuale `Stato staff` viene rimossa;
+- lo stato diventa automatico e leggibile come `Da controllare`, `Corretto dallo staff` o `Livello aggiornato`;
+- salvando una modifica al livello, la risposta passa automaticamente a `Corretto dallo staff`;
+- applicando il livello alla scheda socio, la risposta passa automaticamente a `Livello aggiornato`;
+- le etichette operative di `Post-invio` vengono riallineate a `Da controllare` e `Da controllare con attenzione`, evitando il termine tecnico `Da verificare staff`.
 
 ## Nota mockup 2026-05-11 19:05
 

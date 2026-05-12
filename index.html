@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.390';
+    const APP_VERSION = '5.391';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -17302,7 +17302,7 @@ Grazie!`
           <div class="dashboard-ops-metrics">
             ${dashboardOpsMetric('Pronti da inviare', toSend)}
             ${dashboardOpsMetric('Risposte nuove', assessment.newResponses.length)}
-            ${dashboardOpsMetric('Da verificare staff', assessment.reviewResponses.length)}
+            ${dashboardOpsMetric('Da controllare', assessment.reviewResponses.length)}
             ${dashboardOpsMetric('Inviati senza risposta', assessment.alreadySentNotCompleted.length)}
             ${dashboardOpsMetric('Token da registrare', assessment.unregistered.length)}
           </div>
@@ -18062,7 +18062,7 @@ Padel Village`;
         '3) Chi ha risposto?',
         `- Risposte nuove da gestire: ${stats.newResponses.length}`,
         `- Nomi con risposta nuova: ${assessmentSecretaryNames(stats.newResponses)}`,
-        `- Risposte da verificare staff: ${stats.reviewResponses.length}`,
+        `- Risposte da controllare con attenzione: ${stats.reviewResponses.length}`,
         `- Nomi da verificare: ${assessmentSecretaryNames(stats.reviewResponses)}`,
         '',
         '4) Quali livelli sono da applicare?',
@@ -18113,7 +18113,7 @@ Padel Village`;
         <div class="assistant-check ${kind}"><div class="check-title">Quadro generale</div><div>${escapeHtml(status)}</div><div class="assistant-mini">Il controllo operativo non invia messaggi e non applica livelli.</div></div>
         <div class="assistant-check ${stats.toContact.length ? 'wait' : 'done'}"><div class="check-title">1. Chi posso contattare oggi?</div><div>Pronti da contattare: <strong>${stats.toContact.length}</strong></div><div class="assistant-mini">${escapeHtml(assessmentSecretaryNames(stats.toContact, 5))}</div></div>
         <div class="assistant-check ${stats.remainingToday > 0 ? 'done' : 'wait'}"><div class="check-title">2. Invii rimasti oggi</div><div>Disponibili: <strong>${stats.remainingToday}</strong> su ${DAILY_ASSESSMENT_REQUEST_LIMIT}</div><div class="assistant-mini">Già preparati oggi: ${stats.sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</div></div>
-        <div class="assistant-check ${stats.newResponses.length ? 'wait' : 'done'}"><div class="check-title">3. Chi ha risposto?</div><div>Risposte nuove: <strong>${stats.newResponses.length}</strong></div><div class="assistant-mini">Da verificare: ${stats.reviewResponses.length} · completate totali: ${stats.completed.length}</div></div>
+        <div class="assistant-check ${stats.newResponses.length ? 'wait' : 'done'}"><div class="check-title">3. Chi ha risposto?</div><div>Risposte nuove: <strong>${stats.newResponses.length}</strong></div><div class="assistant-mini">Da controllare con attenzione: ${stats.reviewResponses.length} · completate totali: ${stats.completed.length}</div></div>
         <div class="assistant-check ${stats.readyResponses.length ? 'wait' : 'done'}"><div class="check-title">4. Livelli da applicare</div><div>Potenzialmente pronti: <strong>${stats.readyResponses.length}</strong></div><div class="assistant-mini">Sempre dopo controllo manuale dello staff.</div></div>
         <div class="assistant-check ${blockers ? 'wait' : 'done'}"><div class="check-title">5. Blocchi / attenzioni</div><div>Senza telefono: <strong>${blockedNoPhone.length}</strong> · senza token: <strong>${stats.missingToken.length}</strong></div><div class="assistant-mini">Token da registrare: ${stats.unregistered.length} · inviati senza risposta: ${stats.alreadySentNotCompleted.length}</div><div class="assistant-mini">Per i token: Autovalutazione → Impostazioni link / Token e Supabase. Record tecnici esclusi: ${stats.technicalRecords.length}</div></div>
       </div>`;
@@ -18216,7 +18216,7 @@ Padel Village`;
         `- Invii WhatsApp preparati oggi: ${assessment.sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`,
         `- Invii ancora disponibili oggi: ${assessment.remainingToday}`,
         `- Risposte nuove da gestire: ${assessment.newResponses.length}`,
-        `- Risposte da verificare staff: ${assessment.reviewResponses.length}`,
+        `- Risposte da controllare con attenzione: ${assessment.reviewResponses.length}`,
         `- Livelli potenzialmente pronti da applicare: ${assessment.readyResponses.length}`,
         `- Soci senza telefono: ${blockedNoPhone.length} (${assessmentSecretaryNames(blockedNoPhone)})`,
         `- Soci senza token: ${assessment.missingToken.length}`,
@@ -18417,7 +18417,7 @@ Padel Village`;
         steps.push(assistantStepHtml('done', '3. Supabase', 'Nessun token locale da registrare prima degli invii.'));
       }
       if (stats.newResponses.length > 0) {
-        steps.push(assistantStepHtml(stats.reviewResponses.length ? 'wait' : 'done', '4. Risposte da controllare', `Nuove risposte non ancora applicate: <strong>${stats.newResponses.length}</strong>. Pronte: <strong>${stats.readyResponses.length}</strong>. Da verificare: <strong>${stats.reviewResponses.length}</strong>.`, `<button class="btn-success" onclick="setActionAnchor(this); assistantShowNewResponses()">🟢 Mostra nuove risposte</button><button class="btn-warning" onclick="setActionAnchor(this); assistantShowReviewResponses()">⚠️ Mostra da verificare</button>`));
+        steps.push(assistantStepHtml(stats.reviewResponses.length ? 'wait' : 'done', '4. Risposte da controllare', `Nuove risposte non ancora applicate: <strong>${stats.newResponses.length}</strong>. Pronte: <strong>${stats.readyResponses.length}</strong>. Da controllare con attenzione: <strong>${stats.reviewResponses.length}</strong>.`, `<button class="btn-success" onclick="setActionAnchor(this); assistantShowNewResponses()">🟢 Mostra nuove risposte</button><button class="btn-warning" onclick="setActionAnchor(this); assistantShowReviewResponses()">⚠️ Mostra da controllare</button>`));
       } else {
         steps.push(assistantStepHtml('done', '4. Risposte autovalutazione', 'Nessuna nuova risposta non applicata. Puoi sincronizzare Supabase per controllare se ne sono arrivate altre.', `<button class="btn-success" onclick="setActionAnchor(this); assistantSyncResponses()">🔄 Sincronizza risposte</button>`));
       }
@@ -20959,6 +20959,7 @@ Per confermare scrivi ELIMINA.`);
       const box = document.getElementById('assessmentEditContent');
       if (!member || !response || !modal || !box) return showAlert('❌ Scheda valutazione non trovata', 'danger');
       const submitted = response.submitted_at ? new Date(response.submitted_at).toLocaleString('it-IT') : 'n/d';
+      const staffState = assessmentStaffStatusInfo(response);
       box.innerHTML = `
         <div class="assessment-edit-head">
           <div>
@@ -20982,12 +20983,7 @@ Per confermare scrivi ELIMINA.`);
             <option value="medium" ${response.consistency_status === 'medium' ? 'selected' : ''}>medium</option>
             <option value="low" ${response.consistency_status === 'low' ? 'selected' : ''}>low</option>
           </select></div>
-          <div><label>Stato staff</label><select id="assessmentEditStaffStatus">
-            <option value="" ${!response.staff_status ? 'selected' : ''}>Nessuno</option>
-            <option value="review" ${response.staff_status === 'review' ? 'selected' : ''}>Da verificare</option>
-            <option value="edited" ${response.staff_status === 'edited' ? 'selected' : ''}>Modificato dallo staff</option>
-            <option value="applied" ${response.staff_status === 'applied' ? 'selected' : ''}>Applicato</option>
-          </select></div>
+          <div><label>Stato controllo</label><div class="assessment-status-box"><span class="badge ${staffState.cls}">${escapeHtml(staffState.label)}</span><br><span class="muted">${escapeHtml(staffState.note)}</span></div></div>
         </div>
         <div><label>Note staff</label><textarea id="assessmentEditNotes" rows="3" placeholder="Motivo della modifica, osservazioni, conferma manuale...">${escapeHtml(response.staff_notes || '')}</textarea></div>
         <div class="assessment-edit-actions">
@@ -21007,14 +21003,14 @@ Per confermare scrivi ELIMINA.`);
       const declared = cleanCell(document.getElementById('assessmentEditDeclared')?.value || '');
       const calculated = cleanCell(document.getElementById('assessmentEditCalculated')?.value || '');
       const coherence = cleanCell(document.getElementById('assessmentEditCoherence')?.value || 'medium');
-      const staffStatus = cleanCell(document.getElementById('assessmentEditStaffStatus')?.value || 'edited');
       const notes = cleanCell(document.getElementById('assessmentEditNotes')?.value || '');
+      const previousLevel = response.calculated_level || response.declared_level || '';
       const level = parseFloat(String(calculated || declared).replace(',', '.'));
       if (isNaN(level) || level < 0 || level > 7) return showAlert('❌ Inserisci un livello valido tra 0 e 7.', 'danger');
       response.declared_level = declared;
       response.calculated_level = String(level);
       response.consistency_status = coherence;
-      response.staff_status = staffStatus || 'edited';
+      response.staff_status = assessmentNextStaffStatus(response, previousLevel, level);
       response.staff_notes = notes;
       response.staff_edited_at = new Date().toISOString();
       save('assessmentResponses', assessmentResponses);
@@ -21287,8 +21283,33 @@ Per confermare scrivi ELIMINA.`);
       const details = document.getElementById('assessmentPreparationDetails');
       if (details) { details.open = true; details.scrollIntoView({ behavior:'smooth', block:'center' }); }
     }
+    function assessmentStatusLevelKey(value) {
+      const parsed = parseLevel(String(value || '').replace(',', '.'), NaN);
+      return isNaN(parsed) ? normalizeText(value || '') : String(parsed);
+    }
+    function assessmentStaffStatusInfo(response) {
+      const status = normalizeText(response?.staff_status || '');
+      if (status === 'applied' || response?.applied_at) {
+        return { label:'Livello aggiornato', cls:'badge-success', note:"Il livello e' gia' stato scritto nella scheda socio." };
+      }
+      if (status === 'edited' || status === 'modificato dallo staff' || status === 'corretto dallo staff') {
+        return { label:'Corretto dallo staff', cls:'badge-warning', note:"Il livello e' stato corretto manualmente prima dell'applicazione." };
+      }
+      return {
+        label:'Da controllare',
+        cls: response?.consistency_status === 'low' || status === 'review' || status === 'attention' ? 'badge-warning' : 'badge-info',
+        note:'Stato automatico: cambia quando salvi una correzione o applichi il livello.'
+      };
+    }
+    function assessmentNextStaffStatus(response, previousLevel, nextLevel) {
+      const previousStatus = normalizeText(response?.staff_status || '');
+      if (previousStatus === 'applied' || response?.applied_at) return 'applied';
+      if (assessmentStatusLevelKey(previousLevel) !== assessmentStatusLevelKey(nextLevel)) return 'edited';
+      if (previousStatus === 'edited') return 'edited';
+      return 'review';
+    }
     function assessmentPostStatusLabel(status) {
-      return { ready:'Pronta da applicare', review:'Da verificare staff', notResponded:'Senza risposta', sentNoResponse:'Inviato senza risposta', paused:'In pausa', levelApplied:'Livello già applicato' }[status] || status;
+      return { ready:'Da controllare', review:'Da controllare con attenzione', notResponded:'Senza risposta', sentNoResponse:'Inviato senza risposta', paused:'In pausa', levelApplied:'Livello aggiornato' }[status] || status;
     }
     function assessmentPostStatusClass(status) {
       return { ready:'badge-warning', review:'badge-warning', notResponded:'badge-warning', sentNoResponse:'badge-warning', paused:'badge-info', levelApplied:'badge-success' }[status] || 'badge-info';
@@ -21873,7 +21894,7 @@ Per confermare scrivi ELIMINA.`);
       const summary = `<div class="assessment-email-mini-kpis">${[
         mini('Ricevute da gestire', rows.length, 'Solo schede compilate'),
         mini('Auto-applicabili', autoRows.length, 'Differenza 0 o 0.5'),
-        mini('Da validare staff', reviewRows.length, 'Differenza 1.0 o piu'),
+        mini('Da controllare', reviewRows.length, 'Differenza 1.0 o piu'),
         mini('Piu vecchia', oldest ? assessmentEmailFormatDate(oldest).slice(0,5) : '-', 'Prima da lavorare')
       ].join('')}</div>`;
       if (!rows.length) return void (box.innerHTML = summary + assessmentEmailEmpty('Nessuna scheda ricevuta da gestire.'));
@@ -21886,9 +21907,9 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Dichiarato">${escapeHtml(row.response?.declared_level || '-')}</td>
           <td data-label="Calcolato">${escapeHtml(row.response?.calculated_level || row.response?.declared_level || '-')}</td>
           <td data-label="Differenza">${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
-          <td data-label="Esito proposto">${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Validazione staff necessaria')}</td>
+          <td data-label="Esito proposto">${escapeHtml(auto ? 'Applica e manda conferma livello' : 'Controllo manuale necessario')}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
-            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Applica' : 'Valida'}</button>
+            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Applica' : 'Controlla'}</button>
             <button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')">Dettagli</button>
           </div></td>
         </tr>`;
@@ -21916,7 +21937,7 @@ Per confermare scrivi ELIMINA.`);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
         const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
-        const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Validazione manuale staff');
+        const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Controllo manuale');
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
           <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
@@ -22299,7 +22320,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = [
         card('Pronti da inviare', toSend),
         card('Risposte nuove', stats.newResponses.length),
-        card('Da verificare staff', stats.reviewResponses.length),
+        card('Da controllare', stats.reviewResponses.length),
         card('Inviati senza risposta', stats.alreadySentNotCompleted.length),
         card('Token da registrare', stats.unregistered.length)
       ].join('');
@@ -22925,7 +22946,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     function assessmentArchiveStatusLabel(status) {
-      return { ready:'Pronto da inviare', missingToken:'Token da registrare', needsPrep:'Token da registrare', unregistered:'Token da registrare', sentNoResponse:'Inviato, non risposto', responded:'Ha risposto', review:'Da verificare', levelApplied:'Livello applicato', noPhone:'Senza telefono' }[status] || status;
+      return { ready:'Pronto da inviare', missingToken:'Token da registrare', needsPrep:'Token da registrare', unregistered:'Token da registrare', sentNoResponse:'Inviato, non risposto', responded:'Scheda ricevuta', review:'Da controllare', levelApplied:'Livello aggiornato', noPhone:'Senza telefono' }[status] || status;
     }
     function assessmentArchiveStatusClass(status) {
       return { ready:'badge-warning', missingToken:'badge-warning', unregistered:'badge-warning', sentNoResponse:'badge-warning', responded:'badge-warning', review:'badge-warning', levelApplied:'badge-success', noPhone:'badge-danger' }[status] || 'badge-info';
@@ -23016,11 +23037,12 @@ Per confermare scrivi ELIMINA.`);
       member.level = level;
       member.levelSource = 'autovalutazione';
       member.selfAssessmentConsistency = cleanCell(response.consistency_status || '');
-      member.selfAssessmentStaffStatus = cleanCell(response.staff_status || '');
+      member.selfAssessmentStaffStatus = 'applied';
       member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
       member.selfAssessmentToken = rec.token;
       member.lastLevelUpdateAt = new Date().toISOString();
 
+      response.previous_staff_status = cleanCell(response.staff_status || '');
       response.staff_status = 'applied';
       response.applied_level = String(level);
       response.applied_at = new Date().toISOString();
