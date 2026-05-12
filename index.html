@@ -923,21 +923,14 @@
     .assessment-v5144-section .assessment-email-panel-title,
     .assessment-v5144-section .assessment-email-card h3,
     .assessment-v5144-section .assessment-email-routine-title { margin-top:0 !important; }
-    .assessment-email-compact-hero { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); padding:9px 13px; margin-bottom:8px; }
-    .assessment-email-topbar { flex:1 1 390px; display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:0; min-width:0; }
-    .assessment-email-topbar > div:first-child { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; min-width:0; }
-    .assessment-email-topbar h2 { margin:0; color:var(--primary); font-size:22px; line-height:1.1; }
-    .assessment-email-topbar p { margin:0; color:#667085; font-size:13px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:620px; }
-    .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpis { flex:1 1 520px; display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap; margin:0; min-width:0; }
-    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:4px 7px; font-size:11px; font-weight:800; white-space:nowrap; line-height:1.1; }
-    .assessment-email-kpi strong { color:var(--primary); margin-right:5px; font-size:13px; line-height:1; }
-    .assessment-email-tabs { display:flex; gap:7px; flex-wrap:wrap; align-items:stretch; border-bottom:1px solid #d9e0ea; margin:8px 0 10px; padding-bottom:7px; }
-    .assessment-email-tab-group { display:flex; align-items:center; gap:7px; flex-wrap:wrap; min-width:0; }
-    .assessment-email-tab-group-title { display:inline-flex; align-items:center; align-self:center; color:#667085; padding:0 2px; font-size:11px; font-weight:900; line-height:1; white-space:nowrap; }
-    .assessment-email-tab-separator { width:1px; min-height:36px; align-self:stretch; background:#d9e0ea; margin:0 2px; }
-    .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:8px 11px; font-weight:900; cursor:pointer; }
+    .assessment-email-tabs { display:flex; gap:5px; flex-wrap:wrap; align-items:center; border:1px solid #e7edf6; border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.06); margin:0 0 10px; padding:7px; }
+    .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:7px; padding:6px 8px; font-weight:900; font-size:11px; line-height:1.15; min-height:40px; cursor:pointer; display:inline-flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; }
     .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .assessment-email-tab-title { white-space:nowrap; }
+    .assessment-email-tab-count { color:#667085; font-size:10px; font-weight:800; white-space:nowrap; }
+    .assessment-email-tab-count strong { color:var(--primary); font-size:11px; }
+    .assessment-email-tab.active .assessment-email-tab-count { color:rgba(255,255,255,.82); }
+    .assessment-email-tab.active .assessment-email-tab-count strong { color:#fff; }
     .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
     .assessment-email-panel.active { display:block; }
     .assessment-email-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
@@ -1022,8 +1015,6 @@
     .assessment-email-modal-actions { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:0 18px 18px; }
     .assessment-email-modal-feedback { color:#667085; font-size:13px; line-height:1.35; }
     @media (max-width:1100px) {
-      .assessment-email-compact-hero { align-items:stretch; flex-direction:column; }
-      .assessment-email-kpis { justify-content:flex-start; }
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -1031,11 +1022,7 @@
       .assessment-email-message-grid { grid-template-columns:1fr; }
     }
     @media (max-width:720px) {
-      .assessment-email-topbar p { white-space:normal; max-width:none; }
       .assessment-email-search-result { align-items:flex-start; flex-direction:column; }
-      .assessment-email-kpi { width:100%; justify-content:space-between; white-space:normal; }
-      .assessment-email-tab-group { width:100%; }
-      .assessment-email-tab-separator { width:100%; height:1px; min-height:0; margin:2px 0; }
       .assessment-email-table-wrap { border:0; background:transparent; overflow:visible; max-height:none; }
       .assessment-email-table { display:block; width:100%; overflow-x:visible; }
       .assessment-email-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
@@ -1053,10 +1040,10 @@
       .assessment-email-action-state { text-align:left; }
     }
     @media (max-width:720px) {
-      .assessment-email-topbar, .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
+      .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
       .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
-      .assessment-email-env, .assessment-email-badge { white-space:normal; }
+      .assessment-email-badge { white-space:normal; }
       .assessment-email-status-item { grid-template-columns:1fr; }
       .assessment-email-content { padding:12px; }
       .assessment-email-table td { grid-template-columns:1fr; gap:4px; }
@@ -4494,34 +4481,15 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assessment" class="tab-content">
       <div class="section assessment-v5144-section assessment-compact-page">
         <div id="assessmentEmailRoot" class="assessment-email-page">
-          <section class="assessment-email-compact-hero" aria-label="Sintesi autovalutazione">
-            <div class="assessment-email-topbar">
-              <div>
-                <h2>Autovalutazione</h2>
-                <p>Invio automatico email per soci livello 0.5, recupero WhatsApp manuale e gestione livelli post-invio.</p>
-              </div>
-              <div id="assessmentEmailEnvPill" class="assessment-email-env">Modalita prova: destinatari reali bloccati</div>
-            </div>
-
-            <div id="assessmentEmailKpis" class="assessment-email-kpis" aria-label="Indicatori autovalutazione"></div>
-          </section>
-
           <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
-            <div class="assessment-email-tab-group" aria-label="Processi operativi">
-              <span class="assessment-email-tab-group-title">Operativi</span>
-              <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')">Da inviare 0.5</button>
-              <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')">Contattati / in attesa</button>
-              <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')">Problemi</button>
-              <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')">Post-invio</button>
-              <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')">Storico</button>
-            </div>
-            <span class="assessment-email-tab-separator" aria-hidden="true"></span>
-            <div class="assessment-email-tab-group" aria-label="Consultazione e impostazioni">
-              <span class="assessment-email-tab-group-title">Consultazione</span>
-              <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')">Testi</button>
-              <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')">Scheda pubblica</button>
-              <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')">Stato invio</button>
-            </div>
+            <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')"><span class="assessment-email-tab-title">Da inviare 0.5</span><span id="assessmentEmailQueueTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')"><span class="assessment-email-tab-title">Contattati / in attesa</span><span id="assessmentEmailPendingTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')"><span class="assessment-email-tab-title">Problemi</span><span id="assessmentEmailProblemsTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')"><span class="assessment-email-tab-title">Post-invio</span><span id="assessmentEmailPostTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')"><span class="assessment-email-tab-title">Storico</span><span id="assessmentEmailHistoryTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')"><span class="assessment-email-tab-title">Testi</span><span class="assessment-email-tab-count">email e WhatsApp</span></button>
+            <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
+            <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')"><span class="assessment-email-tab-title">Stato invio</span><span class="assessment-email-tab-count">07:00 · limite 20</span></button>
           </nav>
 
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
@@ -5068,7 +5036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.399';
+    const APP_VERSION = '5.400';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21965,24 +21933,21 @@ Per confermare scrivi ELIMINA.`);
       return '';
     }
     function renderAssessmentEmailKpis() {
-      const box = document.getElementById('assessmentEmailKpis');
-      if (!box) return;
       const queue = assessmentEmailQueueRows();
       const pending = assessmentEmailPendingRows();
       const problems = assessmentEmailProblemRows();
-      const noEmail = problems.filter(row => !assessmentEmailHasValidEmail(row.member));
+      const post = assessmentEmailPostRows();
+      const history = assessmentEmailHistoryBaseRows();
       const sentToday = getAssessmentRequestsSentTodayCount();
-      const card = (label, value) => `<span class="assessment-email-kpi"><strong>${escapeHtml(String(value))}</strong>${escapeHtml(label)}</span>`;
-      box.innerHTML = [
-        card('invio automatico', '07:00'),
-        card('invii oggi', `${sentToday}/20`),
-        card('da inviare 0.5', queue.length),
-        card('senza email', noEmail.length),
-        card('in attesa', pending.length),
-        card('problemi', problems.length)
-      ].join('');
-      const env = document.getElementById('assessmentEmailEnvPill');
-      if (env) env.textContent = PMO_IS_TEST_ENV ? 'Modalita prova: TEST' : 'PROD: backend email non ancora attivo';
+      const setCount = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+      };
+      setCount('assessmentEmailQueueTabCount', `<strong>${escapeHtml(String(sentToday))}/20</strong> oggi · ${escapeHtml(String(queue.length))} rimasti`);
+      setCount('assessmentEmailPendingTabCount', `<strong>${escapeHtml(String(pending.length))}</strong> in attesa`);
+      setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
+      setCount('assessmentEmailPostTabCount', `<strong>${escapeHtml(String(post.length))}</strong> risposte`);
+      setCount('assessmentEmailHistoryTabCount', `<strong>${escapeHtml(String(history.length))}</strong> chiusi`);
       const chip = document.getElementById('assessmentDailyLimitChip');
       if (chip) chip.textContent = `Invii oggi: ${sentToday}/20`;
     }

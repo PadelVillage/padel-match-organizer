@@ -32,133 +32,74 @@
     .page {
       width: min(1500px, 100%);
       margin: 0 auto;
-      padding: 18px 28px 28px;
-    }
-    .topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 14px;
-    }
-    h1 {
-      margin: 0 0 5px;
-      color: var(--primary);
-      font-size: 28px;
-      line-height: 1.05;
-      letter-spacing: 0;
-    }
-    .subtitle {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.35;
-    }
-    .compact-hero {
-      border: 1px solid var(--line);
-      border-top: 5px solid var(--primary);
-      border-radius: 8px;
-      background: var(--panel);
-      box-shadow: 0 1px 5px rgba(31, 71, 136, .08);
-      padding: 14px 16px;
-      margin-bottom: 12px;
-    }
-    .compact-hero-main {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .compact-copy { min-width: 0; }
-    .summary-strip {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-    .summary-pill {
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid var(--soft-line);
-      border-radius: 999px;
-      background: #fff;
-      color: #475467;
-      padding: 7px 10px;
-      font-size: 13px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-    .summary-pill strong {
-      color: var(--primary);
-      margin-right: 6px;
-      font-size: 15px;
-    }
-    .env-pill {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid #f2d39b;
-      background: var(--amber-soft);
-      color: #7a4d00;
-      border-radius: 999px;
-      padding: 9px 13px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
-      gap: 10px;
-      margin: 12px 0 16px;
-    }
-    .kpi {
-      border: 1px solid var(--soft-line);
-      border-radius: 8px;
-      background: #fff;
-      padding: 12px 13px;
-      min-height: 82px;
-    }
-    .kpi .label {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0;
-    }
-    .kpi .value {
-      margin-top: 5px;
-      color: var(--primary);
-      font-size: 28px;
-      font-weight: 900;
-      line-height: 1;
-    }
-    .kpi .note {
-      margin-top: 5px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.25;
+      padding: 12px 28px 28px;
     }
     .tabs {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 6px;
       flex-wrap: wrap;
-      border-bottom: 1px solid var(--line);
-      margin: 10px 0 14px;
-      padding-bottom: 8px;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 5px rgba(31, 71, 136, .06);
+      margin: 0 0 12px;
+      padding: 8px;
+    }
+    .tabs-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      padding: 0 4px 0 2px;
+    }
+    .tabs-separator {
+      width: 1px;
+      height: 30px;
+      background: var(--line);
+      margin: 0 4px;
     }
     .tab {
       border: 1px solid var(--line);
       background: #fff;
       color: #344054;
-      border-radius: 8px;
-      padding: 9px 12px;
+      border-radius: 7px;
+      padding: 7px 9px;
       font-weight: 900;
+      font-size: 12px;
+      line-height: 1.15;
       cursor: pointer;
+      min-height: 42px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2px;
     }
     .tab.active {
       background: var(--primary);
       border-color: var(--primary);
+      color: #fff;
+    }
+    .tab-title {
+      white-space: nowrap;
+    }
+    .tab-count {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .tab.active .tab-count {
+      color: rgba(255,255,255,.82);
+    }
+    .tab-count strong {
+      color: var(--primary);
+      font-size: 11px;
+    }
+    .tab.active .tab-count strong {
       color: #fff;
     }
     .panel {
@@ -598,7 +539,6 @@
       line-height: 1.35;
     }
     @media (max-width: 1100px) {
-      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .mini-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .status-layout,
       .template-grid { grid-template-columns: 1fr; }
@@ -607,21 +547,13 @@
     }
     @media (max-width: 720px) {
       .page { padding: 14px; }
-      .topbar,
-      .compact-hero-main,
       .routine-head,
       .panel-head { flex-direction: column; }
       .actions { justify-content: flex-start; }
-      .kpi-grid,
       .mini-kpi-grid,
       .timeline,
       .form-grid,
       .filter-grid { grid-template-columns: 1fr; }
-      .summary-pill {
-        width: 100%;
-        justify-content: space-between;
-        white-space: normal;
-      }
       .message-choice-grid { grid-template-columns: 1fr; }
       .modal-actions { justify-content: flex-start; }
       .table-wrap {
@@ -679,34 +611,18 @@
 </head>
 <body>
   <main class="page">
-    <section class="compact-hero" aria-label="Sintesi autovalutazione">
-      <div class="compact-hero-main">
-        <div class="compact-copy">
-          <h1>Autovalutazione</h1>
-          <p class="subtitle">Invio automatico email per soci livello 0.5, recupero WhatsApp manuale e gestione livelli post-invio.</p>
-        </div>
-        <div class="env-pill">Modalita prova: destinatari reali bloccati</div>
-      </div>
-      <div class="summary-strip" aria-label="Indicatori principali">
-        <span class="summary-pill"><strong>07:00</strong> invio automatico</span>
-        <span class="summary-pill"><strong>0/20</strong> invii oggi</span>
-        <span class="summary-pill"><strong>38</strong> da inviare 0.5</span>
-        <span class="summary-pill"><strong>14</strong> in attesa</span>
-        <span class="summary-pill"><strong>4</strong> problemi</span>
-      </div>
-    </section>
-
     <nav class="tabs" aria-label="Viste mockup">
-      <button class="tab active" data-target="routine">Stato invio</button>
-      <button class="tab" data-target="queue">Da inviare 0.5</button>
-      <button class="tab" data-target="pending">Contattati / in attesa</button>
-      <button class="tab" data-target="problems">Problemi</button>
-      <button class="tab" data-target="post">Post-invio</button>
-      <button class="tab" data-target="history">Storico</button>
-      <button class="tab" data-target="texts">Testi</button>
+      <button class="tab active" data-target="queue"><span class="tab-title">Da inviare 0.5</span><span class="tab-count"><strong>0/20</strong> oggi · 38 rimasti</span></button>
+      <button class="tab" data-target="pending"><span class="tab-title">Contattati / in attesa</span><span class="tab-count"><strong>14</strong> soci in attesa</span></button>
+      <button class="tab" data-target="problems"><span class="tab-title">Problemi</span><span class="tab-count"><strong>4</strong> da risolvere</span></button>
+      <button class="tab" data-target="post"><span class="tab-title">Post-invio</span><span class="tab-count"><strong>7</strong> risposte</span></button>
+      <button class="tab" data-target="history"><span class="tab-title">Storico</span><span class="tab-count"><strong>126</strong> chiusi</span></button>
+      <button class="tab" data-target="texts"><span class="tab-title">Testi</span><span class="tab-count">email e WhatsApp</span></button>
+      <button class="tab" data-target="public"><span class="tab-title">Scheda pubblica</span><span class="tab-count">anteprima</span></button>
+      <button class="tab" data-target="routine"><span class="tab-title">Stato invio</span><span class="tab-count">07:00 · limite 20</span></button>
     </nav>
 
-    <section id="routine" class="panel active">
+    <section id="routine" class="panel">
       <div class="content">
         <div class="routine-head">
           <div>
@@ -812,7 +728,7 @@
       </div>
     </section>
 
-    <section id="queue" class="panel">
+    <section id="queue" class="panel active">
       <div class="panel-head">
         <div>
           <h2 class="panel-title">Da inviare 0.5</h2>
@@ -1278,6 +1194,29 @@ Padel Village</div>
           </div>
         </div>
         <div class="footer-note">Nota: in modalita prova il sistema invia questi testi solo alla email personale staff e puo' aggiungere una dicitura di test interno. Il messaggio WhatsApp non contiene mai il link diretto alla scheda.</div>
+      </div>
+    </section>
+
+    <section id="public" class="panel">
+      <div class="panel-head">
+        <div>
+          <h2 class="panel-title">Scheda pubblica</h2>
+          <p class="panel-copy">Anteprima del modulo che riceve il socio dal link email. Nell'app staff resta consultabile e non compilabile.</p>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <h3>Demo scheda autovalutazione</h3>
+          <div class="form-grid">
+            <div><label>Socio</label><input value="Maurizio Aprea" readonly></div>
+            <div><label>Durata prevista</label><input value="Meno di 1 minuto" readonly></div>
+            <div><label>Domanda 1</label><select><option>Da quanto giochi a padel?</option></select></div>
+            <div><label>Domanda 2</label><select><option>Quante volte giochi al mese?</option></select></div>
+            <div><label>Domanda 3</label><select><option>Che livello pensi di avere?</option></select></div>
+            <div><label>Domanda 4</label><select><option>Con quali livelli fai partite equilibrate?</option></select></div>
+          </div>
+          <div class="footer-note">La richiesta di disponibilita non e' piu presente nella scheda pubblica.</div>
+        </div>
       </div>
     </section>
   </main>
