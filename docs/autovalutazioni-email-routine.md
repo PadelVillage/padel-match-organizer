@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398.
 
-Ultimo aggiornamento: 2026-05-12 22:01
+Ultimo aggiornamento: 2026-05-12 22:12
 
 ## Obiettivo
 
@@ -249,6 +249,15 @@ La barra delle schede della sezione `Autovalutazione` viene separata in due grup
 - `Operativi`: `Da inviare 0.5`, `Contattati / in attesa`, `Problemi`, `Post-invio` e `Storico`;
 - `Consultazione`: `Testi`, `Scheda pubblica` e `Stato invio`;
 - una linea divisoria rende chiara la separazione senza cambiare stati, filtri, invii o logiche dati.
+
+## Nota UI TEST v5.398
+
+Aggiunto un comando rapido `Apri WhatsApp`:
+
+- nella scheda socio, vicino alle azioni principali;
+- nello `Storico` Autovalutazione, nella colonna azioni di ogni socio;
+- il comando apre la chat WhatsApp del socio usando il telefono salvato, o il telefono scritto nella scheda se la scheda e' aperta;
+- non cambia stati, non registra verifiche e non sostituisce il recupero WhatsApp dei `Problemi`, che resta il flusso con scelta messaggio e data dell'ultimo WhatsApp aperto.
 
 ## Nota mockup 2026-05-11 19:05
 

@@ -5068,7 +5068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.397';
+    const APP_VERSION = '5.398';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9636,6 +9636,7 @@ Grazie.`
             </div>
           </div>
           <div class="member-card-actions-top">
+            <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">Apri WhatsApp</button>
             <button class="btn-secondary" onclick="closeMemberCard()">Chiudi</button>
             <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
           </div>
@@ -9817,6 +9818,22 @@ Grazie.`
       if (overlay) { overlay.classList.remove('open'); overlay.innerHTML = ''; overlay.scrollTop = 0; }
       if (card) { card.style.display = 'none'; card.innerHTML = ''; }
       displayMembers();
+    }
+
+    function openMemberWhatsApp(memberId) {
+      const member = giocatori.find(p => String(p.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const cardPhone = String(memberInlineOpenId || '') === String(memberId)
+        ? cleanCell(document.getElementById('cardPhone')?.value || '')
+        : '';
+      const phoneCheck = validateWhatsAppPhone(cardPhone || member.phone || member.telefono || '');
+      if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
+      if (getWhatsAppSendChannel() === 'web') {
+        openWhatsAppWebSameTab(phoneCheck.digits, '');
+      } else {
+        window.location.href = `whatsapp://send?phone=${phoneCheck.digits}`;
+      }
+      showAlert(`WhatsApp aperto per ${playerFullName(member)}.`, 'success');
     }
 
 
@@ -22190,6 +22207,7 @@ Per confermare scrivi ELIMINA.`);
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
             ${restoreAction}
             ${confirmationAction}
+            <button class="assessment-email-mini success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(row.member.id))}')">Apri WhatsApp</button>
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda socio</button>
           </div></td>
         </tr>`;
