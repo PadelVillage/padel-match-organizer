@@ -5036,7 +5036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.402';
+    const APP_VERSION = '5.403';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21860,7 +21860,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailApplyReplyMatches(matches=[]) {
       const rows = Array.isArray(matches) ? matches : [];
-      let updated = 0;
+      const updatedRows = [];
       rows.forEach(item => {
         const member = giocatori.find(g => String(g.id) === String(item.memberId || ''));
         if (!member) return;
@@ -21875,13 +21875,44 @@ Per confermare scrivi ELIMINA.`);
         member.selfAssessmentEmailReplyAt = rec.emailReplyAt;
         member.selfAssessmentEmailReplyFrom = rec.emailReplyFrom;
         member.selfAssessmentEmailReplySnippet = rec.emailReplySnippet;
-        updated++;
+        updatedRows.push({
+          memberId:String(member.id),
+          memberName:playerFullName(member),
+          replyAt:rec.emailReplyAt,
+          replySnippet:rec.emailReplySnippet
+        });
       });
-      if (updated) {
+      if (updatedRows.length) {
         save('assessmentTokens', assessmentTokens);
         save('giocatori', giocatori);
       }
-      return updated;
+      return updatedRows;
+    }
+    function assessmentEmailPanelLabel(panel) {
+      const labels = {
+        queue:'Da inviare 0.5',
+        pending:'Contattati / in attesa',
+        problems:'Problemi',
+        post:'Post-invio',
+        history:'Storico',
+        texts:'Testi',
+        public:'Scheda pubblica',
+        routine:'Stato invio'
+      };
+      return labels[panel] || panel || '-';
+    }
+    function assessmentEmailPanelForMember(memberId) {
+      const sources = [
+        { panel:'pending', rows:assessmentEmailPendingRows() },
+        { panel:'problems', rows:assessmentEmailProblemRows() },
+        { panel:'post', rows:assessmentEmailPostRows() },
+        { panel:'history', rows:assessmentEmailHistoryBaseRows() },
+        { panel:'queue', rows:assessmentEmailQueueRows() }
+      ];
+      for (const source of sources) {
+        if (source.rows.some(row => String(row.member?.id || '') === String(memberId || ''))) return source.panel;
+      }
+      return 'pending';
     }
     async function assessmentEmailScanBounces() {
       try {
@@ -21909,11 +21940,16 @@ Per confermare scrivi ELIMINA.`);
         if (!sentRecords.length) return showAlert('Nessuna email inviata da controllare.', 'info');
         showAlert('Aggiorno le risposte arrivate su Gmail...', 'info');
         const result = await pmoInvokeAssessmentEmail({ action:'scan-replies', sentRecords });
-        const updated = assessmentEmailApplyReplyMatches(result.matches || []);
+        const updatedRows = assessmentEmailApplyReplyMatches(result.matches || []);
+        const updated = updatedRows.length;
         displayAssessment();
         if (updated) {
-          setAssessmentEmailPanel('pending');
-          showAlert(`Risposte email trovate: ${updated}. Le trovi in Contattati / in attesa.`, 'success');
+          const first = updatedRows[0];
+          const panel = assessmentEmailPanelForMember(first?.memberId);
+          assessmentEmailGoToMemberPanel(panel, first?.memberId);
+          const names = updatedRows.slice(0, 3).map(item => item.memberName).filter(Boolean).join(', ');
+          const extra = updatedRows.length > 3 ? ` e altri ${updatedRows.length - 3}` : '';
+          showAlert(`Risposte email trovate: ${updated}. ${names ? `Agganciate a: ${names}${extra}. ` : ''}Vai in ${assessmentEmailPanelLabel(panel)}.`, 'success');
         } else {
           showAlert(`Controllo completato: nessuna risposta email collegata agli invii su ${result.scanned || 0} email Gmail analizzate.`, 'info');
         }
@@ -22199,8 +22235,10 @@ Per confermare scrivi ELIMINA.`);
         const replyAt = row.rec?.emailReplyAt || row.member.selfAssessmentEmailReplyAt || '';
         const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
         const sentLabel = sentCount >= 3 ? `Terza email inviata (${sentCount} invii)` : (sentCount === 2 ? 'Seconda email inviata' : 'Prima email inviata');
+        const replySnippet = cleanCell(row.rec?.emailReplySnippet || row.member.selfAssessmentEmailReplySnippet || '');
+        const replyFrom = cleanCell(row.rec?.emailReplyFrom || row.member.selfAssessmentEmailReplyFrom || '');
         const contactText = replyAt
-          ? `Risposta email ricevuta<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}</span>`
+          ? `Risposta email ricevuta<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}${replyFrom ? ` · ${escapeHtml(replyFrom)}` : ''}</span>${replySnippet ? `<span class="assessment-email-meta">${escapeHtml(replySnippet.slice(0, 140))}${replySnippet.length > 140 ? '...' : ''}</span>` : ''}`
           : whatsappAt
           ? `WhatsApp aperto<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
           : `${escapeHtml(sentLabel)}<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
