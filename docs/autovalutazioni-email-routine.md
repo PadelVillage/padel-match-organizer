@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385.
 
-Ultimo aggiornamento: 2026-05-11 23:21
+Ultimo aggiornamento: 2026-05-12 09:06
 
 ## Obiettivo
 
@@ -113,6 +113,18 @@ Regole operative:
 - il conteggio mostra quanti soci sono visibili rispetto al totale eleggibile;
 - il bottone alto `Prova invio sulla mia email` usa il socio filtrato quando e' attiva una ricerca, cosi' il test puo' essere fatto su un nominativo specifico;
 - l'ordine resta alfabetico, ma la visualizzazione non si ferma piu' ai primi nominativi.
+
+## Nota tecnica TEST v5.385
+
+Dopo il primo test reale di invio Gmail:
+
+- la Edge Function `assessment-email-send` invia anche una versione HTML della mail, con paragrafi leggibili e pulsante `Compila la scheda` al posto del link lungo come contenuto principale;
+- la versione solo testo resta presente come alternativa tecnica per client email che non leggono HTML;
+- in modalita TEST resta visibile il riquadro interno che indica socio selezionato ed email reale in anagrafica;
+- se Gmail invia correttamente ma il salvataggio log Supabase fallisce, la funzione non restituisce piu' un errore totale di invio: risponde con successo e `logWarning`, evitando di far ripetere una mail gia partita;
+- su Supabase TEST il vincolo `pmo_cloud_records_type_check` accetta anche `record_type = assessment_email`, necessario per registrare gli invii.
+
+Nota test del 2026-05-12: le copie viste nella casella Gmail Padel Village sono coerenti con i tentativi manuali fatti durante la configurazione. Il mittente appare come `me` perche' l'account Gmail visualizza le proprie email inviate.
 
 ## Nota mockup 2026-05-11 19:05
 

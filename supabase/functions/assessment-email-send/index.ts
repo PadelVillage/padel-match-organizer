@@ -82,24 +82,79 @@ function escapeAddressName(value: unknown) {
   return safeHeader(value).replace(/"/g, '\\"');
 }
 
+function escapeHtml(value: unknown) {
+  return clean(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function paragraphHtml(value: string) {
+  return escapeHtml(value).replace(/\n+/g, '<br>');
+}
+
+function buildHtmlBody(params: {
+  body: string;
+  link: string;
+  testMode: boolean;
+  memberName: string;
+  originalRecipient: string;
+}) {
+  const link = clean(params.link);
+  const blocks = clean(params.body)
+    .split(/\n{2,}/)
+    .map((block) => clean(block))
+    .filter(Boolean);
+  const bodyHtml = blocks.map((block) => {
+    if (link && clean(block) === link) {
+      const safeLink = escapeHtml(link);
+      return `<p style="margin:22px 0;"><a href="${safeLink}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:8px;">Compila la scheda</a></p><p style="margin:8px 0 22px;color:#64748b;font-size:13px;line-height:1.45;">Se il pulsante non si apre, copia questo link:<br><a href="${safeLink}" style="color:#1f4f9a;word-break:break-all;">${safeLink}</a></p>`;
+    }
+    return `<p style="margin:0 0 18px;">${paragraphHtml(block)}</p>`;
+  }).join('');
+  const testBox = params.testMode ? `<div style="margin:0 0 24px;padding:14px 16px;border:1px solid #dbeafe;border-left:4px solid #1f4f9a;background:#f8fbff;border-radius:8px;color:#334155;font-size:14px;line-height:1.45;">
+    <strong style="display:block;color:#1f4f9a;margin-bottom:4px;">TEST INTERNO PMO</strong>
+    Questa email e' stata inviata in modalita prova.<br>
+    Socio selezionato: ${escapeHtml(params.memberName)}<br>
+    Email socio in anagrafica: ${escapeHtml(params.originalRecipient)}
+  </div>` : '';
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;">
+    <div style="max-width:620px;margin:0 auto;padding:24px 14px;">
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:26px 22px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;line-height:1.55;">
+        ${testBox}
+        ${bodyHtml}
+      </div>
+    </div>
+  </body>
+</html>`;
+}
+
 function buildMimeMessage(params: {
   to: string;
   subject: string;
-  body: string;
+  textBody: string;
+  htmlBody: string;
   fromName: string;
   fromEmail: string;
   replyTo: string;
 }) {
+  const boundary = `pmo_assessment_${Date.now()}_${shortHash(params.subject)}`;
   const headers = [
     params.fromEmail ? `From: "${escapeAddressName(params.fromName || 'Padel Village')}" <${safeHeader(params.fromEmail)}>` : '',
     `To: ${safeHeader(params.to)}`,
     params.replyTo ? `Reply-To: ${safeHeader(params.replyTo)}` : '',
     `Subject: ${encodeMimeHeader(params.subject)}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: 8bit',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ].filter(Boolean);
-  return `${headers.join('\r\n')}\r\n\r\n${params.body}`;
+  return `${headers.join('\r\n')}\r\n\r\n`
+    + `--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${params.textBody}\r\n\r\n`
+    + `--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${params.htmlBody}\r\n\r\n`
+    + `--${boundary}--`;
 }
 
 async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: string): Promise<StaffActor> {
@@ -255,15 +310,23 @@ Deno.serve(async (req) => {
     }
     const sentAt = new Date().toISOString();
     const finalSubject = forceTestRecipients ? `[TEST] ${subject}` : subject;
-    const finalBody = forceTestRecipients
+    const finalTextBody = forceTestRecipients
       ? `[TEST INTERNO PMO]\nQuesta email e' stata inviata in modalita prova.\nSocio selezionato: ${memberName}\nEmail socio in anagrafica: ${originalRecipient}\n\n---\n\n${bodyText}`
       : bodyText;
+    const finalHtmlBody = buildHtmlBody({
+      body: bodyText,
+      link,
+      testMode: forceTestRecipients,
+      memberName,
+      originalRecipient,
+    });
 
     const accessToken = await getGmailAccessToken();
     const rawMessage = buildMimeMessage({
       to: actualRecipient,
       subject: finalSubject,
-      body: finalBody,
+      textBody: finalTextBody,
+      htmlBody: finalHtmlBody,
       fromName,
       fromEmail,
       replyTo,
@@ -293,19 +356,26 @@ Deno.serve(async (req) => {
       source: clean(body.source || 'pmo_assessment_email'),
     };
 
-    const logKeys = await saveEmailLog(admin, logPayload);
-    await logAudit(admin, actor, 'assessment_email_send', {
-      mode,
-      memberId,
-      memberName,
-      originalRecipient,
-      actualRecipient,
-      testMode: forceTestRecipients,
-      gmailMessageId: messageId,
-      gmailThreadId: threadId,
-      appVersion: logPayload.appVersion,
-      runtimeEnv: logPayload.runtimeEnv,
-    });
+    let logKeys: JsonMap | null = null;
+    let logWarning = '';
+    try {
+      logKeys = await saveEmailLog(admin, logPayload);
+      await logAudit(admin, actor, 'assessment_email_send', {
+        mode,
+        memberId,
+        memberName,
+        originalRecipient,
+        actualRecipient,
+        testMode: forceTestRecipients,
+        gmailMessageId: messageId,
+        gmailThreadId: threadId,
+        appVersion: logPayload.appVersion,
+        runtimeEnv: logPayload.runtimeEnv,
+      });
+    } catch (logErr) {
+      logWarning = errorText(logErr);
+      console.error('ASSESSMENT_EMAIL_LOG_FAILED', logWarning);
+    }
 
     return okResponse({
       mode,
@@ -318,6 +388,8 @@ Deno.serve(async (req) => {
       gmailMessageId: messageId,
       gmailThreadId: threadId,
       logKeys,
+      logWarning,
+      logSaved: !logWarning,
     });
   } catch (err) {
     const message = errorText(err);
