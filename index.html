@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.391';
+    const APP_VERSION = '5.392';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9550,8 +9550,13 @@ Grazie.`
         ? `<div class="member-source-line"><span>Disponibilita</span><strong>Salvata nelle preferenze operative</strong></div>
            <div class="member-source-line"><span>Origine</span><strong>${escapeHtml(memberAvailabilityProfile.source || 'scheda socio')}${availabilityUpdated ? ' · ' + escapeHtml(availabilityUpdated) : ''}</strong></div>`
         : `<div class="member-source-line"><span>Disponibilita</span><strong>Nessuna disponibilita dichiarata</strong></div>`;
-      const notificationText = g.selfAssessmentNotifiedAt ? 'Notifica preparata' : 'Notifica livello da inviare';
-      const notificationClass = g.selfAssessmentNotifiedAt ? 'badge-info' : 'badge-warning';
+      const assessmentRec = getAssessmentTokenRecord(g.id);
+      const assessmentResponse = assessmentRec?.token ? getAssessmentResponseByToken(assessmentRec.token) : null;
+      const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(g, assessmentResponse, assessmentRec);
+      const levelEmailText = levelEmailSentAt ? `Email inviata ${assessmentEmailFormatDateTime(levelEmailSentAt)}` : 'Email da inviare';
+      const levelEmailButton = levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email';
+      const notificationText = g.selfAssessmentToken ? (levelEmailSentAt ? 'Conferma email inviata' : 'Conferma email da inviare') : 'Autovalutazione non applicata';
+      const notificationClass = g.selfAssessmentToken ? (levelEmailSentAt ? 'badge-success' : 'badge-warning') : 'badge-muted';
       const assessmentMeta = g.selfAssessmentToken
         ? `<section class="member-panel">
             <div class="member-panel-head">
@@ -9562,10 +9567,10 @@ Grazie.`
               <div class="member-source-line"><span>Livello</span><strong>${escapeHtml(g.level ?? '-')} ${escapeHtml(g.levelSource ? '(' + g.levelSource + ')' : '')}</strong></div>
               <div class="member-source-line"><span>Data</span><strong>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</strong></div>
               <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(g.selfAssessmentConsistency || '-')}</strong></div>
-              <div class="member-source-line"><span>Notifica</span><strong>${escapeHtml(g.selfAssessmentNotifiedAt ? 'Preparata ' + new Date(g.selfAssessmentNotifiedAt).toLocaleDateString('it-IT') : 'Da inviare')}</strong></div>
+              <div class="member-source-line"><span>Conferma livello</span><strong>${escapeHtml(levelEmailText)}</strong></div>
               ${availabilitySource}
             </div>
-            <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(g.id))}')">💬 Avvisa socio</button></div>
+            <div class="actions" style="margin-top:10px;"><button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(g.id))}')">${escapeHtml(levelEmailButton)}</button></div>
           </section>`
         : `<section class="member-panel">
             <div class="member-panel-head">
@@ -21470,6 +21475,97 @@ Per confermare scrivi ELIMINA.`);
       const ready = rows.find(row => row.rec?.token && row.rec.registeredToSupabase) || rows[0];
       return assessmentEmailSendMember(ready.member.id, 'primary-email');
     }
+    async function assessmentEmailSendLevelConfirmation(memberId, options={}) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) {
+        showAlert('Socio non trovato.', 'warning');
+        return false;
+      }
+      const rec = getAssessmentTokenRecord(member.id);
+      const response = rec?.token ? getAssessmentResponseByToken(rec.token) : null;
+      const info = assessmentRecordFor(member);
+      if (!assessmentEmailMemberApplied(member, info)) {
+        showAlert('Prima applica il livello alla scheda socio, poi invia la conferma email.', 'warning');
+        return false;
+      }
+      if (!assessmentEmailHasValidEmail(member)) {
+        showAlert('Email del socio mancante o non valida: non posso inviare la conferma livello.', 'warning');
+        return false;
+      }
+      const alreadySentAt = assessmentEmailLevelConfirmationSentAt(member, response, rec);
+      if (alreadySentAt && options.skipIfAlreadySent) {
+        return true;
+      }
+      if (alreadySentAt) {
+        const ok = options.skipConfirm === true || confirm(`La conferma livello risulta gia inviata il ${assessmentEmailFormatDateTime(alreadySentAt)}.\n\nVuoi reinviarla via email?`);
+        if (!ok) return false;
+      }
+
+      try {
+        const rendered = assessmentEmailRenderTemplate(member, 'level-email', '', {
+          livello_validato: cleanCell(response?.applied_level || member.level || '')
+        });
+        if (!rendered.body) {
+          showAlert('Testo email livello validato vuoto. Controlla la tab Testi.', 'warning');
+          return false;
+        }
+        if (!options.silentStart) showAlert(`Invio conferma livello via email per ${playerFullName(member)}...`, 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          mode: 'level-email',
+          memberId: String(member.id),
+          member: {
+            id: String(member.id),
+            memberId: cleanCell(member.memberId || ''),
+            name: playerFullName(member),
+            firstName: cleanCell(member.firstName || ''),
+            surname: cleanCell(member.surname || ''),
+            email: assessmentEmailMemberEmail(member),
+            phone: cleanCell(member.phone || ''),
+            level: cleanCell(member.level || '')
+          },
+          originalRecipient: assessmentEmailMemberEmail(member),
+          token: cleanCell(rec?.token || ''),
+          link: '',
+          subject: rendered.subject,
+          body: rendered.body
+        });
+
+        const sentAt = result.sentAt || new Date().toISOString();
+        member.selfAssessmentLevelEmailSentAt = sentAt;
+        member.selfAssessmentLevelEmail = assessmentEmailMemberEmail(member);
+        member.selfAssessmentLevelEmailActualRecipient = result.actualRecipient || '';
+        member.selfAssessmentLevelEmailMessageId = result.gmailMessageId || '';
+        member.selfAssessmentNotificationChannel = 'email';
+        if (response) {
+          response.level_email_status = 'sent';
+          response.level_email_sent_at = sentAt;
+          response.level_email_actual_recipient = result.actualRecipient || '';
+          response.level_email_gmail_message_id = result.gmailMessageId || '';
+          response.level_email_mode = 'level-email';
+        }
+        if (rec) {
+          rec.levelEmailStatus = 'sent';
+          rec.levelEmailSentAt = sentAt;
+          rec.levelEmailActualRecipient = result.actualRecipient || '';
+          rec.levelEmailMessageId = result.gmailMessageId || '';
+        }
+        save('giocatori', giocatori);
+        save('assessmentResponses', assessmentResponses);
+        save('assessmentTokens', assessmentTokens);
+        displayAssessment();
+        setAssessmentEmailPanel('history');
+        showAlert(options.fromApply
+          ? `Livello applicato a ${playerFullName(member)} e conferma email inviata.`
+          : `Conferma livello inviata via email a ${playerFullName(member)}.`,
+          'success');
+        return true;
+      } catch (err) {
+        const message = 'Invio conferma livello non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare conferma livello');
+        if (options.throwOnError) throw new Error(message);
+        showAlert(message, 'danger');
+        return false;
+      }
+    }
     function assessmentEmailMemberEmail(member) {
       return cleanCell(member?.email || member?.mail || member?.emailAddress || '');
     }
@@ -21525,6 +21621,34 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailMemberApplied(member, info) {
       return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
+    }
+    function assessmentEmailLevelConfirmationSentAt(member=null, response=null, rec=null) {
+      return cleanCell(
+        response?.level_email_sent_at
+        || response?.levelEmailSentAt
+        || member?.selfAssessmentLevelEmailSentAt
+        || rec?.levelEmailSentAt
+        || ''
+      );
+    }
+    function assessmentEmailLevelConfirmationState(row) {
+      if (!row || row.info?.paused) {
+        return { label:'Non prevista', cls:'muted', detail:'Socio in pausa: nessun livello applicato.', sentAt:'' };
+      }
+      const sentAt = assessmentEmailLevelConfirmationSentAt(row.member, row.response, row.info?.rec);
+      if (sentAt) {
+        return { label:'Email inviata', cls:'ok', detail:`Inviata ${assessmentEmailFormatDateTime(sentAt)}`, sentAt };
+      }
+      if (!assessmentEmailHasValidEmail(row.member)) {
+        return { label:'Email mancante', cls:'err', detail:'Aggiungi email in scheda socio per inviare conferma.', sentAt:'' };
+      }
+      return { label:'Email da inviare', cls:'warn', detail:'Conferma finale del livello applicato.', sentAt:'' };
+    }
+    function assessmentEmailHistoryChannelKey(row) {
+      return row?.info?.paused ? 'email_whatsapp' : 'email';
+    }
+    function assessmentEmailHistoryChannelLabel(row) {
+      return row?.info?.paused ? 'Email + recupero WhatsApp' : 'Email';
     }
     function assessmentEmailCycleDate(member, info) {
       return assessmentEmailDateMs(info?.response?.submitted_at)
@@ -21611,15 +21735,15 @@ Per confermare scrivi ELIMINA.`);
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const cycleTime = assessmentEmailCycleDate(row.member, row.info);
-        const withWhatsapp = !!(row.member.selfAssessmentWhatsappCheckAt || paused);
+        const channelKey = assessmentEmailHistoryChannelKey(row);
         if (!applied && !paused) return false;
         if (search && !assessmentSearchMatches(row.member, search)) return false;
         if (status === 'applied' && !applied) return false;
         if (status === 'auto' && (!applied || !assessmentEmailIsAutoApplicable(row.response))) return false;
         if (status === 'paused' && !paused) return false;
         if (period !== 'all' && cycleTime && cycleTime < periodStart.getTime()) return false;
-        if (channel === 'email' && withWhatsapp) return false;
-        if (channel === 'email_whatsapp' && !withWhatsapp) return false;
+        if (channel === 'email' && channelKey !== 'email') return false;
+        if (channel === 'email_whatsapp' && channelKey !== 'email_whatsapp') return false;
         if (level === 'still05' && !isLevelZeroPointFive(row.member)) return false;
         if (level === '2-2.5') {
           const n = assessmentEmailLevelValue(row.member.level);
@@ -21928,26 +22052,32 @@ Per confermare scrivi ELIMINA.`);
         <div><label>Cerca socio</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="renderAssessmentEmailHistoryPanel()"></div>
         <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="applied" ${currentStatus === 'applied' ? 'selected' : ''}>Livello applicato</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
         <div><label>Periodo</label><select id="assessmentHistoryPeriod" onchange="renderAssessmentEmailHistoryPanel()"><option value="30" ${currentPeriod === '30' ? 'selected' : ''}>Ultimi 30 giorni</option><option value="90" ${currentPeriod === '90' ? 'selected' : ''}>Ultimi 90 giorni</option><option value="year" ${currentPeriod === 'year' ? 'selected' : ''}>Anno corrente</option><option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Tutto</option></select></div>
-        <div><label>Canale</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email" ${currentChannel === 'email' ? 'selected' : ''}>Email</option><option value="email_whatsapp" ${currentChannel === 'email_whatsapp' ? 'selected' : ''}>Email + WhatsApp</option></select></div>
+        <div><label>Invio scheda</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email" ${currentChannel === 'email' ? 'selected' : ''}>Email</option><option value="email_whatsapp" ${currentChannel === 'email_whatsapp' ? 'selected' : ''}>Email + recupero WhatsApp</option></select></div>
         <div><label>Livello</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
       </div>`;
       if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.'));
-      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Canale</th><th>Nota</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Invio scheda</th><th>Conferma livello</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
         const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
-        const note = paused ? 'Non sospeso: recuperabile dai filtri' : (auto ? 'Differenza 0 o 0.5, email livello da inviare' : 'Controllo manuale');
+        const confirmation = assessmentEmailLevelConfirmationState(row);
+        const confirmationHtml = `${assessmentEmailBadge(confirmation.label, confirmation.cls)}<span class="assessment-email-meta">${escapeHtml(confirmation.detail)}</span>`;
+        const canSendConfirmation = applied && !paused && assessmentEmailHasValidEmail(row.member);
+        const confirmationAction = canSendConfirmation
+          ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(row.member.id))}')">${confirmation.sentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
+          : '';
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
           <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
           <td data-label="Stato">${statusBadge}</td>
           <td data-label="Livello">${escapeHtml(row.member.level ?? '-')}</td>
-          <td data-label="Canale">${escapeHtml(row.member.selfAssessmentWhatsappCheckAt || paused ? 'Email + WhatsApp' : 'Email')}</td>
-          <td data-label="Nota">${escapeHtml(note)}</td>
+          <td data-label="Invio scheda">${escapeHtml(assessmentEmailHistoryChannelLabel(row))}</td>
+          <td data-label="Conferma livello">${confirmationHtml}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
-            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+            ${confirmationAction}
+            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda socio</button>
           </div></td>
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
@@ -21955,7 +22085,10 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailTextsPanel() {
       const box = document.getElementById('assessmentEmailTextsContent');
       if (!box) return;
-      const selected = assessmentCommunicationTemplateState.selected || 'primary-email';
+      const visibleTemplateEntries = Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).filter(([key]) => key !== 'whatsapp-level');
+      const visibleTemplateKeys = new Set(visibleTemplateEntries.map(([key]) => key));
+      const selected = visibleTemplateKeys.has(assessmentCommunicationTemplateState.selected) ? assessmentCommunicationTemplateState.selected : 'primary-email';
+      assessmentCommunicationTemplateState.selected = selected;
       const row = (key, title, note) => `<div class="assessment-email-template-row ${selected === key ? 'active' : ''}" data-template="${escapeHtml(key)}" onclick="selectAssessmentCommunicationTemplate('${escapeHtml(key)}')"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(note)}</span></div>`;
       box.innerHTML = `<div class="assessment-email-template-grid">
         <div class="assessment-email-card">
@@ -21970,7 +22103,6 @@ Per confermare scrivi ELIMINA.`);
             ${row('whatsapp-email-missing','Richiesta email mancante',"Chiede al socio l'email corretta per poter inviare la scheda.")}
             ${row('whatsapp-check','Verifica ricezione email',"Chiede se la mail e arrivata; se no, chiede l'email corretta.")}
             ${row('whatsapp-reminder','Promemoria controllo mail','Ricorda di controllare la mail gia inviata.')}
-            ${row('whatsapp-level','Livello validato WhatsApp','Messaggio manuale opzionale dopo livello applicato.')}
           </div>
         </div>
         <div class="assessment-email-card">
@@ -21978,7 +22110,7 @@ Per confermare scrivi ELIMINA.`);
           <div class="assessment-email-form-grid">
             <div><label>Oggetto</label><input id="assessmentTemplateSubject"></div>
             <div><label>Canale e tipo testo</label><select id="assessmentTemplateType" onchange="selectAssessmentCommunicationTemplate(this.value)">
-              ${Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).map(([key, template]) => `<option value="${escapeHtml(key)}">${escapeHtml(template.type)}</option>`).join('')}
+              ${visibleTemplateEntries.map(([key, template]) => `<option value="${escapeHtml(key)}">${escapeHtml(template.type)}</option>`).join('')}
             </select></div>
           </div>
           <label>Testo</label>
@@ -22214,11 +22346,11 @@ Per confermare scrivi ELIMINA.`);
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') closeAssessmentEmailWhatsappModal();
     });
-    function assessmentApplyAutoApplicableResponses() {
+    async function assessmentApplyAutoApplicableResponses() {
       const rows = assessmentEmailPostRows().filter(row => assessmentEmailIsAutoApplicable(row.response));
       if (!rows.length) return showAlert('Nessuna scheda auto-applicabile da applicare.', 'info');
       if (!confirm(`Applicare automaticamente ${rows.length} livello/i con differenza massima 0.5?`)) return;
-      rows.forEach(row => applyAssessmentLevel(row.member.id));
+      for (const row of rows) await applyAssessmentLevel(row.member.id);
     }
     function assessmentEmailClearHistoryFilters() {
       ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryLevel'].forEach(id => {
@@ -22457,9 +22589,10 @@ Per confermare scrivi ELIMINA.`);
         const canPause = !info.paused && status === 'sentNoResponse';
         const canResume = info.paused;
         const statusBadgeHtml = assessmentBadge(assessmentPostStatusLabel(status), assessmentPostStatusClass(status));
+        const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(member, info.response, info.rec);
         const responseActions = info.response
           ? (info.applied
-            ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(member.id))}')">💬 Avvisa socio</button>`
+            ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(member.id))}')">${levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
             : (hasAvailabilityProfile(availabilityProfile)
               ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn" onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>`
               : `<span class="badge badge-warning">Disponibilità mancanti</span><button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica livello</button>`))
@@ -22917,8 +23050,9 @@ Per confermare scrivi ELIMINA.`);
         const status = hasAppliedHistory ? 'levelApplied' : (info.response ? (info.review ? 'review' : 'responded') : info.preStatus);
         const sentText = info.rec?.sentAt ? `Ultimo invio: ${escapeHtml(new Date(info.rec.sentAt).toLocaleDateString('it-IT'))}` : 'Mai inviato';
         const responseText = info.response ? `Risposta: dichiarato ${escapeHtml(info.response.declared_level || '-')} · calcolato ${escapeHtml(info.response.calculated_level || '-')} · coerenza ${escapeHtml(info.response.consistency_status || '-')}` : 'Risposta assente';
-        const notificationText = member.selfAssessmentNotifiedAt ? `Notifica preparata: ${escapeHtml(new Date(member.selfAssessmentNotifiedAt).toLocaleDateString('it-IT'))}` : 'Notifica socio: da inviare';
-        const notifyButton = hasAppliedHistory && member.phone ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); notifyAssessmentLevelApplied('${escapeHtml(String(member.id))}')">💬 Avvisa socio</button>` : '';
+        const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(member, info.response, info.rec);
+        const notificationText = levelEmailSentAt ? `Conferma email inviata: ${escapeHtml(assessmentEmailFormatDateTime(levelEmailSentAt))}` : 'Conferma livello via email: da inviare';
+        const notifyButton = hasAppliedHistory && assessmentEmailHasValidEmail(member) ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(member.id))}')">${levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>` : '';
         const memberKey = escapeHtml(String(member.id));
         const meta = `ID: ${escapeHtml(member.memberId || member.id || '')} · liv. ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}`;
         const responseSummary = [sentText, responseText, hasAppliedHistory ? notificationText : ''].filter(Boolean).join('<br>');
@@ -23021,7 +23155,7 @@ Per confermare scrivi ELIMINA.`);
       return true;
     }
 
-    function applyAssessmentLevel(memberId) {
+    async function applyAssessmentLevel(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
       const response = rec ? getAssessmentResponseByToken(rec.token) : null;
@@ -23056,7 +23190,22 @@ Per confermare scrivi ELIMINA.`);
       try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
       updateStats();
       try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      showAlert(`✅ Livello applicato a ${playerFullName(member)}: ${level}. Ora puoi inviare la conferma livello.`, 'success');
+      if (!assessmentEmailHasValidEmail(member)) {
+        showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata perche manca una email valida.`, 'warning');
+        return;
+      }
+      showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Invio conferma email in corso...`, 'info');
+      try {
+        await assessmentEmailSendLevelConfirmation(member.id, {
+          fromApply: true,
+          silentStart: true,
+          skipConfirm: true,
+          skipIfAlreadySent: true,
+          throwOnError: true
+        });
+      } catch (err) {
+        showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata: ${err.message || err}`, 'warning');
+      }
     }
 
 

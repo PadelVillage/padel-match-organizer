@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392.
 
-Ultimo aggiornamento: 2026-05-12 18:53
+Ultimo aggiornamento: 2026-05-12 19:17
 
 ## Obiettivo
 
@@ -189,6 +189,17 @@ Dopo il primo test completo con risposta ricevuta in `Post-invio`:
 - salvando una modifica al livello, la risposta passa automaticamente a `Corretto dallo staff`;
 - applicando il livello alla scheda socio, la risposta passa automaticamente a `Livello aggiornato`;
 - le etichette operative di `Post-invio` vengono riallineate a `Da controllare` e `Da controllare con attenzione`, evitando il termine tecnico `Da verificare staff`.
+
+## Nota UI TEST v5.392
+
+Dopo il primo passaggio in `Storico`, viene chiarita la parte finale del giro:
+
+- nello storico la colonna `Canale` viene sostituita da `Invio scheda`, per indicare solo come e' arrivata la scheda di autovalutazione;
+- la colonna `Nota` viene sostituita da `Conferma livello`, con stato leggibile `Email da inviare`, `Email inviata`, `Email mancante` o `Non prevista`;
+- quando lo staff applica il livello, l'app prova a inviare automaticamente la conferma livello via email usando il testo `Livello validato`;
+- se la conferma non parte, nello storico resta il pulsante `Invia conferma email`;
+- se la conferma e' gia partita, nello storico resta `Reinvia conferma email`;
+- WhatsApp resta solo canale manuale di recupero prima della compilazione, non canale di notifica finale del livello validato.
 
 ## Nota mockup 2026-05-11 19:05
 
