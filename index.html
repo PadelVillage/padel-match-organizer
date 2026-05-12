@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.388';
+    const APP_VERSION = '5.389';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5151,6 +5151,11 @@ body.assessment-public-mode .assessment-public-only-card {
     let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: PMO_DEFAULT_FEEDBACK_BASE_URL });
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let assessmentPausedTokens = safeLoad('assessmentPausedTokens', {});
+    const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
+    const ASSESSMENT_SUPPORT_WHATSAPP_URL = 'https://wa.me/393791151472';
+    const ASSESSMENT_EMAIL_SUPPORT_FOOTER = `Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
+{telefono_segreteria}`;
+    const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'received-email', 'level-email']);
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
         subject: 'Completa la tua autovalutazione Padel Village',
@@ -5162,9 +5167,11 @@ stiamo aggiornando i livelli dei soci Padel Village per organizzare partite semp
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
-Richiede circa 2 minuti.
+Richiede meno di 1 minuto.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
+
+${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
 
 Grazie,
 Padel Village`
@@ -5179,7 +5186,9 @@ ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato 
 Se non l'hai ancora compilata, puoi farlo da questo link:
 {link_autovalutazione}
 
-Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.
+Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
+
+${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
 
 Grazie,
 Padel Village`
@@ -5195,6 +5204,8 @@ Lo staff la controllera e aggiornera il tuo livello nel gestionale Padel Village
 
 Riceverai una nuova conferma quando il livello sara stato validato.
 
+${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
+
 Grazie,
 Padel Village`
       },
@@ -5209,6 +5220,8 @@ Il livello aggiornato nel gestionale Padel Village e':
 {livello_validato}
 
 Useremo questo livello per proporti partite piu equilibrate.
+
+${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
 
 Grazie,
 Padel Village`
@@ -5263,6 +5276,21 @@ Lo useremo per organizzare partite piu equilibrate.
 Grazie.`
       }
     };
+    function normalizeAssessmentCommunicationTemplateBody(key, value) {
+      let body = String(value || '')
+        .replaceAll('Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.', 'Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.')
+        .replaceAll('Richiede meno di 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.', 'Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.')
+        .replaceAll('Richiede circa 2 minuti.', 'Richiede meno di 1 minuto.')
+        .replaceAll('Richiede meno di 2 minuti.', 'Richiede meno di 1 minuto.');
+      if (!ASSESSMENT_EMAIL_TEMPLATE_KEYS.has(key)) return body;
+      const hasSupportContact = /\{telefono_segreteria\}|379\s*115\s*1472/i.test(body);
+      if (hasSupportContact) return body;
+      const footer = `\n\n${ASSESSMENT_EMAIL_SUPPORT_FOOTER}\n\nGrazie,\nPadel Village`;
+      if (/Grazie,\s*\nPadel Village\s*$/i.test(body)) {
+        return body.replace(/\n*Grazie,\s*\nPadel Village\s*$/i, footer);
+      }
+      return `${body.trim()}\n\n${ASSESSMENT_EMAIL_SUPPORT_FOOTER}`;
+    }
     function normalizeAssessmentCommunicationTemplates(input) {
       const source = input && typeof input === 'object' ? input : {};
       const out = {};
@@ -5271,12 +5299,13 @@ Grazie.`
         out[key] = {
           subject: cleanCell(saved.subject || base.subject),
           type: cleanCell(saved.type || base.type),
-          body: String(saved.body || base.body)
+          body: normalizeAssessmentCommunicationTemplateBody(key, saved.body || base.body)
         };
       });
       return out;
     }
     let assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(safeLoad('assessmentCommunicationTemplates', null));
+    save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
     let assessmentCommunicationTemplateState = { selected:'primary-email' };
     let dailyAssistantState = safeLoad('dailyAssistantState', {});
     let dailyPlayerGroups = safeLoad('dailyPlayerGroups', []);
@@ -14403,7 +14432,7 @@ Padel Village sta aggiornando i livelli dei soci per organizzare partite più eq
 Ti chiediamo di compilare questa breve autovalutazione:
 {link_autovalutazione}
 
-Richiede meno di 2 minuti.
+Richiede meno di 1 minuto.
 
 Il livello indicato non è definitivo: sarà controllato dallo staff e servirà solo per proporti partite più adatte al tuo livello.
 
@@ -17847,7 +17876,7 @@ Padel Village sta aggiornando i livelli dei soci per organizzare partite più eq
 Ti chiediamo di compilare questa breve autovalutazione:
 ${link}
 
-Richiede meno di 2 minuti.
+Richiede meno di 1 minuto.
 
 Il livello indicato non è definitivo: sarà controllato dallo staff e servirà solo per proporti partite più adatte al tuo livello.
 
@@ -21393,7 +21422,9 @@ Per confermare scrivi ELIMINA.`);
         link_autovalutazione: link || '',
         livello_validato: cleanCell(extra.livello_validato || member?.level || ''),
         telefono: cleanCell(member?.phone || ''),
-        email: cleanCell(member?.email || '')
+        email: cleanCell(member?.email || ''),
+        telefono_segreteria: ASSESSMENT_SUPPORT_PHONE_DISPLAY,
+        whatsapp_segreteria: ASSESSMENT_SUPPORT_WHATSAPP_URL
       };
     }
     function assessmentEmailRenderTemplate(member, key='primary-email', link='', extra={}) {

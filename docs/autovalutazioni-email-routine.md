@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389.
 
-Ultimo aggiornamento: 2026-05-12 16:01
+Ultimo aggiornamento: 2026-05-12 16:21
 
 ## Obiettivo
 
@@ -160,6 +160,16 @@ Regole integrate:
 - l'ordine operativo diventa `Da inviare 0.5`, `Contattati / in attesa`, `Problemi`, `Post-invio`, `Storico`, `Testi`, `Scheda pubblica`, `Stato invio`;
 - anche il sottomenu laterale segue lo stesso ordine;
 - `Stato invio` resta disponibile, ma come controllo finale a destra invece che come punto di partenza.
+
+## Nota email TEST v5.389
+
+Le email del flusso Autovalutazione vengono aggiornate per essere piu leggibili:
+
+- il testo indica che la compilazione richiede meno di 1 minuto;
+- tutte le email includono il contatto segreteria Padel Village `+39 379 115 1472`;
+- nel formato HTML il numero segreteria diventa un link WhatsApp cliccabile;
+- il link personale della scheda viene trasformato nel pulsante `Compila la scheda`, con link di fallback sotto al pulsante;
+- la versione solo testo resta disponibile come alternativa tecnica per i client email che non leggono HTML.
 
 ## Nota mockup 2026-05-11 19:05
 
@@ -576,9 +586,12 @@ stiamo aggiornando i livelli dei soci Padel Village per organizzare partite semp
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
-Richiede circa 2 minuti.
+Richiede meno di 1 minuto.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
+
+Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
+{telefono_segreteria}
 
 Grazie,
 Padel Village
@@ -600,7 +613,10 @@ ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato 
 Se non l'hai ancora compilata, puoi farlo da questo link:
 {link_autovalutazione}
 
-Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.
+Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
+
+Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
+{telefono_segreteria}
 
 Grazie,
 Padel Village

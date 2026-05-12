@@ -18,6 +18,8 @@ const CORS_HEADERS = {
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'received-email', 'level-email']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
+const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
+const ASSESSMENT_SUPPORT_WHATSAPP_URL = 'https://wa.me/393791151472';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -91,8 +93,22 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#39;');
 }
 
+function linkifyHtml(value: string) {
+  return value
+    .replaceAll(
+      ASSESSMENT_SUPPORT_PHONE_DISPLAY,
+      `<a href="${ASSESSMENT_SUPPORT_WHATSAPP_URL}" style="color:#1f4f9a;font-weight:700;text-decoration:none;">${ASSESSMENT_SUPPORT_PHONE_DISPLAY}</a>`,
+    )
+    .replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#1f4f9a;word-break:break-all;">${url}</a>`);
+}
+
 function paragraphHtml(value: string) {
-  return escapeHtml(value).replace(/\n+/g, '<br>');
+  return linkifyHtml(escapeHtml(value)).replace(/\n+/g, '<br>');
+}
+
+function assessmentLinkButtonHtml(link: string) {
+  const safeLink = escapeHtml(link);
+  return `<p style="margin:22px 0;"><a href="${safeLink}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:8px;">Compila la scheda</a></p><p style="margin:8px 0 22px;color:#64748b;font-size:13px;line-height:1.45;">Se il pulsante non si apre, copia questo link:<br><a href="${safeLink}" style="color:#1f4f9a;word-break:break-all;">${safeLink}</a></p>`;
 }
 
 function buildHtmlBody(params: {
@@ -108,9 +124,17 @@ function buildHtmlBody(params: {
     .map((block) => clean(block))
     .filter(Boolean);
   const bodyHtml = blocks.map((block) => {
-    if (link && clean(block) === link) {
-      const safeLink = escapeHtml(link);
-      return `<p style="margin:22px 0;"><a href="${safeLink}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:8px;">Compila la scheda</a></p><p style="margin:8px 0 22px;color:#64748b;font-size:13px;line-height:1.45;">Se il pulsante non si apre, copia questo link:<br><a href="${safeLink}" style="color:#1f4f9a;word-break:break-all;">${safeLink}</a></p>`;
+    if (link) {
+      const lines = block
+        .split(/\n+/)
+        .map((line) => clean(line))
+        .filter(Boolean);
+      const linkIndex = lines.findIndex((line) => line === link);
+      if (linkIndex >= 0) {
+        const before = lines.slice(0, linkIndex).join('\n');
+        const after = lines.slice(linkIndex + 1).join('\n');
+        return `${before ? `<p style="margin:0 0 18px;">${paragraphHtml(before)}</p>` : ''}${assessmentLinkButtonHtml(link)}${after ? `<p style="margin:0 0 18px;">${paragraphHtml(after)}</p>` : ''}`;
+      }
     }
     return `<p style="margin:0 0 18px;">${paragraphHtml(block)}</p>`;
   }).join('');
