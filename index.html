@@ -4422,7 +4422,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <section class="players-gender-tabs" aria-label="Ripartizione sesso">
             <div class="players-gender-tab"><span>Maschi</span><strong id="playersDbMale">0</strong></div>
             <div class="players-gender-tab"><span>Femmine</span><strong id="playersDbFemale">0</strong></div>
-            <div class="players-gender-tab"><span>N/A da completare</span><strong id="playersDbNa">0</strong></div>
+            <div class="players-gender-tab"><span>Sesso da completare</span><strong id="playersDbNa">0</strong></div>
           </section>
 
           <section class="players-panel">
@@ -4438,7 +4438,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="row">
               <div class="col"><label>Nome<span class="required-star">*</span></label><input id="firstName" required /></div>
               <div class="col"><label>Cognome<span class="required-star">*</span></label><input id="surname" required /></div>
-              <div class="col"><label>Sesso<span class="required-star">*</span></label><select id="manualGender" required><option value="NA">N/A</option><option value="M">M</option><option value="F">F</option></select></div>
+              <div class="col"><label>Sesso<span class="required-star">*</span></label><select id="manualGender" required><option value="NA">Da completare</option><option value="M">M</option><option value="F">F</option></select></div>
               <div class="col"><label>Livello<span class="required-star">*</span></label><input type="number" id="level" min="0" max="7" step="0.5" value="0.5" required /></div>
             </div>
             <div class="row">
@@ -4467,7 +4467,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div><label>Ricerca socio</label><input id="searchFilter" placeholder="nome, telefono, email o ID" oninput="membersCurrentPage=1; displayMembers()" /></div>
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
                 <div><label>Livello giocatore</label><select id="levelFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
-                <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">N/A da completare</option></select></div>
+                <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">Sesso da completare</option></select></div>
                 <div><label>Attenzione dati</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutte le attenzioni</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option></select></div>
               </div>
               <div class="players-table-wrap">
@@ -5068,7 +5068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.398';
+    const APP_VERSION = '5.399';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9500,7 +9500,7 @@ Grazie.`
         const isOpen = String(memberInlineOpenId) === String(g.id);
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
           <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(g.memberId || 'ID mancante')} · ${escapeHtml(g.email || 'email non presente')}</div></td>
-          <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender || 'NA')}</span></td>
+          <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
           <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
           <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span></td>
@@ -9653,7 +9653,7 @@ Grazie.`
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
-                <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>N/A</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
+                <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>Da completare</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
                 <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>

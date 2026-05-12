@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-12 22:12
+Ultimo aggiornamento: 2026-05-12 22:21
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -237,6 +237,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 - v5.367 TEST/PROD: dopo approvazione mockup, il box `Prenotazioni future Matchpoint` mostra `Periodo`, `Ore campo prenotate` e `Occupazione stimata`; la percentuale usa la griglia `Slot potenziali` come denominatore e rimuove dal box i conteggi tecnici `Righe importate` e `Totale occupazioni future`. Edge Function `matchpoint-bookings-sync` attiva in TEST e PROD con `verify_jwt=true`, versione `1` e hash identico `dca5a1c472a19628e10f47e4bbdf4d1a8a86737321d05590fab58ac74bce67e2`.
 - v5.372 TEST: dopo approvazione mockup `mockup/backup-cloud-locale-separato-mockup.html`, il box `Backup dati` separa salvataggio cloud e download locale. `Salva backup cloud` salva solo su Supabase Storage, senza download locale automatico; `Ripristina backup cloud` resta vicino al comando cloud; `Scarica backup locale` viene aggiunto in basso come azione manuale. Nessuna modifica alle routine Matchpoint, allo scheduler Supabase, a Slot potenziali o alle altre sezioni.
 - v5.373 TEST/PROD: dopo aggiornamento automatico riuscito avviato dall'app per `Clienti Matchpoint`, `Prenotazioni future Matchpoint` o `Storico Matchpoint`, l'app esegue un backup cloud completo usando il payload browser gia validato. Il backup resta cloud-only, non scarica copie locali e non annulla l'import dati se fallisce; l'esito viene mostrato nello stato esistente del box Backup. La promozione PROD pubblica la UI e gli hook app-side, ma non attiva lo scheduler backend automatico su Supabase PROD.
+- `index.html` v5.399 TEST: in `Anagrafica soci` chiarisce la dicitura del sesso non compilato. La codifica interna resta `NA`, ma a video le etichette diventano `Sesso da completare` nei riepiloghi/filtri e `Da completare` nelle schede e nella tabella soci. Nessuna modifica a dati, import Matchpoint, Autovalutazione, WhatsApp, Riempi Slot o calcoli partite.
 - Worker Matchpoint 2026-05-10: dopo diagnostica PROD `MATCHPOINT_BROWSER_WORKER_FAILED`, il worker browser/headless non interrompe piu il flusso quando il click sul menu `Programmazione` va in timeout; registra l'errore e usa il fallback diretto gia previsto su `/Reservas/ListadoJugadores.aspx`. Nessuna modifica a UI, validazione file, credenziali o salvataggio dati.
 - `padel_match_organizer_v5_268.html`: candidata locale non pubblicata per Giocatori; rimuove i KPI alti `Risultati filtro` e `Da completare` dal Database giocatori e riadatta la griglia a 4 indicatori.
 - `padel_match_organizer_v5_267.html`: candidata locale non pubblicata per Giocatori/Gruppi; alza gli overlay della sezione sopra il menu laterale desktop, evitando click intercettati dalla sidebar.
