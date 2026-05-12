@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.394';
+    const APP_VERSION = '5.395';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5156,6 +5156,9 @@ body.assessment-public-mode .assessment-public-only-card {
     const ASSESSMENT_EMAIL_SUPPORT_FOOTER = `Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
 {telefono_segreteria}
 {whatsapp_segreteria}`;
+    const ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT = `Se hai dubbi o preferisci non compilare la scheda da solo, nessun problema: ti aiutiamo noi.
+
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello.`;
     const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'received-email', 'level-email']);
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
@@ -5169,6 +5172,8 @@ Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
 Richiede meno di 1 minuto.
+
+${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
 
@@ -5283,6 +5288,15 @@ Grazie.`
         .replaceAll('Richiede meno di 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.', 'Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.')
         .replaceAll('Richiede circa 2 minuti.', 'Richiede meno di 1 minuto.')
         .replaceAll('Richiede meno di 2 minuti.', 'Richiede meno di 1 minuto.');
+      if (key === 'primary-email' && !/LoZio|ti aiutiamo noi|preferisci non compilare la scheda da solo/i.test(body)) {
+        if (/Richiede meno di 1 minuto\./i.test(body)) {
+          body = body.replace(/Richiede meno di 1 minuto\./i, `Richiede meno di 1 minuto.\n\n${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}`);
+        } else if (/Dopo l['’]invio controlleremo/i.test(body)) {
+          body = body.replace(/Dopo l['’]invio controlleremo/i, `${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}\n\nDopo l'invio controlleremo`);
+        } else {
+          body = `${body.trim()}\n\n${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}`;
+        }
+      }
       if (!ASSESSMENT_EMAIL_TEMPLATE_KEYS.has(key)) return body;
       const hasSupportContact = /\{telefono_segreteria\}|379\s*115\s*1472/i.test(body);
       const hasSupportWhatsapp = /\{whatsapp_segreteria\}|wa\.me\/393791151472/i.test(body);

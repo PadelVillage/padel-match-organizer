@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395.
 
-Ultimo aggiornamento: 2026-05-12 21:18
+Ultimo aggiornamento: 2026-05-12 21:35
 
 ## Obiettivo
 
@@ -224,6 +224,15 @@ Dopo i test su scheda socio e storico vengono aggiunti controlli di protezione d
 - nella scheda socio compare la stessa attenzione e lo stesso ripristino quando serve;
 - `Nuova autovalutazione` resta un'azione esplicita dalla scheda socio: serve per aprire un nuovo ciclo voluto, non per correggere un errore dati;
 - una nuova autovalutazione avviata dalla scheda socio puo' rientrare nella coda email anche se il socio non ha piu' livello 0.5, per gestire richieste reali di rivalutazione.
+
+## Nota email TEST v5.395
+
+Nel testo del primo invio email viene aggiunta una rassicurazione operativa per chi non vuole compilare la scheda in autonomia:
+
+- il socio viene invitato a scrivere su WhatsApp se ha dubbi o preferisce essere aiutato;
+- il testo chiarisce che lo staff Padel Village, con LoZio, puo' aiutare a definire insieme il livello;
+- la normalizzazione dei testi salvati aggiunge questo passaggio anche quando nel browser era rimasto il vecchio testo del primo invio;
+- il promemoria, la conferma ricezione e la conferma livello non vengono modificati.
 
 ## Nota mockup 2026-05-11 19:05
 
@@ -641,6 +650,10 @@ Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
 Richiede meno di 1 minuto.
+
+Se hai dubbi o preferisci non compilare la scheda da solo, nessun problema: ti aiutiamo noi.
+
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
 
