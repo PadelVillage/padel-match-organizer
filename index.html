@@ -929,9 +929,9 @@
     .assessment-email-topbar h2 { margin:0; color:var(--primary); font-size:22px; line-height:1.1; }
     .assessment-email-topbar p { margin:0; color:#667085; font-size:13px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:620px; }
     .assessment-email-env { display:inline-flex; align-items:center; gap:8px; border:1px solid #f2d39b; background:#fff7e6; color:#7a4d00; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpis { flex:1 1 520px; display:flex; justify-content:flex-end; gap:7px; flex-wrap:wrap; margin:0; min-width:0; }
-    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:6px 9px; font-size:12px; font-weight:800; white-space:nowrap; }
-    .assessment-email-kpi strong { color:var(--primary); margin-right:6px; font-size:14px; line-height:1; }
+    .assessment-email-kpis { flex:1 1 520px; display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap; margin:0; min-width:0; }
+    .assessment-email-kpi { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; background:#fff; color:#475467; padding:4px 7px; font-size:11px; font-weight:800; white-space:nowrap; line-height:1.1; }
+    .assessment-email-kpi strong { color:var(--primary); margin-right:5px; font-size:13px; line-height:1; }
     .assessment-email-tabs { display:flex; gap:7px; flex-wrap:wrap; border-bottom:1px solid #d9e0ea; margin:8px 0 10px; padding-bottom:7px; }
     .assessment-email-tab { border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:8px 11px; font-weight:900; cursor:pointer; }
     .assessment-email-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -5056,7 +5056,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.395';
+    const APP_VERSION = '5.396';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21941,12 +21941,14 @@ Per confermare scrivi ELIMINA.`);
       const queue = assessmentEmailQueueRows();
       const pending = assessmentEmailPendingRows();
       const problems = assessmentEmailProblemRows();
+      const noEmail = problems.filter(row => !assessmentEmailHasValidEmail(row.member));
       const sentToday = getAssessmentRequestsSentTodayCount();
       const card = (label, value) => `<span class="assessment-email-kpi"><strong>${escapeHtml(String(value))}</strong>${escapeHtml(label)}</span>`;
       box.innerHTML = [
         card('invio automatico', '07:00'),
         card('invii oggi', `${sentToday}/20`),
         card('da inviare 0.5', queue.length),
+        card('senza email', noEmail.length),
         card('in attesa', pending.length),
         card('problemi', problems.length)
       ].join('');
