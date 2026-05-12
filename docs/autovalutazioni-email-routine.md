@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402.
 
-Ultimo aggiornamento: 2026-05-12 22:47
+Ultimo aggiornamento: 2026-05-13 00:02
 
 ## Obiettivo
 
@@ -100,7 +100,7 @@ Segreti richiesti nella Edge Function:
 - opzionale `ASSESSMENT_EMAIL_FROM_NAME`;
 - opzionale `ASSESSMENT_EMAIL_REPLY_TO`.
 
-La funzione non attiva ancora scheduler email automatico delle 07:00 e non legge ancora le mancate consegne. Questi restano step successivi.
+Nella fase v5.383 la funzione non attivava ancora lo scheduler email automatico e non leggeva ancora le mancate consegne. Questi passaggi vengono ripresi nelle note successive.
 
 ## Nota UI TEST v5.384
 
@@ -146,7 +146,7 @@ Regole integrate:
 - la tab `Scheda pubblica` diventa un pannello autonomo da controllare quando serve vedere l'anteprima del modulo;
 - le tab operative `Stato invio`, `Da inviare 0.5`, `Contattati / in attesa`, `Problemi`, `Post-invio`, `Storico` e `Testi` non mostrano piu la demo sotto le rispettive tabelle;
 - nella tab `Contattati / in attesa` e' disponibile `Reinvia email`;
-- il reinvio usa il testo `Secondo invio dopo 7 giorni`;
+- il reinvio usa il secondo testo email e, se serve, il terzo promemoria;
 - in TEST il reinvio resta protetto: la mail va al destinatario prova, non direttamente al socio reale;
 - dopo il reinvio la riga resta in attesa, aggiorna data/ora dell'ultimo invio e mostra il conteggio degli invii.
 
@@ -274,6 +274,36 @@ La schermata parte direttamente dalla barra compatta delle schede:
 
 Le etichette di gruppo `Operativi` e `Consultazione` vengono rimosse per tenere tutto su una riga quando lo spazio lo consente. La modifica e' solo UI: non cambia invii, stati, filtri, storico o logiche Gmail.
 
+## Nota tecnica/UI TEST v5.401
+
+La funzione Gmail `assessment-email-send` viene estesa, sempre con accesso staff e permesso `cloud_sync`, con due controlli di lettura:
+
+- `scan-replies`: legge le email ricevute su Gmail e prova ad abbinarle agli invii di Autovalutazione tramite thread Gmail, email del socio, nome socio e dati dell'invio;
+- `scan-bounces`: legge le notifiche di mancata consegna e, quando le abbina a un socio, sposta il caso in `Problemi` con stato leggibile `Mancata consegna`.
+
+Regole operative:
+
+- la lettura Gmail riguarda solo gli invii di Autovalutazione passati dall'app alla funzione, non diventa ancora il cruscotto completo `Conversazioni`;
+- `Contattati / in attesa` mostra quando un socio ha risposto via email, cosi' lo staff sa che deve leggere la risposta su Gmail e gestirla manualmente;
+- le mancate consegne non restano in `Contattati / in attesa`, ma passano in `Problemi` per recupero WhatsApp e correzione email;
+- il bottone WhatsApp dentro le email apre la segreteria con un testo precompilato diverso per primo invio, promemoria, conferma ricezione e livello di gioco validato;
+- nei testi collegati si usa la dicitura `livello di gioco`.
+
+La tab `Stato invio` viene aggiornata alla regola oraria approvata: invio giornaliero dalle `05:45`, massimo 20 email, invii distanziati per completare entro le `06:00`.
+
+Nella scheda socio i pulsanti vengono compattati: in alto restano solo `Chiudi` e `Salva`, mentre `Apri WhatsApp`, `Nuova autovalutazione`, `Disattiva/Riattiva` e `Cancella socio` restano nel pannello `Azioni operative`.
+
+## Nota processo TEST v5.402
+
+Il ciclo email passa da due a tre invii:
+
+- primo invio email automatico;
+- secondo invio dopo 2 giorni dal primo, con il testo promemoria gia approvato;
+- terzo invio dopo altri 2 giorni, con un testo piu esplicito che chiede al socio se ha difficolta, se non vuole compilare o se preferisce spiegare il motivo via WhatsApp;
+- dopo il terzo invio senza compilazione, il socio passa al recupero manuale WhatsApp/problemi invece di ricevere altre email.
+
+Il link personale resta lo stesso in tutti e tre gli invii.
+
 ## Nota mockup 2026-05-11 19:05
 
 Il mockup `mockup/autovalutazioni-email-routine-mockup.html` viene aggiornato prima dell'integrazione app:
@@ -308,7 +338,7 @@ Regola operativa:
 
 | Step | Fase | Cosa succede | Controllo operativo |
 |---|---|---|
-| 1-2 | Avvio invio | Il sistema legge i soci attivi dal gestionale. | Parte ogni giorno alle `07:00`, oppure da comando manuale autorizzato. |
+| 1-2 | Avvio invio | Il sistema legge i soci attivi dal gestionale. | Parte ogni giorno alle `05:45`, oppure da comando manuale autorizzato. |
 | 3 | Selezione livello | Passano solo i soci con livello `0.5`. | Tutti gli altri livelli sono esclusi. |
 | 4 | Contatto email | Serve una email valida in anagrafica. | Se manca, il socio va nei problemi e si usa WhatsApp manuale. |
 | 5 | Link personale | Il sistema prepara il link personale di autovalutazione. | Il link deve essere salvato nel sistema prima dell'invio. |
@@ -317,12 +347,13 @@ Regola operativa:
 | 9-10 | Esito invio | Gmail puo' accettare o rifiutare l'invio. | Se fallisce, va nel pannello Problemi. |
 | 11-12 | Mancata consegna | Il sistema legge da Gmail gli avvisi di email non consegnata. | Se trova una mancata consegna, propone controllo email o WhatsApp. |
 | 13 | Attesa/compilazione | Se non ci sono mancate consegne, il socio resta in attesa; se compila, passa a completato. | Non diciamo "consegnata con certezza", solo "inviata/in attesa" finche' non compila. |
-| 14 | Secondo invio | Se dopo 7 giorni non c'e' compilazione ne' mancata consegna, parte un secondo invio automatico. | Il secondo invio usa lo stesso link personale. |
-| 15 | WhatsApp manuale | Se dopo altri 7 giorni dal secondo invio non c'e' compilazione, il socio passa a `da contattare via WhatsApp`. | Il sistema non insiste oltre via email. |
-| 15A | Verifica WhatsApp | Lo staff apre WhatsApp dal pannello problemi e l'app registra subito data e ora dell'apertura. | Il socio resta gestibile con l'ultima data WhatsApp aperta visibile, senza un secondo bottone di conferma. |
-| 15B | Nessuna risposta | Se il socio non risponde ne' alle email ne' a WhatsApp, lo staff puo' chiudere il tentativo in pausa. | Stato leggibile: `Autovalutazione in pausa - nessuna risposta`. Il socio resta attivo e livello `0.5`. |
-| 16 | Conferma compilazione | Quando il socio compila la scheda, viene inviata una email automatica di conferma ricezione. | La conferma non comunica ancora il livello validato. |
-| 17-19 | Validazione | La risposta passa in Post-invio, lo staff valida e applica il livello. | Il socio esce dal bacino `0.5`, riceve una email automatica con il livello validato e poi va nello storico. |
+| 14 | Secondo invio | Se dopo 2 giorni non c'e' compilazione ne' mancata consegna, parte un secondo invio automatico. | Il secondo invio usa lo stesso link personale. |
+| 15 | Terzo invio | Se dopo altri 2 giorni dal secondo invio non c'e' compilazione, parte un terzo invio. | Il terzo invio chiede anche un feedback via WhatsApp se ci sono problemi. |
+| 16 | WhatsApp manuale | Se dopo il terzo invio non c'e' compilazione, il socio passa a `da contattare via WhatsApp`. | Il sistema non insiste oltre via email. |
+| 17 | Verifica WhatsApp | Lo staff apre WhatsApp dal pannello problemi e l'app registra subito data e ora dell'apertura. | Il socio resta gestibile con l'ultima data WhatsApp aperta visibile, senza un secondo bottone di conferma. |
+| 18 | Nessuna risposta | Se il socio non risponde ne' alle email ne' a WhatsApp, lo staff puo' chiudere il tentativo in pausa. | Stato leggibile: `Autovalutazione in pausa - nessuna risposta`. Il socio resta attivo e livello `0.5`. |
+| 19 | Conferma compilazione | Quando il socio compila la scheda, viene inviata una email automatica di conferma ricezione. | La conferma non comunica ancora il livello validato. |
+| 20-22 | Validazione | La risposta passa in Post-invio, lo staff valida e applica il livello. | Il socio esce dal bacino `0.5`, riceve una email automatica con il livello validato e poi va nello storico. |
 
 ## Regola base
 
@@ -330,7 +361,7 @@ Ogni giorno l'invio automatico deve mandare al massimo 20 email di autovalutazio
 
 Orario invio automatico:
 
-- invio giornaliero alle `07:00`;
+- invio giornaliero alle `05:45`;
 - obiettivo: far trovare la mail gia' disponibile quando il socio si sveglia o arriva al lavoro;
 - eventuale invio manuale staff deve rispettare gli stessi controlli anti-doppio invio.
 
@@ -435,7 +466,8 @@ Stati minimi:
 - `delivery_pending`: inviata, in attesa di eventuale mancata consegna o scheda compilata;
 - `bounced`: Gmail ha ricevuto una notifica di mancata consegna;
 - `send_failed`: invio non partito per errore tecnico;
-- `reminder_sent`: secondo invio automatico eseguito dopo 7 giorni senza esito;
+- `reminder_sent`: secondo invio automatico eseguito dopo 2 giorni senza esito;
+- `third_reminder_sent`: terzo invio automatico eseguito dopo altri 2 giorni senza esito;
 - `completed`: scheda compilata dal socio;
 - `manual_whatsapp_needed`: serve contatto manuale WhatsApp;
 - `whatsapp_check_pending`: verifica WhatsApp avviata, in attesa risposta;
@@ -475,13 +507,15 @@ Se non arriva una mancata consegna entro una finestra definita, per esempio 48 o
 Regola operativa:
 
 - primo invio email automatico;
-- se dopo 7 giorni non ci sono scheda compilata, mancata consegna o blocchi tecnici, parte un secondo invio automatico;
+- se dopo 2 giorni non ci sono scheda compilata, mancata consegna o blocchi tecnici, parte un secondo invio automatico;
 - il secondo invio usa lo stesso link personale;
-- se dopo altri 7 giorni dal secondo invio non c'e' compilazione, il sistema non invia altre email;
+- se dopo altri 2 giorni dal secondo invio non c'e' compilazione, parte un terzo invio automatico;
+- il terzo invio usa lo stesso link personale e chiede anche un feedback via WhatsApp se ci sono problemi;
+- se dopo il terzo invio non c'e' compilazione, il sistema non invia altre email;
 - il socio passa allo stato `manual_whatsapp_needed`;
 - il pannello propone l'azione WhatsApp manuale.
 
-Questa regola evita invii ripetuti e mantiene il controllo umano dopo due tentativi email.
+Questa regola evita invii ripetuti e mantiene il controllo umano dopo tre tentativi email.
 
 Regola WhatsApp:
 
@@ -496,7 +530,7 @@ Regola WhatsApp:
 
 Regola nessuna risposta:
 
-- se dopo email, secondo invio e verifica WhatsApp il socio non risponde, lo staff puo' usare `Metti in pausa`;
+- se dopo email, secondo invio, terzo invio e verifica WhatsApp il socio non risponde, lo staff puo' usare `Metti in pausa`;
 - lo stato leggibile diventa `Autovalutazione in pausa - nessuna risposta`;
 - non significa socio sospeso dal club;
 - il socio resta attivo e con livello `0.5`;
@@ -589,7 +623,7 @@ Serve per:
 - non basarsi solo su nome, cognome o email, che possono essere duplicati, scritti male o cambiati;
 - impedire che una compilazione generica venga agganciata al socio sbagliato;
 - sapere se quel link e' stato creato, inviato, completato o scaduto;
-- riusare lo stesso link nel secondo invio senza creare doppioni.
+- riusare lo stesso link nel secondo e terzo invio senza creare doppioni.
 
 Esempio:
 
@@ -622,9 +656,10 @@ Blocchi proposti:
    - tabella `Controllo / Stato / Dettaglio / Prossima azione`;
    - Email Padel Village;
    - destinatario prova;
-   - invio automatico alle `07:00`;
+   - invio automatico alle `05:45`;
    - limite giornaliero 20;
-   - secondo invio dopo 7 giorni;
+   - secondo invio dopo 2 giorni;
+   - terzo invio dopo altri 2 giorni;
    - mancate consegne;
    - WhatsApp recupero;
    - schede ricevute da mandare a Post-invio.
@@ -663,7 +698,8 @@ Blocchi proposti:
 
 7. Testi
    - primo invio autovalutazione;
-   - secondo invio dopo 7 giorni;
+   - secondo invio dopo 2 giorni;
+   - terzo invio dopo altri 2 giorni;
    - conferma ricezione scheda;
    - comunicazione livello validato;
    - WhatsApp verifica ricezione email;
@@ -693,9 +729,9 @@ Richiede meno di 1 minuto.
 
 Se hai dubbi o preferisci non compilare la scheda da solo, nessun problema: ti aiutiamo noi.
 
-Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello.
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello di gioco.
 
-Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
+Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello di gioco nel gestionale Padel Village.
 
 Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
 {telefono_segreteria}
@@ -721,7 +757,36 @@ ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato 
 Se non l'hai ancora compilata, puoi farlo da questo link:
 {link_autovalutazione}
 
-Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
+Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello di gioco.
+
+Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
+{telefono_segreteria}
+{whatsapp_segreteria}
+
+Grazie,
+Padel Village
+```
+
+### Email terzo invio
+
+Oggetto:
+
+`Ultimo promemoria autovalutazione Padel Village`
+
+Testo:
+
+```text
+Ciao {nome},
+
+ti scriviamo un'ultima volta per la scheda di autovalutazione del livello di gioco Padel Village.
+
+Se ti va di compilarla, puoi usare questo link:
+{link_autovalutazione}
+
+Richiede meno di 1 minuto.
+
+Se invece hai problemi a fare il test, non ti va di compilarlo o preferisci essere aiutato, ci farebbe comodo capirlo.
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto e dirci come possiamo aiutarti.
 
 Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
 {telefono_segreteria}
@@ -738,7 +803,7 @@ Questo testo non contiene il link alla scheda. Serve solo a capire se la mail e'
 ```text
 Ciao {nome}, sono Maurizio di Padel Village.
 
-Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello.
+Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.
 
 Puoi controllare anche in spam o promozioni?
 
@@ -770,10 +835,11 @@ Test minimo:
 5. verificare che il socio esca dal pannello invio automatico e compaia in Post-invio;
 6. verificare la email automatica di conferma compilazione;
 7. simulare o forzare un indirizzo errato per verificare il flusso di mancata consegna/problemi;
-8. verificare la regola di secondo invio dopo 7 giorni;
-9. verificare che dopo il secondo tentativo il socio passi a verifica WhatsApp manuale;
-10. verificare che il testo WhatsApp non contenga il link diretto alla scheda;
-11. verificare che con email corretta il socio rientri nel giro di invio email.
+8. verificare la regola di secondo invio dopo 2 giorni;
+9. verificare la regola di terzo invio dopo altri 2 giorni;
+10. verificare che dopo il terzo tentativo il socio passi a verifica WhatsApp manuale;
+11. verificare che il testo WhatsApp non contenga il link diretto alla scheda;
+12. verificare che con email corretta il socio rientri nel giro di invio email.
 
 ## Componenti tecnici interni proposti
 

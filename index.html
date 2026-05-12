@@ -4489,7 +4489,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')"><span class="assessment-email-tab-title">Storico</span><span id="assessmentEmailHistoryTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')"><span class="assessment-email-tab-title">Testi</span><span class="assessment-email-tab-count">email e WhatsApp</span></button>
             <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
-            <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')"><span class="assessment-email-tab-title">Stato invio</span><span class="assessment-email-tab-count">07:00 · limite 20</span></button>
+            <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')"><span class="assessment-email-tab-title">Stato invio</span><span class="assessment-email-tab-count">05:45 · limite 20</span></button>
           </nav>
 
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
@@ -4500,7 +4500,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Il controllo mancate consegne richiede il collegamento Gmail backend.')">Controlla mancate consegne</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
               </div>
             </div>
@@ -4528,8 +4528,8 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Soci con richiesta gia inviata e scheda non ancora compilata.</p>
               </div>
               <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Il controllo mancate consegne richiede il collegamento Gmail backend.')">Controlla mancate consegne</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
               </div>
             </div>
             <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
@@ -4542,7 +4542,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Email mancanti, link da preparare, richieste senza risposta e verifiche WhatsApp manuali.</p>
               </div>
               <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('Le mancate consegne Gmail saranno lette dal backend email.')">Mostra mancate consegne</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Mostra mancate consegne</button>
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('WhatsApp resta manuale: aprilo dalla riga del singolo socio.')">Prepara WhatsApp selezionati</button>
               </div>
             </div>
@@ -5036,7 +5036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.400';
+    const APP_VERSION = '5.402';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5139,14 +5139,15 @@ body.assessment-public-mode .assessment-public-only-card {
     const ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT = `Se hai dubbi o preferisci non compilare la scheda da solo, nessun problema: ti aiutiamo noi.
 
 Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello.`;
-    const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'received-email', 'level-email']);
+    const ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000;
+    const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
         subject: 'Completa la tua autovalutazione Padel Village',
         type: 'Email - primo invio autovalutazione',
         body: `Ciao {nome},
 
-stiamo aggiornando i livelli dei soci Padel Village per organizzare partite sempre piu equilibrate.
+stiamo aggiornando i livelli di gioco dei soci Padel Village per organizzare partite sempre piu equilibrate.
 
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
@@ -5155,7 +5156,7 @@ Richiede meno di 1 minuto.
 
 ${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}
 
-Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
+Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello di gioco nel gestionale Padel Village.
 
 ${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
 
@@ -5164,7 +5165,7 @@ Padel Village`
       },
       'recall-email': {
         subject: 'Promemoria autovalutazione Padel Village',
-        type: 'Email - secondo invio dopo 7 giorni',
+        type: 'Email - secondo invio dopo 2 giorni',
         body: `Ciao {nome},
 
 ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato qualche giorno fa.
@@ -5172,7 +5173,27 @@ ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato 
 Se non l'hai ancora compilata, puoi farlo da questo link:
 {link_autovalutazione}
 
-Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
+Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello di gioco.
+
+${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
+
+Grazie,
+Padel Village`
+      },
+      'third-email': {
+        subject: 'Ultimo promemoria autovalutazione Padel Village',
+        type: 'Email - terzo invio dopo altri 2 giorni',
+        body: `Ciao {nome},
+
+ti scriviamo un'ultima volta per la scheda di autovalutazione del livello di gioco Padel Village.
+
+Se ti va di compilarla, puoi usare questo link:
+{link_autovalutazione}
+
+Richiede meno di 1 minuto.
+
+Se invece hai problemi a fare il test, non ti va di compilarlo o preferisci essere aiutato, ci farebbe comodo capirlo.
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto e dirci come possiamo aiutarti.
 
 ${ASSESSMENT_EMAIL_SUPPORT_FOOTER}
 
@@ -5186,7 +5207,7 @@ Padel Village`
 
 abbiamo ricevuto correttamente la tua scheda di autovalutazione.
 
-Lo staff la controllera e aggiornera il tuo livello nel gestionale Padel Village.
+Lo staff la controllera e aggiornera il tuo livello di gioco nel gestionale Padel Village.
 
 Riceverai una nuova conferma quando il livello sara stato validato.
 
@@ -5202,7 +5223,7 @@ Padel Village`
 
 la tua autovalutazione e' stata controllata.
 
-Il livello aggiornato nel gestionale Padel Village e':
+Il livello di gioco aggiornato nel gestionale Padel Village e':
 {livello_validato}
 
 Useremo questo livello per proporti partite piu equilibrate.
@@ -5217,7 +5238,7 @@ Padel Village`
         type: 'WhatsApp - richiesta email mancante',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
-Stiamo aggiornando le schede dei soci per inviare la nuova autovalutazione del livello e organizzare partite piu equilibrate.
+Stiamo aggiornando le schede dei soci per inviare la nuova autovalutazione del livello di gioco e organizzare partite piu equilibrate.
 
 Nel gestionale non trovo la tua email aggiornata.
 
@@ -5230,7 +5251,7 @@ Grazie.`
         type: 'WhatsApp - verifica ricezione email',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
-Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello.
+Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.
 
 Puoi controllare anche in spam o promozioni?
 
@@ -5243,7 +5264,7 @@ Grazie.`
         type: 'WhatsApp - promemoria controllo mail',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
-Ti ricordiamo di controllare la mail che ti abbiamo inviato per la scheda di autovalutazione.
+Ti ricordiamo di controllare la mail che ti abbiamo inviato per la scheda di autovalutazione del livello di gioco.
 
 Quando riesci, compilala dalla mail ricevuta.
 
@@ -5252,9 +5273,9 @@ Grazie.`
       'whatsapp-level': {
         subject: 'Non previsto per WhatsApp',
         type: 'WhatsApp - livello validato',
-        body: `Ciao {nome}, ti confermo che abbiamo aggiornato il tuo livello Padel Village.
+        body: `Ciao {nome}, ti confermo che abbiamo aggiornato il tuo livello di gioco Padel Village.
 
-Il livello validato e':
+Il livello di gioco validato e':
 {livello_validato}
 
 Lo useremo per organizzare partite piu equilibrate.
@@ -5268,6 +5289,16 @@ Grazie.`
         .replaceAll('Richiede meno di 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.', 'Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.')
         .replaceAll('Richiede circa 2 minuti.', 'Richiede meno di 1 minuto.')
         .replaceAll('Richiede meno di 2 minuti.', 'Richiede meno di 1 minuto.');
+      body = body
+        .replaceAll('stiamo aggiornando i livelli dei soci Padel Village', 'stiamo aggiornando i livelli di gioco dei soci Padel Village')
+        .replaceAll('aggiornare correttamente il tuo livello.', 'aggiornare correttamente il tuo livello di gioco.')
+        .replaceAll('aggiorneremo il tuo livello nel gestionale Padel Village.', 'aggiorneremo il tuo livello di gioco nel gestionale Padel Village.')
+        .replaceAll('aggiornera il tuo livello nel gestionale Padel Village.', 'aggiornera il tuo livello di gioco nel gestionale Padel Village.')
+        .replaceAll('autovalutazione del livello e organizzare', 'autovalutazione del livello di gioco e organizzare')
+        .replaceAll('autovalutazione del livello.', 'autovalutazione del livello di gioco.')
+        .replaceAll('Il livello aggiornato nel gestionale Padel Village e', 'Il livello di gioco aggiornato nel gestionale Padel Village e')
+        .replaceAll('Il livello validato e', 'Il livello di gioco validato e')
+        .replaceAll('aggiornato il tuo livello Padel Village', 'aggiornato il tuo livello di gioco Padel Village');
       if (key === 'primary-email' && !/LoZio|ti aiutiamo noi|preferisci non compilare la scheda da solo/i.test(body)) {
         if (/Richiede meno di 1 minuto\./i.test(body)) {
           body = body.replace(/Richiede meno di 1 minuto\./i, `Richiede meno di 1 minuto.\n\n${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}`);
@@ -5329,7 +5360,7 @@ Grazie.`
     let guidedInviteSessions = safeLoad('guidedInviteSessions', {});
     let whatsappMessageHistory = safeLoad('whatsappMessageHistory', {});
     let whatsappMessageTemplates = safeLoad('whatsappMessageTemplates', null);
-    const DAILY_ASSESSMENT_REQUEST_LIMIT = 10;
+    const DAILY_ASSESSMENT_REQUEST_LIMIT = 20;
     let lastComputedSlots = [];
     let lastFillSlotsAnalysis = [];
     let lastFillSlotsViewAnalysis = null;
@@ -9088,11 +9119,15 @@ Grazie.`
       if (raw.includes('TOKEN_LINK_REQUIRED')) return 'Link personale non pronto.';
       if (raw.includes('GMAIL_TOKEN_FAILED')) return 'Gmail non ha autorizzato l invio. Controllare il collegamento account.';
       if (raw.includes('GMAIL_SEND_FAILED')) return 'Gmail ha rifiutato l invio email.';
+      if (raw.includes('GMAIL_READ_FAILED')) return 'Gmail non ha autorizzato la lettura delle email. Controllare il collegamento account.';
       return raw || 'Invio email autovalutazione non riuscito.';
     }
 
     async function pmoInvokeAssessmentEmail(payload={}) {
-      const actionLabel = 'inviare email autovalutazione';
+      const action = payload.action || 'send';
+      const actionLabel = action === 'scan-bounces'
+        ? 'controllare le mancate consegne Gmail'
+        : (action === 'scan-replies' ? 'aggiornare le risposte Gmail' : 'inviare email autovalutazione');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
@@ -9102,7 +9137,7 @@ Grazie.`
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`
         },
-        body: JSON.stringify({ action:'send', ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV })
+        body: JSON.stringify({ action, ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV })
       });
       const text = await response.text();
       let data = null;
@@ -9604,9 +9639,8 @@ Grazie.`
             </div>
           </div>
           <div class="member-card-actions-top">
-            <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">Apri WhatsApp</button>
-            <button class="btn-secondary" onclick="closeMemberCard()">Chiudi</button>
-            <button class="btn-primary" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
+            <button class="btn-secondary small-btn" onclick="closeMemberCard()">Chiudi</button>
+            <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
           </div>
         </div>
         <div class="member-card-body">
@@ -9663,6 +9697,7 @@ Grazie.`
             <section class="member-panel">
               <div class="member-panel-head"><h4>Azioni operative</h4></div>
               <div class="member-card-action-row">
+                <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">Apri WhatsApp</button>
                 <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
@@ -21600,6 +21635,7 @@ Per confermare scrivi ELIMINA.`);
             phone: cleanCell(member.phone || ''),
             level: cleanCell(member.level || '')
           },
+          level: cleanCell(response?.applied_level || member.level || ''),
           originalRecipient: assessmentEmailMemberEmail(member),
           token: cleanCell(rec?.token || ''),
           link: '',
@@ -21668,14 +21704,14 @@ Per confermare scrivi ELIMINA.`);
       if (!time) return '-';
       return new Date(time).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
     }
-    function assessmentEmailNextSevenAM() {
+    function assessmentEmailNextMorningRun() {
       const now = new Date();
       const next = new Date(now);
-      next.setHours(7, 0, 0, 0);
+      next.setHours(5, 45, 0, 0);
       if (next <= now) next.setDate(next.getDate() + 1);
       const weekday = next.toLocaleDateString('it-IT', { weekday:'short' });
       const day = weekday ? weekday.charAt(0).toUpperCase() + weekday.slice(1).replace('.', '') : '';
-      return `${day} ${next.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' })} alle 07:00`;
+      return `${day} ${next.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' })} alle 05:45`;
     }
     function assessmentEmailAddDays(value, days) {
       const base = assessmentEmailDateMs(value) ? new Date(value) : new Date();
@@ -21781,19 +21817,124 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailPendingRows() {
       return assessmentEmailAllOperationalRows().filter(row => {
         if (row.response || row.info.paused || assessmentEmailMemberApplied(row.member, row.info)) return false;
-        return row.rec?.status === 'sent';
+        return row.rec?.status === 'sent' && row.rec?.emailStatus !== 'bounced';
       }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
     }
+    function assessmentEmailSentRecordsForGmail() {
+      return assessmentEmailAllOperationalRows().map(row => {
+        const rec = row.rec || {};
+        if (rec.status !== 'sent' && !rec.gmailThreadId && !rec.gmailMessageId) return null;
+        return {
+          memberId: String(row.member?.id || rec.memberId || ''),
+          memberName: playerFullName(row.member) || rec.memberName || '',
+          token: cleanCell(rec.token || ''),
+          originalRecipient: cleanCell(rec.emailOriginalRecipient || assessmentEmailMemberEmail(row.member) || ''),
+          actualRecipient: cleanCell(rec.emailActualRecipient || ''),
+          gmailMessageId: cleanCell(rec.gmailMessageId || ''),
+          gmailThreadId: cleanCell(rec.gmailThreadId || ''),
+          sentAt: cleanCell(rec.sentAt || rec.createdAt || '')
+        };
+      }).filter(Boolean);
+    }
+    function assessmentEmailApplyBounceMatches(matches=[]) {
+      const rows = Array.isArray(matches) ? matches : [];
+      let updated = 0;
+      rows.forEach(item => {
+        const member = giocatori.find(g => String(g.id) === String(item.memberId || ''));
+        if (!member) return;
+        const rec = getAssessmentTokenRecord(member.id);
+        if (!rec) return;
+        rec.emailStatus = 'bounced';
+        rec.emailBouncedAt = item.bounceDate || new Date().toISOString();
+        rec.emailBounceReason = item.reason || item.bounceSnippet || item.bounceSubject || 'Mancata consegna rilevata da Gmail';
+        rec.emailBounceGmailMessageId = item.bounceGmailMessageId || '';
+        member.selfAssessmentEmailBouncedAt = rec.emailBouncedAt;
+        member.selfAssessmentEmailBounceReason = rec.emailBounceReason;
+        updated++;
+      });
+      if (updated) {
+        save('assessmentTokens', assessmentTokens);
+        save('giocatori', giocatori);
+      }
+      return updated;
+    }
+    function assessmentEmailApplyReplyMatches(matches=[]) {
+      const rows = Array.isArray(matches) ? matches : [];
+      let updated = 0;
+      rows.forEach(item => {
+        const member = giocatori.find(g => String(g.id) === String(item.memberId || ''));
+        if (!member) return;
+        const rec = getAssessmentTokenRecord(member.id);
+        if (!rec) return;
+        rec.emailReplyStatus = 'received';
+        rec.emailReplyAt = item.replyDate || new Date().toISOString();
+        rec.emailReplyFrom = item.replyFrom || '';
+        rec.emailReplySubject = item.replySubject || '';
+        rec.emailReplySnippet = item.replySnippet || '';
+        rec.emailReplyGmailMessageId = item.replyGmailMessageId || '';
+        member.selfAssessmentEmailReplyAt = rec.emailReplyAt;
+        member.selfAssessmentEmailReplyFrom = rec.emailReplyFrom;
+        member.selfAssessmentEmailReplySnippet = rec.emailReplySnippet;
+        updated++;
+      });
+      if (updated) {
+        save('assessmentTokens', assessmentTokens);
+        save('giocatori', giocatori);
+      }
+      return updated;
+    }
+    async function assessmentEmailScanBounces() {
+      try {
+        const sentRecords = assessmentEmailSentRecordsForGmail();
+        if (!sentRecords.length) return showAlert('Nessuna email inviata da controllare.', 'info');
+        showAlert('Controllo Gmail per eventuali mancate consegne...', 'info');
+        const result = await pmoInvokeAssessmentEmail({ action:'scan-bounces', sentRecords });
+        const updated = assessmentEmailApplyBounceMatches(result.matches || []);
+        displayAssessment();
+        if (updated) {
+          setAssessmentEmailPanel('problems');
+          showAlert(`Mancate consegne trovate: ${updated}. I soci sono stati spostati in Problemi.`, 'warning');
+        } else {
+          showAlert(`Controllo completato: nessuna mancata consegna trovata su ${result.scanned || 0} email Gmail analizzate.`, 'success');
+        }
+        return result;
+      } catch (err) {
+        showAlert('Controllo mancate consegne non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'controllare le mancate consegne Gmail'), 'danger');
+        return { ok:false, error:err?.message || err };
+      }
+    }
+    async function assessmentEmailScanReplies() {
+      try {
+        const sentRecords = assessmentEmailSentRecordsForGmail();
+        if (!sentRecords.length) return showAlert('Nessuna email inviata da controllare.', 'info');
+        showAlert('Aggiorno le risposte arrivate su Gmail...', 'info');
+        const result = await pmoInvokeAssessmentEmail({ action:'scan-replies', sentRecords });
+        const updated = assessmentEmailApplyReplyMatches(result.matches || []);
+        displayAssessment();
+        if (updated) {
+          setAssessmentEmailPanel('pending');
+          showAlert(`Risposte email trovate: ${updated}. Le trovi in Contattati / in attesa.`, 'success');
+        } else {
+          showAlert(`Controllo completato: nessuna risposta email collegata agli invii su ${result.scanned || 0} email Gmail analizzate.`, 'info');
+        }
+        return result;
+      } catch (err) {
+        showAlert('Aggiornamento risposte Gmail non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'aggiornare le risposte Gmail'), 'danger');
+        return { ok:false, error:err?.message || err };
+      }
+    }
     function assessmentEmailProblemRows() {
-      const twoWeeks = 14 * 24 * 60 * 60 * 1000;
       const now = Date.now();
       return assessmentEmailAllOperationalRows().filter(row => {
         if (!assessmentEmailIsCycleCandidate(row)) return false;
         if (row.response || assessmentEmailMemberApplied(row.member, row.info)) return false;
+        if (row.rec?.emailStatus === 'bounced') return true;
         if (!assessmentEmailHasValidEmail(row.member)) return true;
         if (!row.member.phone) return true;
         if (row.info.paused) return true;
-        if (row.rec?.status === 'sent' && assessmentEmailDateMs(row.rec.sentAt) && now - assessmentEmailDateMs(row.rec.sentAt) >= twoWeeks) return true;
+        const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
+        const lastSentMs = assessmentEmailDateMs(row.rec?.sentAt);
+        if (row.rec?.status === 'sent' && sentCount >= 3 && lastSentMs && now - lastSentMs >= ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS) return true;
         return false;
       }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
     }
@@ -21943,13 +22084,13 @@ Per confermare scrivi ELIMINA.`);
         const el = document.getElementById(id);
         if (el) el.innerHTML = html;
       };
-      setCount('assessmentEmailQueueTabCount', `<strong>${escapeHtml(String(sentToday))}/20</strong> oggi · ${escapeHtml(String(queue.length))} rimasti`);
+      setCount('assessmentEmailQueueTabCount', `<strong>${escapeHtml(String(sentToday))}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</strong> oggi · ${escapeHtml(String(queue.length))} rimasti`);
       setCount('assessmentEmailPendingTabCount', `<strong>${escapeHtml(String(pending.length))}</strong> in attesa`);
       setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
       setCount('assessmentEmailPostTabCount', `<strong>${escapeHtml(String(post.length))}</strong> risposte`);
       setCount('assessmentEmailHistoryTabCount', `<strong>${escapeHtml(String(history.length))}</strong> chiusi`);
       const chip = document.getElementById('assessmentDailyLimitChip');
-      if (chip) chip.textContent = `Invii oggi: ${sentToday}/20`;
+      if (chip) chip.textContent = `Invii oggi: ${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`;
     }
     function renderAssessmentEmailRoutinePanel() {
       const box = document.getElementById('assessmentEmailRoutineContent');
@@ -21961,11 +22102,12 @@ Per confermare scrivi ELIMINA.`);
       const rows = [
         ['Email Padel Village', assessmentEmailBadge('Backend TEST','info'), 'Invio tramite funzione server Supabase e Gmail Padel Village.', 'Usa Prova invio sulla mia email per verificare la configurazione.'],
         ['Destinatario prova', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Verificare destinatari prima di attivare invii reali.'],
-        ['Invio automatico', assessmentEmailBadge('Previsto','info'), 'Ogni giorno alle 07:00, massimo 20 soci con livello 0.5.', `Prossima esecuzione: ${assessmentEmailNextSevenAM()}.`],
-        ['Limite giornaliero', assessmentEmailBadge(`${sentToday}/20`,'muted'), 'Email inviate oggi dal sistema.', 'Controllo automatico prima di ogni invio.'],
-        ['Secondo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 7 giorni senza scheda compilata.', 'Invio automatico, una sola volta.'],
+        ['Invio automatico', assessmentEmailBadge('Previsto','info'), 'Ogni giorno alle 05:45, massimo 20 soci con livello 0.5, invii distanziati per chiudere entro le 06:00.', `Prossima esecuzione: ${assessmentEmailNextMorningRun()}.`],
+        ['Limite giornaliero', assessmentEmailBadge(`${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`,'muted'), 'Email inviate oggi dal sistema.', 'Controllo automatico prima di ogni invio.'],
+        ['Secondo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 2 giorni dal primo invio senza scheda compilata.', 'Usa lo stesso link personale.'],
+        ['Terzo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 2 giorni dal secondo invio senza scheda compilata.', 'Chiede feedback via WhatsApp se il test crea problemi.'],
         ['Mancate consegne', assessmentEmailBadge('Da controllare','info'), 'Email non arrivate a destinazione o indirizzo errato.', 'Sposta il socio in Problemi per verifica WhatsApp.'],
-        ['WhatsApp recupero', assessmentEmailBadge('Manuale','muted'), 'Dopo secondo invio senza risposta o email da correggere.', 'Apri WhatsApp senza link diretto alla scheda.'],
+        ['WhatsApp recupero', assessmentEmailBadge('Manuale','muted'), 'Dopo terzo invio senza risposta o email da correggere.', 'Apri WhatsApp senza link diretto alla scheda.'],
         ['Schede ricevute', assessmentEmailBadge(`${postRows.length} da gestire`,'muted'), 'Schede compilate e pronte per il controllo livello.', 'Vai a Post-invio e lavora dalla piu vecchia.']
       ];
       box.innerHTML = `<div class="assessment-email-table-wrap">
@@ -21985,7 +22127,7 @@ Per confermare scrivi ELIMINA.`);
           <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Seleziona 0.5</strong><span>Prende solo soci attivi con livello 0.5 e email valida.</span></div>
           <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara link</strong><span>Prepara il link personale del socio e lo registra nel sistema.</span></div>
           <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Invia email</strong><span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 2 giorni, terzo invio dopo altri 2 giorni o verifica WhatsApp senza link diretto.</span></div>
         </div>
       </div>
       <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, mancata consegna e scheda compilata.</div>`;
@@ -22014,7 +22156,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Email reale</th><th>Destinatario in prova</th><th>Link personale</th><th>Ordine</th><th>Prossima azione</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map((row, idx) => {
         const email = assessmentEmailMemberEmail(row.member);
         const readyToSend = !!(row.rec?.token && row.rec.registeredToSupabase);
-        const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!readyToSend ? 'Prepara link personale' : (PMO_IS_TEST_ENV ? 'Prova invio email' : 'Primo invio alle 07:00'));
+        const action = !assessmentEmailHasValidEmail(row.member) ? 'Aggiorna email in scheda socio' : (!readyToSend ? 'Prepara link personale' : (PMO_IS_TEST_ENV ? 'Prova invio email' : 'Primo invio alle 05:45'));
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - ${row.rec?.sentAt ? 'gia contattato' : 'mai contattato'}`)}</td>
           <td data-label="Email reale">${escapeHtml(email || '-')}</td>
@@ -22031,6 +22173,21 @@ Per confermare scrivi ELIMINA.`);
         </tr>`;
       }).join('')}</tbody></table></div>`;
     }
+    function assessmentEmailNextResendTemplate(sentCount) {
+      return sentCount < 2 ? 'recall-email' : 'third-email';
+    }
+    function assessmentEmailNextResendLabel(sentCount) {
+      if (sentCount < 2) return 'Invia seconda email';
+      if (sentCount < 3) return 'Invia terza email';
+      return 'Reinvia terza email';
+    }
+    function assessmentEmailNextPendingRule(sentCount, replyAt, whatsappAt) {
+      if (replyAt) return 'Leggi la risposta su Gmail e gestiscila manualmente';
+      if (whatsappAt) return 'Se non ha ricevuto, correggere email e reinviare';
+      if (sentCount >= 3) return 'Dopo 2 giorni dal terzo invio: recupero WhatsApp manuale';
+      if (sentCount >= 2) return 'Terzo invio dopo 2 giorni dal secondo';
+      return 'Secondo invio dopo 2 giorni dal primo';
+    }
     function renderAssessmentEmailPendingPanel() {
       const box = document.getElementById('assessmentEmailPendingContent');
       if (!box) return;
@@ -22039,13 +22196,17 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Contatto</th><th>Stato contatto</th><th>Scheda</th><th>Prossima regola</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
         const sentAt = row.rec?.sentAt || row.rec?.createdAt;
         const whatsappAt = row.member.selfAssessmentWhatsappCheckAt || '';
+        const replyAt = row.rec?.emailReplyAt || row.member.selfAssessmentEmailReplyAt || '';
         const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
-        const sentLabel = sentCount > 1 ? `Email reinviata (${sentCount} invii)` : 'Richiesta inviata';
-        const contactText = whatsappAt
+        const sentLabel = sentCount >= 3 ? `Terza email inviata (${sentCount} invii)` : (sentCount === 2 ? 'Seconda email inviata' : 'Prima email inviata');
+        const contactText = replyAt
+          ? `Risposta email ricevuta<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}</span>`
+          : whatsappAt
           ? `WhatsApp aperto<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
           : `${escapeHtml(sentLabel)}<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
-        const contactBadge = whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info');
-        const nextRule = whatsappAt ? 'Se non ha ricevuto, correggere email e reinviare' : (sentCount > 1 ? 'Dopo il secondo invio: verifica WhatsApp manuale' : 'Secondo invio dopo 7 giorni; poi WhatsApp manuale');
+        const contactBadge = replyAt ? assessmentEmailBadge('Ha risposto via email','ok') : (whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info'));
+        const nextRule = assessmentEmailNextPendingRule(sentCount, replyAt, whatsappAt);
+        const resendLabel = assessmentEmailNextResendLabel(sentCount);
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'} - link personale pronto`)}</td>
           <td data-label="Contatto">${contactText}</td>
@@ -22054,7 +22215,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Prossima regola">${escapeHtml(nextRule)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Dettagli</button>
-            <button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailResendMember('${escapeJs(String(row.member.id))}')">Reinvia email</button>
+            <button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailResendMember('${escapeJs(String(row.member.id))}')">${escapeHtml(resendLabel)}</button>
             <button class="assessment-email-mini warn" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${escapeJs(String(row.member.id))}','${whatsappAt ? 'whatsapp-reminder' : 'whatsapp-check'}','${whatsappAt ? 'Verifica WhatsApp aperta' : 'Email inviata, scheda non compilata'}')">WhatsApp</button>
             <button class="assessment-email-mini danger" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeHtml(String(row.member.id))}')">Pausa</button>
           </div></td>
@@ -22063,9 +22224,10 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailProblemText(row) {
       if (row.info.paused) return { badge:assessmentEmailBadge('Nessuna risposta','muted'), label:'Nessuna risposta', templateKey:'whatsapp-reminder', solution:'Resta in storico finche non viene riattivato.' };
+      if (row.rec?.emailStatus === 'bounced') return { badge:assessmentEmailBadge('Mancata consegna','err'), label:'Email non arrivata', templateKey:'whatsapp-check', solution:'Verifica WhatsApp e correggi email prima di reinviare.' };
       if (!assessmentEmailHasValidEmail(row.member)) return { badge:assessmentEmailBadge('Email mancante','err'), label:'Email mancante', templateKey:'whatsapp-email-missing', solution:'Aggiorna scheda socio o chiedi email via WhatsApp.' };
       if (!row.member.phone) return { badge:assessmentEmailBadge('Telefono mancante','err'), label:'Telefono mancante', templateKey:'whatsapp-check', solution:'Aggiorna telefono per usare WhatsApp di recupero.' };
-      return { badge:assessmentEmailBadge('Secondo invio scaduto','warn'), label:'Secondo invio senza risposta', templateKey:'whatsapp-reminder', solution:'Chiedi se ha ricevuto la mail; se no, recupera email corretta.' };
+      return { badge:assessmentEmailBadge('Terzo invio scaduto','warn'), label:'Terzo invio senza risposta', templateKey:'whatsapp-reminder', solution:'Chiedi se ha ricevuto la mail o se ha problemi a compilare il test.' };
     }
     function assessmentEmailWhatsappLastLabel(member) {
       return member?.selfAssessmentWhatsappCheckAt
@@ -22084,7 +22246,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
           <td data-label="Problema">${problem.badge}</td>
           <td data-label="Email">${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
-          <td data-label="Ultimo controllo">${escapeHtml(assessmentEmailFormatDateTime(row.member.selfAssessmentWhatsappCheckAt || row.rec?.sentAt || row.rec?.createdAt))}</td>
+          <td data-label="Ultimo controllo">${escapeHtml(assessmentEmailFormatDateTime(row.rec?.emailBouncedAt || row.member.selfAssessmentEmailBouncedAt || row.member.selfAssessmentWhatsappCheckAt || row.rec?.sentAt || row.rec?.createdAt))}</td>
           <td data-label="Soluzione proposta">${escapeHtml(problem.solution)}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
             <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')">Scheda</button>
@@ -22191,8 +22353,9 @@ Per confermare scrivi ELIMINA.`);
           <h3>Testi disponibili</h3>
           <div class="assessment-email-template-list">
             <div class="assessment-email-template-section">Email automatiche</div>
-            ${row('primary-email','Primo invio autovalutazione',"Usato dall'invio automatico delle 07:00.")}
-            ${row('recall-email','Secondo invio dopo 7 giorni','Promemoria automatico, massimo una volta.')}
+            ${row('primary-email','Primo invio autovalutazione',"Usato dall'invio automatico delle 05:45.")}
+            ${row('recall-email','Secondo invio dopo 2 giorni','Promemoria automatico dopo il primo invio.')}
+            ${row('third-email','Terzo invio dopo altri 2 giorni','Ultimo promemoria: chiede feedback via WhatsApp se ci sono problemi.')}
             ${row('received-email','Conferma ricezione scheda','Parte subito dopo la compilazione.')}
             ${row('level-email','Livello validato','Parte quando lo staff applica il livello.')}
             <div class="assessment-email-template-section">WhatsApp manuale</div>
@@ -22277,8 +22440,9 @@ Per confermare scrivi ELIMINA.`);
         const rendered = assessmentEmailRenderTemplate(member, templateKey, link);
         if (!rendered.body) return showAlert('Testo email vuoto. Controlla la tab Testi.', 'warning');
 
-        const isRecall = templateKey === 'recall-email';
-        showAlert(`${isRecall ? 'Reinvio email di promemoria' : 'Invio email di prova'} per ${playerFullName(member)}...`, 'info');
+        const isFollowup = templateKey === 'recall-email' || templateKey === 'third-email';
+        const sendLabel = templateKey === 'third-email' ? 'Invio terzo promemoria' : (templateKey === 'recall-email' ? 'Invio secondo promemoria' : 'Invio email di prova');
+        showAlert(`${sendLabel} per ${playerFullName(member)}...`, 'info');
         const result = await pmoInvokeAssessmentEmail({
           mode: templateKey,
           memberId: String(member.id),
@@ -22292,6 +22456,7 @@ Per confermare scrivi ELIMINA.`);
             phone: cleanCell(member.phone || ''),
             level: cleanCell(member.level || '')
           },
+          level: cleanCell(member.level || ''),
           originalRecipient: assessmentEmailMemberEmail(member),
           token: cleanCell(rec.token),
           link,
@@ -22308,13 +22473,18 @@ Per confermare scrivi ELIMINA.`);
         rec.emailActualRecipient = result.actualRecipient || '';
         rec.gmailMessageId = result.gmailMessageId || '';
         rec.gmailThreadId = result.gmailThreadId || '';
+        rec.emailBouncedAt = '';
+        rec.emailBounceReason = '';
+        rec.emailBounceGmailMessageId = '';
+        member.selfAssessmentEmailBouncedAt = '';
+        member.selfAssessmentEmailBounceReason = '';
         rec.emailTestMode = result.testMode === true;
         rec.emailSentCount = (parseInt(rec.emailSentCount, 10) || 0) + 1;
         recordAssessmentRequestSent(member.id);
         save('assessmentTokens', assessmentTokens);
         displayAssessment();
         setAssessmentEmailPanel('pending');
-        showAlert(`${isRecall ? 'Email reinviata' : 'Email inviata'}. In prova e' arrivata a: ${result.actualRecipient || 'destinatario prova'}.`, 'success');
+        showAlert(`${isFollowup ? 'Promemoria inviato' : 'Email inviata'}. In prova e' arrivata a: ${result.actualRecipient || 'destinatario prova'}.`, 'success');
       } catch (err) {
         showAlert('Invio email non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare email autovalutazione'), 'danger');
       }
@@ -22322,8 +22492,12 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailResendMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      if (!confirm(`Reinviare la mail di promemoria a ${playerFullName(member)}? In TEST arrivera alla tua email di prova.`)) return;
-      return assessmentEmailSendMember(member.id, 'recall-email', { skipSameDayConfirm:true });
+      const rec = getAssessmentTokenRecord(member.id);
+      const sentCount = parseInt(rec?.emailSentCount, 10) || (rec?.sentAt ? 1 : 0);
+      const templateKey = assessmentEmailNextResendTemplate(sentCount);
+      const label = assessmentEmailNextResendLabel(sentCount).toLocaleLowerCase('it-IT');
+      if (!confirm(`${label} a ${playerFullName(member)}? In TEST arrivera alla tua email di prova.`)) return;
+      return assessmentEmailSendMember(member.id, templateKey, { skipSameDayConfirm:true });
     }
     function assessmentEmailPauseMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
