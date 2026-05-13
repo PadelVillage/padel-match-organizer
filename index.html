@@ -1000,6 +1000,12 @@
     .assessment-email-history-table th:nth-child(5) { width:15%; }
     .assessment-email-history-table th:nth-child(6) { width:17%; }
     .assessment-email-history-table th:nth-child(7) { width:18%; }
+    .assessment-email-matchpoint-table th:nth-child(1) { width:32%; }
+    .assessment-email-matchpoint-table th:nth-child(2) { width:28%; }
+    .assessment-email-matchpoint-table th:nth-child(3) { width:18%; }
+    .assessment-email-matchpoint-table th:nth-child(4) { width:22%; text-align:right; }
+    .assessment-email-matchpoint-table td:nth-child(4) { text-align:right; }
+    .assessment-email-matchpoint-note { margin-top:6px; color:#667085; font-size:12px; line-height:1.3; }
     .assessment-email-person-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
     .assessment-email-person-actions .assessment-email-mini { padding:5px 8px; font-size:11px; border-radius:7px; }
     .assessment-email-compact-info { display:grid; gap:3px; color:#344054; line-height:1.25; }
@@ -4108,6 +4114,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('assessment','Problemi')">Problemi</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Post-invio')">Post-invio</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Storico')">Storico</button>
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Matchpoint')">Matchpoint</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Testi')">Testi</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Stato invio')">Stato invio</button>
@@ -4536,6 +4543,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')"><span class="assessment-email-tab-title">Problemi</span><span id="assessmentEmailProblemsTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')"><span class="assessment-email-tab-title">Post-invio</span><span id="assessmentEmailPostTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')"><span class="assessment-email-tab-title">Storico</span><span id="assessmentEmailHistoryTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-matchpoint" class="assessment-email-tab" data-panel="matchpoint" onclick="setAssessmentEmailPanel('matchpoint')"><span class="assessment-email-tab-title">Matchpoint</span><span id="assessmentEmailMatchpointTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')"><span class="assessment-email-tab-title">Testi</span><span class="assessment-email-tab-count">email e WhatsApp</span></button>
             <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
             <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')"><span class="assessment-email-tab-title">Stato invio</span><span class="assessment-email-tab-count">05:45 · limite 20</span></button>
@@ -4634,6 +4642,16 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
             </div>
             <div id="assessmentEmailHistoryContent" class="assessment-email-content"></div>
+          </section>
+
+          <section id="assessmentEmailMatchpointPanel" class="assessment-email-panel" data-assessment-email-panel="matchpoint">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Matchpoint</h3>
+                <p class="assessment-email-panel-copy">Soci con livello validato internamente, ancora da riportare manualmente su Matchpoint.</p>
+              </div>
+            </div>
+            <div id="assessmentEmailMatchpointContent" class="assessment-email-content"></div>
           </section>
 
           <section id="assessmentEmailTextsPanel" class="assessment-email-panel" data-assessment-email-panel="texts">
@@ -5117,7 +5135,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.408';
+    const APP_VERSION = '5.409';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21822,6 +21840,101 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailMemberApplied(member, info) {
       return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
     }
+    function assessmentCurrentOperatorName() {
+      return cleanCell(
+        pmoStaffProfile?.name
+        || pmoStaffProfile?.full_name
+        || pmoStaffProfile?.email
+        || pmoReadStaffProfile()?.name
+        || pmoReadStaffProfile()?.email
+        || 'Staff'
+      ) || 'Staff';
+    }
+    function assessmentMatchpointLevelInfo(row) {
+      const member = row?.member || row || null;
+      if (!member) return null;
+      const latest = assessmentLatestAppliedLevelInfo(member);
+      const response = row?.response || row?.info?.response || latest?.response || null;
+      const rawLevel = response?.applied_level || response?.calculated_level || response?.declared_level || member.selfAssessmentMatchpointLevel || member.level || '';
+      const parsedLevel = parseLevel(String(rawLevel).replace(',', '.'), NaN);
+      const token = cleanCell(response?.token || row?.info?.rec?.token || member.selfAssessmentToken || member.selfAssessmentMatchpointToken || '');
+      return {
+        member,
+        response,
+        level: Number.isFinite(parsedLevel) ? parsedLevel : rawLevel,
+        token,
+        pendingAt: cleanCell(member.selfAssessmentMatchpointPendingAt || response?.matchpoint_pending_at || ''),
+        doneAt: cleanCell(member.selfAssessmentMatchpointDoneAt || response?.matchpoint_inserted_at || ''),
+        doneBy: cleanCell(member.selfAssessmentMatchpointDoneBy || response?.matchpoint_inserted_by || '')
+      };
+    }
+    function assessmentMarkMatchpointPending(member, response=null, level='', appliedAt='') {
+      if (!member) return;
+      const token = cleanCell(response?.token || member.selfAssessmentToken || '');
+      const sameToken = token && normalizeText(member.selfAssessmentMatchpointToken || '') === normalizeText(token);
+      const sameTokenDone = sameToken && cleanCell(member.selfAssessmentMatchpointDoneAt || '');
+      const pendingAt = cleanCell(appliedAt || response?.applied_at || new Date().toISOString());
+      member.selfAssessmentMatchpointPendingAt = sameToken && member.selfAssessmentMatchpointPendingAt ? member.selfAssessmentMatchpointPendingAt : pendingAt;
+      member.selfAssessmentMatchpointLevel = cleanCell(level || response?.applied_level || response?.calculated_level || response?.declared_level || member.level || '');
+      member.selfAssessmentMatchpointToken = token;
+      if (!sameTokenDone) {
+        member.selfAssessmentMatchpointDoneAt = '';
+        member.selfAssessmentMatchpointDoneBy = '';
+      }
+      if (response) {
+        response.matchpoint_pending_at = response.matchpoint_pending_at || member.selfAssessmentMatchpointPendingAt;
+        response.matchpoint_level = member.selfAssessmentMatchpointLevel;
+        if (!sameTokenDone) {
+          response.matchpoint_inserted_at = '';
+          response.matchpoint_inserted_by = '';
+        }
+      }
+    }
+    function assessmentMatchpointPendingRows() {
+      return assessmentEmailHistoryBaseRows().filter(row => {
+        if (row.info?.paused || !assessmentEmailMemberApplied(row.member, row.info)) return false;
+        const info = assessmentMatchpointLevelInfo(row);
+        return !!(info?.pendingAt && !info.doneAt);
+      }).sort((a,b) => {
+        const at = assessmentEmailDateMs(assessmentMatchpointLevelInfo(a)?.pendingAt);
+        const bt = assessmentEmailDateMs(assessmentMatchpointLevelInfo(b)?.pendingAt);
+        return at - bt;
+      });
+    }
+    function assessmentMatchpointHistoryHtml(row) {
+      const info = assessmentMatchpointLevelInfo(row);
+      if (!info?.pendingAt && !info?.doneAt) return '';
+      if (info.doneAt) {
+        const operator = info.doneBy || 'Staff';
+        return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status ok">Inserito su Matchpoint</span><span>Inserito su Matchpoint da ${escapeHtml(operator)}</span><span>${escapeHtml(assessmentEmailFormatDateTime(info.doneAt))}</span></div>`;
+      }
+      return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status warn">Matchpoint da aggiornare</span><span>Livello validato: ${escapeHtml(String(info.level || '-'))}</span></div>`;
+    }
+    function assessmentMarkMatchpointInserted(memberId) {
+      const member = giocatori.find(g => String(g.id) === String(memberId || ''));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const row = { member, info:assessmentRecordFor(member) };
+      row.rec = row.info.rec;
+      row.response = row.info.response;
+      const info = assessmentMatchpointLevelInfo(row);
+      if (!info?.pendingAt) return showAlert('Nessun livello Matchpoint in sospeso per questo socio.', 'info');
+      const operator = assessmentCurrentOperatorName();
+      const doneAt = new Date().toISOString();
+      member.selfAssessmentMatchpointDoneAt = doneAt;
+      member.selfAssessmentMatchpointDoneBy = operator;
+      member.selfAssessmentMatchpointLevel = cleanCell(info.level || member.selfAssessmentMatchpointLevel || member.level || '');
+      member.selfAssessmentMatchpointToken = cleanCell(info.token || member.selfAssessmentMatchpointToken || member.selfAssessmentToken || '');
+      if (info.response) {
+        info.response.matchpoint_inserted_at = doneAt;
+        info.response.matchpoint_inserted_by = operator;
+        info.response.matchpoint_level = member.selfAssessmentMatchpointLevel;
+      }
+      save('giocatori', giocatori);
+      save('assessmentResponses', assessmentResponses);
+      displayAssessment();
+      setAssessmentEmailPanel('matchpoint');
+      showAlert(`Inserito su Matchpoint da ${operator}: ${playerFullName(member)}.`, 'success');
+    }
     function assessmentEmailLevelConfirmationSentAt(member=null, response=null, rec=null) {
       return cleanCell(
         response?.level_email_sent_at
@@ -22037,6 +22150,7 @@ Per confermare scrivi ELIMINA.`);
         problems:'Problemi',
         post:'Post-invio',
         history:'Storico',
+        matchpoint:'Matchpoint',
         texts:'Testi',
         public:'Scheda pubblica',
         routine:'Stato invio'
@@ -22048,6 +22162,7 @@ Per confermare scrivi ELIMINA.`);
         { panel:'pending', rows:assessmentEmailPendingRows() },
         { panel:'problems', rows:assessmentEmailProblemRows() },
         { panel:'post', rows:assessmentEmailPostRows() },
+        { panel:'matchpoint', rows:assessmentMatchpointPendingRows() },
         { panel:'history', rows:assessmentEmailHistoryBaseRows() },
         { panel:'queue', rows:assessmentEmailQueueRows() }
       ];
@@ -22187,6 +22302,7 @@ Per confermare scrivi ELIMINA.`);
       if (!query) return [];
       const sources = [
         { panel:'post', label:'Post-invio', reason:'Scheda ricevuta, da gestire prima dello storico.', rows:assessmentEmailPostRows() },
+        { panel:'matchpoint', label:'Matchpoint', reason:'Livello validato da riportare manualmente su Matchpoint.', rows:assessmentMatchpointPendingRows() },
         { panel:'history', label:'Storico', reason:'Giro chiuso o socio messo in pausa.', rows:assessmentEmailHistoryBaseRows() },
         { panel:'problems', label:'Problemi', reason:'Serve sistemare email, telefono o recupero manuale.', rows:assessmentEmailProblemRows() },
         { panel:'pending', label:'Contattati / in attesa', reason:'Email gia inviata, scheda non ancora compilata.', rows:assessmentEmailPendingRows() },
@@ -22252,6 +22368,7 @@ Per confermare scrivi ELIMINA.`);
       if (key.includes('problemi')) return 'problems';
       if (key.includes('post')) return 'post';
       if (key.includes('storico')) return 'history';
+      if (key.includes('matchpoint')) return 'matchpoint';
       if (key.includes('testi')) return 'texts';
       if (key.includes('scheda')) return 'public';
       if (key.includes('stato')) return 'routine';
@@ -22263,6 +22380,7 @@ Per confermare scrivi ELIMINA.`);
       const problems = assessmentEmailProblemRows();
       const post = assessmentEmailPostRows();
       const history = assessmentEmailHistoryBaseRows();
+      const matchpoint = assessmentMatchpointPendingRows();
       const sentToday = getAssessmentRequestsSentTodayCount();
       const setCount = (id, html) => {
         const el = document.getElementById(id);
@@ -22273,6 +22391,7 @@ Per confermare scrivi ELIMINA.`);
       setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
       setCount('assessmentEmailPostTabCount', `<strong>${escapeHtml(String(post.length))}</strong> risposte`);
       setCount('assessmentEmailHistoryTabCount', `<strong>${escapeHtml(String(history.length))}</strong> chiusi`);
+      setCount('assessmentEmailMatchpointTabCount', `<strong>${escapeHtml(String(matchpoint.length))}</strong> soci`);
       const chip = document.getElementById('assessmentDailyLimitChip');
       if (chip) chip.textContent = `Invii oggi: ${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`;
     }
@@ -22553,7 +22672,7 @@ Per confermare scrivi ELIMINA.`);
       const currentLevel = document.getElementById('assessmentHistoryLevel')?.value || 'all';
       const rows = assessmentEmailHistoryRows();
       const filterHtml = `<div class="assessment-email-filter-grid history-filters">
-        <div><label>Cerca socio</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="renderAssessmentEmailHistoryPanel()"></div>
+        <div><label>Cerca nello storico</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome o cognome" oninput="renderAssessmentEmailHistoryPanel()"></div>
         <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="staff" ${currentStatus === 'staff' ? 'selected' : ''}>Validato staff</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
         <div><label>Periodo</label><select id="assessmentHistoryPeriod" onchange="renderAssessmentEmailHistoryPanel()"><option value="30" ${currentPeriod === '30' ? 'selected' : ''}>Ultimi 30 giorni</option><option value="90" ${currentPeriod === '90' ? 'selected' : ''}>Ultimi 90 giorni</option><option value="year" ${currentPeriod === 'year' ? 'selected' : ''}>Anno corrente</option><option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Tutto</option></select></div>
         <div><label>Invio scheda</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email_sent" ${currentChannel === 'email_sent' ? 'selected' : ''}>Email inviata</option><option value="email_not_sent" ${currentChannel === 'email_not_sent' ? 'selected' : ''}>Email non inviata</option><option value="whatsapp" ${currentChannel === 'whatsapp' ? 'selected' : ''}>Recupero WhatsApp</option></select></div>
@@ -22578,6 +22697,8 @@ Per confermare scrivi ELIMINA.`);
         const levelHtml = restoreAction && restoreInfo
           ? `${escapeHtml(row.member.level ?? '-')}<span class="assessment-email-meta">Validato: ${escapeHtml(String(restoreInfo.level))}</span>`
           : escapeHtml(row.member.level ?? '-');
+        const matchpointHtml = assessmentMatchpointHistoryHtml(row);
+        const confirmationHtml = `${assessmentEmailLevelConfirmationHtml(confirmation, confirmationAction)}${matchpointHtml ? `<div style="margin-top:7px;">${matchpointHtml}</div>` : ''}`;
         const personActions = `<div class="assessment-email-person-actions">
           ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeJs(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
           ${restoreAction}
@@ -22591,9 +22712,27 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Livello finale">${levelHtml}</td>
           <td data-label="Invio scheda">${assessmentEmailHistoryChannelHtml(row)}</td>
           <td data-label="Risposta socio">${assessmentEmailReplySummaryHtml(row, true)}</td>
-          <td data-label="Conferma livello">${assessmentEmailLevelConfirmationHtml(confirmation, confirmationAction)}</td>
+          <td data-label="Conferma livello">${confirmationHtml}</td>
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
+    }
+    function renderAssessmentEmailMatchpointPanel() {
+      const box = document.getElementById('assessmentEmailMatchpointContent');
+      if (!box) return;
+      const rows = assessmentMatchpointPendingRows();
+      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun livello Matchpoint in sospeso.'));
+      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-matchpoint-table"><thead><tr><th>Socio</th><th>Contatto</th><th>Livello validato</th><th>Azione</th></tr></thead><tbody>${rows.map(row => {
+        const info = assessmentMatchpointLevelInfo(row);
+        const email = assessmentEmailMemberEmail(row.member);
+        const phone = cleanCell(row.member.phone || '');
+        const contact = `${email ? escapeHtml(email) : '<span class="assessment-email-inline-status err">Email mancante</span>'}${phone ? `<span class="assessment-email-meta">${escapeHtml(phone)}</span>` : '<span class="assessment-email-meta">Telefono mancante</span>'}`;
+        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, `validato il ${assessmentEmailFormatDateTime(info?.pendingAt)}`)}</td>
+          <td data-label="Contatto">${contact}</td>
+          <td data-label="Livello validato"><strong>${escapeHtml(String(info?.level || '-'))}</strong></td>
+          <td data-label="Azione"><button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentMarkMatchpointInserted('${escapeJs(String(row.member.id))}')">Segna inserito su Matchpoint</button></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
     }
     function renderAssessmentEmailTextsPanel() {
       const box = document.getElementById('assessmentEmailTextsContent');
@@ -22642,6 +22781,7 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailProblemsPanel();
       renderAssessmentEmailPostPanel();
       renderAssessmentEmailHistoryPanel();
+      renderAssessmentEmailMatchpointPanel();
       renderAssessmentEmailTextsPanel();
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'queue')));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'queue')));
@@ -23819,20 +23959,22 @@ Per confermare scrivi ELIMINA.`);
       const rawLevel = response.calculated_level || response.declared_level || '';
       const level = parseLevel(String(rawLevel).replace(',', '.'), NaN);
       if (isNaN(level)) return failApply('❌ Livello calcolato non valido', 'danger', 'invalid_level');
+      const appliedAt = new Date().toISOString();
 
       member.level = level;
       member.levelSource = 'autovalutazione';
       member.selfAssessmentConsistency = cleanCell(response.consistency_status || '');
       member.selfAssessmentStaffStatus = 'applied';
-      member.selfAssessmentDate = response.submitted_at || new Date().toISOString();
+      member.selfAssessmentDate = response.submitted_at || appliedAt;
       member.selfAssessmentToken = rec.token;
-      member.lastLevelUpdateAt = new Date().toISOString();
+      member.lastLevelUpdateAt = appliedAt;
 
       response.previous_staff_status = cleanCell(response.staff_status || '');
       response.staff_status = 'applied';
       response.applied_level = String(level);
-      response.applied_at = new Date().toISOString();
+      response.applied_at = appliedAt;
       response.applied_member_id = String(member.id);
+      assessmentMarkMatchpointPending(member, response, level, appliedAt);
 
       save('giocatori', giocatori);
       save('assessmentResponses', assessmentResponses);
