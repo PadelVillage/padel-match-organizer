@@ -2,7 +2,7 @@
 
 Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto.
 
-Ultimo aggiornamento: 2026-05-13 16:59
+Ultimo aggiornamento: 2026-05-13 20:08
 
 ## Obiettivo
 
@@ -101,6 +101,19 @@ Segreti richiesti nella Edge Function:
 - opzionale `ASSESSMENT_EMAIL_REPLY_TO`.
 
 Nella fase v5.383 la funzione non attivava ancora lo scheduler email automatico e non leggeva ancora le mancate consegne. Questi passaggi vengono ripresi nelle note successive.
+
+## Nota tecnica PROD v5.411 - 2026-05-13 20:08
+
+Durante il primo giro controllato in PROD e' emerso che la RPC `upsert_assessment_tokens_admin` usava la colonna `registered_at`, ma la tabella PROD `assessment_tokens` non la conteneva.
+
+Correzione applicata solo a Supabase PROD dopo autorizzazione esplicita:
+
+- aggiunta `assessment_tokens.registered_at timestamptz` se mancante;
+- valorizzate le righe esistenti con `created_at` quando `registered_at` era nullo;
+- nessun dato cancellato;
+- nessuna modifica a `index.html`, funzioni Edge, scheduler o invii automatici.
+
+Verifica post-intervento: colonna presente, 0 righe senza `registered_at`, 971 token conservati.
 
 ## Nota UI TEST v5.384
 
