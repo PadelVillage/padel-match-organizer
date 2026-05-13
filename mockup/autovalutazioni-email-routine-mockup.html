@@ -406,6 +406,72 @@
       gap: 10px;
       margin-bottom: 14px;
     }
+    .filter-grid.history-filters {
+      grid-template-columns: minmax(220px, 1.15fr) repeat(5, minmax(128px, 1fr));
+    }
+    .compact-table th,
+    .compact-table td {
+      padding: 10px 11px;
+      vertical-align: top;
+    }
+    .compact-table .badge {
+      min-width: 0;
+    }
+    .person-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .person-actions .mini {
+      padding: 5px 8px;
+      font-size: 11px;
+      border-radius: 7px;
+    }
+    .history-table th:nth-child(1) { width: 19%; }
+    .history-table th:nth-child(2) { width: 11%; }
+    .history-table th:nth-child(3) { width: 12%; }
+    .history-table th:nth-child(4) { width: 8%; }
+    .history-table th:nth-child(5) { width: 15%; }
+    .history-table th:nth-child(6) { width: 17%; }
+    .history-table th:nth-child(7) { width: 18%; }
+    .compact-info {
+      display: grid;
+      gap: 3px;
+      color: #344054;
+      line-height: 1.25;
+    }
+    .compact-info strong {
+      font-weight: 900;
+      color: var(--ink);
+    }
+    .compact-info span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .inline-status {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--soft-line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: #344054;
+      background: var(--panel);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .inline-status.ok {
+      color: var(--green);
+      border-color: #b8e6ca;
+      background: var(--green-soft);
+    }
+    .inline-status.muted {
+      color: var(--muted);
+      border-color: var(--line);
+      background: var(--gray-soft);
+    }
     .preview {
       border: 1px solid var(--soft-line);
       border-radius: 8px;
@@ -612,14 +678,14 @@
 <body>
   <main class="page">
     <nav class="tabs" aria-label="Viste mockup">
-      <button class="tab active" data-target="queue"><span class="tab-title">Da inviare 0.5</span><span class="tab-count"><strong>0/20</strong> oggi · 38 rimasti</span></button>
+      <button class="tab" data-target="queue"><span class="tab-title">Da inviare 0.5</span><span class="tab-count"><strong>0/20</strong> oggi · 38 rimasti</span></button>
       <button class="tab" data-target="pending"><span class="tab-title">Contattati / in attesa</span><span class="tab-count"><strong>14</strong> soci in attesa</span></button>
       <button class="tab" data-target="problems"><span class="tab-title">Problemi</span><span class="tab-count"><strong>4</strong> da risolvere</span></button>
       <button class="tab" data-target="post"><span class="tab-title">Post-invio</span><span class="tab-count"><strong>7</strong> risposte</span></button>
-      <button class="tab" data-target="history"><span class="tab-title">Storico</span><span class="tab-count"><strong>126</strong> chiusi</span></button>
+      <button class="tab active" data-target="history"><span class="tab-title">Storico</span><span class="tab-count"><strong>126</strong> chiusi</span></button>
       <button class="tab" data-target="texts"><span class="tab-title">Testi</span><span class="tab-count">email e WhatsApp</span></button>
       <button class="tab" data-target="public"><span class="tab-title">Scheda pubblica</span><span class="tab-count">anteprima</span></button>
-      <button class="tab" data-target="routine"><span class="tab-title">Stato invio</span><span class="tab-count">07:00 · limite 20</span></button>
+      <button class="tab" data-target="routine"><span class="tab-title">Stato invio</span><span class="tab-count">05:45 · limite 20</span></button>
     </nav>
 
     <section id="routine" class="panel">
@@ -662,7 +728,7 @@
               <tr>
                 <td><span class="name">Invio automatico</span></td>
                 <td><span class="badge info">Previsto</span></td>
-                <td>Ogni giorno alle 07:00, massimo 20 soci con livello 0.5.</td>
+                <td>Ogni mattina dalle 05:45, massimo 20 soci con livello 0.5.</td>
                 <td>Attivare la programmazione quando il flusso e' pronto.</td>
               </tr>
               <tr>
@@ -674,7 +740,7 @@
               <tr>
                 <td><span class="name">Secondo invio</span></td>
                 <td><span class="badge ok">Pronto</span></td>
-                <td>Dopo 7 giorni senza scheda compilata.</td>
+                <td>Dopo 2 giorni senza scheda compilata.</td>
                 <td>Invio automatico, una sola volta.</td>
               </tr>
               <tr>
@@ -720,7 +786,7 @@
             <div class="step">
               <div class="step-num">4</div>
               <strong>Controlla esiti</strong>
-              <span>Mancate consegne, compilazione, secondo invio dopo 7 giorni o verifica WhatsApp senza link diretto.</span>
+              <span>Mancate consegne, compilazione, secondo/terzo invio ogni 2 giorni o verifica WhatsApp senza link diretto.</span>
             </div>
           </div>
         </div>
@@ -728,7 +794,7 @@
       </div>
     </section>
 
-    <section id="queue" class="panel active">
+    <section id="queue" class="panel">
       <div class="panel-head">
         <div>
           <h2 class="panel-title">Da inviare 0.5</h2>
@@ -760,7 +826,7 @@
                 <td>Email personale prova</td>
                 <td><span class="badge ok">Pronto</span></td>
                 <td>1</td>
-                <td>Primo invio alle 07:00</td>
+                <td>Primo invio alle 05:45</td>
                 <td><div class="mini-actions"><button class="mini">Scheda</button><button class="mini warn">Pausa</button></div></td>
               </tr>
               <tr>
@@ -822,7 +888,7 @@
               </tr>
               <tr>
                 <td><span class="name">Paolo Gallo</span><span class="meta">liv. 0.5 - secondo invio fatto</span></td>
-                <td>Secondo invio<br><span class="meta">05/05/2026 07:00</span></td>
+                <td>Secondo invio<br><span class="meta">05/05/2026 05:45</span></td>
                 <td><span class="badge info">Inviata</span></td>
                 <td><span class="badge muted">Non compilato</span></td>
                 <td>WhatsApp manuale tra 1 giorno</td>
@@ -879,7 +945,7 @@
                 <td><span class="name">Sara Ferri</span><span class="meta">liv. 0.5</span></td>
                 <td><span class="badge warn">Secondo invio scaduto</span></td>
                 <td>sara.ferri@example.com</td>
-                <td>11/05/2026 07:00</td>
+                <td>11/05/2026 05:45</td>
                 <td>Chiedi se ha ricevuto la mail; se no, recupera email</td>
                 <td><div class="mini-actions"><button class="mini danger" data-whatsapp-problem data-player="Sara Ferri" data-problem-label="Secondo invio senza risposta" data-whatsapp-default="whatsapp-reminder">Apri WhatsApp</button><button class="mini success">Segna verifica</button></div></td>
               </tr>
@@ -987,7 +1053,7 @@
       </div>
     </section>
 
-    <section id="history" class="panel">
+    <section id="history" class="panel active">
       <div class="panel-head">
         <div>
           <h2 class="panel-title">Storico</h2>
@@ -999,7 +1065,7 @@
         </div>
       </div>
       <div class="content">
-        <div class="filter-grid">
+        <div class="filter-grid history-filters">
           <div>
             <label>Cerca socio</label>
             <input value="" placeholder="Nome, cognome, email o telefono">
@@ -1008,8 +1074,8 @@
             <label>Stato</label>
             <select>
               <option>Tutti</option>
-              <option>Livello applicato</option>
               <option>Auto-applicato</option>
+              <option>Validato staff</option>
               <option>In pausa - nessuna risposta</option>
             </select>
           </div>
@@ -1023,15 +1089,24 @@
             </select>
           </div>
           <div>
-            <label>Canale</label>
+            <label>Invio scheda</label>
             <select>
               <option>Tutti</option>
-              <option>Email</option>
-              <option>Email + WhatsApp</option>
+              <option>Email inviata</option>
+              <option>Email non inviata</option>
+              <option>Recupero WhatsApp</option>
             </select>
           </div>
           <div>
-            <label>Livello</label>
+            <label>Risposta socio</label>
+            <select>
+              <option>Tutte</option>
+              <option>Con risposta</option>
+              <option>Senza risposta</option>
+            </select>
+          </div>
+          <div>
+            <label>Livello finale</label>
             <select>
               <option>Tutti</option>
               <option>Ancora 0.5</option>
@@ -1042,45 +1117,98 @@
           </div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="compact-table history-table">
             <thead>
               <tr>
                 <th>Socio</th>
                 <th>Chiuso il</th>
                 <th>Stato</th>
-                <th>Livello</th>
-                <th>Canale</th>
-                <th>Nota</th>
-                <th style="text-align:right;">Azioni</th>
+                <th>Livello finale</th>
+                <th>Invio scheda</th>
+                <th>Risposta socio</th>
+                <th>Conferma livello</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><span class="name">Marco Riva</span><span class="meta">scheda compilata e auto-applicata</span></td>
-                <td>12/05/2026 09:12</td>
+                <td>
+                  <span class="name">Maurizio Aprea</span>
+                  <span class="meta">scheda compilata e chiusa</span>
+                  <div class="person-actions">
+                    <button class="mini">Scheda socio</button>
+                    <button class="mini success">Apri WhatsApp</button>
+                  </div>
+                </td>
+                <td>12/05/2026<br><span class="meta">18:48</span></td>
                 <td><span class="badge ok">Auto-applicato</span></td>
-                <td>3.5</td>
-                <td>Email</td>
-                <td>Differenza 0.5, email livello inviata</td>
-                <td><div class="mini-actions"><button class="mini">Dettagli</button></div></td>
+                <td>1</td>
+                <td>
+                  <div class="compact-info">
+                    <strong>Email</strong>
+                    <span>Inviata 12/05/2026, 19:31</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="compact-info">
+                    <strong>13/05/2026, 00:40</strong>
+                    <span>Maurizio Aprea</span>
+                    <button class="mini">Leggi risposta</button>
+                  </div>
+                </td>
+                <td>
+                  <div class="compact-info">
+                    <span class="inline-status ok">Email inviata</span>
+                    <span>Conferma livello spedita</span>
+                  </div>
+                </td>
               </tr>
               <tr>
-                <td><span class="name">Martina Russo</span><span class="meta">nessuna risposta dopo email e WhatsApp</span></td>
-                <td>11/05/2026 17:30</td>
+                <td>
+                  <span class="name">Martina Russo</span>
+                  <span class="meta">nessuna risposta dopo email e WhatsApp</span>
+                  <div class="person-actions">
+                    <button class="mini success">Riattiva</button>
+                    <button class="mini">Scheda socio</button>
+                    <button class="mini warn">Apri WhatsApp</button>
+                  </div>
+                </td>
+                <td>11/05/2026<br><span class="meta">17:30</span></td>
                 <td><span class="badge muted">In pausa</span></td>
                 <td>0.5</td>
-                <td>Email + WhatsApp</td>
-                <td>Non sospesa: recuperabile dai filtri</td>
-                <td><div class="mini-actions"><button class="mini success">Riattiva</button><button class="mini">Dettagli</button></div></td>
+                <td>
+                  <div class="compact-info">
+                    <strong>Email + WhatsApp</strong>
+                    <span>Ultimo WhatsApp 11/05/2026, 09:24</span>
+                  </div>
+                </td>
+                <td><span class="inline-status muted">Nessuna risposta</span></td>
+                <td><span class="inline-status muted">Non inviata</span></td>
               </tr>
               <tr>
-                <td><span class="name">Elena Greco</span><span class="meta">validata manualmente dallo staff</span></td>
-                <td>10/05/2026 16:45</td>
-                <td><span class="badge info">Livello applicato</span></td>
+                <td>
+                  <span class="name">Elena Greco</span>
+                  <span class="meta">validata manualmente dallo staff</span>
+                  <div class="person-actions">
+                    <button class="mini">Scheda socio</button>
+                    <button class="mini success">Apri WhatsApp</button>
+                  </div>
+                </td>
+                <td>10/05/2026<br><span class="meta">16:45</span></td>
+                <td><span class="badge info">Validato staff</span></td>
                 <td>3.0</td>
-                <td>Email</td>
-                <td>Differenza 1.0 rivista manualmente</td>
-                <td><div class="mini-actions"><button class="mini">Dettagli</button></div></td>
+                <td>
+                  <div class="compact-info">
+                    <strong>Email</strong>
+                    <span>Inviata 09/05/2026, 05:49</span>
+                  </div>
+                </td>
+                <td><span class="inline-status muted">Nessuna risposta</span></td>
+                <td>
+                  <div class="compact-info">
+                    <span class="inline-status ok">Email inviata</span>
+                    <span>Validata dallo staff</span>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1108,11 +1236,11 @@
               <div class="template-section-title">Email automatiche</div>
               <div class="template-row active" data-template="primary-email">
                 <strong>Primo invio autovalutazione</strong>
-                <span>Usato dall'invio automatico delle 07:00.</span>
+                <span>Usato dall'invio automatico del mattino.</span>
               </div>
               <div class="template-row" data-template="recall-email">
-                <strong>Secondo invio dopo 7 giorni</strong>
-                <span>Promemoria automatico, massimo una volta.</span>
+                <strong>Secondo invio dopo 2 giorni</strong>
+                <span>Promemoria automatico dopo il primo invio.</span>
               </div>
               <div class="template-row" data-template="received-email">
                 <strong>Conferma ricezione scheda</strong>
@@ -1152,7 +1280,7 @@
                 <label>Canale e tipo testo</label>
                 <select id="templateType">
                   <option value="primary-email">Email - primo invio autovalutazione</option>
-                  <option value="recall-email">Email - secondo invio dopo 7 giorni</option>
+                  <option value="recall-email">Email - secondo invio dopo 2 giorni</option>
                   <option value="received-email">Email - conferma ricezione scheda</option>
                   <option value="level-email">Email - livello validato</option>
                   <option value="whatsapp-email-missing">WhatsApp - richiesta email mancante</option>
@@ -1170,7 +1298,7 @@ stiamo aggiornando i livelli dei soci Padel Village per organizzare partite semp
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
-Richiede circa 2 minuti.
+Richiede meno di 1 minuto.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
 
@@ -1185,7 +1313,7 @@ stiamo aggiornando i livelli dei soci Padel Village per organizzare partite semp
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?t=ABC123
 
-Richiede circa 2 minuti.
+Richiede meno di 1 minuto.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
 
@@ -1276,7 +1404,7 @@ stiamo aggiornando i livelli dei soci Padel Village per organizzare partite semp
 Ti chiediamo di compilare questa breve scheda di autovalutazione:
 {link_autovalutazione}
 
-Richiede circa 2 minuti.
+Richiede meno di 1 minuto.
 
 Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello nel gestionale Padel Village.
 
@@ -1285,7 +1413,7 @@ Padel Village`
       },
       'recall-email': {
         subject: 'Promemoria autovalutazione Padel Village',
-        type: 'Email - secondo invio dopo 7 giorni',
+        type: 'Email - secondo invio dopo 2 giorni',
         body: `Ciao {nome},
 
 ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato qualche giorno fa.
@@ -1293,7 +1421,7 @@ ti ricordiamo la scheda di autovalutazione Padel Village che ti abbiamo inviato 
 Se non l'hai ancora compilata, puoi farlo da questo link:
 {link_autovalutazione}
 
-Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.
+Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.
 
 Grazie,
 Padel Village`

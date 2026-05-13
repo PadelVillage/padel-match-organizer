@@ -982,6 +982,28 @@
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
     .assessment-email-mini.danger { border-color:#f1b9b3; background:#fff1f0; color:#b42318; }
     .assessment-email-filter-grid { display:grid; grid-template-columns:1.2fr repeat(4,minmax(150px,1fr)); gap:8px; margin-bottom:10px; }
+    .assessment-email-filter-grid.history-filters { grid-template-columns:minmax(220px,1.15fr) repeat(5,minmax(128px,1fr)); }
+    .assessment-email-history-table th,
+    .assessment-email-history-table td { padding:10px 9px; vertical-align:top; }
+    .assessment-email-history-table .assessment-email-badge { min-width:0; }
+    .assessment-email-history-table th:nth-child(1) { width:19%; }
+    .assessment-email-history-table th:nth-child(2) { width:11%; }
+    .assessment-email-history-table th:nth-child(3) { width:12%; }
+    .assessment-email-history-table th:nth-child(4) { width:8%; }
+    .assessment-email-history-table th:nth-child(5) { width:15%; }
+    .assessment-email-history-table th:nth-child(6) { width:17%; }
+    .assessment-email-history-table th:nth-child(7) { width:18%; }
+    .assessment-email-person-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .assessment-email-person-actions .assessment-email-mini { padding:5px 8px; font-size:11px; border-radius:7px; }
+    .assessment-email-compact-info { display:grid; gap:3px; color:#344054; line-height:1.25; }
+    .assessment-email-compact-info strong { color:#101828; font-weight:900; }
+    .assessment-email-compact-info span { color:#667085; font-size:12px; }
+    .assessment-email-inline-status { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; padding:4px 8px; color:#344054; background:#fbfdff; font-size:12px; font-weight:900; white-space:nowrap; }
+    .assessment-email-inline-status.ok { color:#168a53; border-color:#b8e6ca; background:#eefaf3; }
+    .assessment-email-inline-status.warn { color:#7a4d00; border-color:#f2d39b; background:#fff7e6; }
+    .assessment-email-inline-status.err { color:#b42318; border-color:#f1b9b3; background:#fff1f0; }
+    .assessment-email-inline-status.info { color:#2563eb; border-color:#bdd5ff; background:#eef5ff; }
+    .assessment-email-inline-status.muted { color:#667085; border-color:#d9e0ea; background:#f6f7f9; }
     .assessment-email-template-grid { display:grid; grid-template-columns:minmax(260px,.62fr) minmax(420px,1fr); gap:14px; align-items:start; }
     .assessment-email-template-list { display:grid; gap:8px; }
     .assessment-email-template-section { color:var(--primary); font-size:12px; font-weight:900; text-transform:uppercase; margin:5px 0 0; }
@@ -1019,6 +1041,7 @@
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .assessment-email-filter-grid.history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-message-grid { grid-template-columns:1fr; }
     }
@@ -1044,6 +1067,7 @@
       .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
       .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
+      .assessment-email-filter-grid.history-filters { grid-template-columns:1fr; }
       .assessment-email-badge { white-space:normal; }
       .assessment-email-status-item { grid-template-columns:1fr; }
       .assessment-email-content { padding:12px; }
@@ -5060,7 +5084,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.405';
+    const APP_VERSION = '5.406';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21786,10 +21810,33 @@ Per confermare scrivi ELIMINA.`);
       return { label:'Email da inviare', cls:'warn', detail:'Conferma finale del livello applicato.', sentAt:'' };
     }
     function assessmentEmailHistoryChannelKey(row) {
-      return row?.info?.paused ? 'email_whatsapp' : 'email';
+      const rec = row?.info?.rec || row?.rec || {};
+      const member = row?.member || {};
+      const whatsappAt = cleanCell(member.selfAssessmentWhatsappCheckAt || '');
+      const sentAt = cleanCell(rec.sentAt || rec.createdAt || member.selfAssessmentEmailSentAt || '');
+      if (whatsappAt) return 'whatsapp';
+      if (sentAt || row?.response) return 'email_sent';
+      return 'email_not_sent';
     }
     function assessmentEmailHistoryChannelLabel(row) {
-      return row?.info?.paused ? 'Email + recupero WhatsApp' : 'Email';
+      const key = assessmentEmailHistoryChannelKey(row);
+      if (key === 'whatsapp') return 'Email + WhatsApp';
+      if (key === 'email_not_sent') return 'Email non inviata';
+      return 'Email';
+    }
+    function assessmentEmailHistoryChannelHtml(row) {
+      const rec = row?.info?.rec || row?.rec || {};
+      const member = row?.member || {};
+      const key = assessmentEmailHistoryChannelKey(row);
+      const sentAt = cleanCell(rec.sentAt || rec.createdAt || member.selfAssessmentEmailSentAt || '');
+      const whatsappAt = cleanCell(member.selfAssessmentWhatsappCheckAt || '');
+      if (key === 'whatsapp') {
+        return `<div class="assessment-email-compact-info"><strong>Email + WhatsApp</strong>${sentAt ? `<span>Email inviata ${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>` : ''}<span>Ultimo WhatsApp ${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span></div>`;
+      }
+      if (key === 'email_not_sent') {
+        return '<span class="assessment-email-inline-status muted">Email non inviata</span>';
+      }
+      return `<div class="assessment-email-compact-info"><strong>Email</strong>${sentAt ? `<span>Inviata ${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>` : ''}</div>`;
     }
     function assessmentEmailReplyAtForRow(row) {
       return cleanCell(row?.info?.rec?.emailReplyAt || row?.member?.selfAssessmentEmailReplyAt || '');
@@ -21805,13 +21852,24 @@ Per confermare scrivi ELIMINA.`);
         || ''
       );
     }
-    function assessmentEmailReplySummaryHtml(row) {
+    function assessmentEmailReplySummaryHtml(row, showReadButton=false) {
       const rec = row?.info?.rec || {};
       const replyAt = assessmentEmailReplyAtForRow(row);
       const replyFrom = cleanCell(rec.emailReplyFrom || row?.member?.selfAssessmentEmailReplyFrom || '');
       const replySnippet = cleanCell(rec.emailReplySnippet || row?.member?.selfAssessmentEmailReplySnippet || '');
-      if (!replyAt) return '<span class="assessment-email-meta">Nessuna risposta email registrata</span>';
-      return `${assessmentEmailBadge('Risposta ricevuta','info')}<span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}${replyFrom ? ` · ${escapeHtml(replyFrom)}` : ''}</span>${replySnippet ? `<span class="assessment-email-meta">${escapeHtml(replySnippet.slice(0, 120))}${replySnippet.length > 120 ? '...' : ''}</span>` : ''}`;
+      if (!replyAt) return '<span class="assessment-email-inline-status muted">Nessuna risposta</span>';
+      const readButton = showReadButton
+        ? `<button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentEmailReplyModal('${escapeJs(String(row?.member?.id || ''))}')">Leggi risposta</button>`
+        : '';
+      if (showReadButton) {
+        return `<div class="assessment-email-compact-info"><strong>${escapeHtml(assessmentEmailFormatDateTime(replyAt))}</strong>${replyFrom ? `<span>${escapeHtml(replyFrom)}</span>` : ''}${readButton}</div>`;
+      }
+      return `<div class="assessment-email-compact-info"><strong>${escapeHtml(assessmentEmailFormatDateTime(replyAt))}</strong>${replyFrom ? `<span>${escapeHtml(replyFrom)}</span>` : ''}${replySnippet ? `<span>${escapeHtml(replySnippet.slice(0, 90))}${replySnippet.length > 90 ? '...' : ''}</span>` : ''}${readButton}</div>`;
+    }
+    function assessmentEmailLevelConfirmationHtml(confirmation, actionHtml='') {
+      if (!confirmation) return '<span class="assessment-email-inline-status muted">Non prevista</span>';
+      const cls = ['ok','warn','err','info','muted'].includes(confirmation.cls) ? confirmation.cls : '';
+      return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status ${cls}">${escapeHtml(confirmation.label)}</span><span>${escapeHtml(confirmation.detail || '')}</span>${actionHtml || ''}</div>`;
     }
     function assessmentEmailCycleDate(member, info) {
       return assessmentEmailDateMs(info?.response?.submitted_at)
@@ -22039,6 +22097,7 @@ Per confermare scrivi ELIMINA.`);
       const status = document.getElementById('assessmentHistoryStatus')?.value || 'all';
       const period = document.getElementById('assessmentHistoryPeriod')?.value || '30';
       const channel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
+      const reply = document.getElementById('assessmentHistoryReply')?.value || 'all';
       const level = document.getElementById('assessmentHistoryLevel')?.value || 'all';
       const now = new Date();
       const periodStart = new Date(now);
@@ -22051,14 +22110,18 @@ Per confermare scrivi ELIMINA.`);
         const paused = row.info.paused;
         const cycleTime = assessmentEmailCycleDate(row.member, row.info);
         const channelKey = assessmentEmailHistoryChannelKey(row);
+        const hasReply = !!assessmentEmailReplyAtForRow(row);
         if (!applied && !paused) return false;
         if (search && !assessmentSearchMatches(row.member, search)) return false;
-        if (status === 'applied' && !applied) return false;
         if (status === 'auto' && (!applied || !assessmentEmailIsAutoApplicable(row.response))) return false;
+        if (status === 'staff' && (!applied || assessmentEmailIsAutoApplicable(row.response))) return false;
         if (status === 'paused' && !paused) return false;
         if (period !== 'all' && cycleTime && cycleTime < periodStart.getTime()) return false;
-        if (channel === 'email' && channelKey !== 'email') return false;
-        if (channel === 'email_whatsapp' && channelKey !== 'email_whatsapp') return false;
+        if (channel === 'email_sent' && channelKey !== 'email_sent') return false;
+        if (channel === 'email_not_sent' && channelKey !== 'email_not_sent') return false;
+        if (channel === 'whatsapp' && channelKey !== 'whatsapp') return false;
+        if (reply === 'with' && !hasReply) return false;
+        if (reply === 'without' && hasReply) return false;
         if (level === 'still05' && !isLevelZeroPointFive(row.member)) return false;
         if (level === '2-2.5') {
           const n = assessmentEmailLevelValue(row.member.level);
@@ -22390,53 +22453,49 @@ Per confermare scrivi ELIMINA.`);
       const currentStatus = document.getElementById('assessmentHistoryStatus')?.value || 'all';
       const currentPeriod = document.getElementById('assessmentHistoryPeriod')?.value || '30';
       const currentChannel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
+      const currentReply = document.getElementById('assessmentHistoryReply')?.value || 'all';
       const currentLevel = document.getElementById('assessmentHistoryLevel')?.value || 'all';
       const rows = assessmentEmailHistoryRows();
-      const filterHtml = `<div class="assessment-email-filter-grid">
+      const filterHtml = `<div class="assessment-email-filter-grid history-filters">
         <div><label>Cerca socio</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="renderAssessmentEmailHistoryPanel()"></div>
-        <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="applied" ${currentStatus === 'applied' ? 'selected' : ''}>Livello applicato</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
+        <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="staff" ${currentStatus === 'staff' ? 'selected' : ''}>Validato staff</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
         <div><label>Periodo</label><select id="assessmentHistoryPeriod" onchange="renderAssessmentEmailHistoryPanel()"><option value="30" ${currentPeriod === '30' ? 'selected' : ''}>Ultimi 30 giorni</option><option value="90" ${currentPeriod === '90' ? 'selected' : ''}>Ultimi 90 giorni</option><option value="year" ${currentPeriod === 'year' ? 'selected' : ''}>Anno corrente</option><option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Tutto</option></select></div>
-        <div><label>Invio scheda</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email" ${currentChannel === 'email' ? 'selected' : ''}>Email</option><option value="email_whatsapp" ${currentChannel === 'email_whatsapp' ? 'selected' : ''}>Email + recupero WhatsApp</option></select></div>
-        <div><label>Livello</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
+        <div><label>Invio scheda</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email_sent" ${currentChannel === 'email_sent' ? 'selected' : ''}>Email inviata</option><option value="email_not_sent" ${currentChannel === 'email_not_sent' ? 'selected' : ''}>Email non inviata</option><option value="whatsapp" ${currentChannel === 'whatsapp' ? 'selected' : ''}>Recupero WhatsApp</option></select></div>
+        <div><label>Risposta socio</label><select id="assessmentHistoryReply" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentReply === 'all' ? 'selected' : ''}>Tutte</option><option value="with" ${currentReply === 'with' ? 'selected' : ''}>Con risposta</option><option value="without" ${currentReply === 'without' ? 'selected' : ''}>Senza risposta</option></select></div>
+        <div><label>Livello finale</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
       </div>`;
       if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.'));
-      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
+      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${rows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
-        const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Livello applicato','info'));
+        const statusBadge = paused ? assessmentEmailBadge('In pausa','muted') : (auto ? assessmentEmailBadge('Auto-applicato','ok') : assessmentEmailBadge('Validato staff','info'));
         const confirmation = assessmentEmailLevelConfirmationState(row);
-        const confirmationHtml = `${assessmentEmailBadge(confirmation.label, confirmation.cls)}<span class="assessment-email-meta">${escapeHtml(confirmation.detail)}</span>`;
         const canSendConfirmation = applied && !paused && assessmentEmailHasValidEmail(row.member);
-        const confirmationAction = canSendConfirmation
-          ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(row.member.id))}')">${confirmation.sentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
+        const confirmationAction = canSendConfirmation && !confirmation.sentAt
+          ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(row.member.id))}')">Invia conferma email</button>`
           : '';
         const restoreInfo = assessmentLatestAppliedLevelInfo(row.member);
         const restoreAction = assessmentMemberNeedsLevelRestore(row.member)
           ? `<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentRestoreValidatedLevel('${escapeJs(String(row.member.id))}')">Ripristina livello validato</button>`
           : '';
-        const replyReadAction = assessmentEmailReplyAtForRow(row)
-          ? `<button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentEmailReplyModal('${escapeJs(String(row.member.id))}')">Leggi risposta</button>`
-          : '';
         const levelHtml = restoreAction && restoreInfo
           ? `${escapeHtml(row.member.level ?? '-')}<span class="assessment-email-meta">Validato: ${escapeHtml(String(restoreInfo.level))}</span>`
           : escapeHtml(row.member.level ?? '-');
+        const personActions = `<div class="assessment-email-person-actions">
+          ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeJs(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
+          ${restoreAction}
+          <button class="assessment-email-mini success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeJs(String(row.member.id))}')">Apri WhatsApp</button>
+          <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')">Scheda socio</button>
+        </div>`;
         return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}">
-          <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}</td>
+          <td data-label="Socio">${assessmentEmailMemberCell(row.member, paused ? 'nessuna risposta dopo email e WhatsApp' : 'scheda compilata e chiusa')}${personActions}</td>
           <td data-label="Chiuso il">${escapeHtml(assessmentEmailFormatDateTime(row.response?.applied_at || row.member.selfAssessmentDate || row.info.rec?.sentAt || row.info.rec?.createdAt))}</td>
           <td data-label="Stato">${statusBadge}</td>
-          <td data-label="Livello">${levelHtml}</td>
-          <td data-label="Invio scheda">${escapeHtml(assessmentEmailHistoryChannelLabel(row))}</td>
-          <td data-label="Risposta socio">${assessmentEmailReplySummaryHtml(row)}</td>
-          <td data-label="Conferma livello">${confirmationHtml}</td>
-          <td data-label="Azioni"><div class="assessment-email-mini-actions">
-            ${paused ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); resumeAssessmentMember('${escapeHtml(String(row.member.id))}'); renderAssessmentEmailPanels();">Riattiva</button>` : ''}
-            ${restoreAction}
-            ${confirmationAction}
-            ${replyReadAction}
-            <button class="assessment-email-mini success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(row.member.id))}')">Apri WhatsApp</button>
-            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeHtml(String(row.member.id))}')">Scheda socio</button>
-          </div></td>
+          <td data-label="Livello finale">${levelHtml}</td>
+          <td data-label="Invio scheda">${assessmentEmailHistoryChannelHtml(row)}</td>
+          <td data-label="Risposta socio">${assessmentEmailReplySummaryHtml(row, true)}</td>
+          <td data-label="Conferma livello">${assessmentEmailLevelConfirmationHtml(confirmation, confirmationAction)}</td>
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
     }
@@ -22845,7 +22904,7 @@ Per confermare scrivi ELIMINA.`);
       await assessmentEmailRunAutoPostProcessing({ source:'manual' });
     }
     function assessmentEmailClearHistoryFilters() {
-      ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryLevel'].forEach(id => {
+      ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryReply','assessmentHistoryLevel'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.value = id === 'assessmentHistorySearch' ? '' : 'all';
