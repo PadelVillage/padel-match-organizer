@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-13 23:10
+Ultimo aggiornamento: 2026-05-13 23:52
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.412 | `test-preview` | in pubblicazione |
-| TEST sviluppo | v5.412 | `test/accessi-staff-guidati` | in lavorazione |
+| TEST | v5.412 | `test-preview` | `43265c7` |
+| TEST sviluppo | v5.412 | `test/accessi-staff-guidati` | `43265c7` |
 
-Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routine email Autovalutazione; il commit verra aggiornato dopo pubblicazione TEST.
+Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routine email Autovalutazione.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routin
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.412 e' in lavorazione/pubblicazione solo in TEST. PROD resta v5.411.
+La versione v5.412 e' pubblicata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -51,7 +51,7 @@ Contiene:
 - Autovalutazione v5.409 TEST con nuova tab `Matchpoint`: livelli validati internamente da riportare manualmente su Matchpoint, bottone `Segna inserito su Matchpoint` e traccia nello storico.
 - Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
 - Autovalutazione v5.411 TEST con nuova tab `Cruscotto mattutino`: riepiloga Problemi, Post-invio, Da controllare, Matchpoint e Da inviare con azioni rapide verso i flussi esistenti.
-- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30.
+- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v13 con `verify_jwt=false` e controllo interno JWT staff o secret Vault.
 - Documentazione aggiornata per v5.412 TEST.
 
 Non contiene modifiche a:
