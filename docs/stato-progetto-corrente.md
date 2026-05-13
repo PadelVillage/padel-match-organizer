@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.408 | `main` | `72a953574eff090cd61638141e721b1388cb376d` |
-| TEST | v5.410 | `test-preview` | `da pubblicare` |
-| TEST sviluppo | v5.410 | `test/accessi-staff-guidati` | `da pubblicare` |
+| TEST | v5.410 | `test-preview` | `f789fe8` |
+| TEST sviluppo | v5.410 | `test/accessi-staff-guidati` | `f789fe8` |
 
-Nota: il commit indicato per TEST viene aggiornato dopo il push. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
+Nota: il commit indicato per TEST e' quello dell'app v5.410. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
 
 ## Link
 
