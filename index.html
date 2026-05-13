@@ -931,6 +931,26 @@
     .assessment-email-tab-count strong { color:var(--primary); font-size:11px; }
     .assessment-email-tab.active .assessment-email-tab-count { color:rgba(255,255,255,.82); }
     .assessment-email-tab.active .assessment-email-tab-count strong { color:#fff; }
+    .assessment-morning-note { border:1px solid #c7d8f4; border-left:5px solid var(--primary); border-radius:8px; background:#eef5ff; color:var(--primary); padding:9px 11px; margin-bottom:10px; font-size:13px; font-weight:850; line-height:1.35; }
+    .assessment-morning-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; align-items:stretch; }
+    .assessment-morning-section { min-width:0; border:1px solid #e7edf6; border-top:5px solid var(--primary); border-radius:8px; background:#fff; overflow:hidden; }
+    .assessment-morning-section.danger { border-top-color:#b42318; }
+    .assessment-morning-section.warn { border-top-color:#b7791f; }
+    .assessment-morning-section.ok { border-top-color:#168a53; }
+    .assessment-morning-section.purple { border-top-color:#6d3ab3; }
+    .assessment-morning-head { padding:9px 10px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
+    .assessment-morning-title { color:var(--primary); font-size:15px; font-weight:900; line-height:1.15; }
+    .assessment-morning-count { margin-top:2px; color:#667085; font-size:12px; font-weight:850; line-height:1.25; }
+    .assessment-morning-body { display:grid; gap:8px; padding:9px 10px; }
+    .assessment-morning-item { border:1px solid #e7edf6; border-radius:7px; background:#fff; padding:8px; min-width:0; }
+    .assessment-morning-item-main { display:grid; gap:3px; min-width:0; }
+    .assessment-morning-item-name { color:#101828; font-size:14px; font-weight:900; line-height:1.2; overflow-wrap:anywhere; }
+    .assessment-morning-item-meta { color:#667085; font-size:12px; line-height:1.3; font-weight:750; overflow-wrap:anywhere; }
+    .assessment-morning-item-status { margin-top:5px; }
+    .assessment-morning-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+    .assessment-morning-actions .assessment-email-mini { padding:6px 8px; font-size:11px; border-radius:7px; }
+    .assessment-morning-empty { color:#667085; font-size:12px; line-height:1.35; font-weight:750; border:1px dashed #d9e0ea; border-radius:7px; padding:9px; background:#fbfdff; }
+    .assessment-morning-footer { margin-top:10px; color:#667085; font-size:12px; line-height:1.35; font-weight:750; }
     .assessment-email-panel { display:none; border:1px solid #d9e0ea; border-top:4px solid var(--primary); border-radius:8px; background:#fff; box-shadow:0 1px 5px rgba(31,71,136,.08); overflow:hidden; }
     .assessment-email-panel.active { display:block; }
     .assessment-email-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid #e7edf6; background:#fbfdff; }
@@ -1053,6 +1073,7 @@
     @media (max-width:1100px) {
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
+      .assessment-morning-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-filter-grid.history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -1080,6 +1101,7 @@
       .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
       .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
+      .assessment-morning-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid.history-filters { grid-template-columns:1fr; }
       .assessment-email-badge { white-space:normal; }
       .assessment-email-status-item { grid-template-columns:1fr; }
@@ -4109,6 +4131,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAssessment" class="side-submenu">
+          <button class="side-sub-link" onclick="goToTabSection('assessment','Cruscotto mattutino')">Cruscotto mattutino</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Da inviare 0.5')">Da inviare 0.5</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Contattati in attesa')">Contattati / in attesa</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Problemi')">Problemi</button>
@@ -4538,7 +4561,8 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section assessment-v5144-section assessment-compact-page">
         <div id="assessmentEmailRoot" class="assessment-email-page">
           <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
-            <button id="anchor-assessment-da-inviare" class="assessment-email-tab active" data-panel="queue" onclick="setAssessmentEmailPanel('queue')"><span class="assessment-email-tab-title">Da inviare 0.5</span><span id="assessmentEmailQueueTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-cruscotto" class="assessment-email-tab active" data-panel="morning" onclick="setAssessmentEmailPanel('morning')"><span class="assessment-email-tab-title">Cruscotto mattutino</span><span id="assessmentEmailMorningTabCount" class="assessment-email-tab-count">-</span></button>
+            <button id="anchor-assessment-da-inviare" class="assessment-email-tab" data-panel="queue" onclick="setAssessmentEmailPanel('queue')"><span class="assessment-email-tab-title">Da inviare 0.5</span><span id="assessmentEmailQueueTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-attesa" class="assessment-email-tab" data-panel="pending" onclick="setAssessmentEmailPanel('pending')"><span class="assessment-email-tab-title">Contattati / in attesa</span><span id="assessmentEmailPendingTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-problemi" class="assessment-email-tab" data-panel="problems" onclick="setAssessmentEmailPanel('problems')"><span class="assessment-email-tab-title">Problemi</span><span id="assessmentEmailProblemsTabCount" class="assessment-email-tab-count">-</span></button>
             <button id="anchor-assessment-post" class="assessment-email-tab" data-panel="post" onclick="setAssessmentEmailPanel('post')"><span class="assessment-email-tab-title">Post-invio</span><span id="assessmentEmailPostTabCount" class="assessment-email-tab-count">-</span></button>
@@ -4548,6 +4572,20 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
             <button id="anchor-assessment-stato" class="assessment-email-tab" data-panel="routine" onclick="setAssessmentEmailPanel('routine')"><span class="assessment-email-tab-title">Stato invio</span><span class="assessment-email-tab-count">05:45 · limite 20</span></button>
           </nav>
+
+          <section id="assessmentEmailMorningPanel" class="assessment-email-panel active" data-assessment-email-panel="morning">
+            <div class="assessment-email-panel-head">
+              <div>
+                <h3 class="assessment-email-panel-title">Cruscotto mattutino</h3>
+                <p class="assessment-email-panel-copy">Priorita giornaliere per Autovalutazione e inserimento manuale dei livelli su Matchpoint.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
+              </div>
+            </div>
+            <div id="assessmentEmailMorningContent" class="assessment-email-content"></div>
+          </section>
 
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
             <div class="assessment-email-panel-head">
@@ -4573,7 +4611,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div id="assessmentEmailRoutineContent" class="assessment-email-content"></div>
           </section>
 
-          <section id="assessmentEmailQueuePanel" class="assessment-email-panel active" data-assessment-email-panel="queue">
+          <section id="assessmentEmailQueuePanel" class="assessment-email-panel" data-assessment-email-panel="queue">
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Da inviare 0.5</h3>
@@ -5135,7 +5173,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.410';
+    const APP_VERSION = '5.411';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21661,7 +21699,7 @@ Per confermare scrivi ELIMINA.`);
         return false;
       }
     }
-    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'queue');
+    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'morning');
     window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
     function assessmentEmailFeaturePending(message) {
@@ -22212,6 +22250,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailPanelLabel(panel) {
       const labels = {
+        morning:'Cruscotto mattutino',
         queue:'Da inviare 0.5',
         pending:'Contattati / in attesa',
         problems:'Problemi',
@@ -22408,6 +22447,103 @@ Per confermare scrivi ELIMINA.`);
         </div>`).join('')}
       </div>`;
     }
+    function assessmentMorningSummaryRows() {
+      const sentToday = getAssessmentRequestsSentTodayCount();
+      const todaySlots = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - sentToday);
+      const queueRows = assessmentEmailQueueRows();
+      const pendingReplyRows = assessmentEmailPendingRows()
+        .filter(row => assessmentEmailReplyAtForRow(row))
+        .sort((a,b) => assessmentEmailDateMs(b.rec?.emailReplyAt || b.member.selfAssessmentEmailReplyAt) - assessmentEmailDateMs(a.rec?.emailReplyAt || a.member.selfAssessmentEmailReplyAt));
+      const postRows = assessmentEmailPostRows();
+      const manualPostRows = postRows.filter(row => !assessmentEmailIsAutoApplicable(row.response));
+      const matchpointRows = assessmentMatchpointPendingRows();
+      const problemRows = assessmentEmailProblemRows();
+      const queueTodayCount = Math.min(queueRows.length, todaySlots);
+      return {
+        sentToday,
+        todaySlots,
+        queueRows,
+        queueTodayCount,
+        pendingReplyRows,
+        manualPostRows,
+        matchpointRows,
+        problemRows,
+        totalActions: problemRows.length + pendingReplyRows.length + manualPostRows.length + matchpointRows.length + queueTodayCount
+      };
+    }
+    function assessmentMorningGo(panel, memberId='') {
+      assessmentEmailGoToMemberPanel(panel || 'queue', memberId || '');
+    }
+    function assessmentMorningSectionHtml(kind, title, countLabel, panel, rowsHtml, emptyText, total=0, shown=0) {
+      const more = total > shown
+        ? `<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); setAssessmentEmailPanel('${escapeJs(panel)}')">Vedi tutti</button>`
+        : '';
+      return `<article class="assessment-morning-section ${escapeHtml(kind || '')}">
+        <div class="assessment-morning-head">
+          <div class="assessment-morning-title">${escapeHtml(title)}</div>
+          <div class="assessment-morning-count">${escapeHtml(countLabel)}</div>
+        </div>
+        <div class="assessment-morning-body">
+          ${rowsHtml || `<div class="assessment-morning-empty">${escapeHtml(emptyText)}</div>`}
+          ${more ? `<div class="assessment-morning-actions">${more}</div>` : ''}
+        </div>
+      </article>`;
+    }
+    function assessmentMorningItemHtml(member, meta, statusHtml, actionsHtml) {
+      return `<div class="assessment-morning-item" data-assessment-email-member="${escapeHtml(String(member?.id || ''))}">
+        <div class="assessment-morning-item-main">
+          <div class="assessment-morning-item-name">${escapeHtml(playerFullName(member))}</div>
+          <div class="assessment-morning-item-meta">${meta}</div>
+        </div>
+        ${statusHtml ? `<div class="assessment-morning-item-status">${statusHtml}</div>` : ''}
+        ${actionsHtml ? `<div class="assessment-morning-actions">${actionsHtml}</div>` : ''}
+      </div>`;
+    }
+    function renderAssessmentEmailMorningPanel() {
+      const box = document.getElementById('assessmentEmailMorningContent');
+      if (!box) return;
+      const rows = assessmentMorningSummaryRows();
+      const maxItems = 2;
+      const problemHtml = rows.problemRows.slice(0, maxItems).map(row => {
+        const problem = assessmentEmailProblemText(row);
+        const memberId = escapeJs(String(row.member.id));
+        const actions = [
+          `<button class="assessment-email-mini warn" type="button" onclick="setActionAnchor(this); assessmentOpenMemberCard('${memberId}')">Correggi email</button>`,
+          row.member.phone ? `<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); openAssessmentEmailWhatsAppCheck('${memberId}','${escapeJs(problem.templateKey)}','${escapeJs(problem.label)}')">Apri WhatsApp</button>` : ''
+        ].filter(Boolean).join('');
+        return assessmentMorningItemHtml(row.member, escapeHtml(problem.label || 'Problema operativo'), problem.badge, actions);
+      }).join('');
+      const replyHtml = rows.pendingReplyRows.slice(0, maxItems).map(row => {
+        const replyAt = row.rec?.emailReplyAt || row.member.selfAssessmentEmailReplyAt || '';
+        const from = cleanCell(row.rec?.emailReplyFrom || row.member.selfAssessmentEmailReplyFrom || '');
+        const meta = `Risposta email ricevuta${replyAt ? ` · ${escapeHtml(assessmentEmailFormatDateTime(replyAt))}` : ''}${from ? `<span class="assessment-email-meta">${escapeHtml(from)}</span>` : ''}`;
+        return assessmentMorningItemHtml(row.member, meta, assessmentEmailBadge('Da leggere','warn'), `<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); openAssessmentEmailReplyModal('${escapeJs(String(row.member.id))}')">Leggi risposta</button>`);
+      }).join('');
+      const reviewHtml = rows.manualPostRows.slice(0, maxItems).map(row => {
+        const diff = assessmentEmailLevelDiff(row.response);
+        const meta = `D ${escapeHtml(String(row.response?.declared_level || '-'))} · C ${escapeHtml(String(row.response?.calculated_level || row.response?.declared_level || '-'))} · ${escapeHtml(assessmentEmailDiffText(diff))}`;
+        return assessmentMorningItemHtml(row.member, meta, assessmentEmailBadge('Anomalia livello','warn'), `<button class="assessment-email-mini warn" type="button" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeJs(String(row.member.id))}')">Controlla livello</button>`);
+      }).join('');
+      const matchpointHtml = rows.matchpointRows.slice(0, maxItems).map(row => {
+        const info = assessmentMatchpointLevelInfo(row);
+        const meta = `Livello ${escapeHtml(String(info?.level || '-'))}${info?.pendingAt ? `<span class="assessment-email-meta">Validato ${escapeHtml(assessmentEmailFormatDateTime(info.pendingAt))}</span>` : ''}`;
+        return assessmentMorningItemHtml(row.member, meta, assessmentEmailBadge('Matchpoint manuale','info'), `<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentMarkMatchpointInserted('${escapeJs(String(row.member.id))}')">Segna inserito su Matchpoint</button>`);
+      }).join('');
+      const queueHtml = rows.queueRows.slice(0, maxItems).map(row => {
+        const ready = row.rec?.token && row.rec?.registeredToSupabase;
+        const status = ready ? assessmentEmailBadge('Email pronta','ok') : assessmentEmailBadge('Link da preparare','warn');
+        return assessmentMorningItemHtml(row.member, `liv. ${escapeHtml(String(row.member.level ?? '-'))} · ${escapeHtml(assessmentEmailMemberEmail(row.member) || 'email mancante')}`, status, `<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); assessmentMorningGo('queue','${escapeJs(String(row.member.id))}')">Apri dettaglio</button>`);
+      }).join('');
+      box.innerHTML = `<div class="assessment-morning-note">Matchpoint va aggiornato manualmente. Dopo l'inserimento, segna qui l'operazione come completata.</div>
+        <div class="assessment-morning-grid">
+          ${assessmentMorningSectionHtml('danger', 'Problemi', `${rows.problemRows.length} da risolvere`, 'problems', problemHtml, 'Nessun problema operativo.', rows.problemRows.length, Math.min(rows.problemRows.length, maxItems))}
+          ${assessmentMorningSectionHtml('warn', 'Post-invio', `${rows.pendingReplyRows.length} risposte`, 'pending', replyHtml, 'Nessuna risposta email da leggere.', rows.pendingReplyRows.length, Math.min(rows.pendingReplyRows.length, maxItems))}
+          ${assessmentMorningSectionHtml('warn', 'Da controllare', `${rows.manualPostRows.length} livelli`, 'post', reviewHtml, 'Nessuna anomalia livello.', rows.manualPostRows.length, Math.min(rows.manualPostRows.length, maxItems))}
+          ${assessmentMorningSectionHtml('purple', 'Matchpoint', `${rows.matchpointRows.length} soci`, 'matchpoint', matchpointHtml, 'Nessun livello Matchpoint in sospeso.', rows.matchpointRows.length, Math.min(rows.matchpointRows.length, maxItems))}
+          ${assessmentMorningSectionHtml('ok', 'Da inviare', `${rows.queueTodayCount} oggi`, 'queue', queueHtml, 'Nessun socio pronto per il giro email.', rows.queueRows.length, Math.min(rows.queueRows.length, maxItems))}
+        </div>
+        <div class="assessment-morning-footer">Il cruscotto e' solo un punto di accesso rapido: le azioni aprono o completano i flussi gia previsti nelle sottosezioni Autovalutazione e Matchpoint.</div>`;
+    }
     function assessmentEmailGoToMemberPanel(panel, memberId) {
       setAssessmentEmailPanel(panel || 'queue');
       setTimeout(() => {
@@ -22430,6 +22566,7 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailPanels();
     }
     function assessmentEmailPanelFromAnchorKey(key) {
+      if (key.includes('cruscotto') || key.includes('mattutino')) return 'morning';
       if (key.includes('da inviare')) return 'queue';
       if (key.includes('attesa') || key.includes('contattati')) return 'pending';
       if (key.includes('problemi')) return 'problems';
@@ -22448,11 +22585,13 @@ Per confermare scrivi ELIMINA.`);
       const post = assessmentEmailPostRows();
       const history = assessmentEmailHistoryBaseRows();
       const matchpoint = assessmentMatchpointPendingRows();
+      const morning = assessmentMorningSummaryRows();
       const sentToday = getAssessmentRequestsSentTodayCount();
       const setCount = (id, html) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = html;
       };
+      setCount('assessmentEmailMorningTabCount', `<strong>${escapeHtml(String(morning.totalActions))}</strong> azioni`);
       setCount('assessmentEmailQueueTabCount', `<strong>${escapeHtml(String(sentToday))}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</strong> oggi · ${escapeHtml(String(queue.length))} rimasti`);
       setCount('assessmentEmailPendingTabCount', `<strong>${escapeHtml(String(pending.length))}</strong> in attesa`);
       setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
@@ -22842,6 +22981,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function renderAssessmentEmailPanels() {
       renderAssessmentEmailKpis();
+      renderAssessmentEmailMorningPanel();
       renderAssessmentEmailRoutinePanel();
       renderAssessmentEmailQueuePanel();
       renderAssessmentEmailPendingPanel();
