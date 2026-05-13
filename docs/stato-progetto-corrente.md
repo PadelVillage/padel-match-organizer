@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-13 16:47
+Ultimo aggiornamento: 2026-05-13 16:59
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.408 | `main` | `72a953574eff090cd61638141e721b1388cb376d` |
+| PROD | v5.411 | `main` | `711efe8` |
 | TEST | v5.411 | `test-preview` | `711efe8` |
 | TEST sviluppo | v5.411 | `test/accessi-staff-guidati` | `711efe8` |
 
-Nota: il commit indicato per TEST e' quello dell'app v5.411. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
+Nota: il commit indicato per TEST e PROD e' quello dell'app v5.411. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: il commit indicato per TEST e' quello dell'app v5.411. Eventuali commit su
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.411 e' in TEST. La versione PROD resta v5.408.
+La versione v5.411 e' allineata in TEST e PROD.
 
 Contiene:
 
