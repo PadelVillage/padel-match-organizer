@@ -212,6 +212,10 @@ $$;
 revoke all on function public.pmo_dispatch_assessment_email_routines(timestamptz) from public;
 grant execute on function public.pmo_dispatch_assessment_email_routines(timestamptz) to service_role;
 
+grant select, insert, update on table public.assessment_tokens to service_role;
+grant select on table public.self_assessments to service_role;
+grant select, insert on table public.pmo_routine_runs to service_role;
+
 do $$
 begin
   if exists (select 1 from cron.job where jobname = 'pmo-assessment-email-dispatcher-test') then
