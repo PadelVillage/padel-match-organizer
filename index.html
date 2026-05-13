@@ -943,10 +943,17 @@
     .assessment-email-card h3 { margin:0 0 10px; color:var(--primary); font-size:17px; line-height:1.2; }
     .assessment-email-routine-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:12px; }
     .assessment-email-routine-title { margin:0 0 4px; color:var(--primary); font-size:20px; line-height:1.15; }
-    .assessment-email-status-table th:nth-child(1) { width:24%; }
-    .assessment-email-status-table th:nth-child(2) { width:16%; }
-    .assessment-email-status-table th:nth-child(3) { width:34%; }
-    .assessment-email-status-table th:nth-child(4) { width:26%; }
+    .assessment-email-routine-title-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:3px; }
+    .assessment-email-routine-title-row .assessment-email-panel-title { margin:0; }
+    .assessment-email-routine-pills { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .assessment-email-routine-pill { display:inline-flex; align-items:center; gap:4px; border:1px solid #e7edf6; border-radius:999px; background:#fbfdff; color:#344054; padding:4px 8px; font-size:11px; font-weight:900; line-height:1.15; white-space:nowrap; }
+    .assessment-email-routine-pill strong { color:var(--primary); font-size:12px; }
+    .assessment-email-routine-pill.warn { color:#7a4d00; background:#fff7e6; border-color:#f2d39b; }
+    .assessment-email-routine-pill.warn strong { color:#7a4d00; }
+    .assessment-email-status-table th:nth-child(1) { width:22%; }
+    .assessment-email-status-table th:nth-child(2) { width:18%; }
+    .assessment-email-status-table th:nth-child(3) { width:24%; }
+    .assessment-email-status-table th:nth-child(4) { width:36%; }
     .assessment-email-status-list { display:grid; gap:9px; }
     .assessment-email-status-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; border:1px solid #e7edf6; border-radius:8px; padding:10px 11px; background:#fbfdff; }
     .assessment-email-status-item strong { color:#101828; }
@@ -4520,11 +4527,20 @@ body.assessment-public-mode .assessment-public-only-card {
           <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
             <div class="assessment-email-panel-head">
               <div>
-                <h3 class="assessment-email-panel-title">Stato invio automatico</h3>
-                <p class="assessment-email-panel-copy">Controllo unico per invio automatico, mancate consegne, limite giornaliero e modalita prova.</p>
+                <div class="assessment-email-routine-title-row">
+                  <h3 class="assessment-email-panel-title">Stato invio automatico</h3>
+                  <div class="assessment-email-routine-pills" aria-label="Riepilogo stato invio">
+                    <span class="assessment-email-routine-pill"><strong>05:45</strong> routine mattina</span>
+                    <span id="assessmentEmailRoutineSentPill" class="assessment-email-routine-pill"><strong>-</strong> invii oggi</span>
+                    <span id="assessmentEmailRoutineAttentionPill" class="assessment-email-routine-pill warn"><strong>-</strong> da controllare</span>
+                    <span id="assessmentEmailRoutineLastPill" class="assessment-email-routine-pill"><strong>-</strong> ultimo controllo</span>
+                  </div>
+                </div>
+                <p class="assessment-email-panel-copy">Cruscotto rapido per capire se il giro email sta lavorando, cosa ha fatto oggi e cosa richiede attenzione.</p>
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
               </div>
@@ -5084,7 +5100,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.406';
+    const APP_VERSION = '5.407';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22241,45 +22257,106 @@ Per confermare scrivi ELIMINA.`);
       const chip = document.getElementById('assessmentDailyLimitChip');
       if (chip) chip.textContent = `Invii oggi: ${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`;
     }
+    function assessmentEmailLatestRoutineEvent(rows=[]) {
+      const times = [];
+      rows.forEach(row => {
+        const rec = row?.rec || row?.info?.rec || {};
+        [
+          rec.emailReplyAt,
+          row?.member?.selfAssessmentEmailReplyAt,
+          rec.emailBouncedAt,
+          row?.member?.selfAssessmentEmailBouncedAt,
+          row?.response?.submitted_at,
+          row?.response?.applied_at,
+          rec.sentAt,
+          rec.createdAt
+        ].forEach(value => {
+          const ms = assessmentEmailDateMs(value);
+          if (ms) times.push(ms);
+        });
+      });
+      return times.length ? Math.max(...times) : 0;
+    }
+    function assessmentEmailRoutineLastLabel(rows=[]) {
+      const ms = assessmentEmailLatestRoutineEvent(rows);
+      if (!ms) return '-';
+      return new Date(ms).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    }
+    function assessmentEmailFollowupReadyCounts(pendingRows=[]) {
+      const now = Date.now();
+      let second = 0;
+      let third = 0;
+      pendingRows.forEach(row => {
+        const replyAt = assessmentEmailReplyAtForRow(row);
+        if (replyAt) return;
+        const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
+        const lastSentMs = assessmentEmailDateMs(row.rec?.sentAt || row.rec?.createdAt);
+        if (!lastSentMs || now - lastSentMs < ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS) return;
+        if (sentCount === 1) second++;
+        else if (sentCount === 2) third++;
+      });
+      return { second, third };
+    }
+    function assessmentEmailSetRoutinePills(sentToday, attentionCount, lastLabel) {
+      const sent = document.getElementById('assessmentEmailRoutineSentPill');
+      if (sent) sent.innerHTML = `<strong>${escapeHtml(String(sentToday))}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</strong> invii oggi`;
+      const attention = document.getElementById('assessmentEmailRoutineAttentionPill');
+      if (attention) attention.innerHTML = `<strong>${escapeHtml(String(attentionCount))}</strong> da controllare`;
+      const last = document.getElementById('assessmentEmailRoutineLastPill');
+      if (last) last.innerHTML = `<strong>${escapeHtml(lastLabel || '-')}</strong> ultimo controllo`;
+    }
     function renderAssessmentEmailRoutinePanel() {
       const box = document.getElementById('assessmentEmailRoutineContent');
       if (!box) return;
       const sentToday = getAssessmentRequestsSentTodayCount();
       const postRows = assessmentEmailPostRows();
-      const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Prova sicura','ok') : assessmentEmailBadge('Da confermare','warn');
-      const envDetail = PMO_IS_TEST_ENV ? 'In prova non usa mai la mail reale del socio: manda alla mail staff o al destinatario prova server.' : 'Prima del reale va confermato il collegamento Gmail.';
+      const queueRows = assessmentEmailQueueRows();
+      const pendingRows = assessmentEmailPendingRows();
+      const problemRows = assessmentEmailProblemRows();
+      const allRows = assessmentEmailAllOperationalRows();
+      const replyCount = pendingRows.filter(row => assessmentEmailReplyAtForRow(row)).length;
+      const manualPostCount = postRows.filter(row => !assessmentEmailIsAutoApplicable(row.response)).length;
+      const bouncedCount = problemRows.filter(row => row.rec?.emailStatus === 'bounced').length;
+      const followups = assessmentEmailFollowupReadyCounts(pendingRows);
+      const attentionCount = problemRows.length + replyCount + manualPostCount;
+      const lastLabel = assessmentEmailRoutineLastLabel(allRows);
+      const latestPostMs = postRows.reduce((max, row) => Math.max(max, assessmentEmailDateMs(row.response?.submitted_at)), 0);
+      assessmentEmailSetRoutinePills(sentToday, attentionCount, lastLabel);
+      const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Prova attiva','info') : assessmentEmailBadge('Produzione','warn');
+      const envDetail = PMO_IS_TEST_ENV ? 'Destinatario prova impostato: le email reali non partono ai soci.' : 'Ambiente reale: usare solo dopo autorizzazione e controllo destinatari.';
       const rows = [
-        ['Email Padel Village', assessmentEmailBadge('Backend TEST','info'), 'Invio tramite funzione server Supabase e Gmail Padel Village.', 'Usa Prova invio sulla mia email per verificare la configurazione.'],
-        ['Destinatario prova', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Verificare destinatari prima di attivare invii reali.'],
-        ['Invio automatico', assessmentEmailBadge('Previsto','info'), 'Ogni giorno alle 05:45, massimo 20 soci con livello 0.5, invii distanziati per chiudere entro le 06:00.', `Prossima esecuzione: ${assessmentEmailNextMorningRun()}.`],
-        ['Limite giornaliero', assessmentEmailBadge(`${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`,'muted'), 'Email inviate oggi dal sistema.', 'Controllo automatico prima di ogni invio.'],
-        ['Secondo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 2 giorni dal primo invio senza scheda compilata.', 'Usa lo stesso link personale.'],
-        ['Terzo invio', assessmentEmailBadge('Pronto','ok'), 'Dopo 2 giorni dal secondo invio senza scheda compilata.', 'Chiede feedback via WhatsApp se il test crea problemi.'],
-        ['Mancate consegne', assessmentEmailBadge('Da controllare','info'), 'Email non arrivate a destinazione o indirizzo errato.', 'Sposta il socio in Problemi per verifica WhatsApp.'],
-        ['WhatsApp recupero', assessmentEmailBadge('Manuale','muted'), 'Dopo terzo invio senza risposta o email da correggere.', 'Apri WhatsApp senza link diretto alla scheda.'],
-        ['Schede ricevute', assessmentEmailBadge(`${postRows.length} da gestire`,'muted'), 'Schede compilate e pronte per il controllo livello.', 'Vai a Post-invio e lavora dalla piu vecchia.']
+        ['Gmail Padel Village', 'Invio e lettura risposte', assessmentEmailBadge('Collegato','ok'), lastLabel, 'Il sistema puo inviare email, leggere risposte e controllare mancate consegne.'],
+        ['Modalita invio', 'TEST o produzione', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Controllare destinatari e scheduler prima di inviare ai soci.'],
+        ['Invio mattutino', 'Primo invio automatico', assessmentEmailBadge('05:45 previsto','info'), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `Alla prossima routine seleziona soci 0.5 pronti fino al limite giornaliero. Prossima: ${assessmentEmailNextMorningRun()}.`],
+        ['Soci ancora da invitare', 'Coda livello 0.5', assessmentEmailBadge(`${queueRows.length} rimasti`,'info'), lastLabel, 'La routine prende solo soci attivi con email valida e link personale pronto.'],
+        ['Secondo invio', 'Dopo 2 giorni', assessmentEmailBadge(`${followups.second} pronti`, followups.second ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia la seconda email ai soci che non hanno compilato e non hanno risposto.'],
+        ['Terzo invio', 'Dopo altri 2 giorni', assessmentEmailBadge(`${followups.third} pronti`, followups.third ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia l ultimo promemoria e chiede feedback via WhatsApp se ci sono difficolta.'],
+        ['Risposte email', 'Reply dei soci', assessmentEmailBadge(`${replyCount} da leggere`, replyCount ? 'warn' : 'muted'), lastLabel, 'Vai alla riga del socio e usa Leggi risposta; i solleciti restano sospesi.'],
+        ['Mancate consegne', 'Email tornate indietro', assessmentEmailBadge(`${bouncedCount} trovate`, bouncedCount ? 'warn' : 'ok'), lastLabel, 'Se ne trova una, il socio passa in Problemi per recupero email via WhatsApp.'],
+        ['Schede ricevute', 'Post-invio', assessmentEmailBadge(`${postRows.length} risposte`,'info'), latestPostMs ? assessmentEmailFormatDateTime(latestPostMs) : lastLabel, manualPostCount ? `${manualPostCount} scheda/e restano da validare; le semplici vengono chiuse automaticamente.` : 'Le schede semplici vengono chiuse automaticamente; le altre restano da validare.'],
+        ['Recupero WhatsApp', 'Canale manuale', assessmentEmailBadge('Manuale','muted'), lastLabel, 'Serve per email mancanti, dubbi o soci che non rispondono dopo i tre invii.']
       ];
       box.innerHTML = `<div class="assessment-email-table-wrap">
         <table class="assessment-email-table assessment-email-status-table">
-          <thead><tr><th>Controllo</th><th>Stato</th><th>Dettaglio</th><th>Prossima azione</th></tr></thead>
+          <thead><tr><th>Area</th><th>Situazione</th><th>Ultimo controllo</th><th>Cosa succede ora</th></tr></thead>
           <tbody>${rows.map(row => `<tr>
-            <td data-label="Controllo"><span class="assessment-email-name">${escapeHtml(row[0])}</span></td>
-            <td data-label="Stato">${row[1]}</td>
-            <td data-label="Dettaglio">${escapeHtml(row[2])}</td>
-            <td data-label="Prossima azione">${escapeHtml(row[3])}</td>
+            <td data-label="Area"><span class="assessment-email-name">${escapeHtml(row[0])}</span><span class="assessment-email-meta">${escapeHtml(row[1])}</span></td>
+            <td data-label="Situazione">${row[2]}</td>
+            <td data-label="Ultimo controllo">${escapeHtml(row[3] || '-')}</td>
+            <td data-label="Cosa succede ora">${escapeHtml(row[4])}</td>
           </tr>`).join('')}</tbody>
         </table>
       </div>
       <div class="assessment-email-card" style="margin-top:14px;">
-        <h3>Sequenza operativa</h3>
+        <h3>Sequenza del giro automatico</h3>
         <div class="assessment-email-timeline">
-          <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Seleziona 0.5</strong><span>Prende solo soci attivi con livello 0.5 e email valida.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara link</strong><span>Prepara il link personale del socio e lo registra nel sistema.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Invia email</strong><span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Controlla esiti</strong><span>Mancate consegne, compilazione, secondo invio dopo 2 giorni, terzo invio dopo altri 2 giorni o verifica WhatsApp senza link diretto.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Controlla chi e pronto</strong><span>Soci attivi con livello 0.5, email valida, nessuna pausa e link personale disponibile.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Invia a scaglioni</strong><span>Parte alle 05:45, rispetta il limite 20 e chiude gli invii entro le 06:00.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Legge gli esiti</strong><span>Controlla risposte email, mancate consegne e schede compilate collegate al socio.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Decide il prossimo passo</strong><span>Secondo invio, terzo invio, post-invio automatico oppure recupero manuale WhatsApp.</span></div>
         </div>
       </div>
-      <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, mancata consegna e scheda compilata.</div>`;
+      <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, risposta email, mancata consegna e scheda compilata.</div>`;
     }
     function assessmentEmailQueueStatus(row) {
       if (!assessmentEmailHasValidEmail(row.member)) return assessmentEmailBadge('Email mancante','err');

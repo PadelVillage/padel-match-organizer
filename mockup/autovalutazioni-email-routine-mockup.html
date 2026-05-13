@@ -171,6 +171,40 @@
       font-size: 20px;
       line-height: 1.15;
     }
+    .routine-title-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .routine-title-row .routine-table-title { margin: 0; }
+    .routine-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .routine-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--soft-line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: #344054;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    .routine-pill strong {
+      color: var(--primary);
+      font-size: 12px;
+    }
+    .routine-pill.warn { color: #7a4d00; background: var(--amber-soft); border-color: #f2d39b; }
+    .routine-pill.warn strong { color: #7a4d00; }
     .rules-card {
       margin-top: 14px;
     }
@@ -314,10 +348,10 @@
       vertical-align: middle;
       overflow-wrap: anywhere;
     }
-    .status-table th:nth-child(1) { width: 24%; }
-    .status-table th:nth-child(2) { width: 16%; }
-    .status-table th:nth-child(3) { width: 34%; }
-    .status-table th:nth-child(4) { width: 26%; }
+    .status-table th:nth-child(1) { width: 22%; }
+    .status-table th:nth-child(2) { width: 18%; }
+    .status-table th:nth-child(3) { width: 24%; }
+    .status-table th:nth-child(4) { width: 36%; }
     tr:first-child td { border-top: 0; }
     .name { font-weight: 900; color: var(--ink); }
     .meta { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
@@ -682,21 +716,30 @@
       <button class="tab" data-target="pending"><span class="tab-title">Contattati / in attesa</span><span class="tab-count"><strong>14</strong> soci in attesa</span></button>
       <button class="tab" data-target="problems"><span class="tab-title">Problemi</span><span class="tab-count"><strong>4</strong> da risolvere</span></button>
       <button class="tab" data-target="post"><span class="tab-title">Post-invio</span><span class="tab-count"><strong>7</strong> risposte</span></button>
-      <button class="tab active" data-target="history"><span class="tab-title">Storico</span><span class="tab-count"><strong>126</strong> chiusi</span></button>
+      <button class="tab" data-target="history"><span class="tab-title">Storico</span><span class="tab-count"><strong>126</strong> chiusi</span></button>
       <button class="tab" data-target="texts"><span class="tab-title">Testi</span><span class="tab-count">email e WhatsApp</span></button>
       <button class="tab" data-target="public"><span class="tab-title">Scheda pubblica</span><span class="tab-count">anteprima</span></button>
-      <button class="tab" data-target="routine"><span class="tab-title">Stato invio</span><span class="tab-count">05:45 · limite 20</span></button>
+      <button class="tab active" data-target="routine"><span class="tab-title">Stato invio</span><span class="tab-count">05:45 · limite 20</span></button>
     </nav>
 
-    <section id="routine" class="panel">
+    <section id="routine" class="panel active">
       <div class="content">
         <div class="routine-head">
           <div>
-            <h2 class="routine-table-title">Stato invio automatico</h2>
-            <p class="panel-copy">Lettura rapida di invio, limiti, secondo invio, WhatsApp e schede ricevute.</p>
+            <div class="routine-title-row">
+              <h2 class="routine-table-title">Stato invio automatico</h2>
+              <div class="routine-pills" aria-label="Riepilogo stato invio">
+                <span class="routine-pill"><strong>05:45</strong> routine mattina</span>
+                <span class="routine-pill"><strong>3/20</strong> invii oggi</span>
+                <span class="routine-pill warn"><strong>5</strong> da controllare</span>
+                <span class="routine-pill"><strong>08:24</strong> ultimo controllo</span>
+              </div>
+            </div>
+            <p class="panel-copy">Cruscotto rapido per capire se il giro email sta lavorando, cosa ha fatto oggi e cosa richiede attenzione.</p>
           </div>
           <div class="actions">
             <button class="btn warning">Pausa invii email</button>
+            <button class="btn">Aggiorna risposte email</button>
             <button class="btn">Controlla mancate consegne</button>
             <button class="btn success">Prova invio sulla mia email</button>
           </div>
@@ -706,91 +749,103 @@
           <table class="status-table">
             <thead>
               <tr>
-                <th>Controllo</th>
-                <th>Stato</th>
-                <th>Dettaglio</th>
-                <th>Prossima azione</th>
+                <th>Area</th>
+                <th>Situazione</th>
+                <th>Ultimo controllo</th>
+                <th>Cosa succede ora</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><span class="name">Email Padel Village</span></td>
-                <td><span class="badge warn">Da collegare</span></td>
-                <td>Account che invia le email automatiche.</td>
-                <td>Collegare Gmail prima del test reale.</td>
+                <td><span class="name">Gmail Padel Village</span><span class="meta">Invio e lettura risposte</span></td>
+                <td><span class="badge ok">Collegato</span></td>
+                <td>13/05/2026, 08:24</td>
+                <td>Il sistema puo' inviare email, leggere risposte e controllare mancate consegne.</td>
               </tr>
               <tr>
-                <td><span class="name">Destinatario prova</span></td>
-                <td><span class="badge ok">Attivo</span></td>
-                <td>In prova tutte le email arrivano solo alla mail staff.</td>
-                <td>Nessuna: resta cosi' finche' non si passa al test reale.</td>
+                <td><span class="name">Modalita invio</span><span class="meta">TEST o produzione</span></td>
+                <td><span class="badge info">Prova attiva</span></td>
+                <td>Destinatario prova impostato</td>
+                <td>Le email reali non partono ai soci finche' resta la prova sulla mail staff.</td>
               </tr>
               <tr>
-                <td><span class="name">Invio automatico</span></td>
-                <td><span class="badge info">Previsto</span></td>
-                <td>Ogni mattina dalle 05:45, massimo 20 soci con livello 0.5.</td>
-                <td>Attivare la programmazione quando il flusso e' pronto.</td>
-              </tr>
-              <tr>
-                <td><span class="name">Limite giornaliero</span></td>
-                <td><span class="badge muted">0/20</span></td>
-                <td>Email inviate oggi dal sistema.</td>
-                <td>Controllo automatico prima di ogni invio.</td>
-              </tr>
-              <tr>
-                <td><span class="name">Secondo invio</span></td>
+                <td><span class="name">Invio mattutino</span><span class="meta">Primo invio automatico</span></td>
                 <td><span class="badge ok">Pronto</span></td>
-                <td>Dopo 2 giorni senza scheda compilata.</td>
-                <td>Invio automatico, una sola volta.</td>
+                <td>3 email inviate oggi</td>
+                <td>Domani alle 05:45 seleziona altri soci 0.5 pronti, fino al limite giornaliero.</td>
               </tr>
               <tr>
-                <td><span class="name">Mancate consegne</span></td>
-                <td><span class="badge info">Da controllare</span></td>
-                <td>Email non arrivate a destinazione o indirizzo errato.</td>
-                <td>Sposta il socio in Problemi per verifica WhatsApp.</td>
+                <td><span class="name">Soci ancora da invitare</span><span class="meta">Coda livello 0.5</span></td>
+                <td><span class="badge info">439 rimasti</span></td>
+                <td>13/05/2026, 08:24</td>
+                <td>La routine prende solo soci attivi con email valida e link personale pronto.</td>
               </tr>
               <tr>
-                <td><span class="name">WhatsApp recupero</span></td>
+                <td><span class="name">Secondo invio</span><span class="meta">Dopo 2 giorni</span></td>
+                <td><span class="badge warn">2 pronti</span></td>
+                <td>Ultimo giro 05:45</td>
+                <td>Invia la seconda email ai soci che non hanno compilato e non hanno risposto.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Terzo invio</span><span class="meta">Dopo altri 2 giorni</span></td>
+                <td><span class="badge muted">0 pronti</span></td>
+                <td>Ultimo giro 05:45</td>
+                <td>Quando serve, invia l'ultimo promemoria e chiede feedback via WhatsApp se hanno difficolta.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Risposte email</span><span class="meta">Reply dei soci</span></td>
+                <td><span class="badge warn">1 da leggere</span></td>
+                <td>13/05/2026, 08:24</td>
+                <td>Vai alla riga del socio e usa Leggi risposta; i solleciti restano sospesi.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Mancate consegne</span><span class="meta">Email tornate indietro</span></td>
+                <td><span class="badge ok">0 trovate</span></td>
+                <td>13/05/2026, 08:24</td>
+                <td>Se ne trova una, il socio passa in Problemi per recupero email via WhatsApp.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Schede ricevute</span><span class="meta">Post-invio</span></td>
+                <td><span class="badge info">7 risposte</span></td>
+                <td>Ultima scheda 12/05/2026, 18:48</td>
+                <td>Le schede semplici vengono chiuse automaticamente; le altre restano da validare.</td>
+              </tr>
+              <tr>
+                <td><span class="name">Recupero WhatsApp</span><span class="meta">Canale manuale</span></td>
                 <td><span class="badge muted">Manuale</span></td>
-                <td>Dopo secondo invio senza risposta o email da correggere.</td>
-                <td>Apri WhatsApp senza link diretto alla scheda.</td>
-              </tr>
-              <tr>
-                <td><span class="name">Schede ricevute</span></td>
-                <td><span class="badge muted">0 oggi</span></td>
-                <td>Schede compilate e pronte per il controllo livello.</td>
-                <td>Vai a Post-invio e lavora dalla piu' vecchia.</td>
+                <td>Ultimo WhatsApp 11/05/2026, 22:36</td>
+                <td>Serve solo per email mancanti, dubbi o soci che non rispondono dopo i tre invii.</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="card rules-card">
-          <h3>Sequenza operativa</h3>
+          <h3>Sequenza del giro automatico</h3>
           <div class="timeline">
             <div class="step">
               <div class="step-num">1</div>
-              <strong>Seleziona 0.5</strong>
-              <span>Prende solo soci attivi con livello 0.5 e email valida.</span>
+              <strong>Controlla chi e' pronto</strong>
+              <span>Soci attivi con livello 0.5, email valida, nessuna pausa e link personale disponibile.</span>
             </div>
             <div class="step">
               <div class="step-num">2</div>
-              <strong>Prepara link</strong>
-              <span>Prepara il link personale del socio e lo salva nel sistema.</span>
+              <strong>Invia a scaglioni</strong>
+              <span>Parte alle 05:45, rispetta il limite 20 e chiude gli invii entro le 06:00.</span>
             </div>
             <div class="step">
               <div class="step-num">3</div>
-              <strong>Invia email</strong>
-              <span>Invio da Gmail Padel Village. In modalita prova arriva solo alla tua email.</span>
+              <strong>Legge gli esiti</strong>
+              <span>Controlla risposte email, mancate consegne e schede compilate collegate al socio.</span>
             </div>
             <div class="step">
               <div class="step-num">4</div>
-              <strong>Controlla esiti</strong>
-              <span>Mancate consegne, compilazione, secondo/terzo invio ogni 2 giorni o verifica WhatsApp senza link diretto.</span>
+              <strong>Decide il prossimo passo</strong>
+              <span>Secondo invio, terzo invio, post-invio automatico oppure recupero manuale WhatsApp.</span>
             </div>
           </div>
         </div>
-        <div class="footer-note">Nota: la lettura "email aperta" non viene usata come dato operativo, perche' Gmail e molti programmi di posta possono bloccare o alterare quel controllo. I segnali forti sono invio accettato, mancata consegna e scheda compilata.</div>
+        <div class="footer-note">Nota: la lettura "email aperta" non viene usata come dato operativo, perche' Gmail e molti programmi di posta possono bloccare o alterare quel controllo. I segnali forti sono invio accettato, risposta email, mancata consegna e scheda compilata.</div>
       </div>
     </section>
 
@@ -1053,7 +1108,7 @@
       </div>
     </section>
 
-    <section id="history" class="panel active">
+    <section id="history" class="panel">
       <div class="panel-head">
         <div>
           <h2 class="panel-title">Storico</h2>
