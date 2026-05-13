@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup Database soci - riepilogo tabella</title>
+  <style>
+    :root {
+      --primary: #234f91;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dce5f2;
+      --bg: #f6f8fb;
+      --green: #2e7d32;
+      --purple: #5e35b1;
+      --amber: #b76e00;
+      --red: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef3f8;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      padding: 18px;
+    }
+    .page {
+      max-width: 1460px;
+      margin: 0 auto;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(246,248,251,.96);
+    }
+    h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 25px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .head p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .btn {
+      border: 0;
+      border-radius: 6px;
+      background: var(--primary);
+      color: #fff;
+      padding: 9px 11px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .body {
+      padding: 14px 22px 22px;
+      display: grid;
+      gap: 10px;
+    }
+    .summary-table-wrap {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(15,23,42,.05);
+      overflow: auto;
+    }
+    .summary-table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+    }
+    .summary-table th,
+    .summary-table td {
+      border-left: 1px solid #edf1f7;
+      padding: 9px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .summary-table th:first-child,
+    .summary-table td:first-child { border-left: 0; }
+    .summary-table th {
+      background: #f8fbff;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      white-space: nowrap;
+    }
+    .summary-table td {
+      border-top: 1px solid #edf1f7;
+      color: var(--ink);
+    }
+    .summary-value {
+      display: block;
+      font-size: 27px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .summary-value.good { color: var(--green); }
+    .summary-value.info { color: var(--primary); }
+    .summary-value.warn { color: var(--amber); }
+    .summary-value.danger { color: var(--red); }
+    .summary-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .panel {
+      margin-top: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 11px 14px;
+      border-bottom: 1px solid #e8eef7;
+    }
+    .panel-head h2 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 18px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .panel-head p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pill {
+      border: 1px solid #dce5f2;
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 900;
+      background: #fbfdff;
+      white-space: nowrap;
+    }
+    .mock-table {
+      margin: 0;
+      padding: 16px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    @media (max-width: 760px) {
+      body { padding: 10px; }
+      .head { align-items: flex-start; flex-direction: column; }
+      .body { padding: 14px; }
+      .summary-table { min-width: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <div>
+        <h1>Database soci</h1>
+        <p>Schede soci, ricerca e gruppi operativi.</p>
+      </div>
+      <button class="btn">+ Nuovo socio</button>
+    </header>
+
+    <section class="body">
+      <div class="summary-table-wrap" aria-label="Indicatori database soci">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Soci attivi</th>
+              <th>Totale soci</th>
+              <th>Livello 0.5</th>
+              <th>Senza email</th>
+              <th>Senza telefono</th>
+              <th>Maschi</th>
+              <th>Femmine</th>
+              <th>Sesso da completare</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="summary-value good">946</span><span class="summary-note">utilizzabili nei gruppi</span></td>
+              <td><span class="summary-value info">946</span><span class="summary-note">archivio locale</span></td>
+              <td><span class="summary-value warn">442</span><span class="summary-note">da autovalutare</span></td>
+              <td><span class="summary-value danger">1</span><span class="summary-note">email da completare</span></td>
+              <td><span class="summary-value danger">2</span><span class="summary-note">non contattabili</span></td>
+              <td><span class="summary-value">697</span><span class="summary-note">soci attivi</span></td>
+              <td><span class="summary-value">249</span><span class="summary-note">soci attivi</span></td>
+              <td><span class="summary-value">0</span><span class="summary-note">dato mancante</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Ricerca database soci</h2>
+            <p>10 per pagina · filtri rapidi.</p>
+          </div>
+          <span class="pill">946 risultati</span>
+        </div>
+        <div class="mock-table">Area tabella soci invariata.</div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

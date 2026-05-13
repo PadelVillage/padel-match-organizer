@@ -3270,19 +3270,20 @@ body.assessment-public-mode .assessment-public-only-card {
     .players-head-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .players-head-actions button { border-radius:6px; margin:0; padding:9px 11px; font-size:12px; }
     .players-body { padding:16px 22px 22px; display:grid; gap:16px; }
-    .players-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
-    .players-kpi { background:#fff; border:1px solid #dce5f2; border-top:4px solid #1f4788; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); padding:12px; min-height:92px; display:grid; align-content:space-between; }
-    .players-kpi.good { border-top-color:#2e7d32; }
-    .players-kpi.warn { border-top-color:#b76e00; }
-    .players-kpi.danger { border-top-color:#b42318; }
-    .players-kpi.info { border-top-color:#5e35b1; }
-    .players-kpi .label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; }
-    .players-kpi .value { color:#172033; font-size:30px; font-weight:900; line-height:1; margin:8px 0 4px; }
-    .players-kpi .hint { color:#667085; font-size:12px; min-height:18px; }
-    .players-gender-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-    .players-gender-tab { background:#fff; border:1px solid #dce5f2; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 12px; }
-    .players-gender-tab span { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; }
-    .players-gender-tab strong { color:#172033; font-size:30px; font-weight:900; line-height:1; }
+    .players-summary-table-wrap { background:#fff; border:1px solid #dce5f2; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); overflow:auto; }
+    .players-summary-table { width:100%; min-width:980px; margin:0; border-collapse:collapse; }
+    .players-summary-table th,
+    .players-summary-table td { border-left:1px solid #edf1f7; padding:9px 12px; text-align:left; vertical-align:middle; }
+    .players-summary-table th:first-child,
+    .players-summary-table td:first-child { border-left:0; }
+    .players-summary-table th { background:#f8fbff; color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; }
+    .players-summary-table td { border-top:1px solid #edf1f7; color:#172033; }
+    .players-summary-value { display:block; color:#172033; font-size:27px; font-weight:900; line-height:1; letter-spacing:0; }
+    .players-summary-value.good { color:#2e7d32; }
+    .players-summary-value.info { color:#1f4788; }
+    .players-summary-value.warn { color:#b76e00; }
+    .players-summary-value.danger { color:#b42318; }
+    .players-summary-note { display:block; margin-top:4px; color:#667085; font-size:11px; font-weight:800; }
     .players-panel { background:#fff; border:1px solid #dce5f2; border-radius:8px; box-shadow:0 1px 4px rgba(15,23,42,.05); overflow:hidden; }
     .players-panel-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:8px; padding:11px 14px; border-bottom:1px solid #e8eef7; }
     .players-panel-head h3 { margin:0; color:#1f4788; font-size:18px; line-height:1.15; letter-spacing:0; }
@@ -3417,8 +3418,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .group-name-pill { border:1px solid #dce5f2; border-radius:6px; background:#fff; padding:7px 8px; font-weight:800; color:#172b4d; }
     .group-name-pill.missing { border-color:#f1b4b4; color:#b42318; background:#fff7f7; }
     .groups-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
-    @media (max-width:1180px) { .players-kpi-grid { grid-template-columns:1fr 1fr; } .players-group-layout { grid-template-columns:1fr; } .players-group-editor { position:static; } .players-filter-grid { grid-template-columns:1fr 1fr; } }
-    @media (max-width:760px) { .players-sticky-head { align-items:flex-start; flex-direction:column; padding:14px; } .players-body { padding:14px; } .players-kpi-grid, .players-gender-tabs, .players-group-layout, .players-filter-grid, .group-day-checks { grid-template-columns:1fr; } .players-head-actions, .players-actions, .groups-actions { justify-content:flex-start; } }
+    @media (max-width:1180px) { .players-group-layout { grid-template-columns:1fr; } .players-group-editor { position:static; } .players-filter-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:760px) { .players-sticky-head { align-items:flex-start; flex-direction:column; padding:14px; } .players-body { padding:14px; } .players-summary-table { min-width:760px; } .players-group-layout, .players-filter-grid, .group-day-checks { grid-template-columns:1fr; } .players-head-actions, .players-actions, .groups-actions { justify-content:flex-start; } }
 
     /* v5.218 - Scroll pagina robusto: evita che Apri Partite resti bloccata da layer interni */
     html,
@@ -4431,17 +4432,33 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
         </div>
         <div class="players-body">
-          <section class="players-kpi-grid" aria-label="Indicatori database soci">
-            <article class="players-kpi good"><div class="label">Soci attivi</div><div class="value" id="playersDbActive">0</div><div class="hint">utilizzabili nei gruppi</div></article>
-            <article class="players-kpi info"><div class="label">Totale soci</div><div class="value" id="playersDbTotal">0</div><div class="hint">archivio locale</div></article>
-            <article class="players-kpi warn"><div class="label">Livello 0.5</div><div class="value" id="playersDbLevel05">0</div><div class="hint">da autovalutare</div></article>
-            <article class="players-kpi danger"><div class="label">Senza telefono</div><div class="value" id="playersDbNoPhone">0</div><div class="hint">non contattabili</div></article>
-          </section>
-
-          <section class="players-gender-tabs" aria-label="Ripartizione sesso">
-            <div class="players-gender-tab"><span>Maschi</span><strong id="playersDbMale">0</strong></div>
-            <div class="players-gender-tab"><span>Femmine</span><strong id="playersDbFemale">0</strong></div>
-            <div class="players-gender-tab"><span>Sesso da completare</span><strong id="playersDbNa">0</strong></div>
+          <section class="players-summary-table-wrap" aria-label="Indicatori database soci">
+            <table class="players-summary-table">
+              <thead>
+                <tr>
+                  <th>Soci attivi</th>
+                  <th>Totale soci</th>
+                  <th>Livello 0.5</th>
+                  <th>Senza email</th>
+                  <th>Senza telefono</th>
+                  <th>Maschi</th>
+                  <th>Femmine</th>
+                  <th>Sesso da completare</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="players-summary-value good" id="playersDbActive">0</span><span class="players-summary-note">utilizzabili nei gruppi</span></td>
+                  <td><span class="players-summary-value info" id="playersDbTotal">0</span><span class="players-summary-note">archivio locale</span></td>
+                  <td><span class="players-summary-value warn" id="playersDbLevel05">0</span><span class="players-summary-note">da autovalutare</span></td>
+                  <td><span class="players-summary-value danger" id="playersDbNoEmail">0</span><span class="players-summary-note">email da completare</span></td>
+                  <td><span class="players-summary-value danger" id="playersDbNoPhone">0</span><span class="players-summary-note">non contattabili</span></td>
+                  <td><span class="players-summary-value" id="playersDbMale">0</span><span class="players-summary-note">soci attivi</span></td>
+                  <td><span class="players-summary-value" id="playersDbFemale">0</span><span class="players-summary-note">soci attivi</span></td>
+                  <td><span class="players-summary-value" id="playersDbNa">0</span><span class="players-summary-note">dato mancante</span></td>
+                </tr>
+              </tbody>
+            </table>
           </section>
 
           <section class="players-panel">
@@ -5100,7 +5117,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.407';
+    const APP_VERSION = '5.408';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9529,11 +9546,13 @@ Grazie.`
       const all = Array.isArray(giocatori) ? giocatori : [];
       const active = all.filter(g => g.active !== false);
       const noPhone = all.filter(g => !g.phone).length;
+      const noEmail = all.filter(g => !assessmentEmailHasValidEmail(g)).length;
       const level05 = all.filter(g => String(g.level ?? '') === '0.5').length;
       const na = active.filter(g => !g.gender || g.gender === 'NA').length;
       setText('playersDbTotal', all.length);
       setText('playersDbActive', active.length);
       setText('playersDbLevel05', level05);
+      setText('playersDbNoEmail', noEmail);
       setText('playersDbNoPhone', noPhone);
       setText('playersDbMale', active.filter(g => g.gender === 'M').length);
       setText('playersDbFemale', active.filter(g => g.gender === 'F').length);
