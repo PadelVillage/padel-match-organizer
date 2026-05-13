@@ -11,6 +11,7 @@
 - PROD usa il progetto Supabase reale di produzione e viene raggiunto dall'app tramite `config.js`.
 - TEST usa un progetto Supabase dedicato a test/collaudo e viene raggiunto dall'app tramite `config-test.js`.
 - Non usare mai lo stesso project ref Supabase per PROD e TEST.
+- Per nuove tabelle, RPC o migrazioni SQL in schema `public`, seguire anche `docs/supabase-data-api-regole.md`: RLS, policy e grant espliciti non devono dipendere dall'esposizione automatica Data API.
 - TEST deve restare senza dati sensibili reali.
 
 Project ref:
