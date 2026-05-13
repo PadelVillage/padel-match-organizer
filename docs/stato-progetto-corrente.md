@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-13 15:41
+Ultimo aggiornamento: 2026-05-13 15:56
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.408 | `main` | `72a953574eff090cd61638141e721b1388cb376d` |
-| TEST | v5.409 | `test-preview` | `d9b1c48` |
-| TEST sviluppo | v5.409 | `test/accessi-staff-guidati` | `d9b1c48` |
+| TEST | v5.410 | `test-preview` | `da pubblicare` |
+| TEST sviluppo | v5.410 | `test/accessi-staff-guidati` | `da pubblicare` |
 
-Nota: il commit indicato per TEST e' quello dell'app v5.409. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
+Nota: il commit indicato per TEST viene aggiornato dopo il push. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: il commit indicato per TEST e' quello dell'app v5.409. Eventuali commit su
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.409 e' in TEST. La versione PROD resta v5.408.
+La versione v5.410 e' in TEST. La versione PROD resta v5.408.
 
 Contiene:
 
@@ -49,7 +49,8 @@ Contiene:
 - Database soci con riepilogo KPI in tabella compatta.
 - Conteggio `Senza email` nel riepilogo Database soci e nel filtro `Attenzione dati`.
 - Autovalutazione v5.409 TEST con nuova tab `Matchpoint`: livelli validati internamente da riportare manualmente su Matchpoint, bottone `Segna inserito su Matchpoint` e traccia nello storico.
-- Documentazione aggiornata per v5.409 TEST.
+- Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
+- Documentazione aggiornata per v5.410 TEST.
 
 Non contiene modifiche a:
 

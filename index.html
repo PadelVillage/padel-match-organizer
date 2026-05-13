@@ -5135,7 +5135,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.409';
+    const APP_VERSION = '5.410';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21299,6 +21299,11 @@ Per confermare scrivi ELIMINA.`);
 	      pmoApplyRolePermissions();
 	      refreshAssistantGroupsCountBadge();
       checkLocalDataSafetyOnStartup();
+      if (assessmentMatchpointDemoEnabled()) {
+        switchTab('assessment');
+        setAssessmentEmailPanel('matchpoint');
+        showAlert('Demo TEST Matchpoint attiva: la riga mostrata non salva dati reali.', 'info');
+      }
       if (createdChiudiTestMatch) {
         switchTab('inviteResponses');
         renderInviteResponsesDashboard();
@@ -21649,7 +21654,14 @@ Per confermare scrivi ELIMINA.`);
         cleanCell(profile.matchType || '')
       ].filter(Boolean).join(' · ') || '-';
     }
-    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || 'queue';
+    function assessmentMatchpointDemoEnabled() {
+      try {
+        return PMO_IS_TEST_ENV && new URLSearchParams(window.location.search || '').get('demoMatchpoint') === '1';
+      } catch {
+        return false;
+      }
+    }
+    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'queue');
     window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
     function assessmentEmailFeaturePending(message) {
@@ -21890,8 +21902,58 @@ Per confermare scrivi ELIMINA.`);
         }
       }
     }
+    function assessmentMatchpointDemoRow() {
+      const now = new Date().toISOString();
+      const member = {
+        id: 'demo-matchpoint-preview',
+        memberId: 'PMO-TEST-MP-5409',
+        firstName: 'Test',
+        surname: 'Matchpoint',
+        name: 'Test Matchpoint',
+        phone: '+39 379 115 1472',
+        email: 'test.matchpoint@example.com',
+        level: '2.5',
+        gender: 'M',
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+        selfAssessmentToken: 'TESTMATCHPOINTPREVIEW',
+        selfAssessmentDate: now,
+        selfAssessmentStaffStatus: 'applied',
+        selfAssessmentMatchpointPendingAt: now,
+        selfAssessmentMatchpointLevel: '2.5',
+        selfAssessmentMatchpointToken: 'TESTMATCHPOINTPREVIEW',
+        selfAssessmentMatchpointDoneAt: '',
+        selfAssessmentMatchpointDoneBy: ''
+      };
+      const rec = {
+        memberId: member.id,
+        token: member.selfAssessmentToken,
+        memberName: playerFullName(member),
+        status: 'sent',
+        createdAt: now,
+        sentAt: now,
+        completedAt: now,
+        registeredToSupabase: true
+      };
+      const response = {
+        id: 'demo-matchpoint-preview-response',
+        token: member.selfAssessmentToken,
+        submitted_at: now,
+        declared_level: '2.5',
+        calculated_level: '2.5',
+        consistency_status: 'ok',
+        staff_status: 'applied',
+        applied_level: '2.5',
+        applied_at: now,
+        applied_member_id: member.id,
+        matchpoint_pending_at: now,
+        matchpoint_level: '2.5'
+      };
+      return { member, rec, response, demo:true, info:{ rec, response, review:false, ready:false, applied:true, preStatus:'responded', postStatus:'ready', paused:false } };
+    }
     function assessmentMatchpointPendingRows() {
-      return assessmentEmailHistoryBaseRows().filter(row => {
+      const rows = assessmentEmailHistoryBaseRows().filter(row => {
         if (row.info?.paused || !assessmentEmailMemberApplied(row.member, row.info)) return false;
         const info = assessmentMatchpointLevelInfo(row);
         return !!(info?.pendingAt && !info.doneAt);
@@ -21900,6 +21962,8 @@ Per confermare scrivi ELIMINA.`);
         const bt = assessmentEmailDateMs(assessmentMatchpointLevelInfo(b)?.pendingAt);
         return at - bt;
       });
+      if (assessmentMatchpointDemoEnabled()) rows.unshift(assessmentMatchpointDemoRow());
+      return rows;
     }
     function assessmentMatchpointHistoryHtml(row) {
       const info = assessmentMatchpointLevelInfo(row);
@@ -21911,6 +21975,9 @@ Per confermare scrivi ELIMINA.`);
       return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status warn">Matchpoint da aggiornare</span><span>Livello validato: ${escapeHtml(String(info.level || '-'))}</span></div>`;
     }
     function assessmentMarkMatchpointInserted(memberId) {
+      if (String(memberId || '') === 'demo-matchpoint-preview') {
+        return showAlert('Riga demo TEST: nel flusso reale il socio sparisce dalla lista e resta la traccia nello storico.', 'info');
+      }
       const member = giocatori.find(g => String(g.id) === String(memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const row = { member, info:assessmentRecordFor(member) };
