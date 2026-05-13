@@ -511,7 +511,7 @@ async function scanGmailBounces(accessToken: string, sentRecords: JsonMap[]) {
       bounceSnippet: info.snippet,
       reason: clean(info.snippet || info.subject || 'Mancata consegna rilevata da Gmail'),
     };
-  }).filter((item): item is JsonMap => !!item);
+  }).filter(Boolean) as JsonMap[];
   return { scanned: infos.length, matches };
 }
 
@@ -539,7 +539,7 @@ async function scanGmailReplies(accessToken: string, sentRecords: JsonMap[]) {
       replySnippet: info.snippet,
       replyText: compactReplyText(info.text, info.snippet),
     };
-  }).filter((item): item is JsonMap => !!item);
+  }).filter(Boolean) as JsonMap[];
   return { scanned: infos.length, matches };
 }
 
