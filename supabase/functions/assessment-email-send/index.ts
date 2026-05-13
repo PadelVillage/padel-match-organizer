@@ -12,16 +12,19 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-routine-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-send', 'routine-check']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
 const ASSESSMENT_SUPPORT_WHATSAPP_URL = ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL;
+const ASSESSMENT_ROUTINE_DAILY_LIMIT = 10;
+const ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS = 10000;
+const SUPABASE_PAGE_SIZE = 1000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -255,6 +258,35 @@ async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: str
   };
 }
 
+async function verifyRoutineSecret(admin: any, secret: string) {
+  const value = clean(secret);
+  if (!value) return false;
+  const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
+  if (error) {
+    console.log(JSON.stringify({
+      event: 'pmo_assessment_routine_secret_verify_error',
+      function: 'assessment-email-send',
+      message: error.message || String(error),
+    }));
+    return false;
+  }
+  return data === true;
+}
+
+async function authenticateStaffOrRoutine(req: Request, supabaseUrl: string, anonKey: string, admin: any): Promise<StaffActor> {
+  const routineSecret = req.headers.get('x-pmo-routine-secret') || '';
+  if (await verifyRoutineSecret(admin, routineSecret)) {
+    const routineEnv = supabaseUrl.includes('qqbfphyslczzkxoncgex') ? 'prod' : 'test';
+    return {
+      userId: '00000000-0000-0000-0000-000000000000',
+      email: 'routine-autovalutazione@' + routineEnv + '.padel-match-organizer',
+      role: 'system',
+      permissions: { cloud_sync: true },
+    };
+  }
+  return authenticateStaff(req, supabaseUrl, anonKey);
+}
+
 async function logAudit(admin: any, actor: StaffActor, action: string, detail: JsonMap) {
   await admin.from('pmo_audit_log').insert({
     actor_user_id: actor.userId,
@@ -423,6 +455,7 @@ function matchGmailInfoToSent(info: JsonMap, sentRecords: JsonMap[]) {
   return sentRecords.find((record) => {
     if (record.gmailThreadId && record.gmailThreadId === info.threadId) return true;
     if (record.originalRecipient && haystack.includes(record.originalRecipient)) return true;
+    if (record.actualRecipient && haystack.includes(record.actualRecipient)) return true;
     const name = clean(record.memberName).toLocaleLowerCase('it-IT');
     return !!(name && name.length >= 6 && haystack.includes(name));
   }) || null;
@@ -553,6 +586,506 @@ async function saveEmailScanLogs(admin: any, action: string, payloads: JsonMap[]
   return { saved: rows.length };
 }
 
+async function sendAssessmentEmailCore(admin: any, actor: StaffActor, params: JsonMap) {
+  const mode = clean(params.mode || 'primary-email');
+  if (!ALLOWED_MODES.has(mode)) throw new Error('INVALID_MODE');
+
+  const member = params.member && typeof params.member === 'object' ? params.member : {};
+  const memberId = clean(params.memberId || member.id || member.memberId || '');
+  const memberName = clean(params.memberName || member.name || `${clean(member.firstName)} ${clean(member.surname)}` || 'Socio');
+  const originalRecipient = clean(params.originalRecipient || member.email || '');
+  const token = clean(params.token || '');
+  const link = clean(params.link || '');
+  const subject = safeHeader(params.subject || '');
+  const bodyText = clean(params.body || '');
+
+  if (!memberId) throw new Error('MEMBER_REQUIRED');
+  if (!isValidEmail(originalRecipient)) throw new Error('INVALID_ORIGINAL_RECIPIENT');
+  if (!subject) throw new Error('SUBJECT_REQUIRED');
+  if (!bodyText) throw new Error('BODY_REQUIRED');
+  if ((mode === 'primary-email' || mode === 'recall-email' || mode === 'third-email') && (!token || !link)) {
+    throw new Error('TOKEN_LINK_REQUIRED');
+  }
+
+  const forceTestRecipients = clean(Deno.env.get('ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS')).toLocaleLowerCase('it-IT') !== 'false';
+  const configuredTestTo = clean(Deno.env.get('ASSESSMENT_EMAIL_TEST_TO'));
+  const actualRecipient = forceTestRecipients ? (configuredTestTo || actor.email) : originalRecipient;
+  if (!isValidEmail(actualRecipient)) throw new Error('TEST_RECIPIENT_MISSING');
+
+  const fromName = clean(Deno.env.get('ASSESSMENT_EMAIL_FROM_NAME')) || 'Padel Village';
+  const fromEmail = clean(Deno.env.get('GMAIL_SENDER_EMAIL'));
+  const replyTo = clean(Deno.env.get('ASSESSMENT_EMAIL_REPLY_TO')) || fromEmail;
+  if (!isValidEmail(fromEmail)) throw new Error('GMAIL_SENDER_EMAIL_MISSING');
+
+  const sentAt = new Date().toISOString();
+  const finalSubject = forceTestRecipients ? `[TEST] ${subject}` : subject;
+  const finalTextBody = forceTestRecipients
+    ? `[TEST INTERNO PMO]\nQuesta email e' stata inviata in modalita prova.\nSocio selezionato: ${memberName}\nEmail socio in anagrafica: ${originalRecipient}\n\n---\n\n${bodyText}`
+    : bodyText;
+  const finalHtmlBody = buildHtmlBody({
+    body: bodyText,
+    link,
+    testMode: forceTestRecipients,
+    memberName,
+    originalRecipient,
+    mode,
+    level: clean(params.level || member.level || ''),
+  });
+
+  const accessToken = await getGmailAccessToken();
+  const rawMessage = buildMimeMessage({
+    to: actualRecipient,
+    subject: finalSubject,
+    textBody: finalTextBody,
+    htmlBody: finalHtmlBody,
+    fromName,
+    fromEmail,
+    replyTo,
+  });
+  const gmail = await sendGmailMessage(accessToken, rawMessage);
+  const messageId = clean(gmail.id || '');
+  const threadId = clean(gmail.threadId || '');
+
+  const logPayload = {
+    id: `assessment_email_${messageId || shortHash({ memberId, sentAt })}`,
+    type: 'assessment_email_send',
+    mode,
+    memberId,
+    memberName,
+    token,
+    link,
+    originalRecipient,
+    actualRecipient,
+    testMode: forceTestRecipients,
+    subject,
+    sentAt,
+    gmailMessageId: messageId,
+    gmailThreadId: threadId,
+    actorEmail: actor.email,
+    appVersion: clean(params.appVersion || ''),
+    runtimeEnv: clean(params.runtimeEnv || ''),
+    source: clean(params.source || 'pmo_assessment_email'),
+  };
+
+  let logKeys: JsonMap | null = null;
+  let logWarning = '';
+  try {
+    logKeys = await saveEmailLog(admin, logPayload);
+    await logAudit(admin, actor, 'assessment_email_send', {
+      mode,
+      memberId,
+      memberName,
+      originalRecipient,
+      actualRecipient,
+      testMode: forceTestRecipients,
+      gmailMessageId: messageId,
+      gmailThreadId: threadId,
+      appVersion: logPayload.appVersion,
+      runtimeEnv: logPayload.runtimeEnv,
+    });
+  } catch (logErr) {
+    logWarning = errorText(logErr);
+    console.error('ASSESSMENT_EMAIL_LOG_FAILED', logWarning);
+  }
+
+  return {
+    mode,
+    memberId,
+    memberName,
+    originalRecipient,
+    actualRecipient,
+    testMode: forceTestRecipients,
+    sentAt,
+    gmailMessageId: messageId,
+    gmailThreadId: threadId,
+    logKeys,
+    logWarning,
+    logSaved: !logWarning,
+  };
+}
+
+function parseLevel(value: unknown, fallback = 0) {
+  const n = parseFloat(clean(value).replace(',', '.'));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function playerName(member: JsonMap) {
+  return clean(member.name || `${clean(member.firstName)} ${clean(member.surname)}`) || 'Socio';
+}
+
+function firstName(member: JsonMap) {
+  const first = clean(member.firstName);
+  if (first) return first;
+  return playerName(member).split(/\s+/)[0] || 'Socio';
+}
+
+function phoneLast4(value: unknown) {
+  return clean(value).replace(/\D/g, '').slice(-4);
+}
+
+function isActiveMember(member: JsonMap) {
+  return member.active !== false && clean(member.status).toLocaleLowerCase('it-IT') !== 'inactive';
+}
+
+function isLevelZeroPointFive(member: JsonMap) {
+  return Math.abs(parseLevel(member.level, -1) - 0.5) < 0.001;
+}
+
+function localDateIso(value: Date, timeZone = 'Europe/Rome') {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(value);
+  const out: JsonMap = {};
+  parts.forEach((part) => { if (part.type !== 'literal') out[part.type] = part.value; });
+  return `${out.year}-${out.month}-${out.day}`;
+}
+
+function addQueryParams(url: string, params: JsonMap) {
+  try {
+    const parsed = new URL(url);
+    Object.entries(params).forEach(([key, value]) => {
+      if (clean(value)) parsed.searchParams.set(key, clean(value));
+    });
+    return parsed.toString();
+  } catch {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (clean(value)) query.set(key, clean(value));
+    });
+    return `${url}${url.includes('?') ? '&' : '?'}${query.toString()}`;
+  }
+}
+
+function assessmentPublicBaseUrl(supabaseUrl: string) {
+  const configured = clean(Deno.env.get('ASSESSMENT_PUBLIC_BASE_URL'));
+  if (configured) return configured;
+  if (supabaseUrl.includes('cudiqnrrlbyqryrtaprd')) {
+    return 'https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test';
+  }
+  return 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html';
+}
+
+function assessmentPublicLink(supabaseUrl: string, token: string, member: JsonMap) {
+  return addQueryParams(assessmentPublicBaseUrl(supabaseUrl), {
+    t: token,
+    nome: playerName(member),
+    email: clean(member.email || ''),
+  });
+}
+
+function makeRoutineAssessmentToken(memberId: string) {
+  const uuid = crypto.randomUUID().replace(/-/g, '').toUpperCase();
+  const time = Date.now().toString(36).toUpperCase();
+  return `${time}${uuid}`.replace(/[^A-Z0-9]/g, '').slice(-14);
+}
+
+async function loadAssessmentCommunicationTemplates(admin: any) {
+  const { data, error } = await admin
+    .from('pmo_cloud_records')
+    .select('payload')
+    .eq('record_type', 'app_setting')
+    .eq('local_key', 'assessmentCommunicationTemplates')
+    .eq('deleted', false)
+    .maybeSingle();
+  if (error) throw error;
+  const value = data?.payload?.value;
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function renderRoutinePrimaryEmail(member: JsonMap, link: string, templates: JsonMap = {}) {
+  const data: JsonMap = {
+    nome: firstName(member),
+    nome_completo: playerName(member),
+    link_autovalutazione: link,
+    telefono_segreteria: ASSESSMENT_SUPPORT_PHONE_DISPLAY,
+    whatsapp_segreteria: ASSESSMENT_SUPPORT_WHATSAPP_URL,
+  };
+  const replaceTokens = (text: string) => Object.entries(data).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, clean(value)), text);
+  const subject = 'Completa la tua autovalutazione Padel Village';
+  const body = `Ciao {nome},
+
+stiamo aggiornando i livelli di gioco dei soci Padel Village per organizzare partite sempre piu equilibrate.
+
+Ti chiediamo di compilare questa breve scheda di autovalutazione:
+{link_autovalutazione}
+
+Richiede meno di 1 minuto.
+
+Se hai dubbi o preferisci non compilare la scheda da solo, nessun problema: ti aiutiamo noi.
+
+Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello di gioco.
+
+Dopo l'invio controlleremo la scheda e aggiorneremo il tuo livello di gioco nel gestionale Padel Village.
+
+Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche via WhatsApp:
+{telefono_segreteria}
+{whatsapp_segreteria}
+
+Grazie,
+Padel Village`;
+  const template = templates['primary-email'] && typeof templates['primary-email'] === 'object' ? templates['primary-email'] : {};
+  return {
+    subject: replaceTokens(clean(template.subject || subject)),
+    body: replaceTokens(clean(template.body || body)),
+  };
+}
+
+function routineDelay(ms: number) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
+async function loadCloudMembers(admin: any) {
+  const rows: JsonMap[] = [];
+  for (let from = 0, page = 0; page < 50; page += 1, from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('pmo_cloud_records')
+      .select('local_key,payload,deleted')
+      .eq('record_type', 'member')
+      .eq('deleted', false)
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = Array.isArray(data) ? data : [];
+    rows.push(...batch);
+    if (batch.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return rows.map((row) => ({ ...(row.payload || {}), __localKey: row.local_key }))
+    .filter((member) => clean(member.id || member.__localKey));
+}
+
+async function loadAssessmentTokens(admin: any) {
+  const { data, error } = await admin
+    .from('assessment_tokens')
+    .select('token,member_local_id,member_name,status,created_at,sent_at,completed_at,registered_at');
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function loadAssessmentEmailRecords(admin: any) {
+  const rows: JsonMap[] = [];
+  for (let from = 0, page = 0; page < 20; page += 1, from += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('pmo_cloud_records')
+      .select('payload,deleted,created_at')
+      .eq('record_type', EMAIL_RECORD_TYPE)
+      .eq('deleted', false)
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = Array.isArray(data) ? data : [];
+    rows.push(...batch);
+    if (batch.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return rows.map((row) => row.payload || {});
+}
+
+async function loadCompletedAssessmentTokens(admin: any) {
+  const { data, error } = await admin
+    .from('self_assessments')
+    .select('token');
+  if (error) throw error;
+  return new Set((Array.isArray(data) ? data : []).map((row) => clean(row.token)).filter(Boolean));
+}
+
+async function upsertRoutineToken(admin: any, member: JsonMap, token: string, status = 'created', sentAt = '') {
+  const now = new Date().toISOString();
+  const row: JsonMap = {
+    token,
+    member_local_id: clean(member.id || member.__localKey),
+    member_name: playerName(member),
+    phone_last4: phoneLast4(member.phone),
+    status,
+    registered_at: now,
+  };
+  if (sentAt) row.sent_at = sentAt;
+  const { error } = await admin
+    .from('assessment_tokens')
+    .upsert(row, { onConflict: 'token' });
+  if (error) throw error;
+}
+
+async function logAssessmentRoutineRun(admin: any, routineType: string, runStatus: string, startedAt: string, summary: JsonMap, createdRecords: JsonMap[] = [], errorMessage = '') {
+  await admin.from('pmo_routine_runs').insert({
+    routine_type: routineType,
+    run_status: runStatus,
+    started_at: startedAt,
+    finished_at: new Date().toISOString(),
+    summary,
+    created_records: createdRecords,
+    error_message: errorMessage || null,
+  });
+}
+
+function sentRecordsFromCloudLogs(logs: JsonMap[]) {
+  return normalizeSentRecords(logs
+    .filter((payload) => payload?.type === 'assessment_email_send')
+    .map((payload) => ({
+      memberId: payload.memberId,
+      memberName: payload.memberName,
+      token: payload.token,
+      originalRecipient: payload.originalRecipient,
+      actualRecipient: payload.actualRecipient,
+      gmailMessageId: payload.gmailMessageId,
+      gmailThreadId: payload.gmailThreadId,
+      sentAt: payload.sentAt,
+    })));
+}
+
+async function runAssessmentRoutineCheck(admin: any, actor: StaffActor, body: JsonMap) {
+  const startedAt = new Date().toISOString();
+  const logs = await loadAssessmentEmailRecords(admin);
+  const sentRecords = sentRecordsFromCloudLogs(logs);
+  if (!sentRecords.length) {
+    await logAssessmentRoutineRun(admin, 'assessment_email_check', 'noop', startedAt, { scanned: 0, replies: 0, bounces: 0 });
+    return { action: 'routine-check', scanned: 0, replies: [], bounces: [], saved: 0 };
+  }
+  const accessToken = await getGmailAccessToken();
+  const replies = await scanGmailReplies(accessToken, sentRecords);
+  const bounces = await scanGmailBounces(accessToken, sentRecords);
+  const replyLog = await saveEmailScanLogs(admin, 'reply', replies.matches);
+  const bounceLog = await saveEmailScanLogs(admin, 'bounce', bounces.matches);
+  await logAudit(admin, actor, 'assessment_email_routine_check', {
+    source: clean(body.source || 'pmo_assessment_email_scheduler'),
+    scannedReplies: replies.scanned,
+    scannedBounces: bounces.scanned,
+    replies: replies.matches.length,
+    bounces: bounces.matches.length,
+  });
+  await logAssessmentRoutineRun(admin, 'assessment_email_check', (replies.matches.length || bounces.matches.length) ? 'success' : 'noop', startedAt, {
+    sentRecords: sentRecords.length,
+    scannedReplies: replies.scanned,
+    scannedBounces: bounces.scanned,
+    replies: replies.matches.length,
+    bounces: bounces.matches.length,
+  }, [...replies.matches, ...bounces.matches]);
+  return {
+    action: 'routine-check',
+    sentRecords: sentRecords.length,
+    scanned: (replies.scanned || 0) + (bounces.scanned || 0),
+    replies: replies.matches,
+    bounces: bounces.matches,
+    saved: (replyLog.saved || 0) + (bounceLog.saved || 0),
+  };
+}
+
+async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseUrl: string, body: JsonMap) {
+  const startedAt = new Date().toISOString();
+  const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  const limit = Math.max(1, Math.min(ASSESSMENT_ROUTINE_DAILY_LIMIT, parseInt(clean(body.limit || ASSESSMENT_ROUTINE_DAILY_LIMIT), 10) || ASSESSMENT_ROUTINE_DAILY_LIMIT));
+  const spacingMs = Math.max(0, Math.min(30000, parseInt(clean(Deno.env.get('ASSESSMENT_ROUTINE_SEND_SPACING_MS') || body.spacingMs || ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS), 10) || 0));
+  const members = await loadCloudMembers(admin);
+  const tokens = await loadAssessmentTokens(admin);
+  const completedTokens = await loadCompletedAssessmentTokens(admin);
+  const logs = await loadAssessmentEmailRecords(admin);
+  const templates = await loadAssessmentCommunicationTemplates(admin);
+  const todaySent = logs.filter((payload) => {
+    return payload?.type === 'assessment_email_send'
+      && payload.mode === 'primary-email'
+      && clean(payload.sentAt).slice(0, 10) === localDate;
+  });
+  const remaining = Math.max(0, limit - todaySent.length);
+  const sentByMember = new Set(logs
+    .filter((payload) => payload?.type === 'assessment_email_send' && ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
+    .map((payload) => clean(payload.memberId))
+    .filter(Boolean));
+  const tokenByMember = new Map<string, JsonMap[]>();
+  tokens.forEach((token) => {
+    const key = clean(token.member_local_id);
+    if (!key) return;
+    if (!tokenByMember.has(key)) tokenByMember.set(key, []);
+    tokenByMember.get(key)?.push(token);
+  });
+  tokenByMember.forEach((rows) => rows.sort((a,b) => clean(b.created_at).localeCompare(clean(a.created_at))));
+
+  const candidates = members
+    .filter((member) => isActiveMember(member))
+    .filter((member) => isLevelZeroPointFive(member))
+    .filter((member) => isValidEmail(member.email))
+    .filter((member) => !sentByMember.has(clean(member.id || member.__localKey)))
+    .filter((member) => {
+      const memberTokens = tokenByMember.get(clean(member.id || member.__localKey)) || [];
+      return !memberTokens.some((row) => completedTokens.has(clean(row.token)) || clean(row.status) === 'completed');
+    })
+    .sort((a,b) => playerName(a).localeCompare(playerName(b), 'it'));
+
+  const toSend = candidates.slice(0, remaining);
+  const sent: JsonMap[] = [];
+  const failed: JsonMap[] = [];
+
+  for (let i = 0; i < toSend.length; i += 1) {
+    const member = toSend[i];
+    const memberId = clean(member.id || member.__localKey);
+    const existing = (tokenByMember.get(memberId) || []).find((row) => clean(row.status) !== 'completed');
+    const token = clean(existing?.token || makeRoutineAssessmentToken(memberId));
+    try {
+      await upsertRoutineToken(admin, member, token, 'created');
+      const link = assessmentPublicLink(supabaseUrl, token, member);
+      const rendered = renderRoutinePrimaryEmail(member, link, templates);
+      const result = await sendAssessmentEmailCore(admin, actor, {
+        mode: 'primary-email',
+        memberId,
+        member: {
+          id: memberId,
+          memberId: clean(member.memberId || ''),
+          name: playerName(member),
+          firstName: clean(member.firstName || ''),
+          surname: clean(member.surname || ''),
+          email: clean(member.email || ''),
+          phone: clean(member.phone || ''),
+          level: clean(member.level || ''),
+        },
+        level: clean(member.level || ''),
+        originalRecipient: clean(member.email || ''),
+        token,
+        link,
+        subject: rendered.subject,
+        body: rendered.body,
+        source: clean(body.source || 'pmo_assessment_email_scheduler'),
+        appVersion: clean(body.appVersion || ''),
+        runtimeEnv: clean(body.runtimeEnv || ''),
+      });
+      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt);
+      sent.push({ memberId, memberName: playerName(member), token, sentAt: result.sentAt, actualRecipient: result.actualRecipient });
+      if (spacingMs && i < toSend.length - 1) await routineDelay(spacingMs);
+    } catch (err) {
+      failed.push({ memberId, memberName: playerName(member), error: errorText(err) });
+    }
+  }
+
+  await logAudit(admin, actor, 'assessment_email_routine_send', {
+    source: clean(body.source || 'pmo_assessment_email_scheduler'),
+    limit,
+    localDate,
+    candidates: candidates.length,
+    requested: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+  });
+  await logAssessmentRoutineRun(admin, 'assessment_email_daily_send', failed.length ? (sent.length ? 'blocked' : 'error') : (sent.length ? 'success' : 'noop'), startedAt, {
+    localDate,
+    limit,
+    alreadySentToday: todaySent.length,
+    remainingBeforeRun: remaining,
+    candidates: candidates.length,
+    selected: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+    spacingMs,
+  }, sent, failed.length ? JSON.stringify(failed.slice(0, 10)) : '');
+
+  return {
+    action: 'routine-send',
+    localDate,
+    limit,
+    alreadySentToday: todaySent.length,
+    candidates: candidates.length,
+    selected: toSend.length,
+    sent,
+    failed,
+  };
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -568,7 +1101,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   try {
-    const actor = await authenticateStaff(req, supabaseUrl, anonKey);
+    const actor = await authenticateStaffOrRoutine(req, supabaseUrl, anonKey, admin);
     if (!hasPermission(actor, 'cloud_sync')) {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }
@@ -576,6 +1109,16 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = clean(body.action || 'send');
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
+
+    if (action === 'routine-send') {
+      const result = await runAssessmentRoutineSend(admin, actor, supabaseUrl, body);
+      return okResponse(result);
+    }
+
+    if (action === 'routine-check') {
+      const result = await runAssessmentRoutineCheck(admin, actor, body);
+      return okResponse(result);
+    }
 
     if (action === 'scan-bounces' || action === 'scan-replies') {
       const sentRecords = normalizeSentRecords(body.sentRecords || body.records || []);
@@ -613,124 +1156,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const mode = clean(body.mode || 'primary-email');
-    if (!ALLOWED_MODES.has(mode)) return errorResponse(400, 'INVALID_MODE', 'Tipo email autovalutazione non valido.');
-
-    const member = body.member && typeof body.member === 'object' ? body.member : {};
-    const memberId = clean(body.memberId || member.id || member.memberId || '');
-    const memberName = clean(body.memberName || member.name || `${clean(member.firstName)} ${clean(member.surname)}` || 'Socio');
-    const originalRecipient = clean(body.originalRecipient || member.email || '');
-    const token = clean(body.token || '');
-    const link = clean(body.link || '');
-    const subject = safeHeader(body.subject || '');
-    const bodyText = clean(body.body || '');
-
-    if (!memberId) return errorResponse(400, 'MEMBER_REQUIRED', 'Socio mancante.');
-    if (!isValidEmail(originalRecipient)) return errorResponse(400, 'INVALID_ORIGINAL_RECIPIENT', 'Email socio mancante o non valida.');
-    if (!subject) return errorResponse(400, 'SUBJECT_REQUIRED', 'Oggetto email mancante.');
-    if (!bodyText) return errorResponse(400, 'BODY_REQUIRED', 'Testo email mancante.');
-    if ((mode === 'primary-email' || mode === 'recall-email' || mode === 'third-email') && (!token || !link)) {
-      return errorResponse(400, 'TOKEN_LINK_REQUIRED', 'Link personale non pronto.');
-    }
-
-    const forceTestRecipients = clean(Deno.env.get('ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS')).toLocaleLowerCase('it-IT') !== 'false';
-    const configuredTestTo = clean(Deno.env.get('ASSESSMENT_EMAIL_TEST_TO'));
-    const actualRecipient = forceTestRecipients ? (configuredTestTo || actor.email) : originalRecipient;
-    if (!isValidEmail(actualRecipient)) {
-      return errorResponse(500, 'TEST_RECIPIENT_MISSING', 'Destinatario prova non configurato.');
-    }
-
-    const fromName = clean(Deno.env.get('ASSESSMENT_EMAIL_FROM_NAME')) || 'Padel Village';
-    const fromEmail = clean(Deno.env.get('GMAIL_SENDER_EMAIL'));
-    const replyTo = clean(Deno.env.get('ASSESSMENT_EMAIL_REPLY_TO')) || fromEmail;
-    if (!isValidEmail(fromEmail)) {
-      return errorResponse(500, 'GMAIL_SENDER_EMAIL_MISSING', 'Email mittente Gmail non configurata.');
-    }
-    const sentAt = new Date().toISOString();
-    const finalSubject = forceTestRecipients ? `[TEST] ${subject}` : subject;
-    const finalTextBody = forceTestRecipients
-      ? `[TEST INTERNO PMO]\nQuesta email e' stata inviata in modalita prova.\nSocio selezionato: ${memberName}\nEmail socio in anagrafica: ${originalRecipient}\n\n---\n\n${bodyText}`
-      : bodyText;
-    const finalHtmlBody = buildHtmlBody({
-      body: bodyText,
-      link,
-      testMode: forceTestRecipients,
-      memberName,
-      originalRecipient,
-      mode,
-      level: clean(body.level || member.level || ''),
-    });
-
-    const accessToken = await getGmailAccessToken();
-    const rawMessage = buildMimeMessage({
-      to: actualRecipient,
-      subject: finalSubject,
-      textBody: finalTextBody,
-      htmlBody: finalHtmlBody,
-      fromName,
-      fromEmail,
-      replyTo,
-    });
-    const gmail = await sendGmailMessage(accessToken, rawMessage);
-    const messageId = clean(gmail.id || '');
-    const threadId = clean(gmail.threadId || '');
-
-    const logPayload = {
-      id: `assessment_email_${messageId || shortHash({ memberId, sentAt })}`,
-      type: 'assessment_email_send',
-      mode,
-      memberId,
-      memberName,
-      token,
-      link,
-      originalRecipient,
-      actualRecipient,
-      testMode: forceTestRecipients,
-      subject,
-      sentAt,
-      gmailMessageId: messageId,
-      gmailThreadId: threadId,
-      actorEmail: actor.email,
-      appVersion: clean(body.appVersion || ''),
-      runtimeEnv: clean(body.runtimeEnv || ''),
-      source: clean(body.source || 'pmo_assessment_email'),
-    };
-
-    let logKeys: JsonMap | null = null;
-    let logWarning = '';
-    try {
-      logKeys = await saveEmailLog(admin, logPayload);
-      await logAudit(admin, actor, 'assessment_email_send', {
-        mode,
-        memberId,
-        memberName,
-        originalRecipient,
-        actualRecipient,
-        testMode: forceTestRecipients,
-        gmailMessageId: messageId,
-        gmailThreadId: threadId,
-        appVersion: logPayload.appVersion,
-        runtimeEnv: logPayload.runtimeEnv,
-      });
-    } catch (logErr) {
-      logWarning = errorText(logErr);
-      console.error('ASSESSMENT_EMAIL_LOG_FAILED', logWarning);
-    }
-
-    return okResponse({
-      mode,
-      memberId,
-      memberName,
-      originalRecipient,
-      actualRecipient,
-      testMode: forceTestRecipients,
-      sentAt,
-      gmailMessageId: messageId,
-      gmailThreadId: threadId,
-      logKeys,
-      logWarning,
-      logSaved: !logWarning,
-    });
+    const result = await sendAssessmentEmailCore(admin, actor, body);
+    return okResponse(result);
   } catch (err) {
     const message = errorText(err);
     if (message.includes('AUTH_REQUIRED')) return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff richiesto.');

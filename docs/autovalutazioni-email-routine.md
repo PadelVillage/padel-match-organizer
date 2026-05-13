@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto; prima routine backend email TEST v5.412 impostata con invio 05:45 massimo 10 soci/giorno e controlli Gmail quattro volte al giorno.
 
-Ultimo aggiornamento: 2026-05-13 20:08
+Ultimo aggiornamento: 2026-05-13 23:10
 
 ## Obiettivo
 
@@ -114,6 +114,27 @@ Correzione applicata solo a Supabase PROD dopo autorizzazione esplicita:
 - nessuna modifica a `index.html`, funzioni Edge, scheduler o invii automatici.
 
 Verifica post-intervento: colonna presente, 0 righe senza `registered_at`, 971 token conservati.
+
+## Nota tecnica TEST v5.412 - 2026-05-13 23:10
+
+Prima fase controllata della routine backend Autovalutazione, attiva solo in TEST.
+
+Regole impostate:
+
+- invio automatico giornaliero alle `05:45`;
+- limite iniziale ridotto a 10 email al giorno;
+- invii scaglionati lato Edge Function per non partire tutti nello stesso istante;
+- controlli Gmail automatici quattro volte al giorno: `06:10`, `10:30`, `15:30`, `20:30`;
+- la routine usa i soci cloud attivi con livello `0.5`, email valida e nessun ciclo gia completato;
+- la routine riusa i testi salvati in `assessmentCommunicationTemplates` quando presenti, altrimenti usa il testo standard approvato;
+- i log email cloud vengono importati dalla UI prima dei controlli manuali, cosi gli invii fatti dal backend risultano visibili anche nel browser staff.
+
+Ambiente:
+
+- SQL applicato solo su Supabase TEST;
+- cron TEST `pmo-assessment-email-dispatcher-test`;
+- Edge Function TEST `assessment-email-send` protetta da JWT staff per i pulsanti manuali o da secret Vault `x-pmo-routine-secret` per il cron;
+- nessuna routine email automatica attivata in PROD.
 
 ## Nota UI TEST v5.384
 
@@ -278,7 +299,7 @@ Dopo approvazione del mockup, la sezione `Autovalutazione` non mostra piu' il bl
 
 La schermata parte direttamente dalla barra compatta delle schede:
 
-- `Da inviare 0.5`, con invii effettuati oggi su 20 e soci rimasti;
+- `Da inviare 0.5`, con invii effettuati oggi su 10 e soci rimasti;
 - `Contattati / in attesa`, con conteggio dei soci in attesa;
 - `Problemi`, con conteggio dei problemi da risolvere;
 - `Post-invio`, con conteggio delle risposte ricevute;
@@ -302,7 +323,7 @@ Regole operative:
 - il bottone WhatsApp dentro le email apre la segreteria con un testo precompilato diverso per primo invio, promemoria, conferma ricezione e livello di gioco validato;
 - nei testi collegati si usa la dicitura `livello di gioco`.
 
-La tab `Stato invio` viene aggiornata alla regola oraria approvata: invio giornaliero dalle `05:45`, massimo 20 email, invii distanziati per completare entro le `06:00`.
+La tab `Stato invio` viene aggiornata alla regola oraria approvata: invio giornaliero dalle `05:45`. Da v5.412 il limite operativo iniziale e' 10 email al giorno.
 
 Nella scheda socio i pulsanti vengono compattati: in alto restano solo `Chiudi` e `Salva`, mentre `Apri WhatsApp`, `Nuova autovalutazione`, `Disattiva/Riattiva` e `Cancella socio` restano nel pannello `Azioni operative`.
 
@@ -465,7 +486,7 @@ Regola operativa:
 
 ## Regola base
 
-Ogni giorno l'invio automatico deve mandare al massimo 20 email di autovalutazione.
+Ogni giorno l'invio automatico deve mandare al massimo 10 email di autovalutazione nella prima fase controllata.
 
 Orario invio automatico:
 
@@ -484,7 +505,7 @@ Il sistema deve:
 - non inviare due volte allo stesso socio nello stesso ciclo operativo;
 - non sostituire WhatsApp, che resta azione manuale.
 
-Se i soci eleggibili sono piu' di 20, l'ordine consigliato e':
+Se i soci eleggibili sono piu' di 10, l'ordine consigliato e':
 
 1. soci livello `0.5` con email valida;
 2. mai contattati via email autovalutazione;
@@ -540,7 +561,7 @@ Per i test iniziali il mittente resta Gmail Padel Village, ma il destinatario vi
 
 ### Abbonamento
 
-Per 20 email al giorno non serve un piano marketing dedicato.
+Per 10 email al giorno nella prima fase non serve un piano marketing dedicato.
 
 Serve pero' un account Gmail utilizzabile via API:
 
@@ -551,7 +572,7 @@ Limiti ufficiali da tenere presenti:
 
 - Gmail personale: Google indica blocchi se si superano circa 500 email/recipienti al giorno.
 - Google Workspace: Google indica 2.000 messaggi al giorno per utente su account paganti, con limiti separati su destinatari e account trial.
-- il servizio tecnico Gmail ha anche limiti di quota per progetto e per utente, ma 20 invii al giorno sono molto sotto quei limiti.
+- il servizio tecnico Gmail ha anche limiti di quota per progetto e per utente, ma 10 invii al giorno sono molto sotto quei limiti.
 
 Fonte verificata il 2026-05-11:
 
@@ -765,7 +786,7 @@ Blocchi proposti:
    - Email Padel Village;
    - destinatario prova;
    - invio automatico alle `05:45`;
-   - limite giornaliero 20;
+   - limite giornaliero 10;
    - secondo invio dopo 2 giorni;
    - terzo invio dopo altri 2 giorni;
    - mancate consegne;

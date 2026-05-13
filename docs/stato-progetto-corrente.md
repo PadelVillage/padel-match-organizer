@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-13 22:05
+Ultimo aggiornamento: 2026-05-13 23:10
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.411 | `test-preview` | `711efe8` |
-| TEST sviluppo | v5.411 | `test/accessi-staff-guidati` | `711efe8` |
+| TEST | v5.412 | `test-preview` | in pubblicazione |
+| TEST sviluppo | v5.412 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: il commit indicato per TEST e PROD e' quello dell'app v5.411. Eventuali commit successivi di sola documentazione non cambiano la versione della web app.
+Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routine email Autovalutazione; il commit verra aggiornato dopo pubblicazione TEST.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: il commit indicato per TEST e PROD e' quello dell'app v5.411. Eventuali co
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.411 e' allineata in TEST e PROD.
+La versione v5.412 e' in lavorazione/pubblicazione solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -51,16 +51,15 @@ Contiene:
 - Autovalutazione v5.409 TEST con nuova tab `Matchpoint`: livelli validati internamente da riportare manualmente su Matchpoint, bottone `Segna inserito su Matchpoint` e traccia nello storico.
 - Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
 - Autovalutazione v5.411 TEST con nuova tab `Cruscotto mattutino`: riepiloga Problemi, Post-invio, Da controllare, Matchpoint e Da inviare con azioni rapide verso i flussi esistenti.
-- Documentazione aggiornata per v5.411 TEST.
+- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30.
+- Documentazione aggiornata per v5.412 TEST.
 
 Non contiene modifiche a:
 
-- Supabase;
-- funzioni Edge;
-- scheduler;
 - Matchpoint;
-- import dati;
-- regole backend di invio email.
+- import dati.
+
+Nota: le modifiche Supabase/funzione Edge/scheduler della v5.412 sono solo TEST. Non sono attive in PROD.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
