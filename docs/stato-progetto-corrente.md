@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 15:18
+Ultimo aggiornamento: 2026-05-14 16:51
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.415 | `test-preview` | da pubblicare |
-| TEST sviluppo | v5.415 | `test/accessi-staff-guidati` | in lavorazione |
+| TEST | v5.416 | `test-preview` | da pubblicare |
+| TEST sviluppo | v5.416 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: PROD resta fermo a v5.411. TEST v5.415 limita il `Cruscotto mattutino` a 20 righe progressive per filtro, senza modificare logiche di invio, SQL, Edge Function, Matchpoint o PROD.
+Nota: PROD resta fermo a v5.411. TEST v5.416 corregge il blocco dei box filtro del `Cruscotto mattutino` introdotto con il limite progressivo a 20 righe, senza modificare logiche di invio, SQL, Edge Function, Matchpoint o PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.415 limita il `Cruscotto mattutino` a 2
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.415 e' preparata solo in TEST. PROD resta v5.411.
+La versione v5.416 e' preparata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -55,15 +55,16 @@ Contiene:
 - Autovalutazione v5.413 TEST con nuovo `Cruscotto mattutino` tabellare `Processo utenti`: assorbe le informazioni della vecchia tab `Stato invio`, mantiene come tab principali solo `Cruscotto mattutino`, `Storico`, `Testi` e `Scheda pubblica`, e usa filtri rapidi (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) alimentati dalle logiche gia esistenti.
 - Autovalutazione v5.414 TEST: rimossa dal `Cruscotto mattutino` la barra informativa `Matchpoint va aggiornato manualmente...`, gia nota allo staff. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.415 TEST: il `Cruscotto mattutino` mostra al massimo 20 righe per volta per il filtro attivo, mantenendo i conteggi reali e aggiungendo `Mostra altri 20` quando esistono altri soci. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
-- Routine TEST una tantum: per il 2026-05-14 16:30 Europe/Rome e' schedulato il job `pmo-assessment-email-single-test-1630`, mirato al solo socio `PMO-000948`. Non coinvolge la coda generale e non tocca PROD.
-- Documentazione aggiornata per v5.415 TEST.
+- Autovalutazione v5.416 TEST: hotfix del `Cruscotto mattutino`; il limite progressivo a 20 righe usa uno stato separato dalla funzione di calcolo, evitando il blocco dei box filtro. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
+- Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
+- Documentazione aggiornata per v5.416 TEST.
 
 Non contiene modifiche a:
 
 - Matchpoint;
 - import dati.
 
-Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Resta attivo solo il job una tantum `pmo-assessment-email-single-test-1630` per il test controllato `PMO-000948` delle 16:30. Non sono attive in PROD.
+Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Il job una tantum `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' gia eseguito e rimosso. Non sono attive routine email automatiche in PROD.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
