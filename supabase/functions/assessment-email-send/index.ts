@@ -743,6 +743,25 @@ function localDateIso(value: Date, timeZone = 'Europe/Rome') {
   return `${out.year}-${out.month}-${out.day}`;
 }
 
+function targetMemberIdSet(body: JsonMap) {
+  const rawList = Array.isArray(body.targetMemberIds) ? body.targetMemberIds : [];
+  const ids = [
+    clean(body.targetMemberId),
+    ...rawList.map((item) => clean(item)),
+  ].filter(Boolean);
+  return new Set(ids.map((item) => item.toLocaleLowerCase('it-IT')));
+}
+
+function memberMatchesTarget(member: JsonMap, targets: Set<string>) {
+  if (!targets.size) return true;
+  return [
+    member.id,
+    member.memberId,
+    member.__localKey,
+    member.localKey,
+  ].some((value) => targets.has(clean(value).toLocaleLowerCase('it-IT')));
+}
+
 function addQueryParams(url: string, params: JsonMap) {
   try {
     const parsed = new URL(url);
@@ -974,6 +993,9 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
   const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
   const limit = Math.max(1, Math.min(ASSESSMENT_ROUTINE_DAILY_LIMIT, parseInt(clean(body.limit || ASSESSMENT_ROUTINE_DAILY_LIMIT), 10) || ASSESSMENT_ROUTINE_DAILY_LIMIT));
   const spacingMs = Math.max(0, Math.min(30000, parseInt(clean(Deno.env.get('ASSESSMENT_ROUTINE_SEND_SPACING_MS') || body.spacingMs || ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS), 10) || 0));
+  const targets = targetMemberIdSet(body);
+  const isTargetedTest = targets.size > 0 && clean(body.runtimeEnv).toLocaleLowerCase('it-IT') === 'test';
+  const ignoreDailyLimit = isTargetedTest && body.ignoreDailyLimit === true;
   const members = await loadCloudMembers(admin);
   const tokens = await loadAssessmentTokens(admin);
   const completedTokens = await loadCompletedAssessmentTokens(admin);
@@ -984,7 +1006,7 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
       && payload.mode === 'primary-email'
       && clean(payload.sentAt).slice(0, 10) === localDate;
   });
-  const remaining = Math.max(0, limit - todaySent.length);
+  const remaining = ignoreDailyLimit ? limit : Math.max(0, limit - todaySent.length);
   const sentByMember = new Set(logs
     .filter((payload) => payload?.type === 'assessment_email_send' && ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
     .map((payload) => clean(payload.memberId))
@@ -999,6 +1021,7 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
   tokenByMember.forEach((rows) => rows.sort((a,b) => clean(b.created_at).localeCompare(clean(a.created_at))));
 
   const candidates = members
+    .filter((member) => memberMatchesTarget(member, targets))
     .filter((member) => isActiveMember(member))
     .filter((member) => isLevelZeroPointFive(member))
     .filter((member) => isValidEmail(member.email))
@@ -1061,17 +1084,22 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
     requested: toSend.length,
     sent: sent.length,
     failed: failed.length,
+    targetedTest: isTargetedTest,
+    targetMemberIds: [...targets],
   });
   await logAssessmentRoutineRun(admin, 'assessment_email_daily_send', failed.length ? (sent.length ? 'blocked' : 'error') : (sent.length ? 'success' : 'noop'), startedAt, {
     localDate,
     limit,
     alreadySentToday: todaySent.length,
+    ignoreDailyLimit,
     remainingBeforeRun: remaining,
     candidates: candidates.length,
     selected: toSend.length,
     sent: sent.length,
     failed: failed.length,
     spacingMs,
+    targetedTest: isTargetedTest,
+    targetMemberIds: [...targets],
   }, sent, failed.length ? JSON.stringify(failed.slice(0, 10)) : '');
 
   return {
@@ -1079,6 +1107,9 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
     localDate,
     limit,
     alreadySentToday: todaySent.length,
+    ignoreDailyLimit,
+    targetedTest: isTargetedTest,
+    targetMemberIds: [...targets],
     candidates: candidates.length,
     selected: toSend.length,
     sent,

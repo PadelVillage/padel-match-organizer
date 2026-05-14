@@ -139,6 +139,8 @@ Ambiente:
 
 Nota operativa 2026-05-14 07:39: domattina non deve partire nessun invio automatico reale. Eventuali prove della routine vanno fatte con lancio manuale controllato, preferibilmente con limite ridotto e destinatario di prova verificato.
 
+Nota operativa 2026-05-14 08:04: la Edge Function TEST `assessment-email-send` e' stata aggiornata a v14 con filtro tecnico `targetMemberIds`, usato per prove mirate senza coinvolgere la coda completa. Per il test reale controllato delle 09:00 Europe/Rome e' stato creato in Supabase TEST il job una tantum `pmo-assessment-email-single-test-0900`, schedulato in UTC come `0 7 14 5 *`, che invia al massimo 1 email al solo socio `PMO-000948` e poi si rimuove.
+
 ## Nota UI TEST v5.384
 
 La tab `Da inviare 0.5` non deve nascondere soci per limite di visualizzazione.
