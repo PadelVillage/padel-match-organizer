@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.420 | `test-preview` | `PENDING_V5420` |
-| TEST sviluppo | v5.420 | `test/accessi-staff-guidati` | `PENDING_V5420` |
+| TEST | v5.420 | `test-preview` | `51a210a` |
+| TEST sviluppo | v5.420 | `test/accessi-staff-guidati` | `51a210a` |
 
 Nota: TEST contiene la correzione UI v5.420 del `Cruscotto mattutino`: quando si cerca un socio nel processo, i box filtro corrispondenti allo stadio del socio vengono evidenziati. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
