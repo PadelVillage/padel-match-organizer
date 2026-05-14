@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 14:55
+Ultimo aggiornamento: 2026-05-14 15:18
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.414 | `test-preview` | da pubblicare |
-| TEST sviluppo | v5.414 | `test/accessi-staff-guidati` | in lavorazione |
+| TEST | v5.415 | `test-preview` | da pubblicare |
+| TEST sviluppo | v5.415 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: PROD resta fermo a v5.411. TEST v5.414 rimuove solo la barra informativa Matchpoint dal cruscotto Autovalutazione, senza modificare logiche UI, SQL, Edge Function, Matchpoint o PROD.
+Nota: PROD resta fermo a v5.411. TEST v5.415 limita il `Cruscotto mattutino` a 20 righe progressive per filtro, senza modificare logiche di invio, SQL, Edge Function, Matchpoint o PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.414 rimuove solo la barra informativa M
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.414 e' preparata solo in TEST. PROD resta v5.411.
+La versione v5.415 e' preparata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -54,8 +54,9 @@ Contiene:
 - Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v14 con `verify_jwt=false`, controllo interno JWT staff o secret Vault, filtro tecnico `targetMemberIds` per test mirati e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine. Nota operativa: il cron TEST generale e' stato rimosso il 2026-05-14 07:39 per evitare invii automatici reali; il test reale controllato delle 09:00 Europe/Rome sul socio `PMO-000948` ha inviato una sola email.
 - Autovalutazione v5.413 TEST con nuovo `Cruscotto mattutino` tabellare `Processo utenti`: assorbe le informazioni della vecchia tab `Stato invio`, mantiene come tab principali solo `Cruscotto mattutino`, `Storico`, `Testi` e `Scheda pubblica`, e usa filtri rapidi (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) alimentati dalle logiche gia esistenti.
 - Autovalutazione v5.414 TEST: rimossa dal `Cruscotto mattutino` la barra informativa `Matchpoint va aggiornato manualmente...`, gia nota allo staff. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
+- Autovalutazione v5.415 TEST: il `Cruscotto mattutino` mostra al massimo 20 righe per volta per il filtro attivo, mantenendo i conteggi reali e aggiungendo `Mostra altri 20` quando esistono altri soci. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Routine TEST una tantum: per il 2026-05-14 16:30 Europe/Rome e' schedulato il job `pmo-assessment-email-single-test-1630`, mirato al solo socio `PMO-000948`. Non coinvolge la coda generale e non tocca PROD.
-- Documentazione aggiornata per v5.414 TEST.
+- Documentazione aggiornata per v5.415 TEST.
 
 Non contiene modifiche a:
 
