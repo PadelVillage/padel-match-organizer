@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 08:04
+Ultimo aggiornamento: 2026-05-14 11:22
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.412 | `test-preview` | `43265c7` |
-| TEST sviluppo | v5.412 | `test/accessi-staff-guidati` | `43265c7` |
+| TEST | v5.413 | `test-preview` | da pubblicare |
+| TEST sviluppo | v5.413 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routine email Autovalutazione.
+Nota: PROD resta fermo a v5.411. TEST v5.413 riorganizza solo la UI Autovalutazione, senza modificare scheduler, SQL, Edge Function, Matchpoint o PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.412 e' la prima fase tecnica per routin
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.412 e' pubblicata solo in TEST. PROD resta v5.411.
+La versione v5.413 e' preparata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -52,7 +52,8 @@ Contiene:
 - Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
 - Autovalutazione v5.411 TEST con nuova tab `Cruscotto mattutino`: riepiloga Problemi, Post-invio, Da controllare, Matchpoint e Da inviare con azioni rapide verso i flussi esistenti.
 - Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v14 con `verify_jwt=false`, controllo interno JWT staff o secret Vault, filtro tecnico `targetMemberIds` per test mirati e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine. Nota operativa: il cron TEST generale e' stato rimosso il 2026-05-14 07:39 per evitare invii automatici reali; per il 2026-05-14 09:00 Europe/Rome e' schedulato un solo test reale sul socio `PMO-000948`.
-- Documentazione aggiornata per v5.412 TEST.
+- Autovalutazione v5.413 TEST con nuovo `Cruscotto mattutino` tabellare `Processo utenti`: assorbe le informazioni della vecchia tab `Stato invio`, mantiene come tab principali solo `Cruscotto mattutino`, `Storico`, `Testi` e `Scheda pubblica`, e usa filtri rapidi (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) alimentati dalle logiche gia esistenti.
+- Documentazione aggiornata per v5.413 TEST.
 
 Non contiene modifiche a:
 
