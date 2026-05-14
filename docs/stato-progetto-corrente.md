@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 00:08
+Ultimo aggiornamento: 2026-05-14 07:39
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -51,7 +51,7 @@ Contiene:
 - Autovalutazione v5.409 TEST con nuova tab `Matchpoint`: livelli validati internamente da riportare manualmente su Matchpoint, bottone `Segna inserito su Matchpoint` e traccia nello storico.
 - Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
 - Autovalutazione v5.411 TEST con nuova tab `Cruscotto mattutino`: riepiloga Problemi, Post-invio, Da controllare, Matchpoint e Da inviare con azioni rapide verso i flussi esistenti.
-- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v13 con `verify_jwt=false`, controllo interno JWT staff o secret Vault e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine.
+- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v13 con `verify_jwt=false`, controllo interno JWT staff o secret Vault e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine. Nota operativa: il cron TEST e' stato rimosso il 2026-05-14 07:39 per evitare invii automatici reali; le simulazioni vanno lanciate manualmente e in modo controllato.
 - Documentazione aggiornata per v5.412 TEST.
 
 Non contiene modifiche a:
@@ -59,7 +59,7 @@ Non contiene modifiche a:
 - Matchpoint;
 - import dati.
 
-Nota: le modifiche Supabase/funzione Edge/scheduler della v5.412 sono solo TEST. Non sono attive in PROD.
+Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Non sono attive in PROD.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 

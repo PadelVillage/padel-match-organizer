@@ -117,7 +117,7 @@ Verifica post-intervento: colonna presente, 0 righe senza `registered_at`, 971 t
 
 ## Nota tecnica TEST v5.412 - 2026-05-13 23:10
 
-Prima fase controllata della routine backend Autovalutazione, attiva solo in TEST.
+Prima fase controllata della routine backend Autovalutazione, predisposta solo in TEST.
 
 Regole impostate:
 
@@ -132,10 +132,12 @@ Regole impostate:
 Ambiente:
 
 - SQL applicato solo su Supabase TEST;
-- cron TEST `pmo-assessment-email-dispatcher-test`;
+- cron TEST `pmo-assessment-email-dispatcher-test` rimosso il 2026-05-14 07:39 per evitare invii automatici reali durante le simulazioni;
 - Edge Function TEST `assessment-email-send` v13 protetta da JWT staff per i pulsanti manuali o da secret Vault `x-pmo-routine-secret` per il cron;
 - GRANT espliciti TEST a `service_role` per `assessment_tokens`, `self_assessments` e `pmo_routine_runs`, necessari alla routine backend e coerenti con la nuova regola Data API Supabase;
 - nessuna routine email automatica attivata in PROD.
+
+Nota operativa 2026-05-14 07:39: domattina non deve partire nessun invio automatico reale. Eventuali prove della routine vanno fatte con lancio manuale controllato, preferibilmente con limite ridotto e destinatario di prova verificato.
 
 ## Nota UI TEST v5.384
 
