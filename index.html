@@ -4619,10 +4619,6 @@ body.assessment-public-mode .assessment-public-only-card {
                 <h3 class="assessment-email-panel-title">Cruscotto mattutino</h3>
                 <p class="assessment-email-panel-copy">Processo giornaliero Autovalutazione e inserimento manuale dei livelli su Matchpoint.</p>
               </div>
-              <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
-              </div>
             </div>
             <div id="assessmentEmailMorningContent" class="assessment-email-content"></div>
           </section>
@@ -4643,8 +4639,6 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
               </div>
             </div>
@@ -4671,10 +4665,6 @@ body.assessment-public-mode .assessment-public-only-card {
                 <h3 class="assessment-email-panel-title">Contattati / in attesa</h3>
                 <p class="assessment-email-panel-copy">Soci con richiesta gia inviata e scheda non ancora compilata.</p>
               </div>
-              <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
-              </div>
             </div>
             <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
           </section>
@@ -4686,7 +4676,6 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Email mancanti, link da preparare, richieste senza risposta e verifiche WhatsApp manuali.</p>
               </div>
               <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Mostra mancate consegne</button>
                 <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('WhatsApp resta manuale: aprilo dalla riga del singolo socio.')">Prepara WhatsApp selezionati</button>
               </div>
             </div>
@@ -4889,7 +4878,14 @@ body.assessment-public-mode .assessment-public-only-card {
         <details class="assessment-tech-details">
           <summary id="anchor-assessment-impostazioni">⚙️ Strumenti tecnici avanzati</summary>
           <div class="info-box" style="margin-top:12px; background:#fffaf0; border-left-color:var(--warning);">
-            Usa questi strumenti solo quando devi cambiare impostazioni, fare emergenza SQL o import manuale. Il lavoro quotidiano dovrebbe stare nei blocchi Pre-invio e Post-invio.
+            Usa questi strumenti solo quando devi cambiare impostazioni, fare emergenza SQL o import manuale. Il lavoro quotidiano dovrebbe stare nel Cruscotto mattutino.
+          </div>
+          <div class="info-box" style="margin-top:12px; background:#f8fbff; border-left-color:var(--primary);">
+            Controlli manuali Gmail da usare solo se vuoi anticipare la routine automatica o verificare un problema.
+            <div class="assessment-toolbar" style="margin-top:10px;">
+              <button class="btn-secondary" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
+              <button class="btn-secondary" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
+            </div>
           </div>
           <div class="row">
             <div class="col">
@@ -5213,7 +5209,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.417';
+    const APP_VERSION = '5.418';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
