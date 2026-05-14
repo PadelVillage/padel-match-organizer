@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 16:51
+Ultimo aggiornamento: 2026-05-14 18:02
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.416 | `test-preview` | da pubblicare |
-| TEST sviluppo | v5.416 | `test/accessi-staff-guidati` | in lavorazione |
+| TEST | v5.417 | `test-preview` | da pubblicare |
+| TEST sviluppo | v5.417 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: PROD resta fermo a v5.411. TEST v5.416 corregge il blocco dei box filtro del `Cruscotto mattutino` introdotto con il limite progressivo a 20 righe, senza modificare logiche di invio, SQL, Edge Function, Matchpoint o PROD.
+Nota: PROD resta fermo a v5.411. TEST v5.417 corregge la ricerca nel `Cruscotto mattutino` e nello `Storico` Autovalutazione dopo l'introduzione del limite progressivo a 20 righe, senza modificare logiche di invio, SQL, Edge Function, Matchpoint o PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.416 corregge il blocco dei box filtro d
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.416 e' preparata solo in TEST. PROD resta v5.411.
+La versione v5.417 e' preparata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -56,6 +56,7 @@ Contiene:
 - Autovalutazione v5.414 TEST: rimossa dal `Cruscotto mattutino` la barra informativa `Matchpoint va aggiornato manualmente...`, gia nota allo staff. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.415 TEST: il `Cruscotto mattutino` mostra al massimo 20 righe per volta per il filtro attivo, mantenendo i conteggi reali e aggiungendo `Mostra altri 20` quando esistono altri soci. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.416 TEST: hotfix del `Cruscotto mattutino`; il limite progressivo a 20 righe usa uno stato separato dalla funzione di calcolo, evitando il blocco dei box filtro. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
+- Autovalutazione v5.417 TEST: aggiunta ricerca interna al `Cruscotto mattutino` / `Processo utenti`, estesa la ricerca a ID socio, email, telefono, token e dati del giro, e resa stabile la ricerca nello `Storico` mentre si digita. Serve a ritrovare anche soci usciti dai primi 20 o finiti in filtri diversi. Nessuna modifica a invii, scheduler, Gmail, storico dati, Matchpoint reale o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
 - Documentazione aggiornata per v5.416 TEST.
 

@@ -945,6 +945,11 @@
     .assessment-process-filter-title { display:block; font-size:12px; font-weight:900; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .assessment-process-filter-count { display:block; margin-top:2px; font-size:11px; font-weight:850; color:#667085; line-height:1.2; white-space:nowrap; }
     .assessment-process-filter.active .assessment-process-filter-count { color:rgba(255,255,255,.84); }
+    .assessment-process-search { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; margin-bottom:10px; }
+    .assessment-process-search label { display:block; margin:0 0 5px; font-size:12px; font-weight:900; color:#344054; }
+    .assessment-process-search-row { display:flex; gap:8px; align-items:center; }
+    .assessment-process-search-row input { flex:1 1 260px; min-width:0; height:38px; border:1px solid #d9e0ea; border-radius:8px; padding:0 10px; font-size:13px; font-weight:750; color:#101828; }
+    .assessment-process-search-row .assessment-email-mini { padding:8px 10px; font-size:11px; border-radius:7px; }
     .assessment-process-table { font-size:12px; }
     .assessment-process-table th, .assessment-process-table td { padding:9px 8px; vertical-align:top; }
     .assessment-process-table th:nth-child(1) { width:13%; }
@@ -1116,6 +1121,8 @@
       .assessment-morning-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-filter-grid.history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .assessment-process-search-row { align-items:stretch; flex-wrap:wrap; }
+      .assessment-process-search-row input { flex:1 1 100%; }
       .assessment-email-timeline { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-message-grid { grid-template-columns:1fr; }
     }
@@ -1144,6 +1151,7 @@
       .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
       .assessment-process-routine-bar { grid-template-columns:1fr; }
+      .assessment-process-search-row { flex-direction:column; align-items:stretch; }
       .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
       .assessment-morning-grid { grid-template-columns:1fr; }
       .assessment-email-filter-grid.history-filters { grid-template-columns:1fr; }
@@ -5205,7 +5213,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.416';
+    const APP_VERSION = '5.417';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21400,7 +21408,46 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentSearchMatches(member, search) {
       if (!search) return true;
-      return normalizeText(`${playerFullName(member)} ${member.phone || ''} ${member.email || ''}`).includes(normalizeText(search));
+      return normalizeText(`${playerFullName(member)} ${member?.id || ''} ${member?.memberId || ''} ${member?.phone || ''} ${member?.email || ''} ${assessmentEmailMemberEmail(member) || ''}`).includes(normalizeText(search));
+    }
+    function assessmentEmailRowSearchText(row) {
+      const member = row?.member || {};
+      const info = row?.info || {};
+      const rec = row?.rec || info.rec || {};
+      const response = row?.response || info.response || {};
+      return normalizeText([
+        playerFullName(member),
+        member.id,
+        member.memberId,
+        member.code,
+        member.phone,
+        member.email,
+        assessmentEmailMemberEmail(member),
+        rec.memberId,
+        rec.memberName,
+        rec.phone,
+        rec.email,
+        rec.token,
+        rec.emailOriginalRecipient,
+        rec.emailActualRecipient,
+        rec.emailReplyFrom,
+        rec.emailReplySubject,
+        response.memberId,
+        response.member_id,
+        response.memberName,
+        response.member_name,
+        response.name,
+        response.nome,
+        response.email,
+        response.token,
+        response.declared_level,
+        response.calculated_level
+      ].filter(value => value !== null && value !== undefined && String(value).trim() !== '').join(' '));
+    }
+    function assessmentEmailRowMatchesSearch(row, search) {
+      const query = normalizeText(search || '');
+      if (!query) return true;
+      return assessmentEmailRowSearchText(row).includes(query);
     }
     function assessmentPauseKeyFor(member, rec=null) {
       const token = cleanCell(rec?.token || '');
@@ -22454,13 +22501,13 @@ Per confermare scrivi ELIMINA.`);
         return assessmentEmailMemberApplied(row.member, row.info) || row.info.paused;
       }).sort((a,b) => assessmentEmailCycleDate(b.member, b.info) - assessmentEmailCycleDate(a.member, a.info));
     }
-    function assessmentEmailHistoryRows() {
-      const search = cleanCell(document.getElementById('assessmentHistorySearch')?.value || '');
-      const status = document.getElementById('assessmentHistoryStatus')?.value || 'all';
-      const period = document.getElementById('assessmentHistoryPeriod')?.value || '30';
-      const channel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
-      const reply = document.getElementById('assessmentHistoryReply')?.value || 'all';
-      const level = document.getElementById('assessmentHistoryLevel')?.value || 'all';
+    function assessmentEmailHistoryRows(filters={}) {
+      const search = cleanCell(filters.search !== undefined ? filters.search : (document.getElementById('assessmentHistorySearch')?.value || window.assessmentHistorySearchText || ''));
+      const status = filters.status || document.getElementById('assessmentHistoryStatus')?.value || 'all';
+      const period = filters.period || document.getElementById('assessmentHistoryPeriod')?.value || '30';
+      const channel = filters.channel || document.getElementById('assessmentHistoryChannel')?.value || 'all';
+      const reply = filters.reply || document.getElementById('assessmentHistoryReply')?.value || 'all';
+      const level = filters.level || document.getElementById('assessmentHistoryLevel')?.value || 'all';
       const now = new Date();
       const periodStart = new Date(now);
       if (period === '30') periodStart.setDate(now.getDate() - 30);
@@ -22474,7 +22521,7 @@ Per confermare scrivi ELIMINA.`);
         const channelKey = assessmentEmailHistoryChannelKey(row);
         const hasReply = !!assessmentEmailReplyAtForRow(row);
         if (!applied && !paused) return false;
-        if (search && !assessmentSearchMatches(row.member, search)) return false;
+        if (search && !assessmentEmailRowMatchesSearch(row, search)) return false;
         if (status === 'auto' && (!applied || !assessmentEmailIsAutoApplicable(row.response))) return false;
         if (status === 'staff' && (!applied || assessmentEmailIsAutoApplicable(row.response))) return false;
         if (status === 'paused' && !paused) return false;
@@ -22524,7 +22571,7 @@ Per confermare scrivi ELIMINA.`);
       const matches = [];
       sources.forEach(source => {
         source.rows.forEach(row => {
-          if (!assessmentSearchMatches(row.member, query)) return;
+          if (!assessmentEmailRowMatchesSearch(row, query)) return;
           const key = assessmentEmailSearchMemberKey(row.member);
           if (seen.has(key)) return;
           seen.add(key);
@@ -22580,6 +22627,8 @@ Per confermare scrivi ELIMINA.`);
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
     window.assessmentProcessFilter = window.assessmentProcessFilter || 'all';
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
+    window.assessmentProcessSearchText = window.assessmentProcessSearchText || '';
+    window.assessmentHistorySearchText = window.assessmentHistorySearchText || '';
     function assessmentProcessDateIsToday(value) {
       const ms = assessmentEmailDateMs(value);
       if (!ms) return false;
@@ -22772,10 +22821,11 @@ Per confermare scrivi ELIMINA.`);
           - assessmentEmailDateMs(a.row?.response?.submitted_at || a.row?.rec?.sentAt || a.row?.rec?.createdAt);
       });
     }
-    function assessmentProcessFilterConfig(rows) {
-      const count = filter => rows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
+    function assessmentProcessFilterConfig(rows, search='') {
+      const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
+      const count = filter => sourceRows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
       return [
-        ['all', 'Tutti', `${rows.length} soci`],
+        ['all', 'Tutti', `${sourceRows.length} soci`],
         ['today', 'Oggi', `${count('today')} oggi`],
         ['queue', 'Da inviare', `${count('queue')} soci`],
         ['pending', 'In attesa', `${count('pending')} soci`],
@@ -22788,6 +22838,19 @@ Per confermare scrivi ELIMINA.`);
     }
     function setAssessmentProcessFilter(filter='all') {
       window.assessmentProcessFilter = filter || 'all';
+      window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
+      renderAssessmentEmailMorningPanel();
+    }
+    function getAssessmentProcessSearchValue() {
+      return cleanCell(document.getElementById('assessmentProcessSearch')?.value || window.assessmentProcessSearchText || '');
+    }
+    function setAssessmentProcessSearch(value='') {
+      window.assessmentProcessSearchText = cleanCell(value || '');
+      window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
+      renderAssessmentEmailMorningPanel();
+    }
+    function clearAssessmentProcessSearch() {
+      window.assessmentProcessSearchText = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
@@ -22869,11 +22932,22 @@ Per confermare scrivi ELIMINA.`);
       if (!box) return;
       const rows = assessmentProcessRows();
       const activeFilter = window.assessmentProcessFilter || 'all';
-      const filteredRows = rows.filter(row => activeFilter === 'all' || (activeFilter === 'today' ? row.today : row.filter === activeFilter));
+      const search = getAssessmentProcessSearchValue();
+      window.assessmentProcessSearchText = search;
+      const searchableRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
+      const filteredRows = searchableRows.filter(row => activeFilter === 'all' || (activeFilter === 'today' ? row.today : row.filter === activeFilter));
       const visibleLimit = getAssessmentProcessVisibleLimit();
       const visibleRows = filteredRows.slice(0, visibleLimit);
       const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
-      const filters = assessmentProcessFilterConfig(rows);
+      const filters = assessmentProcessFilterConfig(rows, search);
+      const searchHtml = `<div class="assessment-process-search">
+        <label for="assessmentProcessSearch">Cerca nel processo</label>
+        <div class="assessment-process-search-row">
+          <input id="assessmentProcessSearch" value="${escapeHtml(search)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchText=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
+          <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
+          <button class="assessment-email-mini" type="button" onclick="clearAssessmentProcessSearch()">Pulisci</button>
+        </div>
+      </div>`;
       const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''}" onclick="setAssessmentProcessFilter('${escapeJs(key)}')">
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(count)}</span>
@@ -22881,10 +22955,14 @@ Per confermare scrivi ELIMINA.`);
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
         : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
+      const emptyHtml = search && searchableRows.length && !visibleRows.length && activeFilter !== 'all'
+        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" onclick="setAssessmentProcessFilter('all')">Tutti</button> per vederlo.</div>`
+        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questa vista.');
       const tableHtml = visibleRows.length
         ? `<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Contatto</th><th>Ultimo evento</th><th>Invii</th><th>Risposta</th><th>Livello</th><th>Matchpoint</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
-        : assessmentEmailEmpty('Nessun socio in questa vista.');
+        : emptyHtml;
       box.innerHTML = `${assessmentProcessRoutineBarHtml(rows)}
+        ${searchHtml}
         ${filterHtml}
         ${tableHtml}`;
     }
@@ -23211,25 +23289,41 @@ Per confermare scrivi ELIMINA.`);
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
     }
-    function renderAssessmentEmailHistoryPanel() {
+    function renderAssessmentEmailHistoryPanel(options={}) {
       const box = document.getElementById('assessmentEmailHistoryContent');
       if (!box) return;
-      const currentSearch = document.getElementById('assessmentHistorySearch')?.value || '';
+      const activeEl = document.activeElement;
+      const preserveSearchFocus = !!(options.preserveFocus && activeEl?.id === 'assessmentHistorySearch');
+      const selectionStart = preserveSearchFocus ? activeEl.selectionStart : null;
+      const selectionEnd = preserveSearchFocus ? activeEl.selectionEnd : null;
+      const currentSearch = document.getElementById('assessmentHistorySearch')?.value || window.assessmentHistorySearchText || '';
+      window.assessmentHistorySearchText = currentSearch;
       const currentStatus = document.getElementById('assessmentHistoryStatus')?.value || 'all';
       const currentPeriod = document.getElementById('assessmentHistoryPeriod')?.value || '30';
       const currentChannel = document.getElementById('assessmentHistoryChannel')?.value || 'all';
       const currentReply = document.getElementById('assessmentHistoryReply')?.value || 'all';
       const currentLevel = document.getElementById('assessmentHistoryLevel')?.value || 'all';
-      const rows = assessmentEmailHistoryRows();
+      const rows = assessmentEmailHistoryRows({ search:currentSearch, status:currentStatus, period:currentPeriod, channel:currentChannel, reply:currentReply, level:currentLevel });
       const filterHtml = `<div class="assessment-email-filter-grid history-filters">
-        <div><label>Cerca nello storico</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome o cognome" oninput="renderAssessmentEmailHistoryPanel()"></div>
+        <div><label>Cerca nello storico</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email, telefono o ID" oninput="window.assessmentHistorySearchText=this.value; renderAssessmentEmailHistoryPanel({ preserveFocus:true })"></div>
         <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="staff" ${currentStatus === 'staff' ? 'selected' : ''}>Validato staff</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
         <div><label>Periodo</label><select id="assessmentHistoryPeriod" onchange="renderAssessmentEmailHistoryPanel()"><option value="30" ${currentPeriod === '30' ? 'selected' : ''}>Ultimi 30 giorni</option><option value="90" ${currentPeriod === '90' ? 'selected' : ''}>Ultimi 90 giorni</option><option value="year" ${currentPeriod === 'year' ? 'selected' : ''}>Anno corrente</option><option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Tutto</option></select></div>
         <div><label>Invio scheda</label><select id="assessmentHistoryChannel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentChannel === 'all' ? 'selected' : ''}>Tutti</option><option value="email_sent" ${currentChannel === 'email_sent' ? 'selected' : ''}>Email inviata</option><option value="email_not_sent" ${currentChannel === 'email_not_sent' ? 'selected' : ''}>Email non inviata</option><option value="whatsapp" ${currentChannel === 'whatsapp' ? 'selected' : ''}>Recupero WhatsApp</option></select></div>
         <div><label>Risposta socio</label><select id="assessmentHistoryReply" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentReply === 'all' ? 'selected' : ''}>Tutte</option><option value="with" ${currentReply === 'with' ? 'selected' : ''}>Con risposta</option><option value="without" ${currentReply === 'without' ? 'selected' : ''}>Senza risposta</option></select></div>
         <div><label>Livello finale</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
       </div>`;
-      if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.'));
+      if (!rows.length) {
+        box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.');
+        if (preserveSearchFocus) {
+          setTimeout(() => {
+            const input = document.getElementById('assessmentHistorySearch');
+            if (!input) return;
+            input.focus();
+            if (input.setSelectionRange && selectionStart !== null) input.setSelectionRange(selectionStart, selectionEnd);
+          }, 0);
+        }
+        return;
+      }
       box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${rows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
@@ -23265,6 +23359,14 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Conferma livello">${confirmationHtml}</td>
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
+      if (preserveSearchFocus) {
+        setTimeout(() => {
+          const input = document.getElementById('assessmentHistorySearch');
+          if (!input) return;
+          input.focus();
+          if (input.setSelectionRange && selectionStart !== null) input.setSelectionRange(selectionStart, selectionEnd);
+        }, 0);
+      }
     }
     function renderAssessmentEmailMatchpointPanel() {
       const box = document.getElementById('assessmentEmailMatchpointContent');
@@ -23691,6 +23793,7 @@ Per confermare scrivi ELIMINA.`);
       await assessmentEmailRunAutoPostProcessing({ source:'manual' });
     }
     function assessmentEmailClearHistoryFilters() {
+      window.assessmentHistorySearchText = '';
       ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryReply','assessmentHistoryLevel'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
