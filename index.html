@@ -942,6 +942,12 @@
     .assessment-process-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); gap:7px; margin-bottom:10px; }
     .assessment-process-filter { min-width:0; text-align:left; border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 8px; cursor:pointer; box-shadow:0 1px 3px rgba(31,71,136,.04); }
     .assessment-process-filter.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .assessment-process-filter.search-hit { border-color:#f59e0b; background:#fff8e8; box-shadow:0 0 0 2px rgba(245,158,11,.20), 0 5px 14px rgba(31,71,136,.10); }
+    .assessment-process-filter.search-hit .assessment-process-filter-title { color:#7a4d00; }
+    .assessment-process-filter.search-hit .assessment-process-filter-count { color:#8a5a00; }
+    .assessment-process-filter.active.search-hit { background:var(--primary); border-color:#f59e0b; color:#fff; box-shadow:0 0 0 3px rgba(245,158,11,.36), 0 5px 14px rgba(31,71,136,.14); }
+    .assessment-process-filter.active.search-hit .assessment-process-filter-title,
+    .assessment-process-filter.active.search-hit .assessment-process-filter-count { color:#fff; }
     .assessment-process-filter-title { display:block; font-size:12px; font-weight:900; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .assessment-process-filter-count { display:block; margin-top:2px; font-size:11px; font-weight:850; color:#667085; line-height:1.2; white-space:nowrap; }
     .assessment-process-filter.active .assessment-process-filter-count { color:rgba(255,255,255,.84); }
@@ -5209,7 +5215,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.419';
+    const APP_VERSION = '5.420';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22901,6 +22907,18 @@ Per confermare scrivi ELIMINA.`);
         ['completed', 'Completati', `${count('completed')} chiusi`]
       ];
     }
+    function assessmentProcessSearchStageKeys(rows, search='') {
+      const cleanSearch = cleanCell(search || '');
+      const keys = new Set();
+      if (!cleanSearch) return keys;
+      rows
+        .filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch))
+        .forEach(row => {
+          if (row.filter) keys.add(row.filter);
+          if (row.today) keys.add('today');
+        });
+      return keys;
+    }
     function setAssessmentProcessFilter(filter='all') {
       window.assessmentProcessFilter = filter || 'all';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
@@ -23005,6 +23023,7 @@ Per confermare scrivi ELIMINA.`);
       const visibleRows = filteredRows.slice(0, visibleLimit);
       const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
       const filters = assessmentProcessFilterConfig(rows, search);
+      const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
       const searchHtml = `<div class="assessment-process-search">
         <label for="assessmentProcessSearch">Cerca nel processo</label>
         <div class="assessment-process-search-row">
@@ -23013,7 +23032,7 @@ Per confermare scrivi ELIMINA.`);
           <button class="assessment-email-mini" type="button" onclick="clearAssessmentProcessSearch()">Pulisci</button>
         </div>
       </div>`;
-      const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''}" onclick="setAssessmentProcessFilter('${escapeJs(key)}')">
+      const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" onclick="setAssessmentProcessFilter('${escapeJs(key)}')">
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(count)}</span>
       </button>`).join('')}</div>`;
