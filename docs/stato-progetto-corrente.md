@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 21:18
+Ultimo aggiornamento: 2026-05-14 23:50
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.418 | `test-preview` | `58c7892` |
-| TEST sviluppo | v5.418 | `test/accessi-staff-guidati` | `58c7892` |
+| TEST | v5.419 | `test-preview` | `7946ef6` |
+| TEST sviluppo | v5.419 | `test/accessi-staff-guidati` | `7946ef6` |
 
-Nota: TEST e PROD sono allineati a v5.418. Il deploy PROD ha promosso la UI Autovalutazione fino a v5.418, ma non ha attivato nessun cron email Autovalutazione in PROD.
+Nota: TEST contiene la correzione v5.419 per l'allineamento dei log cloud Autovalutazione nel cruscotto mattutino. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: TEST e PROD sono allineati a v5.418. Il deploy PROD ha promosso la UI Auto
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.418 e' pubblicata in TEST e PROD.
+La versione v5.419 e' pubblicata in TEST. PROD resta v5.418.
 
 Contiene:
 
@@ -58,8 +58,9 @@ Contiene:
 - Autovalutazione v5.416 TEST: hotfix del `Cruscotto mattutino`; il limite progressivo a 20 righe usa uno stato separato dalla funzione di calcolo, evitando il blocco dei box filtro. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.417 TEST: aggiunta ricerca interna al `Cruscotto mattutino` / `Processo utenti`, estesa la ricerca a ID socio, email, telefono, token e dati del giro, e resa stabile la ricerca nello `Storico` mentre si digita. Serve a ritrovare anche soci usciti dai primi 20 o finiti in filtri diversi. Nessuna modifica a invii, scheduler, Gmail, storico dati, Matchpoint reale o PROD.
 - Autovalutazione v5.418 TEST/PROD: i controlli manuali Gmail `Aggiorna risposte email` e `Controlla mancate consegne` non compaiono piu nei pannelli operativi e sono disponibili solo dentro `Strumenti tecnici avanzati`. Il deploy PROD non ha applicato SQL scheduler e non ha attivato cron email Autovalutazione.
+- Autovalutazione v5.419 TEST: il `Cruscotto mattutino` aggancia i log cloud `assessment_email` anche tramite ID giocatore `memberId`/`PMO-...`, importa automaticamente in modo silenzioso gli ultimi log cloud quando si apre Autovalutazione, archivia il token precedente se arriva un nuovo invio e considera un nuovo invio successivo a un ciclo gia chiuso come nuovo ciclo `In attesa`, non come `Completato`.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.418 TEST/PROD.
+- Documentazione aggiornata per v5.419 TEST e v5.418 PROD.
 
 Non contiene modifiche a:
 

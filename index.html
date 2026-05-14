@@ -5209,7 +5209,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.418';
+    const APP_VERSION = '5.419';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -17602,6 +17602,20 @@ Grazie!`
     function getAssessmentTokenRecord(memberId) {
       return assessmentTokens[String(memberId)] || null;
     }
+    function assessmentMemberMatchesAnyId(member, value) {
+      const needle = normalizeText(value || '');
+      if (!member || !needle) return false;
+      return [
+        member.id,
+        member.memberId,
+        member.playerId,
+        member.code,
+        member.matchpointId
+      ].some(item => normalizeText(item || '') === needle);
+    }
+    function findAssessmentMemberByAnyId(value) {
+      return (giocatori || []).find(member => assessmentMemberMatchesAnyId(member, value)) || null;
+    }
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
     }
@@ -21966,7 +21980,19 @@ Per confermare scrivi ELIMINA.`);
       const diff = assessmentEmailLevelDiff(response);
       return diff !== null && diff <= 0.5 && normalizeText(response?.consistency_status || '') !== 'low';
     }
+    function assessmentEmailHasNewerOpenCycle(member, info) {
+      const rec = info?.rec || null;
+      if (!member || !rec || info?.response) return false;
+      const status = normalizeText(rec.status || '');
+      if (!['created', 'sent'].includes(status)) return false;
+      const recMs = assessmentEmailDateMs(rec.sentAt || rec.restartAt || rec.createdAt || rec.registeredAt);
+      if (!recMs) return false;
+      const latest = assessmentLatestAppliedLevelInfo(member);
+      const appliedMs = Math.max(latest?.time || 0, assessmentEmailDateMs(member.selfAssessmentDate || ''));
+      return !appliedMs || recMs > appliedMs;
+    }
     function assessmentEmailMemberApplied(member, info) {
+      if (assessmentEmailHasNewerOpenCycle(member, info)) return false;
       return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
     }
     function assessmentCurrentOperatorName() {
@@ -22273,7 +22299,7 @@ Per confermare scrivi ELIMINA.`);
           .sort((a,b) => assessmentEmailDateMs(a.sentAt) - assessmentEmailDateMs(b.sentAt));
         let updated = 0;
         sends.forEach(payload => {
-          const member = giocatori.find(g => String(g.id) === String(payload.memberId || ''));
+          const member = findAssessmentMemberByAnyId(payload.memberId || payload.memberCode || payload.memberLocalId || '');
           if (!member) return;
           const key = String(member.id);
           const rec = assessmentTokens[key] || {
@@ -22285,12 +22311,38 @@ Per confermare scrivi ELIMINA.`);
             createdAt:payload.sentAt || new Date().toISOString(),
             completedAt:null
           };
+          const incomingToken = cleanCell(payload.token || '');
+          const previousToken = cleanCell(rec.token || '');
           const previousSent = cleanCell(rec.sentAt || '');
+          if (incomingToken && previousToken && normalizeText(incomingToken) !== normalizeText(previousToken)) {
+            const previousTokens = Array.isArray(rec.previousTokens) ? rec.previousTokens.slice() : [];
+            if (!previousTokens.some(item => normalizeText(item?.token || '') === normalizeText(previousToken))) {
+              const archived = { ...rec, archivedAt:payload.sentAt || new Date().toISOString() };
+              delete archived.previousTokens;
+              previousTokens.push(archived);
+            }
+            rec.previousTokens = previousTokens;
+            rec.completedAt = null;
+            rec.emailReplyStatus = '';
+            rec.emailReplyAt = '';
+            rec.emailReplyFrom = '';
+            rec.emailReplySubject = '';
+            rec.emailReplySnippet = '';
+            rec.emailReplyText = '';
+            rec.emailReplyGmailMessageId = '';
+            rec.emailBouncedAt = '';
+            rec.emailBounceReason = '';
+            rec.emailBounceGmailMessageId = '';
+            rec.emailStatus = '';
+            rec.registeredAt = '';
+          }
           rec.memberId = key;
+          rec.memberCode = cleanCell(member.memberId || payload.memberCode || payload.memberId || '');
+          rec.cloudMemberId = cleanCell(payload.memberId || '');
           rec.memberName = playerFullName(member);
           rec.phone = member.phone || rec.phone || '';
           rec.email = assessmentEmailMemberEmail(member) || rec.email || '';
-          rec.token = cleanCell(payload.token || rec.token || '');
+          rec.token = cleanCell(incomingToken || rec.token || '');
           rec.status = 'sent';
           rec.sentAt = cleanCell(payload.sentAt || rec.sentAt || new Date().toISOString());
           rec.registeredToSupabase = true;
@@ -22324,12 +22376,27 @@ Per confermare scrivi ELIMINA.`);
         return { ok:false, error:err?.message || err };
       }
     }
+    async function maybeAutoImportAssessmentEmailCloudLogs() {
+      if (window.assessmentEmailCloudLogAutoImportInFlight) return;
+      const now = Date.now();
+      if (now - (window.assessmentEmailCloudLogAutoImportLastAt || 0) < 60000) return;
+      window.assessmentEmailCloudLogAutoImportInFlight = true;
+      window.assessmentEmailCloudLogAutoImportLastAt = now;
+      try {
+        const result = await assessmentEmailImportCloudLogs({ silent:true });
+        if (result?.ok && result.imported > 0) renderAssessmentEmailPanels();
+      } catch (err) {
+        console.warn('Aggiornamento automatico log autovalutazione non riuscito:', err);
+      } finally {
+        window.assessmentEmailCloudLogAutoImportInFlight = false;
+      }
+    }
     function assessmentEmailSentRecordsForGmail() {
       return assessmentEmailAllOperationalRows().map(row => {
         const rec = row.rec || {};
         if (rec.status !== 'sent' && !rec.gmailThreadId && !rec.gmailMessageId) return null;
         return {
-          memberId: String(row.member?.id || rec.memberId || ''),
+          memberId: String(row.member?.memberId || rec.memberCode || row.member?.id || rec.memberId || ''),
           memberName: playerFullName(row.member) || rec.memberName || '',
           token: cleanCell(rec.token || ''),
           originalRecipient: cleanCell(rec.emailOriginalRecipient || assessmentEmailMemberEmail(row.member) || ''),
@@ -22344,7 +22411,7 @@ Per confermare scrivi ELIMINA.`);
       const rows = Array.isArray(matches) ? matches : [];
       let updated = 0;
       rows.forEach(item => {
-        const member = giocatori.find(g => String(g.id) === String(item.memberId || ''));
+        const member = findAssessmentMemberByAnyId(item.memberId || item.memberCode || '');
         if (!member) return;
         const rec = getAssessmentTokenRecord(member.id);
         if (!rec) return;
@@ -22366,7 +22433,7 @@ Per confermare scrivi ELIMINA.`);
       const rows = Array.isArray(matches) ? matches : [];
       const updatedRows = [];
       rows.forEach(item => {
-        const member = giocatori.find(g => String(g.id) === String(item.memberId || ''));
+        const member = findAssessmentMemberByAnyId(item.memberId || item.memberCode || '');
         if (!member) return;
         const rec = getAssessmentTokenRecord(member.id);
         if (!rec) return;
@@ -22625,6 +22692,8 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
     window.assessmentProcessSearchText = window.assessmentProcessSearchText || '';
     window.assessmentHistorySearchText = window.assessmentHistorySearchText || '';
+    window.assessmentEmailCloudLogAutoImportLastAt = window.assessmentEmailCloudLogAutoImportLastAt || 0;
+    window.assessmentEmailCloudLogAutoImportInFlight = window.assessmentEmailCloudLogAutoImportInFlight || false;
     function assessmentProcessDateIsToday(value) {
       const ms = assessmentEmailDateMs(value);
       if (!ms) return false;
@@ -24093,6 +24162,7 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentPostPanel();
       renderAssessmentArchivePanel();
       renderAssessmentEmailPanels();
+      maybeAutoImportAssessmentEmailCloudLogs();
       updateAssessmentAdminDemoPreview();
     }
     function updateAssessmentAdminDemoPreview() {
