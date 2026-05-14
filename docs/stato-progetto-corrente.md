@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 20:07
+Ultimo aggiornamento: 2026-05-14 21:18
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.418 | `test-preview` | da pubblicare |
-| TEST sviluppo | v5.418 | `test/accessi-staff-guidati` | in lavorazione |
+| PROD | v5.418 | `main` | `58c7892` |
+| TEST | v5.418 | `test-preview` | `58c7892` |
+| TEST sviluppo | v5.418 | `test/accessi-staff-guidati` | `58c7892` |
 
-Nota: PROD resta fermo a v5.411. TEST v5.418 sposta i controlli manuali Gmail `Aggiorna risposte email` e `Controlla mancate consegne` dentro `Strumenti tecnici avanzati`, senza modificare logiche di invio, SQL, Edge Function, scheduler, Matchpoint o PROD.
+Nota: TEST e PROD sono allineati a v5.418. Il deploy PROD ha promosso la UI Autovalutazione fino a v5.418, ma non ha attivato nessun cron email Autovalutazione in PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.418 sposta i controlli manuali Gmail `A
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.418 e' preparata solo in TEST. PROD resta v5.411.
+La versione v5.418 e' pubblicata in TEST e PROD.
 
 Contiene:
 
@@ -57,16 +57,16 @@ Contiene:
 - Autovalutazione v5.415 TEST: il `Cruscotto mattutino` mostra al massimo 20 righe per volta per il filtro attivo, mantenendo i conteggi reali e aggiungendo `Mostra altri 20` quando esistono altri soci. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.416 TEST: hotfix del `Cruscotto mattutino`; il limite progressivo a 20 righe usa uno stato separato dalla funzione di calcolo, evitando il blocco dei box filtro. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
 - Autovalutazione v5.417 TEST: aggiunta ricerca interna al `Cruscotto mattutino` / `Processo utenti`, estesa la ricerca a ID socio, email, telefono, token e dati del giro, e resa stabile la ricerca nello `Storico` mentre si digita. Serve a ritrovare anche soci usciti dai primi 20 o finiti in filtri diversi. Nessuna modifica a invii, scheduler, Gmail, storico dati, Matchpoint reale o PROD.
-- Autovalutazione v5.418 TEST: i controlli manuali Gmail `Aggiorna risposte email` e `Controlla mancate consegne` non compaiono piu nei pannelli operativi e sono disponibili solo dentro `Strumenti tecnici avanzati`. Nessuna modifica a invii, scheduler, Gmail backend, storico dati, Matchpoint reale o PROD.
+- Autovalutazione v5.418 TEST/PROD: i controlli manuali Gmail `Aggiorna risposte email` e `Controlla mancate consegne` non compaiono piu nei pannelli operativi e sono disponibili solo dentro `Strumenti tecnici avanzati`. Il deploy PROD non ha applicato SQL scheduler e non ha attivato cron email Autovalutazione.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.418 TEST.
+- Documentazione aggiornata per v5.418 TEST/PROD.
 
 Non contiene modifiche a:
 
 - Matchpoint;
 - import dati.
 
-Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Il job una tantum `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' gia eseguito e rimosso. Non sono attive routine email automatiche in PROD.
+Nota: il deploy PROD v5.418 non ha applicato SQL scheduler e non ha attivato routine email automatiche. Il controllo live su Supabase PROD del 2026-05-14 21:18 mostra in `cron.job` solo `pmo-data-routines-dispatcher-prod`, cioe' lo scheduler dati/Matchpoint gia esistente. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Il job una tantum TEST `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' gia eseguito e rimosso.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
