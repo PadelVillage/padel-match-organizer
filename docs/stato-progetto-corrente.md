@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-14 11:22
+Ultimo aggiornamento: 2026-05-14 14:55
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.411 | `main` | `711efe8` |
-| TEST | v5.413 | `test-preview` | da pubblicare |
-| TEST sviluppo | v5.413 | `test/accessi-staff-guidati` | in lavorazione |
+| TEST | v5.414 | `test-preview` | da pubblicare |
+| TEST sviluppo | v5.414 | `test/accessi-staff-guidati` | in lavorazione |
 
-Nota: PROD resta fermo a v5.411. TEST v5.413 riorganizza solo la UI Autovalutazione, senza modificare scheduler, SQL, Edge Function, Matchpoint o PROD.
+Nota: PROD resta fermo a v5.411. TEST v5.414 rimuove solo la barra informativa Matchpoint dal cruscotto Autovalutazione, senza modificare logiche UI, SQL, Edge Function, Matchpoint o PROD.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.411. TEST v5.413 riorganizza solo la UI Autovalutazi
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.413 e' preparata solo in TEST. PROD resta v5.411.
+La versione v5.414 e' preparata solo in TEST. PROD resta v5.411.
 
 Contiene:
 
@@ -51,16 +51,18 @@ Contiene:
 - Autovalutazione v5.409 TEST con nuova tab `Matchpoint`: livelli validati internamente da riportare manualmente su Matchpoint, bottone `Segna inserito su Matchpoint` e traccia nello storico.
 - Autovalutazione v5.410 TEST con demo non persistente `?env=test&demoMatchpoint=1` per mostrare una riga fittizia in Matchpoint senza salvare dati reali.
 - Autovalutazione v5.411 TEST con nuova tab `Cruscotto mattutino`: riepiloga Problemi, Post-invio, Da controllare, Matchpoint e Da inviare con azioni rapide verso i flussi esistenti.
-- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v14 con `verify_jwt=false`, controllo interno JWT staff o secret Vault, filtro tecnico `targetMemberIds` per test mirati e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine. Nota operativa: il cron TEST generale e' stato rimosso il 2026-05-14 07:39 per evitare invii automatici reali; per il 2026-05-14 09:00 Europe/Rome e' schedulato un solo test reale sul socio `PMO-000948`.
+- Autovalutazione v5.412 TEST con prima routine backend email: invio massimo 10 soci alle 05:45 e controlli Gmail automatici alle 06:10, 10:30, 15:30 e 20:30. Edge Function TEST `assessment-email-send` v14 con `verify_jwt=false`, controllo interno JWT staff o secret Vault, filtro tecnico `targetMemberIds` per test mirati e GRANT espliciti `service_role` per le tabelle lette/scritte dalla routine. Nota operativa: il cron TEST generale e' stato rimosso il 2026-05-14 07:39 per evitare invii automatici reali; il test reale controllato delle 09:00 Europe/Rome sul socio `PMO-000948` ha inviato una sola email.
 - Autovalutazione v5.413 TEST con nuovo `Cruscotto mattutino` tabellare `Processo utenti`: assorbe le informazioni della vecchia tab `Stato invio`, mantiene come tab principali solo `Cruscotto mattutino`, `Storico`, `Testi` e `Scheda pubblica`, e usa filtri rapidi (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) alimentati dalle logiche gia esistenti.
-- Documentazione aggiornata per v5.413 TEST.
+- Autovalutazione v5.414 TEST: rimossa dal `Cruscotto mattutino` la barra informativa `Matchpoint va aggiornato manualmente...`, gia nota allo staff. Nessuna modifica a invii, scheduler, Gmail, storico, Matchpoint reale o PROD.
+- Routine TEST una tantum: per il 2026-05-14 16:30 Europe/Rome e' schedulato il job `pmo-assessment-email-single-test-1630`, mirato al solo socio `PMO-000948`. Non coinvolge la coda generale e non tocca PROD.
+- Documentazione aggiornata per v5.414 TEST.
 
 Non contiene modifiche a:
 
 - Matchpoint;
 - import dati.
 
-Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Resta attivo solo il job una tantum `pmo-assessment-email-single-test-0900` per il test controllato `PMO-000948` delle 09:00. Non sono attive in PROD.
+Nota: le modifiche Supabase/funzione Edge della v5.412 sono solo TEST. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Resta attivo solo il job una tantum `pmo-assessment-email-single-test-1630` per il test controllato `PMO-000948` delle 16:30. Non sono attive in PROD.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
