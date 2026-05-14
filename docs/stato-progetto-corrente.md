@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.419 | `test-preview` | `7946ef6` |
-| TEST sviluppo | v5.419 | `test/accessi-staff-guidati` | `7946ef6` |
+| TEST | v5.419 | `test-preview` | `b01ab3f` |
+| TEST sviluppo | v5.419 | `test/accessi-staff-guidati` | `b01ab3f` |
 
 Nota: TEST contiene la correzione v5.419 per l'allineamento dei log cloud Autovalutazione nel cruscotto mattutino. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
