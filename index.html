@@ -5215,7 +5215,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.422';
+    const APP_VERSION = '5.423';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9570,6 +9570,7 @@ Grazie.`
       const exists = findMatchingMemberIndex(candidate) >= 0;
       if (exists) { showAlert('❌ Socio già esistente: telefono, email o nome già presenti.', 'danger'); return null; }
       const gender = genderValue;
+      const now = new Date().toISOString();
       const newMember = ensureMemberId({
         id: makeId(), memberId: '', firstName, surname, name: fullName,
         phone: candidate.phone,
@@ -9590,13 +9591,16 @@ Grazie.`
           notice: cleanCell(document.getElementById('newNotice')?.value || ''),
           matchType: cleanCell(document.getElementById('newPreferredMatchType')?.value || ''),
           source: 'nuovo socio',
-          updatedAt: new Date().toISOString()
-        }
+          updatedAt: now
+        },
+        createdAt: now,
+        updatedAt: now
       });
       giocatori.push(newMember);
       save('giocatori', giocatori);
       hideAddMember(); displayMembers(); updateStats();
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
+      pmoQueueImmediateMemberCloudSync(newMember, 'salvare subito il nuovo socio su Supabase');
       if (!options.skipSuccessAlert) showAlert('✅ Socio aggiunto', 'success');
       return newMember;
     }
@@ -9972,6 +9976,7 @@ Grazie.`
         availabilitySource: cleanCell(current.availabilitySource || 'scheda socio')
       };
       if (sameData(currentEditable, nextEditable)) return showAlert('ℹ️ Nessuna modifica da salvare.', 'info');
+      const now = new Date().toISOString();
       giocatori[idx] = {
         ...current,
         id: current.id || makeId(),
@@ -9980,33 +9985,40 @@ Grazie.`
         name: fullName,
         availabilityProfile: {
           ...nextEditable.availabilityProfile,
-          updatedAt: new Date().toISOString()
+          updatedAt: now
         },
-        availabilityUpdatedAt: new Date().toISOString()
+        availabilityUpdatedAt: now,
+        updatedAt: now
       };
       save('giocatori', giocatori);
       closeMemberCard();
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
+      pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito la scheda socio su Supabase');
       showAlert('✅ Scheda salvata', 'success');
     }
     function toggleMemberActive(memberId) {
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
       if (idx < 0) return;
       giocatori[idx].active = giocatori[idx].active === false;
+      giocatori[idx].updatedAt = new Date().toISOString();
       save('giocatori', giocatori); const keepOpenMemberId = String(memberId); displayMembers(); openMemberCard(keepOpenMemberId, { force:true });
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
+      pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito lo stato del socio su Supabase');
       showAlert(giocatori[idx].active ? '✅ Socio riattivato' : '⏸️ Socio disattivato', 'success');
     }
     function deleteMemberCard(memberId) {
       const g = giocatori.find(p => String(p.id) === String(memberId));
       if (!g) return;
       if (!confirm(`Cancellare ${playerFullName(g)} dalla lista soci?`)) return;
+      const deletedAt = new Date().toISOString();
+      const deletedMember = { ...g, active:false, deletedAt, updatedAt:deletedAt };
       giocatori = giocatori.filter(p => String(p.id) !== String(memberId));
       save('giocatori', giocatori);
       closeMemberCard(); displayMembers(); updateStats();
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
+      pmoQueueImmediateMemberCloudDelete(deletedMember, 'segnare subito il socio cancellato su Supabase');
       showAlert('🗑️ Socio cancellato', 'success');
     }
     function closeMemberCard() {
@@ -19805,9 +19817,69 @@ Per confermare scrivi ELIMINA.`);
 	      if (!key || !payload) return;
 	      records.push({ record_type: recordType, local_key: key, payload });
 	    }
+	    function pmoMemberCloudLocalKey(member, fallbackKey='') {
+	      const key = cleanCell(member?.id || member?.memberId || fallbackKey);
+	      if (key) return key;
+	      return member ? `member|${pmoShortHash(member)}` : '';
+	    }
+	    function pmoBuildMemberCloudRecord(member, options={}) {
+	      if (!member) return null;
+	      const now = options.now || new Date().toISOString();
+	      const key = pmoMemberCloudLocalKey(member, options.fallbackKey || '');
+	      if (!key) return null;
+	      const payload = {
+	        ...member,
+	        id: member.id || key,
+	        memberId: member.memberId || '',
+	        updatedAt: member.updatedAt || now
+	      };
+	      if (options.deleted) {
+	        const deletedAt = options.deletedAt || member.deletedAt || now;
+	        payload.active = false;
+	        payload.deletedAt = deletedAt;
+	        payload.updatedAt = payload.deletedAt;
+	      }
+	      return {
+	        record_type: 'member',
+	        local_key: key,
+	        payload,
+	        deleted: !!options.deleted
+	      };
+	    }
+	    async function pmoSyncCloudRecordsNow(records, actionLabel='aggiornare i dati cloud') {
+	      const list = (Array.isArray(records) ? records : []).filter(Boolean);
+	      if (!list.length) return { ok:false, skipped:true };
+	      const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
+	      const result = await pmoCloudRpc('pmo_upsert_records_admin', { p_records: list }, { accessToken: staff.accessToken });
+	      if (!result || result.ok !== true) {
+	        throw new Error(pmoFriendlyCloudError(result?.error || 'Aggiornamento cloud non riuscito.', actionLabel));
+	      }
+	      pmoCloudState.lastSyncAt = new Date().toISOString();
+	      pmoCloudState.lastSyncCount = result.count || list.length;
+	      save('pmoCloudState', pmoCloudState);
+	      return result;
+	    }
+	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
+	      const message = pmoFriendlyCloudError(error?.message || error || 'Aggiornamento cloud non riuscito.', actionLabel);
+	      console.warn('PMO_MEMBER_IMMEDIATE_CLOUD_SYNC_FAILED', actionLabel, error);
+	      showAlert(`Scheda salvata nel browser, ma aggiornamento cloud non riuscito: ${message}`, 'warning');
+	    }
+	    function pmoQueueImmediateMemberCloudSync(member, actionLabel='aggiornare subito il socio su Supabase') {
+	      const record = pmoBuildMemberCloudRecord(member);
+	      if (!record) return;
+	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
+	    }
+	    function pmoQueueImmediateMemberCloudDelete(member, actionLabel='segnare subito il socio cancellato su Supabase') {
+	      const record = pmoBuildMemberCloudRecord(member, { deleted:true });
+	      if (!record) return;
+	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
+	    }
 	    function pmoBuildCloudRecordsFromLocalState() {
 	      const records = [];
-	      (Array.isArray(giocatori) ? giocatori : []).forEach((item, index) => pmoAddCloudRecord(records, 'member', item.id || item.memberId || `member|${index}|${pmoShortHash(item)}`, item));
+	      (Array.isArray(giocatori) ? giocatori : []).forEach((item, index) => {
+	        const record = pmoBuildMemberCloudRecord(item, { fallbackKey:`member|${index}|${pmoShortHash(item)}` });
+	        if (record) records.push(record);
+	      });
 	      (Array.isArray(prenotazioni) ? prenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking', pmoBookingCloudKey(item, index, 'booking'), item));
 	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
 	      (Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_history', pmoBookingCloudKey(item, index, 'history'), item));

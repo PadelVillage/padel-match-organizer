@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 08:52
+Ultimo aggiornamento: 2026-05-15 10:01
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.422 | `test-preview` | `6549f18` |
-| TEST sviluppo | v5.422 | `test/accessi-staff-guidati` | `6549f18` |
+| TEST | v5.423 | `test-preview` | candidato pubblicazione TEST |
+| TEST sviluppo | v5.423 | `test/accessi-staff-guidati` | candidato pubblicazione TEST |
 
-Nota: TEST e PROD sono allineati a v5.422. La correzione UI rinfresca subito Autovalutazione dopo aggiunta, modifica, disattivazione o cancellazione socio; la ricerca testuale usa parole indipendenti anche nel Database soci. Lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST v5.423 le modifiche alla scheda socio vengono anche inviate subito a Supabase come record `member`, senza aspettare backup cloud manuale o automatico. Lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: TEST e PROD sono allineati a v5.422. La correzione UI rinfresca subito Aut
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.422 e' pubblicata in TEST e PROD.
+La versione v5.423 e' candidata TEST su branch `test/accessi-staff-guidati`; PROD resta a v5.422.
 
 Contiene:
 
@@ -62,8 +62,9 @@ Contiene:
 - Autovalutazione v5.420 TEST: nella ricerca `Cerca nel processo`, i box filtro sopra la tabella si evidenziano quando contengono il socio cercato, cosi' lo staff vede subito se il socio e' in `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint` o `Completati`.
 - Autovalutazione v5.421 TEST/PROD: la ricerca del `Cruscotto mattutino` e dello `Storico` diventa a parole indipendenti: se il nome/cognome del socio viene digitato in ordine diverso, il socio viene comunque trovato.
 - Anagrafica soci / Autovalutazione v5.422 TEST/PROD: dopo aggiunta, modifica, disattivazione o cancellazione socio, la sezione Autovalutazione viene rinfrescata subito; la ricerca del Database soci usa parole indipendenti, coerente con cruscotto e storico.
+- Anagrafica soci / Cloud v5.423 TEST sviluppo: aggiunta, modifica, disattivazione/riattivazione e cancellazione socio preparano subito la scrittura puntuale del record `member` in Supabase tramite RPC staff, senza attendere il backup cloud. Se la scrittura cloud non riesce, la modifica locale resta salvata e viene mostrato un avviso.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.422 TEST/PROD.
+- Documentazione aggiornata per v5.423 TEST sviluppo.
 
 Non contiene modifiche a:
 
