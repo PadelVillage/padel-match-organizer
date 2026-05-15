@@ -5203,7 +5203,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.437';
+    const APP_VERSION = '5.438';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23474,8 +23474,8 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `${searchHtml}
         ${filterHtml}
         ${activeFilterHtml}
-        ${manualBatchHtml}
-        ${tableHtml}`;
+        ${tableHtml}
+        ${manualBatchHtml}`;
       box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
         button.addEventListener('click', event => {
           event.preventDefault();
