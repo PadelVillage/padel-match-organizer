@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 18:56
+Ultimo aggiornamento: 2026-05-15 19:20
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.427 | `test-preview` | `eb29992` |
-| TEST sviluppo | v5.427 | `test/accessi-staff-guidati` | `eb29992` |
+| TEST | v5.428 | `test-preview` | `b9f4f18` |
+| TEST sviluppo | v5.428 | `test/accessi-staff-guidati` | `b9f4f18` |
 
-Nota: PROD resta fermo a v5.422. In TEST v5.427 l'invio mattutino Autovalutazione richiede approvazione manuale staff: la routine puo' preparare un lotto fino a 10 email, anche meno se ci sono meno soci pronti, ma non invia senza click `Approva invio`. Il comando `Prepara lotto` / `Approva invio` resta nella testata del `Cruscotto mattutino`; il pulsante `Pulisci` della ricerca del processo svuota davvero il campo e mostra di nuovo i filtri, inclusi `Problemi`; i pulsanti WhatsApp diretti sono stati rimossi dalle sottosezioni operative Autovalutazione, che ora rimandano alla scheda socio/dettaglio. Lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST v5.428 l'invio mattutino Autovalutazione richiede approvazione manuale staff: la routine puo' preparare un lotto fino a 10 email, anche meno se ci sono meno soci pronti, ma non invia senza click `Approva invio`. L'oggetto del primo invio email e' ora `Padel Village - Completa la tua autovalutazione del livello di gioco`; la Edge Function TEST `assessment-email-send` e' v16 con `verify_jwt=false`. Lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST v5.427 l'invio mattutino Autovalutazion
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.427 e' pubblicata in TEST al commit `eb29992`; PROD resta a v5.422.
+La versione v5.428 e' pubblicata in TEST al commit `b9f4f18`; PROD resta a v5.422.
 
 Contiene:
 
@@ -67,8 +67,9 @@ Contiene:
 - Autovalutazione v5.425 TEST: micro-pulizia UI del `Cruscotto mattutino`; il comando `Prepara lotto` / `Approva invio N` viene spostato nella testata del pannello e il riquadro descrittivo separato dell'invio mattutino viene rimosso. Nessuna modifica a Edge Function, SQL, invii, scheduler, Gmail, Matchpoint, dati reali o PROD.
 - Autovalutazione v5.426 TEST: hotfix del pulsante `Pulisci` nella ricerca `Cerca nel processo`; oltre allo stato interno, ora viene svuotato anche il campo input prima del rerender, evitando che una ricerca rimasta attiva nasconda le righe del filtro `Problemi`. Nessuna modifica a Edge Function, SQL, invii, scheduler, Gmail, Matchpoint, dati reali o PROD.
 - Autovalutazione v5.427 TEST: micro-pulizia UI prima del test; rimossi i pulsanti WhatsApp diretti dalle sottosezioni operative Autovalutazione (`Cruscotto mattutino`, `Problemi`, `Contattati / in attesa`, `Storico` e flussi legacy di invio guidato). Le azioni operative rimandano alla scheda socio/dettaglio. Il pulsante WhatsApp resta disponibile solo nella scheda socio o nelle aree generali non Autovalutazione. Nessuna modifica a Edge Function, SQL, invii email, scheduler, Gmail, Matchpoint, dati reali o PROD.
+- Autovalutazione v5.428 TEST: dopo test positivo con lotto approvato da 10 email ricevute, l'oggetto del primo invio viene chiarito in `Padel Village - Completa la tua autovalutazione del livello di gioco`. Aggiornati template app, migrazione del vecchio oggetto standard salvato localmente e fallback della Edge Function TEST `assessment-email-send`, pubblicata come versione 16 con `verify_jwt=false`. Nessuna modifica a SQL, scheduler, Matchpoint, dati reali o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.427 TEST.
+- Documentazione aggiornata per v5.428 TEST.
 
 Non contiene modifiche a:
 
