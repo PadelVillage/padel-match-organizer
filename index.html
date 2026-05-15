@@ -931,14 +931,6 @@
     .assessment-email-tab-count strong { color:var(--primary); font-size:11px; }
     .assessment-email-tab.active .assessment-email-tab-count { color:rgba(255,255,255,.82); }
     .assessment-email-tab.active .assessment-email-tab-count strong { color:#fff; }
-    .assessment-process-routine-bar { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
-    .assessment-process-routine-item { min-width:0; border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:8px 9px; border-left:4px solid #d9e0ea; }
-    .assessment-process-routine-item.ok { border-left-color:#168a53; background:#fbfffd; }
-    .assessment-process-routine-item.warn { border-left-color:#b7791f; background:#fffdf7; }
-    .assessment-process-routine-item.err { border-left-color:#b42318; background:#fffafa; }
-    .assessment-process-routine-label { color:#667085; font-size:10px; font-weight:900; text-transform:uppercase; line-height:1.15; }
-    .assessment-process-routine-value { margin-top:3px; color:#101828; font-size:13px; font-weight:900; line-height:1.2; overflow-wrap:anywhere; }
-    .assessment-process-routine-note { margin-top:2px; color:#667085; font-size:11px; font-weight:750; line-height:1.25; overflow-wrap:anywhere; }
     .assessment-process-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); gap:7px; margin-bottom:10px; }
     .assessment-process-filter { min-width:0; text-align:left; border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 8px; cursor:pointer; box-shadow:0 1px 3px rgba(31,71,136,.04); }
     .assessment-process-filter.active { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -956,6 +948,10 @@
     .assessment-process-search-row { display:flex; gap:8px; align-items:center; }
     .assessment-process-search-row input { flex:1 1 260px; min-width:0; height:38px; border:1px solid #d9e0ea; border-radius:8px; padding:0 10px; font-size:13px; font-weight:750; color:#101828; }
     .assessment-process-search-row .assessment-email-mini { padding:8px 10px; font-size:11px; border-radius:7px; }
+    .assessment-process-table-wrap { overflow-x:hidden; }
+    .assessment-process-table-title { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid #e7edf6; background:#fff; }
+    .assessment-process-table-title h4 { margin:0; color:var(--primary); font-size:16px; line-height:1.15; }
+    .assessment-process-table-title span { color:#667085; font-size:12px; font-weight:850; line-height:1.25; text-align:right; }
     .assessment-process-table { font-size:12px; }
     .assessment-process-table th, .assessment-process-table td { padding:9px 8px; vertical-align:top; }
     .assessment-process-table th:nth-child(1) { width:13%; }
@@ -1124,7 +1120,6 @@
     .assessment-email-modal-feedback { color:#667085; font-size:13px; line-height:1.35; }
     .assessment-email-reply-text { margin:0; white-space:pre-wrap; color:#344054; font:inherit; line-height:1.45; max-height:42vh; overflow:auto; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; }
     @media (max-width:1100px) {
-      .assessment-process-routine-bar { grid-template-columns:repeat(3,minmax(0,1fr)); }
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-morning-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -1147,6 +1142,8 @@
       .assessment-email-table tr:first-child td { border-top:1px solid #edf2f7; }
       .assessment-email-table td:first-child { border-top:0; padding-top:0; }
       .assessment-email-table td:last-child { padding-bottom:0; }
+      .assessment-process-table-title { align-items:flex-start; flex-direction:column; }
+      .assessment-process-table-title span { text-align:left; }
       .assessment-email-table td::before { content:attr(data-label); color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; line-height:1.25; }
       .assessment-email-table td[data-label="Azioni"] { display:block; }
       .assessment-email-table td[data-label="Azioni"]::before { display:block; margin-bottom:7px; }
@@ -1159,7 +1156,6 @@
     @media (max-width:720px) {
       .assessment-email-panel-head, .assessment-email-routine-head { flex-direction:column; }
       .assessment-email-actions { justify-content:flex-start; }
-      .assessment-process-routine-bar { grid-template-columns:1fr; }
       .assessment-process-search-row { flex-direction:column; align-items:stretch; }
       .assessment-email-mini-kpis, .assessment-email-timeline, .assessment-email-form-grid, .assessment-email-filter-grid { grid-template-columns:1fr; }
       .assessment-morning-grid { grid-template-columns:1fr; }
@@ -5214,7 +5210,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.428';
+    const APP_VERSION = '5.429';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23102,28 +23098,6 @@ Per confermare scrivi ELIMINA.`);
       }
       return buttons.join('');
     }
-    function assessmentProcessRoutineBarHtml(rows) {
-      const sentToday = getAssessmentRequestsSentTodayCount();
-      const problemCount = rows.filter(row => row.filter === 'problems').length;
-      const reviewCount = rows.filter(row => row.filter === 'responses' || row.filter === 'review' || row.filter === 'matchpoint').length;
-      const lastLabel = assessmentEmailRoutineLastLabel(assessmentEmailAllOperationalRows());
-      const approval = assessmentEmailRoutineApprovalStatus(assessmentEmailTodayRoutineBatch());
-      const statusCls = problemCount ? 'err' : (reviewCount ? 'warn' : 'ok');
-      const statusText = problemCount ? 'Attenzione' : (reviewCount ? 'Da controllare' : 'OK');
-      const items = [
-        ['Invio email', approval.label, approval.detail, approval.cls],
-        ['Limite oggi', String(DAILY_ASSESSMENT_REQUEST_LIMIT), 'invii automatici', ''],
-        ['Inviate oggi', `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`, 'conteggio giornaliero', sentToday >= DAILY_ASSESSMENT_REQUEST_LIMIT ? 'warn' : 'ok'],
-        ['Prossimo controllo Gmail', 'Manuale', 'pulsanti Gmail', ''],
-        ['Ultimo controllo', lastLabel || '-', 'ultimo evento letto', ''],
-        ['Stato routine', statusText, problemCount ? `${problemCount} problemi` : `${reviewCount} attenzioni`, statusCls]
-      ];
-      return `<div class="assessment-process-routine-bar">${items.map(item => `<div class="assessment-process-routine-item ${escapeHtml(item[3] || '')}">
-        <div class="assessment-process-routine-label">${escapeHtml(item[0])}</div>
-        <div class="assessment-process-routine-value">${escapeHtml(item[1])}</div>
-        <div class="assessment-process-routine-note">${escapeHtml(item[2])}</div>
-      </div>`).join('')}</div>`;
-    }
     function assessmentProcessRowHtml(entry) {
       const member = entry.member || {};
       return `<tr data-assessment-email-member="${escapeHtml(String(member.id || ''))}">
@@ -23203,10 +23177,9 @@ Per confermare scrivi ELIMINA.`);
         ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" onclick="setAssessmentProcessFilter('all')">Tutti</button> per vederlo.</div>`
         : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questa vista.');
       const tableHtml = visibleRows.length
-        ? `<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Contatto</th><th>Ultimo evento</th><th>Invii</th><th>Risposta</th><th>Livello</th><th>Matchpoint</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
+        ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Contatto</th><th>Ultimo evento</th><th>Invii</th><th>Risposta</th><th>Livello</th><th>Matchpoint</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
-      box.innerHTML = `${assessmentProcessRoutineBarHtml(rows)}
-        ${searchHtml}
+      box.innerHTML = `${searchHtml}
         ${filterHtml}
         ${tableHtml}`;
     }
