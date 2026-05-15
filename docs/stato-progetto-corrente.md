@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 20:41
+Ultimo aggiornamento: 2026-05-15 22:13
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.430 | `test-preview` | `3d17f0a` |
-| TEST sviluppo | v5.430 | `test/accessi-staff-guidati` | `3d17f0a` |
+| TEST | v5.431 | `test-preview` | `8130029` |
+| TEST sviluppo | v5.431 | `test/accessi-staff-guidati` | `8130029` |
 
-Nota: PROD resta fermo a v5.422. In TEST v5.430 l'invio mattutino Autovalutazione resta con approvazione manuale staff e il `Cruscotto mattutino` resta nella forma v5.429 senza barra alta dei sei box routine. La novita' v5.430 riguarda solo la scheda socio: `Apri WhatsApp` apre una finestra di scelta con i tre testi manuali Autovalutazione, consente copia, apertura con testo o apertura senza testo. La Edge Function TEST `assessment-email-send` resta v16 con `verify_jwt=false`. Lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.431 con la funzione `Esporta rubrica soci` nel Database soci: CSV Google manuale, memoria degli ID esportati, incrementale sui nuovi soci importati da Matchpoint, evidenza di telefoni cambiati, duplicati e telefoni mancanti, e comando secondario `Riesporta tutti`. La Edge Function TEST `assessment-email-send` resta v16 con `verify_jwt=false`. Lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST v5.430 l'invio mattutino Autovalutazion
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.430 e' pubblicata in TEST al commit `3d17f0a`; PROD resta a v5.422.
+La versione v5.431 e' pubblicata in TEST al commit `8130029`; PROD resta a v5.422.
 
 Contiene:
 
@@ -70,13 +70,19 @@ Contiene:
 - Autovalutazione v5.428 TEST: dopo test positivo con lotto approvato da 10 email ricevute, l'oggetto del primo invio viene chiarito in `Padel Village - Completa la tua autovalutazione del livello di gioco`. Aggiornati template app, migrazione del vecchio oggetto standard salvato localmente e fallback della Edge Function TEST `assessment-email-send`, pubblicata come versione 16 con `verify_jwt=false`. Nessuna modifica a SQL, scheduler, Matchpoint, dati reali o PROD.
 - Autovalutazione v5.429 TEST: integrata la soluzione finale Mix del mockup `mockup/autovalutazione-cruscotto-processo-utenti-mockup.html`; rimossa dal `Cruscotto mattutino` la barra alta con i sei box routine (`Invio email`, `Limite oggi`, `Inviate oggi`, `Prossimo controllo Gmail`, `Ultimo controllo`, `Stato routine`). La tabella `Processo utenti` mantiene la colonna `Routine` subito dopo `Socio`, con filtri, ricerca, `Pulisci` e comandi `Prepara lotto` / `Approva invio N` invariati. Nessuna modifica a Edge Function, SQL, invii email, scheduler, Gmail, Matchpoint, dati reali o PROD.
 - Autovalutazione / Scheda socio v5.430 TEST: integrato il mockup `mockup/scheda-socio-whatsapp-autovalutazione-mockup.html`; il bottone `Apri WhatsApp` nella scheda socio apre una finestra di scelta messaggio con i testi manuali Autovalutazione `Richiesta email mancante`, `Verifica ricezione email` e `Promemoria controllo mail`. Lo staff puo' copiare il testo, aprire WhatsApp con testo precompilato oppure aprire WhatsApp senza testo. WhatsApp resta manuale, senza link diretto alla scheda e senza invio automatico. Nessuna modifica a Edge Function, SQL, scheduler, Gmail, Matchpoint, dati reali o PROD.
+- Anagrafica soci / Database soci v5.431 TEST: integrato il mockup `mockup/database-soci-esporta-rubrica-soci-mockup.html`; in `Database soci` compare il comando `Esporta rubrica soci`, che scarica solo CSV Google per import manuale in Google Contatti. La prima esportazione scarica i soci attivi con telefono valido; le successive scaricano solo i nuovi soci importati da Matchpoint e non ancora esportati. La app salva in localStorage lo stato `memberContactsExportState`, include lo stato in backup/snapshot, segnala telefoni cambiati, telefoni mancanti/non validi, duplicati, elementi da verificare e inattivi esclusi, e prevede `Riesporta tutti` con conferma. Nessuna API Google, nessuna sincronizzazione automatica, nessun invio WhatsApp automatico, nessuna modifica a SQL, Edge Function, scheduler, dati reali o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.430 TEST.
+- Documentazione aggiornata per v5.431 TEST.
 
 Non contiene modifiche a:
 
-- Matchpoint;
-- import dati.
+- API Google o Google Contatti;
+- invio WhatsApp automatico;
+- Edge Function, SQL o scheduler;
+- Matchpoint reale o dati reali;
+- PROD.
+
+Nota tecnica: per permettere l'export incrementale, i soli nuovi soci aggiunti da un import clienti Matchpoint vengono marcati localmente con metadati `matchpointImportedAt` / `matchpointLastImportedAt` / `matchpointSource`. I soci gia esistenti non vengono sovrascritti da questa modifica.
 
 Nota: il deploy PROD v5.422 non applica SQL scheduler e non attiva routine email automatiche. Il controllo live su Supabase PROD del 2026-05-15 08:52 mostra in `cron.job` solo `pmo-data-routines-dispatcher-prod`, cioe' lo scheduler dati/Matchpoint gia esistente. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Il job una tantum TEST `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' gia eseguito e rimosso.
 
