@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 00:51
+Ultimo aggiornamento: 2026-05-15 01:06
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.421 | `test-preview` | `da1dca5` |
-| TEST sviluppo | v5.421 | `test/accessi-staff-guidati` | `da1dca5` |
+| TEST | v5.422 | `test-preview` | `PENDING_V5422` |
+| TEST sviluppo | v5.422 | `test/accessi-staff-guidati` | `PENDING_V5422` |
 
-Nota: TEST contiene la correzione UI v5.421 del `Cruscotto mattutino`: la ricerca del processo e dello storico trova anche nomi/cognomi digitati in ordine diverso, per esempio `Utente Prova` o `Prova Utente`. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
+Nota: TEST contiene la correzione UI v5.422: dopo aggiunta, modifica, disattivazione o cancellazione socio, Autovalutazione viene rinfrescata subito; la ricerca testuale usa parole indipendenti anche nel Database soci. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: TEST contiene la correzione UI v5.421 del `Cruscotto mattutino`: la ricerc
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.421 e' pubblicata in TEST. PROD resta v5.418.
+La versione v5.422 e' pubblicata in TEST. PROD resta v5.418.
 
 Contiene:
 
@@ -61,8 +61,9 @@ Contiene:
 - Autovalutazione v5.419 TEST: il `Cruscotto mattutino` aggancia i log cloud `assessment_email` anche tramite ID giocatore `memberId`/`PMO-...`, importa automaticamente in modo silenzioso gli ultimi log cloud quando si apre Autovalutazione, archivia il token precedente se arriva un nuovo invio e considera un nuovo invio successivo a un ciclo gia chiuso come nuovo ciclo `In attesa`, non come `Completato`.
 - Autovalutazione v5.420 TEST: nella ricerca `Cerca nel processo`, i box filtro sopra la tabella si evidenziano quando contengono il socio cercato, cosi' lo staff vede subito se il socio e' in `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint` o `Completati`.
 - Autovalutazione v5.421 TEST: la ricerca del `Cruscotto mattutino` e dello `Storico` diventa a parole indipendenti: se il nome/cognome del socio viene digitato in ordine diverso, il socio viene comunque trovato.
+- Anagrafica soci / Autovalutazione v5.422 TEST: dopo aggiunta, modifica, disattivazione o cancellazione socio, la sezione Autovalutazione viene rinfrescata subito; la ricerca del Database soci usa parole indipendenti, coerente con cruscotto e storico.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.421 TEST e v5.418 PROD.
+- Documentazione aggiornata per v5.422 TEST e v5.418 PROD.
 
 Non contiene modifiche a:
 
