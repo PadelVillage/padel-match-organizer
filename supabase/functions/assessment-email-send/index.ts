@@ -932,6 +932,20 @@ function assertStaffApprovalActor(actor: StaffActor) {
   if (isRoutineSystemActor(actor)) throw new Error('STAFF_APPROVAL_REQUIRED');
 }
 
+function truthyFlag(value: unknown) {
+  if (value === true) return true;
+  const text = clean(value).toLocaleLowerCase('it-IT');
+  return ['1', 'true', 'yes', 'si'].includes(text);
+}
+
+function routineBatchCanRegenerate(batch: JsonMap | null) {
+  if (!batch || clean(batch.status) !== 'pending') return false;
+  if (clean(batch.sendingAt || '') || clean(batch.sentAt || '')) return false;
+  const sent = Array.isArray(batch.sent) ? batch.sent : [];
+  const failed = Array.isArray(batch.failed) ? batch.failed : [];
+  return sent.length === 0 && failed.length === 0;
+}
+
 async function loadAssessmentRoutineBatch(admin: any, localDate: string) {
   const { data, error } = await admin
     .from('pmo_cloud_records')
@@ -1047,17 +1061,32 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
   const startedAt = new Date().toISOString();
   const context = await buildAssessmentRoutineContext(admin, body);
   const existing = await loadAssessmentRoutineBatch(admin, context.localDate);
+  const regenerate = truthyFlag(body.regenerate);
+  if (regenerate && existing && !routineBatchCanRegenerate(existing)) {
+    throw new Error('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED');
+  }
   if (existing && ['pending', 'approved', 'sending'].includes(clean(existing.status))) {
-    return {
-      action: 'routine-plan',
-      localDate: context.localDate,
-      status: existing.status,
-      alreadyPrepared: true,
-      batch: existing,
-      selected: existing.selected || [],
-    };
+    if (regenerate) {
+      await logAudit(admin, actor, 'assessment_email_routine_plan_regenerate', {
+        source: clean(body.source || 'pmo_assessment_email_manual_regenerate'),
+        localDate: context.localDate,
+        previousSelected: Array.isArray(existing.selected) ? existing.selected.length : 0,
+        appVersion: clean(body.appVersion || ''),
+        runtimeEnv: clean(body.runtimeEnv || ''),
+      });
+    } else {
+      return {
+        action: 'routine-plan',
+        localDate: context.localDate,
+        status: existing.status,
+        alreadyPrepared: true,
+        batch: existing,
+        selected: existing.selected || [],
+      };
+    }
   }
   if (existing && ['sent', 'sent_with_errors'].includes(clean(existing.status))) {
+    if (regenerate) throw new Error('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED');
     return {
       action: 'routine-plan',
       localDate: context.localDate,
@@ -1091,6 +1120,8 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
     source: clean(body.source || 'pmo_assessment_email_scheduler'),
     appVersion: clean(body.appVersion || ''),
     runtimeEnv: clean(body.runtimeEnv || ''),
+    regeneratedAt: regenerate ? startedAt : '',
+    regeneratedBy: regenerate ? clean(actor.email || '') : '',
   });
 
   await logAudit(admin, actor, 'assessment_email_routine_plan', {
@@ -1100,6 +1131,7 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
     candidates: context.candidates.length,
     selected: selected.length,
     status: batch.status,
+    regenerated: regenerate,
   });
   await logAssessmentRoutineRun(admin, 'assessment_email_daily_plan', selected.length ? 'success' : 'noop', startedAt, {
     localDate: context.localDate,
@@ -1109,6 +1141,7 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
     candidates: context.candidates.length,
     selected: selected.length,
     status: batch.status,
+    regenerated: regenerate,
   }, selected);
 
   return {
@@ -1118,6 +1151,7 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
     batch,
     candidates: context.candidates.length,
     selected,
+    regenerated: regenerate,
   };
 }
 
@@ -1493,6 +1527,7 @@ Deno.serve(async (req) => {
     if (message.includes('STAFF_APPROVAL_REQUIRED')) return errorResponse(403, 'STAFF_APPROVAL_REQUIRED', 'Serve approvazione manuale da un operatore staff.');
     if (message.includes('ROUTINE_BATCH_MISSING')) return errorResponse(409, 'ROUTINE_BATCH_MISSING', 'Prima prepara il lotto di invio mattutino.');
     if (message.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return errorResponse(409, 'ROUTINE_BATCH_NOT_APPROVABLE', 'Il lotto non e in uno stato approvabile.');
+    if (message.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return errorResponse(409, 'ROUTINE_BATCH_REGENERATE_NOT_ALLOWED', 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.');
     return errorResponse(500, 'ASSESSMENT_EMAIL_SEND_FAILED', message || 'Invio email autovalutazione non riuscito.');
   }
 });

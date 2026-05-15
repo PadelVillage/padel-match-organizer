@@ -5198,7 +5198,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.434';
+    const APP_VERSION = '5.435';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9307,6 +9307,7 @@ Grazie.`
       if (raw.includes('STAFF_APPROVAL_REQUIRED')) return 'Serve approvazione manuale da un operatore staff.';
       if (raw.includes('ROUTINE_BATCH_MISSING')) return 'Prima prepara il lotto di invio mattutino.';
       if (raw.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return 'Il lotto non e in uno stato approvabile.';
+      if (raw.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.';
       return raw || 'Invio email autovalutazione non riuscito.';
     }
 
@@ -23267,6 +23268,12 @@ Per confermare scrivi ELIMINA.`);
       if (sentRows.length) return `${sentRows.length} inviate, ${unsentRows.length} da inviare${failedRows.length ? `, ${failedRows.length} errori` : ''}`;
       return `${rows.length}/${DAILY_ASSESSMENT_REQUEST_LIMIT} disponibili`;
     }
+    function assessmentManualBatchCanRegenerate(batch=null) {
+      if (!batch || cleanCell(batch.status || '') !== 'pending') return false;
+      const rows = assessmentManualBatchRows(batch);
+      if (!rows.length) return false;
+      return !rows.some(row => row.sent || row.failed);
+    }
     function assessmentEmailRoutineApprovalStatus(batch=null) {
       const status = cleanCell(batch?.status || '');
       if (!batch) return { label:'Da preparare', detail:'nessun lotto pronto', cls:'warn' };
@@ -23292,6 +23299,9 @@ Per confermare scrivi ELIMINA.`);
       if (batch && unsentRows.length) {
         buttons.push(`<button class="assessment-email-mini success" type="button" ${selected ? '' : 'disabled'} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
         buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
+        if (assessmentManualBatchCanRegenerate(batch)) {
+          buttons.push(`<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); assessmentEmailRegenerateMorningBatch()">Rigenera lotto</button>`);
+        }
       }
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
@@ -23999,6 +24009,31 @@ Per confermare scrivi ELIMINA.`);
         showAlert(selected ? `Lotto preparato: ${selected} email pronte. Scegli se inviare tutti, selezionati o una singola riga.` : 'Nessun socio pronto da inserire nel lotto di oggi.', selected ? 'success' : 'info');
       } catch (err) {
         showAlert('Preparazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'preparare il lotto email mattutino'), 'danger');
+      }
+    }
+    async function assessmentEmailRegenerateMorningBatch() {
+      const batch = assessmentEmailTodayRoutineBatch();
+      if (!assessmentManualBatchCanRegenerate(batch)) {
+        return showAlert('Il lotto puo essere rigenerato solo se e pronto e non contiene invii o errori.', 'warning');
+      }
+      if (!confirm('Rigenerare il lotto? Il lotto attuale non inviato verra sostituito.')) return;
+      try {
+        showAlert('Rigenero il lotto email mattutino...', 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          action: 'routine-plan',
+          scheduledLocalDate: assessmentManualBatchKey(batch),
+          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
+          regenerate: true,
+          source: 'pmo_assessment_email_manual_regenerate'
+        });
+        assessmentEmailStoreRoutineBatch(result.batch);
+        await assessmentEmailImportCloudLogs({ silent:true });
+        displayAssessment();
+        setAssessmentEmailPanel('morning');
+        const selected = Array.isArray(result.selected) ? result.selected.length : assessmentEmailRoutineBatchSelectedCount(result.batch);
+        showAlert(selected ? `Lotto rigenerato: ${selected} email pronte.` : 'Lotto rigenerato: nessun socio pronto da inserire oggi.', selected ? 'success' : 'info');
+      } catch (err) {
+        showAlert('Rigenerazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'rigenerare il lotto email mattutino'), 'danger');
       }
     }
     async function assessmentEmailApproveMorningBatch() {
