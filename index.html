@@ -2348,7 +2348,7 @@
     .side-submenu .tab-button.active, .side-sub-link.active-sub { background:#fff; color:var(--primary); box-shadow:none; }
     @media (max-width:800px) { .side-nav { width:304px; } }
 
-    /* v5.96 - Giocatori: Gruppi salvati a sinistra, editor/nuovo gruppo a destra */
+    /* v5.96 - layout storico anagrafica soci */
     .players-v94-layout { grid-template-columns:minmax(0,1fr) 390px; }
     .players-v94-left { order:2; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow:auto; }
     .players-v94-right { order:1; }
@@ -4259,18 +4259,10 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
         </div>
 
-        <button class="side-nav-parent side-nav-main-item" data-submenu-target="subGroups" aria-expanded="false" onclick="switchSidebarParent('members','subGroups')">
+        <button class="tab-button side-nav-main-item" onclick="switchTab('members', this)">
           <span class="nav-order">4</span>
-          <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Database e gruppi soci</span></span>
-          <span class="nav-caret">▾</span>
+          <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
-        <div id="subGroups" class="side-submenu">
-          <button class="tab-button side-sub-link" onclick="switchTab('members', this)">Database soci</button>
-          <div class="side-sub-row">
-            <button id="groupsSideTabButton" class="tab-button side-sub-link" onclick="switchTab('groups', this)"><span>Gruppi soci</span><span id="assistantGroupsCountBadge" class="assistant-limit">0</span></button>
-            <button class="side-sub-action" title="Nuovo gruppo" onclick="openGroupEditorFromSideMenu(this)">+</button>
-          </div>
-        </div>
 
         <button class="tab-button side-nav-main-item" onclick="switchTab('matchpoint', this)">
           <span class="nav-order">5</span>
@@ -4569,8 +4561,8 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section players-page-shell">
         <div class="players-sticky-head">
           <div>
-            <h2 id="anchor-members-main">Database soci</h2>
-            <p>Schede soci, ricerca e gruppi operativi.</p>
+            <h2 id="anchor-members-main">Anagrafica soci</h2>
+            <p>Schede e contatti.</p>
           </div>
           <div class="players-head-actions">
             <button class="btn-success" onclick="setActionAnchor(this); openMemberContactsExportPanel()">Esporta rubrica soci</button>
@@ -4594,7 +4586,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </thead>
               <tbody>
                 <tr>
-                  <td><span class="players-summary-value good" id="playersDbActive">0</span><span class="players-summary-note">utilizzabili nei gruppi</span></td>
+                  <td><span class="players-summary-value good" id="playersDbActive">0</span><span class="players-summary-note">soci attivi</span></td>
                   <td><span class="players-summary-value info" id="playersDbTotal">0</span><span class="players-summary-note">archivio locale</span></td>
                   <td><span class="players-summary-value warn" id="playersDbLevel05">0</span><span class="players-summary-note">da autovalutare</span></td>
                   <td><span class="players-summary-value danger" id="playersDbNoEmail">0</span><span class="players-summary-note">email da completare</span></td>
@@ -4610,7 +4602,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <section class="players-panel">
             <div class="players-panel-head">
               <div>
-                <h3>Ricerca database soci</h3>
+                <h3>Ricerca soci</h3>
                 <p>10 per pagina · filtri rapidi.</p>
               </div>
               <span class="pill" id="membersResultBadge">0 risultati</span>
@@ -4989,86 +4981,6 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
-    <div id="groups" class="tab-content">
-      <div class="section players-page-shell">
-        <h2 id="anchor-groups-top" class="visually-hidden">Gruppi soci</h2>
-        <div class="players-body">
-          <section class="players-panel" id="anchor-groups-archivio">
-            <div class="players-panel-body">
-              <div id="assistantGroupOverlay" class="group-overlay"></div>
-              <div id="assistantGroupEditorOverlay" class="group-overlay">
-                <div class="group-overlay-head">
-                  <div><h3 id="assistantGroupOverlayTitle">Nuovo gruppo</h3><p class="muted">Scheda gruppo soci.</p></div>
-                  <button class="btn-secondary small-btn" onclick="closeAssistantGroupOverlay()">Chiudi</button>
-                </div>
-                <div class="group-overlay-body">
-                  <details id="assistantGroupEditorPanel" class="groups-editor-details" open>
-                    <summary id="anchor-groups-editor">Nuovo gruppo</summary>
-                    <div class="groups-editor-body">
-                      <input type="hidden" id="assistantGroupEditingId" value="" />
-                      <div id="assistantGroupEditBanner" class="assistant-edit-banner">Stai modificando un gruppo esistente.</div>
-                      <div class="form-group"><label>Nome gruppo</label><input id="assistantGroupName" placeholder="Esempio: Gioca con LoZio serale" /></div>
-                      <div class="form-group">
-                        <label>Tipo partita</label><select id="assistantGroupMatchType"><option value="mista">Mista</option><option value="maschile">Maschile</option><option value="femminile">Femminile</option></select>
-                      </div>
-                      <div class="form-group">
-                        <label>Giorno preferito</label>
-                        <select id="assistantGroupDay"><option value="">Qualsiasi giorno</option><option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="0">Domenica</option></select>
-                      </div>
-	                      <div class="row">
-	                        <div class="col"><label>Ora inizio</label><input type="time" id="assistantGroupStartTime" value="12:30" /></div>
-	                        <div class="col"><label>Ora fine</label><input type="time" id="assistantGroupEndTime" value="14:00" /></div>
-	                      </div>
-	                      <div class="routine-option-box">
-	                        <label><input id="assistantGroupAutoCreateEnabled" type="checkbox" /> Crea automaticamente in Chiudi Partite</label>
-	                        <div class="routine-settings-row">
-	                          <div>
-	                            <label for="assistantGroupAutoCreateHoursBefore">Anticipo creazione</label>
-	                            <select id="assistantGroupAutoCreateHoursBefore">
-	                              <option value="24">24 ore prima</option>
-	                              <option value="36">36 ore prima</option>
-	                              <option value="48" selected>48 ore prima</option>
-	                              <option value="72">72 ore prima</option>
-	                            </select>
-	                          </div>
-	                          <div class="routine-mini">La routine cloud prepara solo la partita. WhatsApp resta manuale.</div>
-	                        </div>
-	                      </div>
-	                      <div class="form-group">
-	                        <label>Soci del gruppo</label>
-                        <div class="assistant-group-picker">
-                          <div id="assistantGroupRows" class="assistant-group-rows"></div>
-                          <div class="group-editor-hint" id="assistantGroupNamesCount">0 soci inseriti nel gruppo.</div>
-                          <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); addAssistantGroupNameRow('', false, true)">+ Aggiungi riga</button>
-                        </div>
-                        <textarea id="assistantGroupNames" style="display:none"></textarea>
-                        <div id="assistantGroupNameSuggestions" class="name-suggestion-box"></div>
-                      </div>
-                      <div class="form-group"><label>Note</label><textarea id="assistantGroupNotes" placeholder="Indicazioni operative interne" style="min-height:76px;"></textarea></div>
-                      <div class="ux-form-actions">
-                        <button id="assistantGroupSaveBtn" class="btn-primary" onclick="setActionAnchor(this); saveAssistantGroup()">Salva gruppo</button>
-                        <button id="assistantGroupCreateMatchBtn" class="btn-success" style="display:none;" onclick="setActionAnchor(this); createMatchFromAssistantGroupEditor()">Crea partita in Chiudi Partite</button>
-                        <button id="assistantGroupCancelEditBtn" class="btn-secondary" onclick="setActionAnchor(this); cancelAssistantGroupEdit()">Annulla</button>
-                        <button id="assistantGroupDeleteBtn" class="btn-danger" style="display:none;" onclick="setActionAnchor(this); deleteAssistantGroupFromEditor()">Cancella gruppo</button>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-              <div class="groups-filter-bar">
-                <div><label>Cerca gruppo o socio</label><input id="assistantGroupSearch" oninput="renderAssistantGroups()" placeholder="nome gruppo, nominativo o note" /></div>
-                <div><label>Giorno gruppo</label><select id="assistantGroupDayFilter" onchange="renderAssistantGroups()"><option value="">Tutti i giorni</option><option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option><option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="0">Domenica</option></select></div>
-                <div><label>Tipo partita</label><select id="assistantGroupTypeFilter" onchange="renderAssistantGroups()"><option value="">Tutti i tipi</option><option value="mista">Mista</option><option value="maschile">Maschile</option><option value="femminile">Femminile</option></select></div>
-              </div>
-              <select id="assistantSelectedGroup" style="display:none"></select>
-              <div id="assistantGroupsList"></div>
-              <div id="assistantGroupOutput" class="assistant-output"></div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
-
     <div id="fillSlots" class="tab-content">
       <div class="section fill-slots-page">
         <section id="fillSlotsKpis" class="fill-slots-kpis" style="display:none;"></section>
@@ -5076,7 +4988,6 @@ body.assessment-public-mode .assessment-public-only-card {
         <section class="fill-panel fill-calendar-panel">
           <div class="fill-panel-body">
             <div class="fill-legend">
-              <span><i class="fill-signal staff">S</i>gruppo staff</span>
               <span><i class="fill-signal request">R</i>richiesta giocatore</span>
               <span><i class="fill-signal algo">A</i>proposta algoritmo</span>
               <span>Il box mostra orario, campi e proposte disponibili</span>
@@ -5101,7 +5012,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title">
           <h2>Routine</h2>
-          <p>Centro operativo per sincronizzazione cloud e automazioni dei gruppi soci.</p>
+          <p>Centro operativo per sincronizzazione cloud e automazioni.</p>
         </div>
         <div id="routineCloudKpis" class="routine-cloud-grid"></div>
         <div class="routine-cloud-panel">
@@ -5113,7 +5024,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="routine-actions">
 	              <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()">Sincronizza dati locali</button>
 	              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoPullOperationalCloudRecords()">Scarica novità cloud</button>
-	              <button class="btn-success small-btn" onclick="setActionAnchor(this); pmoSyncGroupRoutinesToCloud()">Sincronizza routine gruppi</button>
               <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRefreshCloudRoutines()">Aggiorna stato cloud</button>
             </div>
           </div>
@@ -5128,18 +5038,6 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
           </div>
           <div id="pmoCloudStatus" class="info-box">Accedi con email personale Supabase; i permessi del profilo autorizzano sync e routine.</div>
-        </div>
-        <div class="routine-cloud-panel">
-          <div class="routine-cloud-head">
-            <div>
-              <h3>Routine gruppi soci</h3>
-              <p id="routineGroupsHint">La prima automazione prevista crea partite in Chiudi Partite 48 ore prima.</p>
-            </div>
-            <div class="routine-actions">
-              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); switchTab('groups')">Apri gruppi soci</button>
-            </div>
-          </div>
-          <div id="routineGroupsTable"></div>
         </div>
         <div class="routine-cloud-panel">
           <div class="routine-cloud-head">
@@ -5278,7 +5176,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.432';
+    const APP_VERSION = '5.433';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6802,12 +6700,12 @@ Grazie.`
         type: 'maschile',
         level: '2.5',
         groupId: '',
-        groupName: 'Test chiusura partita',
+        groupName: '',
         formatName: 'Partita fittizia',
         status: 'inviting',
         createdFromFillSlot: true,
-        createdFromGroup: true,
-        creationSource: 'group',
+        createdFromGroup: false,
+        creationSource: 'fill-slot',
         isTestRecord: true,
         players: {
           test1: { id:'test1', name:'Maurizio Test', realName:'Maurizio Test', firstName:'Maurizio', phone:'+393357615855', level:'2.5', gender:'M', status:'confirmed', firstSeenAt:updatedAt, updatedAt },
@@ -6831,9 +6729,8 @@ Grazie.`
     const SECTION_LABELS = {
       dashboard: '🏠 Dashboard',
       matchpoint: 'DATI (in/out)',
-      members: '👥 Database soci',
+      members: '👥 Anagrafica soci',
       assessment: 'Autovalutazione',
-      groups: '👥 Gruppi soci',
       fillSlots: '🎯 Apri Partite',
       contact: '💬 Messaggi WhatsApp',
       routines: '⚙️ Routine',
@@ -6846,12 +6743,10 @@ Grazie.`
       inviteResponses: 'subMatches',
       matchHistory: 'subMatches',
       assessment: 'subAssessment',
-      members: 'subGroups',
-      groups: 'subGroups',
       administration: 'subAdministration'
     };
 
-    const SIDEBAR_SUBMENUS = ['subMatches', 'subAssessment', 'subGroups', 'subAdministration'];
+    const SIDEBAR_SUBMENUS = ['subMatches', 'subAssessment', 'subAdministration'];
 
     function setSidebarSubmenuOpen(id, open) {
       const submenu = document.getElementById(id);
@@ -6984,14 +6879,6 @@ Grazie.`
         'sincronizza': '#assessmentEmailPostPanel, #assessmentActionBanner, .assessment-toolbar',
         'risposte supabase': '#assessmentEmailPostPanel, #assessmentActionBanner, .assessment-toolbar',
         'da verificare': '#assessmentEmailPostPanel, #assessmentPostList, #assessmentTableBody'
-      },
-      groups: {
-        'nome gruppo': '#anchor-groups-editor',
-        'nuovo gruppo': '#anchor-groups-editor',
-        'crea gruppo': '#anchor-groups-editor',
-        'duplica': '#anchor-groups-archivio, #assistantGroupsList',
-        'duplica gruppo': '#anchor-groups-archivio, #assistantGroupsList',
-        'gruppi salvati': '#anchor-groups-archivio, #assistantGroupsList',
       },
       inviteResponses: {
         'report partite': '#anchor-invites-top, #anchor-invites-report, #inviteResponsesDashboard',
@@ -7243,6 +7130,7 @@ Grazie.`
       setTimeout(() => overlay.remove(), seconds);
     }
     function switchTab(tabName, btn=null, options={}) {
+      if (tabName === 'groups') tabName = 'members';
       const renderId = ++tabSwitchRenderId;
       const shouldScrollTop = !(options && options.scrollTop === false);
       if (tabName !== 'fillSlots') cancelFillSlotsPendingWork();
@@ -7272,7 +7160,6 @@ Grazie.`
             if (tabName === 'members') displayMembers();
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') displayAssessment();
-            if (tabName === 'groups') { renderAssistantGroups(); renderPlayerAvailabilityPreview(); }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
             if (tabName === 'matchpoint') refreshDataActionStatuses();
             if (tabName === 'routines') renderPmoRoutineCenter();
@@ -11819,11 +11706,7 @@ Grazie.`
       showAlert(`✅ Richiesta salvata: ${names.length}/4 già presenti. ${location}${guestWarning}`, resolved.incompleteGuests.length ? 'warning' : 'success');
     }
     function fillSlotStaffGroupsForSlot(slot) {
-      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-      return groups.filter(group => {
-        const fit = fillSlotGroupFit(group, slot);
-        return fit.dayFit && (fit.exactTime || (!group?.startTime && fit.bandFit));
-      });
+      return [];
     }
     function uniqueFillSlotStaffGroups(groups) {
       const seen = new Set();
@@ -11883,7 +11766,7 @@ Grazie.`
         group.fields = group.slots.map(slot => slot.field);
         group.staffCount = group.staffMatches.length;
         group.requestCount = group.requestIds.size;
-        group.bestSlot = group.slots.find(slot => fillSlotLightProposalCounts(slot).requestCount) || group.slots.find(slot => fillSlotLightProposalCounts(slot).staffCount) || group.slots[0];
+        group.bestSlot = group.slots.find(slot => fillSlotLightProposalCounts(slot).requestCount) || group.slots[0];
       });
       return Array.from(byGroup.values()).sort((a, b) =>
         String(a.date || '').localeCompare(String(b.date || '')) ||
@@ -12182,7 +12065,6 @@ Grazie.`
       ).sort((a, b) => String(a.field || '').localeCompare(String(b.field || ''), 'it'));
       const groupSlots = ensureFillSlotGroupCandidates(slots.length ? slots : [slot], analysis?.filters);
       const proposals = groupSlots.flatMap(s => buildFillSlotMatchProposals(s));
-      const staffMatches = uniqueFillSlotStaffGroups(proposals.filter(p => p.type === 'savedGroup').map(p => p.group).filter(Boolean));
       return {
         key: fillSlotGroupKey(slot),
         date: slot.date,
@@ -12194,12 +12076,12 @@ Grazie.`
         timeEnd: slot.timeEnd,
         slots: groupSlots,
         fields: groupSlots.map(s => s.field),
-        staffMatches,
+        staffMatches: [],
         proposals,
-        staffCount: staffMatches.length,
+        staffCount: 0,
         requestCount: new Set(proposals.filter(p => p.type === 'playerRequest').map(p => p.request?.id || p.key)).size,
-        algoCount: proposals.filter(p => p.type !== 'savedGroup' && p.type !== 'playerRequest').length,
-        bestSlot: proposals.find(p => p.type === 'playerRequest')?.slot || proposals.find(p => p.type === 'savedGroup')?.slot || groupSlots[0]
+        algoCount: proposals.filter(p => p.type !== 'playerRequest').length,
+        bestSlot: proposals.find(p => p.type === 'playerRequest')?.slot || groupSlots[0]
       };
     }
     function renderFillSlotsDetail(analysis) {
@@ -12220,7 +12102,7 @@ Grazie.`
       el.classList.add('open');
       const group = getFillSlotGroupForSlot(analysis, slot);
       const slotProposals = buildFillSlotMatchProposals(slot);
-      const primaryProposal = (currentFillSlotProposalKey ? slotProposals.find(p => p.key === currentFillSlotProposalKey) : null) || slotProposals.find(p => p.type === 'playerRequest') || slotProposals.find(p => p.type === 'savedGroup') || slotProposals[0] || null;
+      const primaryProposal = (currentFillSlotProposalKey ? slotProposals.find(p => p.key === currentFillSlotProposalKey) : null) || slotProposals.find(p => p.type === 'playerRequest') || slotProposals[0] || null;
       const rankedPlayers = fillSlotRankedPlayersForCard(slot, primaryProposal);
       const discarded = fillSlotDiscardedPlayersForSlot(slot);
       const acceptedCount = rankedPlayers.filter(p => !p._requestFixed && fillSlotCandidateDecisions[`${slot.key}|${fillSlotPlayerRuntimeKey(p)}`] === 'accepted').length;
@@ -12228,7 +12110,7 @@ Grazie.`
       const canCreate = !!primaryProposal && creationPlayers.length >= 4 && !creationPlayers.some(player => player._guestIncomplete);
       const creationPill = canCreate ? `${creationPlayers.length} confermati` : `${creationPlayers.length}/4 confermati`;
       const title = `${slot.day.charAt(0).toUpperCase() + slot.day.slice(1)} ${slot.dateDisplay} · ${slot.timeStart} · ${group.fields.length} ${group.fields.length === 1 ? 'campo libero' : 'campi liberi'}`;
-      const selectedSource = primaryProposal?.type === 'playerRequest' ? 'richiesta giocatore' : (primaryProposal?.type === 'savedGroup' ? 'gruppo staff' : (primaryProposal ? 'proposta algoritmo' : 'da assegnare'));
+      const selectedSource = primaryProposal?.type === 'playerRequest' ? 'richiesta giocatore' : (primaryProposal ? 'proposta algoritmo' : 'da assegnare');
       el.innerHTML = `
         <div class="fill-panel-head">
           <h3>Proposta partita</h3>
@@ -12241,9 +12123,8 @@ Grazie.`
               ${group.slots.map(s => {
                 const proposals = buildFillSlotMatchProposals(s);
                 const hasRequest = proposals.some(p => p.type === 'playerRequest');
-                const hasStaff = proposals.some(p => p.type === 'savedGroup');
-                const hasAlgo = proposals.some(p => p.type !== 'savedGroup' && p.type !== 'playerRequest');
-                const status = s.key === slot.key ? `selezionato · ${selectedSource}` : (hasRequest ? 'libero · richiesta giocatore' : (hasStaff ? 'libero · gruppo staff' : (hasAlgo ? 'libero · proposta algoritmo' : 'libero · da assegnare')));
+                const hasAlgo = proposals.some(p => p.type !== 'playerRequest');
+                const status = s.key === slot.key ? `selezionato · ${selectedSource}` : (hasRequest ? 'libero · richiesta giocatore' : (hasAlgo ? 'libero · proposta algoritmo' : 'libero · da assegnare'));
                 const preferred = currentFillSlotProposalKey && proposals.some(p => p.key === currentFillSlotProposalKey) ? currentFillSlotProposalKey : '';
                 return `<button class="fill-court ${s.key === slot.key ? 'active' : ''}" onclick="setActionAnchor(this); selectFillSlot('${escapeJs(s.key)}','${escapeJs(preferred)}')"><strong>${escapeHtml(fillSlotShortField(s.field))}</strong><span>${escapeHtml(status)}</span></button>`;
               }).join('')}
@@ -12314,9 +12195,7 @@ Grazie.`
       updateFillSlotActiveButton();
     }
     function fillSlotRankedPlayersForCard(slot, proposal) {
-      if (proposal && proposal.type !== 'savedGroup') {
-        return (proposal.players || []).filter(player => fillSlotCandidateDecisions[`${slot.key}|${fillSlotPlayerRuntimeKey(player)}`] !== 'discarded').slice(0, 12);
-      }
+      if (proposal) return (proposal.players || []).filter(player => fillSlotCandidateDecisions[`${slot.key}|${fillSlotPlayerRuntimeKey(player)}`] !== 'discarded').slice(0, 12);
       const seen = new Set();
       const out = [];
       const add = (player, source) => {
@@ -12325,7 +12204,7 @@ Grazie.`
         seen.add(key);
         out.push({ ...player, _fillSource: source || player._fillSource || 'algoritmo' });
       };
-      (proposal?.players || []).forEach(player => add(player, proposal?.type === 'savedGroup' ? 'staff' : 'algoritmo'));
+      (proposal?.players || []).forEach(player => add(player, 'algoritmo'));
       (slot.candidates || []).forEach(player => add(player, 'algoritmo'));
       return out.slice(0, 12);
     }
@@ -12339,7 +12218,7 @@ Grazie.`
     }
     function renderFillSlotRankedCandidate(slot, player, rank, proposal) {
       const key = fillSlotPlayerRuntimeKey(player);
-      const source = player._fillSource || (proposal?.type === 'savedGroup' ? 'staff' : 'algoritmo');
+      const source = player._fillSource || 'algoritmo';
       const isStaff = source === 'staff';
       const isRequestFixed = !!player._requestFixed || source === 'richiesta';
       const decision = fillSlotCandidateDecisions[`${slot.key}|${key}`] || '';
@@ -12472,32 +12351,6 @@ Grazie.`
         const proposal = buildFillSlotRequestProposal(slot, request);
         if (proposal) proposals.push(proposal);
       });
-      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-      groups.forEach(group => {
-        const fit = fillSlotGroupFit(group, slot);
-        if (!fit.dayFit && !fit.bandFit) return;
-        const resolved = resolveAssistantGroup(group);
-        const active = resolved.matched.filter(p => p && p.active !== false && fillSlotPlayerIsOperational(p) && !playerHasConflict(p, slot.date, slot.timeStart));
-        const weekly = splitPlayersByWeeklyRest(active, slot.date);
-        const available = rankFillSlotPlayersForProposal(weekly.available, slot);
-        if (available.length < 4) return;
-        const score = (slot.priorityScore || 0) + 35 + fit.score + Math.min(available.length, 16) + Math.min(available.filter(p => (p._fill?.future10 || 0) === 0).length, 8);
-        proposals.push({
-          key: `group_${group.id}_${slot.key}`,
-          type: 'savedGroup',
-          title: group.name || 'Gruppo salvato',
-          sourceLabel: 'Gruppo salvato',
-          score,
-          slot,
-          group,
-          players: available,
-          suggested: available,
-          poolCount: available.length,
-          className: score >= 145 ? 'good' : 'warn',
-          notes: fit.labels,
-          warnings: fillSlotProposalWarnings(available, resolved.missing.length, weekly.rested.length)
-        });
-      });
       const generation = fillSlotProposalRegeneration[slot.key] || 0;
       const coherent = buildLevelCoherentFillSlotPlayers(slot.candidates || [], slot, generation);
       const historicalPlayers = coherent.players.slice(0, 16);
@@ -12508,7 +12361,7 @@ Grazie.`
         proposals.push({
           key: `history_${slot.key}`,
           type: 'history',
-          title: `Gruppo potenziale da storico`,
+          title: `Proposta da storico`,
           sourceLabel: 'Storico + candidati',
           score,
           slot,
@@ -12584,7 +12437,6 @@ Grazie.`
         listFingerprint(prenotazioniOccupazione, p => `${p.data || ''}:${p.ora || p.orario || ''}:${p.campo || ''}:${p.giocatore || ''}:${p.tipo || p.descrizione || ''}`),
         JSON.stringify(getPotentialSlotSchedule()),
         Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni.length : 0,
-        listFingerprint(dailyPlayerGroups, g => `${g.id || ''}:${g.updatedAt || ''}:${g.name || ''}:${g.day || ''}:${g.startTime || ''}:${(g.names || []).join(',')}`),
         listFingerprint(fillSlotPlayerRequests, r => `${r.id || ''}:${r.updatedAt || ''}:${r.status || ''}:${r.date || ''}:${r.timeStart || ''}:${r.field || ''}:${r.level || ''}:${r.matchType || ''}:${(r.names || []).join(',')}`),
         recordFingerprint(lunchMatchInvitations, r => `${r.key || ''}:${r.updatedAt || ''}:${r.status || ''}:${r.date || ''}:${r.time || ''}:${r.field || ''}`),
         recordFingerprint(fillSlotCreatedMatches, r => `${r.key || ''}:${r.createdAt || ''}:${r.date || ''}:${r.time || ''}:${r.field || ''}`),
@@ -12890,9 +12742,9 @@ Grazie.`
               availablePlayers: players,
               suggested: players,
               preferNoFuture: true,
-              sourceGroupId: proposal.group?.id || '',
-              sourceGroupName: proposal.group?.name || proposal.title,
-              sourceGroupFormat: proposal.type === 'playerRequest' ? 'Richiesta giocatore' : (proposal.type === 'savedGroup' ? 'Gruppo salvato' : 'Gruppo potenziale da Apri Partite'),
+              sourceGroupId: '',
+              sourceGroupName: proposal.title,
+              sourceGroupFormat: proposal.type === 'playerRequest' ? 'Richiesta giocatore' : 'Proposta da Apri Partite',
               fillSlotProposalKey: proposal.key,
               fillSlotProposalScore: proposal.score,
               fillSlotProposalType: proposal.type,
@@ -12926,50 +12778,10 @@ Grazie.`
       });
     }
     function saveFillSlotCandidateGroup() {
-      const slot = getCurrentFillSlot();
-      if (!slot || !slot.candidates.length) return showAlert('⚠️ Nessun candidato da salvare.', 'warning');
-      const names = slot.candidates.slice(0, 16).map(playerFullName).filter(Boolean);
-      const group = {
-        id: makeId(),
-        name: `Apri Partite ${slot.dateDisplay} ${slot.timeStart} ${slot.field}`,
-        level: document.getElementById('fillSlotLevelFilter')?.value || '',
-        recommendedDays: slot.day,
-        day: String(slot.weekday || ''),
-        matchType: document.getElementById('fillSlotGenderFilter')?.value === 'M' ? 'maschile' : (document.getElementById('fillSlotGenderFilter')?.value === 'F' ? 'femminile' : 'mista'),
-        startTime: slot.timeStart,
-        endTime: slot.timeEnd,
-        formatName: `Apri Partite ${slot.field}`,
-        notes: `Creato da Apri Partite: ${slot.dateDisplay} ${slot.timeStart}-${slot.timeEnd}, ${slot.field}.`,
-        names,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      dailyPlayerGroups.unshift(group);
-      save('dailyPlayerGroups', dailyPlayerGroups);
-      showAlert(`✅ Gruppo candidati salvato con ${names.length} nominativi.`, 'success');
+      showAlert('Questa funzione non e piu disponibile: usa direttamente Apri Partite e Chiudi Partite.', 'info');
     }
     function loadFillSlotCandidatesIntoGroupEditor() {
-      const slot = getCurrentFillSlot();
-      if (!slot) return showAlert('⚠️ Seleziona prima uno slot.', 'warning');
-      switchTab('groups');
-      setTimeout(() => {
-        const names = slot.candidates.slice(0, 16).map(playerFullName).filter(Boolean);
-        const nameEl = document.getElementById('assistantGroupName');
-        const dayEl = document.getElementById('assistantGroupDay');
-        const startEl = document.getElementById('assistantGroupStartTime');
-        const endEl = document.getElementById('assistantGroupEndTime');
-        const typeEl = document.getElementById('assistantGroupMatchType');
-        const namesEl = document.getElementById('assistantGroupNames');
-        if (nameEl) nameEl.value = `Apri Partite ${slot.dateDisplay} ${slot.timeStart} ${slot.field}`;
-        if (dayEl) dayEl.value = String(slot.weekday || '');
-        if (startEl) startEl.value = slot.timeStart;
-        if (endEl) endEl.value = slot.timeEnd;
-        if (typeEl) typeEl.value = document.getElementById('fillSlotGenderFilter')?.value === 'M' ? 'maschile' : (document.getElementById('fillSlotGenderFilter')?.value === 'F' ? 'femminile' : 'mista');
-        if (namesEl) namesEl.value = names.join('\n');
-        updateAssistantGroupNamesCount();
-        document.getElementById('assistantGroupEditorPanel')?.setAttribute('open', '');
-        showAlert('✅ Candidati caricati nel nuovo gruppo.', 'success');
-      }, 120);
+      showAlert('Questa funzione non e piu disponibile: usa direttamente Apri Partite e Chiudi Partite.', 'info');
     }
     function createMatchFromFillSlot() {
       const slot = getCurrentFillSlot();
@@ -13968,8 +13780,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       showAlert('✅ Link calendario copiato. Puoi incollarlo su WhatsApp o nel messaggio finale.', 'success');
     }
     function getGroupOriginForRecord(record) {
-      if (!record || !record.groupId) return null;
-      return (dailyPlayerGroups || []).find(g => String(g.id) === String(record.groupId)) || null;
+      return null;
     }
 
 
@@ -14573,10 +14384,10 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
     function addMorePlayersFromGroupToRecord(recordKey, limit=4) {
       const record = lunchMatchInvitations?.[recordKey];
       if (!record) return showAlert('⚠️ Partita non trovata.', 'warning');
-      if (!record.groupId) return showAlert('⚠️ Questa partita non è collegata a un gruppo origine.', 'warning');
+      if (!record.groupId) return showAlert('⚠️ Funzione non disponibile per questa partita.', 'warning');
       const candidates = getRemainingGroupPlayersForRecord(record);
       if (!candidates.length) {
-        return showAlert('⚠️ Non ci sono altri nominativi disponibili automaticamente. Usa “👤 Aggiungi nominativo dal gruppo” per scegliere manualmente anche persone a riposo settimanale, senza telefono o con avvisi.', 'warning');
+        return showAlert('⚠️ Non ci sono altri nominativi disponibili automaticamente.', 'warning');
       }
       const selected = candidates.slice(0, Math.max(1, parseInt(limit, 10) || 4));
       selected.forEach(p => addGroupPlayerToRecord(record, p));
@@ -14584,15 +14395,15 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       saveLunchInvitationRecord(record);
       renderInviteResponsesDashboard();
       if (currentMatchContext && getLunchMatchInviteKey() === recordKey) displayContactForm();
-      showAlert(`✅ Aggiunti ${selected.length} altri nominativi dal gruppo origine. Ora puoi invitarli dalla tabella della partita.`, 'success');
+      showAlert(`✅ Aggiunti ${selected.length} altri nominativi. Ora puoi invitarli dalla tabella della partita.`, 'success');
     }
 
     function addSpecificPlayerFromGroupToRecord(recordKey) {
       const record = lunchMatchInvitations?.[recordKey];
       if (!record) return showAlert('⚠️ Partita non trovata.', 'warning');
-      if (!record.groupId) return showAlert('⚠️ Questa partita non è collegata a un gruppo origine.', 'warning');
+      if (!record.groupId) return showAlert('⚠️ Funzione non disponibile per questa partita.', 'warning');
       const { group, resolved, options } = getGroupPlayerOptionsForRecord(record);
-      if (!group) return showAlert('⚠️ Gruppo origine non trovato. Forse è stato eliminato o rinominato.', 'warning');
+      if (!group) return showAlert('⚠️ Funzione non disponibile per questa partita.', 'warning');
       const addable = options.filter(o => !o.inRecord);
       if (!addable.length) {
         const report = options.map(o => `• ${matchDisplayNameForRecord(o.player, record)}: già presente nella partita`).join('\n');
@@ -16267,7 +16078,6 @@ Grazie!`
         const cancelled = opStatus === 'cancelled';
         const canReopen = !isLunchRecordPast(record);
         const finalMessage = summary.confirmed >= 4 ? buildLunchFinalGroupMessageForRecord(record) : '';
-        const remainingFromGroup = record.groupId ? getRemainingGroupPlayersForRecord(record).length : 0;
         const statusClass = cancelled ? 'cancelled' : closed ? 'closed' : complete ? 'complete' : '';
         const activeWorkKey = String(window.__inviteWorkContext?.recordKey || '');
         const detailsOpen = (records.length === 1 || String(record.key) === activeWorkKey) ? ' open' : '';
@@ -16322,9 +16132,9 @@ Grazie!`
           <div class="invite-selected-banner">👉 Stai lavorando su questa partita. Cambi partita solo dalla colonna sinistra.</div>
           <div class="match-card-top">
             <div class="match-title-block">
-              <h3>${complete ? '🟢' : closed ? '✅' : cancelled ? '❌' : '🎾'} ${escapeHtml(record.groupName || record.formatName || 'Partita pranzo')}</h3>
+              <h3>${complete ? '🟢' : closed ? '✅' : cancelled ? '❌' : '🎾'} ${escapeHtml(record.formatName || record.proposalSource || 'Partita pranzo')}</h3>
               <div class="match-date-line"><strong>${escapeHtml(weekdayLabelFromISO(record.date) || '')} ${escapeHtml(formatDateForWhatsApp(record.date || ''))}</strong> · ${escapeHtml(record.time || '')}${record.endTime ? ' - ' + escapeHtml(record.endTime) : ''}</div>
-              <div class="match-card-meta-line">${escapeHtml(lunchRecordStatusLabel(record))} · Gruppo origine: ${escapeHtml(record.groupName || '-')}</div>
+              <div class="match-card-meta-line">${escapeHtml(lunchRecordStatusLabel(record))}</div>
             </div>
             <div class="match-primary-number"><div class="big">${summary.confirmed}/4</div><div class="label">confermati</div></div>
           </div>
@@ -16334,7 +16144,6 @@ Grazie!`
             <span class="match-pill warning">🤔 ${summary.maybe}</span>
             <span class="match-pill muted">🪑 ${summary.reserve}</span>
             <span class="match-pill danger">❌ ${summary.declined}</span>
-            ${record.groupId ? `<span class="match-pill info">➕ gruppo ${remainingFromGroup}</span>` : ''}
           </div>
           <div class="match-quick-actions">
             ${!closed && !cancelled ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); copyMatchOperationalPlan('${escapeJs(record.key)}')">Riepilogo partita</button>` : ''}
@@ -16397,12 +16206,7 @@ Grazie!`
     }
 
     function isGroupOrganizedLunchRecord(record) {
-      if (!record) return false;
-      if (record.createdFromGroup || record.creationSource === 'group') return true;
-      if (cleanCell(record.groupId || '')) return true;
-      const proposalType = normalizeText(record.fillSlotProposalType || '');
-      if (proposalType === 'savedgroup') return true;
-      return normalizeText(record.formatName || '') === 'gruppo salvato';
+      return false;
     }
 
     function lunchRecordTypeMessageLine(record) {
@@ -16508,8 +16312,7 @@ Grazie!`
       const cancelled = opStatus === 'cancelled';
       const canReopen = !isLunchRecordPast(record);
       const finalMessage = summary.confirmed >= 4 ? buildLunchFinalGroupMessageForRecord(record) : '';
-      const remainingFromGroup = record.groupId ? getRemainingGroupPlayersForRecord(record).length : 0;
-      const title = record.groupName || record.formatName || 'Partita';
+      const title = record.formatName || record.proposalSource || 'Partita';
       const dateLabel = `${weekdayLabelFromISO(record.date) || ''} ${formatDateForWhatsApp(record.date || '')}`.trim();
       const statusOrder = { confirmed:0, contacted:1, pending:2, reserve:3, maybe:3, declined:4 };
       const rows = Object.values(record.players || {}).sort((a, b) => {
@@ -16568,7 +16371,7 @@ Grazie!`
         <div class="invite-sheet-head">
           <div class="invite-sheet-head-main">
             <h3>${escapeHtml(dateLabel || record.date || '-')} · ${escapeHtml(record.time || '')}${record.endTime ? ' - ' + escapeHtml(record.endTime) : ''} · ${escapeHtml(record.field || 'Campo non indicato')}</h3>
-            <div class="invite-sheet-meta-row"><span class="invite-sheet-confirmed">${summary.confirmed}/4 confermati</span>${record.groupName ? `<span class="pill info">Gruppo: ${escapeHtml(record.groupName)}</span>` : ''}</div>
+            <div class="invite-sheet-meta-row"><span class="invite-sheet-confirmed">${summary.confirmed}/4 confermati</span></div>
           </div>
           <div class="invite-sheet-actions">
             ${summary.confirmed >= 4 ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); openLunchWhatsAppTemplateComposer('${escapeJs(record.key)}','','final')">📋 Copia messaggio finale</button>` : ''}
@@ -16652,9 +16455,7 @@ Grazie!`
         const weekdayLabel = weekdayLabelFromISO(record.date) || '-';
         const highlightedKey = String(window.__inviteWorkContext?.highlightKey || window.__inviteWorkContext?.recordKey || '');
         const isHighlighted = highlightedKey && String(record.key || '') === highlightedKey;
-        const sourceLabel = record.groupName
-          ? `Gruppo: ${record.groupName}`
-          : (record.proposalSource || record.formatName || '');
+        const sourceLabel = record.proposalSource || record.formatName || '';
         return `<tr class="priority-${escapeHtml(priority.key)}${isHighlighted ? ' just-created' : ''}">
           <td><span class="invite-date-cell">${escapeHtml(dateLabel)}</span><span class="invite-table-sub">${escapeHtml(weekdayLabel)}</span>${isHighlighted ? '<span class="invite-row-focus-pill">appena creata</span>' : ''}</td>
           <td>${sourceLabel ? `<span class="invite-origin-cell">${escapeHtml(sourceLabel)}</span>` : '<span class="muted">-</span>'}</td>
@@ -16744,9 +16545,7 @@ Grazie!`
         const statusClass = status === 'cancelled' ? 'cancelled' : 'closed';
         const dateLabel = formatDateForWhatsApp(record.date || '') || record.date || '-';
         const weekdayLabel = weekdayLabelFromISO(record.date) || '-';
-        const sourceLabel = record.groupName
-          ? `Gruppo: ${record.groupName}`
-          : (record.proposalSource || record.formatName || '');
+        const sourceLabel = record.proposalSource || record.formatName || '';
         const statusUpdated = record.statusUpdatedAt ? new Date(record.statusUpdatedAt).toLocaleString('it-IT') : '';
         return `<tr class="priority-${escapeHtml(statusClass)}">
           <td><span class="invite-date-cell">${escapeHtml(dateLabel)}</span><span class="invite-table-sub">${escapeHtml(weekdayLabel)}</span></td>
@@ -19064,8 +18863,6 @@ Padel Village`;
       assistantSetText('assistantNewResponses', stats.newResponses.length);
       assistantSetText('assistantReviewResponses', stats.reviewResponses.length);
       assistantSetText('assistantFreeSlots', freeSlots);
-      assistantSetText('assistantGroupsCount', Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups.length : 0);
-      renderAssistantGroups();
       renderAssistantMatchpointGuide();
 
       const question = document.getElementById('assistantMorningQuestion');
@@ -19107,7 +18904,7 @@ Padel Village`;
       } else {
         steps.push(assistantStepHtml('done', '5. Invii autovalutazione', 'Nessun nuovo socio da contattare oggi oppure richieste già inviate.'));
       }
-      steps.push(assistantStepHtml(freeSlots > 0 ? 'wait' : 'done', '6. Slot e partite', `Slot pranzo liberi dal lunedì al venerdì nei prossimi 15 giorni: <strong>${freeSlots}</strong>. Gruppi salvati: <strong>${Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups.length : 0}</strong>.`, `<button class="btn-primary" onclick="setActionAnchor(this); assistantGoToSlots()">📊 Vedi slot liberi</button><button class="btn-success" onclick="setActionAnchor(this); assistantGoToGroups()">👥 Usa un gruppo</button>`));
+      steps.push(assistantStepHtml(freeSlots > 0 ? 'wait' : 'done', '6. Slot e partite', `Slot pranzo liberi dal lunedì al venerdì nei prossimi 15 giorni: <strong>${freeSlots}</strong>.`, `<button class="btn-primary" onclick="setActionAnchor(this); assistantGoToSlots()">📊 Vedi slot liberi</button>`));
       steps.push(assistantStepHtml('wait', '7. Backup finale', 'Dopo aver applicato livelli o fatto modifiche importanti, fai sempre Backup Dati.', `<button class="btn-success" onclick="setActionAnchor(this); assistantGoToBackup()">💾 Vai a Backup Dati</button>`));
 
       const plan = document.getElementById('assistantPlan');
@@ -19143,16 +18940,12 @@ Padel Village`;
       showAlert('💾 Clicca “Backup Dati” dopo gli aggiornamenti importanti.', 'info');
     }
     function assistantGoToGroups() {
-      switchTab('groups');
-      renderAssistantGroups();
-      showAlert('🏷️ Qui puoi creare, modificare o usare i gruppi per le partite di pranzo.', 'info');
+      switchTab('fillSlots');
+      showAlert('La gestione passa da Apri Partite e dalla scheda partita.', 'info');
     }
     function openGroupEditorFromSideMenu(btn) {
-      const groupsButton = document.getElementById('groupsSideTabButton');
-      switchTab('groups', groupsButton || undefined);
-      renderAssistantGroups();
       setActionAnchor(btn);
-      setTimeout(() => openAssistantGroupEditor(true), 0);
+      switchTab('members');
     }
     function assistantGoToSlots() {
       switchTab('fillSlots');
@@ -19337,7 +19130,7 @@ Padel Village`;
       const raw = normalizeGroupLine(input?.value || '');
       const member = findMemberByGroupName(raw);
       if (!member) {
-        showAlert('⚠️ Nome non trovato nel Database soci. Scegli un suggerimento o crea prima la scheda socio.', 'warning');
+        showAlert('⚠️ Nome non trovato in Anagrafica soci. Scegli un suggerimento o crea prima la scheda socio.', 'warning');
         renderAssistantGroupNameRows();
         return;
       }
@@ -19446,13 +19239,13 @@ Padel Village`;
       const rows = missing.map(name => {
         const suggestions = findMemberNameSuggestions(name, 3, filters);
         const suggestionText = isGuestJollyName(name)
-          ? 'crea prima la scheda socio speciale “Ospite” nel Database soci'
+          ? 'crea prima la scheda socio speciale “Ospite” in Anagrafica soci'
           : suggestions.length
           ? suggestions.map(({ member }) => `<strong>${escapeHtml(playerFullName(member))}</strong>`).join(', ')
           : 'nessuna scheda socio simile trovata';
         return `<li><strong>${escapeHtml(name)}</strong> non combacia con una scheda socio. Possibili correzioni: ${suggestionText}.</li>`;
       }).join('');
-      return `<div class="alert alert-warning"><strong>Nome non esatto nel gruppo.</strong><br>La partita non viene creata finché tutti i nominativi non corrispondono a una scheda socio del Database soci.<ul style="margin:8px 0 0 20px;">${rows}</ul></div>`;
+      return `<div class="alert alert-warning"><strong>Nome non esatto.</strong><br>La partita non viene creata finché tutti i nominativi non corrispondono a una scheda socio di Anagrafica soci.<ul style="margin:8px 0 0 20px;">${rows}</ul></div>`;
     }
     function getAssistantSelectedGroup() {
       const id = document.getElementById('assistantSelectedGroup')?.value || '';
@@ -19475,7 +19268,7 @@ Padel Village`;
       if (deleteBtn) deleteBtn.style.display = groupId ? '' : 'none';
       const summary = document.getElementById('anchor-groups-editor');
       const group = groupId ? (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId)) : null;
-      if (summary) summary.textContent = groupId ? `✏️ Modifica gruppo: ${group?.name || ''}` : '➕ Nuovo gruppo';
+      if (summary) summary.textContent = groupId ? `Voce rimossa: ${group?.name || ''}` : 'Voce rimossa';
     }
     function cancelAssistantGroupEdit() {
       const wasEditing = !!cleanCell(document.getElementById('assistantGroupEditingId')?.value || '');
@@ -19497,6 +19290,8 @@ Padel Village`;
     }
 
     function openAssistantGroupEditor(clearFirst=false) {
+      showAlert('Funzione rimossa: usa Anagrafica soci e Apri Partite.', 'info');
+      return;
       closeAssistantGroupDetailOverlay();
       const overlay = document.getElementById('assistantGroupEditorOverlay');
       const panel = document.getElementById('assistantGroupEditorPanel');
@@ -19519,7 +19314,7 @@ Padel Village`;
       }
       const title = document.getElementById('assistantGroupOverlayTitle');
       const editingId = document.getElementById('assistantGroupEditingId')?.value || '';
-      if (title) title.textContent = editingId ? 'Modifica gruppo' : 'Nuovo gruppo';
+      if (title) title.textContent = 'Voce rimossa';
       scrollGroupEditorOverlayIntoView(overlay || panel || document.getElementById('anchor-groups-editor'));
     }
     function closeAssistantGroupOverlay() {
@@ -19547,6 +19342,8 @@ Padel Village`;
 	      showAlert('✅ Modulo gruppo svuotato.', 'success');
     }
     function saveAssistantGroup(options={}) {
+      showAlert('Funzione rimossa: usa Anagrafica soci e Apri Partite.', 'info');
+      return null;
       const opts = options || {};
       const name = compactSpaces(document.getElementById('assistantGroupName')?.value || '');
       const recommendedDays = compactSpaces(document.getElementById('assistantGroupRecommendedDays')?.value || '');
@@ -19614,7 +19411,7 @@ Padel Village`;
         closeAssistantGroupOverlay();
         closeAssistantGroupDetailOverlay();
       }
-      if (!opts.silent) showAlert(existing ? `✅ Gruppo aggiornato: ${name}.` : `✅ Nuovo gruppo salvato: ${name}.`, 'success');
+      if (!opts.silent) showAlert(existing ? `✅ Voce aggiornata: ${name}.` : `✅ Voce salvata: ${name}.`, 'success');
       return payload;
     }
     function createMatchFromAssistantGroupEditor() {
@@ -19635,6 +19432,8 @@ Padel Village`;
       saveAssistantGroup();
     }
     function editAssistantGroup(groupId) {
+      showAlert('Funzione rimossa: usa Anagrafica soci e Apri Partite.', 'info');
+      return;
       const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
       if (!group) return showAlert('⚠️ Gruppo non trovato.', 'warning');
       if (!document.getElementById('assistantGroupName')) switchTab('groups');
@@ -19674,6 +19473,8 @@ Padel Village`;
       return `${firstTry} ${n}`;
     }
     function duplicateAssistantGroup(groupId) {
+      showAlert('Funzione rimossa: usa Anagrafica soci e Apri Partite.', 'info');
+      return;
       const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
       if (!group) return showAlert('⚠️ Gruppo non trovato.', 'warning');
       if (!document.getElementById('assistantGroupName')) switchTab('groups');
@@ -19720,6 +19521,8 @@ Padel Village`;
       closeAssistantGroupOverlay();
     }
     function deleteAssistantGroup(groupId) {
+      showAlert('Funzione rimossa: usa Anagrafica soci e Apri Partite.', 'info');
+      return false;
       const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
       if (!group) return false;
       const typed = prompt(`Eliminare definitivamente il gruppo "${group.name}"?
@@ -19876,18 +19679,13 @@ Per confermare scrivi ELIMINA.`);
     }
 
     function refreshAssistantGroupsCountBadge() {
-      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-      const total = String(groups.length);
-      const badge = document.getElementById('assistantGroupsCountBadge');
-      if (badge) badge.textContent = total;
-      const assistantCount = document.getElementById('assistantGroupsCount');
-      if (assistantCount) assistantCount.textContent = total;
+      return;
     }
 
     function renderAssistantGroups(preferSelectedId='') {
+      return;
       const select = document.getElementById('assistantSelectedGroup');
       const list = document.getElementById('assistantGroupsList');
-      const badge = document.getElementById('assistantGroupsCountBadge');
       const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
       const searchRaw = document.getElementById('assistantGroupSearch')?.value || '';
       const search = normalizeText(searchRaw);
@@ -19916,7 +19714,6 @@ Per confermare scrivi ELIMINA.`);
         if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
         return String(av).localeCompare(String(bv), 'it') * dir;
       });
-      if (badge) badge.textContent = (search || dayFilter || typeFilter) ? `${visibleGroups.length}/${groups.length}` : String(groups.length);
       if (select) {
         const current = preferSelectedId || select.value || '';
         select.innerHTML = groups.length
@@ -19997,6 +19794,8 @@ Per confermare scrivi ELIMINA.`);
       assistantPrepareLunchMatchFromGroup(group.id);
     }
     function assistantPrepareLunchMatchFromGroup(groupId) {
+      showAlert('Funzione rimossa: crea le partite da Apri Partite.', 'info');
+      return null;
       const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
       const output = document.getElementById('assistantGroupOutput');
       if (!group) { showAlert('⚠️ Gruppo non trovato.', 'warning'); return null; }
@@ -20277,7 +20076,6 @@ Per confermare scrivi ELIMINA.`);
 	      (Array.isArray(prenotazioni) ? prenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking', pmoBookingCloudKey(item, index, 'booking'), item));
 	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
 	      (Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_history', pmoBookingCloudKey(item, index, 'history'), item));
-	      (Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : []).forEach((item, index) => pmoAddCloudRecord(records, 'player_group', item.id || `group|${index}|${pmoShortHash(item)}`, item));
 	      pmoCloudObjectEntries(lunchMatchInvitations).forEach(([key, item]) => pmoAddCloudRecord(records, 'match_invitation', item.key || key, item));
 	      pmoCloudObjectEntries(fillSlotCreatedMatches).forEach(([key, item]) => pmoAddCloudRecord(records, 'fill_slot_created_match', item.key || key, item));
 	      (Array.isArray(fillSlotPlayerRequests) ? fillSlotPlayerRequests : []).forEach((item, index) => pmoAddCloudRecord(records, 'fill_slot_player_request', item.id || item.key || `request|${index}|${pmoShortHash(item)}`, item));
@@ -20340,43 +20138,16 @@ Per confermare scrivi ELIMINA.`);
 	      return isNaN(d.getTime()) ? String(value) : d.toLocaleString('it-IT', { weekday:'short', day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
 	    }
 	    function pmoRoutineGroupsHint(groups) {
-	      const activeGroups = (groups || []).filter(g => g.autoCreateEnabled);
-	      const source = activeGroups.length ? activeGroups : (groups || []);
-	      const hours = [...new Set(source.map(g => Math.max(1, parseInt(g.autoCreateHoursBefore || '48', 10) || 48)))].sort((a,b) => a - b);
-	      const hoursText = hours.length === 1 ? `${hours[0]} ore prima` : `con anticipi diversi: ${hours.map(h => `${h}h`).join(', ')}`;
-	      return `La routine crea automaticamente la partita in Chiudi Partite ${hoursText}. In tabella vedi sia la data partita sia l'orario previsto di creazione.`;
+	      return '';
 	    }
 	    function pmoToggleGroupRoutine(groupId, enabled) {
-	      const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
-	      if (!group) return;
-	      group.autoCreateEnabled = !!enabled;
-	      group.autoCreateHoursBefore = Math.max(1, parseInt(group.autoCreateHoursBefore || '48', 10) || 48);
-	      group.updatedAt = new Date().toISOString();
-	      save('dailyPlayerGroups', dailyPlayerGroups);
-	      renderPmoRoutineCenter();
-	      renderAssistantGroups();
-	      pmoSetCloudStatus('⚠️ Routine modificata in locale. Clicca “Sincronizza routine gruppi” per aggiornare Supabase.', 'warning');
+	      pmoSetCloudStatus('La routine gruppi non e piu disponibile in TEST.', 'info');
 	    }
 	    function pmoChangeGroupRoutineHours(groupId, value) {
-	      const group = (dailyPlayerGroups || []).find(g => String(g.id) === String(groupId));
-	      if (!group) return;
-	      group.autoCreateHoursBefore = Math.max(1, parseInt(value || '48', 10) || 48);
-	      group.updatedAt = new Date().toISOString();
-	      save('dailyPlayerGroups', dailyPlayerGroups);
-	      renderPmoRoutineCenter();
-	      renderAssistantGroups();
-	      pmoSetCloudStatus('⚠️ Anticipo modificato in locale. Clicca “Sincronizza routine gruppi” per aggiornare Supabase.', 'warning');
+	      pmoSetCloudStatus('La routine gruppi non e piu disponibile in TEST.', 'info');
 	    }
 	    function pmoOpenGroupFromRoutine(groupId) {
-	      const id = String(groupId || '');
-	      if (!id) return showAlert('⚠️ Gruppo non trovato.', 'warning');
-	      const groupsButton = document.getElementById('groupsSideTabButton');
-	      switchTab('groups', groupsButton || null, { scrollTop:false });
-	      requestAnimationFrame(() => {
-	        editAssistantGroup(id);
-	        const overlay = document.getElementById('assistantGroupEditorOverlay');
-	        if (overlay) scrollGroupEditorOverlayIntoView(overlay);
-	      });
+	      switchTab('members', null, { scrollTop:false });
 	    }
 	    function renderPmoRoutineCenter() {
 	      const cloudAuth = document.getElementById('pmoCloudAuthSummary');
@@ -20386,57 +20157,24 @@ Per confermare scrivi ELIMINA.`);
 	          ? `${summary.user} · ${summary.role}`
 	          : 'Accesso personale Supabase richiesto per sync e routine.';
 	      }
-	      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-	      const activeGroups = groups.filter(g => g.autoCreateEnabled);
 	      const localRecordsCount = pmoBuildCloudRecordsFromLocalState().length;
 	      const routines = Array.isArray(pmoCloudState?.routines) ? pmoCloudState.routines : [];
-	      const hint = document.getElementById('routineGroupsHint');
-	      if (hint) hint.textContent = pmoRoutineGroupsHint(groups);
 	      const kpis = document.getElementById('routineCloudKpis');
 	      if (kpis) {
 	        kpis.innerHTML = `
 	          <div class="routine-cloud-card"><div class="label">Record locali pronti</div><div class="value">${localRecordsCount}</div></div>
-	          <div class="routine-cloud-card success"><div class="label">Gruppi con routine</div><div class="value">${activeGroups.length}</div></div>
 	          <div class="routine-cloud-card info"><div class="label">Routine cloud lette</div><div class="value">${routines.length}</div></div>
 	          <div class="routine-cloud-card warning"><div class="label">Ultimo sync</div><div class="value" style="font-size:16px">${escapeHtml(pmoFormatDateTime(pmoCloudState.lastSyncAt))}</div></div>
 	        `;
 	      }
 	      const lastSync = document.getElementById('pmoCloudLastSync');
 	      if (lastSync) lastSync.textContent = `${pmoFormatDateTime(pmoCloudState.lastSyncAt)} · ${pmoCloudState.lastSyncCount || 0} record`;
-	      renderPmoRoutineGroupsTable();
 	      renderPmoCloudRoutinesTable();
 	    }
 	    function renderPmoRoutineGroupsTable() {
 	      const target = document.getElementById('routineGroupsTable');
 	      if (!target) return;
-	      const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-	      if (!groups.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun gruppo salvato.</strong><br>Crea i gruppi soci prima di attivare routine.</div>';
-	        return;
-	      }
-	      const rows = groups.map(group => {
-	        const resolved = resolveAssistantGroup(group);
-	        const blocked = resolved.missing.length || !resolved.matched.filter(p => p && p.active !== false).length;
-	        const nextDate = pmoLocalNextGroupDate(group);
-	        const creationAt = pmoGroupCreationDateTime(group, nextDate);
-	        return `<tr>
-	          <td><strong>${escapeHtml(group.name || 'Gruppo')}</strong><div class="routine-mini">${escapeHtml(assistantGroupDayLabel(group.day))} · ${escapeHtml(group.startTime || '12:30')}-${escapeHtml(group.endTime || '14:00')}</div></td>
-	          <td><span class="routine-status ${group.autoCreateEnabled ? 'active' : 'paused'}">${group.autoCreateEnabled ? 'Attiva' : 'In pausa'}</span></td>
-	          <td><select onchange="pmoChangeGroupRoutineHours('${escapeJs(String(group.id))}', this.value)">
-	            ${[24,36,48,72].map(h => `<option value="${h}" ${String(group.autoCreateHoursBefore || 48) === String(h) ? 'selected' : ''}>${h}h</option>`).join('')}
-	          </select></td>
-	          <td>
-	            ${escapeHtml(formatDateWithWeekdayForWhatsApp(nextDate) || nextDate || '-')} · ${escapeHtml(group.startTime || '12:30')}
-	            <div class="routine-mini">Creazione prevista: ${escapeHtml(pmoFormatRoutineDateTime(creationAt))}</div>
-	            <div class="routine-mini">${blocked ? 'Blocco: verifica nominativi/soci attivi' : 'Pronta per sync cloud'}</div>
-	          </td>
-	          <td><div class="routine-actions">
-	            <button class="${group.autoCreateEnabled ? 'btn-warning' : 'btn-success'} small-btn" onclick="setActionAnchor(this); pmoToggleGroupRoutine('${escapeJs(String(group.id))}', ${group.autoCreateEnabled ? 'false' : 'true'})">${group.autoCreateEnabled ? 'Pausa' : 'Attiva'}</button>
-	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoOpenGroupFromRoutine('${escapeJs(String(group.id))}')">Apri gruppo</button>
-	          </div></td>
-	        </tr>`;
-	      }).join('');
-	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Gruppo</th><th>Stato</th><th>Anticipo</th><th>Prossima partita</th><th>Azioni</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	      target.innerHTML = '';
 	    }
 	    function renderPmoCloudRoutinesTable() {
 	      const target = document.getElementById('routineCloudTable');
@@ -20993,41 +20731,7 @@ Per confermare scrivi ELIMINA.`);
 	      }
 	    }
 	    async function pmoSyncGroupRoutinesToCloud() {
-	      try {
-	        const staff = await pmoRequireStaffPermission('routines', 'sincronizzare le routine gruppi');
-	        const groups = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : [];
-	        if (!groups.length) return showAlert('⚠️ Nessun gruppo da sincronizzare.', 'warning');
-	        pmoSetCloudStatus(`Sincronizzazione routine in corso: 0/${groups.length}`, 'info');
-	        let count = 0;
-	        for (const group of groups) {
-	          const result = await pmoCloudRpc('pmo_set_group_match_routine_admin', {
-	            p_group_id: String(group.id || ''),
-	            p_group_name: group.name || 'Gruppo soci',
-	            p_enabled: !!group.autoCreateEnabled,
-	            p_hours_before: Math.max(1, parseInt(group.autoCreateHoursBefore || '48', 10) || 48),
-	            p_config: {
-	              day: group.day || '',
-	              startTime: group.startTime || '12:30',
-	              endTime: group.endTime || '14:00',
-	              matchType: group.matchType || 'mista',
-	              createOnlyIfFieldFree: true,
-	              timezone: 'Europe/Rome'
-	            }
-	          }, { accessToken: staff.accessToken });
-	          if (!result || result.ok !== true) {
-	            throw new Error(pmoFriendlyCloudError(result?.error || `Routine non sincronizzata: ${group.name || group.id}`, 'sincronizzare le routine gruppi'));
-	          }
-	          count += 1;
-	          pmoSetCloudStatus(`Sincronizzazione routine in corso: ${count}/${groups.length}`, 'info');
-	        }
-	        pmoCloudState.lastRoutineSyncAt = new Date().toISOString();
-	        save('pmoCloudState', pmoCloudState);
-	        await pmoRefreshCloudRoutines(false);
-	        pmoSetCloudStatus(`✅ Routine gruppi sincronizzate su Supabase: ${count}.`, 'success');
-	      } catch (err) {
-	        pmoSetCloudStatus('❌ Sync routine non riuscito: ' + (err.message || err), 'danger');
-	        showAlert('❌ Sync routine non riuscito: ' + (err.message || err), 'danger');
-	      }
+	      pmoSetCloudStatus('Questa sincronizzazione non e piu disponibile in TEST.', 'info');
 	    }
 	    async function pmoRefreshCloudRoutines(showOk=true) {
 	      try {
@@ -21057,11 +20761,6 @@ Per confermare scrivi ELIMINA.`);
 	          delete lunchMatchInvitations[key];
 	          return { merged:true, deleted:true, type, key };
 	        }
-	        if (type === 'player_group') {
-	          const before = Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups.length : 0;
-	          dailyPlayerGroups = (Array.isArray(dailyPlayerGroups) ? dailyPlayerGroups : []).filter(g => String(g.id || '') !== String(key));
-	          if (dailyPlayerGroups.length !== before) return { merged:true, deleted:true, type, key };
-	        }
 	        return { merged:false, deleted:true, type, key };
 	      }
 	      if (!payload) return { merged:false, type, key };
@@ -21073,32 +20772,18 @@ Per confermare scrivi ELIMINA.`);
 	          return { merged:true, type, key:record.key };
 	        }
 	      }
-	      if (type === 'player_group') {
-	        const group = { ...payload, id: payload.id || key };
-	        const index = (dailyPlayerGroups || []).findIndex(g => String(g.id) === String(group.id));
-	        if (index < 0) {
-	          dailyPlayerGroups.push(group);
-	          return { merged:true, type, key:group.id };
-	        }
-	        if (pmoIsCloudPayloadNewer(dailyPlayerGroups[index].updatedAt, group.updatedAt, row.updated_at)) {
-	          dailyPlayerGroups[index] = { ...dailyPlayerGroups[index], ...group };
-	          return { merged:true, type, key:group.id };
-	        }
-	      }
 	      return { merged:false, type, key };
 	    }
 	    async function pmoPullOperationalCloudRecords() {
 	      try {
-	        pmoSetCloudStatus('Scarico partite e gruppi dal cloud...', 'info');
+	        pmoSetCloudStatus('Scarico partite dal cloud...', 'info');
 	        const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
-	          p_record_types: ['match_invitation', 'player_group'],
+	          p_record_types: ['match_invitation'],
 	          p_since: null
 	        }, 'cloud_sync', 'scaricare le novità cloud');
 	        const list = Array.isArray(rows) ? rows : [];
 	        let mergedMatches = 0;
-	        let mergedGroups = 0;
 	        let deletedMatches = 0;
-	        let deletedGroups = 0;
 	        list.forEach(row => {
 	          const result = pmoMergeCloudRecord(row);
 	          if (!result.merged) return;
@@ -21106,21 +20791,14 @@ Per confermare scrivi ELIMINA.`);
 	            if (result.deleted) deletedMatches += 1;
 	            else mergedMatches += 1;
 	          }
-	          if (result.type === 'player_group') {
-	            if (result.deleted) deletedGroups += 1;
-	            else mergedGroups += 1;
-	          }
 	        });
 	        save('lunchMatchInvitations', lunchMatchInvitations);
-	        save('dailyPlayerGroups', dailyPlayerGroups);
 	        pmoCloudState.lastPullAt = new Date().toISOString();
 	        pmoCloudState.lastPullCount = list.length;
 	        save('pmoCloudState', pmoCloudState);
-	        normalizeDailyPlayerGroupsArchive();
 	        renderPmoRoutineCenter();
-	        renderAssistantGroups();
 	        renderInviteResponsesDashboard();
-	        pmoSetCloudStatus(`✅ Novità cloud scaricate. Partite aggiornate: ${mergedMatches}${deletedMatches ? `, eliminate: ${deletedMatches}` : ''}. Gruppi aggiornati: ${mergedGroups}${deletedGroups ? `, eliminati: ${deletedGroups}` : ''}.`, 'success');
+	        pmoSetCloudStatus(`✅ Novità cloud scaricate. Partite aggiornate: ${mergedMatches}${deletedMatches ? `, eliminate: ${deletedMatches}` : ''}.`, 'success');
 	      } catch (err) {
 	        pmoSetCloudStatus('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
 	        showAlert('❌ Download cloud non riuscito: ' + (err.message || err), 'danger');
@@ -21832,7 +21510,6 @@ Per confermare scrivi ELIMINA.`);
       try { displayMembers(); } catch (err) { console.warn('Refresh soci non completato:', err); }
       try { displayAssessment(); } catch (err) { console.warn('Refresh autovalutazione non completato:', err); }
       try { renderInitialDashboard(); } catch (err) { console.warn('Refresh dashboard non completato:', err); }
-      try { if (typeof renderAssistantGroups === 'function') renderAssistantGroups(); } catch (err) { console.warn('Refresh gruppi non completato:', err); }
       try { if (typeof renderInviteResponsesDashboard === 'function') renderInviteResponsesDashboard(); } catch (err) { console.warn('Refresh programmazione partite non completato:', err); }
     }
     function showSystemDebug() {
@@ -21852,7 +21529,6 @@ Per confermare scrivi ELIMINA.`);
       pmoConsumeSupabaseAuthRedirect();
       initSidebarNavigation();
       migrateMemberIds();
-      try { normalizeDailyPlayerGroupsArchive(); } catch {}
       pruneHistoricalBookings(false);
       potentialSlotSchedule = normalizePotentialSlotSchedule(potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE);
       save('potentialSlotSchedule', potentialSlotSchedule);
