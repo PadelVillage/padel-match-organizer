@@ -5219,7 +5219,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.425';
+    const APP_VERSION = '5.426';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23045,6 +23045,8 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailMorningPanel();
     }
     function clearAssessmentProcessSearch() {
+      const input = document.getElementById('assessmentProcessSearch');
+      if (input) input.value = '';
       window.assessmentProcessSearchText = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
