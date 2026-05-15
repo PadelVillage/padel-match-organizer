@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 01:21
+Ultimo aggiornamento: 2026-05-16 01:37
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.437 | `test-preview` | `3cc6d2f` |
-| TEST sviluppo | v5.437 | `test/accessi-staff-guidati` | `3cc6d2f` |
+| TEST | v5.438 | `test-preview` | `51e6ef0` |
+| TEST sviluppo | v5.438 | `test/accessi-staff-guidati` | `51e6ef0` |
 
-Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.437: nel `Cruscotto mattutino` Autovalutazione, i box filtro del `Processo utenti` (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) sono collegati a eventi click reali, aggiornano subito la lista, evidenziano il filtro attivo e mostrano `Nessun socio in questo stato.` quando non ci sono risultati. Nessuna modifica a invii email, Edge Function, SQL, scheduler, Supabase, Matchpoint, dati reali o PROD; lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.438: nel `Cruscotto mattutino` Autovalutazione, il blocco `Lotto email manuale` viene renderizzato dopo i risultati filtrati del `Processo utenti`, cosi' subito sotto ricerca e box filtro compare la lista o il messaggio `Nessun socio in questo stato.`. I comandi lotto in testata e la logica di invio restano invariati. Nessuna modifica a invii email, Edge Function, SQL, scheduler, Supabase, Matchpoint, dati reali o PROD; lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.437: nel `Cruscotto ma
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.437 e' pubblicata in TEST al commit `3cc6d2f`; PROD resta a v5.422.
+La versione v5.438 e' pubblicata in TEST al commit `51e6ef0`; PROD resta a v5.422.
 
 Contiene:
 
@@ -77,8 +77,9 @@ Contiene:
 - Autovalutazione v5.435 TEST: micro-correzione del lotto email manuale. Se esiste un lotto del giorno in stato `pending`, senza righe inviate o fallite, la testata del `Cruscotto mattutino` mostra anche `Rigenera lotto` dopo `Invia selezionati` e `Invia tutti`. Il comando chiede conferma, sostituisce il lotto non inviato usando `routine-plan` con `regenerate:true` e non invia email. La Edge Function TEST `assessment-email-send` e' pubblicata come v17 con `verify_jwt=false`; il comportamento standard di `routine-plan` resta invariato senza flag. Nessuna modifica a SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Anagrafica soci / Database soci v5.436 TEST: nella tabella `Da correggere` del pannello `Esporta rubrica soci`, `Email mancante` diventa un bottone solo quando il socio ha telefono valido e `member.id`. Il click apre la scheda socio reale con `openMemberCard(..., { force:true })`, senza aprire WhatsApp direttamente e senza salvare dati. `Email mancante` nell'anteprima contatti resta statico; `Senza telefono`, `Telefono non valido`, `Duplicato telefono`, `Telefono cambiato` e `Inattivo` restano statici. Nessuna modifica a CSV Google, API Google, sincronizzazione Google, WhatsApp automatico, SQL, Edge Function, scheduler, Matchpoint reale, dati reali o PROD.
 - Autovalutazione v5.437 TEST: bugfix del `Cruscotto mattutino`; i box filtro del `Processo utenti` diventano filtri rapidi reali collegati con listener dedicati dopo il render. Il filtro selezionato resta evidenziato, la lista si aggiorna subito, compare una riga `Filtro attivo` quando non e' `Tutti` e i filtri senza risultati mostrano `Nessun socio in questo stato.`. Nessuna modifica a lotto manuale, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
+- Autovalutazione v5.438 TEST: micro-correzione UX del `Cruscotto mattutino`; il blocco `Lotto email manuale` non compare piu tra box filtro e risultati, ma viene mostrato dopo la lista filtrata `Processo utenti` o dopo il messaggio vuoto. Restano invariati filtri, ricerca, `Pulisci`, comandi testata `Prepara lotto` / `Invia selezionati` / `Invia tutti` / `Rigenera lotto`, checkbox lotto, invio singola riga e `Dettaglio`. Nessuna modifica a logica lotto, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.437 TEST.
+- Documentazione aggiornata per v5.438 TEST.
 
 Non contiene modifiche a:
 
