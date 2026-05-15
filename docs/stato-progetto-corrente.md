@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 00:32
+Ultimo aggiornamento: 2026-05-16 01:01
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.435 | `test-preview` | `8b7d77d` |
-| TEST sviluppo | v5.435 | `test/accessi-staff-guidati` | `8b7d77d` |
+| TEST | v5.436 | `test-preview` | `0bdb506` |
+| TEST sviluppo | v5.436 | `test/accessi-staff-guidati` | `0bdb506` |
 
-Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.435: nel `Cruscotto mattutino` Autovalutazione, quando il lotto email manuale del giorno e' `pending` e non contiene righe inviate o fallite, compare il nuovo bottone neutro `Rigenera lotto` accanto a `Invia selezionati` e `Invia tutti`. La rigenerazione chiede conferma, sostituisce solo il lotto non inviato e non invia email. La Edge Function TEST `assessment-email-send` e' v17 con `verify_jwt=false` e accetta `routine-plan` con `regenerate:true` solo per lotti rigenerabili. Nessuna modifica a SQL, scheduler, Matchpoint, dati reali o PROD; lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.436: in `Anagrafica soci` > `Esporta rubrica soci`, nella tabella `Da correggere`, il badge `Email mancante` diventa cliccabile solo per soci con telefono valido e apre la scheda socio reale tramite `openMemberCard(..., { force:true })`. Dalla scheda socio lo staff puo usare il pulsante WhatsApp gia esistente; la tabella export non apre WhatsApp direttamente e non salva dati. Nessuna modifica a SQL, Edge Function, scheduler, Supabase, Matchpoint, dati reali o PROD; lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST e' pubblicata v5.435: nel `Cruscotto ma
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.435 e' pubblicata in TEST al commit `8b7d77d`; PROD resta a v5.422.
+La versione v5.436 e' pubblicata in TEST al commit `0bdb506`; PROD resta a v5.422.
 
 Contiene:
 
@@ -75,8 +75,9 @@ Contiene:
 - Anagrafica soci v5.433 TEST: integrato il mockup `mockup/anagrafica-soci-voce-unica-mockup.html`. `Anagrafica soci` e' una voce singola del menu laterale con sottotitolo `Schede e contatti`; cliccandola si apre direttamente l'elenco soci. La sottovoce `Database soci`, la voce `Gruppi soci`, il badge gruppi e il bottone `+` gruppi non compaiono piu. La pagina mantiene KPI, ricerca, filtri, lista soci, `+ Nuovo socio`, `Esporta rubrica soci`, scheda socio, salvataggio/modifica/disattivazione/cancellazione socio e refresh Autovalutazione. Apri Partite non usa piu gruppi salvati come sorgente; Chiudi Partite non mostra piu riferimenti a gruppo origine e i testi attivi rimandano ad Apri Partite / lista soci, non a partite da gruppo. Nessuna modifica a SQL, Edge Function, scheduler, Supabase schema, Matchpoint reale, dati reali o PROD.
 - Autovalutazione v5.434 TEST: integrato il mockup `mockup/autovalutazione-cruscotto-lotto-manuale-mockup.html`; nel `Cruscotto mattutino` il lotto email resta manuale e non parte nessuna email senza conferma staff. La testata mostra `Prepara lotto` quando non c'e' un lotto e, a lotto pronto, `Invia selezionati` e `Invia tutti`; sotto ricerca e filtri compare `Lotto email manuale` con colonne `Sel.`, `Socio`, `Routine`, `Fase`, `Prossimo step`, `Email`, `Invii`, `Azioni`. Ogni riga puo essere inviata singolarmente con `Invia email` oppure aperta in `Dettaglio`. Nessuna modifica a Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Autovalutazione v5.435 TEST: micro-correzione del lotto email manuale. Se esiste un lotto del giorno in stato `pending`, senza righe inviate o fallite, la testata del `Cruscotto mattutino` mostra anche `Rigenera lotto` dopo `Invia selezionati` e `Invia tutti`. Il comando chiede conferma, sostituisce il lotto non inviato usando `routine-plan` con `regenerate:true` e non invia email. La Edge Function TEST `assessment-email-send` e' pubblicata come v17 con `verify_jwt=false`; il comportamento standard di `routine-plan` resta invariato senza flag. Nessuna modifica a SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
+- Anagrafica soci / Database soci v5.436 TEST: nella tabella `Da correggere` del pannello `Esporta rubrica soci`, `Email mancante` diventa un bottone solo quando il socio ha telefono valido e `member.id`. Il click apre la scheda socio reale con `openMemberCard(..., { force:true })`, senza aprire WhatsApp direttamente e senza salvare dati. `Email mancante` nell'anteprima contatti resta statico; `Senza telefono`, `Telefono non valido`, `Duplicato telefono`, `Telefono cambiato` e `Inattivo` restano statici. Nessuna modifica a CSV Google, API Google, sincronizzazione Google, WhatsApp automatico, SQL, Edge Function, scheduler, Matchpoint reale, dati reali o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.435 TEST.
+- Documentazione aggiornata per v5.436 TEST.
 
 Non contiene modifiche a:
 
@@ -144,6 +145,8 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/registro-versioni-sezioni.md`
 - Regola mockup grafici:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-mockup-grafici.md`
+- Prompt definitivi per SVILUPPO TEST:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/prompt-definitivi-sviluppo-test.md`
 - Regole Supabase Data API / grant futuri:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/supabase-data-api-regole.md`
 - Algoritmo Riempi Slot:
@@ -168,7 +171,7 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
 | Routine / scheduler / comunicazioni | `stato-progetto-corrente.md`, `pmo-policy-test-prod-routine-deploy.md`, `ambienti-test-prod.md`, documento area (`routine-dati-automatiche.md`, `autovalutazioni-email-routine.md` o `matchpoint.md`) |
 | Apri Partite / algoritmo | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `algoritmo-riempi-slot.md`, `matchpoint.md` |
 | Chiudi Partite / WhatsApp | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `algoritmo-riempi-slot.md` |
-| Nuovi mockup grafici | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `regola-mockup-grafici.md` e il mockup approvato piu recente della sezione |
+| Nuovi mockup grafici | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `regola-mockup-grafici.md`, `prompt-definitivi-sviluppo-test.md` e il mockup approvato piu recente della sezione |
 
 ## Percorsi progetto
 
