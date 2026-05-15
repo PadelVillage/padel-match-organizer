@@ -5215,7 +5215,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.420';
+    const APP_VERSION = '5.421';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21424,7 +21424,15 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentSearchMatches(member, search) {
       if (!search) return true;
-      return normalizeText(`${playerFullName(member)} ${member?.id || ''} ${member?.memberId || ''} ${member?.phone || ''} ${member?.email || ''} ${assessmentEmailMemberEmail(member) || ''}`).includes(normalizeText(search));
+      return assessmentTextMatchesSearch(`${playerFullName(member)} ${member?.id || ''} ${member?.memberId || ''} ${member?.phone || ''} ${member?.email || ''} ${assessmentEmailMemberEmail(member) || ''}`, search);
+    }
+    function assessmentTextMatchesSearch(text, search) {
+      const source = normalizeText(text || '');
+      const query = normalizeText(search || '');
+      if (!query) return true;
+      if (source.includes(query)) return true;
+      const tokens = query.split(/\s+/).filter(Boolean);
+      return tokens.length > 1 && tokens.every(token => source.includes(token));
     }
     function assessmentEmailRowSearchText(row) {
       const member = row?.member || {};
@@ -21461,9 +21469,7 @@ Per confermare scrivi ELIMINA.`);
       ].filter(value => value !== null && value !== undefined && String(value).trim() !== '').join(' '));
     }
     function assessmentEmailRowMatchesSearch(row, search) {
-      const query = normalizeText(search || '');
-      if (!query) return true;
-      return assessmentEmailRowSearchText(row).includes(query);
+      return assessmentTextMatchesSearch(assessmentEmailRowSearchText(row), search);
     }
     function assessmentPauseKeyFor(member, rec=null) {
       const token = cleanCell(rec?.token || '');

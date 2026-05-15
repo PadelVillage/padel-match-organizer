@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 00:27
+Ultimo aggiornamento: 2026-05-15 00:51
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.420 | `test-preview` | `51a210a` |
-| TEST sviluppo | v5.420 | `test/accessi-staff-guidati` | `51a210a` |
+| TEST | v5.421 | `test-preview` | `PENDING_V5421` |
+| TEST sviluppo | v5.421 | `test/accessi-staff-guidati` | `PENDING_V5421` |
 
-Nota: TEST contiene la correzione UI v5.420 del `Cruscotto mattutino`: quando si cerca un socio nel processo, i box filtro corrispondenti allo stadio del socio vengono evidenziati. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
+Nota: TEST contiene la correzione UI v5.421 del `Cruscotto mattutino`: la ricerca del processo e dello storico trova anche nomi/cognomi digitati in ordine diverso, per esempio `Utente Prova` o `Prova Utente`. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: TEST contiene la correzione UI v5.420 del `Cruscotto mattutino`: quando si
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.420 e' pubblicata in TEST. PROD resta v5.418.
+La versione v5.421 e' pubblicata in TEST. PROD resta v5.418.
 
 Contiene:
 
@@ -60,8 +60,9 @@ Contiene:
 - Autovalutazione v5.418 TEST/PROD: i controlli manuali Gmail `Aggiorna risposte email` e `Controlla mancate consegne` non compaiono piu nei pannelli operativi e sono disponibili solo dentro `Strumenti tecnici avanzati`. Il deploy PROD non ha applicato SQL scheduler e non ha attivato cron email Autovalutazione.
 - Autovalutazione v5.419 TEST: il `Cruscotto mattutino` aggancia i log cloud `assessment_email` anche tramite ID giocatore `memberId`/`PMO-...`, importa automaticamente in modo silenzioso gli ultimi log cloud quando si apre Autovalutazione, archivia il token precedente se arriva un nuovo invio e considera un nuovo invio successivo a un ciclo gia chiuso come nuovo ciclo `In attesa`, non come `Completato`.
 - Autovalutazione v5.420 TEST: nella ricerca `Cerca nel processo`, i box filtro sopra la tabella si evidenziano quando contengono il socio cercato, cosi' lo staff vede subito se il socio e' in `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint` o `Completati`.
+- Autovalutazione v5.421 TEST: la ricerca del `Cruscotto mattutino` e dello `Storico` diventa a parole indipendenti: se il nome/cognome del socio viene digitato in ordine diverso, il socio viene comunque trovato.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.420 TEST e v5.418 PROD.
+- Documentazione aggiornata per v5.421 TEST e v5.418 PROD.
 
 Non contiene modifiche a:
 
