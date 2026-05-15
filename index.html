@@ -5214,7 +5214,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.427';
+    const APP_VERSION = '5.428';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5322,7 +5322,7 @@ Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Villag
     const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
-        subject: 'Completa la tua autovalutazione Padel Village',
+        subject: 'Padel Village - Completa la tua autovalutazione del livello di gioco',
         type: 'Email - primo invio autovalutazione',
         body: `Ciao {nome},
 
@@ -5462,6 +5462,9 @@ Lo useremo per organizzare partite piu equilibrate.
 Grazie.`
       }
     };
+    const ASSESSMENT_PRIMARY_EMAIL_LEGACY_SUBJECTS = new Set([
+      'Completa la tua autovalutazione Padel Village'
+    ]);
     function normalizeAssessmentCommunicationTemplateBody(key, value) {
       let body = String(value || '')
         .replaceAll('Richiede circa 2 minuti e ci aiuta ad aggiornare correttamente il tuo livello.', 'Richiede meno di 1 minuto e ci aiuta ad aggiornare correttamente il tuo livello.')
@@ -5505,8 +5508,12 @@ Grazie.`
       const out = {};
       Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).forEach(([key, base]) => {
         const saved = source[key] && typeof source[key] === 'object' ? source[key] : {};
+        let subject = cleanCell(saved.subject || base.subject);
+        if (key === 'primary-email' && ASSESSMENT_PRIMARY_EMAIL_LEGACY_SUBJECTS.has(subject)) {
+          subject = base.subject;
+        }
         out[key] = {
-          subject: cleanCell(saved.subject || base.subject),
+          subject,
           type: cleanCell(saved.type || base.type),
           body: normalizeAssessmentCommunicationTemplateBody(key, saved.body || base.body)
         };

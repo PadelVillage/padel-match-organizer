@@ -823,7 +823,7 @@ function renderRoutinePrimaryEmail(member: JsonMap, link: string, templates: Jso
     whatsapp_segreteria: ASSESSMENT_SUPPORT_WHATSAPP_URL,
   };
   const replaceTokens = (text: string) => Object.entries(data).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, clean(value)), text);
-  const subject = 'Completa la tua autovalutazione Padel Village';
+  const subject = 'Padel Village - Completa la tua autovalutazione del livello di gioco';
   const body = `Ciao {nome},
 
 stiamo aggiornando i livelli di gioco dei soci Padel Village per organizzare partite sempre piu equilibrate.
