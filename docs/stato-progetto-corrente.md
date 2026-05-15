@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 10:01
+Ultimo aggiornamento: 2026-05-15 10:15
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.423 | `test-preview` | candidato pubblicazione TEST |
-| TEST sviluppo | v5.423 | `test/accessi-staff-guidati` | candidato pubblicazione TEST |
+| TEST | v5.423 | `test-preview` | pubblicata in TEST |
+| TEST sviluppo | v5.423 | `test/accessi-staff-guidati` | pubblicata in TEST |
 
 Nota: PROD resta fermo a v5.422. In TEST v5.423 le modifiche alla scheda socio vengono anche inviate subito a Supabase come record `member`, senza aspettare backup cloud manuale o automatico. Lo scheduler email Autovalutazione PROD resta non attivo.
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST v5.423 le modifiche alla scheda socio v
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.423 e' candidata TEST su branch `test/accessi-staff-guidati`; PROD resta a v5.422.
+La versione v5.423 e' pubblicata in TEST; PROD resta a v5.422.
 
 Contiene:
 
