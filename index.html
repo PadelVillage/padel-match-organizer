@@ -977,6 +977,24 @@
     .assessment-process-actions .assessment-email-mini { padding:6px 7px; font-size:11px; border-radius:7px; }
     .assessment-process-more { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #e7edf6; border-top:0; border-radius:0 0 8px 8px; background:#fbfdff; color:#667085; padding:9px 10px; font-size:12px; font-weight:850; line-height:1.3; }
     .assessment-process-more .assessment-email-mini { padding:6px 9px; font-size:11px; border-radius:7px; }
+    .assessment-email-mini:disabled { opacity:.55; cursor:not-allowed; background:#f6f7f9; color:#7a8291; border-color:#d9e0ea; }
+    .assessment-manual-batch { margin-bottom:10px; }
+    .assessment-manual-batch-title { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid #e7edf6; background:#fbfcff; }
+    .assessment-manual-batch-title h4 { margin:0; color:var(--primary); font-size:16px; line-height:1.15; }
+    .assessment-manual-batch-title span { color:#667085; font-size:12px; font-weight:850; line-height:1.25; text-align:right; }
+    .assessment-manual-batch-table th:nth-child(1) { width:5%; text-align:center; }
+    .assessment-manual-batch-table th:nth-child(2) { width:18%; }
+    .assessment-manual-batch-table th:nth-child(3) { width:13%; }
+    .assessment-manual-batch-table th:nth-child(4) { width:11%; }
+    .assessment-manual-batch-table th:nth-child(5) { width:14%; }
+    .assessment-manual-batch-table th:nth-child(6) { width:17%; }
+    .assessment-manual-batch-table th:nth-child(7) { width:7%; }
+    .assessment-manual-batch-table th:nth-child(8) { width:15%; text-align:right; }
+    .assessment-manual-batch-table td:nth-child(1) { text-align:center; }
+    .assessment-manual-batch-table td:nth-child(8) { text-align:right; }
+    .assessment-manual-batch-table tr.sent td { background:#fbfffd; }
+    .assessment-manual-batch-table tr.failed td { background:#fffaf7; }
+    .assessment-manual-batch-check { width:18px; height:18px; accent-color:var(--primary); }
     .assessment-morning-note { border:1px solid #c7d8f4; border-left:5px solid var(--primary); border-radius:8px; background:#eef5ff; color:var(--primary); padding:9px 11px; margin-bottom:10px; font-size:13px; font-weight:850; line-height:1.35; }
     .assessment-morning-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; align-items:stretch; }
     .assessment-morning-section { min-width:0; border:1px solid #e7edf6; border-top:5px solid var(--primary); border-radius:8px; background:#fff; overflow:hidden; }
@@ -1149,6 +1167,10 @@
       .assessment-email-table td[data-label="Azioni"]::before { display:block; margin-bottom:7px; }
       .assessment-process-table td:nth-child(11) { text-align:left; }
       .assessment-process-actions { justify-content:flex-start; }
+      .assessment-manual-batch-title { align-items:flex-start; flex-direction:column; }
+      .assessment-manual-batch-title span { text-align:left; }
+      .assessment-manual-batch-table td:nth-child(1),
+      .assessment-manual-batch-table td:nth-child(8) { text-align:left; }
       .assessment-process-more { align-items:flex-start; flex-direction:column; }
       .assessment-email-mini-actions { justify-content:flex-start; }
       .assessment-email-action-state { text-align:left; }
@@ -4691,7 +4713,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-email-panel-head">
               <div>
                 <div class="assessment-email-routine-title-row">
-                  <h3 class="assessment-email-panel-title">Stato invio automatico</h3>
+                  <h3 class="assessment-email-panel-title">Stato invio email</h3>
                   <div class="assessment-email-routine-pills" aria-label="Riepilogo stato invio">
                     <span class="assessment-email-routine-pill"><strong>05:45</strong> routine mattina</span>
                     <span id="assessmentEmailRoutineSentPill" class="assessment-email-routine-pill"><strong>-</strong> invii oggi</span>
@@ -4713,7 +4735,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Da inviare 0.5</h3>
-                <p class="assessment-email-panel-copy">Soci attivi con livello 0.5, ordinati per priorita operativa. Per ora l'invio email automatico non e' ancora attivo.</p>
+                <p class="assessment-email-panel-copy">Soci attivi con livello 0.5, ordinati per priorita operativa. L'invio del lotto resta manuale dallo staff.</p>
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La selezione dei primi 20 sara attiva con il motore email.')">Seleziona primi 20</button>
@@ -5176,7 +5198,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.433';
+    const APP_VERSION = '5.434';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22868,6 +22890,8 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentHistorySearchText = window.assessmentHistorySearchText || '';
     window.assessmentEmailCloudLogAutoImportLastAt = window.assessmentEmailCloudLogAutoImportLastAt || 0;
     window.assessmentEmailCloudLogAutoImportInFlight = window.assessmentEmailCloudLogAutoImportInFlight || false;
+    window.assessmentManualBatchSelections = window.assessmentManualBatchSelections || {};
+    window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
     function assessmentProcessDateIsToday(value) {
       const ms = assessmentEmailDateMs(value);
       if (!ms) return false;
@@ -23020,9 +23044,9 @@ Per confermare scrivi ELIMINA.`);
           priority: 60 + index,
           filter: 'queue',
           today: index < todaySlots,
-          routine: { label:ready ? 'In coda' : 'In coda', cls:ready ? 'info' : 'warn', detail:ready ? 'Attendi invio routine' : 'Link da generare' },
-          phase: { label:ready ? 'In attesa invio' : 'Link da preparare', cls:ready ? 'info' : 'warn', detail:ready ? 'Pronto per email' : 'Preparazione richiesta' },
-          nextStep: ready ? 'Attendi invio routine' : 'Prepara link',
+          routine: { label:'Da inviare', cls:ready ? 'info' : 'warn', detail:ready ? 'Pronto per lotto' : 'Link da generare' },
+          phase: { label:ready ? 'Da inviare' : 'Link da preparare', cls:ready ? 'info' : 'warn', detail:ready ? 'Pronto per email' : 'Preparazione richiesta' },
+          nextStep: ready ? 'Prepara lotto' : 'Prepara link',
           contact: assessmentEmailMemberEmail(row.member) || '-',
           lastEvent: assessmentProcessLastEvent(row),
           sends: '0',
@@ -23130,12 +23154,127 @@ Per confermare scrivi ELIMINA.`);
       const rows = Array.isArray(batch?.selected) ? batch.selected : [];
       return rows.length;
     }
+    function assessmentManualBatchKey(batch=null) {
+      return cleanCell(batch?.localDate || batch?.scheduledLocalDate || getTodayKey());
+    }
+    function assessmentManualBatchItemId(item={}) {
+      return cleanCell(item.memberId || item.memberCode || item.memberLocalId || item.id || '');
+    }
+    function assessmentManualBatchItemAliases(item={}, member=null) {
+      return [
+        item.memberId,
+        item.memberCode,
+        item.memberLocalId,
+        item.id,
+        member?.id,
+        member?.memberId,
+        member?.cloudMemberId
+      ].map(value => cleanCell(value || '').toLocaleLowerCase('it-IT')).filter(Boolean);
+    }
+    function assessmentManualBatchMatchesAliases(item={}, member=null, payload={}) {
+      const aliases = new Set(assessmentManualBatchItemAliases(item, member));
+      return [
+        payload.memberId,
+        payload.memberCode,
+        payload.memberLocalId,
+        payload.id
+      ].some(value => aliases.has(cleanCell(value || '').toLocaleLowerCase('it-IT')));
+    }
+    function assessmentManualBatchFindSent(batch, item={}, member=null) {
+      const sent = Array.isArray(batch?.sent) ? batch.sent.find(row => assessmentManualBatchMatchesAliases(item, member, row)) : null;
+      if (sent) return sent;
+      const rec = member ? getAssessmentTokenRecord(member.id) : null;
+      const sentAt = cleanCell(rec?.sentAt || '');
+      if (sentAt && sentAt.slice(0, 10) === getTodayKey() && rec?.status === 'sent') {
+        return {
+          memberId: String(member.id || ''),
+          memberName: playerFullName(member),
+          sentAt,
+          actualRecipient: rec.emailActualRecipient || ''
+        };
+      }
+      return null;
+    }
+    function assessmentManualBatchFindFailed(batch, item={}, member=null) {
+      const failed = Array.isArray(batch?.failed) ? batch.failed.find(row => assessmentManualBatchMatchesAliases(item, member, row)) : null;
+      if (failed) return failed;
+      const key = assessmentManualBatchKey(batch);
+      const errors = window.assessmentManualBatchErrors?.[key] || {};
+      const aliases = assessmentManualBatchItemAliases(item, member);
+      const match = aliases.find(id => errors[id]);
+      return match ? { error:errors[match] } : null;
+    }
+    function assessmentManualBatchRows(batch=null) {
+      const selected = Array.isArray(batch?.selected) ? batch.selected : [];
+      return selected.map((item, index) => {
+        const member = findAssessmentMemberByAnyId(item.memberId || item.memberCode || item.memberLocalId || item.id || '');
+        const rec = member ? getAssessmentTokenRecord(member.id) : null;
+        const sent = assessmentManualBatchFindSent(batch, item, member);
+        const failed = sent ? null : assessmentManualBatchFindFailed(batch, item, member);
+        const id = cleanCell(member?.id || assessmentManualBatchItemId(item) || `batch-${index}`);
+        return { batch, item, member, rec, id, sent, failed, index };
+      }).filter(row => row.id);
+    }
+    function assessmentManualBatchUnsentRows(batch=null) {
+      return assessmentManualBatchRows(batch).filter(row => !row.sent);
+    }
+    function assessmentManualBatchEnsureSelection(batch=null) {
+      if (!batch) return new Set();
+      const key = assessmentManualBatchKey(batch);
+      const rows = assessmentManualBatchUnsentRows(batch);
+      const validIds = rows.map(row => String(row.id));
+      if (!Array.isArray(window.assessmentManualBatchSelections[key])) {
+        window.assessmentManualBatchSelections[key] = validIds.slice();
+      } else {
+        window.assessmentManualBatchSelections[key] = window.assessmentManualBatchSelections[key].filter(id => validIds.includes(String(id)));
+      }
+      return new Set(window.assessmentManualBatchSelections[key].map(String));
+    }
+    function assessmentManualBatchSelectedRows(batch=null) {
+      const selected = assessmentManualBatchEnsureSelection(batch);
+      return assessmentManualBatchUnsentRows(batch).filter(row => selected.has(String(row.id)));
+    }
+    function assessmentManualBatchToggleSelection(memberId, checked) {
+      const batch = assessmentEmailTodayRoutineBatch();
+      if (!batch) return;
+      const key = assessmentManualBatchKey(batch);
+      const selected = assessmentManualBatchEnsureSelection(batch);
+      if (checked) selected.add(String(memberId || ''));
+      else selected.delete(String(memberId || ''));
+      window.assessmentManualBatchSelections[key] = Array.from(selected).filter(Boolean);
+      const headerActions = document.getElementById('assessmentEmailMorningHeaderActions');
+      if (headerActions) headerActions.innerHTML = assessmentEmailRoutineApprovalControlsHtml();
+    }
+    function assessmentManualBatchSendCount(row) {
+      const recCount = parseInt(row?.rec?.emailSentCount, 10) || 0;
+      if (row?.sent && recCount < 1) return 1;
+      return Math.max(0, recCount);
+    }
+    function assessmentManualBatchAttemptLabel(count) {
+      if (count <= 0) return 'Primo invio';
+      if (count === 1) return 'Secondo invio';
+      if (count === 2) return 'Terzo invio';
+      return 'Gestione manuale';
+    }
+    function assessmentManualBatchStatusText(batch=null) {
+      const rows = assessmentManualBatchRows(batch);
+      const sentRows = rows.filter(row => row.sent);
+      const failedRows = rows.filter(row => row.failed);
+      const unsentRows = rows.filter(row => !row.sent);
+      const sentAt = cleanCell(batch?.sentAt || batch?.updatedAt || sentRows.map(row => row.sent?.sentAt).filter(Boolean).sort().pop() || '');
+      if (!rows.length && cleanCell(batch?.status || '') === 'empty') return `0/${DAILY_ASSESSMENT_REQUEST_LIMIT} disponibili`;
+      if (sentRows.length && !unsentRows.length) return `Inviato ${assessmentEmailFormatDateTime(sentAt)}`;
+      if (sentRows.length) return `${sentRows.length} inviate, ${unsentRows.length} da inviare${failedRows.length ? `, ${failedRows.length} errori` : ''}`;
+      return `${rows.length}/${DAILY_ASSESSMENT_REQUEST_LIMIT} disponibili`;
+    }
     function assessmentEmailRoutineApprovalStatus(batch=null) {
       const status = cleanCell(batch?.status || '');
       if (!batch) return { label:'Da preparare', detail:'nessun lotto pronto', cls:'warn' };
-      if (status === 'pending') return { label:'Da approvare', detail:`${assessmentEmailRoutineBatchSelectedCount(batch)} email pronte`, cls:'warn' };
-      if (status === 'approved' || status === 'sending') return { label:'Approvato', detail:'invio in corso', cls:'ok' };
-      if (status === 'sent' || status === 'sent_with_errors') return { label:'Inviato', detail:`${assessmentEmailRoutineBatchSelectedCount(batch)} email approvate`, cls:status === 'sent_with_errors' ? 'warn' : 'ok' };
+      const rows = assessmentManualBatchRows(batch);
+      const unsent = rows.filter(row => !row.sent).length;
+      if (status === 'pending') return { label:'Lotto pronto', detail:assessmentManualBatchStatusText(batch), cls:'warn' };
+      if (status === 'approved' || status === 'sending') return { label:'Invio in corso', detail:assessmentManualBatchStatusText(batch), cls:'ok' };
+      if (status === 'sent' || status === 'sent_with_errors') return { label:unsent ? 'Parziale' : 'Inviato', detail:assessmentManualBatchStatusText(batch), cls:status === 'sent_with_errors' || unsent ? 'warn' : 'ok' };
       if (status === 'empty') return { label:'Nessun invio', detail:'coda vuota o limite raggiunto', cls:'muted' };
       if (status === 'error') return { label:'Errore', detail:'controlla strumenti tecnici', cls:'err' };
       return { label:'Da preparare', detail:'stato non definito', cls:'warn' };
@@ -23143,18 +23282,73 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailRoutineApprovalControlsHtml() {
       const batch = assessmentEmailTodayRoutineBatch();
       const status = cleanCell(batch?.status || '');
-      const selected = assessmentEmailRoutineBatchSelectedCount(batch);
+      const rows = batch ? assessmentManualBatchRows(batch) : [];
+      const unsentRows = batch ? rows.filter(row => !row.sent) : [];
+      const selected = batch ? assessmentManualBatchSelectedRows(batch).length : 0;
       const buttons = [];
       if (!batch || status === 'empty' || status === 'error') {
         buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailPlanMorningBatch()">Prepara lotto</button>`);
       }
-      if (status === 'pending') {
-        buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailApproveMorningBatch()">Approva invio ${escapeHtml(String(selected))}</button>`);
+      if (batch && unsentRows.length) {
+        buttons.push(`<button class="assessment-email-mini success" type="button" ${selected ? '' : 'disabled'} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
+        buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
       }
-      if (status === 'sent' || status === 'sent_with_errors') {
-        buttons.push(`<span class="assessment-email-action-state">Inviato ${escapeHtml(assessmentEmailFormatDateTime(batch.sentAt || batch.updatedAt || ''))}</span>`);
+      if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
+        buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
       return buttons.join('');
+    }
+    function assessmentManualBatchRowHtml(row) {
+      const member = row.member || {};
+      const item = row.item || {};
+      const sent = !!row.sent;
+      const failed = !!row.failed;
+      const selected = assessmentManualBatchEnsureSelection(row.batch).has(String(row.id));
+      const sentCount = assessmentManualBatchSendCount(row);
+      const nextAttempt = assessmentManualBatchAttemptLabel(sentCount);
+      const email = assessmentEmailMemberEmail(member) || item.email || '';
+      const memberName = member.id ? playerFullName(member) : (item.memberName || item.memberId || 'Socio');
+      const memberMeta = member.id ? `liv. ${member.level ?? '-'} - ${member.memberId || row.id}` : (item.memberCode || item.memberId || row.id);
+      const routine = sent
+        ? assessmentProcessStateHtml('Email inviata', 'ok', assessmentEmailFormatDateTime(row.sent?.sentAt || row.rec?.sentAt || ''))
+        : failed
+          ? assessmentProcessStateHtml('Errore', 'err', cleanCell(row.failed?.error || 'invio non riuscito'))
+          : assessmentProcessStateHtml('Nel lotto', selected ? 'ok' : 'muted', selected ? nextAttempt : 'Non selezionato');
+      const phase = sent
+        ? assessmentProcessStateHtml('Inviata', 'ok', 'Attesa risposta')
+        : failed
+          ? assessmentProcessStateHtml('Errore invio', 'err', 'Da riprovare')
+          : assessmentProcessStateHtml('Da inviare', 'info', '');
+      const nextStep = sent ? 'Attendi risposta' : (failed ? 'Riprova invio' : (selected ? 'Invia email' : 'Attendi scelta staff'));
+      const actions = sent
+        ? assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || row.id))}')`)
+        : `${assessmentProcessButton('Invia email', failed ? 'warn' : 'success', `assessmentEmailSendManualBatchSingle('${escapeJs(String(row.id))}')`)}${assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || row.id))}')`)}`;
+      return `<tr class="${sent ? 'sent' : ''} ${failed ? 'failed' : ''}" data-assessment-email-member="${escapeHtml(String(member.id || row.id))}">
+        <td data-label="Sel."><input class="assessment-manual-batch-check" type="checkbox" ${selected && !sent ? 'checked' : ''} ${sent ? 'disabled' : ''} onchange="assessmentManualBatchToggleSelection('${escapeJs(String(row.id))}', this.checked)"></td>
+        <td data-label="Socio">${assessmentEmailMemberCell(member.id ? member : { firstName:memberName, surname:'', level:item.level || '-' }, memberMeta)}</td>
+        <td data-label="Routine">${routine}</td>
+        <td data-label="Fase">${phase}</td>
+        <td data-label="Prossimo step">${assessmentProcessTextHtml(nextStep)}</td>
+        <td data-label="Email">${email ? escapeHtml(email) : '<span class="assessment-email-inline-status err">Email mancante</span>'}</td>
+        <td data-label="Invii">${escapeHtml(String(sentCount))}/3</td>
+        <td data-label="Azioni"><div class="assessment-process-actions">${actions}</div></td>
+      </tr>`;
+    }
+    function assessmentManualBatchPanelHtml() {
+      const batch = assessmentEmailTodayRoutineBatch();
+      if (!batch) return '';
+      const rows = assessmentManualBatchRows(batch);
+      const status = cleanCell(batch.status || '');
+      const titleCount = assessmentManualBatchStatusText(batch);
+      if (!rows.length) {
+        return `<div class="assessment-email-table-wrap assessment-manual-batch"><div class="assessment-manual-batch-title"><h4>Lotto email manuale</h4><span>${escapeHtml(titleCount)}</span></div><div class="assessment-empty">Nessun socio pronto nel lotto di oggi. Nessuna email parte senza conferma dello staff.</div></div>`;
+      }
+      const tableRows = rows.map(assessmentManualBatchRowHtml).join('');
+      const statusClass = status === 'sent_with_errors' ? ' warn' : '';
+      return `<div class="assessment-email-table-wrap assessment-manual-batch${statusClass}">
+        <div class="assessment-manual-batch-title"><h4>Lotto email manuale</h4><span>${escapeHtml(titleCount)}</span></div>
+        <table class="assessment-email-table assessment-manual-batch-table"><thead><tr><th>Sel.</th><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Email</th><th>Invii</th><th>Azioni</th></tr></thead><tbody>${tableRows}</tbody></table>
+      </div>`;
     }
     function assessmentProcessRowHtml(entry) {
       const member = entry.member || {};
@@ -23228,6 +23422,7 @@ Per confermare scrivi ELIMINA.`);
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(count)}</span>
       </button>`).join('')}</div>`;
+      const manualBatchHtml = assessmentManualBatchPanelHtml();
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
         : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
@@ -23239,6 +23434,7 @@ Per confermare scrivi ELIMINA.`);
         : emptyHtml;
       box.innerHTML = `${searchHtml}
         ${filterHtml}
+        ${manualBatchHtml}
         ${tableHtml}`;
     }
     function assessmentEmailGoToMemberPanel(panel, memberId) {
@@ -23370,7 +23566,7 @@ Per confermare scrivi ELIMINA.`);
       const rows = [
         ['Gmail Padel Village', 'Invio e lettura risposte', assessmentEmailBadge('Collegato','ok'), lastLabel, 'Il sistema puo inviare email, leggere risposte e controllare mancate consegne.'],
         ['Modalita invio', 'TEST o produzione', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Controllare destinatari e scheduler prima di inviare ai soci.'],
-        ['Invio mattutino', 'Approvazione manuale', assessmentEmailBadge(approvalInfo.label, approvalInfo.cls === 'err' ? 'err' : (approvalInfo.cls === 'warn' ? 'warn' : 'info')), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `La routine prepara il lotto, ma non invia email finche lo staff non approva dal Cruscotto mattutino.`],
+        ['Invio mattutino', 'Lotto manuale', assessmentEmailBadge(approvalInfo.label, approvalInfo.cls === 'err' ? 'err' : (approvalInfo.cls === 'warn' ? 'warn' : 'info')), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `Il Cruscotto mattutino prepara il lotto e lo staff decide se inviare tutti, selezionati o singole righe.`],
         ['Soci ancora da invitare', 'Coda livello 0.5', assessmentEmailBadge(`${queueRows.length} rimasti`,'info'), lastLabel, 'La routine prende solo soci attivi con email valida e link personale pronto.'],
         ['Secondo invio', 'Dopo 2 giorni', assessmentEmailBadge(`${followups.second} pronti`, followups.second ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia la seconda email ai soci che non hanno compilato e non hanno risposto.'],
         ['Terzo invio', 'Dopo altri 2 giorni', assessmentEmailBadge(`${followups.third} pronti`, followups.third ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia l ultimo promemoria e segnala il caso per gestione dalla scheda socio.'],
@@ -23395,8 +23591,8 @@ Per confermare scrivi ELIMINA.`);
         <div class="assessment-email-timeline">
           <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Controlla chi e pronto</strong><span>Soci attivi con livello 0.5, email valida, nessuna pausa e link personale disponibile.</span></div>
           <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara il lotto</strong><span>La routine crea la lista fino al limite 10, senza inviare email.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Attende approvazione staff</strong><span>Lo staff controlla il lotto e clicca Approva invio dal Cruscotto mattutino.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Invia dopo approvazione</strong><span>Dopo il click invia le email e registra log, token e stato dei soci.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Scelta manuale staff</strong><span>Lo staff controlla il lotto e sceglie invio singolo, selezionati o tutti.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Invio manuale</strong><span>Dopo il click invia le email e registra log, token e stato dei soci.</span></div>
           <div class="assessment-email-step"><div class="assessment-email-step-num">5</div><strong>Legge gli esiti</strong><span>Controlla risposte email, mancate consegne e schede compilate collegate al socio.</span></div>
           <div class="assessment-email-step"><div class="assessment-email-step-num">6</div><strong>Decide il prossimo passo</strong><span>Secondo invio, terzo invio, post-invio automatico oppure recupero manuale WhatsApp.</span></div>
         </div>
@@ -23714,6 +23910,78 @@ Per confermare scrivi ELIMINA.`);
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'morning')));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'morning')));
     }
+    function assessmentManualBatchRowsForSend(mode='selected', memberId='') {
+      const batch = assessmentEmailTodayRoutineBatch();
+      if (!batch) return [];
+      const unsent = assessmentManualBatchUnsentRows(batch);
+      if (mode === 'single') return unsent.filter(row => String(row.id) === String(memberId || ''));
+      if (mode === 'all') return unsent;
+      const selected = assessmentManualBatchEnsureSelection(batch);
+      return unsent.filter(row => selected.has(String(row.id)));
+    }
+    function assessmentManualBatchTargetIds(rows=[]) {
+      return rows.map(row => cleanCell(row.member?.id || row.item?.memberId || row.item?.memberCode || row.id)).filter(Boolean);
+    }
+    function assessmentManualBatchStoreErrors(batch, failed=[]) {
+      const key = assessmentManualBatchKey(batch);
+      const current = { ...(window.assessmentManualBatchErrors?.[key] || {}) };
+      failed.forEach(item => {
+        const id = cleanCell(item.memberId || item.memberCode || item.id || '');
+        if (id) current[id.toLocaleLowerCase('it-IT')] = cleanCell(item.error || 'Invio non riuscito');
+      });
+      window.assessmentManualBatchErrors[key] = current;
+    }
+    function assessmentManualBatchClearSelectionForRows(batch, rows=[]) {
+      const key = assessmentManualBatchKey(batch);
+      const sentIds = new Set(rows.map(row => String(row.id)));
+      const selected = Array.isArray(window.assessmentManualBatchSelections[key]) ? window.assessmentManualBatchSelections[key] : [];
+      window.assessmentManualBatchSelections[key] = selected.filter(id => !sentIds.has(String(id)));
+    }
+    async function assessmentEmailSendManualBatch(mode='selected', memberId='') {
+      const batch = assessmentEmailTodayRoutineBatch();
+      if (!batch || cleanCell(batch.status || '') === 'empty') return showAlert('Prima prepara il lotto email manuale.', 'warning');
+      const rows = assessmentManualBatchRowsForSend(mode, memberId);
+      if (!rows.length) {
+        const message = mode === 'selected'
+          ? 'Seleziona almeno un socio del lotto prima di inviare.'
+          : 'Non ci sono righe ancora da inviare nel lotto.';
+        return showAlert(message, 'warning');
+      }
+      const targetMemberIds = assessmentManualBatchTargetIds(rows);
+      const label = mode === 'single'
+        ? (playerFullName(rows[0]?.member) || rows[0]?.item?.memberName || '1 email')
+        : `${rows.length} email`;
+      if (!confirm(`Confermi l'invio manuale di ${label}?`)) return;
+      try {
+        showAlert(`Invio manuale in corso: ${rows.length} email...`, 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          action: 'routine-send',
+          scheduledLocalDate: assessmentManualBatchKey(batch),
+          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
+          targetMemberIds,
+          source: `pmo_assessment_email_manual_batch_${mode}`
+        });
+        const sent = Array.isArray(result.sent) ? result.sent : [];
+        const failed = Array.isArray(result.failed) ? result.failed : [];
+        assessmentManualBatchStoreErrors(batch, failed);
+        assessmentManualBatchClearSelectionForRows(batch, rows.filter(row => sent.some(item => assessmentManualBatchMatchesAliases(row.item, row.member, item))));
+        await assessmentEmailImportCloudLogs({ silent:true });
+        displayAssessment();
+        setAssessmentEmailPanel('morning');
+        showAlert(`Invio manuale completato: ${sent.length} email inviate${failed.length ? `, ${failed.length} errori` : ''}.`, failed.length ? 'warning' : 'success');
+      } catch (err) {
+        showAlert('Invio manuale non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare email dal lotto manuale'), 'danger');
+      }
+    }
+    function assessmentEmailSendManualBatchSelected() {
+      return assessmentEmailSendManualBatch('selected');
+    }
+    function assessmentEmailSendManualBatchAll() {
+      return assessmentEmailSendManualBatch('all');
+    }
+    function assessmentEmailSendManualBatchSingle(memberId) {
+      return assessmentEmailSendManualBatch('single', memberId);
+    }
     async function assessmentEmailPlanMorningBatch() {
       try {
         showAlert('Preparo il lotto email mattutino...', 'info');
@@ -23728,7 +23996,7 @@ Per confermare scrivi ELIMINA.`);
         displayAssessment();
         setAssessmentEmailPanel('morning');
         const selected = Array.isArray(result.selected) ? result.selected.length : assessmentEmailRoutineBatchSelectedCount(result.batch);
-        showAlert(selected ? `Lotto preparato: ${selected} email in attesa di approvazione.` : 'Nessun socio pronto da inserire nel lotto di oggi.', selected ? 'success' : 'info');
+        showAlert(selected ? `Lotto preparato: ${selected} email pronte. Scegli se inviare tutti, selezionati o una singola riga.` : 'Nessun socio pronto da inserire nel lotto di oggi.', selected ? 'success' : 'info');
       } catch (err) {
         showAlert('Preparazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'preparare il lotto email mattutino'), 'danger');
       }
