@@ -939,6 +939,13 @@
     .assessment-process-routine-label { color:#667085; font-size:10px; font-weight:900; text-transform:uppercase; line-height:1.15; }
     .assessment-process-routine-value { margin-top:3px; color:#101828; font-size:13px; font-weight:900; line-height:1.2; overflow-wrap:anywhere; }
     .assessment-process-routine-note { margin-top:2px; color:#667085; font-size:11px; font-weight:750; line-height:1.25; overflow-wrap:anywhere; }
+    .assessment-routine-approval { display:flex; justify-content:space-between; align-items:center; gap:12px; border:1px solid #e7edf6; border-left:4px solid #d9e0ea; border-radius:8px; background:#fbfdff; padding:9px 10px; margin-bottom:10px; }
+    .assessment-routine-approval.ok { border-left-color:#168a53; background:#fbfffd; }
+    .assessment-routine-approval.warn { border-left-color:#b7791f; background:#fffdf7; }
+    .assessment-routine-approval.err { border-left-color:#b42318; background:#fffafa; }
+    .assessment-routine-approval-title { color:#1f4f9a; font-size:13px; line-height:1.2; font-weight:900; }
+    .assessment-routine-approval-note { color:#667085; font-size:12px; line-height:1.25; font-weight:750; margin-top:2px; }
+    .assessment-routine-approval-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
     .assessment-process-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); gap:7px; margin-bottom:10px; }
     .assessment-process-filter { min-width:0; text-align:left; border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 8px; cursor:pointer; box-shadow:0 1px 3px rgba(31,71,136,.04); }
     .assessment-process-filter.active { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -1122,6 +1129,8 @@
     .assessment-email-reply-text { margin:0; white-space:pre-wrap; color:#344054; font:inherit; line-height:1.45; max-height:42vh; overflow:auto; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; }
     @media (max-width:1100px) {
       .assessment-process-routine-bar { grid-template-columns:repeat(3,minmax(0,1fr)); }
+      .assessment-routine-approval { align-items:flex-start; flex-direction:column; }
+      .assessment-routine-approval-actions { justify-content:flex-start; }
       .assessment-email-mini-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .assessment-email-status-layout, .assessment-email-template-grid { grid-template-columns:1fr; }
       .assessment-morning-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -5215,7 +5224,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.423';
+    const APP_VERSION = '5.424';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5309,6 +5318,7 @@ body.assessment-public-mode .assessment-public-only-card {
     let postMatchFeedbackResponses = safeLoad('postMatchFeedbackResponses', []);
     let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: PMO_DEFAULT_FEEDBACK_BASE_URL });
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
+    let assessmentEmailRoutineBatches = safeLoad('assessmentEmailRoutineBatches', {});
     let assessmentPausedTokens = safeLoad('assessmentPausedTokens', {});
     const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
     const ASSESSMENT_SUPPORT_WHATSAPP_URL = 'https://wa.me/393791151472';
@@ -6201,6 +6211,7 @@ Grazie.`
       'dailyDiffHistory',
       'lastMatchpointImportSummary',
       'assessmentDailySendLog',
+      'assessmentEmailRoutineBatches',
       'assessmentCommunicationTemplates',
       'dailyAssistantState',
       'dailyPlayerGroups',
@@ -9133,8 +9144,8 @@ Grazie.`
       const typed = prompt('⚠️ Cancellare i dati locali principali collegati alla sincronizzazione Matchpoint?\n\nQuesta azione svuota soci, prenotazioni, storico, riepiloghi import, gruppi, partite salvate, sessioni invito guidato e storico messaggi WhatsApp collegato alle partite.\n\nÈ stato creato uno snapshot automatico locale prima della cancellazione.\n\nPer confermare scrivi ELIMINA.');
       if (typed === null) return showAlert('Operazione annullata. I dati locali sono rimasti invariati.', 'info');
       if (String(typed).trim().toUpperCase() !== 'ELIMINA') return showAlert('⚠️ Conferma non valida: dati locali non cancellati.', 'warning');
-      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = null; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0};
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('lastMatchpointImportSummary', lastMatchpointImportSummary); save('assessmentDailySendLog', assessmentDailySendLog); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('matchpointData', matchpointData);
+      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = null; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; assessmentEmailRoutineBatches = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0};
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('lastMatchpointImportSummary', lastMatchpointImportSummary); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('matchpointData', matchpointData);
       renderLastMatchpointImportSummary();
       renderPotentialSlotImage();
       memberInlineOpenId = ''; closeMemberCard(); displayMembers(); updateStats();
@@ -9170,6 +9181,7 @@ Grazie.`
         postMatchFeedbackResponses,
         assessmentSettings,
         assessmentDailySendLog,
+        assessmentEmailRoutineBatches,
         assessmentPausedTokens,
         assessmentCommunicationTemplates,
         dailyAssistantState,
@@ -9309,6 +9321,9 @@ Grazie.`
       if (raw.includes('GMAIL_TOKEN_FAILED')) return 'Gmail non ha autorizzato l invio. Controllare il collegamento account.';
       if (raw.includes('GMAIL_SEND_FAILED')) return 'Gmail ha rifiutato l invio email.';
       if (raw.includes('GMAIL_READ_FAILED')) return 'Gmail non ha autorizzato la lettura delle email. Controllare il collegamento account.';
+      if (raw.includes('STAFF_APPROVAL_REQUIRED')) return 'Serve approvazione manuale da un operatore staff.';
+      if (raw.includes('ROUTINE_BATCH_MISSING')) return 'Prima prepara il lotto di invio mattutino.';
+      if (raw.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return 'Il lotto non e in uno stato approvabile.';
       return raw || 'Invio email autovalutazione non riuscito.';
     }
 
@@ -9316,7 +9331,11 @@ Grazie.`
       const action = payload.action || 'send';
       const actionLabel = action === 'scan-bounces'
         ? 'controllare le mancate consegne Gmail'
-        : (action === 'scan-replies' ? 'aggiornare le risposte Gmail' : 'inviare email autovalutazione');
+        : (action === 'scan-replies'
+          ? 'aggiornare le risposte Gmail'
+          : (action === 'routine-plan'
+            ? 'preparare il lotto email mattutino'
+            : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione')));
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
@@ -9426,13 +9445,13 @@ Grazie.`
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
       giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
-      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
       renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
@@ -22383,9 +22402,22 @@ Per confermare scrivi ELIMINA.`);
           p_record_types: ['assessment_email'],
           p_since: null
         }, 'cloud_sync', 'aggiornare lo stato invii automatici');
-        const sends = (Array.isArray(rows) ? rows : [])
-          .filter(row => row && !row.deleted && row.payload?.type === 'assessment_email_send')
-          .map(row => row.payload || {})
+        const payloads = (Array.isArray(rows) ? rows : [])
+          .filter(row => row && !row.deleted && row.payload)
+          .map(row => row.payload || {});
+        let batchUpdated = 0;
+        payloads
+          .filter(payload => payload?.type === 'assessment_email_batch')
+          .forEach(payload => {
+            const key = cleanCell(payload.localDate || payload.scheduledLocalDate || '');
+            if (!key) return;
+            const previous = assessmentEmailRoutineBatches[key] || null;
+            if (JSON.stringify(previous || {}) !== JSON.stringify(payload || {})) batchUpdated++;
+            assessmentEmailRoutineBatches[key] = payload;
+          });
+        if (batchUpdated) save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches);
+        const sends = payloads
+          .filter(payload => payload?.type === 'assessment_email_send')
           .filter(payload => payload.memberId && assessmentEmailModeIsRequest(payload.mode))
           .sort((a,b) => assessmentEmailDateMs(a.sentAt) - assessmentEmailDateMs(b.sentAt));
         let updated = 0;
@@ -22451,17 +22483,17 @@ Per confermare scrivi ELIMINA.`);
           if (rec.sentAt && rec.sentAt.slice(0, 10) === getTodayKey()) recordAssessmentRequestSent(member.id);
           if (previousSent !== rec.sentAt) updated++;
         });
-        if (sends.length) {
+        if (sends.length || batchUpdated) {
           save('assessmentTokens', assessmentTokens);
           save('assessmentDailySendLog', assessmentDailySendLog);
           if (!options.silent) {
             displayAssessment();
-            showAlert(`Stato invii automatici aggiornato: ${updated} novita su ${sends.length} log cloud.`, updated ? 'success' : 'info');
+            showAlert(`Stato invii automatici aggiornato: ${updated + batchUpdated} novita su ${sends.length} log cloud.`, (updated || batchUpdated) ? 'success' : 'info');
           }
         } else if (!options.silent) {
           showAlert('Nessun invio automatico cloud da importare.', 'info');
         }
-        return { ok:true, imported:updated, seen:sends.length };
+        return { ok:true, imported:updated, batches:batchUpdated, seen:sends.length };
       } catch (err) {
         if (!options.silent) showAlert('Aggiornamento stato invii automatici non riuscito: ' + (err.message || err), 'danger');
         return { ok:false, error:err?.message || err };
@@ -23030,15 +23062,65 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessVisibleRowsLimit = getAssessmentProcessVisibleLimit() + ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
+    function assessmentEmailStoreRoutineBatch(batch) {
+      if (!batch || typeof batch !== 'object') return null;
+      const key = cleanCell(batch.localDate || getTodayKey());
+      if (!key) return null;
+      assessmentEmailRoutineBatches[key] = batch;
+      save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches);
+      return batch;
+    }
+    function assessmentEmailTodayRoutineBatch() {
+      const batch = assessmentEmailRoutineBatches?.[getTodayKey()] || null;
+      return batch?.type === 'assessment_email_batch' ? batch : null;
+    }
+    function assessmentEmailRoutineBatchSelectedCount(batch=null) {
+      const rows = Array.isArray(batch?.selected) ? batch.selected : [];
+      return rows.length;
+    }
+    function assessmentEmailRoutineApprovalStatus(batch=null) {
+      const status = cleanCell(batch?.status || '');
+      if (!batch) return { label:'Da preparare', detail:'nessun lotto pronto', cls:'warn' };
+      if (status === 'pending') return { label:'Da approvare', detail:`${assessmentEmailRoutineBatchSelectedCount(batch)} email pronte`, cls:'warn' };
+      if (status === 'approved' || status === 'sending') return { label:'Approvato', detail:'invio in corso', cls:'ok' };
+      if (status === 'sent' || status === 'sent_with_errors') return { label:'Inviato', detail:`${assessmentEmailRoutineBatchSelectedCount(batch)} email approvate`, cls:status === 'sent_with_errors' ? 'warn' : 'ok' };
+      if (status === 'empty') return { label:'Nessun invio', detail:'coda vuota o limite raggiunto', cls:'muted' };
+      if (status === 'error') return { label:'Errore', detail:'controlla strumenti tecnici', cls:'err' };
+      return { label:'Da preparare', detail:'stato non definito', cls:'warn' };
+    }
+    function assessmentEmailRoutineApprovalControlsHtml() {
+      const batch = assessmentEmailTodayRoutineBatch();
+      const status = cleanCell(batch?.status || '');
+      const selected = assessmentEmailRoutineBatchSelectedCount(batch);
+      const statusInfo = assessmentEmailRoutineApprovalStatus(batch);
+      const buttons = [];
+      if (!batch || status === 'empty' || status === 'error') {
+        buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailPlanMorningBatch()">Prepara lotto</button>`);
+      }
+      if (status === 'pending') {
+        buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailApproveMorningBatch()">Approva invio ${escapeHtml(String(selected))}</button>`);
+      }
+      if (status === 'sent' || status === 'sent_with_errors') {
+        buttons.push(`<span class="assessment-email-action-state">Inviato ${escapeHtml(assessmentEmailFormatDateTime(batch.sentAt || batch.updatedAt || ''))}</span>`);
+      }
+      return `<div class="assessment-routine-approval ${escapeHtml(statusInfo.cls)}">
+        <div>
+          <div class="assessment-routine-approval-title">Invio mattutino con approvazione manuale</div>
+          <div class="assessment-routine-approval-note">${escapeHtml(statusInfo.label)} · ${escapeHtml(statusInfo.detail)}. La routine non invia email finche lo staff non approva.</div>
+        </div>
+        <div class="assessment-routine-approval-actions">${buttons.join('')}</div>
+      </div>`;
+    }
     function assessmentProcessRoutineBarHtml(rows) {
       const sentToday = getAssessmentRequestsSentTodayCount();
       const problemCount = rows.filter(row => row.filter === 'problems').length;
       const reviewCount = rows.filter(row => row.filter === 'responses' || row.filter === 'review' || row.filter === 'matchpoint').length;
       const lastLabel = assessmentEmailRoutineLastLabel(assessmentEmailAllOperationalRows());
+      const approval = assessmentEmailRoutineApprovalStatus(assessmentEmailTodayRoutineBatch());
       const statusCls = problemCount ? 'err' : (reviewCount ? 'warn' : 'ok');
       const statusText = problemCount ? 'Attenzione' : (reviewCount ? 'Da controllare' : 'OK');
       const items = [
-        ['Invio email', '05:45', 'Primo giro mattina', 'ok'],
+        ['Invio email', approval.label, approval.detail, approval.cls],
         ['Limite oggi', String(DAILY_ASSESSMENT_REQUEST_LIMIT), 'invii automatici', ''],
         ['Inviate oggi', `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`, 'conteggio giornaliero', sentToday >= DAILY_ASSESSMENT_REQUEST_LIMIT ? 'warn' : 'ok'],
         ['Prossimo controllo Gmail', 'Manuale', 'pulsanti Gmail', ''],
@@ -23049,7 +23131,7 @@ Per confermare scrivi ELIMINA.`);
         <div class="assessment-process-routine-label">${escapeHtml(item[0])}</div>
         <div class="assessment-process-routine-value">${escapeHtml(item[1])}</div>
         <div class="assessment-process-routine-note">${escapeHtml(item[2])}</div>
-      </div>`).join('')}</div>`;
+      </div>`).join('')}</div>${assessmentEmailRoutineApprovalControlsHtml()}`;
     }
     function assessmentProcessRowHtml(entry) {
       const member = entry.member || {};
@@ -23255,6 +23337,8 @@ Per confermare scrivi ELIMINA.`);
       const followups = assessmentEmailFollowupReadyCounts(pendingRows);
       const attentionCount = problemRows.length + replyCount + manualPostCount;
       const lastLabel = assessmentEmailRoutineLastLabel(allRows);
+      const morningBatch = assessmentEmailTodayRoutineBatch();
+      const approvalInfo = assessmentEmailRoutineApprovalStatus(morningBatch);
       const latestPostMs = postRows.reduce((max, row) => Math.max(max, assessmentEmailDateMs(row.response?.submitted_at)), 0);
       assessmentEmailSetRoutinePills(sentToday, attentionCount, lastLabel);
       const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Prova attiva','info') : assessmentEmailBadge('Produzione','warn');
@@ -23262,7 +23346,7 @@ Per confermare scrivi ELIMINA.`);
       const rows = [
         ['Gmail Padel Village', 'Invio e lettura risposte', assessmentEmailBadge('Collegato','ok'), lastLabel, 'Il sistema puo inviare email, leggere risposte e controllare mancate consegne.'],
         ['Modalita invio', 'TEST o produzione', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Controllare destinatari e scheduler prima di inviare ai soci.'],
-        ['Invio mattutino', 'Primo invio automatico', assessmentEmailBadge('05:45 previsto','info'), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `Alla prossima routine seleziona soci 0.5 pronti fino al limite giornaliero. Prossima: ${assessmentEmailNextMorningRun()}.`],
+        ['Invio mattutino', 'Approvazione manuale', assessmentEmailBadge(approvalInfo.label, approvalInfo.cls === 'err' ? 'err' : (approvalInfo.cls === 'warn' ? 'warn' : 'info')), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `La routine prepara il lotto, ma non invia email finche lo staff non approva dal Cruscotto mattutino.`],
         ['Soci ancora da invitare', 'Coda livello 0.5', assessmentEmailBadge(`${queueRows.length} rimasti`,'info'), lastLabel, 'La routine prende solo soci attivi con email valida e link personale pronto.'],
         ['Secondo invio', 'Dopo 2 giorni', assessmentEmailBadge(`${followups.second} pronti`, followups.second ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia la seconda email ai soci che non hanno compilato e non hanno risposto.'],
         ['Terzo invio', 'Dopo altri 2 giorni', assessmentEmailBadge(`${followups.third} pronti`, followups.third ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia l ultimo promemoria e chiede feedback via WhatsApp se ci sono difficolta.'],
@@ -23283,12 +23367,14 @@ Per confermare scrivi ELIMINA.`);
         </table>
       </div>
       <div class="assessment-email-card" style="margin-top:14px;">
-        <h3>Sequenza del giro automatico</h3>
+        <h3>Sequenza del giro controllato</h3>
         <div class="assessment-email-timeline">
           <div class="assessment-email-step"><div class="assessment-email-step-num">1</div><strong>Controlla chi e pronto</strong><span>Soci attivi con livello 0.5, email valida, nessuna pausa e link personale disponibile.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Invia a scaglioni</strong><span>Parte alle 05:45, rispetta il limite 10 e chiude gli invii entro le 06:00.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Legge gli esiti</strong><span>Controlla risposte email, mancate consegne e schede compilate collegate al socio.</span></div>
-          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Decide il prossimo passo</strong><span>Secondo invio, terzo invio, post-invio automatico oppure recupero manuale WhatsApp.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">2</div><strong>Prepara il lotto</strong><span>La routine crea la lista fino al limite 10, senza inviare email.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">3</div><strong>Attende approvazione staff</strong><span>Lo staff controlla il lotto e clicca Approva invio dal Cruscotto mattutino.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">4</div><strong>Invia dopo approvazione</strong><span>Dopo il click invia le email e registra log, token e stato dei soci.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">5</div><strong>Legge gli esiti</strong><span>Controlla risposte email, mancate consegne e schede compilate collegate al socio.</span></div>
+          <div class="assessment-email-step"><div class="assessment-email-step-num">6</div><strong>Decide il prossimo passo</strong><span>Secondo invio, terzo invio, post-invio automatico oppure recupero manuale WhatsApp.</span></div>
         </div>
       </div>
       <div class="assessment-email-footer-note">La lettura "email aperta" non viene usata come dato operativo: i segnali forti sono invio accettato, risposta email, mancata consegna e scheda compilata.</div>`;
@@ -23607,6 +23693,50 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailTextsPanel();
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'morning')));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'morning')));
+    }
+    async function assessmentEmailPlanMorningBatch() {
+      try {
+        showAlert('Preparo il lotto email mattutino...', 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          action: 'routine-plan',
+          scheduledLocalDate: getTodayKey(),
+          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
+          source: 'pmo_assessment_email_manual_plan'
+        });
+        assessmentEmailStoreRoutineBatch(result.batch);
+        await assessmentEmailImportCloudLogs({ silent:true });
+        displayAssessment();
+        setAssessmentEmailPanel('morning');
+        const selected = Array.isArray(result.selected) ? result.selected.length : assessmentEmailRoutineBatchSelectedCount(result.batch);
+        showAlert(selected ? `Lotto preparato: ${selected} email in attesa di approvazione.` : 'Nessun socio pronto da inserire nel lotto di oggi.', selected ? 'success' : 'info');
+      } catch (err) {
+        showAlert('Preparazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'preparare il lotto email mattutino'), 'danger');
+      }
+    }
+    async function assessmentEmailApproveMorningBatch() {
+      const batch = assessmentEmailTodayRoutineBatch();
+      const selected = assessmentEmailRoutineBatchSelectedCount(batch);
+      if (!batch || cleanCell(batch.status) !== 'pending') return showAlert('Prima prepara il lotto email mattutino.', 'warning');
+      if (!selected) return showAlert('Il lotto non contiene email da inviare.', 'warning');
+      if (!confirm(`Approvi l'invio di ${selected} email di autovalutazione?`)) return;
+      try {
+        showAlert(`Invio approvato: sto inviando ${selected} email...`, 'info');
+        const result = await pmoInvokeAssessmentEmail({
+          action: 'routine-approve',
+          scheduledLocalDate: getTodayKey(),
+          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
+          source: 'pmo_assessment_email_manual_approval'
+        });
+        assessmentEmailStoreRoutineBatch(result.batch);
+        await assessmentEmailImportCloudLogs({ silent:true });
+        displayAssessment();
+        setAssessmentEmailPanel('morning');
+        const sent = Array.isArray(result.sent) ? result.sent.length : 0;
+        const failed = Array.isArray(result.failed) ? result.failed.length : 0;
+        showAlert(`Invio completato: ${sent} email inviate${failed ? `, ${failed} errori` : ''}.`, failed ? 'warning' : 'success');
+      } catch (err) {
+        showAlert('Approvazione invio non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'approvare il lotto email mattutino'), 'danger');
+      }
     }
     async function assessmentEmailPrepareMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));

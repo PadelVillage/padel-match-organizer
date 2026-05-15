@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-15 10:15
+Ultimo aggiornamento: 2026-05-15 11:25
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -12,6 +12,10 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 - Le versioni finali devono essere salvate sotto:
 
   `/Users/maurizioaprea/Downloads/Padel Match Organizer`
+
+## Aggiornamenti rapidi
+
+- Autovalutazione TEST v5.424: l'invio mattutino non parte piu' automaticamente senza approvazione staff. La routine prepara un lotto fino a 10 email, anche meno se i soci pronti sono meno, e invia solo dopo `Approva invio` dal `Cruscotto mattutino`. PROD resta a v5.422 e senza scheduler email Autovalutazione attivo.
 
 ## Mappa sezioni
 

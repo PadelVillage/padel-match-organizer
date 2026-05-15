@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-15 10:15
+Ultimo aggiornamento: 2026-05-15 11:25
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.422 | `main` | `6549f18` |
-| TEST | v5.423 | `test-preview` | pubblicata in TEST |
-| TEST sviluppo | v5.423 | `test/accessi-staff-guidati` | pubblicata in TEST |
+| TEST | v5.424 | `test-preview` | pubblicata in TEST |
+| TEST sviluppo | v5.424 | `test/accessi-staff-guidati` | pubblicata in TEST |
 
-Nota: PROD resta fermo a v5.422. In TEST v5.423 le modifiche alla scheda socio vengono anche inviate subito a Supabase come record `member`, senza aspettare backup cloud manuale o automatico. Lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta fermo a v5.422. In TEST v5.424 l'invio mattutino Autovalutazione richiede approvazione manuale staff: la routine puo' preparare un lotto fino a 10 email, anche meno se ci sono meno soci pronti, ma non invia senza click `Approva invio`. Lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta fermo a v5.422. In TEST v5.423 le modifiche alla scheda socio v
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.423 e' pubblicata in TEST; PROD resta a v5.422.
+La versione v5.424 e' pubblicata in TEST; PROD resta a v5.422.
 
 Contiene:
 
@@ -63,8 +63,9 @@ Contiene:
 - Autovalutazione v5.421 TEST/PROD: la ricerca del `Cruscotto mattutino` e dello `Storico` diventa a parole indipendenti: se il nome/cognome del socio viene digitato in ordine diverso, il socio viene comunque trovato.
 - Anagrafica soci / Autovalutazione v5.422 TEST/PROD: dopo aggiunta, modifica, disattivazione o cancellazione socio, la sezione Autovalutazione viene rinfrescata subito; la ricerca del Database soci usa parole indipendenti, coerente con cruscotto e storico.
 - Anagrafica soci / Cloud v5.423 TEST sviluppo: aggiunta, modifica, disattivazione/riattivazione e cancellazione socio preparano subito la scrittura puntuale del record `member` in Supabase tramite RPC staff, senza attendere il backup cloud. Se la scrittura cloud non riesce, la modifica locale resta salvata e viene mostrato un avviso.
+- Autovalutazione v5.424 TEST: l'invio mattutino delle email passa a controllo manuale staff. La Edge Function `assessment-email-send` aggiunge `routine-plan` per preparare il lotto e `routine-approve` per approvarlo/inviarlo; `routine-send` blocca gli invii generali se non esiste un lotto approvato. La UI del `Cruscotto mattutino` mostra `Prepara lotto` e `Approva invio`; il limite resta massimo 10 email, senza obbligo di arrivare a 10 se i soci pronti sono meno. Nessuna modifica SQL, nessun scheduler attivato, nessun cambio a PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.423 TEST sviluppo.
+- Documentazione aggiornata per v5.424 TEST.
 
 Non contiene modifiche a:
 
@@ -99,10 +100,34 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
 - Aggiorna questo file a ogni nuova versione TEST o PROD.
 - Non porta modifiche in PROD senza autorizzazione esplicita.
 
+### Chat SVILUPPO TEST
+
+- Legge questo file, la policy TEST/PROD e `ambienti-test-prod.md` prima di modificare file reali.
+- Implementa e corregge solo in TEST.
+- Pubblica le versioni validate sul canale TEST quando richiesto.
+- Non promuove in PROD, non attiva routine PROD e non modifica dati reali PROD.
+- Mantiene le routine TEST manuali o one-shot autorizzate.
+
+### Chat PROMOZIONE PROD
+
+- Legge questo file, la policy TEST/PROD, la procedura deploy e `ambienti-test-prod.md` prima di ogni passaggio.
+- Non sviluppa nuove funzioni e non corregge direttamente in PROD.
+- Promuove solo versioni TEST gia validate, dopo preflight pulito e comando esplicito `PROMUOVI PROD`.
+- Esegue rollback solo verso versione stabile precedente e solo dopo comando esplicito `ROLLBACK PROD`.
+- Verifica che scheduler, routine e dati PROD approvati restino preservati salvo richiesta esplicita.
+
 ## File principali da consultare
 
+- Policy TEST/PROD, routine e deploy:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/pmo-policy-test-prod-routine-deploy.md`
+- Procedura deploy TEST -> PROD:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/procedura-deploy-test-prod.md`
+- Ambienti TEST e PROD:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/ambienti-test-prod.md`
 - Registro versioni per sezione:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/registro-versioni-sezioni.md`
+- Regola mockup grafici:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-mockup-grafici.md`
 - Regole Supabase Data API / grant futuri:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/supabase-data-api-regole.md`
 - Algoritmo Riempi Slot:
@@ -122,9 +147,12 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
 | Database soci / Anagrafica | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `algoritmo-riempi-slot.md` |
 | DATI / Matchpoint / backup | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `matchpoint.md`, `routine-dati-automatiche.md` |
 | Supabase / SQL / Data API | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `ambienti-test-prod.md`, `supabase-data-api-regole.md` |
+| Sviluppo TEST | `stato-progetto-corrente.md`, `pmo-policy-test-prod-routine-deploy.md`, `ambienti-test-prod.md`, `registro-versioni-sezioni.md`, documento della sezione |
+| Promozione PROD / rollback | `stato-progetto-corrente.md`, `pmo-policy-test-prod-routine-deploy.md`, `procedura-deploy-test-prod.md`, `ambienti-test-prod.md`, `registro-versioni-sezioni.md`, documenti delle sezioni toccate |
+| Routine / scheduler / comunicazioni | `stato-progetto-corrente.md`, `pmo-policy-test-prod-routine-deploy.md`, `ambienti-test-prod.md`, documento area (`routine-dati-automatiche.md`, `autovalutazioni-email-routine.md` o `matchpoint.md`) |
 | Apri Partite / algoritmo | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `algoritmo-riempi-slot.md`, `matchpoint.md` |
 | Chiudi Partite / WhatsApp | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `algoritmo-riempi-slot.md` |
-| Nuovi mockup grafici | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md` e il mockup approvato piu recente della sezione |
+| Nuovi mockup grafici | `stato-progetto-corrente.md`, `registro-versioni-sezioni.md`, `regola-mockup-grafici.md` e il mockup approvato piu recente della sezione |
 
 ## Percorsi progetto
 
