@@ -3469,6 +3469,9 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-contacts-export-table small { display:block; margin-top:3px; color:#667085; font-size:11px; font-weight:800; line-height:1.2; }
     .member-contacts-export-empty { padding:14px; color:#667085; font-size:13px; font-weight:800; text-align:center; }
     .member-contacts-export-pill { display:inline-flex; align-items:center; max-width:100%; padding:3px 7px; border-radius:999px; border:1px solid #d5deea; background:#fff; color:#475467; font-size:11px; font-weight:900; line-height:1.2; white-space:normal; }
+    .member-contacts-export-pill.member-contacts-export-pill-action { margin:0; font-family:inherit; cursor:pointer; text-align:left; }
+    .member-contacts-export-pill.member-contacts-export-pill-action:hover,
+    .member-contacts-export-pill.member-contacts-export-pill-action:focus-visible { box-shadow:0 0 0 3px rgba(31,71,136,.14); outline:0; }
     .member-contacts-export-pill.good { border-color:#bde6cb; background:#effaf3; color:#2e7d32; }
     .member-contacts-export-pill.warn { border-color:#f0d899; background:#fff6de; color:#946300; }
     .member-contacts-export-pill.danger { border-color:#f2b8b5; background:#fff4f2; color:#b42318; }
@@ -5198,7 +5201,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.435';
+    const APP_VERSION = '5.436';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9788,6 +9791,11 @@ Grazie.`
     function memberContactsExportIssueCell(row) {
       const main = row.issueLabel || row.statusLabel || 'Da verificare';
       const detail = row.issueDetail && row.issueDetail !== main ? `<small>${escapeHtml(row.issueDetail)}</small>` : '';
+      const canOpenMember = main === 'Email mancante' && row.phoneInfo?.ok === true && row.member?.id;
+      if (canOpenMember) {
+        const memberId = escapeHtml(String(row.member.id));
+        return `<button type="button" class="member-contacts-export-pill warn member-contacts-export-pill-action" onclick="event.stopPropagation(); setActionAnchor(this); openMemberCard('${memberId}', { force:true });">Email mancante</button><small>Telefono valido presente</small>${detail}`;
+      }
       return `${memberContactsExportStatusPill(main)}${detail}`;
     }
     function renderMemberContactsExportTable(rows, emptyText, issueMode=false) {
