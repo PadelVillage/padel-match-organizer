@@ -5118,7 +5118,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <option value="femminile">Femminile</option>
               <option value="mista">Mista</option>
             </select>
-            <input id="matchInviteSearch" onkeyup="renderInviteResponsesDashboard()" placeholder="Cerca gruppo, giocatore, giorno" />
+            <input id="matchInviteSearch" onkeyup="renderInviteResponsesDashboard()" placeholder="Cerca giocatore, giorno" />
           </div>
         </div>
         <div id="smartMessagePanel" class="smart-message-panel"></div>
@@ -5163,7 +5163,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <option value="femminile">Femminile</option>
               <option value="mista">Mista</option>
             </select>
-            <input id="matchHistorySearch" onkeyup="renderMatchHistoryDashboard()" placeholder="Cerca gruppo, giocatore, giorno" />
+            <input id="matchHistorySearch" onkeyup="renderMatchHistoryDashboard()" placeholder="Cerca giocatore, giorno" />
           </div>
         </div>
         <div id="matchHistoryDashboard"></div>
@@ -13354,7 +13354,7 @@ Ti ho aggiunto alla ${title} del ${niceDate} ${timeText}.
 Ci vediamo in campo!`;
         return `Perfetto ${firstName}, grazie!
 Ti segno tra i confermati per la ${title} del ${niceDate} ${timeText}.
-Ti mando conferma finale appena il gruppo è completo.`;
+Ti mando conferma finale appena la partita è completa.`;
       }
       if (status === 'declined') return `Ok ${firstName}, grazie comunque per la risposta.
 Nessun problema, ti tengo presente per una delle prossime partite!`;
@@ -13399,7 +13399,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       if (!message) return showAlert('⚠️ Nessun messaggio conferma disponibile.', 'warning');
       if (navigator.clipboard) navigator.clipboard.writeText(message);
       window.__lastConfirmationMessage = message;
-      showAlert('✅ Messaggio finale copiato. Puoi incollarlo nel gruppo WhatsApp.', 'success');
+      showAlert('✅ Messaggio finale copiato. Puoi incollarlo nella chat WhatsApp.', 'success');
     }
     function renderLunchInvitationPanel(record) {
       const summary = getLunchInvitationSummary(record);
@@ -13547,7 +13547,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       const summary = getLunchInvitationSummary(record);
       if (status === 'confirmed') {
         if (summary.confirmed >= 4) return `Perfetto ${firstName}, grazie!\nTi ho aggiunto alla ${title} del ${niceDate} ${timeText}.\nCi vediamo in campo!`;
-        return `Perfetto ${firstName}, grazie!\nTi segno tra i confermati per la ${title} del ${niceDate} ${timeText}.\nTi mando conferma finale appena il gruppo è completo.`;
+        return `Perfetto ${firstName}, grazie!\nTi segno tra i confermati per la ${title} del ${niceDate} ${timeText}.\nTi mando conferma finale appena la partita è completa.`;
       }
       if (status === 'declined') return `Ok ${firstName}, grazie comunque per la risposta.\nNessun problema, ti tengo presente per una delle prossime partite!`;
       if (status === 'maybe') return `Ok ${firstName}, grazie!\nPer ora ti segno come forse e ti aggiorno appena capisco se c’è posto.`;
@@ -13864,7 +13864,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       if (!rested || !rested.length) return '';
       const shown = rested.slice(0, 8).map(x => `<strong>${escapeHtml(playerFullName(x.player))}</strong>${x.info?.dateDisplay ? ' — ' + escapeHtml(x.info.dateDisplay) : ''}`);
       const more = rested.length > shown.length ? `, +${rested.length - shown.length} altri` : '';
-      return `<div class="alert alert-warning"><strong>Riposo settimanale:</strong> ${rested.length} giocatore/i del gruppo hanno già giocato/confermato una partita nella stessa settimana di calendario lunedì-venerdì. Non vengono caricati automaticamente, ma puoi aggiungerli manualmente se decidi di forzare.<br>${shown.join(', ')}${more}</div>`;
+      return `<div class="alert alert-warning"><strong>Riposo settimanale:</strong> ${rested.length} giocatore/i della partita hanno già giocato/confermato una partita nella stessa settimana di calendario lunedì-venerdì. Non vengono caricati automaticamente, ma puoi aggiungerli manualmente se decidi di forzare.<br>${shown.join(', ')}${more}</div>`;
     }
 
     function getGroupPlayerOptionsForRecord(record) {
@@ -13913,16 +13913,16 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
         : '';
       if (!addable.length) {
         return `<div class="group-player-add-panel">
-          <label>👤 Aggiunta manuale dal gruppo</label>
-          <div class="group-player-add-help">Tutti i nominativi del gruppo trovati in Gestione Soci sono già presenti in questa partita.</div>
+          <label>👤 Aggiunta manuale</label>
+          <div class="group-player-add-help">Tutti i nominativi compatibili trovati in Anagrafica soci sono già presenti in questa partita.</div>
           ${missingNote}
         </div>`;
       }
       return `<div class="group-player-add-panel">
-        <label>👤 Aggiungi un nominativo dal gruppo origine</label>
+        <label>👤 Aggiungi un nominativo compatibile</label>
         <div class="group-player-add-row">
           <select id="${escapeHtml(selectId)}">
-            <option value="">Scegli un nominativo del gruppo...</option>
+            <option value="">Scegli un nominativo...</option>
             ${addable.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(lunchGroupAddOptionLabel(o, record))}</option>`).join('')}
           </select>
           <button class="btn-success" onclick="setActionAnchor(this); addSelectedGroupPlayerToRecord('${escapeJs(record.key)}','${escapeJs(selectId)}')">➕ Aggiungi alla partita</button>
@@ -14407,7 +14407,7 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
       const addable = options.filter(o => !o.inRecord);
       if (!addable.length) {
         const report = options.map(o => `• ${matchDisplayNameForRecord(o.player, record)}: già presente nella partita`).join('\n');
-        return showAlert(`ℹ️ Tutti i nominativi trovati nel gruppo sono già presenti in questa partita.${report ? '\n\n' + report : ''}`, 'info');
+        return showAlert(`ℹ️ Tutti i nominativi compatibili trovati sono già presenti in questa partita.${report ? '\n\n' + report : ''}`, 'info');
       }
       const listText = addable.map((o, idx) => {
         const notes = [];
@@ -14417,8 +14417,8 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
         if (o.conflict && !o.isAutoLoZio) notes.push('possibile conflitto');
         return `${idx + 1}) ${matchDisplayNameForRecord(o.player, record)}${notes.length ? ' (' + notes.join(', ') + ')' : ''}`;
       }).join('\n');
-      const missingText = resolved.missing.length ? `\n\nNominativi del gruppo non trovati in Gestione Soci:\n${resolved.missing.map(x => '• ' + x).join('\n')}` : '';
-      const choice = prompt(`Scegli chi aggiungere alla partita dal gruppo “${group.name}”:\n\n${listText}${missingText}\n\nScrivi il numero del nominativo da aggiungere.`);
+      const missingText = resolved.missing.length ? `\n\nNominativi non trovati in Anagrafica soci:\n${resolved.missing.map(x => '• ' + x).join('\n')}` : '';
+      const choice = prompt(`Scegli chi aggiungere alla partita:\n\n${listText}${missingText}\n\nScrivi il numero del nominativo da aggiungere.`);
       if (choice === null) return;
       const index = parseInt(choice, 10) - 1;
       if (isNaN(index) || index < 0 || index >= addable.length) return showAlert('⚠️ Scelta non valida.', 'warning');
@@ -15619,7 +15619,7 @@ Grazie!`
           ];
         } else {
           variants = [
-            'Perfetto ' + firstName + ', grazie! Ti segno tra i confermati per la ' + title + ' del ' + simpleDate + ' ' + timeText + '. Ti mando conferma finale appena il gruppo è completo.',
+            'Perfetto ' + firstName + ', grazie! Ti segno tra i confermati per la ' + title + ' del ' + simpleDate + ' ' + timeText + '. Ti mando conferma finale appena la partita è completa.',
             'Grazie ' + firstName + ', ti metto tra i confermati. Appena chiudiamo i 4 giocatori ti mando il messaggio finale.',
             'Ottimo ' + firstName + ', conferma ricevuta. Ti aggiorno appena la partita è completa.'
           ];
@@ -15895,7 +15895,7 @@ Grazie!`
         '</label>';
       }).join('');
       return '<div class="guided-invite-panel">' +
-        '<h4>🚀 Invio guidato gruppo</h4>' +
+        '<h4>🚀 Invio guidato partita</h4>' +
         '<div class="guided-invite-help"><h5>🧭 Percorso invio guidato</h5>' +
           '<div class="guided-stepper"><span class="guided-step current">1 Seleziona giocatori</span><span class="guided-step-arrow">→</span><span class="guided-step">2 Avvia</span><span class="guided-step-arrow">→</span><span class="guided-step">3 Apri WhatsApp</span><span class="guided-step-arrow">→</span><span class="guided-step">4 Invia manualmente</span><span class="guided-step-arrow">→</span><span class="guided-step">5 Ho inviato</span></div>' +
           '<div class="muted">WhatsApp apre la chat con il testo pronto; l’invio resta sempre manuale. Dopo aver inviato, torna qui e usa il pulsante verde.</div>' +
@@ -15993,7 +15993,7 @@ Grazie!`
       renderInviteSecretaryStatus();
       const allRecords = getLunchInvitationRecords();
       if (!allRecords.length) {
-        box.innerHTML = `<div class="ux-empty-state"><strong>Nessuna partita salvata.</strong><br>Vai in <strong>👥 Anagrafica soci</strong>, scegli un gruppo e clicca <strong>🎾 Crea partita da gruppo</strong>.</div>`;
+        box.innerHTML = `<div class="ux-empty-state"><strong>Nessuna partita salvata.</strong><br>Vai in <strong>🎾 Apri Partite</strong> e crea una partita da uno slot.</div>`;
         return;
       }
 
@@ -16119,14 +16119,14 @@ Grazie!`
 
         const closeBox = finalMessage ? `<div class="match-close-box">
           <h4>✅ Partita pronta per la chiusura</h4>
-          <div class="muted">Copia il messaggio finale nel gruppo WhatsApp. Il link calendario resta separato.</div>
+          <div class="muted">Copia il messaggio finale nella chat WhatsApp. Il link calendario resta separato.</div>
           <div class="final-message-box"><strong>Anteprima messaggio finale:</strong>\n${escapeHtml(finalMessage)}</div>
           <div class="match-close-actions">
             <button class="btn-success" onclick="setActionAnchor(this); openLunchWhatsAppTemplateComposer('${escapeJs(record.key)}','','final')">📋 Copia messaggio finale</button>
             <button class="btn-secondary" onclick="setActionAnchor(this); copyLunchCalendarLinkFromRecord('${escapeJs(record.key)}')">📅 Copia link calendario</button>
             ${complete ? `<button class="btn-primary" onclick="setActionAnchor(this); setLunchInvitationRecordStatus('${escapeJs(record.key)}','closed')">✅ Chiudi e salva nello storico</button>` : ''}
           </div>
-        </div>` : `<div class="alert alert-info">Quando arrivi a <strong>4 confermati</strong>, qui comparirà il messaggio finale da copiare nel gruppo WhatsApp.</div>`;
+        </div>` : `<div class="alert alert-info">Quando arrivi a <strong>4 confermati</strong>, qui comparirà il messaggio finale da copiare nella chat WhatsApp.</div>`;
 
         return `<div id="matchCard_${safeDomId(record.key)}" class="match-card slim ${statusClass}">
           <div class="invite-selected-banner">👉 Stai lavorando su questa partita. Cambi partita solo dalla colonna sinistra.</div>
@@ -16157,7 +16157,7 @@ Grazie!`
             <div class="match-detail-body">
               <div class="match-detail-grid">
                 <details class="sub-action-panel" data-panel="guided"${activeWorkKey === String(record.key) ? ' open' : ''}>
-                  <summary>🚀 Invio guidato gruppo</summary>
+                  <summary>🚀 Invio guidato partita</summary>
                   <div class="sub-body">${renderGuidedInvitePanelForRecord(record)}</div>
                 </details>
                 <div class="match-add-panels">
@@ -16359,14 +16359,14 @@ Grazie!`
       }).join('');
       const closeBox = finalMessage ? `<div class="match-close-box">
         <h4>Partita con 4 confermati</h4>
-        <div class="muted">Copia il messaggio finale nel gruppo WhatsApp. Il link calendario resta separato.</div>
+        <div class="muted">Copia il messaggio finale nella chat WhatsApp. Il link calendario resta separato.</div>
         <div class="final-message-box"><strong>Anteprima messaggio finale:</strong>\n${escapeHtml(finalMessage)}</div>
         <div class="match-close-actions">
           <button class="btn-success" onclick="setActionAnchor(this); openLunchWhatsAppTemplateComposer('${escapeJs(record.key)}','','final')">📋 Copia messaggio finale</button>
           <button class="btn-secondary" onclick="setActionAnchor(this); copyLunchCalendarLinkFromRecord('${escapeJs(record.key)}')">📅 Copia link calendario</button>
           ${complete ? `<button class="btn-primary" onclick="setActionAnchor(this); setLunchInvitationRecordStatus('${escapeJs(record.key)}','closed')">✅ Chiudi e salva nello storico</button>` : ''}
         </div>
-      </div>` : `<div class="alert alert-info">Quando arrivi a <strong>4 confermati</strong>, qui comparirà il messaggio finale da copiare nel gruppo WhatsApp.</div>`;
+      </div>` : `<div class="alert alert-info">Quando arrivi a <strong>4 confermati</strong>, qui comparirà il messaggio finale da copiare nella chat WhatsApp.</div>`;
       return `<div class="invite-sheet-dialog">
         <div class="invite-sheet-head">
           <div class="invite-sheet-head-main">
@@ -16864,9 +16864,9 @@ Grazie!`
       if (status === 'complete' || summary.confirmed >= 4) {
         priority = 'Partita completa: controllare messaggio finale e chiusura manuale.';
         messageAdvice = 'Copia il messaggio finale solo quando sei sicuro dei 4 confermati.';
-        nextStep = 'Invia manualmente il messaggio finale nel gruppo WhatsApp e poi chiudi la partita.';
+        nextStep = 'Invia manualmente il messaggio finale nella chat WhatsApp e poi chiudi la partita.';
       } else if (missing === 1) {
-        priority = 'Manca 1 giocatore: priorità alta, scegliere manualmente chi contattare tra quelli in attesa o dal gruppo.';
+        priority = 'Manca 1 giocatore: priorità alta, scegliere manualmente chi contattare tra quelli in attesa o dalla lista soci.';
         messageAdvice = 'Consigliato un messaggio diretto ma gentile: “ci manca l’ultimo per chiudere”.';
         nextStep = 'Contatta manualmente 1-2 persone alla volta e aggiorna lo stato appena rispondono.';
       } else if (summary.confirmed > 0) {
@@ -16961,7 +16961,7 @@ Grazie!`
       if (!box) return;
       const totals = getDashboardInviteTotals();
       if (!totals.total) {
-        box.textContent = 'Nessuna partita salvata: il controllo controllo operativo sarà vuoto finché non crei una partita da gruppo.';
+        box.textContent = 'Nessuna partita salvata: il controllo operativo sarà vuoto finché non crei una partita da Apri Partite.';
         return;
       }
       box.textContent = `Situazione: ${totals.open} aperte, ${totals.complete} complete da chiudere, ${totals.maybe} forse, ${totals.reserve} riserve, ${totals.pending} da seguire.`;
