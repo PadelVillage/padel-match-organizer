@@ -3411,11 +3411,10 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-contacts-export-head h4,
     .member-contacts-export-table-head h4 { margin:0; color:#1f4788; font-size:17px; line-height:1.2; letter-spacing:0; }
     .member-contacts-export-head p,
-    .member-contacts-export-note,
     .member-contacts-export-format span { margin:3px 0 0; color:#667085; font-size:12px; line-height:1.35; font-weight:750; }
     .member-contacts-export-head-actions,
     .member-contacts-export-download-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
-    .member-contacts-export-stats { display:grid; grid-template-columns:repeat(7,minmax(110px,1fr)); gap:8px; min-width:0; }
+    .member-contacts-export-stats { display:grid; grid-template-columns:repeat(8,minmax(100px,1fr)); gap:8px; min-width:0; }
     .member-contacts-export-stat {
       min-width:0;
       border:1px solid #e1e7ef;
@@ -3445,14 +3444,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-contacts-export-table th,
     .member-contacts-export-table td { padding:8px 9px; border-top:1px solid #edf1f7; vertical-align:top; overflow-wrap:anywhere; }
     .member-contacts-export-table thead th { border-top:0; background:#f3f7fc; color:#17386f; font-size:11px; font-weight:900; text-transform:uppercase; white-space:normal; }
+    .member-contacts-export-table small { display:block; margin-top:3px; color:#667085; font-size:11px; font-weight:800; line-height:1.2; }
     .member-contacts-export-empty { padding:14px; color:#667085; font-size:13px; font-weight:800; text-align:center; }
-    .member-contacts-export-note {
-      border-left:4px solid #1f4788;
-      border-radius:8px;
-      padding:9px 10px;
-      background:#eef5ff;
-      color:#1f4788;
-    }
     .member-contacts-export-pill { display:inline-flex; align-items:center; max-width:100%; padding:3px 7px; border-radius:999px; border:1px solid #d5deea; background:#fff; color:#475467; font-size:11px; font-weight:900; line-height:1.2; white-space:normal; }
     .member-contacts-export-pill.good { border-color:#bde6cb; background:#effaf3; color:#2e7d32; }
     .member-contacts-export-pill.warn { border-color:#f0d899; background:#fff6de; color:#946300; }
@@ -5285,7 +5278,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.431';
+    const APP_VERSION = '5.432';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9796,6 +9789,7 @@ Grazie.`
         const phoneInfo = getWhatsAppPhoneInfo(member?.phone || '');
         const exportedRecord = key ? state.exportedMembers[key] : null;
         const active = member?.active !== false;
+        const missingEmail = active && !cleanCell(member?.email || '');
         const duplicate = active && phoneInfo.ok && duplicatePhones.has(phoneInfo.digits);
         const phoneChanged = !!(active && exportedRecord && phoneInfo.ok && exportedRecord.phoneDigits && exportedRecord.phoneDigits !== phoneInfo.digits);
         const importAt = memberContactsExportImportAt(member);
@@ -9805,6 +9799,8 @@ Grazie.`
         const allExportable = active && phoneInfo.ok && !duplicate;
         let statusLabel = 'Da verificare';
         let issueLabel = '';
+        let issueDetail = '';
+        let outcomeLabel = '';
         if (!active) { statusLabel = 'Inattivi esclusi'; issueLabel = 'Inattivo'; }
         else if (!phoneInfo.ok) { statusLabel = 'Senza telefono'; issueLabel = phoneInfo.raw ? 'Telefono non valido' : 'Senza telefono'; }
         else if (duplicate) { statusLabel = 'Duplicati'; issueLabel = 'Duplicato telefono'; }
@@ -9813,11 +9809,21 @@ Grazie.`
         else if (alreadyExported) { statusLabel = 'Già esportati'; }
         else if (importedAfterLastExport) { statusLabel = 'Nuovi da Matchpoint'; }
         else { issueLabel = 'Da verificare'; }
+        if (missingEmail && !issueLabel && active) issueLabel = 'Email mancante';
+        else if (missingEmail && issueLabel !== 'Email mancante') issueDetail = 'Email mancante';
+        if (!active) outcomeLabel = 'Escluso';
+        else if (!phoneInfo.ok) outcomeLabel = 'Escluso senza telefono';
+        else if (duplicate) outcomeLabel = 'Non esportata automaticamente';
+        else if (phoneChanged) outcomeLabel = 'Da controllare';
+        else if (missingEmail) outcomeLabel = 'Da completare';
+        else if (issueLabel) outcomeLabel = 'Da verificare';
+        else outcomeLabel = 'Esportabile';
         return {
           member,
           key,
           phoneInfo,
           active,
+          missingEmail,
           duplicate,
           phoneChanged,
           alreadyExported,
@@ -9825,13 +9831,15 @@ Grazie.`
           importAt,
           statusLabel,
           issueLabel,
+          issueDetail,
+          outcomeLabel,
           normalExportable,
           allExportable
         };
       });
       const normalContacts = rows.filter(row => row.normalExportable).sort((a,b) => playerFullName(a.member).localeCompare(playerFullName(b.member), 'it'));
       const allContacts = rows.filter(row => row.allExportable).sort((a,b) => playerFullName(a.member).localeCompare(playerFullName(b.member), 'it'));
-      const anomalies = rows.filter(row => row.active && (row.issueLabel || (!state.lastExportAt && row.duplicate))).sort((a,b) => {
+      const anomalies = rows.filter(row => row.active && (row.issueLabel || row.missingEmail || (!state.lastExportAt && row.duplicate))).sort((a,b) => {
         const issue = (a.issueLabel || '').localeCompare(b.issueLabel || '', 'it');
         return issue || playerFullName(a.member).localeCompare(playerFullName(b.member), 'it');
       });
@@ -9845,6 +9853,7 @@ Grazie.`
           newFromMatchpoint: state.lastExportAt ? normalContacts.length : 0,
           alreadyExported: rows.filter(row => row.active && row.alreadyExported && !row.phoneChanged).length,
           phoneChanged: rows.filter(row => row.phoneChanged).length,
+          missingEmail: rows.filter(row => row.active && row.missingEmail).length,
           noPhone: rows.filter(row => row.active && !row.phoneInfo.ok).length,
           toCheck: anomalies.length,
           duplicates: rows.filter(row => row.duplicate).length,
@@ -9856,12 +9865,37 @@ Grazie.`
       const normalized = normalizeText(label);
       let cls = 'info';
       if (normalized.includes('esportare') || normalized.includes('matchpoint')) cls = 'good';
-      if (normalized.includes('verificare') || normalized.includes('telefono cambiato') || normalized.includes('senza telefono')) cls = 'warn';
+      if (normalized.includes('verificare') || normalized.includes('telefono cambiato') || normalized.includes('senza telefono') || normalized.includes('email mancante') || normalized.includes('da completare')) cls = 'warn';
       if (normalized.includes('duplicati') || normalized.includes('non valido')) cls = 'danger';
       return `<span class="member-contacts-export-pill ${cls}">${escapeHtml(label)}</span>`;
     }
+    function memberContactsExportEmailCell(row) {
+      const email = cleanCell(row.member?.email || '');
+      if (email) return escapeHtml(email);
+      if (row.phoneInfo?.ok) return `${memberContactsExportStatusPill('Email mancante')}<small>Esportato se telefono valido</small>`;
+      return `${memberContactsExportStatusPill('Email mancante')}`;
+    }
+    function memberContactsExportIssueCell(row) {
+      const main = row.issueLabel || row.statusLabel || 'Da verificare';
+      const detail = row.issueDetail && row.issueDetail !== main ? `<small>${escapeHtml(row.issueDetail)}</small>` : '';
+      return `${memberContactsExportStatusPill(main)}${detail}`;
+    }
     function renderMemberContactsExportTable(rows, emptyText, issueMode=false) {
       if (!rows.length) return `<div class="member-contacts-export-empty">${escapeHtml(emptyText)}</div>`;
+      if (issueMode) {
+        return `<div class="member-contacts-export-table-wrap">
+          <table class="member-contacts-export-table">
+            <thead><tr><th>Socio</th><th>Problema</th><th>Esito</th></tr></thead>
+            <tbody>
+              ${rows.map(row => `<tr>
+                <td><strong>${escapeHtml(playerFullName(row.member) || '-')}</strong><small>${escapeHtml(row.member?.memberId || 'ID mancante')}</small></td>
+                <td>${memberContactsExportIssueCell(row)}</td>
+                <td>${escapeHtml(row.outcomeLabel || 'Da verificare')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      }
       return `<div class="member-contacts-export-table-wrap">
         <table class="member-contacts-export-table">
           <thead><tr><th>Socio</th><th>Telefono</th><th>Email</th><th>Stato</th></tr></thead>
@@ -9869,8 +9903,8 @@ Grazie.`
             ${rows.map(row => `<tr>
               <td><strong>${escapeHtml(playerFullName(row.member) || '-')}</strong><small>${escapeHtml(row.member?.memberId || 'ID mancante')}</small></td>
               <td>${escapeHtml(row.phoneInfo.display || row.phoneInfo.raw || '-')}</td>
-              <td>${escapeHtml(row.member?.email || '-')}</td>
-              <td>${memberContactsExportStatusPill(issueMode ? (row.issueLabel || row.statusLabel) : row.statusLabel)}</td>
+              <td>${memberContactsExportEmailCell(row)}</td>
+              <td>${memberContactsExportStatusPill(row.statusLabel)}</td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -9880,7 +9914,6 @@ Grazie.`
       const panel = document.getElementById('memberContactsExportPanel');
       if (!panel || panel.hidden) return;
       const analysis = getMemberContactsExportAnalysis();
-      const normalLabel = analysis.lastExportAt ? 'nuovi soci importati da Matchpoint non ancora esportati' : 'prima esportazione completa dei soci attivi con telefono valido';
       const lastExportText = analysis.lastExportAt ? pmoFormatDateTime(analysis.lastExportAt) : 'Mai';
       const previewRows = analysis.normalContacts.slice(0, 8);
       const anomalyRows = analysis.anomalies.slice(0, 8);
@@ -9899,6 +9932,7 @@ Grazie.`
           <div class="member-contacts-export-stat good"><strong>${analysis.stats.newFromMatchpoint}</strong><span>Nuovi da Matchpoint</span></div>
           <div class="member-contacts-export-stat"><strong>${analysis.stats.alreadyExported}</strong><span>Già esportati</span></div>
           <div class="member-contacts-export-stat warn"><strong>${analysis.stats.phoneChanged}</strong><span>Telefono cambiato</span></div>
+          <div class="member-contacts-export-stat warn"><strong>${analysis.stats.missingEmail}</strong><span>Senza email</span></div>
           <div class="member-contacts-export-stat warn"><strong>${analysis.stats.noPhone}</strong><span>Senza telefono</span></div>
           <div class="member-contacts-export-stat warn"><strong>${analysis.stats.toCheck}</strong><span>Da verificare</span></div>
           <div class="member-contacts-export-stat danger"><strong>${analysis.stats.duplicates}</strong><span>Duplicati</span></div>
@@ -9907,7 +9941,7 @@ Grazie.`
         <div class="member-contacts-export-actions">
           <div class="member-contacts-export-format">
             <strong>CSV Google</strong>
-            <span>Ultimo export: ${escapeHtml(lastExportText)}. Scarica ${escapeHtml(normalLabel)}.</span>
+            <span>Ultimo export: ${escapeHtml(lastExportText)}</span>
           </div>
           <div class="member-contacts-export-download-actions">
             <button class="btn-primary" onclick="setActionAnchor(this); downloadMemberContactsGoogleCsv(false)" ${analysis.normalContacts.length ? '' : 'disabled'}>Scarica CSV Google</button>
@@ -9922,10 +9956,6 @@ Grazie.`
             <div class="member-contacts-export-table-head"><h4>Da correggere</h4><span class="pill">${analysis.anomalies.length} elementi</span></div>
             ${renderMemberContactsExportTable(anomalyRows, 'Nessuna anomalia da correggere.', true)}
           </section>
-        </div>
-        <div class="member-contacts-export-note">
-          Il file non aggiorna Google automaticamente. Dopo il download, importalo manualmente in Google Contatti con etichetta “Padel Village”.<br>
-          Non modifica Google Contatti e non invia messaggi WhatsApp.
         </div>
       `;
     }
