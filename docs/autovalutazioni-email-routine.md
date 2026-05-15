@@ -1,8 +1,8 @@
 # Autovalutazione - invio automatico email
 
-Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto; prima routine backend email TEST v5.412 impostata con invio 05:45 massimo 10 soci/giorno e controlli Gmail quattro volte al giorno; cruscotto mattutino tabellare `Processo utenti` integrato in TEST v5.413, con `Stato invio` assorbito nella vista unica; barra informativa Matchpoint rimossa dal cruscotto in TEST v5.414; cruscotto limitato a 20 righe progressive per filtro in TEST v5.415; hotfix box filtro cruscotto in TEST v5.416; ricerca cruscotto/storico rafforzata in TEST v5.417; controlli manuali Gmail spostati in `Strumenti tecnici avanzati` in TEST/PROD v5.418, senza attivazione scheduler email PROD; import log cloud e nuovo ciclo post-storico corretti in TEST v5.419; evidenza dello stadio sui box filtro del cruscotto integrata in TEST v5.420; ricerca a parole indipendenti nel cruscotto/storico integrata in TEST/PROD v5.421; refresh Autovalutazione dopo modifiche socio e ricerca Database soci a parole indipendenti integrati in TEST/PROD v5.422, senza attivazione scheduler email PROD; sync cloud puntuale delle modifiche scheda socio pubblicato in TEST v5.423; invio mattutino con approvazione manuale staff pubblicato in TEST v5.424; comando `Prepara lotto` / `Approva invio N` spostato nella testata del `Cruscotto mattutino` in TEST v5.425; fix del pulsante `Pulisci` nella ricerca del `Cruscotto mattutino` pubblicato in TEST v5.426; pulsanti WhatsApp diretti rimossi dalle sottosezioni operative Autovalutazione in TEST v5.427; oggetto del primo invio email chiarito in TEST v5.428; barra alta dei sei box routine rimossa dal `Cruscotto mattutino` in TEST v5.429; popup scelta messaggio WhatsApp dalla scheda socio integrato in TEST v5.430; lotto email manuale con invio tutti/selezionati/singola riga integrato nel `Cruscotto mattutino` in TEST v5.434.
+Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto; prima routine backend email TEST v5.412 impostata con invio 05:45 massimo 10 soci/giorno e controlli Gmail quattro volte al giorno; cruscotto mattutino tabellare `Processo utenti` integrato in TEST v5.413, con `Stato invio` assorbito nella vista unica; barra informativa Matchpoint rimossa dal cruscotto in TEST v5.414; cruscotto limitato a 20 righe progressive per filtro in TEST v5.415; hotfix box filtro cruscotto in TEST v5.416; ricerca cruscotto/storico rafforzata in TEST v5.417; controlli manuali Gmail spostati in `Strumenti tecnici avanzati` in TEST/PROD v5.418, senza attivazione scheduler email PROD; import log cloud e nuovo ciclo post-storico corretti in TEST v5.419; evidenza dello stadio sui box filtro del cruscotto integrata in TEST v5.420; ricerca a parole indipendenti nel cruscotto/storico integrata in TEST/PROD v5.421; refresh Autovalutazione dopo modifiche socio e ricerca Database soci a parole indipendenti integrati in TEST/PROD v5.422, senza attivazione scheduler email PROD; sync cloud puntuale delle modifiche scheda socio pubblicato in TEST v5.423; invio mattutino con approvazione manuale staff pubblicato in TEST v5.424; comando `Prepara lotto` / `Approva invio N` spostato nella testata del `Cruscotto mattutino` in TEST v5.425; fix del pulsante `Pulisci` nella ricerca del `Cruscotto mattutino` pubblicato in TEST v5.426; pulsanti WhatsApp diretti rimossi dalle sottosezioni operative Autovalutazione in TEST v5.427; oggetto del primo invio email chiarito in TEST v5.428; barra alta dei sei box routine rimossa dal `Cruscotto mattutino` in TEST v5.429; popup scelta messaggio WhatsApp dalla scheda socio integrato in TEST v5.430; lotto email manuale con invio tutti/selezionati/singola riga integrato nel `Cruscotto mattutino` in TEST v5.434; rigenerazione controllata del lotto non inviato integrata in TEST v5.435.
 
-Ultimo aggiornamento: 2026-05-15 23:58
+Ultimo aggiornamento: 2026-05-16 00:32
 
 Nota TEST/PROD: le regole operative generali su invii, destinatari TEST, scheduler, separazione dati, promozione PROD e rollback sono centralizzate in `docs/pmo-policy-test-prod-routine-deploy.md`. Questo documento descrive il funzionamento specifico dell'Autovalutazione.
 
@@ -133,6 +133,78 @@ Nel `Cruscotto mattutino` la gestione del lotto email resta manuale:
 - `Invia tutti` invia solo righe non ancora inviate del lotto.
 
 La UI usa la logica TEST gia disponibile di `routine-send` con `targetMemberIds` per invii mirati controllati. Non sono state modificate Edge Function, SQL, scheduler, Gmail, oggetto email, WhatsApp, Matchpoint, dati reali o PROD.
+
+## Nota TEST v5.435 - 2026-05-16 00:32
+
+Micro-correzione del `Cruscotto mattutino` / `Lotto email manuale`.
+
+Quando esiste un lotto del giorno in stato `pending`, con almeno una riga e senza invii o errori, la testata mostra anche `Rigenera lotto` dopo:
+
+- `Invia selezionati`;
+- `Invia tutti`.
+
+Regole:
+
+- `Rigenera lotto` chiede conferma prima di operare;
+- sostituisce solo il lotto non inviato con un nuovo calcolo dei soci pronti;
+- non invia email;
+- non compare se il lotto e' gia parzialmente inviato, inviato, in invio, approvato o contiene righe `sent`/`failed`;
+- se i soci disponibili sono meno di 10, il lotto rigenerato resta valido;
+- se non ci sono soci disponibili, il lotto mostra lo stato vuoto gia previsto.
+
+La Edge Function TEST `assessment-email-send` e' stata pubblicata come versione 17 con `verify_jwt=false`. Il comportamento standard di `routine-plan` resta invariato; solo quando riceve `regenerate:true` puo sostituire un lotto esistente e solo se il lotto e' `pending`, senza `sent`, senza `failed`, senza `sendingAt` e senza `sentAt`. Negli altri casi risponde con `ROUTINE_BATCH_REGENERATE_NOT_ALLOWED`.
+
+Nessuna modifica a SQL, scheduler, Gmail template, oggetto email v5.428, WhatsApp, Matchpoint, dati reali o PROD.
+
+## Regola PROD da preservare - 2026-05-16
+
+Regola validata per la futura promozione/attivazione PROD dell'Autovalutazione email.
+
+In PROD il primo invio del ciclo viene avviato dallo staff: lo staff prepara il lotto, sceglie i soci e conferma l'invio email. Dopo il primo invio, il singolo socio entra automaticamente nel ciclo di follow-up.
+
+Da quel momento la routine PROD deve lavorare senza nuove approvazioni staff per il secondo e terzo richiamo, ma solo dopo aver controllato gli stop operativi.
+
+Prima di ogni richiamo automatico la routine deve controllare:
+
+- scheda compilata tramite token personale;
+- risposta email ricevuta dal socio su Gmail;
+- mancata consegna/bounce della mail precedente;
+- pausa o problema operativo gia registrato.
+
+Se la scheda e' compilata:
+
+- il socio esce dal ciclo dei richiami;
+- la risposta entra in `Post-invio`;
+- lo staff valuta/applica il livello;
+- dopo applicazione livello parte la mail di conferma livello validato;
+- il giro va nello `Storico`;
+- se il livello e' da riportare su Matchpoint, il socio resta nella lista Matchpoint manuale.
+
+Se il socio risponde via email prima di compilare:
+
+- secondo e terzo richiamo restano sospesi;
+- la risposta deve essere visibile in app con `Leggi risposta`;
+- lo staff gestisce il caso manualmente.
+
+Se viene trovata una mancata consegna:
+
+- il socio non deve ricevere altri richiami automatici;
+- il caso va in `Problemi`;
+- lo staff corregge email o recupera il socio manualmente.
+
+Se non ci sono stop:
+
+- dopo 2 giorni dal primo invio parte automaticamente il secondo richiamo;
+- dopo altri 2 giorni dal secondo invio parte automaticamente il terzo richiamo;
+- dopo il terzo richiamo senza esito non partono altre email automatiche e il socio passa al recupero manuale.
+
+Regola di validazione livello:
+
+- le schede con differenza bassa e coerenza sufficiente possono essere chiuse/applicate secondo la logica app;
+- le schede con scostamento alto o coerenza bassa richiedono controllo staff prima di applicare il livello;
+- la soglia operativa da riesaminare prima del deploy PROD e': controllo staff obbligatorio se lo scostamento supera 1 livello oppure se la coerenza e' bassa. Fino a decisione finale, resta valida la regola prudente gia in app: controllo manuale quando lo scostamento supera 0.5 o la coerenza e' bassa.
+
+Questa regola deve essere riportata nel prompt di PROMOZIONE PROD e verificata prima di attivare lo scheduler email Autovalutazione PROD.
 
 ## Obiettivo
 
@@ -724,7 +796,7 @@ Regola operativa:
 
 | Step | Fase | Cosa succede | Controllo operativo |
 |---|---|---|
-| 1-2 | Avvio invio | Il sistema legge i soci attivi dal gestionale. | Parte ogni giorno alle `05:45`, oppure da comando manuale autorizzato. |
+| 1-2 | Avvio invio | Il sistema legge i soci attivi dal gestionale. | In TEST resta manuale/protetto. In PROD il primo blocco viene avviato dallo staff; solo dopo il primo invio il socio entra nel ciclo automatico. |
 | 3 | Selezione livello | Passano solo i soci con livello `0.5`. | Tutti gli altri livelli sono esclusi. |
 | 4 | Contatto email | Serve una email valida in anagrafica. | Se manca, il socio va nei problemi e si usa WhatsApp manuale. |
 | 5 | Link personale | Il sistema prepara il link personale di autovalutazione. | Il link deve essere salvato nel sistema prima dell'invio. |
@@ -733,13 +805,13 @@ Regola operativa:
 | 9-10 | Esito invio | Gmail puo' accettare o rifiutare l'invio. | Se fallisce, va nel pannello Problemi. |
 | 11-12 | Mancata consegna | Il sistema legge da Gmail gli avvisi di email non consegnata. | Se trova una mancata consegna, propone controllo email o WhatsApp. |
 | 13 | Attesa/compilazione | Se non ci sono mancate consegne, il socio resta in attesa; se compila, passa a completato. | Non diciamo "consegnata con certezza", solo "inviata/in attesa" finche' non compila. |
-| 14 | Secondo invio | Se dopo 2 giorni non c'e' compilazione ne' mancata consegna, parte un secondo invio automatico. | Il secondo invio usa lo stesso link personale. |
-| 15 | Terzo invio | Se dopo altri 2 giorni dal secondo invio non c'e' compilazione, parte un terzo invio. | Il terzo invio chiede anche un feedback via WhatsApp se ci sono problemi. |
+| 14 | Secondo invio | Se dopo 2 giorni non ci sono scheda compilata, risposta email, mancata consegna, pausa o problema, parte il secondo richiamo automatico. | Il secondo invio usa lo stesso link personale e non richiede nuova approvazione staff. |
+| 15 | Terzo invio | Se dopo altri 2 giorni dal secondo invio non ci sono scheda compilata, risposta email, mancata consegna, pausa o problema, parte il terzo richiamo automatico. | Il terzo invio usa lo stesso link personale e chiede anche un feedback via WhatsApp se ci sono problemi. |
 | 16 | WhatsApp manuale | Se dopo il terzo invio non c'e' compilazione, il socio passa a `da contattare via WhatsApp`. | Il sistema non insiste oltre via email. |
 | 17 | Verifica WhatsApp | Lo staff apre WhatsApp dal pannello problemi e l'app registra subito data e ora dell'apertura. | Il socio resta gestibile con l'ultima data WhatsApp aperta visibile, senza un secondo bottone di conferma. |
 | 18 | Nessuna risposta | Se il socio non risponde ne' alle email ne' a WhatsApp, lo staff puo' chiudere il tentativo in pausa. | Stato leggibile: `Autovalutazione in pausa - nessuna risposta`. Il socio resta attivo e livello `0.5`. |
 | 19 | Conferma compilazione | Quando il socio compila la scheda, viene inviata una email automatica di conferma ricezione. | La conferma non comunica ancora il livello validato. |
-| 20-22 | Validazione | La risposta passa in Post-invio, lo staff valida e applica il livello. | Il socio esce dal bacino `0.5`, riceve una email automatica con il livello validato e poi va nello storico. |
+| 20-22 | Validazione | La risposta passa in Post-invio, lo staff valida/applica il livello; gli scostamenti alti o la coerenza bassa richiedono controllo staff. | Il socio esce dal bacino `0.5`, riceve una email automatica con il livello validato e poi va nello storico. |
 
 ## Regola base
 
@@ -892,10 +964,10 @@ Se non arriva una mancata consegna entro una finestra definita, per esempio 48 o
 
 Regola operativa:
 
-- primo invio email automatico;
-- se dopo 2 giorni non ci sono scheda compilata, mancata consegna o blocchi tecnici, parte un secondo invio automatico;
+- primo invio email avviato dallo staff; dopo l'invio, il socio entra nel ciclo automatico di follow-up;
+- se dopo 2 giorni non ci sono scheda compilata, risposta email, mancata consegna, pausa o blocchi tecnici, parte un secondo invio automatico;
 - il secondo invio usa lo stesso link personale;
-- se dopo altri 2 giorni dal secondo invio non c'e' compilazione, parte un terzo invio automatico;
+- se dopo altri 2 giorni dal secondo invio non ci sono scheda compilata, risposta email, mancata consegna, pausa o blocchi tecnici, parte un terzo invio automatico;
 - il terzo invio usa lo stesso link personale e chiede anche un feedback via WhatsApp se ci sono problemi;
 - se dopo il terzo invio non c'e' compilazione, il sistema non invia altre email;
 - il socio passa allo stato `manual_whatsapp_needed`;
