@@ -943,6 +943,8 @@
     .assessment-process-filter-title { display:block; font-size:12px; font-weight:900; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .assessment-process-filter-count { display:block; margin-top:2px; font-size:11px; font-weight:850; color:#667085; line-height:1.2; white-space:nowrap; }
     .assessment-process-filter.active .assessment-process-filter-count { color:rgba(255,255,255,.84); }
+    .assessment-process-active-filter { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 10px; color:#667085; font-size:12px; font-weight:850; }
+    .assessment-process-active-filter strong { color:var(--primary); }
     .assessment-process-search { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; margin-bottom:10px; }
     .assessment-process-search label { display:block; margin:0 0 5px; font-size:12px; font-weight:900; color:#344054; }
     .assessment-process-search-row { display:flex; gap:8px; align-items:center; }
@@ -5201,7 +5203,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.436';
+    const APP_VERSION = '5.437';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22901,6 +22903,21 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentEmailCloudLogAutoImportInFlight = window.assessmentEmailCloudLogAutoImportInFlight || false;
     window.assessmentManualBatchSelections = window.assessmentManualBatchSelections || {};
     window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
+    const ASSESSMENT_PROCESS_FILTER_LABELS = {
+      all:'Tutti',
+      today:'Oggi',
+      queue:'Da inviare',
+      pending:'In attesa',
+      problems:'Problemi',
+      responses:'Risposte',
+      review:'Da controllare',
+      matchpoint:'Matchpoint',
+      completed:'Completati'
+    };
+    function assessmentProcessNormalizeFilter(filter='all') {
+      const key = cleanCell(filter || 'all');
+      return Object.prototype.hasOwnProperty.call(ASSESSMENT_PROCESS_FILTER_LABELS, key) ? key : 'all';
+    }
     function assessmentProcessDateIsToday(value) {
       const ms = assessmentEmailDateMs(value);
       if (!ms) return false;
@@ -23120,7 +23137,7 @@ Per confermare scrivi ELIMINA.`);
       return keys;
     }
     function setAssessmentProcessFilter(filter='all') {
-      window.assessmentProcessFilter = filter || 'all';
+      window.assessmentProcessFilter = assessmentProcessNormalizeFilter(filter);
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
@@ -23418,7 +23435,8 @@ Per confermare scrivi ELIMINA.`);
       const headerActions = document.getElementById('assessmentEmailMorningHeaderActions');
       if (headerActions) headerActions.innerHTML = assessmentEmailRoutineApprovalControlsHtml();
       const rows = assessmentProcessRows();
-      const activeFilter = window.assessmentProcessFilter || 'all';
+      const activeFilter = assessmentProcessNormalizeFilter(window.assessmentProcessFilter || 'all');
+      window.assessmentProcessFilter = activeFilter;
       const search = getAssessmentProcessSearchValue();
       window.assessmentProcessSearchText = search;
       const searchableRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
@@ -23436,24 +23454,35 @@ Per confermare scrivi ELIMINA.`);
           <button class="assessment-email-mini" type="button" onclick="clearAssessmentProcessSearch()">Pulisci</button>
         </div>
       </div>`;
-      const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" onclick="setAssessmentProcessFilter('${escapeJs(key)}')">
+      const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}">
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(count)}</span>
       </button>`).join('')}</div>`;
+      const activeFilterHtml = activeFilter !== 'all'
+        ? `<div class="assessment-process-active-filter">Filtro attivo: <strong>${escapeHtml(ASSESSMENT_PROCESS_FILTER_LABELS[activeFilter] || 'Tutti')}</strong><button type="button" class="assessment-email-mini" data-assessment-process-filter="all">Tutti</button></div>`
+        : '';
       const manualBatchHtml = assessmentManualBatchPanelHtml();
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
         : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
       const emptyHtml = search && searchableRows.length && !visibleRows.length && activeFilter !== 'all'
-        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" onclick="setAssessmentProcessFilter('all')">Tutti</button> per vederlo.</div>`
-        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questa vista.');
+        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" data-assessment-process-filter="all">Tutti</button> per vederlo.</div>`
+        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : (activeFilter === 'all' ? 'Nessun socio in questa vista.' : 'Nessun socio in questo stato.'));
       const tableHtml = visibleRows.length
         ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Contatto</th><th>Ultimo evento</th><th>Invii</th><th>Risposta</th><th>Livello</th><th>Matchpoint</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
       box.innerHTML = `${searchHtml}
         ${filterHtml}
+        ${activeFilterHtml}
         ${manualBatchHtml}
         ${tableHtml}`;
+      box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || 'all');
+        });
+      });
     }
     function assessmentEmailGoToMemberPanel(panel, memberId) {
       setAssessmentEmailPanel(panel || 'queue');
