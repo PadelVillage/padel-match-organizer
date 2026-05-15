@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.421 | `test-preview` | `PENDING_V5421` |
-| TEST sviluppo | v5.421 | `test/accessi-staff-guidati` | `PENDING_V5421` |
+| TEST | v5.421 | `test-preview` | `da1dca5` |
+| TEST sviluppo | v5.421 | `test/accessi-staff-guidati` | `da1dca5` |
 
 Nota: TEST contiene la correzione UI v5.421 del `Cruscotto mattutino`: la ricerca del processo e dello storico trova anche nomi/cognomi digitati in ordine diverso, per esempio `Utente Prova` o `Prova Utente`. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
