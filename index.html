@@ -3387,6 +3387,77 @@ body.assessment-public-mode .assessment-public-only-card {
     .players-pagination { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; color:#667085; font-size:13px; }
     .players-pagination .pager { display:flex; gap:6px; align-items:center; }
     .players-pagination button { padding:6px 9px; font-size:12px; border-radius:6px; }
+    .member-contacts-export-panel[hidden] { display:none !important; }
+    .member-contacts-export-panel {
+      display:grid;
+      gap:12px;
+      margin:0 0 14px;
+      padding:12px;
+      border:1px solid #cfe0f2;
+      border-left:5px solid #1f4788;
+      border-radius:8px;
+      background:#fbfdff;
+      min-width:0;
+    }
+    .member-contacts-export-head,
+    .member-contacts-export-actions,
+    .member-contacts-export-table-head {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .member-contacts-export-head h4,
+    .member-contacts-export-table-head h4 { margin:0; color:#1f4788; font-size:17px; line-height:1.2; letter-spacing:0; }
+    .member-contacts-export-head p,
+    .member-contacts-export-note,
+    .member-contacts-export-format span { margin:3px 0 0; color:#667085; font-size:12px; line-height:1.35; font-weight:750; }
+    .member-contacts-export-head-actions,
+    .member-contacts-export-download-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+    .member-contacts-export-stats { display:grid; grid-template-columns:repeat(7,minmax(110px,1fr)); gap:8px; min-width:0; }
+    .member-contacts-export-stat {
+      min-width:0;
+      border:1px solid #e1e7ef;
+      border-left:4px solid #8aa4c8;
+      border-radius:8px;
+      background:#fff;
+      padding:8px;
+    }
+    .member-contacts-export-stat strong { display:block; color:#172033; font-size:20px; line-height:1; }
+    .member-contacts-export-stat span { display:block; margin-top:4px; color:#667085; font-size:11px; font-weight:900; line-height:1.2; text-transform:uppercase; }
+    .member-contacts-export-stat.good { border-left-color:#2e7d32; }
+    .member-contacts-export-stat.warn { border-left-color:#b76e00; background:#fffbf0; }
+    .member-contacts-export-stat.danger { border-left-color:#b42318; background:#fff8f7; }
+    .member-contacts-export-format {
+      flex:1 1 260px;
+      min-width:0;
+      border:1px solid #e1e7ef;
+      border-radius:8px;
+      padding:9px 10px;
+      background:#fff;
+    }
+    .member-contacts-export-format strong { display:block; color:#172033; font-size:14px; line-height:1.2; }
+    .member-contacts-export-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr); gap:10px; min-width:0; }
+    .member-contacts-export-block { min-width:0; border:1px solid #e1e7ef; border-radius:8px; background:#fff; overflow:hidden; }
+    .member-contacts-export-table-wrap { width:100%; overflow-x:auto; }
+    .member-contacts-export-table { width:100%; min-width:0; margin:0; border-collapse:collapse; table-layout:auto; }
+    .member-contacts-export-table th,
+    .member-contacts-export-table td { padding:8px 9px; border-top:1px solid #edf1f7; vertical-align:top; overflow-wrap:anywhere; }
+    .member-contacts-export-table thead th { border-top:0; background:#f3f7fc; color:#17386f; font-size:11px; font-weight:900; text-transform:uppercase; white-space:normal; }
+    .member-contacts-export-empty { padding:14px; color:#667085; font-size:13px; font-weight:800; text-align:center; }
+    .member-contacts-export-note {
+      border-left:4px solid #1f4788;
+      border-radius:8px;
+      padding:9px 10px;
+      background:#eef5ff;
+      color:#1f4788;
+    }
+    .member-contacts-export-pill { display:inline-flex; align-items:center; max-width:100%; padding:3px 7px; border-radius:999px; border:1px solid #d5deea; background:#fff; color:#475467; font-size:11px; font-weight:900; line-height:1.2; white-space:normal; }
+    .member-contacts-export-pill.good { border-color:#bde6cb; background:#effaf3; color:#2e7d32; }
+    .member-contacts-export-pill.warn { border-color:#f0d899; background:#fff6de; color:#946300; }
+    .member-contacts-export-pill.danger { border-color:#f2b8b5; background:#fff4f2; color:#b42318; }
+    .member-contacts-export-pill.info { border-color:#bad6ff; background:#eef5ff; color:#1f4788; }
     .member-inline-row td { background:#fbfdff; padding:0 !important; }
     .member-inline-card { margin:0; border:0; border-top:1px solid #dce5f2; border-radius:0; box-shadow:none; }
     .member-card-overlay {
@@ -3503,8 +3574,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .group-name-pill { border:1px solid #dce5f2; border-radius:6px; background:#fff; padding:7px 8px; font-weight:800; color:#172b4d; }
     .group-name-pill.missing { border-color:#f1b4b4; color:#b42318; background:#fff7f7; }
     .groups-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
-    @media (max-width:1180px) { .players-group-layout { grid-template-columns:1fr; } .players-group-editor { position:static; } .players-filter-grid { grid-template-columns:1fr 1fr; } }
-    @media (max-width:760px) { .players-sticky-head { align-items:flex-start; flex-direction:column; padding:14px; } .players-body { padding:14px; } .players-summary-table { min-width:760px; } .players-group-layout, .players-filter-grid, .group-day-checks { grid-template-columns:1fr; } .players-head-actions, .players-actions, .groups-actions { justify-content:flex-start; } }
+    @media (max-width:1180px) { .players-group-layout { grid-template-columns:1fr; } .players-group-editor { position:static; } .players-filter-grid { grid-template-columns:1fr 1fr; } .member-contacts-export-stats { grid-template-columns:repeat(3,minmax(110px,1fr)); } .member-contacts-export-grid { grid-template-columns:1fr; } }
+    @media (max-width:760px) { .players-sticky-head { align-items:flex-start; flex-direction:column; padding:14px; } .players-body { padding:14px; } .players-summary-table { min-width:760px; } .players-group-layout, .players-filter-grid, .group-day-checks, .member-contacts-export-stats { grid-template-columns:1fr; } .players-head-actions, .players-actions, .groups-actions, .member-contacts-export-head-actions, .member-contacts-export-download-actions { justify-content:flex-start; } }
 
     /* v5.218 - Scroll pagina robusto: evita che Apri Partite resti bloccata da layer interni */
     html,
@@ -4509,6 +4580,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <p>Schede soci, ricerca e gruppi operativi.</p>
           </div>
           <div class="players-head-actions">
+            <button class="btn-success" onclick="setActionAnchor(this); openMemberContactsExportPanel()">Esporta rubrica soci</button>
             <button class="btn-primary" onclick="setActionAnchor(this); showAddMember()">+ Nuovo socio</button>
           </div>
         </div>
@@ -4580,6 +4652,7 @@ body.assessment-public-mode .assessment-public-only-card {
           </section>
 
               <div id="memberCardOverlay" class="member-card-overlay"></div>
+              <section id="memberContactsExportPanel" class="member-contacts-export-panel" hidden></section>
               <div class="players-filter-grid">
                 <div><label>Ricerca socio</label><input id="searchFilter" placeholder="nome, telefono, email o ID" oninput="membersCurrentPage=1; displayMembers()" /></div>
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
@@ -5212,7 +5285,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.430';
+    const APP_VERSION = '5.431';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5290,6 +5363,8 @@ body.assessment-public-mode .assessment-public-only-card {
     pmoMigrateCompactStorageKey('prenotazioniOccupazione', prenotazioniOccupazione);
     pmoMigrateCompactStorageKey('storicoPrenotazioni', storicoPrenotazioni);
     let matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
+    const DEFAULT_MEMBER_CONTACTS_EXPORT_STATE = { lastExportAt: '', exportedMembers: {} };
+    let memberContactsExportState = normalizeMemberContactsExportState(safeLoad('memberContactsExportState', DEFAULT_MEMBER_CONTACTS_EXPORT_STATE));
     let contactHistory = safeLoad('contactHistory', {});
     let weeklyContactLog = safeLoad('weeklyContactLog', {});
     let dailyDiffHistory = normalizeDailyDiffHistory(safeLoad('dailyDiffHistory', []));
@@ -6201,6 +6276,7 @@ Grazie.`
       'potentialSlotImage',
       'storicoPrenotazioni',
       'matchpointData',
+      'memberContactsExportState',
       'contactHistory',
       'weeklyContactLog',
       'dailyDiffHistory',
@@ -6333,6 +6409,7 @@ Grazie.`
       prenotazioniOccupazione = safeLoad('prenotazioniOccupazione', []);
       storicoPrenotazioni = safeLoad('storicoPrenotazioni', []);
       matchpointData = safeLoad('matchpointData', {lastSync:null, clientCount:0});
+      memberContactsExportState = normalizeMemberContactsExportState(safeLoad('memberContactsExportState', DEFAULT_MEMBER_CONTACTS_EXPORT_STATE));
       contactHistory = safeLoad('contactHistory', {});
       weeklyContactLog = safeLoad('weeklyContactLog', {});
       dailyDiffHistory = normalizeDailyDiffHistory(safeLoad('dailyDiffHistory', []));
@@ -8420,6 +8497,8 @@ Grazie.`
       const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
       const sourceRows = Math.max(0, parseInt(options.sourceRows, 10) || 0);
       const source = cleanCell(options.source || 'manual');
+      const importedAt = new Date();
+      const importedAtIso = importedAt.toISOString();
       const diff = compareMembers(giocatori, members);
       let added = 0, updated = 0;
 
@@ -8452,14 +8531,20 @@ Grazie.`
           };
           updated++;
         } else {
-          ensureMemberId(member);
-          giocatori.push(member);
+          const newMember = ensureMemberId({
+            ...member,
+            matchpointImportedAt: member.matchpointImportedAt || importedAtIso,
+            matchpointLastImportedAt: importedAtIso,
+            matchpointSource: source,
+            createdAt: member.createdAt || importedAtIso,
+            updatedAt: member.updatedAt || importedAtIso
+          });
+          giocatori.push(newMember);
           added++;
         }
       });
 
       save('giocatori', giocatori);
-      const importedAt = new Date();
       const previousClientCount = parseInt(matchpointData?.clientCount, 10);
       const hasPreviousClientCount = Number.isFinite(previousClientCount) && !!(matchpointData?.lastClientsImportedAt || matchpointData?.lastSync);
       const totalClientCount = members.length;
@@ -8471,7 +8556,7 @@ Grazie.`
         previousClientCount: hasPreviousClientCount ? previousClientCount : null,
         lastClientsDelta: clientsDelta,
         lastClientsSource: source,
-        lastClientsImportedAt: importedAt.toISOString()
+        lastClientsImportedAt: importedAtIso
       };
       save('matchpointData', matchpointData);
       const reportedRows = parseInt(options.importedRows ?? members.length, 10) || members.length;
@@ -9139,8 +9224,8 @@ Grazie.`
       const typed = prompt('⚠️ Cancellare i dati locali principali collegati alla sincronizzazione Matchpoint?\n\nQuesta azione svuota soci, prenotazioni, storico, riepiloghi import, gruppi, partite salvate, sessioni invito guidato e storico messaggi WhatsApp collegato alle partite.\n\nÈ stato creato uno snapshot automatico locale prima della cancellazione.\n\nPer confermare scrivi ELIMINA.');
       if (typed === null) return showAlert('Operazione annullata. I dati locali sono rimasti invariati.', 'info');
       if (String(typed).trim().toUpperCase() !== 'ELIMINA') return showAlert('⚠️ Conferma non valida: dati locali non cancellati.', 'warning');
-      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = null; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; assessmentEmailRoutineBatches = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0};
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('lastMatchpointImportSummary', lastMatchpointImportSummary); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('matchpointData', matchpointData);
+      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = null; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; assessmentEmailRoutineBatches = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0}; memberContactsExportState = normalizeMemberContactsExportState(null);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('lastMatchpointImportSummary', lastMatchpointImportSummary); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('matchpointData', matchpointData); saveMemberContactsExportState();
       renderLastMatchpointImportSummary();
       renderPotentialSlotImage();
       memberInlineOpenId = ''; closeMemberCard(); displayMembers(); updateStats();
@@ -9167,6 +9252,7 @@ Grazie.`
         potentialSlotImage,
         storicoPrenotazioni,
         matchpointData,
+        memberContactsExportState,
         contactHistory,
         weeklyContactLog,
         dailyDiffHistory,
@@ -9439,14 +9525,14 @@ Grazie.`
       } else if (options.confirm !== false) {
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
-      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length};
+      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
       contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
       renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
@@ -9647,6 +9733,274 @@ Grazie.`
       if (type === 'level05AfterAssessment') return level05AfterAssessment;
       return true;
     }
+    function normalizeMemberContactsExportState(raw) {
+      const source = raw && typeof raw === 'object' ? raw : {};
+      const exportedMembers = {};
+      Object.entries(source.exportedMembers || {}).forEach(([key, value]) => {
+        const memberKey = cleanCell(key);
+        if (!memberKey) return;
+        const record = value && typeof value === 'object' ? value : {};
+        exportedMembers[memberKey] = {
+          memberId: cleanCell(record.memberId || memberKey),
+          phoneDigits: cleanCell(record.phoneDigits || ''),
+          exportedAt: cleanCell(record.exportedAt || source.lastExportAt || ''),
+          fullName: cleanCell(record.fullName || ''),
+          sourceImportAt: cleanCell(record.sourceImportAt || '')
+        };
+      });
+      return {
+        ...DEFAULT_MEMBER_CONTACTS_EXPORT_STATE,
+        lastExportAt: cleanCell(source.lastExportAt || ''),
+        exportedMembers
+      };
+    }
+    function saveMemberContactsExportState() {
+      memberContactsExportState = normalizeMemberContactsExportState(memberContactsExportState);
+      save('memberContactsExportState', memberContactsExportState);
+    }
+    function memberContactsExportMemberKey(member) {
+      return cleanCell(member?.memberId || member?.id || memberEmailKey(member) || memberPhoneKey(member) || memberNameKey(member));
+    }
+    function memberContactsExportNameParts(member) {
+      const firstName = cleanCell(member?.firstName || '');
+      const surname = cleanCell(member?.surname || '');
+      if (firstName || surname) return { firstName, surname };
+      const parts = compactSpaces(playerFullName(member) || member?.name || '').split(' ').filter(Boolean);
+      return { firstName: parts[0] || '', surname: parts.slice(1).join(' ') };
+    }
+    function memberContactsExportImportAt(member) {
+      return cleanCell(member?.matchpointImportedAt || member?.matchpointFirstImportedAt || member?.matchpointCreatedAt || '');
+    }
+    function memberContactsExportDateAfter(value, reference) {
+      if (!value || !reference) return false;
+      const valueTime = new Date(value).getTime();
+      const refTime = new Date(reference).getTime();
+      return Number.isFinite(valueTime) && Number.isFinite(refTime) && valueTime > refTime;
+    }
+    function getMemberContactsExportAnalysis() {
+      migrateMemberIds();
+      memberContactsExportState = normalizeMemberContactsExportState(memberContactsExportState);
+      const state = memberContactsExportState;
+      const allMembers = Array.isArray(giocatori) ? giocatori : [];
+      const activeValidPhoneGroups = {};
+      allMembers.forEach(member => {
+        if (!member || member.active === false) return;
+        const phoneInfo = getWhatsAppPhoneInfo(member.phone || '');
+        if (!phoneInfo.ok || !phoneInfo.digits) return;
+        if (!activeValidPhoneGroups[phoneInfo.digits]) activeValidPhoneGroups[phoneInfo.digits] = [];
+        activeValidPhoneGroups[phoneInfo.digits].push(member);
+      });
+      const duplicatePhones = new Set(Object.entries(activeValidPhoneGroups).filter(([, list]) => list.length > 1).map(([digits]) => digits));
+      const rows = allMembers.map(member => {
+        const key = memberContactsExportMemberKey(member);
+        const phoneInfo = getWhatsAppPhoneInfo(member?.phone || '');
+        const exportedRecord = key ? state.exportedMembers[key] : null;
+        const active = member?.active !== false;
+        const duplicate = active && phoneInfo.ok && duplicatePhones.has(phoneInfo.digits);
+        const phoneChanged = !!(active && exportedRecord && phoneInfo.ok && exportedRecord.phoneDigits && exportedRecord.phoneDigits !== phoneInfo.digits);
+        const importAt = memberContactsExportImportAt(member);
+        const importedAfterLastExport = !!(state.lastExportAt && memberContactsExportDateAfter(importAt, state.lastExportAt));
+        const alreadyExported = !!exportedRecord;
+        const normalExportable = active && phoneInfo.ok && !duplicate && !phoneChanged && (!state.lastExportAt || (!alreadyExported && importedAfterLastExport));
+        const allExportable = active && phoneInfo.ok && !duplicate;
+        let statusLabel = 'Da verificare';
+        let issueLabel = '';
+        if (!active) { statusLabel = 'Inattivi esclusi'; issueLabel = 'Inattivo'; }
+        else if (!phoneInfo.ok) { statusLabel = 'Senza telefono'; issueLabel = phoneInfo.raw ? 'Telefono non valido' : 'Senza telefono'; }
+        else if (duplicate) { statusLabel = 'Duplicati'; issueLabel = 'Duplicato telefono'; }
+        else if (phoneChanged) { statusLabel = 'Telefono cambiato'; issueLabel = 'Telefono cambiato'; }
+        else if (!state.lastExportAt) { statusLabel = 'Da esportare'; }
+        else if (alreadyExported) { statusLabel = 'Già esportati'; }
+        else if (importedAfterLastExport) { statusLabel = 'Nuovi da Matchpoint'; }
+        else { issueLabel = 'Da verificare'; }
+        return {
+          member,
+          key,
+          phoneInfo,
+          active,
+          duplicate,
+          phoneChanged,
+          alreadyExported,
+          importedAfterLastExport,
+          importAt,
+          statusLabel,
+          issueLabel,
+          normalExportable,
+          allExportable
+        };
+      });
+      const normalContacts = rows.filter(row => row.normalExportable).sort((a,b) => playerFullName(a.member).localeCompare(playerFullName(b.member), 'it'));
+      const allContacts = rows.filter(row => row.allExportable).sort((a,b) => playerFullName(a.member).localeCompare(playerFullName(b.member), 'it'));
+      const anomalies = rows.filter(row => row.active && (row.issueLabel || (!state.lastExportAt && row.duplicate))).sort((a,b) => {
+        const issue = (a.issueLabel || '').localeCompare(b.issueLabel || '', 'it');
+        return issue || playerFullName(a.member).localeCompare(playerFullName(b.member), 'it');
+      });
+      return {
+        lastExportAt: state.lastExportAt,
+        rows,
+        normalContacts,
+        allContacts,
+        anomalies,
+        stats: {
+          newFromMatchpoint: state.lastExportAt ? normalContacts.length : 0,
+          alreadyExported: rows.filter(row => row.active && row.alreadyExported && !row.phoneChanged).length,
+          phoneChanged: rows.filter(row => row.phoneChanged).length,
+          noPhone: rows.filter(row => row.active && !row.phoneInfo.ok).length,
+          toCheck: anomalies.length,
+          duplicates: rows.filter(row => row.duplicate).length,
+          inactive: rows.filter(row => !row.active).length
+        }
+      };
+    }
+    function memberContactsExportStatusPill(label) {
+      const normalized = normalizeText(label);
+      let cls = 'info';
+      if (normalized.includes('esportare') || normalized.includes('matchpoint')) cls = 'good';
+      if (normalized.includes('verificare') || normalized.includes('telefono cambiato') || normalized.includes('senza telefono')) cls = 'warn';
+      if (normalized.includes('duplicati') || normalized.includes('non valido')) cls = 'danger';
+      return `<span class="member-contacts-export-pill ${cls}">${escapeHtml(label)}</span>`;
+    }
+    function renderMemberContactsExportTable(rows, emptyText, issueMode=false) {
+      if (!rows.length) return `<div class="member-contacts-export-empty">${escapeHtml(emptyText)}</div>`;
+      return `<div class="member-contacts-export-table-wrap">
+        <table class="member-contacts-export-table">
+          <thead><tr><th>Socio</th><th>Telefono</th><th>Email</th><th>Stato</th></tr></thead>
+          <tbody>
+            ${rows.map(row => `<tr>
+              <td><strong>${escapeHtml(playerFullName(row.member) || '-')}</strong><small>${escapeHtml(row.member?.memberId || 'ID mancante')}</small></td>
+              <td>${escapeHtml(row.phoneInfo.display || row.phoneInfo.raw || '-')}</td>
+              <td>${escapeHtml(row.member?.email || '-')}</td>
+              <td>${memberContactsExportStatusPill(issueMode ? (row.issueLabel || row.statusLabel) : row.statusLabel)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+    function renderMemberContactsExportPanel() {
+      const panel = document.getElementById('memberContactsExportPanel');
+      if (!panel || panel.hidden) return;
+      const analysis = getMemberContactsExportAnalysis();
+      const normalLabel = analysis.lastExportAt ? 'nuovi soci importati da Matchpoint non ancora esportati' : 'prima esportazione completa dei soci attivi con telefono valido';
+      const lastExportText = analysis.lastExportAt ? pmoFormatDateTime(analysis.lastExportAt) : 'Mai';
+      const previewRows = analysis.normalContacts.slice(0, 8);
+      const anomalyRows = analysis.anomalies.slice(0, 8);
+      panel.innerHTML = `
+        <div class="member-contacts-export-head">
+          <div>
+            <h4>Esporta rubrica soci</h4>
+            <p>Crea un file per Google Contatti e WhatsApp.</p>
+          </div>
+          <div class="member-contacts-export-head-actions">
+            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); downloadMemberContactsGoogleCsv(true)" ${analysis.allContacts.length ? '' : 'disabled'}>Riesporta tutti</button>
+            <button class="btn-secondary small-btn" onclick="closeMemberContactsExportPanel()">Chiudi</button>
+          </div>
+        </div>
+        <div class="member-contacts-export-stats">
+          <div class="member-contacts-export-stat good"><strong>${analysis.stats.newFromMatchpoint}</strong><span>Nuovi da Matchpoint</span></div>
+          <div class="member-contacts-export-stat"><strong>${analysis.stats.alreadyExported}</strong><span>Già esportati</span></div>
+          <div class="member-contacts-export-stat warn"><strong>${analysis.stats.phoneChanged}</strong><span>Telefono cambiato</span></div>
+          <div class="member-contacts-export-stat warn"><strong>${analysis.stats.noPhone}</strong><span>Senza telefono</span></div>
+          <div class="member-contacts-export-stat warn"><strong>${analysis.stats.toCheck}</strong><span>Da verificare</span></div>
+          <div class="member-contacts-export-stat danger"><strong>${analysis.stats.duplicates}</strong><span>Duplicati</span></div>
+          <div class="member-contacts-export-stat"><strong>${analysis.stats.inactive}</strong><span>Inattivi esclusi</span></div>
+        </div>
+        <div class="member-contacts-export-actions">
+          <div class="member-contacts-export-format">
+            <strong>CSV Google</strong>
+            <span>Ultimo export: ${escapeHtml(lastExportText)}. Scarica ${escapeHtml(normalLabel)}.</span>
+          </div>
+          <div class="member-contacts-export-download-actions">
+            <button class="btn-primary" onclick="setActionAnchor(this); downloadMemberContactsGoogleCsv(false)" ${analysis.normalContacts.length ? '' : 'disabled'}>Scarica CSV Google</button>
+          </div>
+        </div>
+        <div class="member-contacts-export-grid">
+          <section class="member-contacts-export-block">
+            <div class="member-contacts-export-table-head"><h4>Anteprima nuovi contatti da esportare</h4><span class="pill">${analysis.normalContacts.length} contatti</span></div>
+            ${renderMemberContactsExportTable(previewRows, analysis.lastExportAt ? 'Nessun nuovo socio Matchpoint da esportare.' : 'Nessun socio attivo con telefono valido da esportare.')}
+          </section>
+          <section class="member-contacts-export-block">
+            <div class="member-contacts-export-table-head"><h4>Da correggere</h4><span class="pill">${analysis.anomalies.length} elementi</span></div>
+            ${renderMemberContactsExportTable(anomalyRows, 'Nessuna anomalia da correggere.', true)}
+          </section>
+        </div>
+        <div class="member-contacts-export-note">
+          Il file non aggiorna Google automaticamente. Dopo il download, importalo manualmente in Google Contatti con etichetta “Padel Village”.<br>
+          Non modifica Google Contatti e non invia messaggi WhatsApp.
+        </div>
+      `;
+    }
+    function openMemberContactsExportPanel() {
+      const panel = document.getElementById('memberContactsExportPanel');
+      if (!panel) return;
+      closeMemberCard();
+      panel.hidden = false;
+      renderMemberContactsExportPanel();
+      requestAnimationFrame(() => {
+        panel.scrollIntoView({ behavior:'smooth', block:'start' });
+        if (typeof flashAnchor === 'function') flashAnchor(panel);
+      });
+    }
+    function closeMemberContactsExportPanel() {
+      const panel = document.getElementById('memberContactsExportPanel');
+      if (!panel) return;
+      panel.hidden = true;
+      panel.innerHTML = '';
+    }
+    function memberContactsExportCsvCell(value) {
+      const text = String(value ?? '').replace(/\r?\n|\r/g, ' ');
+      return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+    function buildMemberContactsGoogleCsv(rows) {
+      const headers = ['Name', 'Given Name', 'Family Name', 'Phone 1 - Type', 'Phone 1 - Value', 'E-mail 1 - Type', 'E-mail 1 - Value', 'Organization 1 - Name', 'Notes'];
+      const lines = [headers];
+      rows.forEach(row => {
+        const parts = memberContactsExportNameParts(row.member);
+        const name = compactSpaces(`${parts.firstName} ${parts.surname}`) || playerFullName(row.member);
+        lines.push([
+          name,
+          parts.firstName,
+          parts.surname,
+          'Mobile',
+          row.phoneInfo.display || row.phoneInfo.e164 || row.phoneInfo.digits,
+          row.member?.email ? 'Home' : '',
+          row.member?.email || '',
+          'Padel Village',
+          `ID socio PMO ${row.member?.memberId || row.key || ''}`
+        ]);
+      });
+      return '\ufeff' + lines.map(line => line.map(memberContactsExportCsvCell).join(',')).join('\n');
+    }
+    function markMemberContactsExported(rows, exportedAt) {
+      memberContactsExportState = normalizeMemberContactsExportState(memberContactsExportState);
+      rows.forEach(row => {
+        if (!row.key) return;
+        memberContactsExportState.exportedMembers[row.key] = {
+          memberId: row.member?.memberId || row.key,
+          phoneDigits: row.phoneInfo.digits || '',
+          exportedAt,
+          fullName: playerFullName(row.member),
+          sourceImportAt: row.importAt || ''
+        };
+      });
+      memberContactsExportState.lastExportAt = exportedAt;
+      saveMemberContactsExportState();
+    }
+    function downloadMemberContactsGoogleCsv(forceAll=false) {
+      const analysis = getMemberContactsExportAnalysis();
+      const rows = forceAll ? analysis.allContacts : analysis.normalContacts;
+      if (!rows.length) return showAlert(forceAll ? 'Nessun socio esportabile nella rubrica.' : 'Nessun nuovo socio da esportare.', 'warning');
+      if (forceAll && !confirm('Riesportare tutti i soci attivi con telefono valido? Usa questa azione solo per ricreare la rubrica da zero.')) return;
+      const csv = buildMemberContactsGoogleCsv(rows);
+      const date = formatLocalDate(new Date());
+      const suffix = forceAll ? 'tutti' : (analysis.lastExportAt ? 'nuovi' : 'completa');
+      const filename = `Rubrica_soci_Padel_Village_${suffix}_${date}.csv`;
+      const ok = downloadText(csv, filename, 'text/csv;charset=utf-8');
+      if (!ok) return showAlert('CSV creato, ma il browser non ha avviato il download.', 'warning');
+      const exportedAt = new Date().toISOString();
+      markMemberContactsExported(rows, exportedAt);
+      renderMemberContactsExportPanel();
+      showAlert(`CSV Google creato: ${rows.length} contatti. Import manuale in Google Contatti.`, 'success');
+    }
     function applyFilters() {
       const search = normalizeText(document.getElementById('searchFilter')?.value || '');
       const status = document.getElementById('statusFilter')?.value || '';
@@ -9698,6 +10052,7 @@ Grazie.`
       if (!tbody) return;
       const filtered = applyFilters();
       updateMemberCounts(filtered);
+      renderMemberContactsExportPanel();
       const maxPage = Math.max(1, Math.ceil(filtered.length / MEMBERS_PAGE_SIZE));
       if (membersCurrentPage > maxPage) membersCurrentPage = maxPage;
       const start = (membersCurrentPage - 1) * MEMBERS_PAGE_SIZE;
