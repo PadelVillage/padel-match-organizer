@@ -1,5 +1,13 @@
 # Ambienti TEST e PROD
 
+Questo documento descrive la configurazione degli ambienti. Le regole operative su routine, dati, comunicazioni, deploy, promozione e rollback sono centralizzate in:
+
+`docs/pmo-policy-test-prod-routine-deploy.md`
+
+Per ogni passaggio TEST -> PROD leggere anche:
+
+`docs/procedura-deploy-test-prod.md`
+
 ## URL
 
 - PROD: https://padelvillage.github.io/padel-match-organizer/
@@ -14,6 +22,28 @@
 - Per nuove tabelle, RPC o migrazioni SQL in schema `public`, seguire anche `docs/supabase-data-api-regole.md`: RLS, policy e grant espliciti non devono dipendere dall'esposizione automatica Data API.
 - TEST deve restare senza dati sensibili reali.
 
+## Regola dati TEST/PROD
+
+TEST e PROD non devono usare lo stesso dato vivo.
+
+PROD e' la fonte ufficiale operativa. TEST puo' usare dati realistici solo come copia separata, riallineamento controllato o scenario di collaudo documentato.
+
+| Dato | TEST | PROD |
+|---|---|---|
+| Anagrafica soci | Copia separata o riallineamento controllato | Fonte reale operativa |
+| Import clienti Matchpoint | Manuale o copia controllata | Fonte reale automatica se approvata |
+| Storico Matchpoint | Copia/import controllato | Storico operativo ufficiale |
+| Prenotazioni future Matchpoint | Copia/refresh manuale controllato | Fotografia operativa reale |
+| Autovalutazione | Token, invii, risposte, storico e livelli separati | Flusso reale soci |
+
+Regole:
+
+- nessuna scrittura TEST deve andare su Supabase PROD;
+- nessuna routine TEST deve modificare Matchpoint reale;
+- nessun token/log/risposta Autovalutazione TEST deve essere condiviso come stato vivo con PROD;
+- se TEST deve usare dati PROD o Matchpoint per un collaudo, la copia deve essere esplicita, limitata e documentata;
+- il fatto che TEST usi una copia realistica non autorizza la promozione automatica di quei dati in PROD.
+
 Project ref:
 
 - PROD: `qqbfphyslczzkxoncgex`
@@ -25,6 +55,37 @@ Schema previsto:
 App PROD             -> config.js      -> Supabase PROD
 App TEST in /test/   -> config-test.js -> Supabase TEST
 ```
+
+## Deploy Edge Function Supabase TEST senza CLI globale
+
+Non e' obbligatorio avere il comando `supabase` installato globalmente o presente nel `PATH`.
+
+Per i deploy TEST delle Edge Function si puo' usare `npx supabase`, verificando sempre prima l'help del comando e i flag disponibili.
+
+Per la Edge Function TEST Admin `assessment-email-send`, quando esiste una modifica reale da pubblicare, il comando standard e':
+
+```bash
+npx supabase functions deploy assessment-email-send \
+  --project-ref cudiqnrrlbyqryrtaprd \
+  --no-verify-jwt \
+  --use-api
+```
+
+Regole:
+
+- `cudiqnrrlbyqryrtaprd` e' il project ref Supabase TEST Admin;
+- `--no-verify-jwt` preserva la configurazione attuale della funzione TEST, protetta internamente da JWT staff o routine secret;
+- `--use-api` evita dipendenze locali da Docker;
+- usare questo comando solo quando la Edge Function e' cambiata davvero;
+- non rilanciare deploy solo per verificare il PATH o correggere la procedura;
+- non usare il project ref PROD;
+- PROD resta competenza della chat PROMOZIONE PROD, con autorizzazione esplicita.
+
+Verifica non distruttiva eseguita il 2026-05-16:
+
+- `command -v supabase`: nessun comando globale trovato;
+- `npx supabase --version`: `2.98.2`;
+- `npx supabase functions deploy --help`: presenti `--project-ref`, `--no-verify-jwt` e `--use-api`.
 
 ## Procedura consigliata
 

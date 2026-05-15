@@ -156,6 +156,34 @@ La Edge Function TEST `assessment-email-send` e' stata pubblicata come versione 
 
 Nessuna modifica a SQL, scheduler, Gmail template, oggetto email v5.428, WhatsApp, Matchpoint, dati reali o PROD.
 
+## Procedura deploy Edge Function TEST - 2026-05-16
+
+Per i prossimi deploy TEST della Edge Function `assessment-email-send` non e' necessario che la CLI Supabase sia installata globalmente nel `PATH`.
+
+Se la funzione cambia davvero e va pubblicata su Supabase TEST Admin, usare:
+
+```bash
+npx supabase functions deploy assessment-email-send \
+  --project-ref cudiqnrrlbyqryrtaprd \
+  --no-verify-jwt \
+  --use-api
+```
+
+Regole operative:
+
+- usare solo il project ref TEST Admin `cudiqnrrlbyqryrtaprd`;
+- mantenere `--no-verify-jwt`, perche' la funzione TEST ha protezione interna JWT staff o routine secret;
+- usare `--use-api` per evitare dipendenze locali da Docker;
+- non fare deploy se la funzione non e' cambiata;
+- non modificare PROD, SQL, scheduler, segreti Gmail o dati reali per questa procedura;
+- per PROD serve sempre la chat PROMOZIONE PROD con autorizzazione esplicita.
+
+Verifica non distruttiva eseguita il 2026-05-16:
+
+- `command -v supabase`: comando globale non trovato;
+- `npx supabase --version`: `2.98.2`;
+- `npx supabase functions deploy --help`: confermati i flag `--project-ref`, `--no-verify-jwt` e `--use-api`.
+
 ## Regola PROD da preservare - 2026-05-16
 
 Regola validata per la futura promozione/attivazione PROD dell'Autovalutazione email.
