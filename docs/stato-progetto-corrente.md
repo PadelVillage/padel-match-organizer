@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.418 | `main` | `58c7892` |
-| TEST | v5.422 | `test-preview` | `PENDING_V5422` |
-| TEST sviluppo | v5.422 | `test/accessi-staff-guidati` | `PENDING_V5422` |
+| TEST | v5.422 | `test-preview` | `6549f18` |
+| TEST sviluppo | v5.422 | `test/accessi-staff-guidati` | `6549f18` |
 
 Nota: TEST contiene la correzione UI v5.422: dopo aggiunta, modifica, disattivazione o cancellazione socio, Autovalutazione viene rinfrescata subito; la ricerca testuale usa parole indipendenti anche nel Database soci. PROD resta fermo a v5.418 finche' non viene autorizzata la promozione.
 
