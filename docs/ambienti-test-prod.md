@@ -57,6 +57,15 @@ Stato Edge Function PROD verificato il 2026-05-16 08:47:
 - nessuno scheduler email Autovalutazione PROD e' presente;
 - nessun SQL, scheduler, segreto, invio email reale o dato reale e' stato modificato in questa operazione.
 
+Stato app PROD verificato il 2026-05-16 09:08:
+
+- app PROD pubblicata: v5.438 su branch `main`;
+- app TEST pubblicata: v5.438 su branch `test-preview`;
+- `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati dopo la promozione;
+- raw GitHub `main` e `test-preview` espongono lo stesso `index.html` v5.438;
+- render headless PROD e TEST carica la schermata login v5.438 senza errori console bloccanti;
+- lo stato Supabase PROD resta quello verificato alle 08:47: `assessment-email-send` v12 `verify_jwt=true`, `assessment-email-cron-test` assente, solo `pmo-data-routines-dispatcher-prod` in `cron.job`, nessuno scheduler email Autovalutazione PROD.
+
 Schema previsto:
 
 ```text

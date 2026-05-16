@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-16 01:37
+Ultimo aggiornamento: 2026-05-16 09:08
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,7 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
-- Autovalutazione TEST v5.438: micro-correzione UX del `Cruscotto mattutino`; il blocco `Lotto email manuale` viene spostato sotto la lista filtrata `Processo utenti` o sotto il messaggio vuoto, cosi' box filtro e risultati restano contigui. Pubblicata in TEST al commit `51e6ef0`. Nessuna modifica a filtri, ricerca, lotto manuale, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
+- Autovalutazione TEST/PROD v5.438: micro-correzione UX del `Cruscotto mattutino`; il blocco `Lotto email manuale` viene spostato sotto la lista filtrata `Processo utenti` o sotto il messaggio vuoto, cosi' box filtro e risultati restano contigui. Pubblicata in TEST al commit app `51e6ef0` e promossa in PROD il 2026-05-16 dopo preflight pulito. Edge Function PROD `assessment-email-send` gia allineata a v12 con `verify_jwt=true`; nessuno scheduler email Autovalutazione PROD attivo; nessuna modifica a SQL, scheduler, Gmail secrets, WhatsApp automatico, Matchpoint o dati reali durante la promozione app.
 - Autovalutazione TEST v5.437: bugfix del `Cruscotto mattutino`; i box filtro del `Processo utenti` (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Completati`) sono filtri rapidi reali. Il click aggiorna subito la lista, evidenzia il box attivo, mostra `Filtro attivo` quando serve e visualizza `Nessun socio in questo stato.` sui filtri vuoti. Pubblicata in TEST al commit `3cc6d2f`. Nessuna modifica a lotto manuale, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Anagrafica soci / Database soci TEST v5.436: nel pannello `Esporta rubrica soci`, tabella `Da correggere`, `Email mancante` diventa cliccabile solo per soci con telefono valido e `member.id`. Il click apre la scheda socio reale con `openMemberCard(..., { force:true })`; WhatsApp resta disponibile solo dalla scheda socio e non viene aperto direttamente dalla tabella export. Pubblicata in TEST al commit `0bdb506`. Nessuna modifica a CSV Google, API Google, sincronizzazione Google, WhatsApp automatico, SQL, Edge Function, scheduler, dati reali o PROD.
 - Autovalutazione TEST v5.435: micro-correzione del lotto email manuale nel `Cruscotto mattutino`. Quando il lotto del giorno e' `pending` e non contiene righe inviate o fallite, compare `Rigenera lotto` accanto a `Invia selezionati` e `Invia tutti`. Il comando chiede conferma, sostituisce solo il lotto non inviato e non invia email. Pubblicata in TEST al commit `8b7d77d`; Edge Function TEST `assessment-email-send` v17 con `verify_jwt=false`. Nessuna modifica a SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.

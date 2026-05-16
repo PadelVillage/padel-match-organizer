@@ -507,7 +507,30 @@ Verifica post-deploy:
 - `cron.job` PROD contiene ancora solo `pmo-data-routines-dispatcher-prod`;
 - non esistono scheduler email Autovalutazione PROD;
 - non sono stati eseguiti SQL, modifiche scheduler, modifiche segreti, invii email reali o modifiche dati;
-- la promozione app v5.438 resta sospesa e richiede comando separato `PROMUOVI PROD`.
+- la promozione app v5.438 e' stata eseguita successivamente solo dopo comando separato `PROMUOVI PROD`.
+
+## Nota PROD v5.438 - 2026-05-16 09:08
+
+La UI Autovalutazione v5.438 e' stata promossa in PROD dopo preflight pulito e comando esplicito `PROMUOVI PROD`.
+
+Perimetro pubblicato:
+
+- filtri reali del `Cruscotto mattutino` / `Processo utenti`;
+- risultati subito sotto ricerca e box filtro;
+- blocco `Lotto email manuale` sotto la lista filtrata o sotto il messaggio vuoto;
+- gestione manuale del lotto email gia validata in TEST fino a v5.438.
+
+Stato backend/routine preservato:
+
+- `assessment-email-send` PROD resta `ACTIVE`, versione `12`, `verify_jwt=true`;
+- `assessment-email-cron-test` resta assente;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- non esistono scheduler email Autovalutazione PROD;
+- il primo invio Autovalutazione resta manuale da staff;
+- WhatsApp resta manuale;
+- Matchpoint resta manuale per la parte Autovalutazione.
+
+Durante la promozione app non sono stati eseguiti SQL, deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche dati o Matchpoint.
 
 ## Nota UI TEST v5.419 - 2026-05-14 23:50
 
