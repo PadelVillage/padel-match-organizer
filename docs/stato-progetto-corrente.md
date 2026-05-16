@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 22:13
+Ultimo aggiornamento: 2026-05-16 22:27
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -105,6 +105,8 @@ Nota operativa PROD 2026-05-16 12:16: dopo alert su email Autovalutazione PROD c
 Nota verifica PROD 2026-05-16 12:36: eseguito da app PROD un nuovo invio controllato al socio `Prova Utente (mauri)`. Log Supabase PROD `assessment_email` verificato: `testMode=false`, `runtimeEnv=prod`, `originalRecipient=aprea.maurizio@gmail.com`, `actualRecipient=aprea.maurizio@gmail.com`, oggetto senza `[TEST]`, nessun riferimento `TEST INTERNO PMO` nel payload. `assessment-email-send` resta `ACTIVE` con `verify_jwt=true`; `cron.job` contiene solo `pmo-data-routines-dispatcher-prod`; nessuno scheduler email Autovalutazione PROD. Invii PROD Autovalutazione riabilitabili.
 
 Nota PROD 2026-05-16 22:13: ricevuto comando esplicito `PROMUOVI PROD`, la app v5.440 e' stata promossa in PROD con fast-forward remoto da TEST. Prima del push e' stata deployata solo la Edge Function PROD `assessment-email-send` dal sorgente TEST validato v5.440, sul project ref `qqbfphyslczzkxoncgex`, con comando senza `--no-verify-jwt`; stato successivo: funzione `ACTIVE`, versione `14`, `verify_jwt=true`, hash uguale alla funzione TEST v18. Verifica post-deploy: `main`, `test-preview` e `test/accessi-staff-guidati` allineati a `2ca85e1`; raw GitHub `main` e `test-preview` espongono `APP_VERSION = '5.440'` con SHA-256 identico `de5642c71410f38252809ebc9504b3a13b8f0d94f8ef86f34b60ef96b528d5ef`; render headless PROD e TEST carica la schermata login v5.440 senza errori console bloccanti. `assessment-email-cron-test` resta assente; `cron.job` contiene solo `pmo-data-routines-dispatcher-prod`; nessuno scheduler email Autovalutazione PROD. Non sono stati eseguiti SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche dati o Matchpoint.
+
+Nota documentale 2026-05-16 22:27: aggiornata la procedura condivisa di deploy TEST -> PROD con la pipeline tecnica obbligatoria di promozione PROD. La modifica e' solo documentale: non cambia versioni app, branch, Edge Function, SQL, scheduler, segreti, dati reali o Matchpoint.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
