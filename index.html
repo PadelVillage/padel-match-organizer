@@ -5203,7 +5203,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.438';
+    const APP_VERSION = '5.439';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9313,7 +9313,22 @@ Grazie.`
       if (raw.includes('ROUTINE_BATCH_MISSING')) return 'Prima prepara il lotto di invio mattutino.';
       if (raw.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return 'Il lotto non e in uno stato approvabile.';
       if (raw.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.';
+      if (raw.includes('PROD_TEST_EMAIL_MODE_BLOCKED')) return 'Invio bloccato: PROD risulta in modalità test email. Controllare configurazione Supabase.';
       return raw || 'Invio email autovalutazione non riuscito.';
+    }
+
+    function pmoAssessmentEmailSendBlock() {
+      if (PMO_IS_TEST_ENV) return { blocked:false, message:'' };
+      const protection = pmoAdminState?.envCheck?.assessmentEmailProtection || null;
+      if (protection?.status === 'ok' && protection.safeToSendRealRecipients === true) return { blocked:false, message:'' };
+      if (protection?.status === 'alert') {
+        return { blocked:true, message:'Invio bloccato: PROD risulta in modalità test email. Controllare configurazione Supabase.' };
+      }
+      return { blocked:true, message:'Impossibile verificare la protezione email. Non inviare finché il controllo non è pulito.' };
+    }
+
+    function pmoAssessmentEmailShouldBlockAction(action) {
+      return ['send', 'routine-send', 'routine-approve'].includes(cleanCell(action || 'send')) && pmoAssessmentEmailSendBlock().blocked;
     }
 
     async function pmoInvokeAssessmentEmail(payload={}) {
@@ -9325,6 +9340,7 @@ Grazie.`
           : (action === 'routine-plan'
             ? 'preparare il lotto email mattutino'
             : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione')));
+      if (pmoAssessmentEmailShouldBlockAction(action)) throw new Error('PROD_TEST_EMAIL_MODE_BLOCKED');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
@@ -20403,10 +20419,11 @@ Per confermare scrivi ELIMINA.`);
 	      return PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}?env=test` : PMO_PUBLIC_BASE_URL;
 	    }
 	    function pmoEnvironmentCheckRow(row) {
-	      const state = row?.ok === true ? 'ok' : row?.ok === false ? 'fail' : row?.type === 'warn' ? 'warn' : 'pending';
-	      const label = state === 'ok' ? 'OK' : state === 'fail' ? 'Errore' : state === 'warn' ? 'Nota' : 'Da verificare';
+	      const explicitState = cleanCell(row?.state || '');
+	      const state = ['ok', 'fail', 'warn', 'pending'].includes(explicitState) ? explicitState : (row?.ok === true ? 'ok' : row?.ok === false ? 'fail' : row?.type === 'warn' ? 'warn' : 'pending');
+	      const label = cleanCell(row?.badge || '') || (state === 'ok' ? 'OK' : state === 'fail' ? 'Errore' : state === 'warn' ? 'Nota' : 'Da verificare');
 	      return `<div class="admin-check-row ${state}">
-	        <div class="check-state">${label}</div>
+	        <div class="check-state">${escapeHtml(label)}</div>
 	        <div><strong>${escapeHtml(row?.title || '')}</strong><div class="routine-mini">${escapeHtml(row?.detail || '')}</div></div>
 	      </div>`;
 	    }
@@ -20527,6 +20544,85 @@ Per confermare scrivi ELIMINA.`);
 	        return { title, detail: err.message || String(err), ok:false };
 	      }
 	    }
+	    function pmoAssessmentEmailProtectionStatus(data={}, fallbackDetail='') {
+	      const runtimeEnv = cleanCell(data?.runtimeEnv || PMO_RUNTIME_ENV || '').toLocaleLowerCase('it-IT');
+	      const forceTestRecipientsActive = data?.forceTestRecipientsActive === true;
+	      const safeToSendRealRecipients = data?.safeToSendRealRecipients === true;
+	      const checkedAt = data?.checkedAt || new Date().toISOString();
+	      let status = 'unverified';
+	      let badge = 'Non verificato';
+	      let text = 'Impossibile verificare la protezione email';
+	      let detail = 'Non inviare finché il controllo non è pulito.';
+	      let state = 'pending';
+	      let ok = false;
+
+	      if (runtimeEnv === 'test' && forceTestRecipientsActive) {
+	        status = 'protected';
+	        badge = 'Protetto';
+	        text = 'TEST protetto: destinatari reali sostituiti';
+	        detail = 'Comportamento atteso in ambiente TEST.';
+	        state = 'ok';
+	        ok = true;
+	      } else if (runtimeEnv === 'prod' && safeToSendRealRecipients && !forceTestRecipientsActive) {
+	        status = 'ok';
+	        badge = 'OK';
+	        text = 'PROD corretto: invii reali abilitati.';
+	        detail = 'La modalità test destinatari non è attiva.';
+	        state = 'ok';
+	        ok = true;
+	      } else if (runtimeEnv === 'prod' && forceTestRecipientsActive) {
+	        status = 'alert';
+	        badge = 'ALERT';
+	        text = 'ALERT: PROD in modalità test email';
+	        detail = 'Bloccare gli invii e controllare Supabase.';
+	        state = 'fail';
+	      } else if (runtimeEnv === 'test' && !forceTestRecipientsActive) {
+	        state = 'warn';
+	        detail = 'La protezione destinatari TEST non risulta attiva.';
+	      }
+
+	      if (fallbackDetail && status === 'unverified') detail = fallbackDetail;
+	      const message = cleanCell(data?.message || text);
+	      return {
+	        status,
+	        badge,
+	        text,
+	        detail,
+	        message,
+	        runtimeEnv: runtimeEnv || 'unknown',
+	        forceTestRecipientsActive,
+	        safeToSendRealRecipients,
+	        checkedAt,
+	        row: {
+	          title: 'Protezione email Autovalutazione',
+	          detail: `${message || text} ${detail}`,
+	          state,
+	          badge,
+	          ok
+	        }
+	      };
+	    }
+	    async function pmoCheckAssessmentEmailProtection(supabaseUrl, supabaseKey, staffAccessToken='') {
+	      if (!staffAccessToken) {
+	        return pmoAssessmentEmailProtectionStatus({ runtimeEnv:PMO_RUNTIME_ENV }, 'Accesso staff richiesto per verificare la protezione email.');
+	      }
+	      try {
+	        const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
+	          method:'POST',
+	          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${staffAccessToken}` },
+	          body: JSON.stringify({ action:'config-check', source:'pmo_supabase_environment_check', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV })
+	        });
+	        const text = await response.text();
+	        let data = null;
+	        try { data = text ? JSON.parse(text) : null; } catch { data = { message:text }; }
+	        if (!response.ok) {
+	          return pmoAssessmentEmailProtectionStatus({ runtimeEnv:PMO_RUNTIME_ENV }, `HTTP ${response.status}: ${cleanCell(data?.message || data?.error || text || 'controllo non riuscito')}`);
+	        }
+	        return pmoAssessmentEmailProtectionStatus(data || {});
+	      } catch (err) {
+	        return pmoAssessmentEmailProtectionStatus({ runtimeEnv:PMO_RUNTIME_ENV }, err.message || String(err));
+	      }
+	    }
 	    async function pmoRunSupabaseEnvironmentCheck() {
 	      const configUrl = pmoCurrentConfigUrl();
 	      const rows = [];
@@ -20553,6 +20649,8 @@ Per confermare scrivi ELIMINA.`);
 	        });
 	        rows.push({ title:'Config Supabase', detail:`${configUrl} -> ${supabaseUrl}`, ok:true });
 	        rows.push(await pmoCheckAuthEndpoint(supabaseUrl, supabaseKey));
+	        const assessmentEmailProtection = await pmoCheckAssessmentEmailProtection(supabaseUrl, supabaseKey, staffAccessToken);
+	        rows.push(assessmentEmailProtection.row);
 	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'get_self_assessments_by_tokens', { p_tokens: [] }, 'Schema autovalutazioni'));
 	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'upsert_post_match_feedback_tokens_admin', { p_tokens: [] }, 'Schema feedback post-partita no-PIN', ['AUTH_REQUIRED', 'PERMISSION_DENIED', 'permission denied'], { accessToken: staffAccessToken }));
 	        rows.push(await pmoCheckRpcEndpoint(supabaseUrl, supabaseKey, 'pmo_get_routines_admin', {}, 'Schema cloud routine no-PIN', ['AUTH_REQUIRED', 'PERMISSION_DENIED', 'permission denied'], { accessToken: staffAccessToken }));
@@ -20563,7 +20661,7 @@ Per confermare scrivi ELIMINA.`);
 	          type:'warn'
 	        });
 	        const ok = rows.every(row => row.ok !== false);
-	        pmoAdminState.envCheck = { checkedAt:new Date().toISOString(), configUrl, supabaseUrl, projectRef, rows, ok };
+	        pmoAdminState.envCheck = { checkedAt:new Date().toISOString(), configUrl, supabaseUrl, projectRef, rows, ok, assessmentEmailProtection };
 	        save('pmoAdminState', pmoAdminState);
 	        renderPmoAdministration();
 	        pmoSetSupabaseStatus(ok ? '✅ Verifica TEST/PROD completata.' : '⚠️ Verifica TEST/PROD completata con errori.', ok ? 'success' : 'warning');
@@ -23317,13 +23415,15 @@ Per confermare scrivi ELIMINA.`);
       const rows = batch ? assessmentManualBatchRows(batch) : [];
       const unsentRows = batch ? rows.filter(row => !row.sent) : [];
       const selected = batch ? assessmentManualBatchSelectedRows(batch).length : 0;
+      const sendBlock = pmoAssessmentEmailSendBlock();
+      const sendDisabled = sendBlock.blocked ? `disabled title="${escapeHtml(sendBlock.message)}"` : '';
       const buttons = [];
       if (!batch || status === 'empty' || status === 'error') {
         buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailPlanMorningBatch()">Prepara lotto</button>`);
       }
       if (batch && unsentRows.length) {
-        buttons.push(`<button class="assessment-email-mini success" type="button" ${selected ? '' : 'disabled'} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
-        buttons.push(`<button class="assessment-email-mini success" type="button" onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
+        buttons.push(`<button class="assessment-email-mini success" type="button" ${selected && !sendBlock.blocked ? '' : 'disabled'} ${sendBlock.blocked ? `title="${escapeHtml(sendBlock.message)}"` : ''} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
+        buttons.push(`<button class="assessment-email-mini success" type="button" ${sendDisabled} onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
         if (assessmentManualBatchCanRegenerate(batch)) {
           buttons.push(`<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); assessmentEmailRegenerateMorningBatch()">Rigenera lotto</button>`);
         }
@@ -23355,9 +23455,13 @@ Per confermare scrivi ELIMINA.`);
           ? assessmentProcessStateHtml('Errore invio', 'err', 'Da riprovare')
           : assessmentProcessStateHtml('Da inviare', 'info', '');
       const nextStep = sent ? 'Attendi risposta' : (failed ? 'Riprova invio' : (selected ? 'Invia email' : 'Attendi scelta staff'));
+      const sendBlock = pmoAssessmentEmailSendBlock();
+      const sendAction = sendBlock.blocked
+        ? `<button class="assessment-email-mini danger" type="button" disabled title="${escapeHtml(sendBlock.message)}">Invia email</button>`
+        : assessmentProcessButton('Invia email', failed ? 'warn' : 'success', `assessmentEmailSendManualBatchSingle('${escapeJs(String(row.id))}')`);
       const actions = sent
         ? assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || row.id))}')`)
-        : `${assessmentProcessButton('Invia email', failed ? 'warn' : 'success', `assessmentEmailSendManualBatchSingle('${escapeJs(String(row.id))}')`)}${assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || row.id))}')`)}`;
+        : `${sendAction}${assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || row.id))}')`)}`;
       return `<tr class="${sent ? 'sent' : ''} ${failed ? 'failed' : ''}" data-assessment-email-member="${escapeHtml(String(member.id || row.id))}">
         <td data-label="Sel."><input class="assessment-manual-batch-check" type="checkbox" ${selected && !sent ? 'checked' : ''} ${sent ? 'disabled' : ''} onchange="assessmentManualBatchToggleSelection('${escapeJs(String(row.id))}', this.checked)"></td>
         <td data-label="Socio">${assessmentEmailMemberCell(member.id ? member : { firstName:memberName, surname:'', level:item.level || '-' }, memberMeta)}</td>
@@ -23380,8 +23484,11 @@ Per confermare scrivi ELIMINA.`);
       }
       const tableRows = rows.map(assessmentManualBatchRowHtml).join('');
       const statusClass = status === 'sent_with_errors' ? ' warn' : '';
+      const sendBlock = pmoAssessmentEmailSendBlock();
+      const blockHtml = sendBlock.blocked ? `<div class="alert alert-warning" style="margin:8px 0;">${escapeHtml(sendBlock.message)}</div>` : '';
       return `<div class="assessment-email-table-wrap assessment-manual-batch${statusClass}">
         <div class="assessment-manual-batch-title"><h4>Lotto email manuale</h4><span>${escapeHtml(titleCount)}</span></div>
+        ${blockHtml}
         <table class="assessment-email-table assessment-manual-batch-table"><thead><tr><th>Sel.</th><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Email</th><th>Invii</th><th>Azioni</th></tr></thead><tbody>${tableRows}</tbody></table>
       </div>`;
     }
@@ -23985,6 +24092,8 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentManualBatchSelections[key] = selected.filter(id => !sentIds.has(String(id)));
     }
     async function assessmentEmailSendManualBatch(mode='selected', memberId='') {
+      const sendBlock = pmoAssessmentEmailSendBlock();
+      if (sendBlock.blocked) return showAlert(sendBlock.message, 'danger');
       const batch = assessmentEmailTodayRoutineBatch();
       if (!batch || cleanCell(batch.status || '') === 'empty') return showAlert('Prima prepara il lotto email manuale.', 'warning');
       const rows = assessmentManualBatchRowsForSend(mode, memberId);

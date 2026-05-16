@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-approve', 'routine-send', 'routine-check']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-approve', 'routine-send', 'routine-check', 'config-check']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
@@ -56,6 +56,46 @@ function errorText(value: unknown) {
 
 function isValidEmail(value: unknown) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(value));
+}
+
+function assessmentRuntimeEnv(supabaseUrl: string, requestedEnv = '') {
+  if (supabaseUrl.includes('qqbfphyslczzkxoncgex')) return 'prod';
+  if (supabaseUrl.includes('cudiqnrrlbyqryrtaprd')) return 'test';
+  const value = clean(requestedEnv).toLocaleLowerCase('it-IT');
+  if (value === 'test' || value === 'prod') return value;
+  return 'unknown';
+}
+
+function assessmentEmailConfigCheck(supabaseUrl: string, body: JsonMap) {
+  const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
+  const forceTestRecipientsActive = clean(Deno.env.get('ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS')).toLocaleLowerCase('it-IT') !== 'false';
+  const checkedAt = new Date().toISOString();
+  let ok = false;
+  let safeToSendRealRecipients = false;
+  let message = 'Impossibile verificare la protezione email';
+
+  if (runtimeEnv === 'test') {
+    ok = forceTestRecipientsActive;
+    message = forceTestRecipientsActive
+      ? 'TEST protetto: destinatari reali sostituiti'
+      : 'Impossibile verificare la protezione email';
+  } else if (runtimeEnv === 'prod') {
+    safeToSendRealRecipients = !forceTestRecipientsActive;
+    ok = safeToSendRealRecipients;
+    message = safeToSendRealRecipients
+      ? 'PROD corretto: invii reali abilitati.'
+      : 'ALERT: PROD in modalità test email';
+  }
+
+  return {
+    action: 'config-check',
+    ok,
+    runtimeEnv,
+    forceTestRecipientsActive,
+    safeToSendRealRecipients,
+    message,
+    checkedAt,
+  };
 }
 
 function hasPermission(actor: StaffActor, permission: string) {
@@ -1457,6 +1497,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = clean(body.action || 'send');
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
+
+    if (action === 'config-check') {
+      return json(assessmentEmailConfigCheck(supabaseUrl, body));
+    }
 
     if (action === 'routine-plan') {
       const result = await runAssessmentRoutinePlan(admin, actor, body);
