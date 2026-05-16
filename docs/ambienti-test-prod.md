@@ -49,6 +49,14 @@ Project ref:
 - PROD: `qqbfphyslczzkxoncgex`
 - TEST: `cudiqnrrlbyqryrtaprd`
 
+Stato Edge Function PROD verificato il 2026-05-16 08:47:
+
+- la funzione residua `assessment-email-cron-test` e' stata rimossa da Supabase PROD dopo audit e autorizzazione esplicita;
+- `assessment-email-send` resta `ACTIVE`, versione `12`, `verify_jwt=true`, dopo deploy controllato autorizzato dal sorgente TEST v5.438;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- nessuno scheduler email Autovalutazione PROD e' presente;
+- nessun SQL, scheduler, segreto, invio email reale o dato reale e' stato modificato in questa operazione.
+
 Schema previsto:
 
 ```text

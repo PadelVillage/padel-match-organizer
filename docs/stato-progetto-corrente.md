@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 01:37
+Ultimo aggiornamento: 2026-05-16 08:47
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -92,6 +92,10 @@ Non contiene modifiche a:
 Nota tecnica: per permettere l'export incrementale, i soli nuovi soci aggiunti da un import clienti Matchpoint vengono marcati localmente con metadati `matchpointImportedAt` / `matchpointLastImportedAt` / `matchpointSource`. I soci gia esistenti non vengono sovrascritti da questa modifica.
 
 Nota: il deploy PROD v5.422 non applica SQL scheduler e non attiva routine email automatiche. Il controllo live su Supabase PROD del 2026-05-15 08:52 mostra in `cron.job` solo `pmo-data-routines-dispatcher-prod`, cioe' lo scheduler dati/Matchpoint gia esistente. Il cron scheduler TEST generale non e' attivo dopo la rimozione manuale del 2026-05-14 07:39. Il job una tantum TEST `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' gia eseguito e rimosso.
+
+Nota Supabase PROD 2026-05-16 08:03: dopo audit bloccante e autorizzazione esplicita di Maurizio, la Edge Function residua `assessment-email-cron-test` e' stata rimossa dal project ref PROD `qqbfphyslczzkxoncgex`. Verifica successiva: la funzione non compare piu nella lista Edge Function PROD; `assessment-email-send` resta `ACTIVE`, versione `11`, `verify_jwt=true`; `cron.job` mostra ancora solo `pmo-data-routines-dispatcher-prod`. Non sono stati eseguiti deploy app, deploy di altre Edge Function, SQL, modifiche scheduler, modifiche segreti o modifiche dati. PROD resta v5.422.
+
+Nota Supabase PROD 2026-05-16 08:47: dopo alert di compatibilita UI v5.438 / Edge Function PROD v11, e su autorizzazione esplicita, e' stato eseguito solo il deploy controllato della Edge Function PROD `assessment-email-send` dal sorgente TEST validato, sul project ref `qqbfphyslczzkxoncgex`, con comando senza `--no-verify-jwt`. Stato successivo: funzione `ACTIVE`, versione `12`, `verify_jwt=true`; sorgente live compatibile con `send`, `scan-bounces`, `scan-replies`, `routine-plan`, `routine-approve`, `routine-send`, `targetMemberIds` e `regenerate:true`; `assessment-email-cron-test` resta assente; `cron.job` contiene ancora solo `pmo-data-routines-dispatcher-prod`. Non sono stati eseguiti deploy app, SQL, modifiche scheduler, modifiche segreti, invii email reali o modifiche dati. PROD app resta v5.422 e la promozione v5.438 richiede ancora comando separato `PROMUOVI PROD`.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 

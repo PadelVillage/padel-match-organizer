@@ -469,6 +469,46 @@ La UI Autovalutazione fino a v5.418 e' stata promossa in PROD.
 
 Non e' stato applicato nessun SQL scheduler Autovalutazione in PROD e non e' stato attivato nessun cron email automatico. Il controllo live su Supabase PROD mostra solo il cron dati/Matchpoint gia esistente `pmo-data-routines-dispatcher-prod`.
 
+## Nota Supabase PROD - rimozione funzione residua - 2026-05-16 08:03
+
+Durante il preflight di promozione v5.438 e' stata rilevata in PROD la Edge Function residua `assessment-email-cron-test`, attiva ma non collegata ad alcun job `cron.job`.
+
+Dopo audit in sola lettura e autorizzazione esplicita di Maurizio, la funzione `assessment-email-cron-test` e' stata rimossa dal project ref PROD `qqbfphyslczzkxoncgex`.
+
+Verifica post-rimozione:
+
+- `assessment-email-cron-test` non compare piu nella lista Edge Function PROD;
+- `assessment-email-send` PROD resta `ACTIVE`, versione `11`, `verify_jwt=true`;
+- `cron.job` PROD contiene ancora solo `pmo-data-routines-dispatcher-prod`;
+- non sono stati eseguiti deploy app, deploy di altre Edge Function, SQL, modifiche scheduler, modifiche segreti o modifiche dati;
+- la promozione PROD v5.438 resta sospesa e richiede nuova conferma esplicita.
+
+## Nota Supabase PROD - deploy funzione Autovalutazione - 2026-05-16 08:47
+
+Durante il preflight v5.438 e' stato confermato che la UI TEST usa azioni non presenti nella Edge Function PROD v11: `routine-plan`, `routine-approve`, `routine-send` con `targetMemberIds` e `regenerate:true`.
+
+Dopo verifica che il sorgente TEST preserva anche le azioni legacy `send`, `scan-bounces` e `scan-replies`, e su autorizzazione esplicita, e' stato eseguito solo il deploy della funzione PROD `assessment-email-send` sul project ref `qqbfphyslczzkxoncgex`.
+
+Comando usato:
+
+```bash
+npx supabase functions deploy assessment-email-send \
+  --project-ref qqbfphyslczzkxoncgex \
+  --use-api
+```
+
+Non e' stato usato `--no-verify-jwt`, quindi la configurazione PROD resta con `verify_jwt=true`.
+
+Verifica post-deploy:
+
+- `assessment-email-send` PROD e' `ACTIVE`, versione `12`, `verify_jwt=true`;
+- la funzione live scaricata dopo il deploy include `send`, `scan-bounces`, `scan-replies`, `routine-plan`, `routine-approve`, `routine-send`, `targetMemberIds` e `regenerate:true`;
+- `assessment-email-cron-test` resta assente;
+- `cron.job` PROD contiene ancora solo `pmo-data-routines-dispatcher-prod`;
+- non esistono scheduler email Autovalutazione PROD;
+- non sono stati eseguiti SQL, modifiche scheduler, modifiche segreti, invii email reali o modifiche dati;
+- la promozione app v5.438 resta sospesa e richiede comando separato `PROMUOVI PROD`.
+
 ## Nota UI TEST v5.419 - 2026-05-14 23:50
 
 Correzione mirata del `Cruscotto mattutino` dopo il test cron PROD one-shot su `PMO-000956`.
