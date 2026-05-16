@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 22:27
+Ultimo aggiornamento: 2026-05-16 22:49
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -32,7 +32,9 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | TEST | v5.440 | `test-preview` | `a6cc9d5` |
 | TEST sviluppo | v5.440 | `test/accessi-staff-guidati` | `a6cc9d5` |
 
-Nota: TEST e PROD sono allineati a v5.440. La promozione PROD ha pubblicato la micro-correzione del testo della riga `Protezione email Autovalutazione`, che mostra `TEST protetto: destinatari reali sostituiti. Comportamento atteso in ambiente TEST.` con separatore chiaro in TEST e `PROD corretto: invii reali abilitati.` in PROD quando la configurazione e' corretta. La Edge Function PROD `assessment-email-send` e' stata allineata al sorgente validato come versione 14 con `verify_jwt=true`; la Edge Function TEST resta versione 18 con `verify_jwt=false`. Nessun SQL, scheduler, segreto PROD, Gmail reale, Matchpoint o dato reale e' stato modificato; lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: TEST e PROD app sono allineati a v5.440. La promozione PROD ha pubblicato la micro-correzione del testo della riga `Protezione email Autovalutazione`, che mostra `TEST protetto: destinatari reali sostituiti. Comportamento atteso in ambiente TEST.` con separatore chiaro in TEST e `PROD corretto: invii reali abilitati.` in PROD quando la configurazione e' corretta. La Edge Function PROD `assessment-email-send` e' stata allineata al sorgente validato come versione 14 con `verify_jwt=true`; la Edge Function TEST resta versione 18 con `verify_jwt=false`. Nessun SQL, scheduler, segreto PROD, Gmail reale, Matchpoint o dato reale e' stato modificato; lo scheduler email Autovalutazione PROD resta non attivo.
+
+Nota TEST Supabase 2026-05-16 22:49: dopo alert diagnostico PROD `Schema feedback post-partita no-PIN` con errore `relation "post_match_feedback_tokens" does not exist`, e' stato verificato che TEST contiene gia' tabella `post_match_feedback_tokens`, tabella `post_match_feedback_responses` e RPC `upsert_post_match_feedback_tokens_admin`, `submit_post_match_feedback_public`, `get_post_match_feedback_by_tokens`. In PROD, in sola lettura, risultano mancanti le due tabelle e le RPC pubbliche, mentre esiste solo `upsert_post_match_feedback_tokens_admin`; quindi il flusso feedback post-partita no-PIN e' ancora usato e l'errore e' un disallineamento schema PROD. Preparata e testata in TEST la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` al commit `467f536`. PROD non e' stato modificato.
 
 ## Link
 
@@ -107,6 +109,8 @@ Nota verifica PROD 2026-05-16 12:36: eseguito da app PROD un nuovo invio control
 Nota PROD 2026-05-16 22:13: ricevuto comando esplicito `PROMUOVI PROD`, la app v5.440 e' stata promossa in PROD con fast-forward remoto da TEST. Prima del push e' stata deployata solo la Edge Function PROD `assessment-email-send` dal sorgente TEST validato v5.440, sul project ref `qqbfphyslczzkxoncgex`, con comando senza `--no-verify-jwt`; stato successivo: funzione `ACTIVE`, versione `14`, `verify_jwt=true`, hash uguale alla funzione TEST v18. Verifica post-deploy: `main`, `test-preview` e `test/accessi-staff-guidati` allineati a `2ca85e1`; raw GitHub `main` e `test-preview` espongono `APP_VERSION = '5.440'` con SHA-256 identico `de5642c71410f38252809ebc9504b3a13b8f0d94f8ef86f34b60ef96b528d5ef`; render headless PROD e TEST carica la schermata login v5.440 senza errori console bloccanti. `assessment-email-cron-test` resta assente; `cron.job` contiene solo `pmo-data-routines-dispatcher-prod`; nessuno scheduler email Autovalutazione PROD. Non sono stati eseguiti SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche dati o Matchpoint.
 
 Nota documentale 2026-05-16 22:27: aggiornata la procedura condivisa di deploy TEST -> PROD con la pipeline tecnica obbligatoria di promozione PROD. La modifica e' solo documentale: non cambia versioni app, branch, Edge Function, SQL, scheduler, segreti, dati reali o Matchpoint.
+
+Nota TEST Supabase 2026-05-16 22:49: preparata in TEST la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` per riallineare lo schema feedback post-partita no-PIN. Applicazione su Supabase TEST completata senza errori; verifica: `upsert_post_match_feedback_tokens_admin('[]'::jsonb)` restituisce `AUTH_REQUIRED` e non errore relazione, `get_post_match_feedback_by_tokens(array[]::text[])` restituisce 0 righe. In PROD sono state eseguite solo verifiche read-only; nessuno SQL di modifica e' stato eseguito. La futura correzione PROD richiede Promuovi Prod Admin e autorizzazione separata.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 

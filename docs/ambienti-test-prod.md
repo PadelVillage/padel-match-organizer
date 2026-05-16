@@ -113,6 +113,14 @@ Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:
 - nessuno scheduler email Autovalutazione PROD e' presente;
 - nessun SQL, scheduler, segreto, invio email reale, dato reale o Matchpoint e' stato modificato.
 
+Stato feedback post-partita no-PIN verificato il 2026-05-16 22:49:
+
+- TEST contiene `post_match_feedback_tokens`, `post_match_feedback_responses`, `upsert_post_match_feedback_tokens_admin`, `submit_post_match_feedback_public` e `get_post_match_feedback_by_tokens`;
+- la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` e' stata applicata su Supabase TEST senza errori;
+- verifica TEST: `upsert_post_match_feedback_tokens_admin('[]'::jsonb)` restituisce `AUTH_REQUIRED`, quindi la RPC esiste e non incontra errori di relazione; `get_post_match_feedback_by_tokens(array[]::text[])` restituisce 0 righe;
+- PROD, verificato solo in lettura, risulta disallineato: mancano `post_match_feedback_tokens`, `post_match_feedback_responses`, `submit_post_match_feedback_public` e `get_post_match_feedback_by_tokens`; esiste solo `upsert_post_match_feedback_tokens_admin`, che quindi puo' fallire con `relation "post_match_feedback_tokens" does not exist`;
+- PROD non e' stato modificato; la correzione PROD richiede Promuovi Prod Admin con SQL controllato e autorizzazione separata.
+
 Schema previsto:
 
 ```text

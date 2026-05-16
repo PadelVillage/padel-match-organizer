@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-16 22:13
+Ultimo aggiornamento: 2026-05-16 22:49
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Supabase / Feedback post-partita no-PIN TEST 2026-05-16: verificato alert PROD `relation "post_match_feedback_tokens" does not exist`. TEST contiene schema completo feedback no-PIN; PROD in sola lettura risulta disallineato, con tabella token/risposte e RPC pubbliche mancanti. Preparata e applicata in TEST la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` al commit `467f536`; `upsert_post_match_feedback_tokens_admin('[]'::jsonb)` torna `AUTH_REQUIRED` e `get_post_match_feedback_by_tokens(array[]::text[])` torna 0 righe. Nessuna modifica a PROD, scheduler, Edge Function Autovalutazione, Matchpoint, email o dati reali.
 - Amministrazione / Supabase / Autovalutazione TEST/PROD v5.440: micro-correzione del testo della riga `Protezione email Autovalutazione`; il messaggio TEST protetto ora separa con punto `destinatari reali sostituiti.` e `Comportamento atteso in ambiente TEST.`. Pubblicata in TEST e PROD al commit app `a6cc9d5`; Edge Function PROD `assessment-email-send` allineata al sorgente validato come v14 con `verify_jwt=true`. Nessuna modifica a SQL, scheduler, segreti PROD, Gmail reale, WhatsApp, Matchpoint o dati reali.
 - Amministrazione / Supabase / Autovalutazione TEST v5.439: integrato il mockup `mockup/supabase-diagnostica-email-autovalutazione-mockup.html`. La verifica `Verifica TEST/PROD` aggiunge la riga compatta `Protezione email Autovalutazione`; la Edge Function TEST `assessment-email-send` v18 con `verify_jwt=false` espone l'azione non inviante `config-check`, che restituisce solo stato sanificato della protezione email. In TEST lo stato atteso e' `Protetto`; il codice UI e' predisposto a bloccare in PROD `Invia selezionati`, `Invia tutti` e `Invia email` se la diagnostica segnala modalita test email o controllo non verificabile. Pubblicata in TEST al commit app `38d7f9b`. Nessuna modifica a PROD, SQL, scheduler, segreti PROD, Gmail reale, WhatsApp, Matchpoint o dati reali.
 - Autovalutazione TEST/PROD v5.438: micro-correzione UX del `Cruscotto mattutino`; il blocco `Lotto email manuale` viene spostato sotto la lista filtrata `Processo utenti` o sotto il messaggio vuoto, cosi' box filtro e risultati restano contigui. Pubblicata in TEST al commit app `51e6ef0` e promossa in PROD il 2026-05-16 dopo preflight pulito. Edge Function PROD `assessment-email-send` gia allineata a v12 con `verify_jwt=true`; nessuno scheduler email Autovalutazione PROD attivo; nessuna modifica a SQL, scheduler, Gmail secrets, WhatsApp automatico, Matchpoint o dati reali durante la promozione app.
