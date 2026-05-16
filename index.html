@@ -956,27 +956,26 @@
     .assessment-process-table-title span { color:#667085; font-size:12px; font-weight:850; line-height:1.25; text-align:right; }
     .assessment-process-table { font-size:12px; }
     .assessment-process-table th, .assessment-process-table td { padding:9px 8px; vertical-align:top; }
-    .assessment-process-table th:nth-child(1) { width:13%; }
-    .assessment-process-table th:nth-child(2) { width:9%; }
-    .assessment-process-table th:nth-child(3) { width:9%; }
-    .assessment-process-table th:nth-child(4) { width:11%; }
-    .assessment-process-table th:nth-child(5) { width:9%; }
-    .assessment-process-table th:nth-child(6) { width:10%; }
-    .assessment-process-table th:nth-child(7) { width:5%; }
-    .assessment-process-table th:nth-child(8) { width:10%; }
-    .assessment-process-table th:nth-child(9) { width:6%; }
-    .assessment-process-table th:nth-child(10) { width:10%; }
-    .assessment-process-table th:nth-child(11) { width:8%; text-align:right; }
-    .assessment-process-table td:nth-child(11) { text-align:right; }
+    .assessment-process-table th:nth-child(1) { width:18%; }
+    .assessment-process-table th:nth-child(2) { width:10%; }
+    .assessment-process-table th:nth-child(3) { width:12%; }
+    .assessment-process-table th:nth-child(4) { width:10%; }
+    .assessment-process-table th:nth-child(5) { width:15%; }
+    .assessment-process-table th:nth-child(6) { width:12%; }
+    .assessment-process-table th:nth-child(7) { width:12%; }
+    .assessment-process-table th:nth-child(8) { width:11%; text-align:right; }
+    .assessment-process-table td:nth-child(8) { text-align:right; }
     .assessment-process-state { display:inline-flex; align-items:center; justify-content:center; min-width:0; border-radius:999px; border:1px solid #d9e0ea; background:#f6f7f9; color:#475467; padding:4px 7px; font-size:11px; font-weight:900; line-height:1.1; white-space:normal; }
     .assessment-process-state.ok { color:#168a53; background:#eefaf3; border-color:#b8e6ca; }
     .assessment-process-state.warn { color:#7a4d00; background:#fff7e6; border-color:#f2d39b; }
     .assessment-process-state.err { color:#b42318; background:#fff1f0; border-color:#f1b9b3; }
     .assessment-process-state.info { color:#2563eb; background:#eef5ff; border-color:#bdd5ff; }
+    .assessment-process-state.test { color:#5b3db8; background:#f1edff; border-color:#d8ccff; }
     .assessment-process-state.muted { color:#667085; background:#f6f7f9; border-color:#d9e0ea; }
     .assessment-process-detail { display:block; margin-top:3px; color:#667085; font-size:11px; line-height:1.25; font-weight:750; overflow-wrap:anywhere; }
     .assessment-process-actions { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
     .assessment-process-actions .assessment-email-mini { padding:6px 7px; font-size:11px; border-radius:7px; }
+    .assessment-email-mini.test { color:#5b3db8; background:#f1edff; border-color:#d8ccff; }
     .assessment-process-more { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #e7edf6; border-top:0; border-radius:0 0 8px 8px; background:#fbfdff; color:#667085; padding:9px 10px; font-size:12px; font-weight:850; line-height:1.3; }
     .assessment-process-more .assessment-email-mini { padding:6px 9px; font-size:11px; border-radius:7px; }
     .assessment-email-mini:disabled { opacity:.55; cursor:not-allowed; background:#f6f7f9; color:#7a8291; border-color:#d9e0ea; }
@@ -1167,7 +1166,7 @@
       .assessment-email-table td::before { content:attr(data-label); color:#667085; font-size:11px; font-weight:900; text-transform:uppercase; line-height:1.25; }
       .assessment-email-table td[data-label="Azioni"] { display:block; }
       .assessment-email-table td[data-label="Azioni"]::before { display:block; margin-bottom:7px; }
-      .assessment-process-table td:nth-child(11) { text-align:left; }
+      .assessment-process-table td:nth-child(8) { text-align:left; }
       .assessment-process-actions { justify-content:flex-start; }
       .assessment-manual-batch-title { align-items:flex-start; flex-direction:column; }
       .assessment-manual-batch-title span { text-align:left; }
@@ -5203,7 +5202,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.440';
+    const APP_VERSION = '5.441';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23059,6 +23058,175 @@ Per confermare scrivi ELIMINA.`);
       const first = values.find(value => assessmentEmailDateMs(value));
       return first ? assessmentEmailFormatDateTime(first) : '-';
     }
+    function assessmentProcessEntryRec(entry={}) {
+      const row = entry?.row || entry || {};
+      return row?.rec || row?.info?.rec || entry?.info?.rec || {};
+    }
+    function assessmentProcessEntryResponse(entry={}) {
+      const row = entry?.row || entry || {};
+      return row?.response || row?.info?.response || entry?.response || entry?.info?.response || null;
+    }
+    function assessmentProcessEntryInfo(entry={}) {
+      const row = entry?.row || entry || {};
+      return row?.info || entry?.info || {};
+    }
+    function assessmentProcessSentCountForEntry(entry={}) {
+      const rec = assessmentProcessEntryRec(entry);
+      return parseInt(rec?.emailSentCount, 10) || (rec?.sentAt ? 1 : 0);
+    }
+    function assessmentProcessLastSentValue(entry={}) {
+      const rec = assessmentProcessEntryRec(entry);
+      const member = entry?.member || entry?.row?.member || {};
+      return cleanCell(rec?.sentAt || member?.selfAssessmentEmailSentAt || '');
+    }
+    function assessmentProcessLastSendCell(entry={}) {
+      const sentAt = assessmentProcessLastSentValue(entry);
+      if (!sentAt) return { label:'-', detail:'' };
+      const count = assessmentProcessSentCountForEntry(entry);
+      const label = count >= 3 ? 'Terza email' : (count === 2 ? 'Seconda email' : 'Prima email');
+      return { label, detail:assessmentEmailFormatDateTime(sentAt) };
+    }
+    function assessmentProcessNextFollowupWindow(entry={}) {
+      const sentCount = assessmentProcessSentCountForEntry(entry);
+      const lastSentMs = assessmentEmailDateMs(assessmentProcessLastSentValue(entry));
+      if (!lastSentMs || sentCount < 1 || sentCount >= 3) return null;
+      const thresholdMs = lastSentMs + ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS;
+      const thresholdAt = new Date(thresholdMs);
+      const sendAt = new Date(thresholdMs);
+      sendAt.setHours(9, 30, 0, 0);
+      if (sendAt.getTime() <= thresholdMs) sendAt.setDate(sendAt.getDate() + 1);
+      const stopAt = new Date(sendAt.getTime());
+      stopAt.setHours(9, 0, 0, 0);
+      return {
+        sentCount,
+        thresholdMs,
+        thresholdAt,
+        sendAt,
+        stopAt,
+        ready: Date.now() >= sendAt.getTime(),
+        followupLabel: sentCount === 1 ? 'Seconda email programmata' : 'Terza email programmata',
+        autoStep: sentCount === 1 ? 'Invio automatico seconda email' : 'Invio automatico terza email'
+      };
+    }
+    function assessmentProcessNextWindowCell(entry={}) {
+      const windowInfo = assessmentProcessNextFollowupWindow(entry);
+      if (!windowInfo) return { label:'-', detail:'' };
+      return { label:assessmentEmailFormatDateTime(windowInfo.sendAt), detail:'almeno 48 ore reali' };
+    }
+    function assessmentProcessStopAlertForWindow(entry={}) {
+      const windowInfo = assessmentProcessNextFollowupWindow(entry);
+      if (!windowInfo) return 'Nessuno stop';
+      if (Date.now() < windowInfo.thresholdMs) {
+        return `48 ore reali non scadute ${assessmentEmailFormatDateTime(windowInfo.thresholdAt)}`;
+      }
+      return 'Controllo stop 09:00';
+    }
+    function assessmentProcessIsProtectedFollowupTestMember(member={}) {
+      const pmoId = cleanCell(member?.memberId || member?.id || '').toLocaleUpperCase('it-IT');
+      const email = assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT');
+      return PMO_IS_TEST_ENV && pmoId === 'PMO-000956' && email === 'aprea.maurizio@gmail.com';
+    }
+    function assessmentProcessFollowupTestActions(member={}) {
+      if (!assessmentProcessIsProtectedFollowupTestMember(member)) return '';
+      const memberId = escapeJs(String(member.id || member.memberId || ''));
+      return [
+        assessmentProcessButton('Invia seconda email', 'test', `assessmentEmailSendControlledFollowupTest('${memberId}','recall-email')`),
+        assessmentProcessButton('Invia terza email', 'test', `assessmentEmailSendControlledFollowupTest('${memberId}','third-email')`)
+      ].join('');
+    }
+    function assessmentProcessPresentation(entry={}) {
+      const member = entry.member || {};
+      const row = entry.row || entry || {};
+      const rec = assessmentProcessEntryRec(entry);
+      const info = assessmentProcessEntryInfo(entry);
+      const response = assessmentProcessEntryResponse(entry);
+      const sentCount = assessmentProcessSentCountForEntry(entry);
+      const replyAt = assessmentEmailReplyAtForRow(row);
+      const bounced = cleanCell(rec?.emailStatus || '') === 'bounced' || !!cleanCell(member?.selfAssessmentEmailBouncedAt || '');
+      const paused = !!info?.paused;
+      const noEmail = !assessmentEmailHasValidEmail(member);
+      const noPhone = !member?.phone;
+      const applied = assessmentEmailMemberApplied(member, info);
+      const lastSend = assessmentProcessLastSendCell(entry);
+      let routine = entry.routine || { label:'-', cls:'muted', detail:'' };
+      let phase = entry.phase || { label:'-', cls:'muted', detail:'' };
+      let nextStep = entry.nextStep || '-';
+      let nextWindow = assessmentProcessNextWindowCell(entry);
+      let stopAlert = assessmentProcessStopAlertForWindow(entry);
+      let actions = entry.actions || '';
+      const detailAction = assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`);
+      const testActions = assessmentProcessFollowupTestActions(member);
+
+      if (assessmentProcessIsProtectedFollowupTestMember(member) && sentCount >= 1 && !replyAt && !response && !bounced && !paused) {
+        routine = { label:'Azione test', cls:'test', detail:'Solo TEST' };
+        phase = { label:'Prima email inviata', cls:'info', detail:sentCount > 1 ? `${sentCount}/3 invii registrati` : '' };
+        nextStep = 'Test richiamo manuale';
+        nextWindow = { label:'Disponibile ora', detail:'' };
+        stopAlert = 'Nessuno stop';
+        actions = `${testActions}${detailAction}`;
+      } else if (replyAt) {
+        routine = { label:'Sospeso', cls:'warn', detail:'Stop operativo' };
+        phase = { label:'Richiami sospesi - risposta da leggere', cls:'warn', detail:'' };
+        nextStep = 'Leggi risposta';
+        nextWindow = { label:'Nessun richiamo', detail:'' };
+        stopAlert = 'Risposta email ricevuta';
+        actions = `${assessmentProcessButton('Leggi risposta', 'success', `openAssessmentEmailReplyModal('${escapeJs(String(member.id || ''))}')`)}${detailAction}`;
+      } else if (response && !applied) {
+        routine = { label:'Stop', cls:'ok', detail:'Scheda compilata' };
+        phase = { label:'Da validare', cls:'warn', detail:'' };
+        nextStep = 'Controlla livello';
+        nextWindow = { label:'Nessun richiamo', detail:'' };
+        stopAlert = 'Scheda compilata';
+        actions = `${assessmentProcessButton('Controlla livello', 'warn', `openAssessmentResponseEditor('${escapeJs(String(member.id || ''))}')`)}${detailAction}`;
+      } else if (bounced || noEmail) {
+        routine = { label:'Problema', cls:'err', detail:bounced ? 'Mancata consegna' : 'Email mancante' };
+        phase = { label:'Problema email', cls:'err', detail:'' };
+        nextStep = 'Correggi email';
+        nextWindow = { label:'Bloccata', detail:'' };
+        stopAlert = bounced ? 'Mancata consegna' : 'Email mancante';
+        actions = `${assessmentProcessButton('Correggi email', 'warn', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`)}${detailAction}`;
+      } else if (paused) {
+        routine = { label:'Sospeso', cls:'warn', detail:'Socio in pausa' };
+        phase = { label:'Richiami sospesi', cls:'warn', detail:'' };
+        nextStep = 'Scheda socio';
+        nextWindow = { label:'Nessun richiamo', detail:'' };
+        stopAlert = 'Socio in pausa';
+        actions = `${detailAction}${assessmentProcessButton('Storico', '', `assessmentEmailGoToMemberPanel('history','${escapeJs(String(member.id || ''))}')`)}`;
+      } else if (sentCount >= 3 && rec?.status === 'sent' && !response) {
+        routine = { label:'Manuale', cls:'warn', detail:'Tre invii completati' };
+        phase = { label:'Recupero manuale', cls:'warn', detail:'' };
+        nextStep = 'Apri scheda socio';
+        nextWindow = { label:'Nessun altro richiamo', detail:'' };
+        stopAlert = 'Tre email senza esito';
+        actions = `${detailAction}${assessmentProcessButton('Scheda socio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`)}`;
+      } else if (rec?.status === 'sent' && sentCount >= 1) {
+        const windowInfo = assessmentProcessNextFollowupWindow(entry);
+        routine = { label:'Follow-up', cls:'info', detail:`${sentCount}/3 invii` };
+        phase = { label:windowInfo?.ready ? windowInfo.followupLabel : 'In attesa finestra richiamo', cls:windowInfo?.ready ? 'info' : 'muted', detail:'' };
+        nextStep = windowInfo?.ready ? windowInfo.autoStep : (windowInfo?.followupLabel || 'Attendi risposta');
+        nextWindow = windowInfo ? { label:assessmentEmailFormatDateTime(windowInfo.sendAt), detail:'richiami 09:30' } : { label:'-', detail:'' };
+        stopAlert = assessmentProcessStopAlertForWindow(entry);
+        actions = `${testActions}${detailAction}`;
+      } else if (applied) {
+        routine = entry.filter === 'matchpoint' ? { label:'Stop', cls:'ok', detail:'Livello validato' } : { label:'Chiuso', cls:'ok', detail:'Completata' };
+        phase = entry.filter === 'matchpoint' ? entry.phase : { label:'Completato', cls:'ok', detail:'' };
+        nextStep = entry.filter === 'matchpoint' ? entry.nextStep : 'Nessuna azione';
+        nextWindow = { label:'-', detail:'' };
+        stopAlert = entry.filter === 'matchpoint' ? 'Livello validato' : 'Livello validato';
+        actions = entry.filter === 'matchpoint'
+          ? entry.actions
+          : assessmentProcessButton('Storico', '', `assessmentEmailGoToMemberPanel('history','${escapeJs(String(member.id || ''))}')`);
+      } else if (noPhone) {
+        routine = { label:'Problema', cls:'err', detail:'Telefono mancante' };
+        phase = { label:'Problema operativo', cls:'err', detail:'' };
+        nextStep = 'Scheda socio';
+        nextWindow = { label:'Bloccata', detail:'' };
+        stopAlert = 'Telefono mancante';
+        actions = detailAction;
+      }
+
+      return { routine, phase, lastSend, nextStep, nextWindow, stopAlert, actions };
+    }
     function assessmentProcessRows() {
       const rowsByMember = new Map();
       const todaySlots = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - getAssessmentRequestsSentTodayCount());
@@ -23494,18 +23662,16 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentProcessRowHtml(entry) {
       const member = entry.member || {};
+      const view = assessmentProcessPresentation(entry);
       return `<tr data-assessment-email-member="${escapeHtml(String(member.id || ''))}">
-        <td data-label="Socio">${assessmentEmailMemberCell(member, `liv. ${member.level ?? '-'} - ${assessmentEmailMemberEmail(member) || 'email mancante'}`)}</td>
-        <td data-label="Routine">${assessmentProcessStateHtml(entry.routine.label, entry.routine.cls, entry.routine.detail)}</td>
-        <td data-label="Fase">${assessmentProcessStateHtml(entry.phase.label, entry.phase.cls, entry.phase.detail)}</td>
-        <td data-label="Prossimo step">${assessmentProcessTextHtml(entry.nextStep)}</td>
-        <td data-label="Contatto">${escapeHtml(entry.contact || '-')}</td>
-        <td data-label="Ultimo evento">${escapeHtml(entry.lastEvent || '-')}</td>
-        <td data-label="Invii">${escapeHtml(entry.sends || '-')}</td>
-        <td data-label="Risposta">${assessmentProcessStateHtml(entry.response.label, entry.response.cls, entry.response.detail)}</td>
-        <td data-label="Livello">${escapeHtml(String(entry.level || '-'))}</td>
-        <td data-label="Matchpoint">${assessmentProcessStateHtml(entry.matchpoint.label, entry.matchpoint.cls, entry.matchpoint.detail)}</td>
-        <td data-label="Azioni"><div class="assessment-process-actions">${entry.actions || ''}</div></td>
+        <td data-label="Socio">${assessmentEmailMemberCell(member, `${member.memberId || member.id || '-'} - ${assessmentEmailMemberEmail(member) || 'email mancante'}`)}</td>
+        <td data-label="Routine">${assessmentProcessStateHtml(view.routine.label, view.routine.cls, view.routine.detail)}</td>
+        <td data-label="Fase">${assessmentProcessStateHtml(view.phase.label, view.phase.cls, view.phase.detail)}</td>
+        <td data-label="Ultimo invio">${assessmentProcessTextHtml(view.lastSend.label, view.lastSend.detail)}</td>
+        <td data-label="Prossimo step">${assessmentProcessTextHtml(view.nextStep)}</td>
+        <td data-label="Prossima finestra">${assessmentProcessTextHtml(view.nextWindow.label, view.nextWindow.detail)}</td>
+        <td data-label="Stop / Alert">${escapeHtml(view.stopAlert || '-')}</td>
+        <td data-label="Azioni"><div class="assessment-process-actions">${view.actions || ''}</div></td>
       </tr>`;
     }
     function assessmentMorningGo(panel, memberId='') {
@@ -23576,7 +23742,7 @@ Per confermare scrivi ELIMINA.`);
         ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" data-assessment-process-filter="all">Tutti</button> per vederlo.</div>`
         : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : (activeFilter === 'all' ? 'Nessun socio in questa vista.' : 'Nessun socio in questo stato.'));
       const tableHtml = visibleRows.length
-        ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Contatto</th><th>Ultimo evento</th><th>Invii</th><th>Risposta</th><th>Livello</th><th>Matchpoint</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
+        ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
       box.innerHTML = `${searchHtml}
         ${filterHtml}
@@ -24323,6 +24489,25 @@ Per confermare scrivi ELIMINA.`);
       const label = assessmentEmailNextResendLabel(sentCount).toLocaleLowerCase('it-IT');
       if (!confirm(`${label} a ${playerFullName(member)}? In TEST arrivera alla tua email di prova.`)) return;
       return assessmentEmailSendMember(member.id, templateKey, { skipSameDayConfirm:true });
+    }
+    function assessmentEmailSendControlledFollowupTest(memberId, templateKey='recall-email') {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
+        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000956 con email aprea.maurizio@gmail.com in ambiente TEST.', 'danger');
+      }
+      const safeTemplate = cleanCell(templateKey || '');
+      if (!['recall-email', 'third-email'].includes(safeTemplate)) {
+        return showAlert('Tipo richiamo test non valido.', 'warning');
+      }
+      const rec = getAssessmentTokenRecord(member.id);
+      const sentCount = parseInt(rec?.emailSentCount, 10) || (rec?.sentAt ? 1 : 0);
+      if (sentCount < 1) {
+        return showAlert('Prima email non ancora inviata: il test del richiamo parte solo dopo il primo invio manuale.', 'warning');
+      }
+      const label = safeTemplate === 'third-email' ? 'terza email' : 'seconda email';
+      if (!confirm(`Confermi l'invio TEST della ${label} a ${playerFullName(member)}? In TEST il destinatario resta protetto.`)) return;
+      return assessmentEmailSendMember(member.id, safeTemplate, { skipSameDayConfirm:true });
     }
     function assessmentEmailPauseMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
