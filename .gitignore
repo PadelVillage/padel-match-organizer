@@ -12,6 +12,9 @@ Backup_Padel_*.json
 *_backup.*
 *_temp.*
 
+# Cache locale creata dalla Supabase CLI
+supabase/.temp/
+
 # Da ora lo storico versioni vive su Git/GitHub, non in copie HTML locali.
 # Eventuali snapshot manuali non devono entrare nel repository.
 padel_match_organizer_v5_*.html
