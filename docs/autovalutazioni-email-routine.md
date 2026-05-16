@@ -558,6 +558,32 @@ Verifiche:
 - non esistono scheduler email Autovalutazione PROD;
 - nessuna nuova email e' stata inviata dalla correzione secret.
 
+## Nota test controllato PROD Autovalutazione email - 2026-05-16 12:36
+
+Dopo la correzione del secret, Maurizio ha eseguito da app PROD un nuovo invio controllato al solo socio `Prova Utente (mauri)`.
+
+Log Supabase PROD `assessment_email` verificato:
+
+- nuovo record creato il 2026-05-16 10:35 UTC;
+- socio `Prova Utente (mauri)`;
+- `testMode=false`;
+- `runtimeEnv=prod`;
+- `originalRecipient=aprea.maurizio@gmail.com`;
+- `actualRecipient=aprea.maurizio@gmail.com`;
+- oggetto `Padel Village - Completa la tua autovalutazione del livello di gioco`, senza prefisso `[TEST]`;
+- nessun riferimento `TEST INTERNO PMO` nel payload;
+- Gmail message id presente.
+
+Stato ambiente preservato:
+
+- `assessment-email-send` PROD resta `ACTIVE` e `verify_jwt=true`;
+- il codice funzione non e' stato rideployato;
+- nessun SQL, scheduler, segreto, dato reale o Matchpoint modificato durante la verifica;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- nessuno scheduler email Autovalutazione PROD e' presente.
+
+Esito: invii PROD Autovalutazione riabilitabili.
+
 ## Nota UI TEST v5.419 - 2026-05-14 23:50
 
 Correzione mirata del `Cruscotto mattutino` dopo il test cron PROD one-shot su `PMO-000956`.

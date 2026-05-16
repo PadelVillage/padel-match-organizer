@@ -76,6 +76,18 @@ Stato secret Autovalutazione email PROD verificato il 2026-05-16 12:16:
 - `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
 - nessuno scheduler email Autovalutazione PROD e' presente.
 
+Stato test controllato Autovalutazione email PROD verificato il 2026-05-16 12:36:
+
+- nuovo invio controllato PROD su `Prova Utente (mauri)` tracciato in `pmo_cloud_records` come `assessment_email`;
+- log con `testMode=false` e `runtimeEnv=prod`;
+- `originalRecipient` e `actualRecipient` entrambi `aprea.maurizio@gmail.com`;
+- oggetto senza prefisso `[TEST]`;
+- payload senza `TEST INTERNO PMO`;
+- `assessment-email-send` resta `ACTIVE` con `verify_jwt=true`;
+- nessuno scheduler email Autovalutazione PROD e' presente;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- invii PROD Autovalutazione riabilitabili.
+
 Schema previsto:
 
 ```text
