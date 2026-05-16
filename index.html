@@ -5203,7 +5203,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.439';
+    const APP_VERSION = '5.440';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -20559,7 +20559,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (runtimeEnv === 'test' && forceTestRecipientsActive) {
 	        status = 'protected';
 	        badge = 'Protetto';
-	        text = 'TEST protetto: destinatari reali sostituiti';
+	        text = 'TEST protetto: destinatari reali sostituiti.';
 	        detail = 'Comportamento atteso in ambiente TEST.';
 	        state = 'ok';
 	        ok = true;
@@ -20595,7 +20595,7 @@ Per confermare scrivi ELIMINA.`);
 	        checkedAt,
 	        row: {
 	          title: 'Protezione email Autovalutazione',
-	          detail: `${message || text} ${detail}`,
+	          detail: `${message || text}${/[.!?]$/.test(message || text) ? '' : '.'} ${detail}`,
 	          state,
 	          badge,
 	          ok
