@@ -66,6 +66,16 @@ Stato app PROD verificato il 2026-05-16 09:08:
 - render headless PROD e TEST carica la schermata login v5.438 senza errori console bloccanti;
 - lo stato Supabase PROD resta quello verificato alle 08:47: `assessment-email-send` v12 `verify_jwt=true`, `assessment-email-cron-test` assente, solo `pmo-data-routines-dispatcher-prod` in `cron.job`, nessuno scheduler email Autovalutazione PROD.
 
+Stato secret Autovalutazione email PROD verificato il 2026-05-16 12:16:
+
+- su Supabase PROD `qqbfphyslczzkxoncgex`, `ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS` e' impostato a `false`;
+- questa configurazione evita prefisso `[TEST]`, blocco `TEST INTERNO PMO` e sostituzione destinatario sulle email PROD;
+- `ASSESSMENT_EMAIL_TEST_TO` non e' stato modificato;
+- TEST non e' stato modificato e resta protetto;
+- `assessment-email-send` PROD resta `ACTIVE` con `verify_jwt=true`;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- nessuno scheduler email Autovalutazione PROD e' presente.
+
 Schema previsto:
 
 ```text

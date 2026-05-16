@@ -532,6 +532,32 @@ Stato backend/routine preservato:
 
 Durante la promozione app non sono stati eseguiti SQL, deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche dati o Matchpoint.
 
+## Nota configurazione PROD Autovalutazione email - 2026-05-16 12:16
+
+Dopo un alert operativo su seconda email Autovalutazione PROD ricevuta con prefisso `[TEST]`, e' stata verificata la logica della Edge Function `assessment-email-send`.
+
+La funzione considera attiva la modalita test quando `ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS` non e' esattamente `false`; in quel caso:
+
+- aggiunge `[TEST]` all'oggetto;
+- inserisce `TEST INTERNO PMO` nel corpo;
+- usa il destinatario di test configurato o l'email dell'operatore.
+
+Correzione eseguita solo su Supabase PROD `qqbfphyslczzkxoncgex`:
+
+```text
+ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS=false
+```
+
+TEST non e' stato modificato e resta protetto con modalita test attiva. Non sono stati modificati `ASSESSMENT_EMAIL_TEST_TO`, Gmail secrets, SQL, scheduler, dati reali o Matchpoint. Non sono stati eseguiti deploy app o deploy Edge Function.
+
+Verifiche:
+
+- `assessment-email-send` PROD resta `ACTIVE` e `verify_jwt=true`;
+- `assessment-email-cron-test` resta assente;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- non esistono scheduler email Autovalutazione PROD;
+- nessuna nuova email e' stata inviata dalla correzione secret.
+
 ## Nota UI TEST v5.419 - 2026-05-14 23:50
 
 Correzione mirata del `Cruscotto mattutino` dopo il test cron PROD one-shot su `PMO-000956`.

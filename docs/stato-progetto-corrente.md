@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 09:08
+Ultimo aggiornamento: 2026-05-16 12:16
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -97,6 +97,8 @@ Nota Supabase PROD 2026-05-16 08:03: dopo audit bloccante e autorizzazione espli
 Nota Supabase PROD 2026-05-16 08:47: dopo alert di compatibilita UI v5.438 / Edge Function PROD v11, e su autorizzazione esplicita, e' stato eseguito solo il deploy controllato della Edge Function PROD `assessment-email-send` dal sorgente TEST validato, sul project ref `qqbfphyslczzkxoncgex`, con comando senza `--no-verify-jwt`. Stato successivo: funzione `ACTIVE`, versione `12`, `verify_jwt=true`; sorgente live compatibile con `send`, `scan-bounces`, `scan-replies`, `routine-plan`, `routine-approve`, `routine-send`, `targetMemberIds` e `regenerate:true`; `assessment-email-cron-test` resta assente; `cron.job` contiene ancora solo `pmo-data-routines-dispatcher-prod`. Non sono stati eseguiti deploy app, SQL, modifiche scheduler, modifiche segreti, invii email reali o modifiche dati. PROD app resta v5.422 e la promozione v5.438 richiede ancora comando separato `PROMUOVI PROD`.
 
 Nota PROD 2026-05-16 09:08: ricevuto comando esplicito `PROMUOVI PROD`, la app v5.438 e' stata promossa in PROD con fast-forward da TEST. Verifica post-deploy: `main`, `test-preview` e `test/accessi-staff-guidati` allineati; raw GitHub `main` e `test-preview` espongono `APP_VERSION = '5.438'` con SHA-256 identico; render headless PROD e TEST carica la schermata login v5.438 senza errori console bloccanti. Stato Supabase preservato: `assessment-email-send` PROD `ACTIVE` v12 `verify_jwt=true`, `assessment-email-cron-test` assente, `cron.job` con solo `pmo-data-routines-dispatcher-prod`, nessuno scheduler email Autovalutazione PROD. Non sono stati eseguiti SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche dati o Matchpoint.
+
+Nota operativa PROD 2026-05-16 12:16: dopo alert su email Autovalutazione PROD con prefisso `[TEST]`, e' stata corretta solo la configurazione secret Supabase PROD `ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS=false` sul project ref `qqbfphyslczzkxoncgex`. La causa era il secret PROD ancora impostato come TEST; il sorgente `assessment-email-send` aggiunge `[TEST]` e `TEST INTERNO PMO` quando quel valore non e' esattamente `false`. TEST non e' stato modificato e resta protetto. Non sono stati eseguiti deploy app, deploy Edge Function, SQL, modifiche scheduler, modifiche segreti diverse, invii email reali, modifiche dati o Matchpoint. `assessment-email-send` resta `ACTIVE` con `verify_jwt=true`; la modifica secret ha aggiornato la versione runtime Supabase senza cambiare hash/codice funzione.
 
 Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato riallineato lo schema Supabase `assessment_tokens`, aggiungendo la colonna `registered_at` richiesta dalla RPC `upsert_assessment_tokens_admin`. La modifica non cambia la versione app e non invia email.
 
