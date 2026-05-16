@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-16 21:23
+Ultimo aggiornamento: 2026-05-16 21:39
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.438 | `main` | `51e6ef0` |
-| TEST | v5.439 | `test-preview` | `38d7f9b` |
-| TEST sviluppo | v5.439 | `test/accessi-staff-guidati` | `38d7f9b` |
+| TEST | v5.440 | `test-preview` | `a6cc9d5` |
+| TEST sviluppo | v5.440 | `test/accessi-staff-guidati` | `a6cc9d5` |
 
-Nota: PROD resta a v5.438. In TEST e' pubblicata v5.439: in `Amministrazione > Supabase > Verifica TEST/PROD` viene aggiunta la riga compatta `Protezione email Autovalutazione`, alimentata dalla nuova azione non inviante `config-check` della Edge Function TEST `assessment-email-send` v18 con `verify_jwt=false`. In TEST lo stato atteso e' `Protetto`; il codice e' predisposto per bloccare in PROD i comandi di invio Autovalutazione se la diagnostica segnala modalita test email o se il controllo non e' verificabile. Nessun SQL, scheduler, segreto PROD, Gmail reale, Matchpoint, dato reale o PROD e' stato modificato; lo scheduler email Autovalutazione PROD resta non attivo.
+Nota: PROD resta a v5.438. In TEST e' pubblicata v5.440: micro-correzione del testo della riga `Protezione email Autovalutazione`, che ora mostra `TEST protetto: destinatari reali sostituiti. Comportamento atteso in ambiente TEST.` con separatore chiaro. La diagnostica resta alimentata dall'azione non inviante `config-check` della Edge Function TEST `assessment-email-send` v18 con `verify_jwt=false`. Nessun SQL, scheduler, segreto PROD, Gmail reale, Matchpoint, dato reale o PROD e' stato modificato; lo scheduler email Autovalutazione PROD resta non attivo.
 
 ## Link
 
@@ -41,7 +41,7 @@ Nota: PROD resta a v5.438. In TEST e' pubblicata v5.439: in `Amministrazione > S
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.439 e' pubblicata in TEST al commit app `38d7f9b`; PROD resta a v5.438, commit app `51e6ef0`. La promozione PROD precedente ha portato `main` da v5.422 a v5.438; rollback tecnico annotato verso `origin/main` precedente `e6f01f2` / app v5.422 commit `6549f18`.
+La versione v5.440 e' pubblicata in TEST al commit app `a6cc9d5`; PROD resta a v5.438, commit app `51e6ef0`. La promozione PROD precedente ha portato `main` da v5.422 a v5.438; rollback tecnico annotato verso `origin/main` precedente `e6f01f2` / app v5.422 commit `6549f18`.
 
 Contiene:
 
@@ -79,8 +79,9 @@ Contiene:
 - Autovalutazione v5.437 TEST: bugfix del `Cruscotto mattutino`; i box filtro del `Processo utenti` diventano filtri rapidi reali collegati con listener dedicati dopo il render. Il filtro selezionato resta evidenziato, la lista si aggiorna subito, compare una riga `Filtro attivo` quando non e' `Tutti` e i filtri senza risultati mostrano `Nessun socio in questo stato.`. Nessuna modifica a lotto manuale, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Autovalutazione v5.438 TEST: micro-correzione UX del `Cruscotto mattutino`; il blocco `Lotto email manuale` non compare piu tra box filtro e risultati, ma viene mostrato dopo la lista filtrata `Processo utenti` o dopo il messaggio vuoto. Restano invariati filtri, ricerca, `Pulisci`, comandi testata `Prepara lotto` / `Invia selezionati` / `Invia tutti` / `Rigenera lotto`, checkbox lotto, invio singola riga e `Dettaglio`. Nessuna modifica a logica lotto, invii email, Edge Function, SQL, scheduler, Gmail, WhatsApp, Matchpoint, dati reali o PROD.
 - Amministrazione / Supabase / Autovalutazione v5.439 TEST: integrato il mockup `mockup/supabase-diagnostica-email-autovalutazione-mockup.html`. La verifica `Verifica TEST/PROD` mostra la riga `Protezione email Autovalutazione` con badge `Protetto`, `OK`, `ALERT` o `Non verificato`. La Edge Function TEST `assessment-email-send` e' v18, `verify_jwt=false`, e aggiunge l'azione non inviante `config-check`, che non invia email, non scrive log operativi e restituisce solo stato sanificato su ambiente runtime, modalita test destinatari e sicurezza invii reali. In PROD il codice UI blocca `Invia selezionati`, `Invia tutti` e `Invia email` se la diagnostica segnala modalita test email o controllo non verificabile. Nessuna modifica a PROD, SQL, scheduler, segreti PROD, Gmail reale, Matchpoint o dati reali.
+- Amministrazione / Supabase / Autovalutazione v5.440 TEST: micro-correzione del testo diagnostico `Protezione email Autovalutazione`; in TEST il messaggio `TEST protetto: destinatari reali sostituiti.` viene separato chiaramente da `Comportamento atteso in ambiente TEST.`. Nessuna modifica a Edge Function, SQL, scheduler, segreti PROD, Gmail reale, Matchpoint, dati reali o PROD.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
-- Documentazione aggiornata per v5.439 TEST.
+- Documentazione aggiornata per v5.440 TEST.
 
 Non contiene modifiche a:
 
