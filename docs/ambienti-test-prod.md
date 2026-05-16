@@ -88,6 +88,17 @@ Stato test controllato Autovalutazione email PROD verificato il 2026-05-16 12:36
 - `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
 - invii PROD Autovalutazione riabilitabili.
 
+Stato diagnostica protezione email Autovalutazione TEST verificato il 2026-05-16 21:23:
+
+- app TEST pubblicata: v5.439 su branch `test-preview`;
+- Edge Function TEST `assessment-email-send` pubblicata come versione `18`;
+- `verify_jwt=false` su TEST resta intenzionale, con protezione interna JWT staff o routine secret;
+- nuova azione non inviante `config-check`;
+- `config-check` non invia email, non modifica dati, non scrive log operativi di invio, non attiva scheduler e non restituisce secret;
+- in TEST lo stato atteso della riga `Protezione email Autovalutazione` e' `Protetto`;
+- il codice e' predisposto a bloccare in PROD gli invii Autovalutazione se la diagnostica segnala modalita test email o controllo non verificabile;
+- PROD non e' stato modificato da questa integrazione TEST.
+
 Schema previsto:
 
 ```text
