@@ -99,6 +99,20 @@ Stato diagnostica protezione email Autovalutazione TEST verificato il 2026-05-16
 - il codice e' predisposto a bloccare in PROD gli invii Autovalutazione se la diagnostica segnala modalita test email o controllo non verificabile;
 - PROD non e' stato modificato da questa integrazione TEST.
 
+Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:
+
+- app PROD pubblicata: v5.440 su branch `main`;
+- app TEST pubblicata: v5.440 su branch `test-preview`;
+- `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati a `2ca85e1`;
+- Edge Function PROD `assessment-email-send` pubblicata come versione `14`, `verify_jwt=true`, hash uguale alla funzione TEST v18;
+- la funzione PROD supporta l'azione non inviante `config-check`;
+- raw GitHub `main` e `test-preview` espongono lo stesso `index.html` v5.440 con SHA-256 `de5642c71410f38252809ebc9504b3a13b8f0d94f8ef86f34b60ef96b528d5ef`;
+- render headless PROD e TEST carica la schermata login v5.440 senza errori console bloccanti;
+- `assessment-email-cron-test` resta assente;
+- `cron.job` PROD contiene solo `pmo-data-routines-dispatcher-prod`;
+- nessuno scheduler email Autovalutazione PROD e' presente;
+- nessun SQL, scheduler, segreto, invio email reale, dato reale o Matchpoint e' stato modificato.
+
 Schema previsto:
 
 ```text
