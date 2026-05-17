@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.476';
+    const APP_VERSION = '5.477';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26210,13 +26210,7 @@ Per confermare scrivi ELIMINA.`);
     function assessmentExternalRequestsHistoryHtml() {
       assessmentExternalCompactLocalCache();
       const rows = assessmentExternalDedupedRequests().slice(0, 50);
-      const header = `<div class="assessment-email-section-block">
-        <div class="assessment-email-panel-head compact">
-          <div>
-            <h4 class="assessment-email-panel-title">Richieste da link esterno</h4>
-            <p class="assessment-email-panel-copy">Registrazioni e autovalutazioni arrivate dal link pubblico. Se lo stesso contatto invia piu volte, qui resta visibile l'ultima richiesta operativa.</p>
-          </div>
-        </div>`;
+      const header = `<div class="assessment-email-section-block">`;
       if (!rows.length) {
         return `${header}${assessmentEmailEmpty('Nessuna richiesta link esterno caricata. Usa Aggiorna link esterno per leggere Supabase TEST.')}</div>`;
       }
