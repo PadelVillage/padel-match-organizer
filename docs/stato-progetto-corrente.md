@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 00:31
+Ultimo aggiornamento: 2026-05-18 00:37
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.472 | `test-preview` | `b71cbd2` |
-| TEST sviluppo | v5.472 | `test/accessi-staff-guidati` | `b71cbd2` |
+| TEST | v5.473 | `test-preview` | `6c45af2` |
+| TEST sviluppo | v5.473 | `test/accessi-staff-guidati` | `6c45af2` |
+
+Nota TEST v5.473: corretto il conteggio del box `Storico` nel `Cruscotto mattutino` Autovalutazione per le richieste ricevute da `Scheda pubblica > Link esterno`. Le righe operative da link esterno usano ora una chiave di processo dedicata alla richiesta, quindi non vengono piu nascoste da un'altra riga dello stesso socio nel `Processo utenti` (per esempio `Da controllare`). Verifica read-only Supabase TEST: la richiesta `PMO-000948` / `aprea.maurizio@gmail.com` delle 00:27 Europe/Rome era presente in `public.assessment_external_requests`; il problema era solo di render/conteggio. Commit app `6c45af2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.472: semplificata la navigazione laterale. La voce principale `Routine` viene rimossa dal menu perche' le routine operative sono gia distribuite nelle sezioni corrette (`Amministrazione > Dati Matchpoint`, `Amministrazione > Supabase`, `Autovalutazione`). Dentro `Amministrazione` viene rimossa la sottovoce `Sessione`, lasciando `Utenti`, `Notifiche staff`, `Dati Matchpoint` e `Supabase`; il logout resta disponibile nella testata laterale e i vecchi riferimenti salvati a `session` vengono ricondotti a `Utenti`. Le funzioni interne, i permessi salvati e le logiche cloud/routine non sono stati cancellati. Commit app `b71cbd2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
