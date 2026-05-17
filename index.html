@@ -4986,7 +4986,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-external-test-row">
               <div>
                 <strong>Test form</strong>
-                <span>Socio test: PMO-000956 · aprea.maurizio@gmail.com</span>
+                <span>Socio test: PMO-000948 · aprea.maurizio@gmail.com</span>
               </div>
               <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalCopyLink('test')">Copia link test</button>
               <button id="assessmentExternalTestToggle" type="button" class="btn-success small-btn" onclick="setActionAnchor(this); assessmentExternalToggleTestForm()">Apri test form</button>
@@ -5347,7 +5347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.445';
+    const APP_VERSION = '5.446';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18105,7 +18105,7 @@ Grazie!`
       return (giocatori || []).find(member => {
         const pmoId = cleanCell(member?.memberId || member?.id || '').toUpperCase();
         const email = cleanCell(member?.email || '').toLowerCase();
-        return pmoId === 'PMO-000956' && email === 'aprea.maurizio@gmail.com';
+        return pmoId === 'PMO-000948' && email === 'aprea.maurizio@gmail.com';
       }) || null;
     }
     function assessmentExternalTestLinkUrl() {
@@ -18123,7 +18123,7 @@ Grazie!`
       return assessmentExternalBuildUrl({
         env: PMO_IS_TEST_ENV ? 'test' : '',
         assessment: 'link-esterno',
-        memberId: 'PMO-000956',
+        memberId: 'PMO-000948',
         email: 'aprea.maurizio@gmail.com'
       });
     }
@@ -23365,7 +23365,7 @@ Per confermare scrivi ELIMINA.`);
       };
     }
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
-    const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000956';
+    const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000948';
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
     window.assessmentProcessFilter = window.assessmentProcessFilter || 'all';
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
@@ -24971,7 +24971,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
-        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000956 con email aprea.maurizio@gmail.com.', 'danger');
+        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000948 con email aprea.maurizio@gmail.com.', 'danger');
       }
       const safeTemplate = cleanCell(templateKey || '');
       if (!['recall-email', 'third-email'].includes(safeTemplate)) {
