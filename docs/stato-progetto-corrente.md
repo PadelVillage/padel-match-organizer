@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 20:24
+Ultimo aggiornamento: 2026-05-17 20:35
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.453 | `test-preview` | `152b049` |
-| TEST sviluppo | v5.453 | `test/accessi-staff-guidati` | `152b049` |
+| TEST | v5.454 | `test-preview` | `3ffad65` |
+| TEST sviluppo | v5.454 | `test/accessi-staff-guidati` | `3ffad65` |
 
 Nota documentale 2026-05-17 17:09: aggiunte le regole condivise per account e sessioni browser di verifica Codex. Le chat SVILUPPO TEST e PROMOZIONE PROD possono usare solo sessioni gia aperte degli account dedicati; PROD resta limitato a smoke test non distruttivi con `aprea.maurizio+codex.prod@gmail.com` in `Solo lettura` / `Solo consultazione`. La chat MOCK-UP puo usare sessioni gia aperte solo come riferimento visuale, senza credenziali, modifiche dati o azioni operative. Password mai scritte o salvate.
 
@@ -38,7 +38,9 @@ Nota TEST 2026-05-17 17:21: puliti gli utenti staff di registrazione test obsole
 
 Nota TEST v5.453: `Amministrazione > Utenti` mostra direttamente la tabella degli utenti autorizzati, senza KPI alti e senza bottone `Aggiorna`. La creazione passa da `+ Nuovo`, la modifica si apre inline sotto la riga e `Elimina` apre una conferma inline; il proprietario `padelvillage.club@gmail.com` non e' eliminabile. Aggiunta in Supabase TEST la RPC autenticata `pmo_delete_staff_user_admin(p_email text)`, con grant solo `authenticated` e nessun grant `anon`: rimuove solo il record da `public.pmo_staff_profiles`, scrive audit `staff_user_delete` su `pmo_audit_log` e non cancella utenti Supabase Auth. Nessuna modifica a PROD, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico o dati soci.
 
-Nota: TEST app e' avanti a v5.453. La v5.453 riorganizza in TEST `Amministrazione > Utenti` con gestione inline di nuovo/modifica/elimina autorizzazione staff e RPC TEST dedicata per rimuovere solo profili da `pmo_staff_profiles`.
+Nota TEST v5.454: hotfix `Amministrazione > Utenti` dopo rimozione dei profili staff test obsoleti. La tab Utenti ricarica una volta dal cloud anche se esiste una lista locale salvata in `pmoAdminState`, evitando righe stale da localStorage; se `Elimina` trova `USER_NOT_FOUND`, la UI considera il profilo gia assente da Supabase TEST e pulisce la riga locale invece di lasciare errore. Nessuna modifica a Supabase Auth, SQL aggiuntivo, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico, dati soci o PROD.
+
+Nota: TEST app e' avanti a v5.454. La v5.454 corregge la cache locale di `Amministrazione > Utenti` dopo eliminazioni gia avvenute su Supabase TEST.
 
 Nota precedente v5.451: TEST app riorganizzava in TEST la sezione `Amministrazione` in quattro sottosezioni isolate: `Utenti`, `Notifiche staff`, `Sessione` e `Supabase`. `Notifiche staff` gestisce destinatari interni locali per le future conferme livello con checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com` e anteprima notifica. Il bottone `Invia email di test` e' disponibile solo sulla riga test e resta simulato: non invia email reali e non usa backend. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
 
@@ -73,7 +75,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.453 e' preparata in TEST al commit app `152b049`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.453 riorganizza solo `Amministrazione > Utenti` e aggiunge su Supabase TEST la RPC minima per eliminare una autorizzazione staff da `pmo_staff_profiles`, senza cancellare utenti Auth e senza grant `anon`. Non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati soci o modifiche PROD.
+La versione v5.454 e' preparata in TEST al commit app `3ffad65`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.454 corregge il refresh della lista `Amministrazione > Utenti` quando il browser contiene righe locali stale gia assenti da Supabase TEST. Non sono stati eseguiti deploy Edge Function, SQL aggiuntivo, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
