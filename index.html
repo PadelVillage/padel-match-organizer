@@ -2813,7 +2813,9 @@
     .assessment-public-form-card { background:#fff; border:1px solid #dfe6ef; border-radius:18px; box-shadow:0 2px 10px rgba(15,23,42,.06); padding:18px; margin:14px 0; }
     .assessment-public-form-card.soft { background:#f8fbff; }
     .assessment-public-form-head { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; background:linear-gradient(135deg,#fff,#f4f8ff); }
-    .assessment-public-form-head h4 { margin:0; color:var(--primary); font-size:22px; }
+    .assessment-public-head-brand { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:13px; min-width:0; }
+    .assessment-public-logo { width:58px; height:58px; border:1px solid #dfe6ef; border-radius:14px; background:#fff; object-fit:contain; padding:7px; flex:0 0 auto; }
+    .assessment-public-form-head h4 { margin:0; color:var(--primary); font-size:24px; line-height:1.12; }
     .assessment-public-demo-title { display:none; }
     body:not(.assessment-public-mode) #anchor-assessment-scheda .assessment-public-demo-title { display:inline; }
     body:not(.assessment-public-mode) #anchor-assessment-scheda .assessment-public-live-title { display:none; }
@@ -2883,7 +2885,7 @@
     body.assessment-public-mode .assessment-public-subtabs,
     body.assessment-public-mode .assessment-external-link-panel { display:none !important; }
     body:not(.assessment-public-mode) #anchor-assessment-scheda .assessment-external-link-panel input { background:#fff; color:#172033; cursor:default; }
-    @media (max-width:760px) { .assessment-public-form-head, .assessment-public-identity { grid-template-columns:1fr; flex-direction:column; } .assessment-public-grid { grid-template-columns:1fr; } .assessment-public-actions { display:grid; grid-template-columns:1fr; } .assessment-public-actions .btn { width:100%; } }
+    @media (max-width:760px) { .assessment-public-form-head, .assessment-public-identity { grid-template-columns:1fr; flex-direction:column; } .assessment-public-logo { width:52px; height:52px; border-radius:13px; } .assessment-public-form-head h4 { font-size:22px; } .assessment-public-grid { grid-template-columns:1fr; } .assessment-public-actions { display:grid; grid-template-columns:1fr; } .assessment-public-actions .btn { width:100%; } }
     @media (max-width:760px) { .assessment-external-link-row, .assessment-external-test-row, .assessment-external-preview { grid-template-columns:1fr; } .assessment-external-test-row .small-btn, .assessment-external-link-row .small-btn { width:100%; } }
 body.assessment-public-mode .assessment-public-only-card {
       display: block !important;
@@ -5038,7 +5040,17 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div id="assessmentExternalPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
                 <strong>Privacy Policy Padel Village</strong>
-                Testo ufficiale da collegare qui. Il test form usa solo una preview UI e non salva dati.
+                <p>Useremo i dati che inserisci in questo modulo per creare o aggiornare la tua scheda giocatore Padel Village e per gestire la tua autovalutazione del livello di gioco.</p>
+                <p>Ti chiediamo nome, cognome, numero di telefono, email, sesso e risposte sull'autovalutazione perche ci servono per riconoscerti correttamente, evitare doppioni, gestire la tua scheda e organizzare meglio le attivita' del circolo.</p>
+                <p>Potremo inoltre registrare che la richiesta arriva da link esterno e conservare lo storico delle autovalutazioni inviate, cosi lo staff puo seguire correttamente il processo.</p>
+                <p>I tuoi dati saranno usati per finalita' legate ai servizi Padel Village, alla gestione della tua scheda, all'autovalutazione del livello e all'organizzazione delle attivita' sportive e sociali del circolo.</p>
+                <p>Per aiutare Padel Village a organizzare attivita' ed eventi, il tuo nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione delle iniziative del circolo.</p>
+                <p>A titolo di esempio, questo puo avvenire per partite, tornei, stage, lezioni, campionati a squadre e altre attivita' sportive o sociali organizzate da Padel Village. L'elenco e' solo esemplificativo e non limita le possibili iniziative del circolo.</p>
+                <p>Il tuo numero di telefono e la tua email non saranno mostrati agli altri utenti della piattaforma.</p>
+                <p>I tuoi dati non saranno venduti a terzi. Potranno essere consultati dallo staff autorizzato di Padel Village e dai fornitori tecnici che ci aiutano a gestire la piattaforma e i sistemi collegati.</p>
+                <p>I dati saranno conservati per il tempo necessario alla gestione della tua scheda giocatore, delle attivita' del circolo e degli eventuali obblighi amministrativi o organizzativi.</p>
+                <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile scrivendo a: padelvillage.club@gmail.com.</p>
+                <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
               </div>
               <div class="assessment-public-actions assessment-external-full">
                 <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalSubmitTest()">Invia test</button>
@@ -5047,20 +5059,22 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
 
           <div class="assessment-public-form-card assessment-public-form-head">
-            <div>
-              <h4><span class="assessment-public-live-title">SCHEDA DI AUTOVALUTAZIONE</span><span class="assessment-public-demo-title">DEMO SCHEDA AUTOVALUTAZIONE</span></h4>
-              <p class="assessment-admin-demo-note">Anteprima del modulo pubblico: non compilabile dall'app staff.</p>
+            <div class="assessment-public-head-brand">
+              <img class="assessment-public-logo" src="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" alt="Padel Village">
+              <div>
+                <h4><span class="assessment-public-live-title">Scheda di Autovalutazione</span><span class="assessment-public-demo-title">Demo scheda autovalutazione</span></h4>
+                <p class="assessment-admin-demo-note">Anteprima del modulo pubblico: non compilabile dall'app staff.</p>
+              </div>
             </div>
-            <span class="assessment-public-pill">Padel Village</span>
           </div>
 
           <div class="assessment-public-form-card soft assessment-public-identity">
             <div>
               <div class="assessment-public-eyebrow">La scheda è intestata a</div>
               <div class="assessment-public-name" id="assessmentPublicPlayerName">Maurizio Aprea</div>
-              <div class="assessment-public-small">Se il nome non è corretto o vuoi segnalarci una modifica, scrivici su WhatsApp.</div>
+              <div class="assessment-public-small">Se il nome non è corretto o vuoi segnalarci una modifica, contatta la segreteria.</div>
             </div>
-            <a id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener" class="assessment-public-whatsapp-btn"><span class="wa-icon">💬</span><span>WhatsApp</span></a>
+            <a id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener" class="assessment-public-whatsapp-btn"><span class="wa-icon">💬</span><span>Contatta segreteria</span></a>
           </div>
 
           <form id="assessmentPublicForm" novalidate>
@@ -5092,10 +5106,17 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div id="assessmentPublicPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
                 <strong>Privacy Policy Padel Village</strong>
-                <p>Useremo i dati inseriti per creare o aggiornare la scheda giocatore Padel Village, gestire l'autovalutazione del livello di gioco e organizzare le attività sportive e sociali del circolo.</p>
-                <p>Chiediamo nome, cognome, telefono, email, sesso e risposte dell'autovalutazione per riconoscere correttamente la persona, evitare doppioni e permettere allo staff di validare il livello.</p>
-                <p>Il nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione di partite, tornei, stage, lezioni, campionati a squadre e altre iniziative Padel Village. Telefono ed email non saranno mostrati agli altri utenti.</p>
-                <p>I dati saranno consultati dallo staff autorizzato e dai fornitori tecnici che supportano la piattaforma. Puoi chiedere informazioni, correzione o cancellazione quando possibile scrivendo a padelvillage.club@gmail.com.</p>
+                <p>Useremo i dati che inserisci in questo modulo per creare o aggiornare la tua scheda giocatore Padel Village e per gestire la tua autovalutazione del livello di gioco.</p>
+                <p>Ti chiediamo nome, cognome, numero di telefono, email, sesso e risposte sull'autovalutazione perche ci servono per riconoscerti correttamente, evitare doppioni, gestire la tua scheda e organizzare meglio le attivita' del circolo.</p>
+                <p>Potremo inoltre registrare che la richiesta arriva da link esterno e conservare lo storico delle autovalutazioni inviate, cosi lo staff puo seguire correttamente il processo.</p>
+                <p>I tuoi dati saranno usati per finalita' legate ai servizi Padel Village, alla gestione della tua scheda, all'autovalutazione del livello e all'organizzazione delle attivita' sportive e sociali del circolo.</p>
+                <p>Per aiutare Padel Village a organizzare attivita' ed eventi, il tuo nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione delle iniziative del circolo.</p>
+                <p>A titolo di esempio, questo puo avvenire per partite, tornei, stage, lezioni, campionati a squadre e altre attivita' sportive o sociali organizzate da Padel Village. L'elenco e' solo esemplificativo e non limita le possibili iniziative del circolo.</p>
+                <p>Il tuo numero di telefono e la tua email non saranno mostrati agli altri utenti della piattaforma.</p>
+                <p>I tuoi dati non saranno venduti a terzi. Potranno essere consultati dallo staff autorizzato di Padel Village e dai fornitori tecnici che ci aiutano a gestire la piattaforma e i sistemi collegati.</p>
+                <p>I dati saranno conservati per il tempo necessario alla gestione della tua scheda giocatore, delle attivita' del circolo e degli eventuali obblighi amministrativi o organizzativi.</p>
+                <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile, scrivendo a: padelvillage.club@gmail.com.</p>
+                <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
               </div>
             </div>
             <div class="assessment-public-form-card">
@@ -5359,7 +5380,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.449';
+    const APP_VERSION = '5.450';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
