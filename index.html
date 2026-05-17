@@ -5559,7 +5559,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.453';
+    const APP_VERSION = '5.454';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21992,7 +21992,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoOpenEditStaffUser(email);
 	    }
 	    function pmoMaybeAutoLoadStaffUsers() {
-	      if (pmoAdminStaffAutoLoadAttempted || pmoAdminStaffAutoLoadInFlight || pmoAdminState.lastStaffReadAt) return;
+	      if (pmoAdminStaffAutoLoadAttempted || pmoAdminStaffAutoLoadInFlight) return;
 	      const profile = pmoStaffProfile || pmoReadStaffProfile();
 	      if (!pmoProfileHasPermission(profile, 'manage_users')) return;
 	      pmoAdminStaffAutoLoadAttempted = true;
@@ -22054,6 +22054,15 @@ Per confermare scrivi ELIMINA.`);
 	        pmoSetAdminStatus('Rimuovo autorizzazione staff...', 'info');
 	        const result = await pmoStaffRpc('pmo_delete_staff_user_admin', { p_email: cleanEmail }, 'manage_users', 'eliminare autorizzazione staff');
 	        if (!result || result.ok !== true) {
+	          if (cleanCell(result?.error || '').includes('USER_NOT_FOUND')) {
+	            pmoAdminState.staffUsers = (pmoAdminState.staffUsers || []).filter(row => cleanCell(row.email || '').toLowerCase() !== cleanEmail);
+	            pmoAdminState.lastStaffReadAt = new Date().toISOString();
+	            save('pmoAdminState', pmoAdminState);
+	            pmoSetStaffFormMode('none');
+	            pmoRenderStaffUsersTable();
+	            pmoSetAdminStatus(`✅ ${cleanEmail} era gia assente da Supabase TEST. Lista locale aggiornata.`, 'success');
+	            return;
+	          }
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Eliminazione non riuscita.', 'eliminare autorizzazione staff'));
 	        }
 	        pmoSetStaffFormMode('none');
