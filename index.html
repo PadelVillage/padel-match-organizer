@@ -5558,7 +5558,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.461';
+    const APP_VERSION = '5.462';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18803,6 +18803,77 @@ Grazie!`
       if (staff === 'da_completare' || staff === 'da_controllare' || staff === 'review') return 'warn';
       return 'info';
     }
+    function assessmentExternalRequestContactKey(row = {}) {
+      const normalized = assessmentExternalNormalizeRequest(row);
+      const email = cleanCell(normalized.email || '').toLocaleLowerCase('it-IT');
+      if (email) return `email:${email}`;
+      const phone = normalizePhone(normalized.phone || '');
+      if (phone) return `phone:${phone}`;
+      const memberId = cleanCell(normalized.created_member_local_id || normalized.matched_member_local_id || normalized.created_member_pmo_id || '');
+      if (memberId) return `member:${memberId.toLocaleLowerCase('it-IT')}`;
+      return `request:${assessmentExternalRequestKey(normalized)}`;
+    }
+    function assessmentExternalDedupedRequests(rows = null) {
+      const source = (Array.isArray(rows) ? rows : (assessmentExternalRequests || []))
+        .map(assessmentExternalNormalizeRequest)
+        .filter(row => assessmentExternalRequestKey(row))
+        .sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
+      const groups = new Map();
+      source.forEach(row => {
+        const key = assessmentExternalRequestContactKey(row);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+      });
+      return Array.from(groups.values()).map(group => ({
+        ...group[0],
+        __duplicateCount: Math.max(0, group.length - 1),
+        __duplicateRows: group.slice(1)
+      })).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
+    }
+    function assessmentExternalRequestsForMorning() {
+      return assessmentExternalDedupedRequests().filter(row => {
+        const status = cleanCell(row.status || '');
+        return status !== 'validated' && status !== 'rejected';
+      });
+    }
+    function assessmentExternalRequestMemberForProcess(row = {}) {
+      const member = assessmentExternalMemberForRequest(row);
+      if (member) return member;
+      const key = assessmentExternalRequestKey(row) || assessmentExternalRequestContactKey(row);
+      const nameParts = normalizeImportedPlayerNameParts(row.first_name || '', row.last_name || '');
+      return {
+        id: `external-request-${key}`,
+        memberId: row.created_member_pmo_id || 'Link esterno',
+        firstName: nameParts.firstName || row.first_name || 'Utente',
+        surname: nameParts.surname || row.last_name || 'link esterno',
+        name: assessmentExternalRequestName(row),
+        phone: row.phone || '',
+        email: row.email || '',
+        level: row.calculated_level || row.declared_level || '-',
+        active: true
+      };
+    }
+    function assessmentExternalRequestDuplicateText(row = {}) {
+      const count = parseInt(row.__duplicateCount, 10) || 0;
+      if (!count) return '';
+      return `${count} richiesta${count === 1 ? '' : 'e'} precedente${count === 1 ? '' : 'i'} accorpata${count === 1 ? '' : 'e'}`;
+    }
+    function assessmentExternalRequestActionsHtml(row = {}) {
+      const normalized = assessmentExternalNormalizeRequest(row);
+      const key = escapeJs(assessmentExternalRequestKey(normalized));
+      const member = assessmentExternalMemberForRequest(normalized);
+      const status = cleanCell(normalized.status || '');
+      const actions = [];
+      if (status === 'received') {
+        if (!member) actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentExternalCreateMember('${key}')">Crea scheda socio</button>`);
+        actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentExternalLinkExistingMember('${key}')">Aggancia a socio esistente</button>`);
+      }
+      if (member || status === 'member_created' || status === 'linked') {
+        actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Controlla livello</button>`);
+      }
+      if (member) actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(member.id))}')">Scheda socio</button>`);
+      return actions.join('') || '<span class="muted">Nessuna azione</span>';
+    }
     function assessmentExternalMemberForRequest(row = {}) {
       const ids = [
         row.created_member_local_id,
@@ -24352,7 +24423,7 @@ Per confermare scrivi ELIMINA.`);
       responses:'Risposte',
       review:'Da controllare',
       matchpoint:'Matchpoint',
-      completed:'Completati'
+      history:'Storico'
     };
     function assessmentProcessNormalizeFilter(filter='all') {
       const key = cleanCell(filter || 'all');
@@ -24522,6 +24593,17 @@ Per confermare scrivi ELIMINA.`);
       let actions = entry.actions || '';
       const detailAction = assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`);
       const testActions = assessmentProcessFollowupTestActions(member);
+      if (entry.externalRequest) {
+        return {
+          routine,
+          phase,
+          lastSend: entry.lastSend || { label:'-', detail:'' },
+          nextStep,
+          nextWindow: entry.nextWindow || { label:'-', detail:'' },
+          stopAlert: entry.stopAlert || '-',
+          actions
+        };
+      }
 
       if (assessmentProcessIsFollowupTestMemberId(member) && !assessmentProcessIsProtectedFollowupTestMember(member)) {
         routine = { label:'Bloccato', cls:'err', detail:'Socio test' };
@@ -24684,6 +24766,27 @@ Per confermare scrivi ELIMINA.`);
           actions: assessmentProcessButton('Controlla livello', auto ? 'success' : 'warn', `openAssessmentResponseEditor('${escapeJs(String(row.member.id))}')`)
         });
       });
+      assessmentExternalRequestsForMorning().forEach((request, index) => {
+        const member = assessmentExternalRequestMemberForProcess(request);
+        const status = cleanCell(request.status || '');
+        const duplicateText = assessmentExternalRequestDuplicateText(request);
+        assessmentProcessPut(rowsByMember, {
+          member,
+          externalRequest: request,
+          row: { member, externalRequest: request },
+          priority: 35 + index / 1000,
+          filter: 'history',
+          today: assessmentProcessDateIsToday(request.submitted_at),
+          routine: { label:'Storico', cls:'info', detail:'Link esterno' },
+          phase: { label:assessmentExternalStatusLabel(request), cls:assessmentExternalStatusClass(request), detail:duplicateText },
+          lastSend: { label:assessmentEmailFormatDateTime(request.submitted_at), detail:'Ricevuta' },
+          nextStep: status === 'received' ? 'Aggancia o crea scheda' : 'Controlla livello',
+          nextWindow: { label:'Storico', detail:'Nuova richiesta' },
+          stopAlert: duplicateText || assessmentPublicGenderStatus(request.gender || ''),
+          contact: request.email || request.phone || '-',
+          actions: assessmentExternalRequestActionsHtml(request)
+        });
+      });
       assessmentMatchpointPendingRows().forEach(row => {
         const info = assessmentMatchpointLevelInfo(row);
         assessmentProcessPut(rowsByMember, {
@@ -24810,8 +24913,9 @@ Per confermare scrivi ELIMINA.`);
     function assessmentProcessFilterConfig(rows, search='') {
       const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
       const count = filter => sourceRows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
+      const historyCount = count('history');
       return [
-        ['all', 'Tutti', `${sourceRows.length} soci`],
+        ['all', 'Tutti', `${sourceRows.length} righe`],
         ['today', 'Oggi', `${count('today')} oggi`],
         ['queue', 'Da inviare', `${count('queue')} soci`],
         ['pending', 'In attesa', `${count('pending')} soci`],
@@ -24819,7 +24923,7 @@ Per confermare scrivi ELIMINA.`);
         ['responses', 'Risposte', `${count('responses')} da leggere`],
         ['review', 'Da controllare', `${count('review')} livelli`],
         ['matchpoint', 'Matchpoint', `${count('matchpoint')} soci`],
-        ['completed', 'Completati', `${count('completed')} chiusi`]
+        ['history', 'Storico', historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
       ];
     }
     function assessmentProcessSearchStageKeys(rows, search='') {
@@ -25525,39 +25629,30 @@ Per confermare scrivi ELIMINA.`);
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
     }
     function assessmentExternalRequestsHistoryHtml() {
-      const rows = (assessmentExternalRequests || []).map(assessmentExternalNormalizeRequest).slice(0, 50);
+      const rows = assessmentExternalDedupedRequests().slice(0, 50);
       const header = `<div class="assessment-email-section-block">
         <div class="assessment-email-panel-head compact">
           <div>
             <h4 class="assessment-email-panel-title">Richieste da link esterno</h4>
-            <p class="assessment-email-panel-copy">Registrazioni e autovalutazioni arrivate dal link pubblico. La scheda socio nasce solo dopo conferma staff.</p>
+            <p class="assessment-email-panel-copy">Registrazioni e autovalutazioni arrivate dal link pubblico. Se lo stesso contatto invia piu volte, qui resta visibile l'ultima richiesta operativa.</p>
           </div>
         </div>`;
       if (!rows.length) {
         return `${header}${assessmentEmailEmpty('Nessuna richiesta link esterno caricata. Usa Aggiorna link esterno per leggere Supabase TEST.')}</div>`;
       }
       const body = rows.map(row => {
-        const key = escapeJs(assessmentExternalRequestKey(row));
-        const member = assessmentExternalMemberForRequest(row);
         const status = assessmentExternalStatusLabel(row);
-        const actions = [];
-        if (row.status === 'received') {
-          actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentExternalCreateMember('${key}')">Crea scheda socio</button>`);
-          actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentExternalLinkExistingMember('${key}')">Aggancia a socio esistente</button>`);
-        }
-        if (member || row.status === 'member_created' || row.status === 'linked') {
-          actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Controlla livello</button>`);
-        }
-        if (member) actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(member.id))}')">Scheda socio</button>`);
         const gender = assessmentPublicGenderLabel(row.gender || '');
         const genderStatus = assessmentPublicGenderStatus(row.gender || '');
+        const duplicateText = assessmentExternalRequestDuplicateText(row);
+        const contactMeta = [row.email || 'email mancante', row.phone || 'telefono mancante', duplicateText].filter(Boolean).join(' · ');
         return `<tr>
-          <td data-label="Socio"><strong>${escapeHtml(assessmentExternalRequestName(row))}</strong><span class="assessment-email-meta">${escapeHtml(row.email || 'email mancante')} · ${escapeHtml(row.phone || 'telefono mancante')}</span></td>
+          <td data-label="Socio"><strong>${escapeHtml(assessmentExternalRequestName(row))}</strong><span class="assessment-email-meta">${escapeHtml(contactMeta)}</span></td>
           <td data-label="Ricevuta">${escapeHtml(assessmentEmailFormatDateTime(row.submitted_at))}</td>
           <td data-label="Origine">${assessmentEmailBadge('Da link esterno','info')}</td>
           <td data-label="Livello">${escapeHtml(row.declared_level || '-')} / ${escapeHtml(row.calculated_level || '-')}<span class="assessment-email-meta">${escapeHtml(row.consistency_status || '-')}</span></td>
           <td data-label="Stato">${assessmentEmailBadge(status, assessmentExternalStatusClass(row))}<span class="assessment-email-meta">${escapeHtml(gender)} · ${escapeHtml(genderStatus)}</span></td>
-          <td data-label="Azioni"><div class="assessment-email-mini-actions">${actions.join('') || '<span class="muted">Nessuna azione</span>'}</div></td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">${assessmentExternalRequestActionsHtml(row)}</div></td>
         </tr>`;
       }).join('');
       return `${header}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Ricevuta</th><th>Origine</th><th>Livello</th><th>Stato</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
