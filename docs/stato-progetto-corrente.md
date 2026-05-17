@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 11:20
+Ultimo aggiornamento: 2026-05-17 11:42
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.441 | `main` | `85edd3e` |
-| TEST | v5.443 | `test-preview` | `c3a52ab` |
-| TEST sviluppo | v5.443 | `test/accessi-staff-guidati` | `c3a52ab` |
+| TEST | v5.444 | `test-preview` | `5a645c4` |
+| TEST sviluppo | v5.444 | `test/accessi-staff-guidati` | `5a645c4` |
 
-Nota: TEST app e' avanti a v5.443. La v5.443 integra nel `Cruscotto mattutino` Autovalutazione il bottone compatto `Socio test`, che recupera direttamente `PMO-000956` con email `aprea.maurizio@gmail.com` senza dipendere da filtro, ricerca o limite progressivo. I bottoni `Invia seconda email` e `Invia terza email` sono disponibili solo se ID PMO ed email corrispondono; se l'email non coincide viene mostrato `Email socio test non verificata`. Ogni invio resta manuale e richiede conferma. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp o dati reali.
+Nota: TEST app e' avanti a v5.444. La v5.444 integra in `Autovalutazione > Scheda pubblica > Link esterno` il campo `Sesso` nel test form staff e nel form pubblico tokenizzato marcato `assessment=link-esterno`. Le opzioni sono `Maschio`, `Femmina` e `Preferisco non indicarlo`; quest'ultima prosegue ma lato staff resta `Da completare`. Il dato viene salvato nel `raw_response` JSON dell'autovalutazione e, se il socio riconosciuto aveva sesso mancante, viene applicato alla scheda locale quando la risposta viene importata. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+
+Nota precedente v5.443: TEST app integrava nel `Cruscotto mattutino` Autovalutazione il bottone compatto `Socio test`, che recupera direttamente `PMO-000956` con email `aprea.maurizio@gmail.com` senza dipendere da filtro, ricerca o limite progressivo. I bottoni `Invia seconda email` e `Invia terza email` sono disponibili solo se ID PMO ed email corrispondono; se l'email non coincide viene mostrato `Email socio test non verificata`. Ogni invio resta manuale e richiede conferma. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp o dati reali.
 
 Nota precedente v5.442: TEST app integrava in `Autovalutazione > Scheda pubblica` il pannello staff `Link esterno`, con campo link readonly, `Copia link`, test form locale per `PMO-000956` / `aprea.maurizio@gmail.com`, preview con logo Padel Village, privacy obbligatoria e invio test solo simulato. La modifica era solo UI TEST: non crea dati, non invia email, non modifica Supabase, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o PROD.
 
@@ -49,7 +51,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.443 e' pubblicata in TEST al commit app `c3a52ab`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.443 e' solo UI/documentazione sul `Cruscotto mattutino` Autovalutazione: bottone `Socio test`, recupero diretto `PMO-000956` / `aprea.maurizio@gmail.com`, bottoni seconda/terza email vincolati a doppia verifica ID+email e conferma manuale. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
+La versione v5.444 e' pubblicata in TEST al commit app `5a645c4`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.444 e' UI/logica locale sul pannello `Link esterno` e sul form pubblico tokenizzato Autovalutazione: campo `Sesso`, privacy aggiornata, stato staff `Da completare` quando viene scelto `Preferisco non indicarlo`, e salvataggio nel `raw_response` senza schema nuovo. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
 
 Contiene:
 
@@ -91,6 +93,7 @@ Contiene:
 - Autovalutazione v5.441 TEST/PROD: integrato il mockup `mockup/autovalutazione-followup-email-cruscotto-mockup.html` nel `Cruscotto mattutino`. La tabella `Processo utenti` mostra riga per riga `Ultimo invio`, `Prossimo step`, `Prossima finestra` e `Stop / Alert`, calcolando la prima finestra utile dei richiami alle 09:30 solo dopo almeno 48 ore reali dall'ultimo invio. Gli stop operativi visibili includono risposta email, scheda compilata, mancata consegna, socio in pausa, problemi email e recupero manuale dopo terza email. I bottoni test `Invia seconda email` e `Invia terza email` compaiono solo in TEST per `PMO-000956` con email `aprea.maurizio@gmail.com` e non sono visibili in PROD. Nessuna modifica a Edge Function, SQL, scheduler, segreti PROD, Gmail reale, Matchpoint o dati reali.
 - Autovalutazione v5.442 TEST: integrato il mockup `mockup/registrazione-link-esterno-autovalutazione-mockup.html` in `Scheda pubblica`. Aggiunto pannello `Link esterno` per copiare un link pubblico e un test form locale per `PMO-000956` / `aprea.maurizio@gmail.com`, con privacy obbligatoria e `Invia test` solo simulato. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase, dati reali, Gmail reale, WhatsApp automatico o Matchpoint.
 - Autovalutazione v5.443 TEST: integrato il mockup `mockup/autovalutazione-socio-test-cruscotto-mockup.html` nel `Cruscotto mattutino`. Aggiunto bottone `Socio test` in testata, recupero diretto di `PMO-000956` fuori da filtro/ricerca/limite 20 righe, feedback `Socio test aperto` o `Email socio test non verificata`, e bottoni `Invia seconda email` / `Invia terza email` basati solo su doppia verifica ID+email, senza dipendenza dall'ambiente. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp o dati reali.
+- Autovalutazione v5.444 TEST: integrato il mockup `mockup/registrazione-link-esterno-sesso-mockup.html` in `Scheda pubblica > Link esterno`. Il test form staff e il form pubblico tokenizzato marcato `assessment=link-esterno` gestiscono `Sesso` con opzioni `Maschio`, `Femmina`, `Preferisco non indicarlo`; se viene scelto `Preferisco non indicarlo`, il flusso prosegue ma lo stato staff resta `Da completare`. Il dato viene salvato nel `raw_response` JSON e puo completare la scheda socio locale quando la risposta viene importata. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
 - Documentazione aggiornata per v5.440 TEST.
 
