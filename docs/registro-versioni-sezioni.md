@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 22:01
+Ultimo aggiornamento: 2026-05-17 22:07
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / accessi pubblici TEST v5.461: aggiunta una protezione iniziale contro la comparsa della login staff nei link pubblici. Gli accessi con `assessment=link-esterno`, token Autovalutazione (`t`/`token`) o feedback post-partita pubblico nascondono subito la scheda login `Padel Match Organizer` durante il bootstrap, prima che il flusso pubblico venga renderizzato. La login staff resta disponibile e invariata per l'app gestionale normale. Commit app `25863b7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Scheda pubblica TEST v5.460: corretto il link generato dal pannello `Link esterno` in ambiente TEST. Il campo readonly e la preview chat usano il wrapper TEST `https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`, evitando di aprire la versione PROD durante i collaudi WhatsApp; in PROD la stessa funzione continuera' a generare `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno`. Commit app `6b46039`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Amministrazione TEST v5.459: rimossa la barra orizzontale interna delle sottosezioni `Utenti`, `Notifiche staff`, `Dati Matchpoint`, `Sessione`, `Supabase` dal contenuto principale di `Amministrazione`. La navigazione resta nel menu laterale sotto `Amministrazione`; grafica, contenuti, salvataggi, pannelli e logiche delle sottosezioni restano invariati. Commit app `8015235`. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Scheda pubblica TEST v5.458: micro-correzione grafica delle anteprime pubbliche staff. Le anteprime `Link esterno`, `Registrazione utente` e `Form autovalutazione` usano l'URL stabile `https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg`, coerente con scheda pubblica reale e meta tag, e mantengono il titolo `Autovalutazione Livello di Gioco`. Commit app `f25d6c1`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail, WhatsApp automatico, privacy, storico o salvataggi.
