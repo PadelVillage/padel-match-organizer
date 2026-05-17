@@ -5347,7 +5347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.447';
+    const APP_VERSION = '5.448';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5807,6 +5807,7 @@ Grazie.`
       try { params = new URLSearchParams(window.location.search || ''); }
       catch { return false; }
       if (typeof isPostMatchFeedbackPublicRequest === 'function' && isPostMatchFeedbackPublicRequest()) return false;
+      if (typeof assessmentPublicIsExternalLinkRequest === 'function' && assessmentPublicIsExternalLinkRequest(params)) return true;
       return !!String(params.get('t') || params.get('token') || '').trim();
     }
 
@@ -18160,6 +18161,36 @@ Grazie!`
       }
       return cleanCell(searchParams.get('assessment') || '').toLowerCase() === 'link-esterno';
     }
+    function assessmentPublicExternalMemberFromParams(params = null) {
+      let searchParams = params;
+      if (!searchParams) {
+        try { searchParams = new URLSearchParams(window.location.search || ''); }
+        catch { searchParams = new URLSearchParams(); }
+      }
+      const memberId = cleanCell(searchParams.get('memberId') || searchParams.get('member') || '');
+      const email = cleanCell(searchParams.get('email') || '').toLowerCase();
+      if (!memberId && !email) return null;
+      return (giocatori || []).find(member => {
+        const currentId = cleanCell(member?.id || '');
+        const pmoId = cleanCell(member?.memberId || '').toUpperCase();
+        const currentEmail = cleanCell(member?.email || '').toLowerCase();
+        if (memberId && (String(currentId) === String(memberId) || pmoId === memberId.toUpperCase())) return true;
+        return !!email && currentEmail === email;
+      }) || null;
+    }
+    function assessmentPublicExternalTreatAsNewMember(params = null, member = null) {
+      if (!member) return false;
+      let searchParams = params;
+      if (!searchParams) {
+        try { searchParams = new URLSearchParams(window.location.search || ''); }
+        catch { searchParams = new URLSearchParams(); }
+      }
+      if (!assessmentPublicIsExternalLinkRequest(searchParams)) return false;
+      const requestedId = cleanCell(searchParams.get('memberId') || '').toUpperCase();
+      const memberPmoId = cleanCell(member.memberId || member.id || '').toUpperCase();
+      const email = cleanCell(member.email || '').toLowerCase();
+      return (requestedId === 'PMO-000948' || memberPmoId === 'PMO-000948') && email === 'aprea.maurizio@gmail.com';
+    }
     function assessmentPublicSetControlState(element, enabled=false, required=false) {
       if (!element) return;
       element.disabled = !enabled;
@@ -26261,13 +26292,16 @@ Per confermare scrivi ELIMINA.`);
         return false;
       }
       const token = cleanCell(params.get('t') || params.get('token') || '');
-      if (!token) return false;
+      const isExternal = assessmentPublicIsExternalLinkRequest(params);
+      if (!token && !isExternal) return false;
 
       document.body.classList.add('assessment-public-mode');
-let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null;
+	let rec = token ? (Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null) : null;
       let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
+      if (!member && isExternal) member = assessmentPublicExternalMemberFromParams(params);
+      const memberForExternalData = assessmentPublicExternalTreatAsNewMember(params, member) ? null : member;
       const nameFromUrl = cleanCell(params.get('nome') || params.get('name') || '');
-      const displayName = nameFromUrl || (member ? playerFullName(member) : cleanCell(rec?.memberName || 'Socio Padel Village'));
+      const displayName = nameFromUrl || (memberForExternalData ? playerFullName(memberForExternalData) : cleanCell(rec?.memberName || 'Socio Padel Village'));
 
       const nameBox = document.getElementById('assessmentPublicPlayerName');
       if (nameBox) nameBox.textContent = displayName;
@@ -26275,10 +26309,11 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       const form = document.getElementById('assessmentPublicForm');
       if (form) {
         form.dataset.token = token;
-        if (rec?.memberId) form.dataset.memberId = String(rec.memberId);
+        if (rec?.memberId || memberForExternalData?.id) form.dataset.memberId = String(rec?.memberId || memberForExternalData.id);
+        else delete form.dataset.memberId;
       }
-      assessmentPublicConfigureExternalData(member, params);
-      if (hasAssessmentPublicSubmitted(token)) {
+      assessmentPublicConfigureExternalData(memberForExternalData, params);
+      if (token && hasAssessmentPublicSubmitted(token)) {
         setTimeout(() => lockAssessmentPublicSubmitButton('Autovalutazione già inviata'), 0);
       }
 
