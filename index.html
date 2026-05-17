@@ -216,7 +216,7 @@
     .admin-section-tab { display:flex; align-items:center; justify-content:flex-start; min-height:44px; border:1px solid #dfe8f3; border-radius:8px; background:#fff; color:#344054; padding:10px 12px; font-weight:900; text-align:left; }
     .admin-section-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(35,79,145,.16); }
     .admin-section-panel[hidden] { display:none !important; }
-    .admin-notification-layout { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr); gap:12px; align-items:start; }
+    .admin-notification-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; align-items:start; }
     .admin-box { border:1px solid #dfe8f3; border-radius:8px; background:#fff; overflow:hidden; min-width:0; }
     .admin-box-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid #dfe8f3; background:#f8fbff; }
     .admin-box-title { color:var(--primary); font-size:16px; font-weight:900; line-height:1.15; }
@@ -233,6 +233,8 @@
     .admin-preview-row:last-child { border-bottom:0; padding-bottom:0; }
     .admin-preview-label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
     .admin-preview-value { color:#111827; font-weight:850; overflow-wrap:anywhere; }
+    .admin-notification-preview-line { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; color:#344054; font-weight:850; line-height:1.4; overflow-wrap:anywhere; }
+    .admin-notification-preview-line strong { color:#111827; font-weight:900; }
     .admin-session-panel { display:grid; gap:12px; }
     .admin-session-permissions { border:1px solid #dfe8f3; border-radius:8px; background:#fff; padding:12px; }
     .admin-session-permissions h3 { margin:0 0 8px; color:var(--primary); font-size:16px; }
@@ -5233,18 +5235,12 @@ body.assessment-public-mode .assessment-public-only-card {
 
         <div id="pmoAdminNotificationsSection" class="admin-section-panel" data-pmo-admin-section="notifications" hidden>
           <div class="admin-panel" id="pmoStaffNotificationsPanel" data-admin-anchor="notifiche-staff">
-            <div class="admin-panel-head">
-              <div>
-                <h3>Notifiche staff</h3>
-                <p>Destinatari interni per le conferme livello.</p>
-              </div>
-            </div>
             <div class="admin-notification-layout">
               <div class="admin-box">
                 <div class="admin-box-head">
                   <div>
                     <div class="admin-box-title">Configurazione destinatari</div>
-                    <div class="admin-box-subtitle">Gestione dei destinatari interni attivi.</div>
+                    <div class="admin-box-subtitle">Gestione globale usata dopo la conferma livello in Autovalutazione.</div>
                   </div>
                 </div>
                 <div class="admin-box-body">
@@ -5267,13 +5263,9 @@ body.assessment-public-mode .assessment-public-only-card {
                   </div>
                 </div>
                 <div class="admin-box-body">
-                  <div class="admin-preview-list">
-                    <div class="admin-preview-row"><div class="admin-preview-label">Oggetto</div><div class="admin-preview-value">Livello validato - Giulia Rossi</div></div>
-                    <div class="admin-preview-row"><div class="admin-preview-label">Nome</div><div class="admin-preview-value">Giulia Rossi</div></div>
-                    <div class="admin-preview-row"><div class="admin-preview-label">Livello</div><div class="admin-preview-value">1.5</div></div>
-                    <div class="admin-preview-row"><div class="admin-preview-label">Sesso</div><div class="admin-preview-value">Femmina</div></div>
-                    <div class="admin-preview-row"><div class="admin-preview-label">Telefono</div><div class="admin-preview-value">+39 333 000 0000</div></div>
-                    <div class="admin-preview-row"><div class="admin-preview-label">Email</div><div class="admin-preview-value">giulia.rossi@example.com</div></div>
+                  <div class="admin-notification-preview-line">
+                    <span><strong>Oggetto:</strong> Livello validato - Giulia Rossi</span>
+                    <span><strong>Dati:</strong> Giulia Rossi · Livello 1.5 · Femmina · +39 333 000 0000 · giulia.rossi@example.com</span>
                   </div>
                 </div>
               </div>
@@ -5567,7 +5559,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.455';
+    const APP_VERSION = '5.456';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
