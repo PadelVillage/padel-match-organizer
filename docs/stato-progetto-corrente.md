@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 00:45
+Ultimo aggiornamento: 2026-05-18 00:54
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.474 | `test-preview` | `4dc8f9e` |
-| TEST sviluppo | v5.474 | `test/accessi-staff-guidati` | `4dc8f9e` |
+| TEST | v5.475 | `test-preview` | `8c39413` |
+| TEST sviluppo | v5.475 | `test/accessi-staff-guidati` | `8c39413` |
+
+Nota TEST v5.475: collegata la configurazione `Amministrazione > Notifiche staff` alla validazione livello Autovalutazione. Il punto unico `applyAssessmentLevel()` ora, dopo l'applicazione del livello, invia automaticamente le notifiche staff agli indirizzi attivi configurati e mantiene l'invio automatico della conferma livello al socio. La regola vale sia per schede arrivate dal lotto email sia per richieste da `Scheda pubblica > Link esterno`, perche' entrambe passano dalla stessa applicazione livello. Le notifiche staff usano la funzione email esistente `assessment-email-send` in modalita `level-email`, senza nuove Edge Function, SQL o scheduler; in TEST resta attiva la protezione destinatari. Commit app `8c39413`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint o WhatsApp automatico.
 
 Nota TEST v5.474: aggiunta nella tab `Storico` Autovalutazione, tabella `Richieste da link esterno`, l'azione manuale `Invia conferma email` dopo che il livello del socio collegato risulta applicato/validato e l'email e' valida. Se la conferma livello e' gia stata inviata, la riga mostra `Reinvia conferma email` riusando la funzione esistente `assessmentEmailSendLevelConfirmation`. La richiesta ancora `Agganciata / Da validare` continua invece a mostrare `Controlla livello`, per evitare invii prima della validazione staff. Commit app `4dc8f9e`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
