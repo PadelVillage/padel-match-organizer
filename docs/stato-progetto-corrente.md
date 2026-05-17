@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 00:13
+Ultimo aggiornamento: 2026-05-18 00:22
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.470 | `test-preview` | `cd33a00` |
-| TEST sviluppo | v5.470 | `test/accessi-staff-guidati` | `cd33a00` |
+| TEST | v5.471 | `test-preview` | `6a3b0e7` |
+| TEST sviluppo | v5.471 | `test/accessi-staff-guidati` | `6a3b0e7` |
+
+Nota TEST v5.471: corretto il segnale del `Cruscotto mattutino` per le richieste `Autovalutazione > Scheda pubblica > Link esterno`. Dopo il refresh delle richieste da Supabase, la app ridisegna tutti i pannelli Autovalutazione e non solo lo Storico; inoltre le richieste link esterno operative vengono conteggiate nel totale azioni del `Cruscotto mattutino`. Una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene quindi segnalata anche dalla tab/box del cruscotto. Commit app `6a3b0e7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.470: corretto `Amministrazione > Dati Matchpoint > Stato routine automatiche`. Il pannello ora legge i riepiloghi cloud `matchpoint_data` quando viene aperta la sezione e, se il cloud e' piu recente della cronologia locale del browser, sincronizza in locale clienti, prenotazioni future e storico senza rilanciare Matchpoint. In TEST la UI mostra chiaramente `TEST manuale` e `Manuale in TEST`, perche' lo scheduler automatico TEST resta disattivato per policy; l'automazione resta prevista solo in PROD. Verifica read-only TEST: riepiloghi cloud Matchpoint presenti al 2026-05-17 21:54-21:57 UTC, mentre il browser poteva mostrare date locali vecchie. Commit app `cd33a00`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
