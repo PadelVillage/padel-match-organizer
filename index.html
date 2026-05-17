@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.475';
+    const APP_VERSION = '5.476';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -10534,8 +10534,10 @@ Grazie.`
         ? `<div class="member-source-line"><span>Disponibilita</span><strong>Salvata nelle preferenze operative</strong></div>
            <div class="member-source-line"><span>Origine</span><strong>${escapeHtml(memberAvailabilityProfile.source || 'scheda socio')}${availabilityUpdated ? ' · ' + escapeHtml(availabilityUpdated) : ''}</strong></div>`
         : `<div class="member-source-line"><span>Disponibilita</span><strong>Nessuna disponibilita dichiarata</strong></div>`;
-      const assessmentRec = getAssessmentTokenRecord(g.id);
-      const assessmentResponse = assessmentRec?.token ? getAssessmentResponseByToken(assessmentRec.token) : null;
+      const assessmentInfo = assessmentRecordFor(g);
+      const assessmentRec = assessmentInfo.rec;
+      const assessmentResponse = assessmentInfo.response;
+      const assessmentApplied = assessmentEmailMemberApplied(g, assessmentInfo);
       const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(g, assessmentResponse, assessmentRec);
       const levelEmailText = levelEmailSentAt ? `Email inviata ${assessmentEmailFormatDateTime(levelEmailSentAt)}` : 'Email da inviare';
       const levelEmailButton = levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email';
@@ -10549,7 +10551,37 @@ Grazie.`
       const restoreLevelButton = needsLevelRestore
         ? `<button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentRestoreValidatedLevel('${escapeHtml(String(g.id))}')">Ripristina livello validato</button>`
         : '';
-      const assessmentMeta = g.selfAssessmentToken
+      const pendingAssessmentMeta = assessmentResponse && !assessmentApplied
+        ? `<section class="member-panel" id="memberAssessmentValidationPanel">
+            <div class="member-panel-head">
+              <h4>Autovalutazione da validare</h4>
+              <span class="badge ${assessmentInfo.review ? 'badge-warning' : 'badge-info'}">${assessmentInfo.review ? 'Da controllare' : 'Da validare'}</span>
+            </div>
+            <div class="member-source-lines">
+              <div class="member-source-line"><span>Ricevuta</span><strong>${escapeHtml(assessmentEmailFormatDateTime(assessmentResponse.submitted_at || assessmentRec?.completedAt || assessmentRec?.sentAt || ''))}</strong></div>
+              <div class="member-source-line"><span>Dichiarato</span><strong>${escapeHtml(assessmentResponse.declared_level || '-')}</strong></div>
+              <div class="member-source-line"><span>Calcolato</span><strong>${escapeHtml(assessmentResponse.calculated_level || assessmentResponse.declared_level || '-')}</strong></div>
+              <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(assessmentResponse.consistency_status || '-')}</strong></div>
+            </div>
+            ${renderAssessmentExternalSourceSummary(assessmentResponse, { empty:'' })}
+            ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(assessmentResponse), { empty:'<div class="assessment-availability-box"><strong>Disponibilita dichiarata</strong><br><span class="muted">Disponibilita non ricevuta in questa risposta.</span></div>' })}
+            <div class="member-form-grid" style="margin-top:12px;">
+              <div><label>Livello dichiarato</label><input id="memberAssessmentDeclared" type="number" min="0" max="7" step="0.5" value="${escapeHtml(assessmentResponse.declared_level || '')}" /></div>
+              <div><label>Livello da applicare</label><input id="memberAssessmentCalculated" type="number" min="0" max="7" step="0.5" value="${escapeHtml(assessmentResponse.calculated_level || assessmentResponse.declared_level || '')}" /></div>
+              <div><label>Coerenza</label><select id="memberAssessmentCoherence">
+                <option value="high" ${assessmentResponse.consistency_status === 'high' ? 'selected' : ''}>high</option>
+                <option value="medium" ${assessmentResponse.consistency_status === 'medium' ? 'selected' : ''}>medium</option>
+                <option value="low" ${assessmentResponse.consistency_status === 'low' ? 'selected' : ''}>low</option>
+              </select></div>
+              <div class="full"><label>Note staff</label><textarea id="memberAssessmentNotes" rows="3" placeholder="Motivo della modifica, osservazioni, conferma manuale...">${escapeHtml(assessmentResponse.staff_notes || '')}</textarea></div>
+            </div>
+            <div class="actions" style="margin-top:10px;">
+              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); saveMemberAssessmentValidationFromCard('${escapeHtml(String(g.id))}', false)">Salva modifica</button>
+              <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberAssessmentValidationFromCard('${escapeHtml(String(g.id))}', true)">Valida livello</button>
+            </div>
+          </section>`
+        : '';
+      const assessmentMeta = pendingAssessmentMeta || (g.selfAssessmentToken || assessmentApplied
         ? `<section class="member-panel">
             <div class="member-panel-head">
               <h4>Autovalutazione</h4>
@@ -10571,7 +10603,7 @@ Grazie.`
               <span class="badge badge-muted">Non applicata</span>
             </div>
             <div class="member-source-lines">${availabilitySource}</div>
-          </section>`;
+          </section>`);
       const initials = `${cleanCell(g.firstName || '').charAt(0)}${cleanCell(g.surname || '').charAt(0)}`.toLocaleUpperCase('it-IT') || 'PV';
       card.style.display = 'block';
       card.className = 'member-card member-card-optimized';
@@ -10665,6 +10697,16 @@ Grazie.`
         </div>
       `;
       overlay.scrollTop = 0;
+      if (options.focusAssessment) {
+        setTimeout(() => {
+          const target = document.getElementById('memberAssessmentValidationPanel');
+          if (!target) return;
+          target.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
+          const previousShadow = target.style.boxShadow;
+          target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.22)';
+          setTimeout(() => { target.style.boxShadow = previousShadow || ''; }, 2200);
+        }, 0);
+      }
       if (typeof flashAnchor === 'function') flashAnchor(overlay);
     }
     function saveMemberCard(memberId) {
@@ -19199,7 +19241,7 @@ Grazie!`
         actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentExternalLinkExistingMember('${key}')">Aggancia a socio esistente</button>`);
       }
       if (member || status === 'member_created' || status === 'linked') {
-        actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Controlla livello</button>`);
+        actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Valida livello</button>`);
       }
       if (member) {
         const info = assessmentRecordFor(member);
@@ -19209,7 +19251,6 @@ Grazie!`
           actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(member.id))}')">${confirmationLabel}</button>`);
         }
       }
-      if (member) actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(member.id))}')">Scheda socio</button>`);
       return actions.join('') || '<span class="muted">Nessuna azione</span>';
     }
     function assessmentExternalMemberForRequest(row = {}) {
@@ -19368,7 +19409,7 @@ Grazie!`
       updateStats();
       assessmentExternalAfterOperationalChange();
       showAlert(`✅ Scheda socio creata: ${playerFullName(member)} · ${member.memberId}`, 'success');
-      setTimeout(() => openAssessmentResponseEditor(member.id), 120);
+      setTimeout(() => assessmentOpenMemberValidation(member.id), 120);
     }
     async function assessmentExternalLinkExistingMember(requestId) {
       const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
@@ -19392,7 +19433,7 @@ Grazie!`
       await assessmentExternalUpdateCloud(row, 'linked', member, 'Richiesta link esterno agganciata a socio esistente');
       assessmentExternalAfterOperationalChange();
       showAlert(`✅ Richiesta agganciata a ${playerFullName(member)}.`, 'success');
-      setTimeout(() => openAssessmentResponseEditor(member.id), 120);
+      setTimeout(() => assessmentOpenMemberValidation(member.id), 120);
     }
     function assessmentExternalOpenLevelCheck(requestId) {
       const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
@@ -19402,7 +19443,10 @@ Grazie!`
       assessmentExternalEnsureAssessmentForMember(row, member);
       assessmentExternalCompactLocalCache();
       renderAssessmentEmailPanels();
-      openAssessmentResponseEditor(member.id);
+      assessmentOpenMemberValidation(member.id);
+    }
+    function assessmentOpenMemberValidation(memberId, options = {}) {
+      assessmentOpenMemberCard(memberId, { ...options, force:true, focusAssessment:true });
     }
     async function assessmentExternalMarkValidated(response = {}, member = null) {
       const raw = normalizeAssessmentRawResponse(response.raw_response || {});
@@ -23475,6 +23519,35 @@ Per confermare scrivi ELIMINA.`);
       showAlert('✅ Scheda valutazione aggiornata. Puoi applicare il livello corretto quando vuoi.', 'success');
       if (applyAfterSave) applyAssessmentLevel(memberId);
     }
+    async function saveMemberAssessmentValidationFromCard(memberId, applyAfterSave) {
+      const member = giocatori.find(g => String(g.id) === String(memberId));
+      const rec = getAssessmentTokenRecord(memberId);
+      const response = rec ? getAssessmentResponseByToken(rec.token) : null;
+      if (!member || !rec || !response) return showAlert('❌ Risposta non trovata', 'danger');
+      const declared = cleanCell(document.getElementById('memberAssessmentDeclared')?.value || '');
+      const calculated = cleanCell(document.getElementById('memberAssessmentCalculated')?.value || '');
+      const coherence = cleanCell(document.getElementById('memberAssessmentCoherence')?.value || 'medium');
+      const notes = cleanCell(document.getElementById('memberAssessmentNotes')?.value || '');
+      const previousLevel = response.calculated_level || response.declared_level || '';
+      const level = parseFloat(String(calculated || declared).replace(',', '.'));
+      if (isNaN(level) || level < 0 || level > 7) return showAlert('❌ Inserisci un livello valido tra 0 e 7.', 'danger');
+      response.declared_level = declared;
+      response.calculated_level = String(level);
+      response.consistency_status = coherence;
+      response.staff_status = assessmentNextStaffStatus(response, previousLevel, level);
+      response.staff_notes = notes;
+      response.staff_edited_at = new Date().toISOString();
+      save('assessmentResponses', assessmentResponses);
+      if (applyAfterSave) {
+        const result = await applyAssessmentLevel(memberId, { suppressMemberCard:true });
+        try { openMemberCard(memberId, { force:true }); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
+        return result;
+      }
+      displayAssessment();
+      try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
+      try { openMemberCard(memberId, { force:true, focusAssessment:true }); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
+      showAlert('✅ Scheda valutazione aggiornata. Puoi validare il livello dalla scheda socio.', 'success');
+    }
 
     function downloadText(text, filename, type) {
       try {
@@ -24165,6 +24238,7 @@ Per confermare scrivi ELIMINA.`);
       return String(Math.round(diff * 10) / 10);
     }
     function assessmentEmailIsAutoApplicable(response) {
+      if (assessmentPublicPayloadIsExternal(response || {})) return false;
       const diff = assessmentEmailLevelDiff(response);
       return diff !== null && diff <= 0.5 && normalizeText(response?.consistency_status || '') !== 'low';
     }
@@ -24181,7 +24255,15 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailMemberApplied(member, info) {
       if (assessmentEmailHasNewerOpenCycle(member, info)) return false;
-      return !!(info?.response && (info.applied || assessmentMemberHasAppliedLevel(member, info.rec, info.response) || normalizeText(info.response.staff_status || '') === 'applied'));
+      if (!info?.response) return false;
+      const recToken = normalizeText(info.rec?.token || '');
+      const responseToken = normalizeText(info.response.token || '');
+      const memberToken = normalizeText(member?.selfAssessmentToken || '');
+      const currentResponseApplied = normalizeText(info.response.staff_status || '') === 'applied'
+        || !!info.response.applied_at
+        || String(info.response.applied_member_id || '') === String(member?.id || '')
+        || (!!recToken && responseToken === recToken && memberToken === recToken);
+      return !!(info.applied || currentResponseApplied);
     }
     function assessmentCurrentOperatorName() {
       return cleanCell(
@@ -25123,10 +25205,10 @@ Per confermare scrivi ELIMINA.`);
       } else if (response && !applied) {
         routine = { label:'Stop', cls:'ok', detail:'Scheda compilata' };
         phase = { label:'Da validare', cls:'warn', detail:'' };
-        nextStep = 'Controlla livello';
+        nextStep = 'Valida livello';
         nextWindow = { label:'Nessun richiamo', detail:'' };
         stopAlert = 'Scheda compilata';
-        actions = `${assessmentProcessButton('Controlla livello', 'warn', `openAssessmentResponseEditor('${escapeJs(String(member.id || ''))}')`)}${detailAction}`;
+        actions = `${assessmentProcessButton('Valida livello', 'warn', `assessmentOpenMemberValidation('${escapeJs(String(member.id || ''))}')`)}`;
       } else if (bounced || noEmail) {
         routine = { label:'Problema', cls:'err', detail:bounced ? 'Mancata consegna' : 'Email mancante' };
         phase = { label:'Problema email', cls:'err', detail:'' };
@@ -25250,14 +25332,14 @@ Per confermare scrivi ELIMINA.`);
           today: assessmentProcessDateIsToday(row.response?.submitted_at),
           routine: { label:'OK', cls:'ok', detail:'Scheda ricevuta' },
           phase: { label:'Da controllare', cls:auto ? 'ok' : 'warn', detail:auto ? 'Chiusura automatica' : diff },
-          nextStep: 'Controlla livello',
+          nextStep: auto ? 'Chiusura automatica' : 'Valida livello',
           contact: assessmentEmailHistoryChannelLabel(row),
           lastEvent: assessmentProcessLastEvent(row),
           sends: String(assessmentProcessSentCount(row) || '-'),
           response: { label:'Scheda ricevuta', cls:'ok', detail:assessmentEmailFormatDateTime(row.response?.submitted_at) },
           level: row.response?.calculated_level || row.response?.declared_level || row.member.level || '-',
           matchpoint: { label:'-', cls:'muted', detail:'' },
-          actions: assessmentProcessButton('Controlla livello', auto ? 'success' : 'warn', `openAssessmentResponseEditor('${escapeJs(String(row.member.id))}')`)
+          actions: assessmentProcessButton(auto ? 'Chiudi ora' : 'Valida livello', auto ? 'success' : 'warn', auto ? `applyAssessmentLevel('${escapeJs(String(row.member.id))}')` : `assessmentOpenMemberValidation('${escapeJs(String(row.member.id))}')`)
         });
       });
       assessmentExternalRequestsForMorning().forEach((request, index) => {
@@ -25274,7 +25356,7 @@ Per confermare scrivi ELIMINA.`);
           routine: { label:'Storico', cls:'info', detail:'Link esterno' },
           phase: { label:assessmentExternalStatusLabel(request), cls:assessmentExternalStatusClass(request), detail:duplicateText },
           lastSend: { label:assessmentEmailFormatDateTime(request.submitted_at), detail:'Ricevuta' },
-          nextStep: status === 'received' ? 'Aggancia o crea scheda' : 'Controlla livello',
+          nextStep: status === 'received' ? 'Aggancia o crea scheda' : 'Valida livello',
           nextWindow: { label:'Storico', detail:'Nuova richiesta' },
           stopAlert: duplicateText || assessmentPublicGenderStatus(request.gender || ''),
           contact: request.email || request.phone || '-',
@@ -26120,8 +26202,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Differenza">${assessmentEmailBadge(assessmentEmailDiffText(diff), auto ? 'ok' : 'warn')}</td>
           <td data-label="Esito proposto">${escapeHtml(auto ? 'Chiusura automatica attiva' : 'Controllo manuale necessario')}</td>
           <td data-label="Azioni"><div class="assessment-email-mini-actions">
-            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Chiudi ora' : 'Controlla'}</button>
-            <button class="assessment-email-mini" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(row.member.id))}')">Dettagli</button>
+            <button class="assessment-email-mini ${auto ? 'success' : 'warn'}" onclick="setActionAnchor(this); ${auto ? `applyAssessmentLevel('${escapeHtml(String(row.member.id))}')` : `assessmentOpenMemberValidation('${escapeHtml(String(row.member.id))}')`}">${auto ? 'Chiudi ora' : 'Valida livello'}</button>
           </div></td>
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
@@ -27128,8 +27209,8 @@ Per confermare scrivi ELIMINA.`);
           ? (info.applied
             ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(member.id))}')">${levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
             : (hasAvailabilityProfile(availabilityProfile)
-              ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica</button><button class="btn-primary small-btn" onclick="setActionAnchor(this); applyAssessmentLevel('${escapeHtml(String(member.id))}')">✅ Applica</button>`
-              : `<span class="badge badge-warning">Disponibilità mancanti</span><button class="btn-secondary small-btn" onclick="setActionAnchor(this); openAssessmentResponseEditor('${escapeHtml(String(member.id))}')">✏️ Modifica livello</button>`))
+              ? `<button class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentOpenMemberValidation('${escapeHtml(String(member.id))}')">Valida livello</button>`
+              : `<span class="badge badge-warning">Disponibilità mancanti</span><button class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentOpenMemberValidation('${escapeHtml(String(member.id))}')">Valida livello</button>`))
           : '';
         return `<div class="assessment-post-table-row assessment-post-row" data-member-id="${escapeHtml(String(member.id))}">
             <input type="checkbox" class="assessment-post-check" value="${escapeHtml(String(member.id))}" onchange="assessmentUpdatePostSelectedCount()" ${canResend || info.response ? '' : 'disabled'}/>
@@ -27531,7 +27612,7 @@ Per confermare scrivi ELIMINA.`);
       switchTab('members');
       setTimeout(() => {
         try {
-          openMemberCard(memberId);
+          openMemberCard(memberId, { force:options.force === true, focusAssessment:options.focusAssessment === true });
           const card = document.getElementById('memberCard');
           if (card) scrollMainContentToElement(card);
         } catch (err) {
