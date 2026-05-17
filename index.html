@@ -14,6 +14,17 @@
   <meta name="twitter:title" content="Padel Match Organizer" />
   <meta name="twitter:description" content="Padel Village" />
   <meta name="twitter:image" content="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" />
+  <script>
+    (function markPublicAccessBoot() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const assessment = String(params.get('assessment') || '').trim().toLowerCase();
+        const isAssessmentPublic = assessment === 'link-esterno' || String(params.get('t') || params.get('token') || '').trim();
+        const isFeedbackPublic = params.get('feedbackPartita') === '1' || params.get('postMatchFeedback') === '1' || params.get('feedback') === 'post_match';
+        if (isAssessmentPublic || isFeedbackPublic) document.documentElement.classList.add('pmo-public-access-boot');
+      } catch (err) {}
+    })();
+  </script>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4027,6 +4038,7 @@ body.assessment-public-mode .assessment-public-only-card {
       visibility:hidden;
       pointer-events:none;
     }
+    html.pmo-public-access-boot .pmo-login-overlay,
     body.pmo-auth-unlocked .pmo-login-overlay,
     body.assessment-public-mode .pmo-login-overlay {
       display:none !important;
@@ -5546,7 +5558,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.460';
+    const APP_VERSION = '5.461';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
