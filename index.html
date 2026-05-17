@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.466';
+    const APP_VERSION = '5.467';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18651,16 +18651,13 @@ Grazie!`
       };
       const completion = document.getElementById('assessmentExternalCompletion');
       if (completion) completion.hidden = false;
+      assessmentExternalStoreStaffPreviewSubmission(window.assessmentExternalStaffPreviewSubmission, { render:false });
       assessmentExternalSetMessage('questions', '');
       assessmentExternalSetStatus('Test inviato');
       setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
     }
-    function assessmentExternalOpenHistory() {
-      const submission = window.assessmentExternalStaffPreviewSubmission;
-      if (!submission) {
-        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
-        return;
-      }
+    function assessmentExternalStoreStaffPreviewSubmission(submission = window.assessmentExternalStaffPreviewSubmission, options = {}) {
+      if (!submission) return false;
       const testMember = assessmentExternalTestMember();
       assessmentExternalUpsertLocal([{
         id: 'staff-preview-pmo-000948',
@@ -18691,7 +18688,16 @@ Grazie!`
           answers: submission.answers || {}
         }
       }]);
-      renderAssessmentEmailHistoryPanel();
+      if (options.render !== false) renderAssessmentEmailHistoryPanel();
+      return true;
+    }
+    function assessmentExternalOpenHistory() {
+      const submission = window.assessmentExternalStaffPreviewSubmission;
+      if (!submission) {
+        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
+        return;
+      }
+      assessmentExternalStoreStaffPreviewSubmission(submission);
       setAssessmentEmailPanel('history');
       showAlert('✅ Evento link esterno aggiunto allo Storico locale TEST.', 'success');
     }
