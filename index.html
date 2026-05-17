@@ -5558,7 +5558,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.462';
+    const APP_VERSION = '5.463';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18763,7 +18763,7 @@ Grazie!`
       const incoming = (Array.isArray(rows) ? rows : []).map(assessmentExternalNormalizeRequest).filter(row => assessmentExternalRequestKey(row));
       const byKey = new Map((assessmentExternalRequests || []).map(row => [assessmentExternalRequestKey(row), assessmentExternalNormalizeRequest(row)]));
       incoming.forEach(row => byKey.set(assessmentExternalRequestKey(row), { ...(byKey.get(assessmentExternalRequestKey(row)) || {}), ...row }));
-      assessmentExternalRequests = Array.from(byKey.values()).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
+      assessmentExternalRequests = assessmentExternalCompactLocalRows(Array.from(byKey.values()));
       save('assessmentExternalRequests', assessmentExternalRequests);
       return assessmentExternalRequests;
     }
@@ -18830,7 +18830,26 @@ Grazie!`
         __duplicateRows: group.slice(1)
       })).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
     }
+    function assessmentExternalStripInternalFields(row = {}) {
+      const clean = { ...assessmentExternalNormalizeRequest(row) };
+      delete clean.__duplicateCount;
+      delete clean.__duplicateRows;
+      return clean;
+    }
+    function assessmentExternalCompactLocalRows(rows = []) {
+      return assessmentExternalDedupedRequests(rows).map(assessmentExternalStripInternalFields);
+    }
+    function assessmentExternalCompactLocalCache() {
+      const current = Array.isArray(assessmentExternalRequests) ? assessmentExternalRequests : [];
+      const compact = assessmentExternalCompactLocalRows(current);
+      if (compact.length !== current.length) {
+        assessmentExternalRequests = compact;
+        save('assessmentExternalRequests', assessmentExternalRequests);
+      }
+      return assessmentExternalRequests;
+    }
     function assessmentExternalRequestsForMorning() {
+      assessmentExternalCompactLocalCache();
       return assessmentExternalDedupedRequests().filter(row => {
         const status = cleanCell(row.status || '');
         return status !== 'validated' && status !== 'rejected';
@@ -25629,6 +25648,7 @@ Per confermare scrivi ELIMINA.`);
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
     }
     function assessmentExternalRequestsHistoryHtml() {
+      assessmentExternalCompactLocalCache();
       const rows = assessmentExternalDedupedRequests().slice(0, 50);
       const header = `<div class="assessment-email-section-block">
         <div class="assessment-email-panel-head compact">
