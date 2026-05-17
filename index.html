@@ -4753,9 +4753,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Archivio ricercabile dei giri chiusi: livelli applicati, auto-applicati e soci messi in pausa.</p>
               </div>
               <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); syncAssessmentExternalRequestsFromSupabase()">Aggiorna link esterno</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailClearHistoryFilters()">Pulisci filtri</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('L esportazione della vista storico sara collegata in una fase successiva.')">Esporta vista</button>
+                <button class="btn-primary small-btn" onclick="setActionAnchor(this); syncAssessmentExternalRequestsFromSupabase()">Aggiorna link esterno</button>
               </div>
             </div>
             <div id="assessmentEmailHistoryContent" class="assessment-email-content"></div>
@@ -5558,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.463';
+    const APP_VERSION = '5.464';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18813,22 +18811,106 @@ Grazie!`
       if (memberId) return `member:${memberId.toLocaleLowerCase('it-IT')}`;
       return `request:${assessmentExternalRequestKey(normalized)}`;
     }
+    function assessmentExternalRequestIdentityKeys(row = {}) {
+      const normalized = assessmentExternalNormalizeRequest(row);
+      const raw = normalizeAssessmentRawResponse(normalized.raw_response || {});
+      const keys = [];
+      const add = (prefix, value) => {
+        const clean = cleanCell(value || '').toLocaleLowerCase('it-IT');
+        if (clean && !keys.includes(`${prefix}:${clean}`)) keys.push(`${prefix}:${clean}`);
+      };
+      const addPhone = value => {
+        const phone = normalizePhone(value || '');
+        if (phone && !keys.includes(`phone:${phone}`)) keys.push(`phone:${phone}`);
+      };
+      add('email', normalized.email || raw.external_email || raw.email);
+      addPhone(normalized.phone || raw.phone || raw.external_phone);
+      const explicitMemberIds = [
+        normalized.created_member_local_id,
+        normalized.matched_member_local_id,
+        normalized.created_member_pmo_id,
+        raw.member_local_id,
+        raw.created_member_local_id,
+        raw.matched_member_local_id,
+        raw.member_id,
+        raw.memberId,
+        raw.pmo_id,
+        raw.pmoId
+      ];
+      explicitMemberIds.forEach(value => add('member', value));
+      const member = (giocatori || []).find(g => explicitMemberIds.some(value => {
+        const id = cleanCell(value || '');
+        return id && (String(g.id) === id || String(g.memberId) === id);
+      })) || null;
+      if (member) {
+        add('member', member.id);
+        add('member', member.memberId);
+        add('email', member.email);
+        addPhone(member.phone);
+      }
+      if (!keys.length) add('request', assessmentExternalRequestKey(normalized));
+      return keys;
+    }
+    function assessmentExternalRequestStatusRank(row = {}) {
+      const status = cleanCell(row.status || '');
+      const staff = cleanCell(row.staff_status || '');
+      if (status === 'validated') return 60;
+      if (status === 'member_created' || status === 'linked') return 50;
+      if (staff === 'da_controllare' || staff === 'review') return 35;
+      if (staff === 'da_completare') return 25;
+      if (status === 'received') return 20;
+      if (status === 'rejected') return 5;
+      return 10;
+    }
+    function assessmentExternalBestRequestInGroup(group = []) {
+      return [...group].sort((a,b) => {
+        const rankDiff = assessmentExternalRequestStatusRank(b) - assessmentExternalRequestStatusRank(a);
+        if (rankDiff) return rankDiff;
+        const memberDiff = (assessmentExternalMemberForRequest(b) ? 1 : 0) - (assessmentExternalMemberForRequest(a) ? 1 : 0);
+        if (memberDiff) return memberDiff;
+        return assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at);
+      })[0] || group[0];
+    }
     function assessmentExternalDedupedRequests(rows = null) {
       const source = (Array.isArray(rows) ? rows : (assessmentExternalRequests || []))
         .map(assessmentExternalNormalizeRequest)
         .filter(row => assessmentExternalRequestKey(row))
         .sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
-      const groups = new Map();
-      source.forEach(row => {
-        const key = assessmentExternalRequestContactKey(row);
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(row);
+      const parent = source.map((_, index) => index);
+      const find = index => {
+        while (parent[index] !== index) {
+          parent[index] = parent[parent[index]];
+          index = parent[index];
+        }
+        return index;
+      };
+      const union = (a,b) => {
+        const rootA = find(a);
+        const rootB = find(b);
+        if (rootA !== rootB) parent[rootB] = rootA;
+      };
+      const seen = new Map();
+      source.forEach((row, index) => {
+        assessmentExternalRequestIdentityKeys(row).forEach(key => {
+          if (seen.has(key)) union(index, seen.get(key));
+          else seen.set(key, index);
+        });
       });
-      return Array.from(groups.values()).map(group => ({
-        ...group[0],
-        __duplicateCount: Math.max(0, group.length - 1),
-        __duplicateRows: group.slice(1)
-      })).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
+      const groups = new Map();
+      source.forEach((row, index) => {
+        const root = find(index);
+        if (!groups.has(root)) groups.set(root, []);
+        groups.get(root).push(row);
+      });
+      return Array.from(groups.values()).map(group => {
+        const best = assessmentExternalBestRequestInGroup(group);
+        const duplicates = group.filter(row => assessmentExternalRequestKey(row) !== assessmentExternalRequestKey(best));
+        return {
+          ...best,
+          __duplicateCount: Math.max(0, group.length - 1),
+          __duplicateRows: duplicates
+        };
+      }).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
     }
     function assessmentExternalStripInternalFields(row = {}) {
       const clean = { ...assessmentExternalNormalizeRequest(row) };
@@ -18842,11 +18924,27 @@ Grazie!`
     function assessmentExternalCompactLocalCache() {
       const current = Array.isArray(assessmentExternalRequests) ? assessmentExternalRequests : [];
       const compact = assessmentExternalCompactLocalRows(current);
-      if (compact.length !== current.length) {
+      if (compact.length !== current.length || !sameData(compact, current)) {
         assessmentExternalRequests = compact;
         save('assessmentExternalRequests', assessmentExternalRequests);
       }
       return assessmentExternalRequests;
+    }
+    function assessmentExternalScheduleHistoryRefresh(options = {}) {
+      const force = options.force === true;
+      const now = Date.now();
+      const last = parseInt(window.__assessmentExternalRequestsLastSyncAt || 0, 10) || 0;
+      if (!force && now - last < 15000) return;
+      window.__assessmentExternalRequestsLastSyncAt = now;
+      clearTimeout(window.__assessmentExternalRequestsRefreshTimer);
+      window.__assessmentExternalRequestsRefreshTimer = setTimeout(() => {
+        syncAssessmentExternalRequestsFromSupabase({ silent:true });
+      }, 120);
+    }
+    function assessmentExternalAfterOperationalChange() {
+      assessmentExternalCompactLocalCache();
+      renderAssessmentEmailPanels();
+      assessmentExternalScheduleHistoryRefresh({ force:true });
     }
     function assessmentExternalRequestsForMorning() {
       assessmentExternalCompactLocalCache();
@@ -19033,7 +19131,7 @@ Grazie!`
       await assessmentExternalUpdateCloud(row, 'member_created', member, 'Scheda socio creata da richiesta link esterno');
       displayMembers();
       updateStats();
-      renderAssessmentEmailPanels();
+      assessmentExternalAfterOperationalChange();
       showAlert(`✅ Scheda socio creata: ${playerFullName(member)} · ${member.memberId}`, 'success');
       setTimeout(() => openAssessmentResponseEditor(member.id), 120);
     }
@@ -19057,7 +19155,7 @@ Grazie!`
       row.matched_member_local_id = member.id;
       assessmentExternalUpsertLocal([row]);
       await assessmentExternalUpdateCloud(row, 'linked', member, 'Richiesta link esterno agganciata a socio esistente');
-      renderAssessmentEmailPanels();
+      assessmentExternalAfterOperationalChange();
       showAlert(`✅ Richiesta agganciata a ${playerFullName(member)}.`, 'success');
       setTimeout(() => openAssessmentResponseEditor(member.id), 120);
     }
@@ -19067,6 +19165,8 @@ Grazie!`
       const member = assessmentExternalMemberForRequest(row);
       if (!member) return showAlert('⚠️ Prima crea la scheda socio o aggancia la richiesta a un socio esistente.', 'warning');
       assessmentExternalEnsureAssessmentForMember(row, member);
+      assessmentExternalCompactLocalCache();
+      renderAssessmentEmailPanels();
       openAssessmentResponseEditor(member.id);
     }
     async function assessmentExternalMarkValidated(response = {}, member = null) {
@@ -19081,6 +19181,7 @@ Grazie!`
         assessmentExternalUpsertLocal([row]);
       }
       await assessmentExternalUpdateCloud({ id:requestId }, 'validated', member, 'Livello validato internamente');
+      assessmentExternalAfterOperationalChange();
     }
     function openAssessmentTestLink(link) {
       const url = cleanCell(link || '');
@@ -25343,6 +25444,7 @@ Per confermare scrivi ELIMINA.`);
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === window.assessmentEmailActivePanel));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
       renderAssessmentEmailPanels();
+      if (window.assessmentEmailActivePanel === 'history') assessmentExternalScheduleHistoryRefresh();
     }
     function assessmentEmailPanelFromAnchorKey(key) {
       if (key.includes('cruscotto') || key.includes('mattutino')) return 'morning';
@@ -25680,10 +25782,6 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailHistoryPanel(options={}) {
       const box = document.getElementById('assessmentEmailHistoryContent');
       if (!box) return;
-      if (!window.__assessmentExternalRequestsAutoSyncStarted) {
-        window.__assessmentExternalRequestsAutoSyncStarted = true;
-        setTimeout(() => syncAssessmentExternalRequestsFromSupabase({ silent:true }), 0);
-      }
       const activeEl = document.activeElement;
       const preserveSearchFocus = !!(options.preserveFocus && activeEl?.id === 'assessmentHistorySearch');
       const selectionStart = preserveSearchFocus ? activeEl.selectionStart : null;
