@@ -25,19 +25,19 @@ Migrazione TEST applicata: `supabase/migrations/20260517132138_pmo_assessment_ex
 
 Nessuna modifica a Edge Function, scheduler, segreti PROD, Gmail reale, Matchpoint, WhatsApp automatico, dati reali o PROD.
 
-## Nota UI TEST v5.448 - 2026-05-17 14:08
+## Nota UI TEST/PROD v5.448 - 2026-05-17 14:36
 
 Corretto il routing del link pubblico `Autovalutazione > Scheda pubblica > Link esterno`.
 
 Comportamento aggiornato:
 
 - una URL con `assessment=link-esterno` viene riconosciuta come accesso pubblico prima della login staff;
-- il link TEST `https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948` apre il flusso pubblico/registrazione/autovalutazione e non la schermata login `Padel Match Organizer`;
+- il link PROD `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno` e il link TEST `https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948` aprono il flusso pubblico/registrazione/autovalutazione e non la schermata login `Padel Match Organizer`;
 - la app gestionale normale senza `assessment=link-esterno` mantiene la login staff invariata;
 - `PMO-000948` resta trattato come caso test del flusso Link esterno e puo mostrare la registrazione pubblica per collaudo;
 - non viene integrato un backend nuovo per la registrazione reale di nuovi utenti esterni senza token, che resta fuori perimetro.
 
-Nessuna modifica a Edge Function, SQL, scheduler, Supabase schema, segreti PROD, Gmail reale, Matchpoint, WhatsApp automatico, dati reali o PROD.
+Promossa in PROD il 2026-05-17 con sola app UI + documentazione. Nessuna modifica a Edge Function, SQL, scheduler, Supabase schema, segreti PROD, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
 
 ## Nota UI TEST v5.447 - 2026-05-17 13:28
 
@@ -53,7 +53,7 @@ Comportamento aggiornato:
 
 Non e' stato integrato il nuovo layout completo della schermata pubblica, ne' sono state introdotte nuove logiche di registrazione, privacy, salvataggio o riconoscimento utente.
 
-Nota di verifica: il branch `test-preview` contiene i meta corretti. La preview reale del link pubblico `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno` cambiera solo dopo promozione PROD, perche il link pubblico radice e' servito da `main`. La pagina TEST `/test/autovalutazione.html` e' un loader del canale TEST; per link preview esterne il controllo affidabile prima della promozione e' il contenuto raw del branch `test-preview`.
+Nota di verifica: il branch `test-preview` contiene i meta corretti. La preview reale del link pubblico `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno` e' stata portata in PROD con la promozione v5.448, perche il link pubblico radice e' servito da `main`. La pagina TEST `/test/autovalutazione.html` e' un loader del canale TEST; per link preview esterne il controllo affidabile prima della promozione era il contenuto raw del branch `test-preview`.
 
 Nessuna modifica a Edge Function, SQL, scheduler, Supabase schema, segreti PROD, Gmail reale, Matchpoint, WhatsApp automatico, dati reali o PROD.
 
