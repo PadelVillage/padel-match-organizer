@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 23:01
+Ultimo aggiornamento: 2026-05-17 23:14
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.465 | `test-preview` | `bca77fb` |
-| TEST sviluppo | v5.465 | `test/accessi-staff-guidati` | `bca77fb` |
+| TEST | v5.466 | `test-preview` | `a080396` |
+| TEST sviluppo | v5.466 | `test/accessi-staff-guidati` | `a080396` |
+
+Nota TEST v5.466: corretto lo `Storico` Autovalutazione per i nuovi invii da `Scheda pubblica > Link esterno` dello stesso contatto. La deduplica continua a mostrare una sola riga per persona/socio, ma ora sceglie prima la richiesta piu recente e usa lo stato operativo piu avanzato solo come spareggio a pari data: un nuovo test su `PMO-000948` non resta nascosto dietro una vecchia richiesta gia agganciata. Commit app `a080396`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.465: quando lo staff entra nella sezione `Autovalutazione`, la app avvia un refresh automatico read-only dei dati della sezione: importa log cloud email Autovalutazione, aggiorna le richieste `Link esterno`, legge eventuali risposte scheda da Supabase e ridisegna i pannelli. Il refresh automatico non auto-applica livelli, non invia email di conferma, non avvia routine e non modifica dati cloud; resta un aggiornamento silenzioso dei dati locali/visibili. Commit app `bca77fb`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
