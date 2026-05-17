@@ -4411,13 +4411,8 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
         </button>
 
-        <button class="tab-button side-nav-main-item" onclick="switchTab('routines', this)">
-          <span class="nav-order">6</span>
-          <span class="nav-copy"><span class="nav-main">Routine</span><span class="nav-sub">Automazioni e cloud</span></span>
-        </button>
-
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
-          <span class="nav-order">7</span>
+          <span class="nav-order">6</span>
           <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti, dati e controlli</span></span>
           <span class="nav-caret">▾</span>
         </button>
@@ -4425,7 +4420,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
-          <button class="side-sub-link" onclick="goToTabSection('administration','Sessione')">Sessione</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
@@ -5223,7 +5217,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title">
           <h2>Amministrazione</h2>
-          <p>Utenti, notifiche staff, dati Matchpoint, sessione e controlli tecnici separati.</p>
+          <p>Utenti, notifiche staff, dati Matchpoint e controlli tecnici separati.</p>
         </div>
 
         <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
@@ -5556,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.471';
+    const APP_VERSION = '5.472';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7315,7 +7309,6 @@ Grazie.`
         'backup dati': '#anchor-matchpoint-backup',
         'slot potenziali matchpoint': '#anchor-matchpoint-slot-potenziali',
         'routine dati': '#anchor-matchpoint-routine',
-        'sessione': '#pmoAdminSessionPanel',
         'supabase': '#pmoSupabaseDiagnosticsPanel',
         'controlli tecnici': '#pmoSupabaseDiagnosticsPanel',
         'verifica test prod': '#pmoSupabaseDiagnosticsPanel',
@@ -7349,7 +7342,7 @@ Grazie.`
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
-        else if (key.includes('sessione')) pmoSetAdminSection('session', { silent:true });
+        else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
         else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
       }
@@ -7548,6 +7541,10 @@ Grazie.`
       if (tabName === 'groups') tabName = 'members';
       if (tabName === 'matchpoint') {
         if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('matchpoint-data', { silent:true });
+        tabName = 'administration';
+      }
+      if (tabName === 'routines') {
+        if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('supabase', { silent:true });
         tabName = 'administration';
       }
       const renderId = ++tabSwitchRenderId;
@@ -21895,10 +21892,10 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'matchpoint-data', 'session', 'supabase'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'supabase'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
-	      if (key.includes('session')) return 'session';
+	      if (key.includes('session')) return 'users';
 	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
 	      return 'users';
 	    }
