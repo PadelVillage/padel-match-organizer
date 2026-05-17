@@ -212,7 +212,7 @@
     .admin-panel-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .admin-panel-head h3 { margin:0 0 4px; color:var(--primary); }
     .admin-panel-head p { margin:0; color:#667085; }
-    .admin-section-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:12px 0 14px; }
+    .admin-section-tabs { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin:12px 0 14px; }
     .admin-section-tab { display:flex; align-items:center; justify-content:flex-start; min-height:44px; border:1px solid #dfe8f3; border-radius:8px; background:#fff; color:#344054; padding:10px 12px; font-weight:900; text-align:left; }
     .admin-section-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(35,79,145,.16); }
     .admin-section-panel[hidden] { display:none !important; }
@@ -4390,29 +4390,25 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
-        <button class="tab-button side-nav-main-item" onclick="switchTab('matchpoint', this)">
-          <span class="nav-order">5</span>
-          <span class="nav-copy"><span class="nav-main">DATI (in/out)</span><span class="nav-sub">Matchpoint e backup</span></span>
-        </button>
-
         <button class="tab-button side-nav-main-item" onclick="switchTab('contact', this)">
-          <span class="nav-order">6</span>
+          <span class="nav-order">5</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
         </button>
 
         <button class="tab-button side-nav-main-item" onclick="switchTab('routines', this)">
-          <span class="nav-order">7</span>
+          <span class="nav-order">6</span>
           <span class="nav-copy"><span class="nav-main">Routine</span><span class="nav-sub">Automazioni e cloud</span></span>
         </button>
 
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
-          <span class="nav-order">8</span>
-          <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti e controlli tecnici</span></span>
+          <span class="nav-order">7</span>
+          <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti, dati e controlli</span></span>
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAdministration" class="side-submenu">
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
+          <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Sessione')">Sessione</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
@@ -4531,159 +4527,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     </div>
 
-    <div id="matchpoint" class="tab-content">
-      <div class="section matchpoint-data-page">
-        <article class="matchpoint-data-box routines wide" id="anchor-matchpoint-routine">
-          <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
-          <div class="matchpoint-routine-head">
-            <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
-            <div class="matchpoint-routine-schedule">
-              <strong>Sequenza proposta</strong>
-              Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo il controllo dati.
-            </div>
-          </div>
-          <div class="matchpoint-routine-table-wrap" aria-live="polite">
-            <table class="matchpoint-routine-table">
-              <thead>
-                <tr>
-                  <th>Routine</th>
-                  <th>Ultimo dato valido</th>
-                  <th>Ultimo tentativo</th>
-                  <th>Esito</th>
-                  <th>Prossima esecuzione</th>
-                  <th>Azione manuale</th>
-                </tr>
-              </thead>
-              <tbody id="matchpointRoutineStatusBody">
-                <tr><td colspan="6">Stato routine non ancora caricato.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="matchpointRoutineAlert" class="matchpoint-routine-alert" aria-live="polite"></div>
-          <div class="matchpoint-routine-rules">
-            <span class="matchpoint-routine-rule">Se fallisce, resta attivo l'ultimo dato valido</span>
-            <span class="matchpoint-routine-rule">Nessun Excel Matchpoint viene archiviato</span>
-            <span class="matchpoint-routine-rule">Storico operativo limitato agli ultimi 12 mesi</span>
-          </div>
-        </article>
 
-        <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
-          <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
-            <span>
-              <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti Matchpoint e backup</span>
-              <span class="matchpoint-data-accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud.</span>
-            </span>
-            <span class="matchpoint-data-chevron">›</span>
-          </button>
-          <div class="matchpoint-data-accordion-panel" id="matchpointUpdatesAccordionPanel">
-            <div class="matchpoint-data-grid">
-              <article class="matchpoint-data-box clients" id="anchor-matchpoint-clienti">
-                <h3><span class="matchpoint-data-step">2</span> Clienti Matchpoint</h3>
-                <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
-                <div class="matchpoint-history-metrics matchpoint-clients-metrics" aria-live="polite">
-                  <span>Totale clienti database<strong id="matchpointClientsTotal">-</strong></span>
-                  <span>Variazione ultimo import<strong id="matchpointClientsDelta" class="delta-neutral">-</strong></span>
-                </div>
-                <div class="matchpoint-data-file">
-                  <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
-                  <div class="matchpoint-data-actions">
-                    <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti</button>
-                    <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
-                <h3><span class="matchpoint-data-step">3</span> Prenotazioni future Matchpoint</h3>
-                <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
-                <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
-                  <span>Periodo<strong id="matchpointBookingsPeriod">-</strong></span>
-                  <span>Ore campo prenotate<strong id="matchpointBookingsBookedHours">-</strong></span>
-                  <span>Occupazione stimata<strong id="matchpointBookingsOccupancyPercent">-</strong></span>
-                </div>
-                <div class="matchpoint-data-file">
-                  <div class="matchpoint-data-actions">
-                    <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointBookingsAutomatic()">Aggiorna prenotazioni</button>
-                    <div id="matchpointBookingsActionState" class="matchpoint-action-state"></div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="matchpoint-data-box history" id="anchor-matchpoint-storico">
-                <h3><span class="matchpoint-data-step">4</span> Storico Matchpoint</h3>
-                <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
-                <div class="matchpoint-history-metrics" aria-live="polite">
-                  <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
-                  <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
-                  <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
-                </div>
-                <div class="matchpoint-data-file">
-                  <div class="matchpoint-data-actions">
-                    <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico</button>
-                    <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
-                <h3><span class="matchpoint-data-step">5</span> Backup dati</h3>
-                <p class="matchpoint-data-copy">Salva il backup cloud su Supabase e scarica una copia locale solo quando vuoi tu.</p>
-                <div class="matchpoint-data-file">
-                  <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
-                  <div class="matchpoint-data-actions">
-                    <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
-                    <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
-                    <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
-                    <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
-                    <button id="matchpointBackupButton" class="btn-secondary" onclick="setActionAnchor(this); exportBackup()">Scarica backup locale</button>
-                    <div id="matchpointBackupActionState" class="matchpoint-action-state"></div>
-                    <div class="matchpoint-cloud-note">Backup cloud unico sovrascritto su Supabase. Copia locale solo su richiesta.</div>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </div>
-        </div>
-
-        <div class="matchpoint-data-accordion" id="matchpointSlotAccordion">
-          <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointSlotAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointSlotAccordion')">
-            <span>
-              <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">6</span> Slot potenziali Matchpoint</span>
-              <span class="matchpoint-data-accordion-subtitle">Griglia teorica settimanale usata da Dashboard e Apri Partite.</span>
-            </span>
-            <span class="matchpoint-data-chevron">›</span>
-          </button>
-          <div class="matchpoint-data-accordion-panel" id="matchpointSlotAccordionPanel">
-            <article class="matchpoint-data-box potential wide" id="anchor-matchpoint-slot-potenziali">
-              <p class="matchpoint-data-copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
-              <div class="potential-slot-details">
-                <div class="potential-slot-horizontal">
-                  <div class="potential-slot-panel">
-                    <label for="potentialSlotImageFile">Immagine griglia slot</label>
-                    <input type="file" id="potentialSlotImageFile" accept="image/*" onchange="importPotentialSlotImageFile(this.files && this.files[0])" />
-                    <div id="potentialSlotImagePreview" class="potential-slot-reference"></div>
-                    <div class="matchpoint-data-hint">Riferimento visivo locale: non viene letto automaticamente.</div>
-                  </div>
-                  <div class="potential-slot-panel">
-                    <div class="potential-slot-editor">
-                      <label for="potentialSlotScheduleEditor">Griglia slot operativa</label>
-                      <textarea id="potentialSlotScheduleEditor" spellcheck="false" oninput="markPotentialSlotEditorDirty()" placeholder="Lunedì: 12:30-14:00, 14:00-15:30"></textarea>
-                      <div class="potential-slot-editor-help">Formato: un giorno per riga, orari separati da virgola. Questa griglia aggiorna Dashboard e Apri Partite.</div>
-                    </div>
-                    <div class="matchpoint-data-actions">
-                      <button id="potentialSlotSaveButton" class="btn-warning" onclick="setActionAnchor(this); savePotentialSlotScheduleFromEditor()">Salva griglia slot</button>
-                      <div id="potentialSlotActionState" class="matchpoint-action-state pending">Da salvare</div>
-                      <button class="btn-secondary" onclick="setActionAnchor(this); resetPotentialSlotScheduleEditorToDefault()">Ripristina standard</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-        <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
-      </div>
-    </div>
 
     <div id="members" class="tab-content">
       <div class="section players-page-shell">
@@ -5365,12 +5209,13 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title">
           <h2>Amministrazione</h2>
-          <p>Utenti, notifiche staff, sessione e controlli tecnici separati.</p>
+          <p>Utenti, notifiche staff, dati Matchpoint, sessione e controlli tecnici separati.</p>
         </div>
 
         <div class="admin-section-tabs" role="tablist" aria-label="Sottosezioni Amministrazione">
           <button id="pmoAdminTabUsers" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="users" onclick="setActionAnchor(this); pmoSetAdminSection('users')">Utenti</button>
           <button id="pmoAdminTabNotifications" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="notifications" onclick="setActionAnchor(this); pmoSetAdminSection('notifications')">Notifiche staff</button>
+          <button id="pmoAdminTabMatchpointData" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="matchpoint-data" onclick="setActionAnchor(this); pmoSetAdminSection('matchpoint-data')">Dati Matchpoint</button>
           <button id="pmoAdminTabSession" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="session" onclick="setActionAnchor(this); pmoSetAdminSection('session')">Sessione</button>
           <button id="pmoAdminTabSupabase" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="supabase" onclick="setActionAnchor(this); pmoSetAdminSection('supabase')">Supabase</button>
         </div>
@@ -5432,6 +5277,169 @@ body.assessment-public-mode .assessment-public-only-card {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div id="pmoAdminMatchpointDataSection" class="admin-section-panel" data-pmo-admin-section="matchpoint-data" hidden>
+          <div class="admin-panel" id="pmoAdminMatchpointDataPanel" data-admin-anchor="dati-matchpoint">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Dati Matchpoint</h3>
+                <p>Clienti, prenotazioni, storico, backup e slot potenziali.</p>
+              </div>
+            </div>
+            <div class="section matchpoint-data-page">
+              <article class="matchpoint-data-box routines wide" id="anchor-matchpoint-routine">
+                <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
+                <div class="matchpoint-routine-head">
+                  <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
+                  <div class="matchpoint-routine-schedule">
+                    <strong>Sequenza proposta</strong>
+                    Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo il controllo dati.
+                  </div>
+                </div>
+                <div class="matchpoint-routine-table-wrap" aria-live="polite">
+                  <table class="matchpoint-routine-table">
+                    <thead>
+                      <tr>
+                        <th>Routine</th>
+                        <th>Ultimo dato valido</th>
+                        <th>Ultimo tentativo</th>
+                        <th>Esito</th>
+                        <th>Prossima esecuzione</th>
+                        <th>Azione manuale</th>
+                      </tr>
+                    </thead>
+                    <tbody id="matchpointRoutineStatusBody">
+                      <tr><td colspan="6">Stato routine non ancora caricato.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div id="matchpointRoutineAlert" class="matchpoint-routine-alert" aria-live="polite"></div>
+                <div class="matchpoint-routine-rules">
+                  <span class="matchpoint-routine-rule">Se fallisce, resta attivo l'ultimo dato valido</span>
+                  <span class="matchpoint-routine-rule">Nessun Excel Matchpoint viene archiviato</span>
+                  <span class="matchpoint-routine-rule">Storico operativo limitato agli ultimi 12 mesi</span>
+                </div>
+              </article>
+
+              <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
+                <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
+                  <span>
+                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti Matchpoint e backup</span>
+                    <span class="matchpoint-data-accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud.</span>
+                  </span>
+                  <span class="matchpoint-data-chevron">›</span>
+                </button>
+                <div class="matchpoint-data-accordion-panel" id="matchpointUpdatesAccordionPanel">
+                  <div class="matchpoint-data-grid">
+                    <article class="matchpoint-data-box clients" id="anchor-matchpoint-clienti">
+                      <h3><span class="matchpoint-data-step">2</span> Clienti Matchpoint</h3>
+                      <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+                      <div class="matchpoint-history-metrics matchpoint-clients-metrics" aria-live="polite">
+                        <span>Totale clienti database<strong id="matchpointClientsTotal">-</strong></span>
+                        <span>Variazione ultimo import<strong id="matchpointClientsDelta" class="delta-neutral">-</strong></span>
+                      </div>
+                      <div class="matchpoint-data-file">
+                        <div class="matchpoint-data-hint" id="matchpointClientsAutoHint">Avvia login, export e validazione clienti sul server.</div>
+                        <div class="matchpoint-data-actions">
+                          <button id="matchpointClientsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointClientsAutomatic()">Aggiorna clienti</button>
+                          <div id="matchpointClientsActionState" class="matchpoint-action-state"></div>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
+                      <h3><span class="matchpoint-data-step">3</span> Prenotazioni future Matchpoint</h3>
+                      <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
+                      <div class="matchpoint-history-metrics matchpoint-bookings-metrics" aria-live="polite">
+                        <span>Periodo<strong id="matchpointBookingsPeriod">-</strong></span>
+                        <span>Ore campo prenotate<strong id="matchpointBookingsBookedHours">-</strong></span>
+                        <span>Occupazione stimata<strong id="matchpointBookingsOccupancyPercent">-</strong></span>
+                      </div>
+                      <div class="matchpoint-data-file">
+                        <div class="matchpoint-data-actions">
+                          <button id="matchpointBookingsImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointBookingsAutomatic()">Aggiorna prenotazioni</button>
+                          <div id="matchpointBookingsActionState" class="matchpoint-action-state"></div>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="matchpoint-data-box history" id="anchor-matchpoint-storico">
+                      <h3><span class="matchpoint-data-step">4</span> Storico Matchpoint</h3>
+                      <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
+                      <div class="matchpoint-history-metrics" aria-live="polite">
+                        <span>Periodo file<strong id="matchpointHistoryPeriod">-</strong></span>
+                        <span>Nuove righe<strong id="matchpointHistoryNewRows">-</strong></span>
+                        <span>Totale prenotazioni storiche<strong id="matchpointHistoryTotalRows">-</strong></span>
+                      </div>
+                      <div class="matchpoint-data-file">
+                        <div class="matchpoint-data-actions">
+                          <button id="matchpointHistoryImportButton" class="btn-primary" onclick="setActionAnchor(this); importMatchpointHistoryAutomatic()">Aggiorna storico</button>
+                          <div id="matchpointHistoryActionState" class="matchpoint-action-state"></div>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article class="matchpoint-data-box backup" id="anchor-matchpoint-backup">
+                      <h3><span class="matchpoint-data-step">5</span> Backup dati</h3>
+                      <p class="matchpoint-data-copy">Salva il backup cloud su Supabase e scarica una copia locale solo quando vuoi tu.</p>
+                      <div class="matchpoint-data-file">
+                        <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
+                        <div class="matchpoint-data-actions">
+                          <button id="matchpointCloudBackupButton" class="btn-primary" onclick="setActionAnchor(this); saveCloudBackup()">Salva backup cloud</button>
+                          <div id="matchpointCloudBackupActionState" class="matchpoint-action-state"></div>
+                          <button id="matchpointCloudRestoreButton" class="btn-secondary" onclick="setActionAnchor(this); restoreCloudBackup()">Ripristina backup cloud</button>
+                          <div id="matchpointCloudRestoreActionState" class="matchpoint-action-state"></div>
+                          <button id="matchpointBackupButton" class="btn-secondary" onclick="setActionAnchor(this); exportBackup()">Scarica backup locale</button>
+                          <div id="matchpointBackupActionState" class="matchpoint-action-state"></div>
+                          <div class="matchpoint-cloud-note">Backup cloud unico sovrascritto su Supabase. Copia locale solo su richiesta.</div>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+
+              <div class="matchpoint-data-accordion" id="matchpointSlotAccordion">
+                <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointSlotAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointSlotAccordion')">
+                  <span>
+                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">6</span> Slot potenziali Matchpoint</span>
+                    <span class="matchpoint-data-accordion-subtitle">Griglia teorica settimanale usata da Dashboard e Apri Partite.</span>
+                  </span>
+                  <span class="matchpoint-data-chevron">›</span>
+                </button>
+                <div class="matchpoint-data-accordion-panel" id="matchpointSlotAccordionPanel">
+                  <article class="matchpoint-data-box potential wide" id="anchor-matchpoint-slot-potenziali">
+                    <p class="matchpoint-data-copy">Gestisce la griglia teorica settimanale degli slot vendibili del club per Dashboard e Apri Partite.</p>
+                    <div class="potential-slot-details">
+                      <div class="potential-slot-horizontal">
+                        <div class="potential-slot-panel">
+                          <label for="potentialSlotImageFile">Immagine griglia slot</label>
+                          <input type="file" id="potentialSlotImageFile" accept="image/*" onchange="importPotentialSlotImageFile(this.files && this.files[0])" />
+                          <div id="potentialSlotImagePreview" class="potential-slot-reference"></div>
+                          <div class="matchpoint-data-hint">Riferimento visivo locale: non viene letto automaticamente.</div>
+                        </div>
+                        <div class="potential-slot-panel">
+                          <div class="potential-slot-editor">
+                            <label for="potentialSlotScheduleEditor">Griglia slot operativa</label>
+                            <textarea id="potentialSlotScheduleEditor" spellcheck="false" oninput="markPotentialSlotEditorDirty()" placeholder="Lunedì: 12:30-14:00, 14:00-15:30"></textarea>
+                            <div class="potential-slot-editor-help">Formato: un giorno per riga, orari separati da virgola. Questa griglia aggiorna Dashboard e Apri Partite.</div>
+                          </div>
+                          <div class="matchpoint-data-actions">
+                            <button id="potentialSlotSaveButton" class="btn-warning" onclick="setActionAnchor(this); savePotentialSlotScheduleFromEditor()">Salva griglia slot</button>
+                            <div id="potentialSlotActionState" class="matchpoint-action-state pending">Da salvare</div>
+                            <button class="btn-secondary" onclick="setActionAnchor(this); resetPotentialSlotScheduleEditorToDefault()">Ripristina standard</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+              <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
             </div>
           </div>
         </div>
@@ -5559,7 +5567,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.454';
+    const APP_VERSION = '5.455';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7119,7 +7127,7 @@ Grazie.`
 
     const SECTION_LABELS = {
       dashboard: '🏠 Dashboard',
-      matchpoint: 'DATI (in/out)',
+      matchpoint: 'Dati Matchpoint',
       members: '👥 Anagrafica soci',
       assessment: 'Autovalutazione',
       fillSlots: '🎯 Apri Partite',
@@ -7302,6 +7310,14 @@ Grazie.`
         'utenti': '#pmoStaffAccessPanel',
         'notifiche staff': '#pmoStaffNotificationsPanel',
         'notifiche': '#pmoStaffNotificationsPanel',
+        'dati matchpoint': '#pmoAdminMatchpointDataPanel',
+        'matchpoint': '#pmoAdminMatchpointDataPanel',
+        'clienti matchpoint': '#anchor-matchpoint-clienti',
+        'prenotazioni future matchpoint': '#anchor-matchpoint-prenotazioni',
+        'storico matchpoint': '#anchor-matchpoint-storico',
+        'backup dati': '#anchor-matchpoint-backup',
+        'slot potenziali matchpoint': '#anchor-matchpoint-slot-potenziali',
+        'routine dati': '#anchor-matchpoint-routine',
         'sessione': '#pmoAdminSessionPanel',
         'supabase': '#pmoSupabaseDiagnosticsPanel',
         'controlli tecnici': '#pmoSupabaseDiagnosticsPanel',
@@ -7335,6 +7351,7 @@ Grazie.`
       }
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
+        else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
         else if (key.includes('sessione')) pmoSetAdminSection('session', { silent:true });
         else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
@@ -7531,6 +7548,10 @@ Grazie.`
     }
     function switchTab(tabName, btn=null, options={}) {
       if (tabName === 'groups') tabName = 'members';
+      if (tabName === 'matchpoint') {
+        if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('matchpoint-data', { silent:true });
+        tabName = 'administration';
+      }
       const renderId = ++tabSwitchRenderId;
       const shouldScrollTop = !(options && options.scrollTop === false);
       if (tabName !== 'fillSlots') cancelFillSlotsPendingWork();
@@ -7561,7 +7582,7 @@ Grazie.`
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') displayAssessment();
             if (tabName === 'contact') renderWhatsAppTemplateManager();
-            if (tabName === 'matchpoint') refreshDataActionStatuses();
+            if (tabName === 'administration' && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data') refreshDataActionStatuses();
             if (tabName === 'routines') renderPmoRoutineCenter();
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
@@ -10881,8 +10902,8 @@ Grazie.`
     }
 
     function isMatchpointDataTabActive() {
-      const tab = document.getElementById('matchpoint');
-      return !!tab && tab.classList.contains('active');
+      const adminTab = document.getElementById('administration');
+      return !!adminTab && adminTab.classList.contains('active') && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data';
     }
 
     function refreshMatchpointRoutinePanelIfVisible() {
@@ -10911,9 +10932,9 @@ Grazie.`
 
     function focusMatchpointDataAnchor(anchorId) {
       if (!anchorId) return;
-      const matchpointTab = document.getElementById('matchpoint');
-      if (matchpointTab && !matchpointTab.classList.contains('active')) {
-        switchTab('matchpoint', null, { scrollTop:false });
+      if (!isMatchpointDataTabActive()) {
+        pmoSetAdminSection('matchpoint-data', { silent:true });
+        switchTab('administration', null, { scrollTop:false });
       }
       setTimeout(() => {
         const target = document.getElementById(anchorId);
@@ -17904,7 +17925,7 @@ Grazie!`
             ${rows}
           </table>
         </div>
-        <div class="dashboard-occupancy-note">Nota: gli slot liberi sono calcolati dalla griglia Slot potenziali salvata in DATI (in/out), sottraendo le prenotazioni/occupazioni Matchpoint importate. Nel pranzo feriale il valore mostrato e' il potenziale utile: massimo 1 slot da 90 minuti per campo nella fascia 12-15. Nel weekend la sera rispetta la chiusura: sabato 18:00, domenica 19:30. Ogni occupazione presente nel file blocca il campo, indipendentemente da Riscossa o numero persone; la durata viene pesata tramite la colonna <strong>Ore</strong>.</div>`;
+        <div class="dashboard-occupancy-note">Nota: gli slot liberi sono calcolati dalla griglia Slot potenziali salvata in Dati Matchpoint, sottraendo le prenotazioni/occupazioni Matchpoint importate. Nel pranzo feriale il valore mostrato e' il potenziale utile: massimo 1 slot da 90 minuti per campo nella fascia 12-15. Nel weekend la sera rispetta la chiusura: sabato 18:00, domenica 19:30. Ogni occupazione presente nel file blocca il campo, indipendentemente da Riscossa o numero persone; la durata viene pesata tramite la colonna <strong>Ore</strong>.</div>`;
     }
 
     function dashboardWeekRange(dateObj=new Date()) {
@@ -21463,8 +21484,9 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'session', 'supabase'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'session', 'supabase'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
+	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'session';
 	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
 	      return 'users';
@@ -21473,6 +21495,11 @@ Per confermare scrivi ELIMINA.`);
 	      pmoAdminState.activeSection = pmoAdminSectionKey(section);
 	      save('pmoAdminState', pmoAdminState);
 	      if (!options?.silent) renderPmoAdministration();
+	      if (pmoAdminState.activeSection === 'matchpoint-data') {
+	        requestAnimationFrame(() => {
+	          try { refreshDataActionStatuses(); } catch (err) { console.warn('Dati Matchpoint non aggiornati:', err); }
+	        });
+	      }
 	    }
 	    function pmoApplyAdminSectionVisibility() {
 	      const active = pmoAdminSectionKey(pmoAdminState.activeSection || 'users');
