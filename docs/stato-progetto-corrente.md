@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 17:21
+Ultimo aggiornamento: 2026-05-17 20:24
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,14 +29,16 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.452 | `test-preview` | `c51ff09` |
-| TEST sviluppo | v5.452 | `test/accessi-staff-guidati` | `c51ff09` |
+| TEST | v5.453 | `test-preview` | `152b049` |
+| TEST sviluppo | v5.453 | `test/accessi-staff-guidati` | `152b049` |
 
 Nota documentale 2026-05-17 17:09: aggiunte le regole condivise per account e sessioni browser di verifica Codex. Le chat SVILUPPO TEST e PROMOZIONE PROD possono usare solo sessioni gia aperte degli account dedicati; PROD resta limitato a smoke test non distruttivi con `aprea.maurizio+codex.prod@gmail.com` in `Solo lettura` / `Solo consultazione`. La chat MOCK-UP puo usare sessioni gia aperte solo come riferimento visuale, senza credenziali, modifiche dati o azioni operative. Password mai scritte o salvate.
 
 Nota TEST 2026-05-17 17:21: puliti gli utenti staff di registrazione test obsoleti solo su Supabase TEST `cudiqnrrlbyqryrtaprd`. Rimossi da `public.pmo_staff_profiles` i profili `padelvillage.club+test1@gmail.com` (`Staff Test Registrazione`) e `padelvillage.club+test2@gmail.com` (`Staff Test Registrazione 2`), quindi non compaiono piu in `Amministrazione > Utenti`. Preservati `padelvillage.club@gmail.com` (`Maurizio Aprea`, owner) e `aprea.maurizio+codex.test@gmail.com` (`Codex Test`, admin). Supabase Auth TEST non e' stato modificato: l'eventuale account Auth `padelvillage.club+test2@gmail.com` resta senza profilo staff autorizzato. Verifica read-only PROD: i due account test non sono presenti in `public.pmo_staff_profiles` PROD. Nessuna modifica a app, versione, branch, Edge Function, SQL schema, scheduler, Matchpoint, Gmail, WhatsApp o dati PROD.
 
-Nota: TEST app e' avanti a v5.452. La v5.452 riorganizza in TEST la sezione staff `Autovalutazione > Scheda pubblica` in tre sottotab isolate: `Link esterno`, `Registrazione utente` e `Form autovalutazione`. Il pannello mostra il link pubblico con anteprima chat, la registrazione test con privacy espandibile e il form autovalutazione con select vuote, validazione risposte, controllo coerenza livello e passaggio simulato allo Storico locale TEST per `PMO-000948`. Il form pubblico/tokenizzato reale resta intatto e visibile solo in modalita pubblica. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
+Nota TEST v5.453: `Amministrazione > Utenti` mostra direttamente la tabella degli utenti autorizzati, senza KPI alti e senza bottone `Aggiorna`. La creazione passa da `+ Nuovo`, la modifica si apre inline sotto la riga e `Elimina` apre una conferma inline; il proprietario `padelvillage.club@gmail.com` non e' eliminabile. Aggiunta in Supabase TEST la RPC autenticata `pmo_delete_staff_user_admin(p_email text)`, con grant solo `authenticated` e nessun grant `anon`: rimuove solo il record da `public.pmo_staff_profiles`, scrive audit `staff_user_delete` su `pmo_audit_log` e non cancella utenti Supabase Auth. Nessuna modifica a PROD, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico o dati soci.
+
+Nota: TEST app e' avanti a v5.453. La v5.453 riorganizza in TEST `Amministrazione > Utenti` con gestione inline di nuovo/modifica/elimina autorizzazione staff e RPC TEST dedicata per rimuovere solo profili da `pmo_staff_profiles`.
 
 Nota precedente v5.451: TEST app riorganizzava in TEST la sezione `Amministrazione` in quattro sottosezioni isolate: `Utenti`, `Notifiche staff`, `Sessione` e `Supabase`. `Notifiche staff` gestisce destinatari interni locali per le future conferme livello con checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com` e anteprima notifica. Il bottone `Invia email di test` e' disponibile solo sulla riga test e resta simulato: non invia email reali e non usa backend. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
 
@@ -71,7 +73,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.452 e' preparata in TEST al commit app `c51ff09`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.452 riorganizza solo la UI staff di `Autovalutazione > Scheda pubblica`, separando `Link esterno`, `Registrazione utente` e `Form autovalutazione`; mantiene il form pubblico reale separato e non modifica backend o dati reali. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati reali o modifiche PROD.
+La versione v5.453 e' preparata in TEST al commit app `152b049`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.453 riorganizza solo `Amministrazione > Utenti` e aggiunge su Supabase TEST la RPC minima per eliminare una autorizzazione staff da `pmo_staff_profiles`, senza cancellare utenti Auth e senza grant `anon`. Non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
