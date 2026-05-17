@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 20:57
+Ultimo aggiornamento: 2026-05-17 21:15
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.456 | `test-preview` | `ef1335f` |
-| TEST sviluppo | v5.456 | `test/accessi-staff-guidati` | `ef1335f` |
+| TEST | v5.457 | `test-preview` | `8a224af` |
+| TEST sviluppo | v5.457 | `test/accessi-staff-guidati` | `8a224af` |
+
+Nota TEST v5.457: semplificata la sottosezione `Amministrazione > Utenti`. La tab parte direttamente da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga a destra; rimossi titolo interno `Utenti`, testo introduttivo, nota `Autorizzi l'email qui...` sopra la tabella e messaggio verde automatico di caricamento. Restano invariati tabella utenti, `+ Nuovo`, `Modifica` inline, `Elimina` inline con proprietario non eliminabile, RPC e salvataggi gia esistenti. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp.
 
 Nota TEST v5.456: rifinita la sottosezione `Amministrazione > Notifiche staff`. Il contenuto parte direttamente da `Configurazione destinatari`, senza titolo/sottotitolo interno ridondante; l'anteprima notifica e' compatta sotto la configurazione e non usa piu layout a due colonne. Restano invariati checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com`, bottone `Invia email di test` simulato e tab `Dati Matchpoint`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail reale o WhatsApp automatico.
 
@@ -79,7 +81,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.456 e' preparata in TEST al commit app `ef1335f`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.456 rifinisce `Amministrazione > Notifiche staff`: elimina l'intestazione interna ridondante, rende compatta l'anteprima notifica e mantiene invariata la configurazione destinatari locale con riga test PMO-000948 e invio test simulato. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.457 e' preparata in TEST al commit app `8a224af`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.457 semplifica `Amministrazione > Utenti`: la vista parte da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga, senza testi introduttivi o messaggi statici di caricamento. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
