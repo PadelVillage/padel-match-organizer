@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.470';
+    const APP_VERSION = '5.471';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18985,7 +18985,7 @@ Grazie!`
       try {
         const rows = await pmoStaffRpc('get_assessment_external_requests_admin', { p_status:'', p_limit:100 }, 'cloud_sync', 'leggere le richieste link esterno');
         assessmentExternalUpsertLocal(rows || []);
-        renderAssessmentEmailHistoryPanel();
+        renderAssessmentEmailPanels();
         if (!silent) showAlert(`✅ Richieste link esterno aggiornate: ${assessmentExternalRequests.length}`, 'success');
         return rows;
       } catch (err) {
@@ -24779,6 +24779,7 @@ Per confermare scrivi ELIMINA.`);
       const manualPostRows = postRows.filter(row => !assessmentEmailIsAutoApplicable(row.response));
       const matchpointRows = assessmentMatchpointPendingRows();
       const problemRows = assessmentEmailProblemRows();
+      const externalRequests = assessmentExternalRequestsForMorning();
       const queueTodayCount = Math.min(queueRows.length, todaySlots);
       return {
         sentToday,
@@ -24789,7 +24790,8 @@ Per confermare scrivi ELIMINA.`);
         manualPostRows,
         matchpointRows,
         problemRows,
-        totalActions: problemRows.length + pendingReplyRows.length + manualPostRows.length + matchpointRows.length + queueTodayCount
+        externalRequests,
+        totalActions: problemRows.length + pendingReplyRows.length + manualPostRows.length + matchpointRows.length + queueTodayCount + externalRequests.length
       };
     }
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
