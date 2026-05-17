@@ -5216,14 +5216,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <p>Utenti, notifiche staff, dati Matchpoint, sessione e controlli tecnici separati.</p>
         </div>
 
-        <div class="admin-section-tabs" role="tablist" aria-label="Sottosezioni Amministrazione">
-          <button id="pmoAdminTabUsers" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="users" onclick="setActionAnchor(this); pmoSetAdminSection('users')">Utenti</button>
-          <button id="pmoAdminTabNotifications" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="notifications" onclick="setActionAnchor(this); pmoSetAdminSection('notifications')">Notifiche staff</button>
-          <button id="pmoAdminTabMatchpointData" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="matchpoint-data" onclick="setActionAnchor(this); pmoSetAdminSection('matchpoint-data')">Dati Matchpoint</button>
-          <button id="pmoAdminTabSession" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="session" onclick="setActionAnchor(this); pmoSetAdminSection('session')">Sessione</button>
-          <button id="pmoAdminTabSupabase" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="supabase" onclick="setActionAnchor(this); pmoSetAdminSection('supabase')">Supabase</button>
-        </div>
-
         <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
           <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti"></div>
         </div>
@@ -5554,7 +5546,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.458';
+    const APP_VERSION = '5.459';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
