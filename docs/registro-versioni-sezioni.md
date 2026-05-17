@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 21:43
+Ultimo aggiornamento: 2026-05-17 22:01
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Scheda pubblica TEST v5.460: corretto il link generato dal pannello `Link esterno` in ambiente TEST. Il campo readonly e la preview chat usano il wrapper TEST `https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`, evitando di aprire la versione PROD durante i collaudi WhatsApp; in PROD la stessa funzione continuera' a generare `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno`. Commit app `6b46039`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Amministrazione TEST v5.459: rimossa la barra orizzontale interna delle sottosezioni `Utenti`, `Notifiche staff`, `Dati Matchpoint`, `Sessione`, `Supabase` dal contenuto principale di `Amministrazione`. La navigazione resta nel menu laterale sotto `Amministrazione`; grafica, contenuti, salvataggi, pannelli e logiche delle sottosezioni restano invariati. Commit app `8015235`. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Scheda pubblica TEST v5.458: micro-correzione grafica delle anteprime pubbliche staff. Le anteprime `Link esterno`, `Registrazione utente` e `Form autovalutazione` usano l'URL stabile `https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg`, coerente con scheda pubblica reale e meta tag, e mantengono il titolo `Autovalutazione Livello di Gioco`. Commit app `f25d6c1`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail, WhatsApp automatico, privacy, storico o salvataggi.
 - Amministrazione / Utenti TEST v5.457: semplificata la tab `Amministrazione > Utenti` secondo il mockup approvato. Rimossi titolo interno `Utenti`, testo `Autorizza email staff e gestisci ruoli operativi.`, nota introduttiva `Autorizzi l'email qui...`, spiegazione sopra tabella e messaggio verde automatico di caricamento. La vista parte da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga a destra; `Modifica` ed `Elimina` restano inline sotto la riga, il proprietario resta non eliminabile e i salvataggi/RPC esistenti non cambiano. Commit app `8a224af`. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp.

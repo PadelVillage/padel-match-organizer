@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 21:43
+Ultimo aggiornamento: 2026-05-17 22:01
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.459 | `test-preview` | `8015235` |
-| TEST sviluppo | v5.459 | `test/accessi-staff-guidati` | `8015235` |
+| TEST | v5.460 | `test-preview` | `6b46039` |
+| TEST sviluppo | v5.460 | `test/accessi-staff-guidati` | `6b46039` |
+
+Nota TEST v5.460: corretto in `Autovalutazione > Scheda pubblica > Link esterno` il link copiato in ambiente TEST. In TEST il campo e la preview usano ora il wrapper `/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`, cosi' il click apre la registrazione/autovalutazione TEST v5.460 e non la pagina PROD. La stessa funzione resta ambiente-aware: quando promossa in PROD generera' il link pubblico root `autovalutazione.html?assessment=link-esterno`. Commit app `6b46039`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.459: rimossa dal contenuto principale di `Amministrazione` la barra orizzontale interna `Utenti` / `Notifiche staff` / `Dati Matchpoint` / `Sessione` / `Supabase`. La navigazione tra sottosezioni resta affidata alle sottovoci del menu laterale sotto `Amministrazione`; i contenuti e le logiche delle sottosezioni restano invariati. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
