@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 12:13
+Ultimo aggiornamento: 2026-05-17 13:28
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.441 | `main` | `85edd3e` |
-| TEST | v5.446 | `test-preview` | `e0320b4` |
-| TEST sviluppo | v5.446 | `test/accessi-staff-guidati` | `e0320b4` |
+| TEST | v5.447 | `test-preview` | `a2ef869` |
+| TEST sviluppo | v5.447 | `test/accessi-staff-guidati` | `a2ef869` |
 
-Nota: TEST app e' avanti a v5.446. La v5.446 rende ufficiale il socio test `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` Autovalutazione e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono limitati alla doppia verifica `PMO-000948` + `aprea.maurizio@gmail.com`. Non cancella automaticamente il vecchio record `PMO-000956`: l'eventuale pulizia dati resta un passaggio separato in TEST Anagrafica. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+Nota: TEST app e' avanti a v5.447. La v5.447 corregge titolo, meta tag e link copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`: il titolo preview diventa `Autovalutazione Livello di Gioco`, la descrizione diventa `Padel Village`, il link pubblico punta a `autovalutazione.html?assessment=link-esterno` e il link TEST punta a `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+
+Nota precedente v5.446: TEST app rendeva ufficiale il socio test `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` Autovalutazione e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono limitati alla doppia verifica `PMO-000948` + `aprea.maurizio@gmail.com`. Non cancella automaticamente il vecchio record `PMO-000956`: l'eventuale pulizia dati resta un passaggio separato in TEST Anagrafica. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
 Nota precedente v5.445: TEST app correggeva il bottone `Socio test` nel `Cruscotto mattutino` Autovalutazione: la ricerca del socio prova considera ID PMO e campi ID alternativi, usa l'email `aprea.maurizio@gmail.com` come fallback per mostrare una riga bloccata se l'ID non coincide, e se il socio non esiste nei dati caricati non svuota piu la lista `Processo utenti`. Non crea soci, non scrive Supabase e non modifica dati reali.
 
@@ -55,7 +57,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.446 e' pubblicata in TEST al commit app `e0320b4`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.446 e' un allineamento UI/logica locale del `Cruscotto mattutino` e del test form `Link esterno`: il socio test ufficiale diventa `PMO-000948` con email `aprea.maurizio@gmail.com`; `PMO-000956` non viene piu usato come ID operativo nel codice, ma non viene cancellato dai dati. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
+La versione v5.447 e' pubblicata in TEST al commit app `a2ef869`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.447 aggiorna solo titolo, meta tag e URL copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`, cosi' la preview WhatsApp/Telegram usa `Autovalutazione Livello di Gioco` e `Padel Village`. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
 
 Contiene:
 
@@ -100,6 +102,7 @@ Contiene:
 - Autovalutazione v5.444 TEST: integrato il mockup `mockup/registrazione-link-esterno-sesso-mockup.html` in `Scheda pubblica > Link esterno`. Il test form staff e il form pubblico tokenizzato marcato `assessment=link-esterno` gestiscono `Sesso` con opzioni `Maschio`, `Femmina`, `Preferisco non indicarlo`; se viene scelto `Preferisco non indicarlo`, il flusso prosegue ma lo stato staff resta `Da completare`. Il dato viene salvato nel `raw_response` JSON e puo completare la scheda socio locale quando la risposta viene importata. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Autovalutazione v5.445 TEST: bugfix del bottone `Socio test` nel `Cruscotto mattutino`. La ricerca accetta ID PMO e campi ID alternativi, usa l'email test come fallback per mostrare una riga bloccata se l'ID non coincide, e non svuota piu la lista `Processo utenti` quando il socio non e' presente nei dati caricati. Nessuna creazione socio automatica, nessuna modifica a Supabase, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico, dati reali o PROD.
 - Autovalutazione v5.446 TEST: allineato il socio test ufficiale a `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono consentiti solo con doppia verifica `PMO-000948` + email protetta. Il vecchio `PMO-000956` non viene cancellato dai dati: eventuale rimozione/disattivazione va gestita separatamente da Anagrafica TEST. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+- Autovalutazione v5.447 TEST: aggiornati `autovalutazione.html`, `test/autovalutazione.html` e i link copiati dal pannello `Scheda pubblica > Link esterno`. La preview pubblica mostra `Autovalutazione Livello di Gioco`, descrizione `Padel Village` e logo Padel Village; il link pubblico punta alla pagina dedicata `autovalutazione.html?assessment=link-esterno`; il link TEST usa `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Nessuna modifica a PROD, SQL, Supabase, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
 - Documentazione aggiornata per v5.440 TEST.
 
