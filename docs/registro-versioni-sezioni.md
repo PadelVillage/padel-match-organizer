@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 20:47
+Ultimo aggiornamento: 2026-05-17 20:57
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Amministrazione / Notifiche staff TEST v5.456: rifinita la sottosezione `Amministrazione > Notifiche staff` secondo il mockup approvato. Rimossi titolo e sottotitolo interni ridondanti; il pannello parte da `Configurazione destinatari` con testo operativo compatto; l'anteprima notifica e' sotto la configurazione e usa una riga/area compatta invece del layout a due colonne. Restano invariati checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com`, bottone `Invia email di test` simulato e tab `Dati Matchpoint`. Commit app `ef1335f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail reale o WhatsApp automatico.
 - Amministrazione / Dati Matchpoint TEST v5.455: spostata la sezione autonoma `DATI (in/out)` dentro `Amministrazione > Dati Matchpoint`. Il menu principale non mostra piu `DATI (in/out)`; il contenuto operativo e' quello gia validato della vecchia sezione dati, con stato routine automatiche, Clienti Matchpoint, Prenotazioni future Matchpoint, Storico Matchpoint, Backup dati e Slot potenziali Matchpoint invariati. Commit app `fab4d26`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Matchpoint reale, routine automatiche, backup/import reali o dati reali.
 - Amministrazione TEST v5.454: hotfix della lista `Utenti` dopo rimozioni gia applicate su Supabase TEST. La tab Utenti ricarica una volta dal cloud anche se `pmoAdminState.lastStaffReadAt` esiste, evitando righe stale da localStorage; se `Elimina` riceve `USER_NOT_FOUND`, la UI pulisce la riga locale e mostra successo per profilo gia assente da Supabase TEST. Commit app `3ffad65`. Nessuna modifica a Supabase Auth, SQL aggiuntivo, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico, dati soci o PROD.
 - Amministrazione TEST v5.453: integrato il mockup `mockup/amministrazione-utenti-modifica-elimina-mockup.html` nella tab interna `Utenti`. Rimossi KPI alti (`Utenti attivi`, `Invitati`, `Sospesi`) e bottone `Aggiorna`; aggiunto `+ Nuovo`; `Modifica` apre una scheda inline sotto la riga; `Elimina` apre conferma inline e richiama la nuova RPC TEST `pmo_delete_staff_user_admin(p_email text)`. La RPC ha grant solo `authenticated`, nessun grant `anon`, elimina solo il profilo da `public.pmo_staff_profiles`, scrive audit `staff_user_delete` e non tocca Supabase Auth. Il proprietario `padelvillage.club@gmail.com` non e' eliminabile. Commit app `152b049`. Nessuna modifica a PROD, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico o dati soci.

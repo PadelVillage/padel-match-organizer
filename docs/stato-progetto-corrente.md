@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 20:47
+Ultimo aggiornamento: 2026-05-17 20:57
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.455 | `test-preview` | `fab4d26` |
-| TEST sviluppo | v5.455 | `test/accessi-staff-guidati` | `fab4d26` |
+| TEST | v5.456 | `test-preview` | `ef1335f` |
+| TEST sviluppo | v5.456 | `test/accessi-staff-guidati` | `ef1335f` |
+
+Nota TEST v5.456: rifinita la sottosezione `Amministrazione > Notifiche staff`. Il contenuto parte direttamente da `Configurazione destinatari`, senza titolo/sottotitolo interno ridondante; l'anteprima notifica e' compatta sotto la configurazione e non usa piu layout a due colonne. Restano invariati checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com`, bottone `Invia email di test` simulato e tab `Dati Matchpoint`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail reale o WhatsApp automatico.
 
 Nota TEST v5.455: spostata la vecchia sezione principale `DATI (in/out)` dentro `Amministrazione > Dati Matchpoint`. Il menu principale non mostra piu `DATI (in/out)`; Amministrazione ora contiene le tab `Utenti`, `Notifiche staff`, `Dati Matchpoint`, `Sessione` e `Supabase`. Il contenuto operativo Matchpoint resta invariato: stato routine automatiche, Clienti Matchpoint, Prenotazioni future Matchpoint, Storico Matchpoint, Backup dati e Slot potenziali Matchpoint. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, routine automatiche, Autovalutazione, Anagrafica soci o PROD.
 
@@ -77,7 +79,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.455 e' preparata in TEST al commit app `fab4d26`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.455 sposta `DATI (in/out)` dentro `Amministrazione > Dati Matchpoint`, lasciando invariati contenuti, import, backup, routine dati e logiche Matchpoint. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.456 e' preparata in TEST al commit app `ef1335f`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.456 rifinisce `Amministrazione > Notifiche staff`: elimina l'intestazione interna ridondante, rende compatta l'anteprima notifica e mantiene invariata la configurazione destinatari locale con riga test PMO-000948 e invio test simulato. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
