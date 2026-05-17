@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 00:54
+Ultimo aggiornamento: 2026-05-18 01:09
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.475 | `test-preview` | `8c39413` |
-| TEST sviluppo | v5.475 | `test/accessi-staff-guidati` | `8c39413` |
+| TEST | v5.477 | `test-preview` | `545f2cf` |
+| TEST sviluppo | v5.477 | `test/accessi-staff-guidati` | `545f2cf` |
+
+Nota TEST v5.477: micro-pulizia dello `Storico` Autovalutazione. Nella tabella `Richieste da link esterno` viene rimosso il box introduttivo con titolo e descrizione, perche' l'origine e' gia chiara dalla colonna `Origine` (`Da link esterno`). La tabella, la deduplica, il refresh, le azioni `Aggancia a socio esistente`, `Crea scheda socio`, `Valida livello` e l'invio conferma email restano invariati. Commit app `545f2cf`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
+
+Nota TEST v5.476: la validazione manuale del livello Autovalutazione viene portata dentro la scheda socio reale. Le righe operative non espongono piu il vecchio bottone `Controlla livello`: mostrano `Valida livello`, che apre la scheda socio direttamente sul pannello `Autovalutazione da validare`, con modifica del livello, note staff e conferma finale. Nelle richieste da `Scheda pubblica > Link esterno` viene rimosso anche il bottone secondario `Scheda socio`, per evitare doppioni: la scheda si apre dal comando `Valida livello`. Le nuove risposte dello stesso socio non vengono piu considerate gia applicate solo perche esiste una validazione storica precedente; inoltre le richieste da link esterno restano sempre a validazione manuale, mentre le schede coerenti del lotto possono continuare a chiudersi automaticamente tramite `applyAssessmentLevel()`. Commit app `889d061`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.475: collegata la configurazione `Amministrazione > Notifiche staff` alla validazione livello Autovalutazione. Il punto unico `applyAssessmentLevel()` ora, dopo l'applicazione del livello, invia automaticamente le notifiche staff agli indirizzi attivi configurati e mantiene l'invio automatico della conferma livello al socio. La regola vale sia per schede arrivate dal lotto email sia per richieste da `Scheda pubblica > Link esterno`, perche' entrambe passano dalla stessa applicazione livello. Le notifiche staff usano la funzione email esistente `assessment-email-send` in modalita `level-email`, senza nuove Edge Function, SQL o scheduler; in TEST resta attiva la protezione destinatari. Commit app `8c39413`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint o WhatsApp automatico.
 
