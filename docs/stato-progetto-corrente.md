@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 00:22
+Ultimo aggiornamento: 2026-05-18 00:31
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.471 | `test-preview` | `6a3b0e7` |
-| TEST sviluppo | v5.471 | `test/accessi-staff-guidati` | `6a3b0e7` |
+| TEST | v5.472 | `test-preview` | `b71cbd2` |
+| TEST sviluppo | v5.472 | `test/accessi-staff-guidati` | `b71cbd2` |
+
+Nota TEST v5.472: semplificata la navigazione laterale. La voce principale `Routine` viene rimossa dal menu perche' le routine operative sono gia distribuite nelle sezioni corrette (`Amministrazione > Dati Matchpoint`, `Amministrazione > Supabase`, `Autovalutazione`). Dentro `Amministrazione` viene rimossa la sottovoce `Sessione`, lasciando `Utenti`, `Notifiche staff`, `Dati Matchpoint` e `Supabase`; il logout resta disponibile nella testata laterale e i vecchi riferimenti salvati a `session` vengono ricondotti a `Utenti`. Le funzioni interne, i permessi salvati e le logiche cloud/routine non sono stati cancellati. Commit app `b71cbd2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.471: corretto il segnale del `Cruscotto mattutino` per le richieste `Autovalutazione > Scheda pubblica > Link esterno`. Dopo il refresh delle richieste da Supabase, la app ridisegna tutti i pannelli Autovalutazione e non solo lo Storico; inoltre le richieste link esterno operative vengono conteggiate nel totale azioni del `Cruscotto mattutino`. Una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene quindi segnalata anche dalla tab/box del cruscotto. Commit app `6a3b0e7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 

@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 00:22
+Ultimo aggiornamento: 2026-05-18 00:31
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Navigazione / Amministrazione TEST v5.472: rimossa dal menu principale la voce `Routine`, mantenendo intatte le funzioni interne e i permessi salvati; eventuali vecchi accessi a `routines` vengono indirizzati ad `Amministrazione > Supabase`. Rimossa anche la sottovoce `Sessione` da `Amministrazione`, che ora mostra solo `Utenti`, `Notifiche staff`, `Dati Matchpoint` e `Supabase`; il logout resta nella testata laterale e vecchi stati `session` vengono ricondotti a `Utenti`. Commit app `b71cbd2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Cruscotto mattutino TEST v5.471: corretto il segnale delle nuove richieste da `Scheda pubblica > Link esterno`. Il refresh da Supabase delle richieste link esterno ridisegna tutti i pannelli Autovalutazione, non solo lo Storico, e il totale azioni del `Cruscotto mattutino` include ora anche le richieste link esterno operative. Commit app `6a3b0e7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Amministrazione / Dati Matchpoint TEST v5.470: corretto il pannello `Stato routine automatiche`. La UI ora legge i riepiloghi cloud `matchpoint_data` quando si apre `Dati Matchpoint` e sincronizza il browser locale se i dati cloud di Clienti, Prenotazioni future o Storico sono piu recenti della cronologia locale. In TEST la sezione chiarisce che lo scheduler automatico e' disattivato e mostra `Manuale in TEST`, evitando di promettere esecuzioni automatiche non previste. Commit app `cd33a00`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.469: corretti due bug del flusso pubblico e dello `Storico`. La tab `Storico` ora segnala nel contatore anche le richieste link esterno operative, cosi una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene evidenziata gia nella tab. In modalita pubblica da link WhatsApp/Telegram il refresh automatico staff non parte piu e il salvataggio impostazioni silenzioso non mostra l'alert gestionale `Nessuna modifica da salvare`. Commit app `864765c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
