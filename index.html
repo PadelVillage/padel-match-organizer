@@ -278,6 +278,8 @@
     .admin-save-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .admin-table-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:14px; }
     .admin-table-toolbar strong { color:var(--primary); }
+    .admin-users-toolbar { margin-top:0; align-items:center; }
+    .admin-users-toolbar .small-btn { margin:0; }
     .admin-users-table { min-width:760px; table-layout:fixed; }
     .admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { width:34%; }
     .admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { width:17%; }
@@ -5223,14 +5225,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
-          <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti">
-            <div class="admin-panel-head">
-              <div>
-                <h3>Utenti</h3>
-                <p>Autorizza email staff e gestisci ruoli operativi.</p>
-              </div>
-            </div>
-          </div>
+          <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti"></div>
         </div>
 
         <div id="pmoAdminNotificationsSection" class="admin-section-panel" data-pmo-admin-section="notifications" hidden>
@@ -5559,7 +5554,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.456';
+    const APP_VERSION = '5.457';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21339,26 +21334,18 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoRenderStaffAccessPanel() {
 	      const panel = document.getElementById('pmoStaffAccessPanel');
-	      if (!panel || panel.dataset.flowUi === 'v5453') return;
-	      panel.dataset.flowUi = 'v5453';
+	      if (!panel || panel.dataset.flowUi === 'v5457') return;
+	      panel.dataset.flowUi = 'v5457';
 	      panel.innerHTML = `
-	        <div class="admin-panel-head staff-access-head">
+	        <div class="admin-table-toolbar admin-users-toolbar">
 	          <div>
-	            <h3>Utenti</h3>
-	            <p>Autorizza email staff e gestisci ruoli operativi.</p>
+	            <strong>Utenti autorizzati</strong>
 	          </div>
 	          <div class="staff-access-toolbar">
 	            <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoOpenNewStaffUser()">+ Nuovo</button>
 	          </div>
 	        </div>
-	        <div class="staff-login-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
-	        <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Accedi con email personale Supabase. La lista utenti si carica automaticamente.</div>
-	        <div class="admin-table-toolbar">
-	          <div>
-	            <strong>Utenti autorizzati</strong>
-	            <span class="routine-mini">La lista si carica automaticamente quando entri nella sezione.</span>
-	          </div>
-	        </div>
+	        <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;" hidden></div>
 	        <div id="pmoStaffUsersTable"></div>
 	      `;
 	      pmoSetStaffFormMode('none');
@@ -21695,6 +21682,12 @@ Per confermare scrivi ELIMINA.`);
 	    function pmoSetAdminStatus(message, type='info') {
 	      const box = document.getElementById('pmoAdminStatus');
 	      if (!box) return;
+	      if (!message) {
+	        box.hidden = true;
+	        box.textContent = '';
+	        return;
+	      }
+	      box.hidden = false;
 	      box.className = `info-box alert-${type}`;
 	      box.textContent = message;
 	    }
@@ -21917,7 +21910,7 @@ Per confermare scrivi ELIMINA.`);
 	      const title = editing ? 'Scheda utente' : 'Nuovo utente';
 	      const help = editing
 	        ? 'Email non modificabile: usa Salva modifiche per ruolo, stato e permessi.'
-	        : 'Autorizzi l’email qui; la persona crea la password dalla login con Crea accesso.';
+	        : "Compila i dati e autorizza l'email staff.";
 	      return `<div class="admin-inline-card">
 	        <div class="admin-inline-title">${escapeHtml(title)}</div>
 	        <div class="admin-form-grid staff-invite-grid">
@@ -22016,17 +22009,19 @@ Per confermare scrivi ELIMINA.`);
 	      if (!pmoProfileHasPermission(profile, 'manage_users')) return;
 	      pmoAdminStaffAutoLoadAttempted = true;
 	      pmoAdminStaffAutoLoadInFlight = true;
-	      pmoLoadStaffUsers().finally(() => { pmoAdminStaffAutoLoadInFlight = false; });
+	      pmoLoadStaffUsers({ silentLoading:true, silentSuccess:true }).finally(() => { pmoAdminStaffAutoLoadInFlight = false; });
 	    }
-	    async function pmoLoadStaffUsers() {
+	    async function pmoLoadStaffUsers(options={}) {
+	      const opts = options && typeof options === 'object' ? options : {};
 	      try {
-	        pmoSetAdminStatus('Carico utenti autorizzati...', 'info');
+	        if (!opts.silentLoading) pmoSetAdminStatus('Carico utenti autorizzati...', 'info');
 	        const rows = await pmoStaffRpc('pmo_get_staff_users_admin', {}, 'manage_users', 'leggere gli utenti staff');
 	        pmoAdminState.staffUsers = Array.isArray(rows) ? rows : [];
 	        pmoAdminState.lastStaffReadAt = new Date().toISOString();
 	        save('pmoAdminState', pmoAdminState);
 	        renderPmoAdministration();
-	        pmoSetAdminStatus(`✅ Utenti autorizzati caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
+	        if (opts.silentSuccess) pmoSetAdminStatus('', 'info');
+	        else pmoSetAdminStatus(`✅ Utenti autorizzati caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Lettura utenti non riuscita: ' + (err.message || err), 'danger');
 	      }
@@ -22052,7 +22047,7 @@ Per confermare scrivi ELIMINA.`);
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Salvataggio non riuscito.', 'salvare un utente staff'));
 	        }
 	        pmoSetStaffFormMode('none');
-	        await pmoLoadStaffUsers();
+	        await pmoLoadStaffUsers({ silentLoading:true, silentSuccess:true });
 	        pmoSetAdminStatus(editing ? `✅ Modifiche salvate: ${email}.` : `✅ Email autorizzata: ${email}. Ora la persona puo usare "Crea accesso" dalla login.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
@@ -22085,7 +22080,7 @@ Per confermare scrivi ELIMINA.`);
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Eliminazione non riuscita.', 'eliminare autorizzazione staff'));
 	        }
 	        pmoSetStaffFormMode('none');
-	        await pmoLoadStaffUsers();
+	        await pmoLoadStaffUsers({ silentLoading:true, silentSuccess:true });
 	        pmoSetAdminStatus(`✅ Autorizzazione rimossa: ${cleanEmail}. Supabase Auth non e stato modificato.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Eliminazione utente non riuscita: ' + (err.message || err), 'danger');
@@ -22099,7 +22094,7 @@ Per confermare scrivi ELIMINA.`);
 	        ? `<div class="admin-inline-cell" style="margin-top:0;">${pmoStaffUserFormHtml({}, 'new')}</div>`
 	        : '';
 	      if (!users.length) {
-	        target.innerHTML = `<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>La lista si carica automaticamente quando entri nella sezione.</div>${newPanel}`;
+	        target.innerHTML = `<div class="ux-empty-state"><strong>Nessun utente caricato.</strong></div>${newPanel}`;
 	        return;
 	      }
 	      const rows = users.map(user => {
