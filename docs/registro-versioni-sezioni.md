@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 22:48
+Ultimo aggiornamento: 2026-05-17 23:01
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione TEST v5.465: quando lo staff entra nella sezione `Autovalutazione`, parte un refresh automatico read-only dei dati della sezione. Il refresh importa log cloud email Autovalutazione, aggiorna le richieste `Link esterno`, legge eventuali risposte scheda da Supabase, compatta la cache locale e ridisegna i pannelli. Per sicurezza il refresh automatico non auto-applica livelli, non invia email di conferma, non avvia routine e non modifica dati cloud. Commit app `bca77fb`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.464: corretto lo `Storico` delle richieste da link esterno dopo aggancio/accorpamento a socio esistente. La deduplica ora usa email, telefono e ID socio espliciti, mantiene una sola riga per persona/socio e preferisce la richiesta con stato operativo piu avanzato. Rimossi dallo header Storico i comandi `Pulisci filtri` ed `Esporta vista`; `Aggiorna link esterno` e' ora azione primaria e lo Storico avvia un refresh silenzioso quando viene aperto, oltre al refresh post-azione dopo creazione/aggancio/validazione. Commit app `32db333`. Nessuna cancellazione record Supabase, nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.463: aggiunta pulizia automatica della cache locale `assessmentExternalRequests`. Dopo sync/import e all'apertura di Storico o Cruscotto mattutino, localStorage conserva solo l'ultima richiesta link esterno per contatto email/telefono, evitando accumulo di duplicati locali. Commit app `1d3cc22`. La pulizia non cancella record Supabase e non modifica dati reali. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.462: corretta la gestione operativa delle richieste arrivate da `Scheda pubblica > Link esterno`. Lo `Storico` mostra una sola riga per contatto email/telefono, tenendo l'ultima richiesta e segnalando eventuali richieste precedenti accorpate; i record sottostanti non vengono cancellati. Nel `Cruscotto mattutino` il filtro rapido `Completati` viene sostituito da `Storico`, con le nuove richieste link esterno ancora da gestire nel `Processo utenti`. Commit app `aae404d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.

@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 22:48
+Ultimo aggiornamento: 2026-05-17 23:01
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.464 | `test-preview` | `32db333` |
-| TEST sviluppo | v5.464 | `test/accessi-staff-guidati` | `32db333` |
+| TEST | v5.465 | `test-preview` | `bca77fb` |
+| TEST sviluppo | v5.465 | `test/accessi-staff-guidati` | `bca77fb` |
+
+Nota TEST v5.465: quando lo staff entra nella sezione `Autovalutazione`, la app avvia un refresh automatico read-only dei dati della sezione: importa log cloud email Autovalutazione, aggiorna le richieste `Link esterno`, legge eventuali risposte scheda da Supabase e ridisegna i pannelli. Il refresh automatico non auto-applica livelli, non invia email di conferma, non avvia routine e non modifica dati cloud; resta un aggiornamento silenzioso dei dati locali/visibili. Commit app `bca77fb`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.464: corretto lo `Storico` Autovalutazione per le richieste arrivate da `Scheda pubblica > Link esterno`. La vista e la cache locale deduplicano le richieste usando email, telefono e ID socio espliciti, mantenendo una sola riga per persona/socio e preferendo la richiesta con stato operativo piu avanzato. Rimossi dallo header Storico i comandi `Pulisci filtri` ed `Esporta vista`; `Aggiorna link esterno` diventa azione primaria e lo Storico avvia un refresh silenzioso quando viene aperto, oltre al refresh post-azione dopo creazione/aggancio/validazione. Commit app `32db333`. Nessuna cancellazione record Supabase, nessuna modifica a PROD, SQL, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
@@ -95,7 +97,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.464 e' preparata in TEST al commit app `32db333`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.464 rafforza la deduplica dello Storico richieste link esterno usando email, telefono e ID socio espliciti, rimuove i comandi `Pulisci filtri` / `Esporta vista`, rende primario `Aggiorna link esterno` e aggiorna silenziosamente le richieste quando si entra nello Storico o dopo azioni operative. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.465 e' preparata in TEST al commit app `bca77fb`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.465 aggiorna automaticamente e in modo read-only i dati Autovalutazione quando si entra nella sezione, includendo log cloud email, richieste link esterno e risposte scheda Supabase, senza auto-applicare livelli o inviare email. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
