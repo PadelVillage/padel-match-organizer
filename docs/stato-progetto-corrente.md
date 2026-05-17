@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 15:40
+Ultimo aggiornamento: 2026-05-17 16:15
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.449 | `test-preview` | `994c506` |
-| TEST sviluppo | v5.449 | `test/accessi-staff-guidati` | `994c506` |
+| TEST | v5.450 | `test-preview` | `7a5c871` |
+| TEST sviluppo | v5.450 | `test/accessi-staff-guidati` | `7a5c871` |
 
-Nota: TEST app e' avanti a v5.449. La v5.449 completa in TEST il primo backend controllato del flusso `Autovalutazione > Scheda pubblica > Link esterno`: il form pubblico senza token salva una pratica in Supabase TEST nella nuova tabella `assessment_external_requests`, lo staff la legge dallo `Storico`, poi decide se creare la scheda socio o agganciarla a un socio esistente prima di validare il livello. La creazione del PMO avviene solo dopo conferma staff. La migrazione TEST applicata e' `supabase/migrations/20260517132138_pmo_assessment_external_requests.sql`; non sono stati modificati PROD, Edge Function, scheduler, Gmail reale, Matchpoint o dati reali.
+Nota: TEST app e' avanti a v5.450. La v5.450 rifinisce la scheda pubblica/tokenizzata di Autovalutazione vista dal socio: testata con logo Padel Village e titolo `Scheda di Autovalutazione`, rimozione della pill separata `Padel Village`, bottone verde rinominato `Contatta segreteria` mantenendo il comportamento WhatsApp/manuale, e privacy espandibile con testo completo da `docs/privacy-policy-padel-village.md`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
+
+Nota precedente v5.449: TEST app completava in TEST il primo backend controllato del flusso `Autovalutazione > Scheda pubblica > Link esterno`: il form pubblico senza token salva una pratica in Supabase TEST nella nuova tabella `assessment_external_requests`, lo staff la legge dallo `Storico`, poi decide se creare la scheda socio o agganciarla a un socio esistente prima di validare il livello. La creazione del PMO avviene solo dopo conferma staff. La migrazione TEST applicata e' `supabase/migrations/20260517132138_pmo_assessment_external_requests.sql`; non sono stati modificati PROD, Edge Function, scheduler, Gmail reale, Matchpoint o dati reali.
 
 Nota precedente v5.448: TEST e PROD app erano allineati a v5.448. La v5.448 corregge il routing pubblico del flusso `Autovalutazione > Scheda pubblica > Link esterno`: quando la URL contiene `assessment=link-esterno`, la app bypassa la login staff e apre il flusso pubblico/registrazione/autovalutazione. La login staff resta invariata per la app gestionale normale senza `assessment=link-esterno`. Nessuna modifica a SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
@@ -61,7 +63,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.449 e' preparata in TEST al commit app `994c506`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.449 introduce il salvataggio controllato delle richieste da link esterno su Supabase TEST, la lettura staff nello `Storico Autovalutazione`, la creazione manuale della scheda socio o l'aggancio a un socio esistente, e il passaggio successivo al controllo livello gia esistente. La migrazione TEST applicata e' `20260517132138_pmo_assessment_external_requests.sql`; non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati reali o modifiche PROD.
+La versione v5.450 e' preparata in TEST al commit app `7a5c871`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.450 rifinisce solo la UI della scheda pubblica/tokenizzata Autovalutazione: logo e titolo `Scheda di Autovalutazione`, testo `Contatta segreteria`, privacy espandibile con testo completo ufficiale e nessuna modifica al comportamento tecnico del contatto WhatsApp/manuale. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati reali o modifiche PROD.
 
 Contiene:
 
@@ -108,6 +110,7 @@ Contiene:
 - Autovalutazione v5.446 TEST: allineato il socio test ufficiale a `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono consentiti solo con doppia verifica `PMO-000948` + email protetta. Il vecchio `PMO-000956` non viene cancellato dai dati: eventuale rimozione/disattivazione va gestita separatamente da Anagrafica TEST. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Autovalutazione v5.447 TEST: aggiornati `autovalutazione.html`, `test/autovalutazione.html` e i link copiati dal pannello `Scheda pubblica > Link esterno`. Il branch TEST contiene la preview `Autovalutazione Livello di Gioco`, descrizione `Padel Village` e logo Padel Village; il link pubblico punta alla pagina dedicata `autovalutazione.html?assessment=link-esterno`; il link TEST usa `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Il cambio della preview reale del link pubblico richiede futura promozione PROD. Nessuna modifica a PROD, SQL, Supabase, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Autovalutazione v5.448 TEST: bugfix routing del link pubblico `Scheda pubblica > Link esterno`; `assessment=link-esterno` viene riconosciuto come accesso pubblico prima della login staff. Il link TEST apre il flusso pubblico/registrazione/autovalutazione anche senza sessione staff e non mostra la schermata login del gestionale. La app normale TEST senza `assessment=link-esterno` mantiene la login staff invariata. Nessuna modifica a PROD, SQL, Supabase, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+- Autovalutazione v5.450 TEST: rifinita la scheda pubblica/tokenizzata vista dal socio con logo Padel Village accanto al titolo `Scheda di Autovalutazione`, rimozione della pill separata `Padel Village`, testo di supporto verso `Contatta segreteria`, bottone verde rinominato mantenendo il link WhatsApp/manuale esistente e privacy espandibile con testo completo. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
 - Documentazione aggiornata per v5.440 TEST.
 
