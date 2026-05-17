@@ -276,7 +276,7 @@
     .admin-save-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .admin-table-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:14px; }
     .admin-table-toolbar strong { color:var(--primary); }
-    .admin-users-table { min-width:720px; table-layout:fixed; }
+    .admin-users-table { min-width:760px; table-layout:fixed; }
     .admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { width:34%; }
     .admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { width:17%; }
     .admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width:15%; }
@@ -288,6 +288,17 @@
     .admin-notifications-table th:nth-child(3), .admin-notifications-table td:nth-child(3) { width:30%; }
     .admin-row-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
     .admin-row-actions .small-btn { margin:0; padding:8px 10px; }
+    .admin-inline-row { display:none; }
+    .admin-inline-row.open { display:table-row; }
+    .admin-inline-cell { padding:0 !important; background:#fbfdff; }
+    .admin-inline-card { border-left:4px solid var(--primary); padding:12px; }
+    .admin-inline-card.delete-mode { border-left-color:#b42318; background:#fffafa; }
+    .admin-inline-title { color:var(--primary); font-size:17px; font-weight:900; margin-bottom:10px; }
+    .admin-inline-card.delete-mode .admin-inline-title { color:#b42318; }
+    .confirm-text { margin:0 0 8px; color:#344054; font-weight:850; line-height:1.35; }
+    .admin-inline-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .admin-inline-actions .small-btn { margin:0; }
+    .admin-user-form-note { margin-top:8px; color:#667085; font-size:13px; font-weight:750; line-height:1.35; }
     .admin-diagnostic-note { margin:10px 0 12px; padding:10px 12px; border:1px solid #dfe8f3; border-radius:8px; background:#fbfdff; color:#475467; font-size:13px; line-height:1.45; }
     .admin-technical-details { margin-top:12px; border:1px solid #dfe8f3; border-radius:8px; background:#fbfdff; }
     .admin-technical-details summary { padding:11px 12px; color:var(--primary); font-weight:900; cursor:pointer; }
@@ -324,7 +335,7 @@
     .staff-permissions-advanced[hidden] { display:none !important; }
     .staff-login-note { margin-top:12px; padding:11px 12px; border-left:4px solid var(--primary); background:#f8fbff; border-radius:8px; color:#475467; font-size:13px; line-height:1.45; }
     @media (max-width:1050px) { .admin-account-strip { grid-template-columns:1fr; } .staff-access-flow, .staff-access-layout { grid-template-columns:1fr; } .staff-invite-grid { grid-template-columns:1fr 1fr; } }
-    @media (max-width:680px) { .staff-access-toolbar, .staff-access-primary-actions { justify-content:flex-start; } .staff-invite-grid { grid-template-columns:1fr; } .staff-flow-step { grid-template-columns:28px 1fr; } }
+    @media (max-width:680px) { .staff-access-toolbar, .staff-access-primary-actions, .admin-inline-actions { justify-content:flex-start; } .staff-invite-grid { grid-template-columns:1fr; } .staff-flow-step { grid-template-columns:28px 1fr; } .admin-inline-row.open { display:table-row; } }
     @media (max-width:1050px) { .admin-grid, .admin-user-kpis { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid, .admin-env-grid, .admin-section-tabs { grid-template-columns:1fr 1fr; } .admin-notification-layout { grid-template-columns:1fr; } }
     @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid, .admin-env-grid, .admin-section-tabs, .admin-notification-add { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } .admin-check-row, .admin-preview-row { grid-template-columns:1fr; gap:3px; } }
 
@@ -5365,8 +5376,6 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
-          <div id="pmoAdminKpis" class="admin-grid admin-user-kpis"></div>
-
           <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti">
             <div class="admin-panel-head">
               <div>
@@ -5550,7 +5559,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.452';
+    const APP_VERSION = '5.453';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5893,6 +5902,8 @@ Grazie.`
 	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
 	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
+	    let pmoStaffUserInlineMode = 'none';
+	    let pmoStaffUserInlineEmail = '';
 	    const PMO_STAFF_NOTIFICATIONS_STORAGE_KEY = 'pmoStaffNotificationRecipientsV1';
 	    const PMO_STAFF_NOTIFICATION_TEST_RECIPIENT = { id:'PMO-000948', name:'Maurizio Aprea', email:'aprea.maurizio@gmail.com', active:true, test:true };
 	    let pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(safeLoad(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, null));
@@ -21005,6 +21016,8 @@ Per confermare scrivi ELIMINA.`);
 	      if (raw.includes('AUTH_REQUIRED')) return `Accedi con email personale Supabase per ${actionLabel}.`;
 	      if (raw.includes('PERMISSION_DENIED')) return `Il tuo profilo non ha il permesso per ${actionLabel}.`;
 	      if (raw.includes('INVALID_ADMIN_PIN')) return 'Questa operazione usa ancora il vecchio PIN staff. Aggiorna lo schema Supabase.';
+	      if (raw.includes('CANNOT_DELETE_OWNER')) return 'Il proprietario non puo essere eliminato dagli utenti autorizzati.';
+	      if (raw.includes('USER_NOT_FOUND')) return 'Utente non trovato nella lista autorizzata.';
 	      return raw || 'Operazione Supabase non riuscita.';
 	    }
 	    async function pmoRequireStaffPermission(permission='', actionLabel='questa operazione') {
@@ -21297,65 +21310,33 @@ Per confermare scrivi ELIMINA.`);
 	        read_all:'Solo consultazione'
 	      })[permission] || String(permission || '').replace(/_/g, ' ');
 	    }
-	    function pmoStaffPermissionCheckboxesHtml() {
+	    function pmoStaffPermissionCheckboxesHtml(selectedPermissions=null) {
 	      const items = [
-	        ['manage_users', 'Gestisce utenti'],
-	        ['cloud_sync', 'Sync dati cloud'],
+	        ['manage_users', 'Gestione utenti'],
+	        ['cloud_sync', 'Sincronizzazione dati cloud'],
 	        ['routines', 'Routine'],
 	        ['members_write', 'Modifica soci'],
 	        ['matches_write', 'Modifica partite'],
 	        ['messages_write', 'Messaggi WhatsApp'],
-	        ['data_export', 'Export/import dati'],
+	        ['data_export', 'Esportazione/importazione dati'],
 	        ['read_all', 'Solo consultazione']
 	      ];
-	      return items.map(([key, label]) => `<label><input type="checkbox" data-admin-permission="${escapeHtml(key)}" onchange="pmoRenderStaffRoleSummary()" /> ${escapeHtml(label)}</label>`).join('');
+	      const selected = selectedPermissions && typeof selectedPermissions === 'object' ? selectedPermissions : {};
+	      return items.map(([key, label]) => `<label><input type="checkbox" data-admin-permission="${escapeHtml(key)}" ${selected[key] ? 'checked' : ''} onchange="pmoRenderStaffRoleSummary()" /> ${escapeHtml(label)}</label>`).join('');
 	    }
 	    function pmoRenderStaffAccessPanel() {
 	      const panel = document.getElementById('pmoStaffAccessPanel');
-	      if (!panel || panel.dataset.flowUi === 'v5340') return;
-	      panel.dataset.flowUi = 'v5340';
+	      if (!panel || panel.dataset.flowUi === 'v5453') return;
+	      panel.dataset.flowUi = 'v5453';
 	      panel.innerHTML = `
 	        <div class="admin-panel-head staff-access-head">
 	          <div>
 	            <h3>Utenti</h3>
 	            <p>Autorizza email staff e gestisci ruoli operativi.</p>
 	          </div>
-	        </div>
-	        <div class="admin-form-mode">
-	          <div>
-	            <span id="pmoStaffFormModeBadge" class="staff-permission-chip">Nuovo utente</span>
-	            <strong id="pmoStaffFormModeTitle">Autorizza una nuova email staff</strong>
-	            <span id="pmoStaffFormModeHelp" class="routine-mini">Per cambiare ruolo, stato o permessi di un utente esistente, clicca Modifica nella tabella.</span>
+	          <div class="staff-access-toolbar">
+	            <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoOpenNewStaffUser()">+ Nuovo</button>
 	          </div>
-	          <span class="staff-permission-chip staff-permission-chip-muted">Da Modifica: Salva modifiche</span>
-	        </div>
-	        <div class="admin-form-grid staff-invite-grid">
-	          <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" /></div>
-	          <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" autocomplete="name" placeholder="Nome staff" /></div>
-	          <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()"><option value="owner">Proprietario</option><option value="admin">Admin</option><option value="staff">Staff</option><option value="readonly">Solo lettura</option></select></div>
-	          <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus"><option value="invited">Invitato</option><option value="active">Attivo</option><option value="paused">Sospeso</option></select></div>
-	        </div>
-	        <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
-	        <details class="staff-permissions-details">
-	          <summary>Personalizza permessi opzionali</summary>
-	          <div id="pmoStaffPermissionAdvanced" class="staff-permissions-advanced">
-	            <div class="admin-permission-grid">
-	              ${pmoStaffPermissionCheckboxesHtml()}
-	            </div>
-	            <div style="padding:0 12px 12px;">
-	              <span class="routine-mini">Apri questi dettagli solo se il preset del ruolo non basta.</span>
-	            </div>
-	          </div>
-	        </details>
-	        <div class="admin-save-bar">
-	          <div class="admin-save-copy">
-	            <strong>Salvataggio utente</strong>
-	            <span id="pmoStaffSaveHelp" class="routine-mini">Da Modifica puoi cambiare ruolo, stato e permessi; il pulsante principale diventa Salva modifiche.</span>
-	          </div>
-	          <div class="admin-save-actions">
-	            <button id="pmoStaffFormSaveButton" class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">Autorizza email</button>
-	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoClearStaffUserForm()">Svuota</button>
-	            </div>
 	        </div>
 	        <div class="staff-login-note">Autorizzi l'email qui; la persona crea la password dalla login con Crea accesso.</div>
 	        <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;">Accedi con email personale Supabase. La lista utenti si carica automaticamente.</div>
@@ -21364,14 +21345,15 @@ Per confermare scrivi ELIMINA.`);
 	            <strong>Utenti autorizzati</strong>
 	            <span class="routine-mini">La lista si carica automaticamente quando entri nella sezione.</span>
 	          </div>
-	          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadStaffUsers()">Aggiorna</button>
 	        </div>
 	        <div id="pmoStaffUsersTable"></div>
 	      `;
-	      pmoApplyRolePermissions();
-	      pmoSetStaffFormMode('new');
+	      pmoSetStaffFormMode('none');
 	    }
-	    function pmoSetStaffFormMode(mode='new', email='') {
+	    function pmoSetStaffFormMode(mode='none', email='') {
+	      const normalized = ['new', 'edit', 'delete'].includes(mode) ? mode : 'none';
+	      pmoStaffUserInlineMode = normalized;
+	      pmoStaffUserInlineEmail = normalized === 'none' ? '' : cleanCell(email || '').toLowerCase();
 	      const editing = mode === 'edit';
 	      const panel = document.getElementById('pmoStaffAccessPanel');
 	      if (panel) panel.dataset.editingEmail = editing ? String(email || '') : '';
@@ -21689,15 +21671,7 @@ Per confermare scrivi ELIMINA.`);
 	    function pmoRenderAdminKpis() {
 	      const target = document.getElementById('pmoAdminKpis');
 	      if (!target) return;
-	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
-	      const active = users.filter(u => u.status === 'active').length;
-	      const invited = users.filter(u => u.status === 'invited').length;
-	      const paused = users.filter(u => u.status === 'paused').length;
-	      target.innerHTML = `
-	        <div class="admin-card"><div class="label">Utenti attivi</div><div class="value">${active}</div></div>
-	        <div class="admin-card"><div class="label">Invitati</div><div class="value">${invited}</div></div>
-	        <div class="admin-card"><div class="label">${PMO_IS_TEST_ENV ? 'Sospesi' : 'Disattivati'}</div><div class="value">${paused}</div></div>
-	      `;
+	      target.innerHTML = '';
 	    }
 	    function pmoSetAdminStatus(message, type='info') {
 	      const box = document.getElementById('pmoAdminStatus');
@@ -21895,41 +21869,127 @@ Per confermare scrivi ELIMINA.`);
 	      });
 	      return permissions;
 	    }
-	    function pmoClearStaffUserForm() {
-	      ['pmoStaffUserEmail','pmoStaffUserName'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-	      const role = document.getElementById('pmoStaffUserRole'); if (role) role.value = 'staff';
-	      const status = document.getElementById('pmoStaffUserStatus'); if (status) status.value = 'invited';
-	      pmoApplyRolePermissions();
-	      pmoRenderStaffRoleSummary();
-	      pmoSetStaffFormMode('new');
+	    function pmoStaffUserIsOwner(user={}) {
+	      const email = cleanCell(user?.email || user || '').toLowerCase();
+	      return email === 'padelvillage.club@gmail.com' || cleanCell(user?.role || '') === 'owner';
 	    }
-	    function pmoFillStaffUserForm(email) {
-	      const user = (pmoAdminState.staffUsers || []).find(u => String(u.email || '') === String(email || ''));
-	      if (!user) {
-	        pmoSetAdminStatus('Utente non trovato nella lista caricata. Clicca “Carica utenti” e riprova.', 'warning');
-	        return;
-	      }
-	      const emailEl = document.getElementById('pmoStaffUserEmail'); if (emailEl) emailEl.value = user.email || '';
-	      const nameEl = document.getElementById('pmoStaffUserName'); if (nameEl) nameEl.value = user.full_name || '';
-	      const roleEl = document.getElementById('pmoStaffUserRole'); if (roleEl) roleEl.value = user.role || 'staff';
-	      const statusEl = document.getElementById('pmoStaffUserStatus'); if (statusEl) statusEl.value = user.status || 'invited';
-	      const permissions = user.permissions || pmoDefaultPermissionsForRole(user.role || 'staff');
-	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
-	        input.checked = !!permissions[input.dataset.adminPermission];
-	      });
-	      pmoRenderStaffRoleSummary();
-	      pmoSetStaffFormMode('edit', user.email || '');
-	      pmoSetAdminStatus(`Utente caricato nel modulo: ${user.email || ''}. Ora puoi cambiare ruolo, stato o permessi e salvare.`, 'info');
+	    function pmoStaffUserRoleOptions(selected='staff') {
+	      const roles = [
+	        ['owner', 'Proprietario'],
+	        ['admin', 'Admin'],
+	        ['staff', 'Staff'],
+	        ['readonly', 'Solo lettura']
+	      ];
+	      return roles.map(([key, label]) => `<option value="${escapeHtml(key)}" ${key === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+	    }
+	    function pmoStaffUserStatusOptions(selected='invited') {
+	      return [
+	        ['invited', 'Invitato'],
+	        ['active', 'Attivo'],
+	        ['paused', 'Sospeso']
+	      ].map(([key, label]) => `<option value="${escapeHtml(key)}" ${key === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+	    }
+	    function pmoStaffUserFormHtml(user={}, mode='new') {
+	      const editing = mode === 'edit';
+	      const email = cleanCell(user?.email || '').toLowerCase();
+	      const role = cleanCell(user?.role || (editing ? 'staff' : 'staff'));
+	      const status = cleanCell(user?.status || (editing ? 'invited' : 'invited'));
+	      const permissions = user?.permissions || pmoDefaultPermissionsForRole(role);
+	      const title = editing ? 'Scheda utente' : 'Nuovo utente';
+	      const help = editing
+	        ? 'Email non modificabile: usa Salva modifiche per ruolo, stato e permessi.'
+	        : 'Autorizzi l’email qui; la persona crea la password dalla login con Crea accesso.';
+	      return `<div class="admin-inline-card">
+	        <div class="admin-inline-title">${escapeHtml(title)}</div>
+	        <div class="admin-form-grid staff-invite-grid">
+	          <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" autocomplete="name" placeholder="Nome staff" value="${escapeHtml(user?.full_name || '')}" /></div>
+	          <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" value="${escapeHtml(email)}" ${editing ? 'disabled' : ''} /></div>
+	          <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()">${pmoStaffUserRoleOptions(role)}</select></div>
+	          <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus">${pmoStaffUserStatusOptions(status)}</select></div>
+	        </div>
+	        <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
+	        <div class="staff-permissions-copy"><strong>Permessi personalizzabili</strong></div>
+	        <div class="admin-permission-grid">
+	          ${pmoStaffPermissionCheckboxesHtml(permissions)}
+	        </div>
+	        <div class="admin-user-form-note">${escapeHtml(help)}</div>
+	        <div class="admin-inline-actions">
+	          <button id="pmoStaffFormSaveButton" class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">${editing ? 'Salva modifiche' : 'Autorizza email'}</button>
+	          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoCancelStaffUserInline()">Annulla</button>
+	        </div>
+	      </div>`;
+	    }
+	    function pmoStaffDeleteConfirmHtml(user={}) {
+	      return `<div class="admin-inline-card delete-mode">
+	        <div class="admin-inline-title">Elimina autorizzazione</div>
+	        <p class="confirm-text">Confermi la rimozione di ${escapeHtml(user.full_name || user.email || 'questo utente')} dagli utenti autorizzati?</p>
+	        <div class="admin-user-form-note">Viene rimossa solo l'autorizzazione staff. L'utente Supabase Auth non viene cancellato.</div>
+	        <div class="admin-inline-actions">
+	          <button class="btn-danger small-btn" onclick="setActionAnchor(this); pmoDeleteStaffUser('${escapeJs(user.email || '')}')">Conferma elimina</button>
+	          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoCancelStaffUserInline()">Annulla</button>
+	        </div>
+	      </div>`;
+	    }
+	    function pmoOpenNewStaffUser() {
+	      pmoSetStaffFormMode('new');
+	      pmoRenderStaffUsersTable();
 	      requestAnimationFrame(() => {
-	        const target = document.getElementById('pmoStaffUserEmail');
+	        pmoApplyRolePermissions();
+	        const target = document.getElementById('pmoStaffUserName') || document.getElementById('pmoStaffUserEmail');
 	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
 	        else target?.scrollIntoView?.({ behavior:'smooth', block:'center' });
-	        if (target) {
-	          target.focus();
-	          target.select?.();
-	        }
+	        target?.focus?.();
 	      });
-	      showAlert('Utente caricato nel modulo.', 'info');
+	      pmoSetAdminStatus('Compila la scheda nuovo utente.', 'info');
+	    }
+	    function pmoOpenEditStaffUser(email) {
+	      const cleanEmail = cleanCell(email || '').toLowerCase();
+	      const user = (pmoAdminState.staffUsers || []).find(u => cleanCell(u.email || '').toLowerCase() === cleanEmail);
+	      if (!user) {
+	        pmoSetAdminStatus('Utente non trovato nella lista caricata.', 'warning');
+	        return;
+	      }
+	      pmoSetStaffFormMode('edit', cleanEmail);
+	      pmoRenderStaffUsersTable();
+	      requestAnimationFrame(() => {
+	        pmoRenderStaffRoleSummary();
+	        const target = document.getElementById('pmoStaffUserName') || document.getElementById('pmoStaffUserEmail');
+	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
+	        else target?.scrollIntoView?.({ behavior:'smooth', block:'center' });
+	        target?.focus?.();
+	      });
+	      pmoSetAdminStatus(`Scheda utente aperta: ${cleanEmail}.`, 'info');
+	    }
+	    function pmoOpenDeleteStaffUser(email) {
+	      const cleanEmail = cleanCell(email || '').toLowerCase();
+	      const user = (pmoAdminState.staffUsers || []).find(u => cleanCell(u.email || '').toLowerCase() === cleanEmail);
+	      if (!user) {
+	        pmoSetAdminStatus('Utente non trovato nella lista caricata.', 'warning');
+	        return;
+	      }
+	      if (pmoStaffUserIsOwner(user)) {
+	        pmoSetAdminStatus('Il proprietario non puo essere eliminato.', 'warning');
+	        return;
+	      }
+	      pmoSetStaffFormMode('delete', cleanEmail);
+	      pmoRenderStaffUsersTable();
+	      requestAnimationFrame(() => {
+	        const target = document.querySelector('.admin-inline-card.delete-mode');
+	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
+	        else target?.scrollIntoView?.({ behavior:'smooth', block:'center' });
+	      });
+	      pmoSetAdminStatus('Conferma richiesta prima di eliminare.', 'warning');
+	    }
+	    function pmoCancelStaffUserInline() {
+	      pmoSetStaffFormMode('none');
+	      pmoRenderStaffUsersTable();
+	      pmoSetAdminStatus('Operazione annullata.', 'info');
+	    }
+	    function pmoClearStaffUserForm() {
+	      pmoCancelStaffUserInline();
+	    }
+	    function pmoFillStaffUserForm(email) {
+	      pmoOpenEditStaffUser(email);
 	    }
 	    function pmoMaybeAutoLoadStaffUsers() {
 	      if (pmoAdminStaffAutoLoadAttempted || pmoAdminStaffAutoLoadInFlight || pmoAdminState.lastStaffReadAt) return;
@@ -21960,7 +22020,7 @@ Per confermare scrivi ELIMINA.`);
 	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
 	        const editingEmail = cleanCell(document.getElementById('pmoStaffAccessPanel')?.dataset.editingEmail || '').toLowerCase();
 	        const editing = !!editingEmail && editingEmail === email;
-	        if (!email) return showAlert('Inserisci email utente.', 'warning');
+	        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('Inserisci un indirizzo email valido.', 'warning');
 	        pmoSetAdminStatus(editing ? 'Salvo modifiche utente...' : 'Autorizzo email staff...', 'info');
 	        const result = await pmoStaffRpc('pmo_upsert_staff_user_admin', {
 	          p_email: email,
@@ -21972,33 +22032,74 @@ Per confermare scrivi ELIMINA.`);
 	        if (!result || result.ok !== true) {
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Salvataggio non riuscito.', 'salvare un utente staff'));
 	        }
+	        pmoSetStaffFormMode('none');
 	        await pmoLoadStaffUsers();
-	        pmoSetStaffFormMode('edit', email);
 	        pmoSetAdminStatus(editing ? `✅ Modifiche salvate: ${email}.` : `✅ Email autorizzata: ${email}. Ora la persona puo usare "Crea accesso" dalla login.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
+	      }
+	    }
+	    async function pmoDeleteStaffUser(email) {
+	      const cleanEmail = cleanCell(email || '').toLowerCase();
+	      const user = (pmoAdminState.staffUsers || []).find(u => cleanCell(u.email || '').toLowerCase() === cleanEmail);
+	      if (!user) {
+	        pmoSetAdminStatus('Utente non trovato nella lista caricata.', 'warning');
+	        return;
+	      }
+	      if (pmoStaffUserIsOwner(user)) {
+	        pmoSetAdminStatus('Il proprietario non puo essere eliminato.', 'warning');
+	        return;
+	      }
+	      try {
+	        pmoSetAdminStatus('Rimuovo autorizzazione staff...', 'info');
+	        const result = await pmoStaffRpc('pmo_delete_staff_user_admin', { p_email: cleanEmail }, 'manage_users', 'eliminare autorizzazione staff');
+	        if (!result || result.ok !== true) {
+	          throw new Error(pmoFriendlyCloudError(result?.error || 'Eliminazione non riuscita.', 'eliminare autorizzazione staff'));
+	        }
+	        pmoSetStaffFormMode('none');
+	        await pmoLoadStaffUsers();
+	        pmoSetAdminStatus(`✅ Autorizzazione rimossa: ${cleanEmail}. Supabase Auth non e stato modificato.`, 'success');
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Eliminazione utente non riuscita: ' + (err.message || err), 'danger');
 	      }
 	    }
 	    function pmoRenderStaffUsersTable() {
 	      const target = document.getElementById('pmoStaffUsersTable');
 	      if (!target) return;
 	      const users = Array.isArray(pmoAdminState.staffUsers) ? pmoAdminState.staffUsers : [];
+	      const newPanel = pmoStaffUserInlineMode === 'new'
+	        ? `<div class="admin-inline-cell" style="margin-top:0;">${pmoStaffUserFormHtml({}, 'new')}</div>`
+	        : '';
 	      if (!users.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>La lista si carica automaticamente quando entri nella sezione. Usa “Aggiorna” per riprovare.</div>';
+	        target.innerHTML = `<div class="ux-empty-state"><strong>Nessun utente caricato.</strong><br>La lista si carica automaticamente quando entri nella sezione.</div>${newPanel}`;
 	        return;
 	      }
 	      const rows = users.map(user => {
+	        const email = cleanCell(user.email || '').toLowerCase();
+	        const isOwner = pmoStaffUserIsOwner(user);
+	        const isEditing = pmoStaffUserInlineMode === 'edit' && pmoStaffUserInlineEmail === email;
+	        const isDeleting = pmoStaffUserInlineMode === 'delete' && pmoStaffUserInlineEmail === email;
+	        const deleteButton = isOwner
+	          ? '<button class="btn-secondary small-btn" disabled>Elimina</button>'
+	          : `<button class="btn-danger small-btn" onclick="setActionAnchor(this); pmoOpenDeleteStaffUser('${escapeJs(email)}')">Elimina</button>`;
+	        const detailRow = isEditing
+	          ? `<tr class="admin-inline-row open"><td class="admin-inline-cell" colspan="5">${pmoStaffUserFormHtml(user, 'edit')}</td></tr>`
+	          : isDeleting
+	            ? `<tr class="admin-inline-row open"><td class="admin-inline-cell" colspan="5">${pmoStaffDeleteConfirmHtml(user)}</td></tr>`
+	            : '';
 	        return `<tr>
-	          <td><strong>${escapeHtml(user.full_name || '-')}</strong><div class="routine-mini">${escapeHtml(user.email || '')}</div></td>
+	          <td><strong>${escapeHtml(user.full_name || '-')}</strong><div class="routine-mini">${escapeHtml(email)}</div></td>
 	          <td><span class="admin-role-pill">${escapeHtml(pmoRoleLabel(user.role))}</span></td>
 	          <td><span class="admin-status-pill ${escapeHtml(user.status || '')}">${escapeHtml(pmoStatusLabel(user.status))}</span></td>
 	          <td>${escapeHtml(pmoFormatDateTime(user.last_seen_at || user.updated_at))}</td>
 	          <td><div class="admin-row-actions">
-	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoFillStaffUserForm('${escapeJs(user.email || '')}')">Modifica</button>
+	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoOpenEditStaffUser('${escapeJs(email)}')">Modifica</button>
+	            ${deleteButton}
 	          </div></td>
-	        </tr>`;
+	        </tr>${detailRow}`;
 	      }).join('');
-	      target.innerHTML = `<div class="admin-table-wrap"><table class="admin-table admin-users-table"><thead><tr><th>Utente</th><th>Ruolo</th><th>Stato</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+	      target.innerHTML = `<div class="admin-table-wrap"><table class="admin-table admin-users-table"><thead><tr><th>Utente</th><th>Ruolo</th><th>Stato</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead><tbody>${rows}</tbody></table></div>${newPanel}`;
+	      if (pmoStaffUserInlineMode !== 'none') pmoRenderStaffRoleSummary();
 	    }
 	    async function pmoLoadAuditLog() {
 	      try {
