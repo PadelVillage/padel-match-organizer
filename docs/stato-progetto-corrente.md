@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 21:15
+Ultimo aggiornamento: 2026-05-17 21:24
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.457 | `test-preview` | `8a224af` |
-| TEST sviluppo | v5.457 | `test/accessi-staff-guidati` | `8a224af` |
+| TEST | v5.458 | `test-preview` | `f25d6c1` |
+| TEST sviluppo | v5.458 | `test/accessi-staff-guidati` | `f25d6c1` |
+
+Nota TEST v5.458: corretta la resa del logo Padel Village nelle anteprime pubbliche staff di `Autovalutazione > Scheda pubblica`. Le anteprime `Link esterno`, `Registrazione utente` e `Form autovalutazione` usano ora lo stesso URL stabile del logo gia usato dalla scheda pubblica reale e dai meta tag, mantenendo il titolo `Autovalutazione Livello di Gioco`. Nessuna modifica a logica Link esterno, registrazione, form, storico, privacy, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail, WhatsApp automatico o PROD.
 
 Nota TEST v5.457: semplificata la sottosezione `Amministrazione > Utenti`. La tab parte direttamente da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga a destra; rimossi titolo interno `Utenti`, testo introduttivo, nota `Autorizzi l'email qui...` sopra la tabella e messaggio verde automatico di caricamento. Restano invariati tabella utenti, `+ Nuovo`, `Modifica` inline, `Elimina` inline con proprietario non eliminabile, RPC e salvataggi gia esistenti. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp.
 
