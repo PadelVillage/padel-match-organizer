@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 23:46
+Ultimo aggiornamento: 2026-05-17 23:56
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.468 | `test-preview` | `54a362c` |
-| TEST sviluppo | v5.468 | `test/accessi-staff-guidati` | `54a362c` |
+| TEST | v5.469 | `test-preview` | `864765c` |
+| TEST sviluppo | v5.469 | `test/accessi-staff-guidati` | `864765c` |
+
+Nota TEST v5.469: corretti due bug del flusso `Autovalutazione > Scheda pubblica > Link esterno`. La tab `Storico` ora mostra nel contatore anche le richieste link esterno operative, quindi una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene segnalata gia nella tab. In modalita pubblica da link WhatsApp/Telegram il refresh automatico staff non parte piu e il salvataggio impostazioni silenzioso non mostra l'alert gestionale `Nessuna modifica da salvare`, evitando che il socio veda avvisi e contenuti del gestionale mentre compila la scheda. Commit app `864765c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.468: aggiunta su Supabase TEST la RPC autenticata `cleanup_assessment_external_requests_admin(p_request_id uuid)` e collegata alla validazione livello delle `Richieste da link esterno`. Dopo che lo staff valida una richiesta cloud, la app mantiene la richiesta validata corrente e cancella da `public.assessment_external_requests` solo le richieste piu vecchie della stessa persona/socio, abbinate per email normalizzata, telefono normalizzato o ID socio collegato. La RPC richiede profilo staff con permesso `cloud_sync`, ha grant solo `authenticated`, nessun grant `anon`, e scrive audit `assessment_external_requests_cleanup` quando elimina righe. Migrazione TEST applicata: `supabase/migrations/20260517213714_cleanup_assessment_external_requests.sql`. Commit app `54a362c`. Nessuna modifica a PROD, Edge Function, scheduler, Matchpoint, Gmail, WhatsApp automatico o dati soci.
 
@@ -103,7 +105,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.468 e' preparata in TEST al commit app `54a362c`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.468 aggiunge una pulizia Supabase TEST controllata per le `Richieste da link esterno`: dopo la validazione staff della richiesta cloud piu recente, viene mantenuta la richiesta validata e vengono rimosse solo le richieste piu vecchie dello stesso contatto/socio da `assessment_external_requests`. Non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.469 e' preparata in TEST al commit app `864765c`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.469 corregge la visibilita delle nuove richieste da link esterno nel contatore della tab `Storico` e blocca gli alert/refresh gestionali quando il socio apre la scheda pubblica dal link WhatsApp/Telegram. Non sono stati eseguiti SQL, deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
