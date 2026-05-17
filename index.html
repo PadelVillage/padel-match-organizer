@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.468';
+    const APP_VERSION = '5.469';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6025,6 +6025,12 @@ Grazie.`
       if (typeof isPostMatchFeedbackPublicRequest === 'function' && isPostMatchFeedbackPublicRequest()) return false;
       if (typeof assessmentPublicIsExternalLinkRequest === 'function' && assessmentPublicIsExternalLinkRequest(params)) return true;
       return !!String(params.get('t') || params.get('token') || '').trim();
+    }
+    function pmoIsPublicAccessMode() {
+      return document.body.classList.contains('assessment-public-mode')
+        || document.body.classList.contains('post-match-feedback-public-mode')
+        || isAssessmentPublicRequest()
+        || (typeof isPostMatchFeedbackPublicRequest === 'function' && isPostMatchFeedbackPublicRequest());
     }
 
     function pmoGetLoginMode() {
@@ -7513,6 +7519,7 @@ Grazie.`
 
 
     function showAlert(message, type='info', anchorEl=null) {
+      if (pmoIsPublicAccessMode() && normalizeText(message).includes('nessuna modifica da salvare')) return;
       const seconds = 3000;
       document.querySelectorAll('.action-alert-overlay').forEach(el => el.remove());
 
@@ -7571,7 +7578,7 @@ Grazie.`
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
               displayAssessment();
-              refreshAssessmentSectionDataOnEnter();
+              if (!pmoIsPublicAccessMode()) refreshAssessmentSectionDataOnEnter();
             }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
             if (tabName === 'administration' && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data') refreshDataActionStatuses();
@@ -19214,15 +19221,20 @@ Grazie!`
       const opened = window.open(url, '_blank', 'noopener,noreferrer');
       if (!opened) showAlert('⚠️ Il browser ha bloccato la nuova scheda. Copia il link o abilita i popup per questa pagina.', 'warning');
     }
-    function saveAssessmentSettings() {
+    function saveAssessmentSettings(options = {}) {
+      const silent = options.silent === true;
       const previous = { ...assessmentSettings };
       const v = cleanCell(document.getElementById('assessmentBaseUrl')?.value || assessmentSettings.baseUrl);
       if (v) assessmentSettings.baseUrl = v;
       const cfg = cleanCell(document.getElementById('assessmentConfigUrl')?.value || assessmentSettings.configUrl || PMO_DEFAULT_CONFIG_URL);
       if (cfg) assessmentSettings.configUrl = cfg;
-      if (sameData(previous, assessmentSettings)) return showAlert('ℹ️ Nessuna modifica da salvare.', 'info');
+      if (sameData(previous, assessmentSettings)) {
+        if (!silent) showAlert('ℹ️ Nessuna modifica da salvare.', 'info');
+        return false;
+      }
       save('assessmentSettings', assessmentSettings);
-      showAlert('✅ Impostazioni autovalutazione salvate', 'success');
+      if (!silent) showAlert('✅ Impostazioni autovalutazione salvate', 'success');
+      return true;
     }
     function makeAssessmentToken(member) {
       const raw = `${Date.now()}_${member.id}_${Math.random()}`;
@@ -22623,7 +22635,7 @@ Per confermare scrivi ELIMINA.`);
     async function syncAssessmentResponsesFromSupabase(options = {}) {
       const silent = options.silent === true;
       try {
-        saveAssessmentSettings();
+        saveAssessmentSettings({ silent });
         if (options.skipCloudLogs !== true) await assessmentEmailImportCloudLogs({ silent:true });
         const tokens = Object.values(assessmentTokens || {}).map(r => cleanCell(r.token)).filter(Boolean);
         if (!tokens.length) {
@@ -22705,6 +22717,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     async function refreshAssessmentSectionDataOnEnter(options = {}) {
+      if (pmoIsPublicAccessMode()) return;
       if (window.__assessmentSectionAutoRefreshInFlight) return;
       const now = Date.now();
       if (!options.force && now - (window.__assessmentSectionAutoRefreshLastAt || 0) < 5000) return;
@@ -25525,6 +25538,7 @@ Per confermare scrivi ELIMINA.`);
       const history = assessmentEmailHistoryBaseRows();
       const matchpoint = assessmentMatchpointPendingRows();
       const morning = assessmentMorningSummaryRows();
+      const externalRequests = assessmentExternalRequestsForMorning();
       const sentToday = getAssessmentRequestsSentTodayCount();
       const setCount = (id, html) => {
         const el = document.getElementById(id);
@@ -25535,7 +25549,9 @@ Per confermare scrivi ELIMINA.`);
       setCount('assessmentEmailPendingTabCount', `<strong>${escapeHtml(String(pending.length))}</strong> in attesa`);
       setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
       setCount('assessmentEmailPostTabCount', `<strong>${escapeHtml(String(post.length))}</strong> risposte`);
-      setCount('assessmentEmailHistoryTabCount', `<strong>${escapeHtml(String(history.length))}</strong> chiusi`);
+      setCount('assessmentEmailHistoryTabCount', externalRequests.length
+        ? `<strong>${escapeHtml(String(externalRequests.length))}</strong> link · ${escapeHtml(String(history.length))} chiusi`
+        : `<strong>${escapeHtml(String(history.length))}</strong> chiusi`);
       setCount('assessmentEmailMatchpointTabCount', `<strong>${escapeHtml(String(matchpoint.length))}</strong> soci`);
       const chip = document.getElementById('assessmentDailyLimitChip');
       if (chip) chip.textContent = `Invii oggi: ${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`;
