@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 21:24
+Ultimo aggiornamento: 2026-05-17 21:43
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Amministrazione TEST v5.459: rimossa la barra orizzontale interna delle sottosezioni `Utenti`, `Notifiche staff`, `Dati Matchpoint`, `Sessione`, `Supabase` dal contenuto principale di `Amministrazione`. La navigazione resta nel menu laterale sotto `Amministrazione`; grafica, contenuti, salvataggi, pannelli e logiche delle sottosezioni restano invariati. Commit app `8015235`. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Scheda pubblica TEST v5.458: micro-correzione grafica delle anteprime pubbliche staff. Le anteprime `Link esterno`, `Registrazione utente` e `Form autovalutazione` usano l'URL stabile `https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg`, coerente con scheda pubblica reale e meta tag, e mantengono il titolo `Autovalutazione Livello di Gioco`. Commit app `f25d6c1`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail, WhatsApp automatico, privacy, storico o salvataggi.
 - Amministrazione / Utenti TEST v5.457: semplificata la tab `Amministrazione > Utenti` secondo il mockup approvato. Rimossi titolo interno `Utenti`, testo `Autorizza email staff e gestisci ruoli operativi.`, nota introduttiva `Autorizzi l'email qui...`, spiegazione sopra tabella e messaggio verde automatico di caricamento. La vista parte da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga a destra; `Modifica` ed `Elimina` restano inline sotto la riga, il proprietario resta non eliminabile e i salvataggi/RPC esistenti non cambiano. Commit app `8a224af`. Nessuna modifica a PROD, SQL, Supabase schema, Supabase Auth, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp.
 - Amministrazione / Notifiche staff TEST v5.456: rifinita la sottosezione `Amministrazione > Notifiche staff` secondo il mockup approvato. Rimossi titolo e sottotitolo interni ridondanti; il pannello parte da `Configurazione destinatari` con testo operativo compatto; l'anteprima notifica e' sotto la configurazione e usa una riga/area compatta invece del layout a due colonne. Restano invariati checkbox Attivo/Disattivo, validazione email, riga test `PMO-000948` / `aprea.maurizio@gmail.com`, bottone `Invia email di test` simulato e tab `Dati Matchpoint`. Commit app `ef1335f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail reale o WhatsApp automatico.
