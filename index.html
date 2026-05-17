@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.473';
+    const APP_VERSION = '5.474';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -19200,6 +19200,14 @@ Grazie!`
       }
       if (member || status === 'member_created' || status === 'linked') {
         actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Controlla livello</button>`);
+      }
+      if (member) {
+        const info = assessmentRecordFor(member);
+        const confirmationSentAt = assessmentEmailLevelConfirmationSentAt(member, info?.response, info?.rec);
+        if (assessmentEmailMemberApplied(member, info) && assessmentEmailHasValidEmail(member)) {
+          const confirmationLabel = confirmationSentAt ? 'Reinvia conferma email' : 'Invia conferma email';
+          actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(member.id))}')">${confirmationLabel}</button>`);
+        }
       }
       if (member) actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(member.id))}')">Scheda socio</button>`);
       return actions.join('') || '<span class="muted">Nessuna azione</span>';
