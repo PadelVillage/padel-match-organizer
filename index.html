@@ -212,6 +212,30 @@
     .admin-panel-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .admin-panel-head h3 { margin:0 0 4px; color:var(--primary); }
     .admin-panel-head p { margin:0; color:#667085; }
+    .admin-section-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:12px 0 14px; }
+    .admin-section-tab { display:flex; align-items:center; justify-content:flex-start; min-height:44px; border:1px solid #dfe8f3; border-radius:8px; background:#fff; color:#344054; padding:10px 12px; font-weight:900; text-align:left; }
+    .admin-section-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(35,79,145,.16); }
+    .admin-section-panel[hidden] { display:none !important; }
+    .admin-notification-layout { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr); gap:12px; align-items:start; }
+    .admin-box { border:1px solid #dfe8f3; border-radius:8px; background:#fff; overflow:hidden; min-width:0; }
+    .admin-box-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid #dfe8f3; background:#f8fbff; }
+    .admin-box-title { color:var(--primary); font-size:16px; font-weight:900; line-height:1.15; }
+    .admin-box-subtitle { margin-top:3px; color:#667085; font-size:13px; font-weight:750; line-height:1.3; }
+    .admin-box-body { padding:12px; }
+    .admin-notification-add { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
+    .admin-notification-add label { color:#475467; font-size:12px; font-weight:900; margin-bottom:5px; display:block; }
+    .admin-notification-add input { width:100%; min-width:0; }
+    .admin-recipient-line { display:flex; align-items:flex-start; gap:9px; min-width:0; }
+    .admin-recipient-line input { width:20px; min-height:20px; margin:2px 0 0; accent-color:var(--primary); flex:0 0 auto; }
+    .admin-recipient-text { min-width:0; }
+    .admin-preview-list { display:grid; gap:8px; }
+    .admin-preview-row { display:grid; grid-template-columns:118px minmax(0,1fr); gap:8px; border-bottom:1px solid #edf1f7; padding-bottom:7px; }
+    .admin-preview-row:last-child { border-bottom:0; padding-bottom:0; }
+    .admin-preview-label { color:#667085; font-size:12px; font-weight:900; text-transform:uppercase; }
+    .admin-preview-value { color:#111827; font-weight:850; overflow-wrap:anywhere; }
+    .admin-session-panel { display:grid; gap:12px; }
+    .admin-session-permissions { border:1px solid #dfe8f3; border-radius:8px; background:#fff; padding:12px; }
+    .admin-session-permissions h3 { margin:0 0 8px; color:var(--primary); font-size:16px; }
     .admin-form-grid { display:grid; grid-template-columns:1.1fr 1fr .7fr .7fr; gap:10px; align-items:end; }
     .admin-form-grid label, .admin-pin-row label { color:#475467; font-size:12px; font-weight:900; margin-bottom:5px; display:block; }
     .admin-pin-row { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; gap:10px; align-items:end; margin:10px 0 12px; }
@@ -258,6 +282,10 @@
     .admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width:15%; }
     .admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width:20%; }
     .admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width:14%; }
+    .admin-notifications-table { min-width:640px; table-layout:fixed; }
+    .admin-notifications-table th:nth-child(1), .admin-notifications-table td:nth-child(1) { width:52%; }
+    .admin-notifications-table th:nth-child(2), .admin-notifications-table td:nth-child(2) { width:18%; }
+    .admin-notifications-table th:nth-child(3), .admin-notifications-table td:nth-child(3) { width:30%; }
     .admin-row-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
     .admin-row-actions .small-btn { margin:0; padding:8px 10px; }
     .admin-diagnostic-note { margin:10px 0 12px; padding:10px 12px; border:1px solid #dfe8f3; border-radius:8px; background:#fbfdff; color:#475467; font-size:13px; line-height:1.45; }
@@ -297,8 +325,8 @@
     .staff-login-note { margin-top:12px; padding:11px 12px; border-left:4px solid var(--primary); background:#f8fbff; border-radius:8px; color:#475467; font-size:13px; line-height:1.45; }
     @media (max-width:1050px) { .admin-account-strip { grid-template-columns:1fr; } .staff-access-flow, .staff-access-layout { grid-template-columns:1fr; } .staff-invite-grid { grid-template-columns:1fr 1fr; } }
     @media (max-width:680px) { .staff-access-toolbar, .staff-access-primary-actions { justify-content:flex-start; } .staff-invite-grid { grid-template-columns:1fr; } .staff-flow-step { grid-template-columns:28px 1fr; } }
-    @media (max-width:1050px) { .admin-grid, .admin-user-kpis { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr 1fr; } }
-    @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid, .admin-env-grid { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } .admin-check-row { grid-template-columns:1fr; gap:3px; } }
+    @media (max-width:1050px) { .admin-grid, .admin-user-kpis { grid-template-columns:1fr 1fr; } .admin-form-grid, .admin-pin-row { grid-template-columns:1fr 1fr; } .admin-permission-grid, .admin-env-grid, .admin-section-tabs { grid-template-columns:1fr 1fr; } .admin-notification-layout { grid-template-columns:1fr; } }
+    @media (max-width:680px) { .admin-grid, .admin-form-grid, .admin-pin-row, .admin-permission-grid, .admin-env-grid, .admin-section-tabs, .admin-notification-add { grid-template-columns:1fr; } .admin-actions { justify-content:flex-start; } .admin-check-row, .admin-preview-row { grid-template-columns:1fr; gap:3px; } }
 
     body.post-match-feedback-public-mode .side-nav,
     body.post-match-feedback-public-mode .top-nav-bar,
@@ -4353,6 +4381,8 @@ body.assessment-public-mode .assessment-public-only-card {
         </button>
         <div id="subAdministration" class="side-submenu">
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
+          <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
+          <button class="side-sub-link" onclick="goToTabSection('administration','Sessione')">Sessione</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
@@ -5259,39 +5289,114 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title">
           <h2>Amministrazione</h2>
-          <p>Gestione staff e controlli tecnici separati, con account corrente sempre visibile.</p>
+          <p>Utenti, notifiche staff, sessione e controlli tecnici separati.</p>
         </div>
 
-        <div id="pmoAdminAccountStrip"></div>
-        <div id="pmoAdminKpis" class="admin-grid admin-user-kpis"></div>
+        <div class="admin-section-tabs" role="tablist" aria-label="Sottosezioni Amministrazione">
+          <button id="pmoAdminTabUsers" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="users" onclick="setActionAnchor(this); pmoSetAdminSection('users')">Utenti</button>
+          <button id="pmoAdminTabNotifications" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="notifications" onclick="setActionAnchor(this); pmoSetAdminSection('notifications')">Notifiche staff</button>
+          <button id="pmoAdminTabSession" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="session" onclick="setActionAnchor(this); pmoSetAdminSection('session')">Sessione</button>
+          <button id="pmoAdminTabSupabase" class="admin-section-tab" type="button" role="tab" data-admin-section-tab="supabase" onclick="setActionAnchor(this); pmoSetAdminSection('supabase')">Supabase</button>
+        </div>
 
-        <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti">
-          <div class="admin-panel-head">
-            <div>
-              <h3>Utenti</h3>
-              <p>Autorizza email staff e gestisci ruoli operativi.</p>
+        <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
+          <div id="pmoAdminKpis" class="admin-grid admin-user-kpis"></div>
+
+          <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Utenti</h3>
+                <p>Autorizza email staff e gestisci ruoli operativi.</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
-          <div class="admin-panel-head">
-            <div>
-              <h3>Supabase</h3>
-              <p>Solo diagnostica: controlla collegamento, ambiente e funzioni tecniche.</p>
+        <div id="pmoAdminNotificationsSection" class="admin-section-panel" data-pmo-admin-section="notifications" hidden>
+          <div class="admin-panel" id="pmoStaffNotificationsPanel" data-admin-anchor="notifiche-staff">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Notifiche staff</h3>
+                <p>Destinatari interni per le conferme livello.</p>
+              </div>
             </div>
-            <div class="admin-actions">
-              <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRunSupabaseEnvironmentCheck()">Verifica TEST/PROD</button>
-              <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
+            <div class="admin-notification-layout">
+              <div class="admin-box">
+                <div class="admin-box-head">
+                  <div>
+                    <div class="admin-box-title">Configurazione destinatari</div>
+                    <div class="admin-box-subtitle">Gestione dei destinatari interni attivi.</div>
+                  </div>
+                </div>
+                <div class="admin-box-body">
+                  <div class="admin-notification-add">
+                    <div>
+                      <label for="pmoStaffNotificationEmail">Email collaboratore</label>
+                      <input id="pmoStaffNotificationEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" />
+                    </div>
+                    <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoAddStaffNotificationRecipient()">Aggiungi destinatario</button>
+                  </div>
+                  <div id="pmoStaffNotificationsStatus" class="info-box" style="margin-top:12px;">Configura i destinatari da avvisare dopo la conferma livello.</div>
+                  <div id="pmoStaffNotificationsTable"></div>
+                </div>
+              </div>
+              <div class="admin-box">
+                <div class="admin-box-head">
+                  <div>
+                    <div class="admin-box-title">Anteprima notifica</div>
+                    <div class="admin-box-subtitle">Contenuto informativo della futura notifica.</div>
+                  </div>
+                </div>
+                <div class="admin-box-body">
+                  <div class="admin-preview-list">
+                    <div class="admin-preview-row"><div class="admin-preview-label">Oggetto</div><div class="admin-preview-value">Livello validato - Giulia Rossi</div></div>
+                    <div class="admin-preview-row"><div class="admin-preview-label">Nome</div><div class="admin-preview-value">Giulia Rossi</div></div>
+                    <div class="admin-preview-row"><div class="admin-preview-label">Livello</div><div class="admin-preview-value">1.5</div></div>
+                    <div class="admin-preview-row"><div class="admin-preview-label">Sesso</div><div class="admin-preview-value">Femmina</div></div>
+                    <div class="admin-preview-row"><div class="admin-preview-label">Telefono</div><div class="admin-preview-value">+39 333 000 0000</div></div>
+                    <div class="admin-preview-row"><div class="admin-preview-label">Email</div><div class="admin-preview-value">giulia.rossi@example.com</div></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="admin-diagnostic-note">Usa questa sezione solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.</div>
-          <div id="pmoSupabaseStatus" class="info-box" style="margin-top:12px;">Controlli tecnici disponibili solo per diagnosi.</div>
-          <div id="pmoEnvironmentCheckPanel"></div>
-          <details class="admin-technical-details">
-            <summary>Registro attivita</summary>
-            <div id="pmoAuditLogTable"></div>
-          </details>
+        </div>
+
+        <div id="pmoAdminSessionSection" class="admin-section-panel" data-pmo-admin-section="session" hidden>
+          <div class="admin-panel" id="pmoAdminSessionPanel" data-admin-anchor="sessione">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Sessione</h3>
+                <p>Account corrente, stato e permessi attivi.</p>
+              </div>
+            </div>
+            <div class="admin-session-panel">
+              <div id="pmoAdminAccountStrip"></div>
+              <div id="pmoAdminSessionPermissions" class="admin-session-permissions"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
+          <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Supabase</h3>
+                <p>Solo diagnostica: controlla collegamento, ambiente e funzioni tecniche.</p>
+              </div>
+              <div class="admin-actions">
+                <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRunSupabaseEnvironmentCheck()">Verifica TEST/PROD</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
+              </div>
+            </div>
+            <div class="admin-diagnostic-note">Usa questa sezione solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.</div>
+            <div id="pmoSupabaseStatus" class="info-box" style="margin-top:12px;">Controlli tecnici disponibili solo per diagnosi.</div>
+            <div id="pmoEnvironmentCheckPanel"></div>
+            <details class="admin-technical-details">
+              <summary>Registro attivita</summary>
+              <div id="pmoAuditLogTable"></div>
+            </details>
+          </div>
         </div>
       </div>
     </div>
@@ -5380,7 +5485,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.450';
+    const APP_VERSION = '5.451';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5723,6 +5828,10 @@ Grazie.`
 	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
 	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
+	    const PMO_STAFF_NOTIFICATIONS_STORAGE_KEY = 'pmoStaffNotificationRecipientsV1';
+	    const PMO_STAFF_NOTIFICATION_TEST_RECIPIENT = { id:'PMO-000948', name:'Maurizio Aprea', email:'aprea.maurizio@gmail.com', active:true, test:true };
+	    let pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(safeLoad(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, null));
+	    save(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, pmoStaffNotificationRecipients);
 	    let pmoAdminStaffAutoLoadAttempted = false;
 	    let pmoAdminStaffAutoLoadInFlight = false;
 	    let pmoStaffProfile = pmoReadStaffProfile();
@@ -7115,6 +7224,9 @@ Grazie.`
       },
       administration: {
         'utenti': '#pmoStaffAccessPanel',
+        'notifiche staff': '#pmoStaffNotificationsPanel',
+        'notifiche': '#pmoStaffNotificationsPanel',
+        'sessione': '#pmoAdminSessionPanel',
         'supabase': '#pmoSupabaseDiagnosticsPanel',
         'controlli tecnici': '#pmoSupabaseDiagnosticsPanel',
         'verifica test prod': '#pmoSupabaseDiagnosticsPanel',
@@ -7144,6 +7256,12 @@ Grazie.`
       if (tabName === 'assessment' && (key.includes('impostazioni link') || key.includes('token e supabase') || key.includes('strumenti tecnici'))) {
         const details = document.querySelector('.assessment-tech-details');
         if (details) details.open = true;
+      }
+      if (tabName === 'administration') {
+        if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
+        else if (key.includes('sessione')) pmoSetAdminSection('session', { silent:true });
+        else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
+        else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
       }
       if (tabName === 'inviteResponses') {
         const filter = document.getElementById('matchInviteStatusFilter');
@@ -21162,10 +21280,183 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
 	      `;
 	    }
+	    function pmoAdminSectionKey(section='users') {
+	      const key = cleanCell(section || '').toLowerCase();
+	      if (['users', 'notifications', 'session', 'supabase'].includes(key)) return key;
+	      if (key.includes('notific')) return 'notifications';
+	      if (key.includes('session')) return 'session';
+	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
+	      return 'users';
+	    }
+	    function pmoSetAdminSection(section='users', options={}) {
+	      pmoAdminState.activeSection = pmoAdminSectionKey(section);
+	      save('pmoAdminState', pmoAdminState);
+	      if (!options?.silent) renderPmoAdministration();
+	    }
+	    function pmoApplyAdminSectionVisibility() {
+	      const active = pmoAdminSectionKey(pmoAdminState.activeSection || 'users');
+	      document.querySelectorAll('[data-admin-section-tab]').forEach(tab => {
+	        const isActive = tab.dataset.adminSectionTab === active;
+	        tab.classList.toggle('active', isActive);
+	        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+	      });
+	      document.querySelectorAll('[data-pmo-admin-section]').forEach(panel => {
+	        panel.hidden = panel.dataset.pmoAdminSection !== active;
+	      });
+	    }
+	    function pmoStaffNotificationEmail(value='') {
+	      return cleanCell(value || '').toLowerCase();
+	    }
+	    function pmoStaffNotificationIsValidEmail(email='') {
+	      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pmoStaffNotificationEmail(email));
+	    }
+	    function pmoStaffNotificationLabelFromEmail(email='') {
+	      const local = pmoStaffNotificationEmail(email).split('@')[0] || 'Destinatario';
+	      return compactSpaces(local.replace(/[._-]+/g, ' ')).replace(/\b\w/g, char => char.toUpperCase()) || 'Destinatario';
+	    }
+	    function pmoStaffNotificationIsTestRecipient(row={}) {
+	      return cleanCell(row?.id || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.id
+	        && pmoStaffNotificationEmail(row?.email || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
+	    }
+	    function pmoNormalizeStaffNotificationRecipient(item={}, index=0) {
+	      const email = pmoStaffNotificationEmail(item.email || item.mail || '');
+	      if (!email || email.endsWith('.example')) return null;
+	      const id = cleanCell(item.id || item.memberId || item.pmoId || '');
+	      const isTest = id === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.id && email === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
+	      return {
+	        id: id || `manual-${index}-${email.replace(/[^a-z0-9]+/gi, '-')}`,
+	        name: compactSpaces(item.name || item.fullName || item.label || (isTest ? PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.name : pmoStaffNotificationLabelFromEmail(email))),
+	        email,
+	        active: item.active !== false,
+	        test: isTest || item.test === true,
+	        createdAt: item.createdAt || new Date().toISOString()
+	      };
+	    }
+	    function pmoNormalizeStaffNotificationRecipients(value) {
+	      const source = Array.isArray(value) ? value : [];
+	      const out = [];
+	      const seen = new Set();
+	      source.forEach((item, index) => {
+	        const row = pmoNormalizeStaffNotificationRecipient(item, index);
+	        if (!row || seen.has(row.email)) return;
+	        seen.add(row.email);
+	        out.push(row);
+	      });
+	      if (!out.some(pmoStaffNotificationIsTestRecipient)) {
+	        out.push({ ...PMO_STAFF_NOTIFICATION_TEST_RECIPIENT, createdAt:new Date().toISOString() });
+	      }
+	      return out;
+	    }
+	    function pmoSaveStaffNotificationRecipients() {
+	      pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(pmoStaffNotificationRecipients);
+	      save(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, pmoStaffNotificationRecipients);
+	    }
+	    function pmoSetStaffNotificationsStatus(message, type='info') {
+	      const box = document.getElementById('pmoStaffNotificationsStatus');
+	      if (!box) return;
+	      box.className = `info-box alert-${type}`;
+	      box.textContent = message;
+	    }
+	    function pmoRenderStaffNotificationsPanel() {
+	      const target = document.getElementById('pmoStaffNotificationsTable');
+	      if (!target) return;
+	      const rows = pmoNormalizeStaffNotificationRecipients(pmoStaffNotificationRecipients);
+	      pmoStaffNotificationRecipients = rows;
+	      if (!rows.length) {
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun destinatario configurato.</strong></div>';
+	        return;
+	      }
+	      const html = rows.map(row => {
+	        const isTest = pmoStaffNotificationIsTestRecipient(row);
+	        const active = row.active !== false;
+	        const status = active
+	          ? '<span class="admin-status-pill active">Attivo</span>'
+	          : '<span class="admin-status-pill paused">Disattivo</span>';
+	        const testButton = isTest
+	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoSendStaffNotificationTest('${escapeJs(row.id)}')">Invia email di test</button>`
+	          : '';
+	        const removeButton = isTest
+	          ? ''
+	          : `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRemoveStaffNotificationRecipient('${escapeJs(row.id)}')">Rimuovi</button>`;
+	        const safetyNote = cleanCell(row.id || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.id && !isTest
+	          ? '<div class="routine-mini">Email socio test non verificata.</div>'
+	          : '';
+	        return `<tr>
+	          <td><label class="admin-recipient-line"><input type="checkbox" ${active ? 'checked' : ''} onchange="pmoToggleStaffNotificationRecipient('${escapeJs(row.id)}', this.checked)" /><span class="admin-recipient-text"><strong>${escapeHtml(row.name || row.email)}</strong><div class="routine-mini">${escapeHtml(isTest ? `${row.id} · ${row.email}` : row.email)}</div>${safetyNote}</span></label></td>
+	          <td>${status}</td>
+	          <td><div class="admin-row-actions">${testButton}${removeButton || (isTest ? '<span class="routine-mini">Destinatario test</span>' : '')}</div></td>
+	        </tr>`;
+	      }).join('');
+	      target.innerHTML = `<div class="admin-table-wrap"><table class="admin-table admin-notifications-table"><thead><tr><th>Destinatario</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${html}</tbody></table></div>`;
+	    }
+	    function pmoAddStaffNotificationRecipient() {
+	      const input = document.getElementById('pmoStaffNotificationEmail');
+	      const email = pmoStaffNotificationEmail(input?.value || '');
+	      if (!pmoStaffNotificationIsValidEmail(email)) {
+	        pmoSetStaffNotificationsStatus('Inserisci un indirizzo email valido.', 'warning');
+	        return;
+	      }
+	      if (pmoStaffNotificationRecipients.some(row => pmoStaffNotificationEmail(row.email) === email)) {
+	        pmoSetStaffNotificationsStatus('Destinatario gia configurato.', 'warning');
+	        return;
+	      }
+	      pmoStaffNotificationRecipients.push({
+	        id: `manual-${Date.now()}`,
+	        name: pmoStaffNotificationLabelFromEmail(email),
+	        email,
+	        active: true,
+	        test: false,
+	        createdAt: new Date().toISOString()
+	      });
+	      pmoSaveStaffNotificationRecipients();
+	      if (input) input.value = '';
+	      pmoRenderStaffNotificationsPanel();
+	      pmoSetStaffNotificationsStatus('Destinatario aggiunto.', 'success');
+	    }
+	    function pmoToggleStaffNotificationRecipient(rowId, active) {
+	      const row = pmoStaffNotificationRecipients.find(item => cleanCell(item.id || '') === cleanCell(rowId || ''));
+	      if (!row) return;
+	      row.active = !!active;
+	      pmoSaveStaffNotificationRecipients();
+	      pmoRenderStaffNotificationsPanel();
+	      pmoSetStaffNotificationsStatus(active ? 'Destinatario attivo.' : 'Destinatario disattivato.', 'info');
+	    }
+	    function pmoRemoveStaffNotificationRecipient(rowId) {
+	      const before = pmoStaffNotificationRecipients.length;
+	      pmoStaffNotificationRecipients = pmoStaffNotificationRecipients.filter(row => cleanCell(row.id || '') !== cleanCell(rowId || '') || pmoStaffNotificationIsTestRecipient(row));
+	      pmoSaveStaffNotificationRecipients();
+	      pmoRenderStaffNotificationsPanel();
+	      pmoSetStaffNotificationsStatus(pmoStaffNotificationRecipients.length < before ? 'Destinatario rimosso.' : 'Destinatario test non rimovibile.', 'info');
+	    }
+	    function pmoSendStaffNotificationTest(rowId) {
+	      const row = pmoStaffNotificationRecipients.find(item => cleanCell(item.id || '') === cleanCell(rowId || ''));
+	      if (!pmoStaffNotificationIsTestRecipient(row)) {
+	        pmoSetStaffNotificationsStatus('Email socio test non verificata.', 'warning');
+	        return;
+	      }
+	      pmoSetStaffNotificationsStatus('Email di test simulata: nessun invio reale eseguito.', 'info');
+	      showAlert('Email di test simulata: nessun invio reale eseguito.', 'info');
+	    }
+	    function pmoRenderAdminSessionPanel() {
+	      const target = document.getElementById('pmoAdminSessionPermissions');
+	      if (!target) return;
+	      const session = pmoCurrentSessionSummary();
+	      const permissions = session.profile?.permissions || {};
+	      const active = Object.entries(permissions).filter(([, value]) => !!value).map(([key]) => pmoPermissionLabel(key));
+	      target.innerHTML = `
+	        <h3>Permessi attivi</h3>
+	        <div class="staff-permission-chips">
+	          ${active.length ? active.map(label => `<span class="staff-permission-chip">${escapeHtml(label)}</span>`).join('') : '<span class="staff-permission-chip staff-permission-chip-muted">Permessi non caricati</span>'}
+	        </div>
+	      `;
+	    }
 	    function renderPmoAdministration() {
+	      pmoApplyAdminSectionVisibility();
 	      pmoRenderStaffAccessPanel();
 	      pmoRenderAdminAccountStrip();
 	      pmoRenderAdminKpis();
+	      pmoRenderAdminSessionPanel();
+	      pmoRenderStaffNotificationsPanel();
 	      pmoRenderEnvironmentCheck();
 	      pmoRenderStaffUsersTable();
 	      pmoRenderAuditLogTable();
