@@ -2866,12 +2866,20 @@
     .assessment-external-brand strong { color:var(--primary); font-size:20px; font-weight:900; line-height:1.1; }
     .assessment-external-field { display:grid; gap:5px; min-width:0; }
     .assessment-external-field label { color:#344054; font-size:12px; font-weight:900; }
-    .assessment-external-field input { width:100%; min-width:0; border:1px solid #dfe6ef; border-radius:10px; background:#fff; color:#172033; font-size:13px; font-weight:800; padding:9px 10px; }
+    .assessment-external-field input,
+    .assessment-external-field select { width:100%; min-width:0; border:1px solid #dfe6ef; border-radius:10px; background:#fff; color:#172033; font-size:13px; font-weight:800; padding:9px 10px; }
     .assessment-external-full { grid-column:1 / -1; }
     .assessment-external-check { display:flex; align-items:flex-start; gap:8px; color:#344054; font-size:12px; font-weight:800; line-height:1.35; }
     .assessment-external-check input { margin-top:2px; }
     .assessment-external-policy { border:1px solid #dfe6ef; border-left:5px solid var(--primary); border-radius:10px; background:#fbfdff; color:#344054; font-size:12px; font-weight:800; line-height:1.35; padding:10px 11px; }
     .assessment-external-policy strong { display:block; margin-bottom:4px; color:var(--primary); font-size:13px; font-weight:900; }
+    .assessment-external-staff-preview { display:grid; gap:6px; }
+    .assessment-external-staff-preview-row { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+    .assessment-external-staff-preview .badge { margin:0; }
+    .assessment-public-external-data .assessment-public-grid { margin-top:10px; }
+    .assessment-public-external-data[hidden],
+    .assessment-public-external-contact-fields[hidden],
+    .assessment-public-gender-question[hidden] { display:none !important; }
     body.assessment-public-mode .assessment-public-subtabs,
     body.assessment-public-mode .assessment-external-link-panel { display:none !important; }
     body:not(.assessment-public-mode) #anchor-assessment-scheda .assessment-external-link-panel input { background:#fff; color:#172033; cursor:default; }
@@ -5005,9 +5013,24 @@ body.assessment-public-mode .assessment-public-only-card {
                 <label>Telefono</label>
                 <input value="333 0000000" readonly>
               </div>
+              <div class="assessment-external-field">
+                <label>Sesso</label>
+                <select id="assessmentExternalSexSelect" onchange="assessmentExternalRefreshStaffPreview()">
+                  <option value="M" selected>Maschio</option>
+                  <option value="F">Femmina</option>
+                  <option value="NA">Preferisco non indicarlo</option>
+                </select>
+              </div>
+              <div id="assessmentExternalStaffPreview" class="assessment-external-policy assessment-external-full assessment-external-staff-preview">
+                <strong>Origine: Da link esterno</strong>
+                <div class="assessment-external-staff-preview-row">
+                  <span id="assessmentExternalStaffSex" class="badge badge-success">Maschio</span>
+                  <span id="assessmentExternalStaffState" class="badge badge-success">Da validare</span>
+                </div>
+              </div>
               <label class="assessment-external-check assessment-external-full">
                 <input type="checkbox" id="assessmentExternalPrivacyCheck">
-                <span>Accetto la Privacy Policy di Padel Village e autorizzo l'utilizzo dei miei dati nel sistema per prenotare, organizzare partite e gestire inviti operativi.</span>
+                <span>Ho letto l’informativa privacy e autorizzo il trattamento dei dati per registrazione, autovalutazione e gestione delle attività sportive.</span>
               </label>
               <div class="assessment-public-actions assessment-external-full">
                 <button id="assessmentExternalPrivacyToggle" type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalTogglePrivacyPolicy()">Leggi Privacy Policy</button>
@@ -5040,6 +5063,29 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
 
           <form id="assessmentPublicForm" novalidate>
+            <div id="assessmentPublicExternalDataCard" class="assessment-public-form-card assessment-public-external-data" hidden>
+              <h4 id="assessmentPublicExternalDataTitle">Registrazione</h4>
+              <p id="assessmentPublicExternalDataNote" class="assessment-public-note">Completa questo dato per aiutarci a organizzare meglio le attività sportive.</p>
+              <div id="assessmentPublicExternalContactFields" class="assessment-public-grid assessment-public-external-contact-fields" hidden>
+                <div><label>Nome<span class="assessment-public-required">*</span></label><input id="assessmentPublicExternalFirstName" name="externalFirstName"></div>
+                <div><label>Cognome<span class="assessment-public-required">*</span></label><input id="assessmentPublicExternalSurname" name="externalSurname"></div>
+                <div><label>Telefono<span class="assessment-public-required">*</span></label><input id="assessmentPublicExternalPhone" name="externalPhone" inputmode="tel"></div>
+                <div><label>Email<span class="assessment-public-required">*</span></label><input id="assessmentPublicExternalEmail" name="externalEmail" type="email"></div>
+              </div>
+              <div id="assessmentPublicGenderQuestion" class="assessment-public-question assessment-public-gender-question" hidden>
+                <div class="q-title">Sesso <span class="assessment-public-required">*</span></div>
+                <select id="assessmentPublicGender" name="gender">
+                  <option value="" selected disabled>Seleziona</option>
+                  <option value="M">Maschio</option>
+                  <option value="F">Femmina</option>
+                  <option value="NA">Preferisco non indicarlo</option>
+                </select>
+              </div>
+              <label class="assessment-external-check assessment-external-full">
+                <input type="checkbox" id="assessmentPublicPrivacyCheck" name="privacyConsent" value="1">
+                <span>Ho letto l’informativa privacy e autorizzo il trattamento dei dati per registrazione, autovalutazione e gestione delle attività sportive.</span>
+              </label>
+            </div>
             <div class="assessment-public-form-card">
               <h4>Questionario livello</h4>
               <p class="assessment-public-note">Solo risposte a scelta. Nessun campo di testo libero.</p>
@@ -5301,7 +5347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.443';
+    const APP_VERSION = '5.444';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18065,13 +18111,139 @@ Grazie!`
     function assessmentExternalTestLinkUrl() {
       const member = assessmentExternalTestMember();
       const rec = member ? getAssessmentTokenRecord(member.id) : null;
-      if (member && rec?.token) return getAssessmentLink(rec.token, member);
+      if (member && rec?.token) {
+        return assessmentExternalBuildUrl({
+          env: PMO_IS_TEST_ENV ? 'test' : '',
+          assessment: 'link-esterno',
+          t: rec.token,
+          nome: playerFullName(member),
+          email: member.email || ''
+        });
+      }
       return assessmentExternalBuildUrl({
         env: PMO_IS_TEST_ENV ? 'test' : '',
         assessment: 'link-esterno',
         memberId: 'PMO-000956',
         email: 'aprea.maurizio@gmail.com'
       });
+    }
+    function assessmentPublicNormalizeGender(value) {
+      const raw = cleanCell(value || '');
+      const normalized = normalizeText(raw);
+      if (raw === 'M' || normalized === 'maschio' || normalized === 'm') return 'M';
+      if (raw === 'F' || normalized === 'femmina' || normalized === 'f') return 'F';
+      if (raw === 'NA' || normalized.includes('preferisco') || normalized.includes('non indicarlo') || normalized.includes('da completare')) return 'NA';
+      return '';
+    }
+    function assessmentPublicGenderLabel(value) {
+      const gender = assessmentPublicNormalizeGender(value);
+      if (gender === 'M') return 'Maschio';
+      if (gender === 'F') return 'Femmina';
+      return 'Da completare';
+    }
+    function assessmentPublicGenderStatus(value) {
+      return ['M','F'].includes(assessmentPublicNormalizeGender(value)) ? 'Da validare' : 'Da completare';
+    }
+    function assessmentExternalRefreshStaffPreview() {
+      const value = document.getElementById('assessmentExternalSexSelect')?.value || 'M';
+      const genderLabel = assessmentPublicGenderLabel(value);
+      const state = assessmentPublicGenderStatus(value);
+      const sexEl = document.getElementById('assessmentExternalStaffSex');
+      const stateEl = document.getElementById('assessmentExternalStaffState');
+      if (sexEl) {
+        sexEl.textContent = genderLabel;
+        sexEl.className = genderLabel === 'Da completare' ? 'badge badge-warning' : 'badge badge-success';
+      }
+      if (stateEl) {
+        stateEl.textContent = state;
+        stateEl.className = state === 'Da completare' ? 'badge badge-warning' : 'badge badge-success';
+      }
+    }
+    function assessmentPublicIsExternalLinkRequest(params = null) {
+      let searchParams = params;
+      if (!searchParams) {
+        try { searchParams = new URLSearchParams(window.location.search || ''); }
+        catch { searchParams = new URLSearchParams(); }
+      }
+      return cleanCell(searchParams.get('assessment') || '').toLowerCase() === 'link-esterno';
+    }
+    function assessmentPublicSetControlState(element, enabled=false, required=false) {
+      if (!element) return;
+      element.disabled = !enabled;
+      if (required) element.setAttribute('required', '');
+      else element.removeAttribute('required');
+      if (!enabled) element.style.borderColor = '#cfd8e6';
+    }
+    function assessmentPublicExternalMemberFromForm() {
+      const form = document.getElementById('assessmentPublicForm');
+      const memberId = cleanCell(form?.dataset?.memberId || '');
+      if (!memberId) return null;
+      return (giocatori || []).find(g => String(g.id) === String(memberId) || String(g.memberId) === String(memberId)) || null;
+    }
+    function assessmentPublicConfigureExternalData(member = null, params = null) {
+      const form = document.getElementById('assessmentPublicForm');
+      const card = document.getElementById('assessmentPublicExternalDataCard');
+      const contactFields = document.getElementById('assessmentPublicExternalContactFields');
+      const genderQuestion = document.getElementById('assessmentPublicGenderQuestion');
+      const genderSelect = document.getElementById('assessmentPublicGender');
+      const title = document.getElementById('assessmentPublicExternalDataTitle');
+      const note = document.getElementById('assessmentPublicExternalDataNote');
+      const privacy = document.getElementById('assessmentPublicPrivacyCheck');
+      const isExternal = assessmentPublicIsExternalLinkRequest(params);
+      if (form) form.dataset.assessmentSource = isExternal ? 'link-esterno' : '';
+      if (!card) return;
+
+      const externalContactControls = [
+        document.getElementById('assessmentPublicExternalFirstName'),
+        document.getElementById('assessmentPublicExternalSurname'),
+        document.getElementById('assessmentPublicExternalPhone'),
+        document.getElementById('assessmentPublicExternalEmail')
+      ];
+      const hasKnownGender = ['M','F'].includes(assessmentPublicNormalizeGender(member?.gender || ''));
+
+      if (!isExternal) {
+        card.hidden = true;
+        if (contactFields) contactFields.hidden = true;
+        if (genderQuestion) genderQuestion.hidden = true;
+        externalContactControls.forEach(control => assessmentPublicSetControlState(control, false, false));
+        assessmentPublicSetControlState(genderSelect, false, false);
+        assessmentPublicSetControlState(privacy, false, false);
+        return;
+      }
+
+      card.hidden = false;
+      if (member && hasKnownGender) {
+        if (title) title.textContent = 'Origine: Da link esterno';
+        if (note) note.textContent = 'Scheda riconosciuta. Il dato sesso è già presente in Anagrafica soci.';
+        if (contactFields) contactFields.hidden = true;
+        if (genderQuestion) genderQuestion.hidden = true;
+        externalContactControls.forEach(control => assessmentPublicSetControlState(control, false, false));
+        assessmentPublicSetControlState(genderSelect, false, false);
+        if (genderSelect) genderSelect.value = assessmentPublicNormalizeGender(member.gender);
+        if (form) form.dataset.memberGender = assessmentPublicNormalizeGender(member.gender);
+      } else {
+        const isKnownMissing = !!member;
+        if (title) title.textContent = isKnownMissing ? 'Completa dato mancante' : 'Registrazione';
+        if (note) note.textContent = 'Completa questo dato per aiutarci a organizzare meglio le attività sportive.';
+        if (contactFields) contactFields.hidden = isKnownMissing;
+        externalContactControls.forEach(control => assessmentPublicSetControlState(control, !isKnownMissing, !isKnownMissing));
+        if (!isKnownMissing) {
+          const paramsSafe = params || new URLSearchParams(window.location.search || '');
+          const firstName = document.getElementById('assessmentPublicExternalFirstName');
+          const surname = document.getElementById('assessmentPublicExternalSurname');
+          const phone = document.getElementById('assessmentPublicExternalPhone');
+          const email = document.getElementById('assessmentPublicExternalEmail');
+          if (firstName && !firstName.value) firstName.value = cleanCell(paramsSafe.get('nome') || paramsSafe.get('firstName') || '');
+          if (surname && !surname.value) surname.value = cleanCell(paramsSafe.get('cognome') || paramsSafe.get('surname') || '');
+          if (phone && !phone.value) phone.value = cleanCell(paramsSafe.get('telefono') || paramsSafe.get('phone') || '');
+          if (email && !email.value) email.value = cleanCell(paramsSafe.get('email') || '');
+        }
+        if (genderQuestion) genderQuestion.hidden = false;
+        assessmentPublicSetControlState(genderSelect, true, true);
+        if (genderSelect) genderSelect.value = '';
+        if (form) form.dataset.memberGender = '';
+      }
+      assessmentPublicSetControlState(privacy, true, true);
     }
     function assessmentExternalSetStatus(text = 'Pronto', level = 'ok') {
       const status = document.getElementById('assessmentExternalLinkStatus');
@@ -18082,6 +18254,7 @@ Grazie!`
     function renderAssessmentExternalLinkPanel() {
       const input = document.getElementById('assessmentExternalLinkInput');
       if (input) input.value = assessmentExternalLinkUrl();
+      assessmentExternalRefreshStaffPreview();
     }
     function assessmentExternalCopyLink(kind = 'external') {
       const isTest = kind === 'test';
@@ -18104,10 +18277,14 @@ Grazie!`
         const privacy = document.getElementById('assessmentExternalPrivacyCheck');
         const policy = document.getElementById('assessmentExternalPrivacyPanel');
         const policyButton = document.getElementById('assessmentExternalPrivacyToggle');
+        const sex = document.getElementById('assessmentExternalSexSelect');
         if (privacy) privacy.checked = false;
         if (policy) policy.hidden = true;
         if (policyButton) policyButton.textContent = 'Leggi Privacy Policy';
+        if (sex) sex.value = 'M';
+        assessmentExternalRefreshStaffPreview();
       }
+      if (willOpen) assessmentExternalRefreshStaffPreview();
       assessmentExternalSetStatus(willOpen ? 'Test form aperto' : 'Pronto');
     }
     function assessmentExternalTogglePrivacyPolicy() {
@@ -18123,6 +18300,7 @@ Grazie!`
         assessmentExternalSetStatus('Privacy obbligatoria', 'warn');
         return;
       }
+      assessmentExternalRefreshStaffPreview();
       assessmentExternalSetStatus('Test inviato');
       setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
     }
@@ -21669,6 +21847,7 @@ Per confermare scrivi ELIMINA.`);
     function importAssessmentResponses(rows, options = {}) {
       if (!Array.isArray(rows)) return showAlert('❌ File risposte non valido', 'danger');
       let added = 0, updated = 0;
+      let genderApplied = 0;
       rows.forEach(row => {
         const token = cleanCell(firstAvailable(row, ['token','Token']));
         if (!token) return;
@@ -21696,8 +21875,10 @@ Per confermare scrivi ELIMINA.`);
         else { assessmentResponses.push(normalized); added++; }
         const localRec = Object.values(assessmentTokens).find(r => normalizeText(r.token) === normalizeText(token));
         if (localRec) { localRec.status = 'completed'; localRec.completedAt = normalized.submitted_at || new Date().toISOString(); }
+        if (applyAssessmentResponseGenderToMember(normalized)) genderApplied++;
       });
       save('assessmentResponses', assessmentResponses); save('assessmentTokens', assessmentTokens);
+      if (genderApplied) save('giocatori', giocatori);
       displayAssessment();
       if (!options.silent) showAlert(`✅ Risposte importate: ${added} nuove, ${updated} aggiornate`, 'success');
     }
@@ -21723,6 +21904,7 @@ Per confermare scrivi ELIMINA.`);
           Invio: ${rec?.sentAt ? escapeHtml(new Date(rec.sentAt).toLocaleString('it-IT')) : 'n/d'} · Compilazione: ${escapeHtml(submitted)}<br>
           Token: <span class="assessment-link">${escapeHtml(rec?.token || '')}</span>
           ${renderAssessmentCalculationSummary(response, { empty:'' })}
+          ${renderAssessmentExternalSourceSummary(response, { empty:'' })}
           ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(response), { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Disponibilità non ricevuta in questa risposta. Probabile scheda compilata prima del salvataggio disponibilità.</span></div>' })}
         </div>
         <div class="assessment-edit-grid">
@@ -26048,7 +26230,7 @@ Per confermare scrivi ELIMINA.`);
             }
             return;
           }
-          const required = Array.from(form.querySelectorAll('[required]'));
+          const required = Array.from(form.querySelectorAll('[required]')).filter(el => !el.disabled && !el.closest('[hidden]'));
           const invalid = required.filter(el => !el.value);
           invalid.forEach(el => el.style.borderColor = 'var(--danger)');
           required.filter(el => el.value).forEach(el => el.style.borderColor = '#cfd8e6');
@@ -26087,6 +26269,7 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         form.dataset.token = token;
         if (rec?.memberId) form.dataset.memberId = String(rec.memberId);
       }
+      assessmentPublicConfigureExternalData(member, params);
       if (hasAssessmentPublicSubmitted(token)) {
         setTimeout(() => lockAssessmentPublicSubmitButton('Autovalutazione già inviata'), 0);
       }
@@ -26336,25 +26519,76 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
       </div>`;
     }
 
+    function assessmentResponseGenderValue(response) {
+      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
+      const answers = raw.answers || raw.form || raw.data || {};
+      return assessmentPublicNormalizeGender(
+        raw.gender || raw.gender_value || raw.genderValue || raw.sesso || answers.gender || answers.sesso || response?.gender || ''
+      );
+    }
+
+    function renderAssessmentExternalSourceSummary(response, options = {}) {
+      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
+      const source = cleanCell(raw.source || raw.origin || raw.origine || '');
+      const isExternal = source === 'link-esterno' || source === 'Da link esterno';
+      const gender = assessmentResponseGenderValue(response);
+      if (!isExternal && !gender) return options.empty || '';
+      const genderLabel = assessmentPublicGenderLabel(gender);
+      const status = assessmentPublicGenderStatus(gender);
+      return `<div class="assessment-availability-box">
+        <strong>Origine: Da link esterno</strong>
+        <div class="assessment-availability-grid">
+          <div><span>Sesso</span><b>${escapeHtml(genderLabel)}</b></div>
+          <div><span>Stato</span><b>${escapeHtml(status)}</b></div>
+        </div>
+      </div>`;
+    }
+
+    function applyAssessmentResponseGenderToMember(response) {
+      const gender = assessmentResponseGenderValue(response);
+      if (!['M','F'].includes(gender)) return false;
+      const rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(response?.token || '')) || null;
+      const memberId = cleanCell(rec?.memberId || rec?.member_local_id || '');
+      const member = memberId ? (giocatori || []).find(g => String(g.id) === String(memberId) || String(g.memberId) === String(memberId)) : null;
+      if (!member || ['M','F'].includes(assessmentPublicNormalizeGender(member.gender || ''))) return false;
+      member.gender = gender;
+      member.genderSource = 'link-esterno';
+      member.genderUpdatedAt = cleanCell(response?.submitted_at || new Date().toISOString());
+      return true;
+    }
+
     function buildAssessmentPublicPayload() {
       const form = document.getElementById('assessmentPublicForm');
       const params = new URLSearchParams(window.location.search || '');
       const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
       const token = cleanCell(form?.dataset?.token || params.get('t') || params.get('token') || '');
-      const name = cleanCell(document.getElementById('assessmentPublicPlayerName')?.textContent || params.get('nome') || params.get('name') || '');
+      const isExternal = form?.dataset?.assessmentSource === 'link-esterno' || assessmentPublicIsExternalLinkRequest(params);
+      const member = assessmentPublicExternalMemberFromForm();
+      const externalName = compactSpaces(`${cleanCell(data.externalFirstName || '')} ${cleanCell(data.externalSurname || '')}`);
+      const name = cleanCell((isExternal && externalName) || document.getElementById('assessmentPublicPlayerName')?.textContent || params.get('nome') || params.get('name') || '');
+      const gender = assessmentPublicNormalizeGender(data.gender || form?.dataset?.memberGender || member?.gender || '');
+      const privacyConsent = !!data.privacyConsent;
       const levelCalc = calculateAssessmentPublicLevel(data);
       const split = assessmentPublicSplitName(name);
       return {
         token,
         first_name: split.first_name,
         last_name: split.last_name,
-        phone: '',
+        phone: isExternal ? cleanCell(data.externalPhone || member?.phone || '') : '',
         declared_level: levelCalc.declared_level,
         calculated_level: levelCalc.calculated_level,
         consistency_status: levelCalc.coherence,
-        staff_status: levelCalc.staff_status,
+        staff_status: gender === 'NA' ? 'review' : levelCalc.staff_status,
         submitted_at: new Date().toISOString(),
         raw_response: {
+          source: isExternal ? 'link-esterno' : 'scheda-pubblica',
+          origin_label: isExternal ? 'Origine: Da link esterno' : '',
+          member_local_id: cleanCell(form?.dataset?.memberId || ''),
+          external_email: isExternal ? cleanCell(data.externalEmail || member?.email || '') : '',
+          gender,
+          gender_label: assessmentPublicGenderLabel(gender),
+          gender_status: assessmentPublicGenderStatus(gender),
+          privacy_consent: privacyConsent,
           balanced_level: levelCalc.balanced_level,
           technical_average: levelCalc.technical_average,
           technical_scores: levelCalc.technical_scores,
@@ -26377,6 +26611,7 @@ let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token
         localRec.completedAt = payload.submitted_at || new Date().toISOString();
       }
 
+      if (applyAssessmentResponseGenderToMember(payload)) save('giocatori', giocatori);
       save('assessmentResponses', assessmentResponses);
       save('assessmentTokens', assessmentTokens);
     }
