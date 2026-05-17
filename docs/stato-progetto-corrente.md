@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 14:08
+Ultimo aggiornamento: 2026-05-17 15:40
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.441 | `main` | `85edd3e` |
-| TEST | v5.448 | `test-preview` | `f7b4814` |
-| TEST sviluppo | v5.448 | `test/accessi-staff-guidati` | `f7b4814` |
+| PROD | v5.448 | `main` | `f7b4814` |
+| TEST | v5.449 | `test-preview` | `994c506` |
+| TEST sviluppo | v5.449 | `test/accessi-staff-guidati` | `994c506` |
 
-Nota: TEST app e' avanti a v5.448. La v5.448 corregge il routing pubblico del flusso `Autovalutazione > Scheda pubblica > Link esterno`: quando la URL contiene `assessment=link-esterno`, la app bypassa la login staff e apre il flusso pubblico/registrazione/autovalutazione. La login staff resta invariata per la app gestionale normale senza `assessment=link-esterno`. La patch non introduce backend nuovo per la registrazione reale senza token, gia documentato come fuori perimetro. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+Nota: TEST app e' avanti a v5.449. La v5.449 completa in TEST il primo backend controllato del flusso `Autovalutazione > Scheda pubblica > Link esterno`: il form pubblico senza token salva una pratica in Supabase TEST nella nuova tabella `assessment_external_requests`, lo staff la legge dallo `Storico`, poi decide se creare la scheda socio o agganciarla a un socio esistente prima di validare il livello. La creazione del PMO avviene solo dopo conferma staff. La migrazione TEST applicata e' `supabase/migrations/20260517132138_pmo_assessment_external_requests.sql`; non sono stati modificati PROD, Edge Function, scheduler, Gmail reale, Matchpoint o dati reali.
+
+Nota precedente v5.448: TEST e PROD app erano allineati a v5.448. La v5.448 corregge il routing pubblico del flusso `Autovalutazione > Scheda pubblica > Link esterno`: quando la URL contiene `assessment=link-esterno`, la app bypassa la login staff e apre il flusso pubblico/registrazione/autovalutazione. La login staff resta invariata per la app gestionale normale senza `assessment=link-esterno`. Nessuna modifica a SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
 Nota precedente v5.447: TEST app correggeva titolo, meta tag e link copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`: il titolo preview diventa `Autovalutazione Livello di Gioco`, la descrizione diventa `Padel Village`, il link pubblico punta a `autovalutazione.html?assessment=link-esterno` e il link TEST punta a `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Il codice pubblicato su branch TEST e' corretto; la preview reale WhatsApp/Telegram del link pubblico radice cambiera solo dopo promozione PROD, perche quel link e' servito da `main`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
@@ -59,7 +61,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.448 e' pubblicata in TEST al commit app `f7b4814`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.448 fa riconoscere `assessment=link-esterno` come accesso pubblico prima della guardia login staff e permette al link TEST `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948` di aprire il flusso pubblico invece della schermata `Padel Match Organizer` con email/password. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
+La versione v5.449 e' preparata in TEST al commit app `994c506`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.449 introduce il salvataggio controllato delle richieste da link esterno su Supabase TEST, la lettura staff nello `Storico Autovalutazione`, la creazione manuale della scheda socio o l'aggancio a un socio esistente, e il passaggio successivo al controllo livello gia esistente. La migrazione TEST applicata e' `20260517132138_pmo_assessment_external_requests.sql`; non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati reali o modifiche PROD.
 
 Contiene:
 
