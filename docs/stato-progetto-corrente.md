@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 22:31
+Ultimo aggiornamento: 2026-05-17 22:48
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.463 | `test-preview` | `1d3cc22` |
-| TEST sviluppo | v5.463 | `test/accessi-staff-guidati` | `1d3cc22` |
+| TEST | v5.464 | `test-preview` | `32db333` |
+| TEST sviluppo | v5.464 | `test/accessi-staff-guidati` | `32db333` |
+
+Nota TEST v5.464: corretto lo `Storico` Autovalutazione per le richieste arrivate da `Scheda pubblica > Link esterno`. La vista e la cache locale deduplicano le richieste usando email, telefono e ID socio espliciti, mantenendo una sola riga per persona/socio e preferendo la richiesta con stato operativo piu avanzato. Rimossi dallo header Storico i comandi `Pulisci filtri` ed `Esporta vista`; `Aggiorna link esterno` diventa azione primaria e lo Storico avvia un refresh silenzioso quando viene aperto, oltre al refresh post-azione dopo creazione/aggancio/validazione. Commit app `32db333`. Nessuna cancellazione record Supabase, nessuna modifica a PROD, SQL, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.463: alleggerita la cache locale `assessmentExternalRequests` usata dal flusso `Autovalutazione > Scheda pubblica > Link esterno`. Dopo import/sync e quando si apre Storico o Cruscotto mattutino, localStorage viene compattato automaticamente tenendo una sola richiesta link esterno per contatto email/telefono, cioe' l'ultima richiesta operativa. Commit app `1d3cc22`. La pulizia riguarda solo localStorage/browser: non cancella record Supabase, non modifica dati reali e non tocca PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail o WhatsApp automatico.
 
@@ -93,7 +95,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.463 e' preparata in TEST al commit app `1d3cc22`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.463 compatta automaticamente la cache localStorage delle richieste link esterno, mantenendo solo l'ultima richiesta per contatto email/telefono. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.464 e' preparata in TEST al commit app `32db333`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.464 rafforza la deduplica dello Storico richieste link esterno usando email, telefono e ID socio espliciti, rimuove i comandi `Pulisci filtri` / `Esporta vista`, rende primario `Aggiorna link esterno` e aggiorna silenziosamente le richieste quando si entra nello Storico o dopo azioni operative. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
