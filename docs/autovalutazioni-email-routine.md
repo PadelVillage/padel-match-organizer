@@ -20,6 +20,8 @@ Comportamento aggiornato:
 
 Non e' stato integrato il nuovo layout completo della schermata pubblica, ne' sono state introdotte nuove logiche di registrazione, privacy, salvataggio o riconoscimento utente.
 
+Nota di verifica: il branch `test-preview` contiene i meta corretti. La preview reale del link pubblico `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno` cambiera solo dopo promozione PROD, perche il link pubblico radice e' servito da `main`. La pagina TEST `/test/autovalutazione.html` e' un loader del canale TEST; per link preview esterne il controllo affidabile prima della promozione e' il contenuto raw del branch `test-preview`.
+
 Nessuna modifica a Edge Function, SQL, scheduler, Supabase schema, segreti PROD, Gmail reale, Matchpoint, WhatsApp automatico, dati reali o PROD.
 
 ## Nota UI TEST v5.446 - 2026-05-17 12:13
