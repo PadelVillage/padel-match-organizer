@@ -4830,6 +4830,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Archivio ricercabile dei giri chiusi: livelli applicati, auto-applicati e soci messi in pausa.</p>
               </div>
               <div class="assessment-email-actions">
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); syncAssessmentExternalRequestsFromSupabase()">Aggiorna link esterno</button>
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailClearHistoryFilters()">Pulisci filtri</button>
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('L esportazione della vista storico sara collegata in una fase successiva.')">Esporta vista</button>
               </div>
@@ -5083,8 +5084,19 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <label class="assessment-external-check assessment-external-full">
                 <input type="checkbox" id="assessmentPublicPrivacyCheck" name="privacyConsent" value="1">
-                <span>Ho letto l’informativa privacy e autorizzo il trattamento dei dati per registrazione, autovalutazione e gestione delle attività sportive.</span>
+                <span>Ho letto e accetto la Privacy Policy Padel Village.</span>
               </label>
+              <div class="assessment-public-actions assessment-external-full">
+                <button id="assessmentPublicPrivacyToggle" type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentPublicTogglePrivacyPolicy()">Leggi Privacy Policy</button>
+                <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentPublicProceedToQuestions()">Procedi con l'autovalutazione</button>
+              </div>
+              <div id="assessmentPublicPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
+                <strong>Privacy Policy Padel Village</strong>
+                <p>Useremo i dati inseriti per creare o aggiornare la scheda giocatore Padel Village, gestire l'autovalutazione del livello di gioco e organizzare le attività sportive e sociali del circolo.</p>
+                <p>Chiediamo nome, cognome, telefono, email, sesso e risposte dell'autovalutazione per riconoscere correttamente la persona, evitare doppioni e permettere allo staff di validare il livello.</p>
+                <p>Il nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione di partite, tornei, stage, lezioni, campionati a squadre e altre iniziative Padel Village. Telefono ed email non saranno mostrati agli altri utenti.</p>
+                <p>I dati saranno consultati dallo staff autorizzato e dai fornitori tecnici che supportano la piattaforma. Puoi chiedere informazioni, correzione o cancellazione quando possibile scrivendo a padelvillage.club@gmail.com.</p>
+              </div>
             </div>
             <div class="assessment-public-form-card">
               <h4>Questionario livello</h4>
@@ -5347,7 +5359,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.448';
+    const APP_VERSION = '5.449';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5434,6 +5446,7 @@ body.assessment-public-mode .assessment-public-only-card {
     let lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
+    let assessmentExternalRequests = safeLoad('assessmentExternalRequests', []);
     let assessmentSettings = safeLoad('assessmentSettings', { baseUrl: PMO_DEFAULT_ASSESSMENT_BASE_URL, configUrl: PMO_DEFAULT_CONFIG_URL });
     if (assessmentSettings && Object.prototype.hasOwnProperty.call(assessmentSettings, 'adminPin')) {
       delete assessmentSettings.adminPin;
@@ -9310,6 +9323,7 @@ Grazie.`
         dailyDiffHistory,
         assessmentTokens,
         assessmentResponses,
+        assessmentExternalRequests,
         postMatchFeedbackTokens,
         postMatchFeedbackResponses,
         assessmentSettings,
@@ -9595,13 +9609,13 @@ Grazie.`
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
       giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
-      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || {}; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentExternalRequests = data.assessmentExternalRequests || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || []; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentExternalRequests', assessmentExternalRequests); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
       renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
@@ -18328,6 +18342,294 @@ Grazie!`
       assessmentExternalSetStatus('Test inviato');
       setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
     }
+    function assessmentPublicTogglePrivacyPolicy() {
+      const panel = document.getElementById('assessmentPublicPrivacyPanel');
+      const button = document.getElementById('assessmentPublicPrivacyToggle');
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      if (button) button.textContent = panel.hidden ? 'Leggi Privacy Policy' : 'Chiudi Privacy Policy';
+    }
+    function assessmentPublicProceedToQuestions() {
+      const form = document.getElementById('assessmentPublicForm');
+      const errorBox = document.getElementById('assessmentPublicError');
+      if (!form) return;
+      if (errorBox) errorBox.style.display = 'none';
+      const required = Array.from(form.querySelectorAll('#assessmentPublicExternalDataCard [required]')).filter(el => !el.disabled && !el.closest('[hidden]'));
+      const invalid = required.filter(el => el.type === 'checkbox' ? !el.checked : !el.value);
+      invalid.forEach(el => el.style.borderColor = 'var(--danger)');
+      required.filter(el => el.type === 'checkbox' ? el.checked : el.value).forEach(el => el.style.borderColor = '#cfd8e6');
+      if (invalid.length) {
+        if (errorBox) {
+          errorBox.textContent = 'Privacy obbligatoria e dati richiesti da completare.';
+          errorBox.style.display = 'block';
+          if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(errorBox, { block:'center' });
+        }
+        return;
+      }
+      const firstQuestion = form.querySelector('.assessment-public-question:not(.assessment-public-gender-question)');
+      if (firstQuestion && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(firstQuestion, { block:'start' });
+    }
+    function assessmentExternalNormalizeRequest(row = {}) {
+      const raw = normalizeAssessmentRawResponse(row.raw_response || row.rawResponse || {});
+      return {
+        ...row,
+        id: cleanCell(row.id || row.request_id || ''),
+        request_code: cleanCell(row.request_code || row.requestCode || ''),
+        status: cleanCell(row.status || 'received'),
+        submitted_at: cleanCell(row.submitted_at || row.submittedAt || ''),
+        first_name: cleanCell(row.first_name || row.firstName || ''),
+        last_name: cleanCell(row.last_name || row.lastName || ''),
+        phone: cleanCell(row.phone || ''),
+        email: cleanCell(row.email || raw.external_email || '').toLowerCase(),
+        gender: assessmentPublicNormalizeGender(row.gender || raw.gender || ''),
+        privacy_accepted: row.privacy_accepted === true || row.privacyAccepted === true || raw.privacy_consent === true,
+        privacy_accepted_at: cleanCell(row.privacy_accepted_at || row.privacyAcceptedAt || ''),
+        declared_level: cleanCell(row.declared_level ?? row.declaredLevel ?? ''),
+        calculated_level: cleanCell(row.calculated_level ?? row.calculatedLevel ?? ''),
+        consistency_status: cleanCell(row.consistency_status || row.consistencyStatus || ''),
+        staff_status: cleanCell(row.staff_status || row.staffStatus || ''),
+        raw_response: raw,
+        matched_member_local_id: cleanCell(row.matched_member_local_id || row.matchedMemberLocalId || ''),
+        created_member_local_id: cleanCell(row.created_member_local_id || row.createdMemberLocalId || ''),
+        created_member_pmo_id: cleanCell(row.created_member_pmo_id || row.createdMemberPmoId || '')
+      };
+    }
+    function assessmentExternalRequestKey(row = {}) {
+      return cleanCell(row.id || row.request_id || row.request_code || '');
+    }
+    function assessmentExternalUpsertLocal(rows = []) {
+      const incoming = (Array.isArray(rows) ? rows : []).map(assessmentExternalNormalizeRequest).filter(row => assessmentExternalRequestKey(row));
+      const byKey = new Map((assessmentExternalRequests || []).map(row => [assessmentExternalRequestKey(row), assessmentExternalNormalizeRequest(row)]));
+      incoming.forEach(row => byKey.set(assessmentExternalRequestKey(row), { ...(byKey.get(assessmentExternalRequestKey(row)) || {}), ...row }));
+      assessmentExternalRequests = Array.from(byKey.values()).sort((a,b) => assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at));
+      save('assessmentExternalRequests', assessmentExternalRequests);
+      return assessmentExternalRequests;
+    }
+    async function syncAssessmentExternalRequestsFromSupabase(options = {}) {
+      const silent = options.silent === true;
+      try {
+        const rows = await pmoStaffRpc('get_assessment_external_requests_admin', { p_status:'', p_limit:100 }, 'cloud_sync', 'leggere le richieste link esterno');
+        assessmentExternalUpsertLocal(rows || []);
+        renderAssessmentEmailHistoryPanel();
+        if (!silent) showAlert(`✅ Richieste link esterno aggiornate: ${assessmentExternalRequests.length}`, 'success');
+        return rows;
+      } catch (err) {
+        console.warn('Richieste link esterno non aggiornate:', err);
+        if (!silent) showAlert('❌ Richieste link esterno non aggiornate: ' + pmoFriendlyCloudError(err, 'leggere le richieste link esterno'), 'danger');
+        return [];
+      }
+    }
+    function assessmentExternalRequestName(row = {}) {
+      return compactSpaces(`${cleanCell(row.first_name || '')} ${cleanCell(row.last_name || '')}`) || 'Utente link esterno';
+    }
+    function assessmentExternalStatusLabel(row = {}) {
+      const status = cleanCell(row.status || '');
+      if (status === 'member_created') return 'Scheda creata';
+      if (status === 'linked') return 'Agganciata';
+      if (status === 'validated') return 'Livello validato';
+      if (status === 'rejected') return 'Scartata';
+      const staff = cleanCell(row.staff_status || '');
+      if (staff === 'da_completare') return 'Da completare';
+      if (staff === 'da_controllare' || staff === 'review') return 'Da controllare';
+      return 'Da validare';
+    }
+    function assessmentExternalStatusClass(row = {}) {
+      const status = cleanCell(row.status || '');
+      const staff = cleanCell(row.staff_status || '');
+      if (status === 'validated') return 'ok';
+      if (status === 'member_created' || status === 'linked') return 'info';
+      if (staff === 'da_completare' || staff === 'da_controllare' || staff === 'review') return 'warn';
+      return 'info';
+    }
+    function assessmentExternalMemberForRequest(row = {}) {
+      const ids = [
+        row.created_member_local_id,
+        row.matched_member_local_id,
+        row.raw_response?.member_local_id,
+        row.raw_response?.created_member_local_id
+      ].map(cleanCell).filter(Boolean);
+      for (const id of ids) {
+        const member = (giocatori || []).find(g => String(g.id) === String(id) || String(g.memberId) === String(id));
+        if (member) return member;
+      }
+      return assessmentExternalFindMatchingMember(row);
+    }
+    function assessmentExternalFindMatchingMember(row = {}) {
+      const candidate = {
+        firstName: row.first_name,
+        surname: row.last_name,
+        name: assessmentExternalRequestName(row),
+        phone: row.phone,
+        email: row.email
+      };
+      const idx = findMatchingMemberIndex(candidate);
+      return idx >= 0 ? giocatori[idx] : null;
+    }
+    function assessmentExternalRequestResponse(row = {}, token = '') {
+      const raw = normalizeAssessmentRawResponse(row.raw_response || {});
+      return {
+        token,
+        submitted_at: row.submitted_at || new Date().toISOString(),
+        first_name: row.first_name || '',
+        last_name: row.last_name || '',
+        phone: row.phone || '',
+        declared_level: cleanCell(row.declared_level || ''),
+        calculated_level: cleanCell(row.calculated_level || row.declared_level || ''),
+        consistency_status: row.consistency_status || (row.staff_status === 'da_controllare' ? 'medium' : 'high'),
+        staff_status: row.staff_status === 'da_controllare' ? 'review' : '',
+        raw_response: {
+          ...raw,
+          source: 'link-esterno',
+          origin_label: 'Origine: Da link esterno',
+          external_request_id: row.id || '',
+          external_request_code: row.request_code || '',
+          external_email: row.email || '',
+          gender: row.gender || '',
+          gender_label: assessmentPublicGenderLabel(row.gender || ''),
+          gender_status: assessmentPublicGenderStatus(row.gender || ''),
+          privacy_consent: !!row.privacy_accepted
+        }
+      };
+    }
+    function assessmentExternalEnsureAssessmentForMember(row = {}, member = null) {
+      if (!row || !member) return null;
+      const key = String(member.id);
+      const token = `external-${cleanCell(row.request_code || row.id || makeId())}`;
+      const previous = assessmentTokens[key];
+      const previousTokens = Array.isArray(previous?.previousTokens) ? [...previous.previousTokens] : [];
+      if (previous?.token && previous.token !== token) previousTokens.push({ token:previous.token, archivedAt:new Date().toISOString(), reason:'link_esterno' });
+      assessmentTokens[key] = {
+        memberId: key,
+        token,
+        memberName: playerFullName(member),
+        phone: member.phone || row.phone || '',
+        email: member.email || row.email || '',
+        status: 'completed',
+        source: 'link-esterno',
+        createdAt: row.submitted_at || new Date().toISOString(),
+        sentAt: null,
+        completedAt: row.submitted_at || new Date().toISOString(),
+        registeredToSupabase: false,
+        externalRequestId: row.id || '',
+        previousTokens
+      };
+      const response = assessmentExternalRequestResponse(row, token);
+      const idx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(token));
+      if (idx >= 0) assessmentResponses[idx] = { ...assessmentResponses[idx], ...response };
+      else assessmentResponses.push(response);
+      if (['M','F'].includes(row.gender) && !['M','F'].includes(assessmentPublicNormalizeGender(member.gender || ''))) {
+        member.gender = row.gender;
+        member.genderSource = 'link-esterno';
+        member.genderUpdatedAt = row.submitted_at || new Date().toISOString();
+        save('giocatori', giocatori);
+      }
+      save('assessmentTokens', assessmentTokens);
+      save('assessmentResponses', assessmentResponses);
+      return { token, response };
+    }
+    async function assessmentExternalUpdateCloud(row = {}, status = '', member = null, notes = '') {
+      const requestId = cleanCell(row.id || '');
+      if (!requestId) return null;
+      try {
+        const result = await pmoStaffRpc('update_assessment_external_request_admin', {
+          p_request_id: requestId,
+          p_status: status,
+          p_member_local_id: member?.id || '',
+          p_member_pmo_id: member?.memberId || '',
+          p_staff_notes: notes || ''
+        }, 'cloud_sync', 'aggiornare la richiesta link esterno');
+        if (result?.ok === false) throw new Error(result.error || 'Aggiornamento richiesta non riuscito');
+        return result;
+      } catch (err) {
+        showAlert('⚠️ Stato richiesta salvato nel browser, ma aggiornamento cloud non riuscito: ' + pmoFriendlyCloudError(err, 'aggiornare la richiesta link esterno'), 'warning');
+        return null;
+      }
+    }
+    async function assessmentExternalCreateMember(requestId) {
+      const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
+      if (!row) return showAlert('❌ Richiesta link esterno non trovata', 'danger');
+      const duplicate = assessmentExternalFindMatchingMember(row);
+      if (duplicate) return showAlert(`⚠️ Possibile socio già esistente: ${playerFullName(duplicate)}. Usa Aggancia a socio esistente.`, 'warning');
+      const normalizedName = normalizeImportedPlayerNameParts(row.first_name, row.last_name);
+      const firstName = normalizedName.firstName || row.first_name || 'Nuovo';
+      const surname = normalizedName.surname || row.last_name || 'Socio';
+      const now = new Date().toISOString();
+      const member = ensureMemberId({
+        id: makeId(),
+        memberId: '',
+        firstName,
+        surname,
+        name: compactSpaces(`${firstName} ${surname}`),
+        phone: normalizePhone(row.phone || ''),
+        email: cleanCell(row.email || ''),
+        level: parseLevel(String(row.calculated_level || row.declared_level || '0.5').replace(',', '.'), 0.5),
+        gender: ['M','F'].includes(row.gender) ? row.gender : 'NA',
+        active: true,
+        source: 'link-esterno',
+        externalAssessmentRequestId: row.id || '',
+        createdAt: now,
+        updatedAt: now
+      });
+      giocatori.push(member);
+      save('giocatori', giocatori);
+      assessmentExternalEnsureAssessmentForMember(row, member);
+      row.status = 'member_created';
+      row.created_member_local_id = member.id;
+      row.created_member_pmo_id = member.memberId;
+      assessmentExternalUpsertLocal([row]);
+      pmoQueueImmediateMemberCloudSync(member, 'salvare subito il nuovo socio da link esterno su Supabase');
+      await assessmentExternalUpdateCloud(row, 'member_created', member, 'Scheda socio creata da richiesta link esterno');
+      displayMembers();
+      updateStats();
+      renderAssessmentEmailPanels();
+      showAlert(`✅ Scheda socio creata: ${playerFullName(member)} · ${member.memberId}`, 'success');
+      setTimeout(() => openAssessmentResponseEditor(member.id), 120);
+    }
+    async function assessmentExternalLinkExistingMember(requestId) {
+      const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
+      if (!row) return showAlert('❌ Richiesta link esterno non trovata', 'danger');
+      let member = assessmentExternalFindMatchingMember(row);
+      if (!member) {
+        const query = prompt('Inserisci ID PMO, email o nome del socio da agganciare.');
+        const q = normalizeText(query || '');
+        if (!q) return;
+        member = (giocatori || []).find(g => {
+          const haystack = normalizeText([g.memberId, g.id, g.email, playerFullName(g)].filter(Boolean).join(' '));
+          return haystack.includes(q);
+        }) || null;
+      }
+      if (!member) return showAlert('❌ Socio esistente non trovato.', 'danger');
+      if (!confirm(`Agganciare la richiesta link esterno a ${playerFullName(member)}?`)) return;
+      assessmentExternalEnsureAssessmentForMember(row, member);
+      row.status = 'linked';
+      row.matched_member_local_id = member.id;
+      assessmentExternalUpsertLocal([row]);
+      await assessmentExternalUpdateCloud(row, 'linked', member, 'Richiesta link esterno agganciata a socio esistente');
+      renderAssessmentEmailPanels();
+      showAlert(`✅ Richiesta agganciata a ${playerFullName(member)}.`, 'success');
+      setTimeout(() => openAssessmentResponseEditor(member.id), 120);
+    }
+    function assessmentExternalOpenLevelCheck(requestId) {
+      const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
+      if (!row) return showAlert('❌ Richiesta link esterno non trovata', 'danger');
+      const member = assessmentExternalMemberForRequest(row);
+      if (!member) return showAlert('⚠️ Prima crea la scheda socio o aggancia la richiesta a un socio esistente.', 'warning');
+      assessmentExternalEnsureAssessmentForMember(row, member);
+      openAssessmentResponseEditor(member.id);
+    }
+    async function assessmentExternalMarkValidated(response = {}, member = null) {
+      const raw = normalizeAssessmentRawResponse(response.raw_response || {});
+      const requestId = cleanCell(raw.external_request_id || '');
+      if (!requestId || !member) return;
+      const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === requestId);
+      if (row) {
+        row.status = 'validated';
+        row.created_member_local_id = row.created_member_local_id || member.id;
+        row.created_member_pmo_id = row.created_member_pmo_id || member.memberId || '';
+        assessmentExternalUpsertLocal([row]);
+      }
+      await assessmentExternalUpdateCloud({ id:requestId }, 'validated', member, 'Livello validato internamente');
+    }
     function openAssessmentTestLink(link) {
       const url = cleanCell(link || '');
       if (!url) return showAlert('⚠️ Link scheda non disponibile.', 'warning');
@@ -24582,9 +24884,51 @@ Per confermare scrivi ELIMINA.`);
         </tr>`;
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
     }
+    function assessmentExternalRequestsHistoryHtml() {
+      const rows = (assessmentExternalRequests || []).map(assessmentExternalNormalizeRequest).slice(0, 50);
+      const header = `<div class="assessment-email-section-block">
+        <div class="assessment-email-panel-head compact">
+          <div>
+            <h4 class="assessment-email-panel-title">Richieste da link esterno</h4>
+            <p class="assessment-email-panel-copy">Registrazioni e autovalutazioni arrivate dal link pubblico. La scheda socio nasce solo dopo conferma staff.</p>
+          </div>
+        </div>`;
+      if (!rows.length) {
+        return `${header}${assessmentEmailEmpty('Nessuna richiesta link esterno caricata. Usa Aggiorna link esterno per leggere Supabase TEST.')}</div>`;
+      }
+      const body = rows.map(row => {
+        const key = escapeJs(assessmentExternalRequestKey(row));
+        const member = assessmentExternalMemberForRequest(row);
+        const status = assessmentExternalStatusLabel(row);
+        const actions = [];
+        if (row.status === 'received') {
+          actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentExternalCreateMember('${key}')">Crea scheda socio</button>`);
+          actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentExternalLinkExistingMember('${key}')">Aggancia a socio esistente</button>`);
+        }
+        if (member || row.status === 'member_created' || row.status === 'linked') {
+          actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Controlla livello</button>`);
+        }
+        if (member) actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(member.id))}')">Scheda socio</button>`);
+        const gender = assessmentPublicGenderLabel(row.gender || '');
+        const genderStatus = assessmentPublicGenderStatus(row.gender || '');
+        return `<tr>
+          <td data-label="Socio"><strong>${escapeHtml(assessmentExternalRequestName(row))}</strong><span class="assessment-email-meta">${escapeHtml(row.email || 'email mancante')} · ${escapeHtml(row.phone || 'telefono mancante')}</span></td>
+          <td data-label="Ricevuta">${escapeHtml(assessmentEmailFormatDateTime(row.submitted_at))}</td>
+          <td data-label="Origine">${assessmentEmailBadge('Da link esterno','info')}</td>
+          <td data-label="Livello">${escapeHtml(row.declared_level || '-')} / ${escapeHtml(row.calculated_level || '-')}<span class="assessment-email-meta">${escapeHtml(row.consistency_status || '-')}</span></td>
+          <td data-label="Stato">${assessmentEmailBadge(status, assessmentExternalStatusClass(row))}<span class="assessment-email-meta">${escapeHtml(gender)} · ${escapeHtml(genderStatus)}</span></td>
+          <td data-label="Azioni"><div class="assessment-email-mini-actions">${actions.join('') || '<span class="muted">Nessuna azione</span>'}</div></td>
+        </tr>`;
+      }).join('');
+      return `${header}<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Ricevuta</th><th>Origine</th><th>Livello</th><th>Stato</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+    }
     function renderAssessmentEmailHistoryPanel(options={}) {
       const box = document.getElementById('assessmentEmailHistoryContent');
       if (!box) return;
+      if (!window.__assessmentExternalRequestsAutoSyncStarted) {
+        window.__assessmentExternalRequestsAutoSyncStarted = true;
+        setTimeout(() => syncAssessmentExternalRequestsFromSupabase({ silent:true }), 0);
+      }
       const activeEl = document.activeElement;
       const preserveSearchFocus = !!(options.preserveFocus && activeEl?.id === 'assessmentHistorySearch');
       const selectionStart = preserveSearchFocus ? activeEl.selectionStart : null;
@@ -24597,6 +24941,7 @@ Per confermare scrivi ELIMINA.`);
       const currentReply = document.getElementById('assessmentHistoryReply')?.value || 'all';
       const currentLevel = document.getElementById('assessmentHistoryLevel')?.value || 'all';
       const rows = assessmentEmailHistoryRows({ search:currentSearch, status:currentStatus, period:currentPeriod, channel:currentChannel, reply:currentReply, level:currentLevel });
+      const externalHtml = assessmentExternalRequestsHistoryHtml();
       const filterHtml = `<div class="assessment-email-filter-grid history-filters">
         <div><label>Cerca nello storico</label><input id="assessmentHistorySearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email, telefono o ID" oninput="window.assessmentHistorySearchText=this.value; renderAssessmentEmailHistoryPanel({ preserveFocus:true })"></div>
         <div><label>Stato</label><select id="assessmentHistoryStatus" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentStatus === 'all' ? 'selected' : ''}>Tutti</option><option value="auto" ${currentStatus === 'auto' ? 'selected' : ''}>Auto-applicato</option><option value="staff" ${currentStatus === 'staff' ? 'selected' : ''}>Validato staff</option><option value="paused" ${currentStatus === 'paused' ? 'selected' : ''}>In pausa - nessuna risposta</option></select></div>
@@ -24606,7 +24951,7 @@ Per confermare scrivi ELIMINA.`);
         <div><label>Livello finale</label><select id="assessmentHistoryLevel" onchange="renderAssessmentEmailHistoryPanel()"><option value="all" ${currentLevel === 'all' ? 'selected' : ''}>Tutti</option><option value="still05" ${currentLevel === 'still05' ? 'selected' : ''}>Ancora 0.5</option><option value="2-2.5" ${currentLevel === '2-2.5' ? 'selected' : ''}>2.0 - 2.5</option><option value="3-3.5" ${currentLevel === '3-3.5' ? 'selected' : ''}>3.0 - 3.5</option><option value="4plus" ${currentLevel === '4plus' ? 'selected' : ''}>4.0+</option></select></div>
       </div>`;
       if (!rows.length) {
-        box.innerHTML = filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.');
+        box.innerHTML = externalHtml + filterHtml + assessmentEmailEmpty('Nessun giro chiuso trovato con questi filtri.');
         if (preserveSearchFocus) {
           setTimeout(() => {
             const input = document.getElementById('assessmentHistorySearch');
@@ -24617,7 +24962,7 @@ Per confermare scrivi ELIMINA.`);
         }
         return;
       }
-      box.innerHTML = `${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${rows.map(row => {
+      box.innerHTML = `${externalHtml}${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${rows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
@@ -26153,6 +26498,7 @@ Per confermare scrivi ELIMINA.`);
 
       save('giocatori', giocatori);
       save('assessmentResponses', assessmentResponses);
+      try { await assessmentExternalMarkValidated(response, member); } catch (err) { console.warn('Richiesta link esterno non marcata come validata:', err); }
       if (!options.suppressRender) {
         displayAssessment();
         try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
@@ -26260,7 +26606,7 @@ Per confermare scrivi ELIMINA.`);
           if (errorBox) errorBox.style.display = 'none';
           if (successBox) successBox.style.display = 'none';
           const token = cleanCell(form.dataset.token || new URLSearchParams(window.location.search || '').get('t') || '');
-          if (hasAssessmentPublicSubmitted(token)) {
+          if (token && hasAssessmentPublicSubmitted(token)) {
             lockAssessmentPublicSubmitButton('Autovalutazione già inviata');
             if (successBox) {
               successBox.textContent = 'Autovalutazione già inviata. Grazie!';
@@ -26270,9 +26616,9 @@ Per confermare scrivi ELIMINA.`);
             return;
           }
           const required = Array.from(form.querySelectorAll('[required]')).filter(el => !el.disabled && !el.closest('[hidden]'));
-          const invalid = required.filter(el => !el.value);
+          const invalid = required.filter(el => el.type === 'checkbox' ? !el.checked : !el.value);
           invalid.forEach(el => el.style.borderColor = 'var(--danger)');
-          required.filter(el => el.value).forEach(el => el.style.borderColor = '#cfd8e6');
+          required.filter(el => el.type === 'checkbox' ? el.checked : el.value).forEach(el => el.style.borderColor = '#cfd8e6');
           if (invalid.length) {
             if (errorBox) { errorBox.style.display = 'block'; if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(errorBox, { block:'center' }); else errorBox.scrollIntoView({behavior:'smooth', block:'center'}); }
             return;
@@ -26615,9 +26961,15 @@ Per confermare scrivi ELIMINA.`);
       const split = assessmentPublicSplitName(name);
       return {
         token,
+        source: isExternal ? 'link-esterno' : 'scheda-pubblica',
+        origin: isExternal ? 'link-esterno' : 'scheda-pubblica',
         first_name: split.first_name,
         last_name: split.last_name,
         phone: isExternal ? cleanCell(data.externalPhone || member?.phone || '') : '',
+        email: isExternal ? cleanCell(data.externalEmail || member?.email || '') : '',
+        gender,
+        privacy_accepted: privacyConsent,
+        privacy_accepted_at: privacyConsent ? new Date().toISOString() : '',
         declared_level: levelCalc.declared_level,
         calculated_level: levelCalc.calculated_level,
         consistency_status: levelCalc.coherence,
@@ -26713,6 +27065,48 @@ Per confermare scrivi ELIMINA.`);
 
       return { ok:true, source:'table' };
     }
+    function assessmentPublicPayloadIsExternal(payload = {}) {
+      const raw = normalizeAssessmentRawResponse(payload.raw_response || {});
+      return payload.source === 'link-esterno' || payload.origin === 'link-esterno' || raw.source === 'link-esterno';
+    }
+    function assessmentPublicExternalValidationError(payload = {}) {
+      if (!payload.privacy_accepted) return 'Privacy obbligatoria';
+      if (!cleanCell(payload.first_name) || !cleanCell(payload.last_name) || !cleanCell(payload.phone) || !cleanCell(payload.email)) return 'Completa nome, cognome, telefono ed email.';
+      if (!['M','F','NA'].includes(assessmentPublicNormalizeGender(payload.gender || ''))) return 'Seleziona il campo Sesso.';
+      if (!cleanCell(payload.declared_level) || !cleanCell(payload.calculated_level)) return 'Compila tutte le risposte dell’autovalutazione.';
+      if (payload.consistency_status === 'low') return 'Le risposte non sono coerenti con il livello indicato. Rivedi il livello o le risposte prima di inviare.';
+      return '';
+    }
+    async function submitAssessmentExternalRequestToSupabase(payload) {
+      const error = assessmentPublicExternalValidationError(payload);
+      if (error) throw new Error(error);
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/submit_assessment_external_request_public`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        },
+        body: JSON.stringify({ p_request: payload })
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.error || data?.message || text || `Errore Supabase ${response.status}`);
+      }
+      const row = assessmentExternalNormalizeRequest({
+        ...(payload || {}),
+        id: data?.request_id || '',
+        request_code: data?.request_code || '',
+        status: data?.status || 'received',
+        submitted_at: payload.submitted_at || new Date().toISOString(),
+        staff_status: payload.staff_status || 'da_validare'
+      });
+      assessmentExternalUpsertLocal([row]);
+      return { ok:true, source:'external-request', data };
+    }
 
     async function submitAssessmentPublicPreview() {
       closeAssessmentPublicConfirm();
@@ -26722,15 +27116,28 @@ Per confermare scrivi ELIMINA.`);
       if (errorBox) errorBox.style.display = 'none';
 
       const payload = buildAssessmentPublicPayload();
+      const isExternal = assessmentPublicPayloadIsExternal(payload);
       if (!payload.token) {
+        if (isExternal) {
+          const externalError = assessmentPublicExternalValidationError(payload);
+          if (externalError) {
+            if (errorBox) {
+              errorBox.textContent = externalError;
+              errorBox.style.display = 'block';
+              if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(errorBox, { block:'center' }); else errorBox.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+            return;
+          }
+        } else {
         if (errorBox) {
           errorBox.textContent = 'Link non valido: token mancante. Chiedi allo staff un nuovo link.';
           errorBox.style.display = 'block';
           if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(errorBox, { block:'center' }); else errorBox.scrollIntoView({behavior:'smooth', block:'center'});
         }
         return;
+        }
       }
-      if (hasAssessmentPublicSubmitted(payload.token)) {
+      if (payload.token && hasAssessmentPublicSubmitted(payload.token)) {
         lockAssessmentPublicSubmitButton('Autovalutazione già inviata');
         if (successBox) {
           successBox.textContent = 'Autovalutazione già inviata. Grazie!';
@@ -26741,13 +27148,17 @@ Per confermare scrivi ELIMINA.`);
       }
 
       try {
-        await submitAssessmentPublicResponseToSupabase(payload);
-        saveAssessmentPublicResponseLocally(payload);
-        markAssessmentPublicSubmitted(payload.token);
+        if (isExternal && !payload.token) {
+          await submitAssessmentExternalRequestToSupabase(payload);
+        } else {
+          await submitAssessmentPublicResponseToSupabase(payload);
+          saveAssessmentPublicResponseLocally(payload);
+          markAssessmentPublicSubmitted(payload.token);
+        }
         lockAssessmentPublicSubmitButton('Autovalutazione inviata');
 
         if (successBox) {
-          successBox.textContent = 'Autovalutazione inviata correttamente. Grazie!';
+          successBox.textContent = isExternal ? 'Autovalutazione inviata. Lo staff verificherà il livello indicato e ti invierà una mail di conferma con il livello impostato.' : 'Autovalutazione inviata correttamente. Grazie!';
           successBox.style.display = 'block';
           if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(successBox, { block:'center' }); else successBox.scrollIntoView({behavior:'smooth', block:'center'});
         }
