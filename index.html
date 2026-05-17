@@ -5347,7 +5347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.446';
+    const APP_VERSION = '5.447';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18057,6 +18057,12 @@ Grazie!`
         return configured.replace(/\/?$/, '/') + 'autovalutazione.html';
       }
     }
+    function getAssessmentExternalPublicBaseUrl() {
+      return `${PMO_PROD_PUBLIC_BASE_URL}autovalutazione.html`;
+    }
+    function getAssessmentExternalTestBaseUrl() {
+      return `${PMO_PROD_PUBLIC_BASE_URL}test/autovalutazione.html`;
+    }
     function getAssessmentLink(token, memberOrId=null) {
       const rawBase = getAssessmentPublicBaseUrl();
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
@@ -18080,8 +18086,8 @@ Grazie!`
         return `${base}${sep}${params.toString()}`;
       }
     }
-    function assessmentExternalBuildUrl(params = {}) {
-      const rawBase = getAssessmentPublicBaseUrl();
+    function assessmentExternalBuildUrl(params = {}, baseUrl = getAssessmentPublicBaseUrl()) {
+      const rawBase = baseUrl;
       const entries = Object.entries(params || {}).filter(([, value]) => cleanCell(value || ''));
       try {
         const url = new URL(rawBase, window.location.href);
@@ -18097,9 +18103,8 @@ Grazie!`
     }
     function assessmentExternalLinkUrl() {
       return assessmentExternalBuildUrl({
-        env: PMO_IS_TEST_ENV ? 'test' : '',
         assessment: 'link-esterno'
-      });
+      }, getAssessmentExternalPublicBaseUrl());
     }
     function assessmentExternalTestMember() {
       return (giocatori || []).find(member => {
@@ -18109,23 +18114,11 @@ Grazie!`
       }) || null;
     }
     function assessmentExternalTestLinkUrl() {
-      const member = assessmentExternalTestMember();
-      const rec = member ? getAssessmentTokenRecord(member.id) : null;
-      if (member && rec?.token) {
-        return assessmentExternalBuildUrl({
-          env: PMO_IS_TEST_ENV ? 'test' : '',
-          assessment: 'link-esterno',
-          t: rec.token,
-          nome: playerFullName(member),
-          email: member.email || ''
-        });
-      }
       return assessmentExternalBuildUrl({
-        env: PMO_IS_TEST_ENV ? 'test' : '',
+        env: 'test',
         assessment: 'link-esterno',
-        memberId: 'PMO-000948',
-        email: 'aprea.maurizio@gmail.com'
-      });
+        memberId: 'PMO-000948'
+      }, getAssessmentExternalTestBaseUrl());
     }
     function assessmentPublicNormalizeGender(value) {
       const raw = cleanCell(value || '');
