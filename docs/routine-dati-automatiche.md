@@ -1,6 +1,24 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per ricalcolo automatico della colonna `Prossima esecuzione`.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per ricalcolo automatico della colonna `Prossima esecuzione`; in TEST v5.470 il pannello legge i riepiloghi cloud `matchpoint_data` e sincronizza il browser locale quando il cloud e' piu recente.
+
+Ultimo aggiornamento: 2026-05-18 00:13
+
+## Nota UI TEST v5.470 - 2026-05-18 00:13
+
+Corretto il disallineamento tra routine cloud Matchpoint e dati visibili nel browser.
+
+Comportamento aggiornato:
+
+- quando lo staff apre `Amministrazione > Dati Matchpoint`, la app legge in sola lettura i riepiloghi cloud `matchpoint_clients_auto_import_last`, `matchpoint_bookings_auto_import_last` e `matchpoint_history_auto_import_last`;
+- se un riepilogo cloud e' piu recente della cronologia locale `dailyDiffHistory`, la app scarica i record cloud gia normalizzati e aggiorna il browser locale;
+- non viene rilanciato Matchpoint, non vengono chiamate Edge Function di import e non viene modificato lo scheduler;
+- in TEST il pannello mostra `TEST manuale` e la colonna `Prossima esecuzione` mostra `Manuale in TEST`, perche' il cron automatico TEST resta disattivato da policy;
+- in PROD, quando la modifica sara promossa, la stessa logica permettera alla UI di riflettere i dati cloud aggiornati dallo scheduler PROD.
+
+Verifica read-only TEST del 2026-05-18 00:13: Supabase TEST non ha job `pmo-data-routines-dispatcher-test` attivo e contiene riepiloghi cloud Matchpoint aggiornati il 2026-05-17 tra le 21:54 e le 21:57 UTC.
+
+Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 ## Obiettivo
 

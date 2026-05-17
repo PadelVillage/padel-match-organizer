@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 23:56
+Ultimo aggiornamento: 2026-05-18 00:13
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Amministrazione / Dati Matchpoint TEST v5.470: corretto il pannello `Stato routine automatiche`. La UI ora legge i riepiloghi cloud `matchpoint_data` quando si apre `Dati Matchpoint` e sincronizza il browser locale se i dati cloud di Clienti, Prenotazioni future o Storico sono piu recenti della cronologia locale. In TEST la sezione chiarisce che lo scheduler automatico e' disattivato e mostra `Manuale in TEST`, evitando di promettere esecuzioni automatiche non previste. Commit app `cd33a00`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.469: corretti due bug del flusso pubblico e dello `Storico`. La tab `Storico` ora segnala nel contatore anche le richieste link esterno operative, cosi una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene evidenziata gia nella tab. In modalita pubblica da link WhatsApp/Telegram il refresh automatico staff non parte piu e il salvataggio impostazioni silenzioso non mostra l'alert gestionale `Nessuna modifica da salvare`. Commit app `864765c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.468: aggiunta pulizia controllata Supabase TEST delle richieste link esterno duplicate dopo validazione staff. La nuova RPC autenticata `cleanup_assessment_external_requests_admin(p_request_id uuid)` mantiene la richiesta validata corrente e cancella solo le richieste piu vecchie della stessa persona/socio da `public.assessment_external_requests`, usando email normalizzata, telefono normalizzato e ID socio collegato. Grant solo `authenticated`, nessun grant `anon`, audit `assessment_external_requests_cleanup` quando elimina righe. Migrazione TEST applicata: `supabase/migrations/20260517213714_cleanup_assessment_external_requests.sql`. Commit app `54a362c`. Nessuna modifica a PROD, Edge Function, scheduler, dati soci, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.467: corretto il test staff della sottotab `Form autovalutazione`. Premendo `Invia autovalutazione` per `PMO-000948`, la richiesta viene salvata subito nello `Storico` locale TEST tra le `Richieste da link esterno`; non e' piu necessario cliccare `Vedi storico` per materializzare la riga. `Vedi storico` resta disponibile per aprire la tab Storico. Commit app `72fb28e`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.

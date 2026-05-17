@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 23:56
+Ultimo aggiornamento: 2026-05-18 00:13
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.469 | `test-preview` | `864765c` |
-| TEST sviluppo | v5.469 | `test/accessi-staff-guidati` | `864765c` |
+| TEST | v5.470 | `test-preview` | `cd33a00` |
+| TEST sviluppo | v5.470 | `test/accessi-staff-guidati` | `cd33a00` |
+
+Nota TEST v5.470: corretto `Amministrazione > Dati Matchpoint > Stato routine automatiche`. Il pannello ora legge i riepiloghi cloud `matchpoint_data` quando viene aperta la sezione e, se il cloud e' piu recente della cronologia locale del browser, sincronizza in locale clienti, prenotazioni future e storico senza rilanciare Matchpoint. In TEST la UI mostra chiaramente `TEST manuale` e `Manuale in TEST`, perche' lo scheduler automatico TEST resta disattivato per policy; l'automazione resta prevista solo in PROD. Verifica read-only TEST: riepiloghi cloud Matchpoint presenti al 2026-05-17 21:54-21:57 UTC, mentre il browser poteva mostrare date locali vecchie. Commit app `cd33a00`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.469: corretti due bug del flusso `Autovalutazione > Scheda pubblica > Link esterno`. La tab `Storico` ora mostra nel contatore anche le richieste link esterno operative, quindi una nuova scheda ricevuta dal link pubblico e visibile nello Storico viene segnalata gia nella tab. In modalita pubblica da link WhatsApp/Telegram il refresh automatico staff non parte piu e il salvataggio impostazioni silenzioso non mostra l'alert gestionale `Nessuna modifica da salvare`, evitando che il socio veda avvisi e contenuti del gestionale mentre compila la scheda. Commit app `864765c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
@@ -105,7 +107,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.469 e' preparata in TEST al commit app `864765c`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.469 corregge la visibilita delle nuove richieste da link esterno nel contatore della tab `Storico` e blocca gli alert/refresh gestionali quando il socio apre la scheda pubblica dal link WhatsApp/Telegram. Non sono stati eseguiti SQL, deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.470 e' preparata in TEST al commit app `cd33a00`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.470 corregge il disallineamento tra routine Matchpoint cloud e browser locale: quando si apre `Amministrazione > Dati Matchpoint`, la app legge i riepiloghi cloud delle routine e sincronizza in locale i dati piu recenti senza rilanciare Matchpoint. Non sono stati eseguiti SQL, deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
