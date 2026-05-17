@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.474';
+    const APP_VERSION = '5.475';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22062,6 +22062,97 @@ Per confermare scrivi ELIMINA.`);
 	      pmoSetStaffNotificationsStatus('Email di test simulata: nessun invio reale eseguito.', 'info');
 	      showAlert('Email di test simulata: nessun invio reale eseguito.', 'info');
 	    }
+	    function pmoActiveStaffNotificationRecipients() {
+	      pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(pmoStaffNotificationRecipients);
+	      return pmoStaffNotificationRecipients.filter(row => row?.active !== false && pmoStaffNotificationIsValidEmail(row?.email || ''));
+	    }
+	    function assessmentStaffNotificationOrigin(response = {}) {
+	      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
+	      return cleanCell(raw.source || raw.origin || '') === 'link-esterno' ? 'Da link esterno' : 'Lotto Autovalutazione';
+	    }
+	    function assessmentStaffNotificationGender(member = {}, response = {}) {
+	      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
+	      return cleanCell(raw.gender_label || assessmentPublicGenderLabel(raw.gender || member.gender || member.sex || '')) || 'Da completare';
+	    }
+	    function assessmentStaffNotificationBody(member = {}, response = {}) {
+	      const name = playerFullName(member);
+	      const level = cleanCell(response?.applied_level || response?.calculated_level || response?.declared_level || member.level || '');
+	      const origin = assessmentStaffNotificationOrigin(response);
+	      const gender = assessmentStaffNotificationGender(member, response);
+	      const phone = cleanCell(member.phone || response?.phone || '');
+	      const email = assessmentEmailMemberEmail(member) || cleanCell(response?.email || '');
+	      return [
+	        `Livello validato per ${name}.`,
+	        '',
+	        `Nome: ${name}`,
+	        `ID PMO: ${cleanCell(member.memberId || member.id || '-')}`,
+	        `Livello validato: ${level || '-'}`,
+	        `Sesso: ${gender}`,
+	        `Telefono: ${phone || '-'}`,
+	        `Email: ${email || '-'}`,
+	        `Origine: ${origin}`,
+	        `Validato il: ${assessmentEmailFormatDateTime(response?.applied_at || new Date().toISOString())}`
+	      ].join('\n');
+	    }
+	    async function assessmentSendStaffLevelNotifications(member = null, response = null, options = {}) {
+	      if (!member || !response) return { sent:0, failed:0, skipped:true, reason:'missing_data' };
+	      const existingSentAt = cleanCell(response.staff_notification_sent_at || response.staffNotificationSentAt || '');
+	      if (existingSentAt && options.skipIfAlreadySent !== false) {
+	        return { sent:0, failed:0, skipped:true, reason:'already_sent', sentAt:existingSentAt };
+	      }
+	      const recipients = pmoActiveStaffNotificationRecipients();
+	      if (!recipients.length) return { sent:0, failed:0, skipped:true, reason:'no_recipients' };
+	      const subject = `Livello validato - ${playerFullName(member)}`;
+	      const body = assessmentStaffNotificationBody(member, response);
+	      const level = cleanCell(response.applied_level || response.calculated_level || response.declared_level || member.level || '');
+	      const result = { sent:0, failed:0, errors:[], recipients:[] };
+	      for (const recipient of recipients) {
+	        try {
+	          const sendResult = await pmoInvokeAssessmentEmail({
+	            mode: 'level-email',
+	            memberId: String(member.id),
+	            member: {
+	              id: String(member.id),
+	              memberId: cleanCell(member.memberId || ''),
+	              name: playerFullName(member),
+	              firstName: cleanCell(member.firstName || ''),
+	              surname: cleanCell(member.surname || ''),
+	              email: assessmentEmailMemberEmail(member),
+	              phone: cleanCell(member.phone || ''),
+	              level
+	            },
+	            level,
+	            originalRecipient: recipient.email,
+	            token: '',
+	            link: '',
+	            subject,
+	            body
+	          });
+	          result.sent++;
+	          result.recipients.push({ email:recipient.email, actualRecipient:sendResult.actualRecipient || '', gmailMessageId:sendResult.gmailMessageId || '' });
+	        } catch (err) {
+	          result.failed++;
+	          result.errors.push(`${recipient.email}: ${err?.message || err}`);
+	        }
+	      }
+	      if (result.sent) {
+	        const sentAt = new Date().toISOString();
+	        response.staff_notification_status = result.failed ? 'partial' : 'sent';
+	        response.staff_notification_sent_at = sentAt;
+	        response.staff_notification_recipient_emails = result.recipients.map(item => item.email);
+	        response.staff_notification_actual_recipients = result.recipients.map(item => item.actualRecipient).filter(Boolean);
+	        member.selfAssessmentStaffNotificationSentAt = sentAt;
+	        member.selfAssessmentStaffNotificationRecipients = result.recipients.map(item => item.email);
+	        save('giocatori', giocatori);
+	        save('assessmentResponses', assessmentResponses);
+	      }
+	      if (result.failed) {
+	        response.staff_notification_error = result.errors.join(' | ');
+	        save('assessmentResponses', assessmentResponses);
+	        if (!options.silent) showAlert(`Notifiche staff non inviate a tutti: ${result.errors.join(' | ')}`, 'warning');
+	      }
+	      return result;
+	    }
 	    function pmoRenderAdminSessionPanel() {
 	      const target = document.getElementById('pmoAdminSessionPermissions');
 	      if (!target) return;
@@ -27638,6 +27729,18 @@ Per confermare scrivi ELIMINA.`);
       save('giocatori', giocatori);
       save('assessmentResponses', assessmentResponses);
       try { await assessmentExternalMarkValidated(response, member); } catch (err) { console.warn('Richiesta link esterno non marcata come validata:', err); }
+      let staffNotificationResult = { sent:0, failed:0, skipped:true };
+      try {
+        staffNotificationResult = await assessmentSendStaffLevelNotifications(member, response, {
+          skipIfAlreadySent: true,
+          silent: silent || options.suppressStaffNotificationAlert
+        });
+      } catch (err) {
+        staffNotificationResult = { sent:0, failed:1, skipped:false, errors:[err?.message || String(err)] };
+        if (!silent && !options.suppressStaffNotificationAlert) {
+          showAlert(`Livello applicato, ma notifica staff non inviata: ${err?.message || err}`, 'warning');
+        }
+      }
       if (!options.suppressRender) {
         displayAssessment();
         try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
@@ -27650,7 +27753,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (!assessmentEmailHasValidEmail(member)) {
         if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata perche manca una email valida.`, 'warning');
-        return { ok:true, applied:true, level, emailSent:false, emailError:'Email mancante' };
+        return { ok:true, applied:true, level, emailSent:false, emailError:'Email mancante', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
       }
       if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Invio conferma email in corso...`, 'info');
       try {
@@ -27664,10 +27767,10 @@ Per confermare scrivi ELIMINA.`);
           suppressSuccessAlert: silent || options.suppressSuccessAlert,
           suppressFailureAlert: silent || options.suppressFailureAlert
         });
-        return { ok:true, applied:true, level, emailSent:!!sent, emailError: sent ? '' : 'Invio conferma email non riuscito' };
+        return { ok:true, applied:true, level, emailSent:!!sent, emailError: sent ? '' : 'Invio conferma email non riuscito', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
       } catch (err) {
         if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata: ${err.message || err}`, 'warning');
-        return { ok:true, applied:true, level, emailSent:false, emailError:err?.message || String(err) };
+        return { ok:true, applied:true, level, emailSent:false, emailError:err?.message || String(err), staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
       }
     }
 
