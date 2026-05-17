@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.467';
+    const APP_VERSION = '5.468';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -19105,6 +19105,20 @@ Grazie!`
         return null;
       }
     }
+    async function assessmentExternalCleanupCloudDuplicates(row = {}) {
+      const requestId = cleanCell(row.id || '');
+      if (!requestId) return null;
+      try {
+        const result = await pmoStaffRpc('cleanup_assessment_external_requests_admin', {
+          p_request_id: requestId
+        }, 'cloud_sync', 'pulire richieste link esterno vecchie');
+        if (result?.ok === false) throw new Error(result.error || 'Pulizia richieste non riuscita');
+        return result;
+      } catch (err) {
+        showAlert('⚠️ Livello validato, ma pulizia richieste vecchie non riuscita: ' + pmoFriendlyCloudError(err, 'pulire richieste link esterno vecchie'), 'warning');
+        return null;
+      }
+    }
     async function assessmentExternalCreateMember(requestId) {
       const row = assessmentExternalRequests.find(item => assessmentExternalRequestKey(item) === cleanCell(requestId));
       if (!row) return showAlert('❌ Richiesta link esterno non trovata', 'danger');
@@ -19190,7 +19204,8 @@ Grazie!`
         row.created_member_pmo_id = row.created_member_pmo_id || member.memberId || '';
         assessmentExternalUpsertLocal([row]);
       }
-      await assessmentExternalUpdateCloud({ id:requestId }, 'validated', member, 'Livello validato internamente');
+      const cloudUpdate = await assessmentExternalUpdateCloud({ id:requestId }, 'validated', member, 'Livello validato internamente');
+      if (cloudUpdate) await assessmentExternalCleanupCloudDuplicates({ id:requestId });
       assessmentExternalAfterOperationalChange();
     }
     function openAssessmentTestLink(link) {
