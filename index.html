@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.465';
+    const APP_VERSION = '5.466';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18867,11 +18867,12 @@ Grazie!`
     }
     function assessmentExternalBestRequestInGroup(group = []) {
       return [...group].sort((a,b) => {
+        const dateDiff = assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at);
+        if (dateDiff) return dateDiff;
         const rankDiff = assessmentExternalRequestStatusRank(b) - assessmentExternalRequestStatusRank(a);
         if (rankDiff) return rankDiff;
         const memberDiff = (assessmentExternalMemberForRequest(b) ? 1 : 0) - (assessmentExternalMemberForRequest(a) ? 1 : 0);
-        if (memberDiff) return memberDiff;
-        return assessmentEmailDateMs(b.submitted_at) - assessmentEmailDateMs(a.submitted_at);
+        return memberDiff;
       })[0] || group[0];
     }
     function assessmentExternalDedupedRequests(rows = null) {
