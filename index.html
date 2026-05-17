@@ -5284,7 +5284,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
                 <div class="matchpoint-routine-head">
                   <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
-                  <div class="matchpoint-routine-schedule">
+                  <div id="matchpointRoutineScheduleInfo" class="matchpoint-routine-schedule">
                     <strong>Sequenza proposta</strong>
                     Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo il controllo dati.
                   </div>
@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.469';
+    const APP_VERSION = '5.470';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5641,6 +5641,8 @@ body.assessment-public-mode .assessment-public-only-card {
     let dailyDiffHistory = normalizeDailyDiffHistory(safeLoad('dailyDiffHistory', []));
     saveDailyDiffHistory();
     let lastMatchpointImportSummary = safeLoad('lastMatchpointImportSummary', null);
+    let matchpointRoutineCloudState = { summaries:{}, lastCheckedAt:'', loading:false, lastError:'' };
+    const MATCHPOINT_ROUTINE_CLOUD_REFRESH_MS = 2 * 60 * 1000;
     let assessmentTokens = safeLoad('assessmentTokens', {});
     let assessmentResponses = safeLoad('assessmentResponses', []);
     let assessmentExternalRequests = safeLoad('assessmentExternalRequests', []);
@@ -7581,7 +7583,10 @@ Grazie.`
               if (!pmoIsPublicAccessMode()) refreshAssessmentSectionDataOnEnter();
             }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
-            if (tabName === 'administration' && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data') refreshDataActionStatuses();
+            if (tabName === 'administration' && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data') {
+              refreshDataActionStatuses();
+              scheduleMatchpointRoutineCloudRefresh({ force:true });
+            }
             if (tabName === 'routines') renderPmoRoutineCenter();
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
@@ -8344,6 +8349,12 @@ Grazie.`
       }, {});
     }
 
+    function pmoDateFromValue(value, fallback=new Date()) {
+      const parsed = value ? new Date(value) : null;
+      if (parsed && !Number.isNaN(parsed.getTime())) return parsed;
+      return fallback instanceof Date ? fallback : new Date();
+    }
+
     function compactDailyDiffEntry(diff) {
       const source = diff && typeof diff === 'object' ? diff : {};
       const added = Array.isArray(source.added) ? source.added : [];
@@ -8460,10 +8471,11 @@ Grazie.`
     }
 
     function saveDailyDiff(diff) {
+      const createdAt = pmoDateFromValue(diff?.createdAt, new Date());
       const entry = compactDailyDiffEntry({
         ...diff,
-        createdAt: new Date().toISOString(),
-        createdAtDisplay: new Date().toLocaleString('it-IT')
+        createdAt: createdAt.toISOString(),
+        createdAtDisplay: diff?.createdAtDisplay || createdAt.toLocaleString('it-IT')
       });
       dailyDiffHistory.unshift(entry);
       dailyDiffHistory = dailyDiffHistory.slice(0, DAILY_DIFF_HISTORY_LIMIT);
@@ -8476,9 +8488,10 @@ Grazie.`
     }
 
     function saveLastMatchpointImportSummary(summary) {
+      const createdAt = pmoDateFromValue(summary?.createdAt, new Date());
       lastMatchpointImportSummary = {
-        createdAt: new Date().toISOString(),
-        createdAtDisplay: new Date().toLocaleString('it-IT'),
+        createdAt: createdAt.toISOString(),
+        createdAtDisplay: summary?.createdAtDisplay || createdAt.toLocaleString('it-IT'),
         type: cleanCell(summary?.type || ''),
         label: cleanCell(summary?.label || summary?.type || ''),
         metrics: summary?.metrics && typeof summary.metrics === 'object' ? summary.metrics : {},
@@ -8797,7 +8810,7 @@ Grazie.`
       const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
       const sourceRows = Math.max(0, parseInt(options.sourceRows, 10) || 0);
       const source = cleanCell(options.source || 'manual');
-      const importedAt = new Date();
+      const importedAt = pmoDateFromValue(options.importedAt || options.createdAt, new Date());
       const importedAtIso = importedAt.toISOString();
       const diff = compareMembers(giocatori, members);
       let added = 0, updated = 0;
@@ -8864,6 +8877,8 @@ Grazie.`
         type:'clienti',
         label:'clienti',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         sourceRows,
         importedRows: reportedRows,
         added: diff.added,
@@ -8875,6 +8890,8 @@ Grazie.`
         type: 'clienti',
         label: source === 'automatic' ? 'clienti automatici' : 'clienti',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         metrics: {
           'Soci letti': reportedRows,
           'Totale clienti database': totalClientCount,
@@ -9153,6 +9170,8 @@ Grazie.`
       }
 
       const source = cleanCell(options.source || 'manual');
+      const importedAt = pmoDateFromValue(options.importedAt || options.createdAt, new Date());
+      const importedAtIso = importedAt.toISOString();
       const dates = occupancy.map(p => p.data).filter(Boolean).sort();
       const fromDate = cleanCell(options.fromDate || dates[0] || '');
       const toDate = cleanCell(options.toDate || dates[dates.length - 1] || '');
@@ -9170,6 +9189,8 @@ Grazie.`
         type: 'prenotazioni future',
         label: 'prenotazioni future',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         sourceRows,
         importedRows,
         added: diff.added,
@@ -9183,6 +9204,8 @@ Grazie.`
         type: 'prenotazioni future',
         label: source === 'automatic' ? 'prenotazioni future automatiche' : 'prenotazioni future',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         metrics: {
           'Periodo': bookingMetrics.periodLabel,
           'Ore campo prenotate': bookingMetrics.bookedHoursLabel,
@@ -9325,6 +9348,8 @@ Grazie.`
       }
 
       const source = cleanCell(options.source || 'manual');
+      const importedAt = pmoDateFromValue(options.importedAt || options.createdAt, new Date());
+      const importedAtIso = importedAt.toISOString();
       const dates = imported.map(p => p.data).filter(Boolean).sort();
       const fromDate = cleanCell(options.fromDate || dates[0] || '');
       const toDate = cleanCell(options.toDate || dates[dates.length - 1] || '');
@@ -9364,6 +9389,8 @@ Grazie.`
         type: 'storico prenotazioni',
         label: 'storico prenotazioni',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         sourceRows,
         importedRows,
         added: newHistoryRows,
@@ -9393,6 +9420,8 @@ Grazie.`
         type: 'storico prenotazioni',
         label: source === 'automatic' ? 'storico prenotazioni automatico' : 'storico prenotazioni',
         source,
+        createdAt: importedAtIso,
+        createdAtDisplay: importedAt.toLocaleString('it-IT'),
         metrics,
         message: options.message || 'Storico aggiornato in modalita cumulativa, senza sovrascrivere record gia presenti.'
       });
@@ -10908,6 +10937,7 @@ Grazie.`
     function refreshMatchpointRoutinePanelIfVisible() {
       if (document.hidden || !isMatchpointDataTabActive()) return;
       try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+      scheduleMatchpointRoutineCloudRefresh({ throttleMs:MATCHPOINT_ROUTINE_CLOUD_REFRESH_MS });
     }
 
     function ensureMatchpointRoutinePanelAutoRefresh() {
@@ -11000,8 +11030,154 @@ Grazie.`
       if (key === 'cloudBackup') return saveCloudBackup();
     }
 
+    function matchpointRoutineCloudSummaryFromRecord(record) {
+      const map = {
+        matchpoint_clients_auto_import_last: { key:'clients', type:'clienti', label:'clienti automatici' },
+        matchpoint_bookings_auto_import_last: { key:'bookings', type:'prenotazioni future', label:'prenotazioni future automatiche' },
+        matchpoint_history_auto_import_last: { key:'history', type:'storico prenotazioni', label:'storico prenotazioni automatico' }
+      };
+      const meta = map[record?.local_key];
+      const payload = record?.payload && typeof record.payload === 'object' ? record.payload : null;
+      if (!meta || !payload) return null;
+      const createdAt = payload.importedAt || record.synced_at || payload.createdAt || '';
+      return {
+        key: meta.key,
+        type: meta.type,
+        label: meta.label,
+        source: cleanCell(payload.source || 'matchpoint_auto'),
+        createdAt,
+        createdAtDisplay: createdAt ? formatImportDateTime({ createdAt }) : 'non disponibile',
+        cloudPayload: payload,
+        rows: payload.rows || {}
+      };
+    }
+
+    async function refreshMatchpointRoutineCloudState(options={}) {
+      const now = Date.now();
+      const last = matchpointRoutineCloudState?.lastCheckedAt ? new Date(matchpointRoutineCloudState.lastCheckedAt).getTime() : 0;
+      const throttleMs = Number.isFinite(options.throttleMs) ? options.throttleMs : MATCHPOINT_ROUTINE_CLOUD_REFRESH_MS;
+      if (matchpointRoutineCloudState.loading) return matchpointRoutineCloudState;
+      if (!options.force && last && now - last < throttleMs) return matchpointRoutineCloudState;
+      matchpointRoutineCloudState = { ...(matchpointRoutineCloudState || {}), loading:true, lastError:'' };
+      try {
+        const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
+          p_record_types: ['matchpoint_data'],
+          p_since: null
+        }, 'cloud_sync', 'leggere lo stato cloud delle routine Matchpoint', { pageSize:1000, maxPages:3 });
+        const summaries = {};
+        (Array.isArray(rows) ? rows : []).forEach(record => {
+          const summary = matchpointRoutineCloudSummaryFromRecord(record);
+          if (summary) summaries[summary.key] = summary;
+        });
+        matchpointRoutineCloudState = {
+          summaries,
+          lastCheckedAt: new Date().toISOString(),
+          loading:false,
+          lastError:''
+        };
+        if (options.applyLocal !== false) await syncMatchpointLocalDataFromCloudSummaries(summaries, options);
+      } catch (err) {
+        matchpointRoutineCloudState = {
+          ...(matchpointRoutineCloudState || {}),
+          loading:false,
+          lastCheckedAt: new Date().toISOString(),
+          lastError: err?.message || String(err || 'Errore lettura stato cloud')
+        };
+        if (!options.silent) showAlert('❌ Lettura stato routine Matchpoint non riuscita: ' + matchpointRoutineCloudState.lastError, 'danger');
+        else console.warn('Stato routine Matchpoint cloud non aggiornato:', err);
+      } finally {
+        try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+      }
+      return matchpointRoutineCloudState;
+    }
+
+    function isCloudRoutineSummaryNewer(key, cloudSummary) {
+      if (!cloudSummary) return false;
+      const typesByKey = {
+        clients: ['clienti'],
+        bookings: ['prenotazioni future', 'prenotazioni'],
+        history: ['storico prenotazioni']
+      };
+      const local = getLatestImportSummaryByTypes(typesByKey[key] || []);
+      return matchpointRoutineSummaryTime(cloudSummary) > matchpointRoutineSummaryTime(local);
+    }
+
+    async function syncMatchpointLocalDataFromCloudSummaries(summaries={}, options={}) {
+      const synced = [];
+      if (isCloudRoutineSummaryNewer('clients', summaries.clients)) {
+        const cloud = await pmoLoadMatchpointMembersFromCloud();
+        const rows = cloud.summary?.rows || summaries.clients?.rows || {};
+        if (cloud.members.length) {
+          applyMatchpointMembersToLocal(cloud.members, {
+            source:'automatic',
+            importedAt: summaries.clients.createdAt,
+            sourceRows: rows.sourceRows || cloud.members.length,
+            importedRows: rows.importableRows || cloud.members.length,
+            skipped: rows.skipped || 0,
+            message:'Clienti sincronizzati dal cloud Matchpoint aggiornato dalla routine.'
+          });
+          synced.push('Clienti Matchpoint');
+        }
+      }
+      if (isCloudRoutineSummaryNewer('bookings', summaries.bookings)) {
+        const cloud = await pmoLoadMatchpointBookingsFromCloud();
+        const rows = cloud.summary?.rows || summaries.bookings?.rows || {};
+        if (cloud.occupancyBookings.length) {
+          applyFutureBookingsToLocal(cloud.bookings, cloud.occupancyBookings, {
+            source:'automatic',
+            importedAt: summaries.bookings.createdAt,
+            sourceRows: rows.sourceRows || cloud.occupancyBookings.length,
+            importedRows: rows.occupancyRows || cloud.occupancyBookings.length,
+            skipped: rows.skipped || 0,
+            fromDate: rows.fromDate || rows.requestedFromDate || '',
+            toDate: rows.toDate || rows.requestedToDate || '',
+            message:'Prenotazioni future sincronizzate dal cloud Matchpoint aggiornato dalla routine.'
+          });
+          synced.push('Prenotazioni future');
+        }
+      }
+      if (isCloudRoutineSummaryNewer('history', summaries.history)) {
+        const cloud = await pmoLoadMatchpointHistoryFromCloud();
+        const rows = cloud.summary?.rows || summaries.history?.rows || {};
+        if (cloud.history.length) {
+          applyHistoricalBookingsToLocal(cloud.history, {
+            source:'automatic',
+            importedAt: summaries.history.createdAt,
+            sourceRows: rows.sourceRows || cloud.history.length,
+            importedRows: rows.importableRows || cloud.history.length,
+            skipped: rows.skipped || 0,
+            fromDate: rows.fromDate || rows.requestedFromDate || '',
+            toDate: rows.toDate || rows.requestedToDate || '',
+            cloudNewRows: rows.newRows || 0,
+            message:'Storico sincronizzato dal cloud Matchpoint aggiornato dalla routine.'
+          });
+          synced.push('Storico Matchpoint');
+        }
+      }
+      if (synced.length && !options.silent) showAlert('✅ Dati Matchpoint aggiornati dal cloud: ' + synced.join(', ') + '.', 'success');
+      if (synced.length) {
+        refreshAfterDataImport();
+        renderMatchpointRoutinePanel();
+      }
+      return synced;
+    }
+
+    function scheduleMatchpointRoutineCloudRefresh(options={}) {
+      if (!isMatchpointDataTabActive()) return;
+      refreshMatchpointRoutineCloudState({ silent:true, ...options }).catch(err => console.warn('Stato routine Matchpoint cloud non aggiornato:', err));
+    }
+
+    function renderMatchpointRoutineScheduleInfo() {
+      const box = document.getElementById('matchpointRoutineScheduleInfo');
+      if (!box) return;
+      box.innerHTML = PMO_IS_TEST_ENV
+        ? `<strong>TEST manuale</strong> Scheduler automatico disattivato in TEST. Usa i bottoni Aggiorna ora per collaudi controllati; la routine automatica resta attiva solo in PROD.`
+        : `<strong>Sequenza automatica PROD</strong> Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo aggiornamenti avviati dall'app.`;
+    }
+
     function renderMatchpointRoutinePanel() {
       ensureMatchpointRoutinePanelAutoRefresh();
+      renderMatchpointRoutineScheduleInfo();
       const tbody = document.getElementById('matchpointRoutineStatusBody');
       if (!tbody) return;
       const rows = [
@@ -11011,7 +11187,7 @@ Grazie.`
           note:'Anagrafica e contatti',
           actionKey:'clients',
           anchorId:'anchor-matchpoint-clienti',
-          info:getLatestImportSummaryByTypes(['clienti']),
+          info:getLatestMatchpointImportSummaryByTypes(['clienti']),
           lastValid:'',
           nextTimes:['04:30'],
           manualLabel:'Aggiorna ora'
@@ -11022,7 +11198,7 @@ Grazie.`
           note:'Prenotazioni ultimi 12 mesi',
           actionKey:'history',
           anchorId:'anchor-matchpoint-storico',
-          info:getLatestImportSummaryByTypes(['storico prenotazioni']),
+          info:getLatestMatchpointImportSummaryByTypes(['storico prenotazioni']),
           lastValid:'',
           nextTimes:['05:00'],
           manualLabel:'Aggiorna ora'
@@ -11033,7 +11209,7 @@ Grazie.`
           note:'Occupazioni prossimi 30 giorni',
           actionKey:'bookings',
           anchorId:'anchor-matchpoint-prenotazioni',
-          info:getLatestImportSummaryByTypes(['prenotazioni future', 'prenotazioni']),
+          info:getLatestMatchpointImportSummaryByTypes(['prenotazioni future', 'prenotazioni']),
           lastValid:'',
           nextTimes:['05:30','10:30','14:30','17:30','21:30'],
           manualLabel:'Aggiorna ora'
@@ -11054,7 +11230,7 @@ Grazie.`
       rows.forEach(row => {
         row.lastValid = formatMatchpointRoutineDate(row.info, row.formatter || formatImportDateTime);
         row.status = getMatchpointRoutineStatus(row);
-        row.next = formatMatchpointRoutineNextExecution(row.nextTimes);
+        row.next = PMO_IS_TEST_ENV ? 'Manuale in TEST' : formatMatchpointRoutineNextExecution(row.nextTimes);
       });
       tbody.innerHTML = rows.map(row => `
         <tr>
@@ -17444,6 +17620,29 @@ Grazie!`
       return history.find(item => wanted.includes(normalizeText(item?.type || item?.label || ''))) || null;
     }
 
+    function matchpointRoutineSummaryKeyFromTypes(types=[]) {
+      const text = normalizeText((types || []).join(' '));
+      if (text.includes('clienti')) return 'clients';
+      if (text.includes('storico')) return 'history';
+      if (text.includes('prenotazioni')) return 'bookings';
+      return '';
+    }
+
+    function matchpointRoutineSummaryTime(summary) {
+      const value = summary?.createdAt || summary?.importedAt || summary?.cloudPayload?.importedAt || '';
+      const date = value ? new Date(value) : null;
+      return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+    }
+
+    function getLatestMatchpointImportSummaryByTypes(types) {
+      const local = getLatestImportSummaryByTypes(types);
+      const key = matchpointRoutineSummaryKeyFromTypes(types);
+      const cloud = key ? matchpointRoutineCloudState?.summaries?.[key] : null;
+      if (!cloud) return local;
+      if (!local) return cloud;
+      return matchpointRoutineSummaryTime(cloud) > matchpointRoutineSummaryTime(local) ? cloud : local;
+    }
+
     function formatImportDateTime(summary) {
       if (!summary) return 'non disponibile';
       if (summary.createdAt) {
@@ -17637,9 +17836,9 @@ Grazie!`
     }
 
     function renderDashboardImportSummary() {
-      const clients = getLatestImportSummaryByTypes(['clienti']);
-      const bookings = getLatestImportSummaryByTypes(['prenotazioni', 'prenotazioni future']);
-      const history = getLatestImportSummaryByTypes(['storico prenotazioni']);
+      const clients = getLatestMatchpointImportSummaryByTypes(['clienti']);
+      const bookings = getLatestMatchpointImportSummaryByTypes(['prenotazioni', 'prenotazioni future']);
+      const history = getLatestMatchpointImportSummaryByTypes(['storico prenotazioni']);
       const backup = getLastBackupInfo();
       return `<div class="dashboard-import-icon">☁️</div>
         <div class="dashboard-import-main">
@@ -21710,6 +21909,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (pmoAdminState.activeSection === 'matchpoint-data') {
 	        requestAnimationFrame(() => {
 	          try { refreshDataActionStatuses(); } catch (err) { console.warn('Dati Matchpoint non aggiornati:', err); }
+	          try { scheduleMatchpointRoutineCloudRefresh({ force:true }); } catch (err) { console.warn('Stato routine Matchpoint cloud non aggiornato:', err); }
 	        });
 	      }
 	    }
@@ -23219,9 +23419,9 @@ Per confermare scrivi ELIMINA.`);
         const el = document.getElementById(id);
         if (el) el.textContent = text || 'Mai';
       };
-      const clients = getLatestImportSummaryByTypes(['clienti']);
-      const bookings = getLatestImportSummaryByTypes(['prenotazioni', 'prenotazioni future']);
-      const history = getLatestImportSummaryByTypes(['storico prenotazioni']);
+      const clients = getLatestMatchpointImportSummaryByTypes(['clienti']);
+      const bookings = getLatestMatchpointImportSummaryByTypes(['prenotazioni', 'prenotazioni future']);
+      const history = getLatestMatchpointImportSummaryByTypes(['storico prenotazioni']);
       let backup = null;
       try { backup = JSON.parse(pmoLocalGetItem('lastBackupInfo') || 'null'); } catch { backup = null; }
       setText('matchpointLastClients', formatImportDateTime(clients));
