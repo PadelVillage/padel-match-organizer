@@ -13,6 +13,33 @@ Per ogni passaggio TEST -> PROD leggere anche:
 - PROD: https://padelvillage.github.io/padel-match-organizer/
 - TEST: https://padelvillage.github.io/padel-match-organizer/test/?env=test
 
+## Account e sessioni browser di verifica Codex
+
+Per evitare che i test browser si fermino alla schermata login, il progetto usa account staff dedicati alle verifiche Codex. Le password non devono mai essere scritte in chat, prompt, file, documenti o repository.
+
+| Ambiente | Account verifica | Stato | Uso consentito |
+|---|---|---|---|
+| TEST | `aprea.maurizio+codex.test@gmail.com` | Account dedicato TEST da usare/configurare solo su Supabase TEST | Verifiche browser post-login in TEST, anche operative se i permessi TEST lo consentono |
+| PROD | `aprea.maurizio+codex.prod@gmail.com` | Configurato il 2026-05-17 come `Solo lettura` / `Solo consultazione` | Solo smoke test post-login non distruttivi |
+
+Regole:
+
+- `PMO-000948` resta il socio test operativo; non e' un account login staff.
+- La login staff usa email Supabase Auth autorizzate, non ID PMO.
+- In TEST l'account Codex puo' essere usato per collaudi post-login della web app TEST, senza scrivere su Supabase PROD o dati reali PROD.
+- In PROD l'account Codex serve solo a verificare che login, menu, sezioni e versione caricata funzionino dopo deploy o preflight.
+- In PROD sono vietati con l'account Codex: modifica soci, gestione utenti, sync cloud, routine, invii email, Matchpoint, export/import dati, WhatsApp operativo e qualunque salvataggio dati.
+- Se la sessione browser e' gia aperta, le chat possono usarla per verifiche post-login nel relativo ambiente.
+- Se la sessione e' scaduta o assente, la chat deve fermarsi e chiedere login manuale a Maurizio.
+- Nessuna chat deve chiedere o salvare la password degli account di verifica.
+
+Nota pulizia utenti staff TEST 2026-05-17 17:21:
+
+- rimossi da `public.pmo_staff_profiles` del progetto TEST `cudiqnrrlbyqryrtaprd` i profili obsoleti `padelvillage.club+test1@gmail.com` e `padelvillage.club+test2@gmail.com`;
+- preservati `padelvillage.club@gmail.com` e `aprea.maurizio+codex.test@gmail.com`;
+- Supabase Auth TEST non e' stato modificato: eventuali account Auth rimasti senza profilo staff non sono autorizzati nella web app;
+- verifica read-only PROD: i due account test non sono presenti in `public.pmo_staff_profiles` PROD.
+
 ## Supabase
 
 - PROD e TEST sono due progetti Supabase separati.

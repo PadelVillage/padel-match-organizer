@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 16:59
+Ultimo aggiornamento: 2026-05-17 17:21
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -31,6 +31,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | PROD | v5.448 | `main` | `f7b4814` |
 | TEST | v5.452 | `test-preview` | `c51ff09` |
 | TEST sviluppo | v5.452 | `test/accessi-staff-guidati` | `c51ff09` |
+
+Nota documentale 2026-05-17 17:09: aggiunte le regole condivise per account e sessioni browser di verifica Codex. Le chat SVILUPPO TEST e PROMOZIONE PROD possono usare solo sessioni gia aperte degli account dedicati; PROD resta limitato a smoke test non distruttivi con `aprea.maurizio+codex.prod@gmail.com` in `Solo lettura` / `Solo consultazione`. La chat MOCK-UP puo usare sessioni gia aperte solo come riferimento visuale, senza credenziali, modifiche dati o azioni operative. Password mai scritte o salvate.
+
+Nota TEST 2026-05-17 17:21: puliti gli utenti staff di registrazione test obsoleti solo su Supabase TEST `cudiqnrrlbyqryrtaprd`. Rimossi da `public.pmo_staff_profiles` i profili `padelvillage.club+test1@gmail.com` (`Staff Test Registrazione`) e `padelvillage.club+test2@gmail.com` (`Staff Test Registrazione 2`), quindi non compaiono piu in `Amministrazione > Utenti`. Preservati `padelvillage.club@gmail.com` (`Maurizio Aprea`, owner) e `aprea.maurizio+codex.test@gmail.com` (`Codex Test`, admin). Supabase Auth TEST non e' stato modificato: l'eventuale account Auth `padelvillage.club+test2@gmail.com` resta senza profilo staff autorizzato. Verifica read-only PROD: i due account test non sono presenti in `public.pmo_staff_profiles` PROD. Nessuna modifica a app, versione, branch, Edge Function, SQL schema, scheduler, Matchpoint, Gmail, WhatsApp o dati PROD.
 
 Nota: TEST app e' avanti a v5.452. La v5.452 riorganizza in TEST la sezione staff `Autovalutazione > Scheda pubblica` in tre sottotab isolate: `Link esterno`, `Registrazione utente` e `Form autovalutazione`. Il pannello mostra il link pubblico con anteprima chat, la registrazione test con privacy espandibile e il form autovalutazione con select vuote, validazione risposte, controllo coerenza livello e passaggio simulato allo Storico locale TEST per `PMO-000948`. Il form pubblico/tokenizzato reale resta intatto e visibile solo in modalita pubblica. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Gmail reale, Matchpoint, WhatsApp automatico o dati reali.
 
@@ -203,6 +207,10 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/registro-versioni-sezioni.md`
 - Regola mockup grafici:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-mockup-grafici.md`
+- Regola prompt definitivi per MOCK-UP:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-prompt-mockup-definitivi.md`
+- Procedura catena MOCK-UP -> SVILUPPO TEST -> PROMOZIONE PROD:
+  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/procedura-catena-mockup-sviluppo-prod.md`
 - Prompt definitivi per SVILUPPO TEST:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/prompt-definitivi-sviluppo-test.md`
 - Regole Supabase Data API / grant futuri:
