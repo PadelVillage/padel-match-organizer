@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 22:24
+Ultimo aggiornamento: 2026-05-17 22:31
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Link esterno TEST v5.463: aggiunta pulizia automatica della cache locale `assessmentExternalRequests`. Dopo sync/import e all'apertura di Storico o Cruscotto mattutino, localStorage conserva solo l'ultima richiesta link esterno per contatto email/telefono, evitando accumulo di duplicati locali. Commit app `1d3cc22`. La pulizia non cancella record Supabase e non modifica dati reali. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.462: corretta la gestione operativa delle richieste arrivate da `Scheda pubblica > Link esterno`. Lo `Storico` mostra una sola riga per contatto email/telefono, tenendo l'ultima richiesta e segnalando eventuali richieste precedenti accorpate; i record sottostanti non vengono cancellati. Nel `Cruscotto mattutino` il filtro rapido `Completati` viene sostituito da `Storico`, con le nuove richieste link esterno ancora da gestire nel `Processo utenti`. Commit app `aae404d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / accessi pubblici TEST v5.461: aggiunta una protezione iniziale contro la comparsa della login staff nei link pubblici. Gli accessi con `assessment=link-esterno`, token Autovalutazione (`t`/`token`) o feedback post-partita pubblico nascondono subito la scheda login `Padel Match Organizer` durante il bootstrap, prima che il flusso pubblico venga renderizzato. La login staff resta disponibile e invariata per l'app gestionale normale. Commit app `25863b7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Scheda pubblica TEST v5.460: corretto il link generato dal pannello `Link esterno` in ambiente TEST. Il campo readonly e la preview chat usano il wrapper TEST `https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`, evitando di aprire la versione PROD durante i collaudi WhatsApp; in PROD la stessa funzione continuera' a generare `https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno`. Commit app `6b46039`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.

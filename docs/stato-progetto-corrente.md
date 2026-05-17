@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 22:24
+Ultimo aggiornamento: 2026-05-17 22:31
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.462 | `test-preview` | `aae404d` |
-| TEST sviluppo | v5.462 | `test/accessi-staff-guidati` | `aae404d` |
+| TEST | v5.463 | `test-preview` | `1d3cc22` |
+| TEST sviluppo | v5.463 | `test/accessi-staff-guidati` | `1d3cc22` |
+
+Nota TEST v5.463: alleggerita la cache locale `assessmentExternalRequests` usata dal flusso `Autovalutazione > Scheda pubblica > Link esterno`. Dopo import/sync e quando si apre Storico o Cruscotto mattutino, localStorage viene compattato automaticamente tenendo una sola richiesta link esterno per contatto email/telefono, cioe' l'ultima richiesta operativa. Commit app `1d3cc22`. La pulizia riguarda solo localStorage/browser: non cancella record Supabase, non modifica dati reali e non tocca PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.462: corretto in `Autovalutazione` il doppio effetto operativo delle richieste arrivate da `Scheda pubblica > Link esterno`. Lo `Storico` mostra le richieste da link esterno de-duplicate per contatto email/telefono, mantenendo visibile l'ultima richiesta e indicando eventuali richieste precedenti accorpate, senza cancellare record o modificare Supabase. Nel `Cruscotto mattutino` il box rapido `Completati` viene sostituito da `Storico`, che mostra le nuove richieste da link esterno ancora da gestire nel `Processo utenti`. Commit app `aae404d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
@@ -91,7 +93,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.462 e' preparata in TEST al commit app `aae404d`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.462 de-duplica la vista `Richieste da link esterno` per contatto e aggiunge il filtro rapido `Storico` nel `Cruscotto mattutino`, al posto di `Completati`, per vedere subito le nuove richieste arrivate da link esterno. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.463 e' preparata in TEST al commit app `1d3cc22`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.463 compatta automaticamente la cache localStorage delle richieste link esterno, mantenendo solo l'ultima richiesta per contatto email/telefono. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
