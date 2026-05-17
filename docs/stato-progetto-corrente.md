@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 13:28
+Ultimo aggiornamento: 2026-05-17 14:08
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.441 | `main` | `85edd3e` |
-| TEST | v5.447 | `test-preview` | `a2ef869` |
-| TEST sviluppo | v5.447 | `test/accessi-staff-guidati` | `a2ef869` |
+| TEST | v5.448 | `test-preview` | `f7b4814` |
+| TEST sviluppo | v5.448 | `test/accessi-staff-guidati` | `f7b4814` |
 
-Nota: TEST app e' avanti a v5.447. La v5.447 corregge titolo, meta tag e link copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`: il titolo preview diventa `Autovalutazione Livello di Gioco`, la descrizione diventa `Padel Village`, il link pubblico punta a `autovalutazione.html?assessment=link-esterno` e il link TEST punta a `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Il codice pubblicato su branch TEST e' corretto; la preview reale WhatsApp/Telegram del link pubblico radice cambiera solo dopo promozione PROD, perche quel link e' servito da `main`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+Nota: TEST app e' avanti a v5.448. La v5.448 corregge il routing pubblico del flusso `Autovalutazione > Scheda pubblica > Link esterno`: quando la URL contiene `assessment=link-esterno`, la app bypassa la login staff e apre il flusso pubblico/registrazione/autovalutazione. La login staff resta invariata per la app gestionale normale senza `assessment=link-esterno`. La patch non introduce backend nuovo per la registrazione reale senza token, gia documentato come fuori perimetro. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Supabase schema, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+
+Nota precedente v5.447: TEST app correggeva titolo, meta tag e link copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`: il titolo preview diventa `Autovalutazione Livello di Gioco`, la descrizione diventa `Padel Village`, il link pubblico punta a `autovalutazione.html?assessment=link-esterno` e il link TEST punta a `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Il codice pubblicato su branch TEST e' corretto; la preview reale WhatsApp/Telegram del link pubblico radice cambiera solo dopo promozione PROD, perche quel link e' servito da `main`. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
 Nota precedente v5.446: TEST app rendeva ufficiale il socio test `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` Autovalutazione e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono limitati alla doppia verifica `PMO-000948` + `aprea.maurizio@gmail.com`. Non cancella automaticamente il vecchio record `PMO-000956`: l'eventuale pulizia dati resta un passaggio separato in TEST Anagrafica. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 
@@ -57,7 +59,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.447 e' pubblicata in TEST al commit app `a2ef869`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.447 aggiorna solo titolo, meta tag e URL copiati del flusso pubblico `Autovalutazione > Scheda pubblica > Link esterno`, preparando la preview WhatsApp/Telegram con `Autovalutazione Livello di Gioco` e `Padel Village`. Nota: il link pubblico radice resta servito da PROD/main finche' la modifica non viene promossa in PROD. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
+La versione v5.448 e' pubblicata in TEST al commit app `f7b4814`. PROD resta v5.441 al commit app `85edd3e`. La modifica v5.448 fa riconoscere `assessment=link-esterno` come accesso pubblico prima della guardia login staff e permette al link TEST `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948` di aprire il flusso pubblico invece della schermata `Padel Match Organizer` con email/password. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint o dati reali.
 
 Contiene:
 
@@ -103,6 +105,7 @@ Contiene:
 - Autovalutazione v5.445 TEST: bugfix del bottone `Socio test` nel `Cruscotto mattutino`. La ricerca accetta ID PMO e campi ID alternativi, usa l'email test come fallback per mostrare una riga bloccata se l'ID non coincide, e non svuota piu la lista `Processo utenti` quando il socio non e' presente nei dati caricati. Nessuna creazione socio automatica, nessuna modifica a Supabase, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico, dati reali o PROD.
 - Autovalutazione v5.446 TEST: allineato il socio test ufficiale a `PMO-000948` con email `aprea.maurizio@gmail.com` nel `Cruscotto mattutino` e nel test form `Scheda pubblica > Link esterno`. I bottoni test `Invia seconda email` e `Invia terza email` sono consentiti solo con doppia verifica `PMO-000948` + email protetta. Il vecchio `PMO-000956` non viene cancellato dai dati: eventuale rimozione/disattivazione va gestita separatamente da Anagrafica TEST. Nessuna modifica a PROD, SQL, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Autovalutazione v5.447 TEST: aggiornati `autovalutazione.html`, `test/autovalutazione.html` e i link copiati dal pannello `Scheda pubblica > Link esterno`. Il branch TEST contiene la preview `Autovalutazione Livello di Gioco`, descrizione `Padel Village` e logo Padel Village; il link pubblico punta alla pagina dedicata `autovalutazione.html?assessment=link-esterno`; il link TEST usa `test/autovalutazione.html?env=test&assessment=link-esterno&memberId=PMO-000948`. Il cambio della preview reale del link pubblico richiede futura promozione PROD. Nessuna modifica a PROD, SQL, Supabase, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
+- Autovalutazione v5.448 TEST: bugfix routing del link pubblico `Scheda pubblica > Link esterno`; `assessment=link-esterno` viene riconosciuto come accesso pubblico prima della login staff. Il link TEST apre il flusso pubblico/registrazione/autovalutazione anche senza sessione staff e non mostra la schermata login del gestionale. La app normale TEST senza `assessment=link-esterno` mantiene la login staff invariata. Nessuna modifica a PROD, SQL, Supabase, Edge Function, scheduler, Matchpoint, Gmail reale, WhatsApp automatico o dati reali.
 - Routine TEST una tantum: il job `pmo-assessment-email-single-test-1630` per `PMO-000948` si e' eseguito correttamente alle 16:30 Europe/Rome, si e' rimosso e ha inviato una sola email confermata dall'utente. Non ha coinvolto la coda generale e non ha toccato PROD.
 - Documentazione aggiornata per v5.440 TEST.
 
