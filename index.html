@@ -5556,7 +5556,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.464';
+    const APP_VERSION = '5.465';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7569,7 +7569,10 @@ Grazie.`
             if (tabName === 'dashboard') renderInitialDashboard();
             if (tabName === 'members') displayMembers();
             if (tabName === 'fillSlots') renderFillSlotsSection();
-            if (tabName === 'assessment') displayAssessment();
+            if (tabName === 'assessment') {
+              displayAssessment();
+              refreshAssessmentSectionDataOnEnter();
+            }
             if (tabName === 'contact') renderWhatsAppTemplateManager();
             if (tabName === 'administration' && pmoAdminSectionKey(pmoAdminState.activeSection || 'users') === 'matchpoint-data') refreshDataActionStatuses();
             if (tabName === 'routines') renderPmoRoutineCenter();
@@ -22596,15 +22599,16 @@ Per confermare scrivi ELIMINA.`);
     }
 
     async function syncAssessmentResponsesFromSupabase(options = {}) {
+      const silent = options.silent === true;
       try {
         saveAssessmentSettings();
-        await assessmentEmailImportCloudLogs({ silent:true });
+        if (options.skipCloudLogs !== true) await assessmentEmailImportCloudLogs({ silent:true });
         const tokens = Object.values(assessmentTokens || {}).map(r => cleanCell(r.token)).filter(Boolean);
         if (!tokens.length) {
-          showAlert('⚠️ Nessun token locale da aggiornare. Prima genera i token.', 'warning');
+          if (!silent) showAlert('⚠️ Nessun token locale da aggiornare. Prima genera i token.', 'warning');
           return { ok:false, reason:'no_tokens' };
         }
-        showAlert('⏳ Aggiornamento risposte in corso...', 'info');
+        if (!silent) showAlert('⏳ Aggiornamento risposte in corso...', 'info');
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_self_assessments_by_tokens`, {
           method: 'POST',
@@ -22637,20 +22641,22 @@ Per confermare scrivi ELIMINA.`);
           pmoLocalSetItem('assessmentResponsesLastSyncAt', new Date().toISOString());
           updateAssessmentSyncTopButton();
           try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-          showAlert('ℹ️ Nessuna nuova risposta trovata.', 'info');
+          if (!silent) showAlert('ℹ️ Nessuna nuova risposta trovata.', 'info');
           return { ok:true, count:0 };
         }
         importAssessmentResponses(rows, { silent:true });
-        const autoResult = assessmentEmailAutoPostProcessingEnabled()
+        const autoResult = options.autoPostProcess === false ? { applied:0, emailSent:0, emailFailed:0, failed:0 } : (assessmentEmailAutoPostProcessingEnabled()
           ? await assessmentEmailRunAutoPostProcessing({ silent:true, suppressSuccessAlert:true, source:'sync' })
-          : { applied:0, emailSent:0, emailFailed:0, failed:0 };
+          : { applied:0, emailSent:0, emailFailed:0, failed:0 });
         window.__assessmentResponsesSyncedThisSession = true;
         pmoLocalSetItem('assessmentResponsesLastSyncAt', new Date().toISOString());
         updateAssessmentSyncTopButton();
         try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-        if (!autoResult.applied) displayAssessment();
+        if (!autoResult.applied && !silent) displayAssessment();
         const issueCount = (autoResult.emailFailed || 0) + (autoResult.failed || 0);
-        if (autoResult.applied) {
+        if (silent) {
+          return { ok:true, count:rows.length, autoApplied:autoResult.applied || 0, autoEmailSent:autoResult.emailSent || 0 };
+        } else if (autoResult.applied) {
           showAlert(`✅ Risposte aggiornate: ${rows.length}. Auto-applicate: ${autoResult.applied}. Conferme email inviate: ${autoResult.emailSent}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
         } else if (issueCount) {
           showAlert(`⚠️ Risposte aggiornate: ${rows.length}. Chiusura automatica non completata: ${issueCount} da controllare.`, 'warning');
@@ -22659,16 +22665,46 @@ Per confermare scrivi ELIMINA.`);
         }
         return { ok:true, count:rows.length, autoApplied:autoResult.applied || 0, autoEmailSent:autoResult.emailSent || 0 };
       } catch (err) {
-        displayAssessment();
+        if (!silent) displayAssessment();
         try { renderInitialDashboard(); } catch (dashErr) { console.warn('Dashboard non aggiornata:', dashErr); }
         updateAssessmentSyncTopButton();
         const msg = err?.message || err;
+        if (silent) {
+          console.warn('Aggiornamento automatico risposte Autovalutazione non riuscito:', msg);
+          return { ok:false, reason:'silent_refresh_failed', error:msg };
+        }
         if (hasLocalAssessmentResponses()) {
           showAlert('⚠️ Aggiornamento online non completato. Le risposte già presenti nell’app restano disponibili e puoi applicarle.', 'warning');
           return { ok:false, reason:'local_available', error:msg };
         }
         showAlert('❌ Aggiornamento risposte non riuscito: ' + msg, 'danger');
         return { ok:false, error:msg };
+      }
+    }
+
+    async function refreshAssessmentSectionDataOnEnter(options = {}) {
+      if (window.__assessmentSectionAutoRefreshInFlight) return;
+      const now = Date.now();
+      if (!options.force && now - (window.__assessmentSectionAutoRefreshLastAt || 0) < 5000) return;
+      window.__assessmentSectionAutoRefreshInFlight = true;
+      window.__assessmentSectionAutoRefreshLastAt = now;
+      try {
+        const results = await Promise.allSettled([
+          assessmentEmailImportCloudLogs({ silent:true }),
+          syncAssessmentExternalRequestsFromSupabase({ silent:true }),
+          syncAssessmentResponsesFromSupabase({ silent:true, autoPostProcess:false, skipCloudLogs:true })
+        ]);
+        results.forEach(result => {
+          if (result.status === 'rejected') console.warn('Refresh automatico Autovalutazione non completato:', result.reason);
+        });
+        assessmentExternalCompactLocalCache();
+        renderAssessmentEmailPanels();
+        updateAssessmentSyncTopButton();
+        try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
+      } catch (err) {
+        console.warn('Refresh automatico Autovalutazione non riuscito:', err);
+      } finally {
+        window.__assessmentSectionAutoRefreshInFlight = false;
       }
     }
 
