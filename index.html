@@ -5347,7 +5347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.444';
+    const APP_VERSION = '5.445';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23504,13 +23504,27 @@ Per confermare scrivi ELIMINA.`);
       return 'Controllo stop 09:00';
     }
     function assessmentProcessIsFollowupTestMemberId(member={}) {
-      const pmoId = cleanCell(member?.memberId || member?.id || '').toLocaleUpperCase('it-IT');
-      return pmoId === ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
+      if (assessmentMemberMatchesAnyId(member, ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID)) return true;
+      const possibleIds = [
+        member?.pmoId,
+        member?.pmo_id,
+        member?.memberCode,
+        member?.member_code,
+        member?.codiceSocio,
+        member?.codice_socio,
+        member?.idSocio,
+        member?.id_socio,
+        member?.externalId,
+        member?.external_id
+      ];
+      return possibleIds.some(value => cleanCell(value || '').toLocaleUpperCase('it-IT') === ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID);
+    }
+    function assessmentProcessIsFollowupTestMemberEmail(member={}) {
+      return assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT') === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL;
     }
     function assessmentProcessIsProtectedFollowupTestMember(member={}) {
       const pmoIdOk = assessmentProcessIsFollowupTestMemberId(member);
-      const email = assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT');
-      return pmoIdOk && email === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL;
+      return pmoIdOk && assessmentProcessIsFollowupTestMemberEmail(member);
     }
     function assessmentProcessFollowupTestActions(member={}) {
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) return '';
@@ -23774,6 +23788,7 @@ Per confermare scrivi ELIMINA.`);
     function assessmentProcessFindFollowupTestMember() {
       return findAssessmentMemberByAnyId(ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID)
         || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberId(member))
+        || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberEmail(member))
         || null;
     }
     function assessmentProcessTestMemberEntry(rows=[]) {
@@ -23804,7 +23819,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function openAssessmentProcessTestMember() {
       const member = assessmentProcessFindFollowupTestMember();
-      window.assessmentProcessForceTestMember = true;
+      window.assessmentProcessForceTestMember = !!member;
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       window.assessmentProcessSearchText = '';
       const input = document.getElementById('assessmentProcessSearch');
