@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 20:35
+Ultimo aggiornamento: 2026-05-17 20:47
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.454 | `test-preview` | `3ffad65` |
-| TEST sviluppo | v5.454 | `test/accessi-staff-guidati` | `3ffad65` |
+| TEST | v5.455 | `test-preview` | `fab4d26` |
+| TEST sviluppo | v5.455 | `test/accessi-staff-guidati` | `fab4d26` |
+
+Nota TEST v5.455: spostata la vecchia sezione principale `DATI (in/out)` dentro `Amministrazione > Dati Matchpoint`. Il menu principale non mostra piu `DATI (in/out)`; Amministrazione ora contiene le tab `Utenti`, `Notifiche staff`, `Dati Matchpoint`, `Sessione` e `Supabase`. Il contenuto operativo Matchpoint resta invariato: stato routine automatiche, Clienti Matchpoint, Prenotazioni future Matchpoint, Storico Matchpoint, Backup dati e Slot potenziali Matchpoint. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, routine automatiche, Autovalutazione, Anagrafica soci o PROD.
 
 Nota documentale 2026-05-17 17:09: aggiunte le regole condivise per account e sessioni browser di verifica Codex. Le chat SVILUPPO TEST e PROMOZIONE PROD possono usare solo sessioni gia aperte degli account dedicati; PROD resta limitato a smoke test non distruttivi con `aprea.maurizio+codex.prod@gmail.com` in `Solo lettura` / `Solo consultazione`. La chat MOCK-UP puo usare sessioni gia aperte solo come riferimento visuale, senza credenziali, modifiche dati o azioni operative. Password mai scritte o salvate.
 
@@ -75,7 +77,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.454 e' preparata in TEST al commit app `3ffad65`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.454 corregge il refresh della lista `Amministrazione > Utenti` quando il browser contiene righe locali stale gia assenti da Supabase TEST. Non sono stati eseguiti deploy Edge Function, SQL aggiuntivo, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint, modifiche dati soci o modifiche PROD.
+La versione v5.455 e' preparata in TEST al commit app `fab4d26`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.455 sposta `DATI (in/out)` dentro `Amministrazione > Dati Matchpoint`, lasciando invariati contenuti, import, backup, routine dati e logiche Matchpoint. Non sono stati eseguiti deploy Edge Function, SQL, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 

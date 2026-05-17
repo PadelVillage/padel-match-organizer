@@ -1,6 +1,6 @@
-# Matchpoint / DATI (in/out)
+# Matchpoint / Dati Matchpoint
 
-Stato: pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche pubblicato in PROD v5.373; intestazione sezione DATI rimossa in PROD v5.373; formato prossime esecuzioni aggiornato in PROD v5.373; orari Clienti/Storico invertiti in PROD v5.373; backup cloud e backup locale separati in PROD v5.373; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per aggiornare automaticamente la colonna `Prossima esecuzione` mentre DATI resta aperta.
+Stato: sezione spostata in TEST v5.455 dentro `Amministrazione > Dati Matchpoint`, mantenendo invariati contenuti e logiche operative; pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche pubblicato in PROD v5.373; intestazione sezione DATI rimossa in PROD v5.373; formato prossime esecuzioni aggiornato in PROD v5.373; orari Clienti/Storico invertiti in PROD v5.373; backup cloud e backup locale separati in PROD v5.373; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per aggiornare automaticamente la colonna `Prossima esecuzione` mentre DATI resta aperta.
 
 ## Obiettivo
 
@@ -8,13 +8,20 @@ La sezione deve essere una schermata operativa rapida per importare dati e crear
 
 ## Documenti collegati
 
-- `docs/routine-dati-automatiche.md`: bozza operativa della routine automatica dati, con sequenza temporale, stati esito, gestione errori e pannello di controllo in `DATI (in/out)`.
+- `docs/routine-dati-automatiche.md`: bozza operativa della routine automatica dati, con sequenza temporale, stati esito, gestione errori e pannello di controllo ora in `Amministrazione > Dati Matchpoint`.
+
+## Struttura UI v5.455 TEST
+
+- Percorso: `Amministrazione > Dati Matchpoint`.
+- La vecchia voce principale `DATI (in/out)` non compare piu nel menu laterale.
+- Titolo interno: `Dati Matchpoint`.
+- Contenuto operativo invariato rispetto alla vecchia sezione dati.
 
 ## Struttura UI v5.236
 
-- Voce menu principale: `DATI (in/out)`.
+- Voce menu principale storica: `DATI (in/out)`.
 - Nessun sottomenu dedicato.
-- Titolo sezione: `DATI (in/out)`.
+- Titolo sezione storico: `DATI (in/out)`.
 - Sottotitolo: importare i file scaricati da Matchpoint e creare un backup locale quando serve.
 - Prima riga con quattro box operativi:
   - Clienti Matchpoint;
@@ -57,7 +64,7 @@ Da v5.249:
 - il bottone principale e' neutro e si chiama `Scarica backup`;
 - dopo il download non viene mostrato nessun riquadro riepilogativo sotto al box;
 - da v5.310 il feedback sotto i bottoni mostra `Ultimo backup scaricato` con data e ora del download/salvataggio del file;
-- non devono comparire nella sezione DATI conteggi lunghi, liste di contenuti tecnici, nome file o riepiloghi interni del file;
+- non devono comparire nella sezione Dati Matchpoint conteggi lunghi, liste di contenuti tecnici, nome file o riepiloghi interni del file;
 - il ripristino resta disponibile come azione separata nello stesso box.
 
 ## Backup cloud sovrascritto v5.357
