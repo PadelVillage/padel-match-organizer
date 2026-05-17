@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 22:07
+Ultimo aggiornamento: 2026-05-17 22:24
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.461 | `test-preview` | `25863b7` |
-| TEST sviluppo | v5.461 | `test/accessi-staff-guidati` | `25863b7` |
+| TEST | v5.462 | `test-preview` | `aae404d` |
+| TEST sviluppo | v5.462 | `test/accessi-staff-guidati` | `aae404d` |
+
+Nota TEST v5.462: corretto in `Autovalutazione` il doppio effetto operativo delle richieste arrivate da `Scheda pubblica > Link esterno`. Lo `Storico` mostra le richieste da link esterno de-duplicate per contatto email/telefono, mantenendo visibile l'ultima richiesta e indicando eventuali richieste precedenti accorpate, senza cancellare record o modificare Supabase. Nel `Cruscotto mattutino` il box rapido `Completati` viene sostituito da `Storico`, che mostra le nuove richieste da link esterno ancora da gestire nel `Processo utenti`. Commit app `aae404d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.461: aggiunta una protezione di avvio per non mostrare la login staff nei percorsi pubblici. Se la URL contiene `assessment=link-esterno`, un token Autovalutazione (`t`/`token`) o un link feedback post-partita pubblico, la pagina marca subito l'accesso pubblico e nasconde la scheda login `Padel Match Organizer` gia prima della normale inizializzazione JavaScript. La login staff resta invariata per l'app gestionale normale senza parametri pubblici. Commit app `25863b7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
@@ -89,7 +91,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.457 e' preparata in TEST al commit app `8a224af`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.457 semplifica `Amministrazione > Utenti`: la vista parte da `Utenti autorizzati`, con `+ Nuovo` sulla stessa riga, senza testi introduttivi o messaggi statici di caricamento. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
+La versione v5.462 e' preparata in TEST al commit app `aae404d`. PROD resta v5.448 al commit app `f7b4814`. La modifica v5.462 de-duplica la vista `Richieste da link esterno` per contatto e aggiunge il filtro rapido `Storico` nel `Cruscotto mattutino`, al posto di `Completati`, per vedere subito le nuove richieste arrivate da link esterno. Non sono stati eseguiti deploy Edge Function, SQL, modifiche Supabase Auth, modifiche scheduler, modifiche segreti, invii email reali, modifiche Matchpoint reale, modifiche dati soci o modifiche PROD.
 
 Contiene:
 
