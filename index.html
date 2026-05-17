@@ -2878,6 +2878,7 @@
     .assessment-public-subtabs { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
     .assessment-public-subtab { border:1px solid #dfe6ef; border-radius:10px; background:#fff; color:#17386f; font-weight:800; font-size:13px; padding:8px 11px; }
     .assessment-public-subtab.active { background:#17386f; border-color:#17386f; color:#fff; }
+    .assessment-public-staff-panel[hidden] { display:none !important; }
     .assessment-external-link-panel { border-radius:12px; }
     .assessment-external-link-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
     .assessment-external-link-head h4 { margin:0; color:var(--primary); font-size:20px; }
@@ -2906,15 +2907,34 @@
     .assessment-external-staff-preview { display:grid; gap:6px; }
     .assessment-external-staff-preview-row { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
     .assessment-external-staff-preview .badge { margin:0; }
+    .assessment-external-chat-preview { border:1px solid #d7ead6; border-radius:10px; background:#eef7e8; padding:12px; margin-top:10px; }
+    .assessment-external-chat-bubble { max-width:520px; margin-left:auto; border-radius:10px; background:#d9ffd4; padding:8px; box-shadow:0 1px 2px rgba(16,24,40,.12); cursor:pointer; }
+    .assessment-external-chat-bubble:hover { outline:2px solid rgba(35,79,145,.18); outline-offset:2px; }
+    .assessment-external-chat-card { display:grid; grid-template-columns:58px minmax(0,1fr); gap:10px; align-items:center; border-radius:8px; background:#f2fff0; padding:10px; min-width:0; }
+    .assessment-external-chat-card img { width:54px; height:54px; object-fit:contain; border-radius:8px; background:#fff; border:1px solid #cfe9d0; padding:4px; }
+    .assessment-external-chat-card strong { display:block; color:#101828; font-size:15px; font-weight:900; line-height:1.15; overflow-wrap:anywhere; }
+    .assessment-external-chat-card span { display:block; margin-top:3px; color:#475467; font-size:12px; font-weight:800; line-height:1.25; overflow-wrap:anywhere; }
+    .assessment-external-chat-url { display:block; margin-top:8px; color:#067647; font-size:13px; font-weight:850; line-height:1.28; overflow-wrap:anywhere; }
+    .assessment-external-phone { max-width:430px; margin:0 auto; border:1px solid #cbd5e1; border-radius:18px; background:#fff; box-shadow:0 10px 30px rgba(16,24,40,.12); overflow:hidden; }
+    .assessment-external-phone-top { height:16px; background:linear-gradient(90deg,#0b3a73,#234f91); }
+    .assessment-external-phone-body { display:grid; gap:10px; padding:14px; }
+    .assessment-external-final { display:grid; gap:10px; text-align:center; border:1px solid #bde6cb; border-radius:12px; background:#eaf7ef; color:#267a37; font-weight:800; line-height:1.35; padding:14px; margin-top:10px; }
+    .assessment-external-final strong { color:#267a37; font-size:18px; font-weight:900; line-height:1.2; }
+    .assessment-external-message { display:none; border:1px solid #dfe6ef; border-left:5px solid var(--primary); border-radius:10px; background:#fbfdff; color:#344054; font-size:13px; font-weight:800; line-height:1.35; padding:10px 11px; margin-top:10px; }
+    .assessment-external-message.error { display:block; border-left-color:var(--danger); background:#fff5f5; color:#7a1d1d; }
+    .assessment-external-message.success { display:block; border-left-color:var(--success); background:#eefaf0; color:#155724; }
+    .assessment-public-real-form-panel { display:block; }
     .assessment-public-external-data .assessment-public-grid { margin-top:10px; }
     .assessment-public-external-data[hidden],
     .assessment-public-external-contact-fields[hidden],
     .assessment-public-gender-question[hidden] { display:none !important; }
     body.assessment-public-mode .assessment-public-subtabs,
+    body.assessment-public-mode .assessment-public-staff-panel,
     body.assessment-public-mode .assessment-external-link-panel { display:none !important; }
+    body:not(.assessment-public-mode) #assessmentPublicLivePreview { display:none !important; }
     body:not(.assessment-public-mode) #anchor-assessment-scheda .assessment-external-link-panel input { background:#fff; color:#172033; cursor:default; }
     @media (max-width:760px) { .assessment-public-form-head, .assessment-public-identity { grid-template-columns:1fr; flex-direction:column; } .assessment-public-logo { width:52px; height:52px; border-radius:13px; } .assessment-public-form-head h4 { font-size:22px; } .assessment-public-grid { grid-template-columns:1fr; } .assessment-public-actions { display:grid; grid-template-columns:1fr; } .assessment-public-actions .btn { width:100%; } }
-    @media (max-width:760px) { .assessment-external-link-row, .assessment-external-test-row, .assessment-external-preview { grid-template-columns:1fr; } .assessment-external-test-row .small-btn, .assessment-external-link-row .small-btn { width:100%; } }
+    @media (max-width:760px) { .assessment-external-link-row, .assessment-external-test-row, .assessment-external-preview, .assessment-external-chat-card { grid-template-columns:1fr; } .assessment-external-chat-bubble { margin-left:0; max-width:100%; } .assessment-external-test-row .small-btn, .assessment-external-link-row .small-btn { width:100%; } }
 body.assessment-public-mode .assessment-public-only-card {
       display: block !important;
       border: 0 !important;
@@ -4996,11 +5016,12 @@ body.assessment-public-mode .assessment-public-only-card {
 
         <div id="anchor-assessment-scheda" class="assessment-email-panel assessment-flow-card archive assessment-public-only-card" data-assessment-email-panel="public">
           <div class="assessment-public-subtabs" aria-label="Sottosezioni scheda pubblica">
-            <button type="button" class="assessment-public-subtab">Scheda pubblica soci</button>
-            <button type="button" class="assessment-public-subtab active">Link esterno</button>
+            <button type="button" class="assessment-public-subtab active" data-assessment-public-subtab="link" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('link')">Link esterno</button>
+            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="registration" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Registrazione utente</button>
+            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="questions" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('questions')">Form autovalutazione</button>
           </div>
 
-          <div id="assessmentExternalLinkPanel" class="assessment-public-form-card assessment-external-link-panel">
+          <div id="assessmentExternalLinkPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="link">
             <div class="assessment-external-link-head">
               <div>
                 <h4>Link esterno</h4>
@@ -5014,37 +5035,45 @@ body.assessment-public-mode .assessment-public-only-card {
               <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalCopyLink('external')">Copia link</button>
             </div>
 
-            <div class="assessment-external-note">Il link usa il flusso Autovalutazione già esistente.</div>
-
-            <div class="assessment-external-test-row">
-              <div>
-                <strong>Test form</strong>
-                <span>Socio test: PMO-000948 · aprea.maurizio@gmail.com</span>
+            <div class="assessment-external-chat-preview" aria-label="Anteprima link in chat">
+              <div class="assessment-external-chat-bubble" role="button" tabindex="0" onclick="setActionAnchor(this); assessmentExternalOpenRegistrationPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); assessmentExternalOpenRegistrationPreview();}">
+                <div class="assessment-external-chat-card">
+                  <img src="logo-padel-village.jpeg" alt="Padel Village">
+                  <div>
+                    <strong>Autovalutazione Livello di Gioco</strong>
+                    <span>padelvillage.github.io</span>
+                  </div>
+                </div>
+                <span class="assessment-external-chat-url">https://padelvillage.github.io/padel-match-organizer/autovalutazione.html?assessment=link-esterno</span>
               </div>
-              <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalCopyLink('test')">Copia link test</button>
-              <button id="assessmentExternalTestToggle" type="button" class="btn-success small-btn" onclick="setActionAnchor(this); assessmentExternalToggleTestForm()">Apri test form</button>
             </div>
+          </div>
 
-            <div id="assessmentExternalTestForm" class="assessment-external-preview" hidden>
+          <div id="assessmentExternalRegistrationPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="registration" hidden>
+            <div class="assessment-external-phone">
+              <div class="assessment-external-phone-top"></div>
+              <div class="assessment-external-phone-body">
               <div class="assessment-external-brand">
                 <img src="logo-padel-village.jpeg" alt="Padel Village">
                 <strong>Autovalutazione Livello di Gioco</strong>
+                <span>Completa i dati e accetta la Privacy Policy.</span>
               </div>
+              <div class="assessment-external-preview">
               <div class="assessment-external-field">
                 <label>Nome</label>
-                <input value="Prova" readonly>
+                <input id="assessmentExternalFirstNameInput" value="Maurizio">
               </div>
               <div class="assessment-external-field">
                 <label>Cognome</label>
-                <input value="Utente" readonly>
-              </div>
-              <div class="assessment-external-field">
-                <label>Email</label>
-                <input value="aprea.maurizio@gmail.com" readonly>
+                <input id="assessmentExternalLastNameInput" value="Aprea">
               </div>
               <div class="assessment-external-field">
                 <label>Telefono</label>
-                <input value="333 0000000" readonly>
+                <input id="assessmentExternalPhoneInput" value="333 1234567" inputmode="tel">
+              </div>
+              <div class="assessment-external-field">
+                <label>Email</label>
+                <input id="assessmentExternalEmailInput" value="aprea.maurizio@gmail.com" type="email">
               </div>
               <div class="assessment-external-field">
                 <label>Sesso</label>
@@ -5067,6 +5096,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </label>
               <div class="assessment-public-actions assessment-external-full">
                 <button id="assessmentExternalPrivacyToggle" type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalTogglePrivacyPolicy()">Leggi Privacy Policy</button>
+                <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalProceedToQuestions()">Procedi con l'autovalutazione</button>
               </div>
               <div id="assessmentExternalPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
                 <strong>Privacy Policy Padel Village</strong>
@@ -5082,12 +5112,46 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile scrivendo a: padelvillage.club@gmail.com.</p>
                 <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
               </div>
-              <div class="assessment-public-actions assessment-external-full">
-                <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalSubmitTest()">Invia test</button>
+              <div id="assessmentExternalRegistrationMessage" class="assessment-external-message assessment-external-full" role="status"></div>
+              </div>
               </div>
             </div>
           </div>
 
+          <div id="assessmentExternalQuestionsPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="questions" hidden>
+            <div class="assessment-external-phone">
+              <div class="assessment-external-phone-top"></div>
+              <div class="assessment-external-phone-body">
+                <div class="assessment-external-brand">
+                  <img src="logo-padel-village.jpeg" alt="Padel Village">
+                  <strong>Autovalutazione Livello di Gioco</strong>
+                  <span>Rispondi alle domande sul tuo gioco.</span>
+                </div>
+                <div id="assessmentExternalQuestionForm">
+                  <div class="assessment-public-question"><div class="q-title">1. Da quanto giochi a padel? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQExperience" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Più di 1 anno</option><option>Più di 3 anni</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">2. Quante volte giochi mediamente al mese? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQFrequency" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Più di 10</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQDeclaredLevel" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>1.0 - Principiante</option><option>1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">4. Con quali livelli fai partite equilibrate? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQBalancedLevel" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>1.0 / 1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">5. Riesci a mantenere lo scambio? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQRally" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Faccio fatica a tenere 3-4 colpi</option><option>Tengo lo scambio solo a ritmo lento</option><option>Tengo scambi regolari con continuità</option><option>Tengo scambi anche con ritmo alto</option><option>Costruisco il punto con controllo</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">6. Come gestisci il vetro in difesa? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQGlass" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Evito quasi sempre il vetro</option><option>Lo uso solo se la palla è facile</option><option>Difendo con il vetro in modo base</option><option>Lo uso con continuità anche sotto pressione</option><option>Lo uso per difendere e ripartire in attacco</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">7. A rete come ti comporti? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQNet" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Sto poco a rete</option><option>Vado a rete ma faccio fatica a chiudere</option><option>Gioco volée semplici</option><option>Tengo posizione e controllo le volée</option><option>Costruisco e chiudo il punto a rete</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select id="assessmentExternalQOverhead" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
+                  <div id="assessmentExternalQuestionMessage" class="assessment-external-message" role="status"></div>
+                  <div class="assessment-public-actions">
+                    <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Indietro</button>
+                    <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalSubmitStaffAssessment()">Invia autovalutazione</button>
+                  </div>
+                </div>
+                <div id="assessmentExternalCompletion" class="assessment-external-final" hidden>
+                  <strong>Autovalutazione inviata</strong>
+                  <span>Lo staff verifichera' il livello indicato e ti inviera' una mail di conferma con il livello impostato.</span>
+                  <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalOpenHistory()">Vedi storico</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="assessmentPublicLivePreview" class="assessment-public-real-form-panel">
           <div class="assessment-public-form-card assessment-public-form-head">
             <div class="assessment-public-head-brand">
               <img class="assessment-public-logo" src="https://padelvillage.github.io/padel-match-organizer/logo-padel-village.jpeg" alt="Padel Village">
@@ -5167,6 +5231,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-public-message success" id="assessmentPublicSuccess">Autovalutazione inviata correttamente. Grazie!</div>
             <div class="assessment-public-form-card"><div class="assessment-public-actions"><button type="button" class="btn-primary" id="assessmentPublicOpenConfirm">Invia autovalutazione</button></div></div>
           </form>
+          </div>
         </div>
 
 
@@ -5485,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.451';
+    const APP_VERSION = '5.452';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -18428,10 +18493,31 @@ Grazie!`
       status.textContent = text;
       status.classList.toggle('warn', level === 'warn');
     }
+    function setAssessmentPublicStaffPanel(panel = 'link') {
+      const target = ['link','registration','questions'].includes(panel) ? panel : 'link';
+      window.assessmentPublicStaffPanel = target;
+      document.querySelectorAll('[data-assessment-public-subtab]').forEach(button => {
+        button.classList.toggle('active', button.dataset.assessmentPublicSubtab === target);
+      });
+      document.querySelectorAll('[data-assessment-public-staff-panel]').forEach(section => {
+        section.hidden = section.dataset.assessmentPublicStaffPanel !== target;
+      });
+      if (target === 'registration') {
+        assessmentExternalRefreshStaffPreview();
+        assessmentExternalSetMessage('registration', '');
+      }
+      if (target === 'questions') assessmentExternalSetMessage('questions', '');
+    }
     function renderAssessmentExternalLinkPanel() {
       const input = document.getElementById('assessmentExternalLinkInput');
       if (input) input.value = assessmentExternalLinkUrl();
+      const chatUrl = document.querySelector('.assessment-external-chat-url');
+      if (chatUrl) chatUrl.textContent = assessmentExternalLinkUrl();
       assessmentExternalRefreshStaffPreview();
+      if (!window.assessmentPublicStaffPanel) setAssessmentPublicStaffPanel('link');
+    }
+    function assessmentExternalOpenRegistrationPreview() {
+      setAssessmentPublicStaffPanel('registration');
     }
     function assessmentExternalCopyLink(kind = 'external') {
       const isTest = kind === 'test';
@@ -18470,6 +18556,119 @@ Grazie!`
       if (!panel) return;
       panel.hidden = !panel.hidden;
       if (button) button.textContent = panel.hidden ? 'Leggi Privacy Policy' : 'Chiudi Privacy Policy';
+    }
+    function assessmentExternalSetMessage(scope = 'registration', text = '', type = '') {
+      const id = scope === 'questions' ? 'assessmentExternalQuestionMessage' : 'assessmentExternalRegistrationMessage';
+      const box = document.getElementById(id);
+      if (!box) return;
+      box.textContent = text || '';
+      box.className = `assessment-external-message${type ? ` ${type}` : ''}`;
+    }
+    function assessmentExternalProceedToQuestions() {
+      const privacy = document.getElementById('assessmentExternalPrivacyCheck');
+      if (!privacy?.checked) {
+        assessmentExternalSetMessage('registration', "Privacy obbligatoria: leggi l'informativa e conferma il consenso per continuare.", 'error');
+        return;
+      }
+      assessmentExternalSetMessage('registration', '');
+      const completion = document.getElementById('assessmentExternalCompletion');
+      if (completion) completion.hidden = true;
+      setAssessmentPublicStaffPanel('questions');
+    }
+    function assessmentExternalQuestionSelects() {
+      return Array.from(document.querySelectorAll('[data-assessment-external-question]'));
+    }
+    function assessmentExternalQuestionData() {
+      const value = id => document.getElementById(id)?.value || '';
+      return {
+        experience: value('assessmentExternalQExperience'),
+        frequency: value('assessmentExternalQFrequency'),
+        declaredLevel: value('assessmentExternalQDeclaredLevel'),
+        balancedLevel: value('assessmentExternalQBalancedLevel'),
+        rally: value('assessmentExternalQRally'),
+        glass: value('assessmentExternalQGlass'),
+        net: value('assessmentExternalQNet'),
+        overhead: value('assessmentExternalQOverhead')
+      };
+    }
+    function assessmentExternalRegistrationData() {
+      return {
+        firstName: cleanCell(document.getElementById('assessmentExternalFirstNameInput')?.value || 'Maurizio'),
+        lastName: cleanCell(document.getElementById('assessmentExternalLastNameInput')?.value || 'Aprea'),
+        phone: cleanCell(document.getElementById('assessmentExternalPhoneInput')?.value || ''),
+        email: cleanCell(document.getElementById('assessmentExternalEmailInput')?.value || 'aprea.maurizio@gmail.com'),
+        gender: assessmentPublicNormalizeGender(document.getElementById('assessmentExternalSexSelect')?.value || 'M')
+      };
+    }
+    function assessmentExternalSubmitStaffAssessment() {
+      const selects = assessmentExternalQuestionSelects();
+      const missing = selects.filter(select => !select.value);
+      if (missing.length) {
+        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
+        return;
+      }
+      const answers = assessmentExternalQuestionData();
+      const levelCalc = calculateAssessmentPublicLevel(answers);
+      if (levelCalc.coherence === 'low') {
+        assessmentExternalSetMessage('questions', 'Le risposte non sono coerenti con il livello indicato. Rivedi il livello o le risposte prima di inviare.', 'error');
+        return;
+      }
+      const registration = assessmentExternalRegistrationData();
+      const submittedAt = new Date().toISOString();
+      window.assessmentExternalStaffPreviewSubmission = {
+        ...registration,
+        answers,
+        submittedAt,
+        declaredLevel: levelCalc.declared_level,
+        calculatedLevel: levelCalc.calculated_level,
+        consistencyStatus: levelCalc.coherence,
+        staffStatus: levelCalc.coherence === 'medium' ? 'da_controllare' : (registration.gender === 'NA' ? 'da_completare' : 'da_validare')
+      };
+      const completion = document.getElementById('assessmentExternalCompletion');
+      if (completion) completion.hidden = false;
+      assessmentExternalSetMessage('questions', '');
+      assessmentExternalSetStatus('Test inviato');
+      setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
+    }
+    function assessmentExternalOpenHistory() {
+      const submission = window.assessmentExternalStaffPreviewSubmission;
+      if (!submission) {
+        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
+        return;
+      }
+      const testMember = assessmentExternalTestMember();
+      assessmentExternalUpsertLocal([{
+        id: 'staff-preview-pmo-000948',
+        request_code: 'staff-preview-pmo-000948',
+        status: 'received',
+        submitted_at: submission.submittedAt || new Date().toISOString(),
+        first_name: submission.firstName || 'Maurizio',
+        last_name: submission.lastName || 'Aprea',
+        phone: submission.phone || '',
+        email: submission.email || 'aprea.maurizio@gmail.com',
+        gender: submission.gender || 'M',
+        privacy_accepted: true,
+        declared_level: submission.declaredLevel || '',
+        calculated_level: submission.calculatedLevel || '',
+        consistency_status: submission.consistencyStatus || '',
+        staff_status: submission.staffStatus || 'da_validare',
+        matched_member_local_id: testMember?.id || '',
+        raw_response: {
+          source: 'link-esterno',
+          origin_label: 'Origine: Da link esterno',
+          external_request_id: 'staff-preview-pmo-000948',
+          external_request_code: 'staff-preview-pmo-000948',
+          external_email: submission.email || 'aprea.maurizio@gmail.com',
+          gender: submission.gender || 'M',
+          gender_label: assessmentPublicGenderLabel(submission.gender || 'M'),
+          gender_status: assessmentPublicGenderStatus(submission.gender || 'M'),
+          privacy_consent: true,
+          answers: submission.answers || {}
+        }
+      }]);
+      renderAssessmentEmailHistoryPanel();
+      setAssessmentEmailPanel('history');
+      showAlert('✅ Evento link esterno aggiunto allo Storico locale TEST.', 'success');
     }
     function assessmentExternalSubmitTest() {
       const privacy = document.getElementById('assessmentExternalPrivacyCheck');
@@ -26281,7 +26480,7 @@ Per confermare scrivi ELIMINA.`);
       if (!root) return;
       const publicMode = document.body.classList.contains('assessment-public-mode');
       root.querySelectorAll('select, input, textarea').forEach(control => {
-        if (control.closest('.assessment-external-link-panel')) return;
+        if (control.closest('.assessment-external-link-panel') || control.closest('.assessment-public-staff-panel')) return;
         if (publicMode) {
           if (control.dataset.adminDemoDisabled === '1') {
             control.disabled = false;
