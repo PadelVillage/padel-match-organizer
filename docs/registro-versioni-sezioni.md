@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 00:37
+Ultimo aggiornamento: 2026-05-18 00:45
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Link esterno TEST v5.474: aggiunta nella tab `Storico`, tabella `Richieste da link esterno`, l'azione manuale `Invia conferma email` quando il livello del socio collegato risulta gia applicato/validato e l'email e' valida. Se la conferma e' gia stata inviata, la stessa riga propone `Reinvia conferma email`. Le richieste ancora `Agganciata / Da validare` continuano a richiedere prima `Controlla livello`. Commit app `4dc8f9e`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Cruscotto mattutino TEST v5.473: corretto il conteggio del box `Storico` per le richieste `Scheda pubblica > Link esterno`. Le richieste link esterno mantengono una chiave propria nel `Processo utenti`, cosi una nuova richiesta operativa non viene nascosta da un'altra riga dello stesso socio e il filtro rapido `Storico` mostra la riga attesa. Verifica read-only Supabase TEST: la richiesta delle 00:27 Europe/Rome per `PMO-000948` / `aprea.maurizio@gmail.com` era presente nel cloud. Commit app `6c45af2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Navigazione / Amministrazione TEST v5.472: rimossa dal menu principale la voce `Routine`, mantenendo intatte le funzioni interne e i permessi salvati; eventuali vecchi accessi a `routines` vengono indirizzati ad `Amministrazione > Supabase`. Rimossa anche la sottovoce `Sessione` da `Amministrazione`, che ora mostra solo `Utenti`, `Notifiche staff`, `Dati Matchpoint` e `Supabase`; il logout resta nella testata laterale e vecchi stati `session` vengono ricondotti a `Utenti`. Commit app `b71cbd2`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Cruscotto mattutino TEST v5.471: corretto il segnale delle nuove richieste da `Scheda pubblica > Link esterno`. Il refresh da Supabase delle richieste link esterno ridisegna tutti i pannelli Autovalutazione, non solo lo Storico, e il totale azioni del `Cruscotto mattutino` include ora anche le richieste link esterno operative. Commit app `6a3b0e7`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
