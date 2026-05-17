@@ -5301,7 +5301,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.442';
+    const APP_VERSION = '5.443';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23183,9 +23183,13 @@ Per confermare scrivi ELIMINA.`);
       };
     }
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
+    const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000956';
+    const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
     window.assessmentProcessFilter = window.assessmentProcessFilter || 'all';
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
     window.assessmentProcessSearchText = window.assessmentProcessSearchText || '';
+    window.assessmentProcessForceTestMember = window.assessmentProcessForceTestMember || false;
+    window.assessmentProcessTestMemberNotice = window.assessmentProcessTestMemberNotice || null;
     window.assessmentHistorySearchText = window.assessmentHistorySearchText || '';
     window.assessmentEmailCloudLogAutoImportLastAt = window.assessmentEmailCloudLogAutoImportLastAt || 0;
     window.assessmentEmailCloudLogAutoImportInFlight = window.assessmentEmailCloudLogAutoImportInFlight || false;
@@ -23221,6 +23225,11 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentProcessButton(label, cls, onclick) {
       return `<button class="assessment-email-mini ${escapeHtml(cls || '')}" type="button" onclick="setActionAnchor(this); ${onclick}">${escapeHtml(label)}</button>`;
+    }
+    function assessmentProcessTestNoticeHtml(notice=null) {
+      if (!notice?.message) return '';
+      const cls = notice.type === 'error' ? 'alert-danger' : (notice.type === 'warning' ? 'alert-warning' : 'alert-info');
+      return `<div class="alert ${cls}" style="margin:8px 0;">${escapeHtml(notice.message)}</div>`;
     }
     function assessmentProcessMemberKey(row) {
       return String(row?.member?.id || row?.member?.memberId || playerFullName(row?.member) || '');
@@ -23312,10 +23321,14 @@ Per confermare scrivi ELIMINA.`);
       }
       return 'Controllo stop 09:00';
     }
-    function assessmentProcessIsProtectedFollowupTestMember(member={}) {
+    function assessmentProcessIsFollowupTestMemberId(member={}) {
       const pmoId = cleanCell(member?.memberId || member?.id || '').toLocaleUpperCase('it-IT');
+      return pmoId === ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
+    }
+    function assessmentProcessIsProtectedFollowupTestMember(member={}) {
+      const pmoIdOk = assessmentProcessIsFollowupTestMemberId(member);
       const email = assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT');
-      return PMO_IS_TEST_ENV && pmoId === 'PMO-000956' && email === 'aprea.maurizio@gmail.com';
+      return pmoIdOk && email === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL;
     }
     function assessmentProcessFollowupTestActions(member={}) {
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) return '';
@@ -23348,8 +23361,15 @@ Per confermare scrivi ELIMINA.`);
       const detailAction = assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`);
       const testActions = assessmentProcessFollowupTestActions(member);
 
-      if (assessmentProcessIsProtectedFollowupTestMember(member) && sentCount >= 1 && !replyAt && !response && !bounced && !paused) {
-        routine = { label:'Azione test', cls:'test', detail:'Solo TEST' };
+      if (assessmentProcessIsFollowupTestMemberId(member) && !assessmentProcessIsProtectedFollowupTestMember(member)) {
+        routine = { label:'Bloccato', cls:'err', detail:'Socio test' };
+        phase = { label:'Email socio test non verificata', cls:'err', detail:'' };
+        nextStep = 'Scheda socio';
+        nextWindow = { label:'-', detail:'' };
+        stopAlert = 'Email socio test non verificata';
+        actions = detailAction;
+      } else if (assessmentProcessIsProtectedFollowupTestMember(member) && sentCount >= 1 && !replyAt && !response && !bounced && !paused) {
+        routine = { label:'Azione test', cls:'test', detail:'Socio test' };
         phase = { label:'Prima email inviata', cls:'info', detail:sentCount > 1 ? `${sentCount}/3 invii registrati` : '' };
         nextStep = 'Test richiamo manuale';
         nextWindow = { label:'Disponibile ora', detail:'' };
@@ -23414,6 +23434,9 @@ Per confermare scrivi ELIMINA.`);
         nextWindow = { label:'Bloccata', detail:'' };
         stopAlert = 'Telefono mancante';
         actions = detailAction;
+      }
+      if (testActions && !String(actions || '').includes('assessmentEmailSendControlledFollowupTest')) {
+        actions = `${testActions}${actions || ''}`;
       }
 
       return { routine, phase, lastSend, nextStep, nextWindow, stopAlert, actions };
@@ -23566,6 +23589,61 @@ Per confermare scrivi ELIMINA.`);
           - assessmentEmailDateMs(a.row?.response?.submitted_at || a.row?.rec?.sentAt || a.row?.rec?.createdAt);
       });
     }
+    function assessmentProcessFindFollowupTestMember() {
+      return findAssessmentMemberByAnyId(ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID)
+        || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberId(member))
+        || null;
+    }
+    function assessmentProcessTestMemberEntry(rows=[]) {
+      const existing = (rows || []).find(entry => assessmentProcessIsFollowupTestMemberId(entry?.member || {}));
+      if (existing) return existing;
+      const member = assessmentProcessFindFollowupTestMember();
+      if (!member) return null;
+      const rec = getAssessmentTokenRecord(member.id) || {};
+      return {
+        member,
+        row: { member, rec, info:{} },
+        priority: 5,
+        filter: 'pending',
+        today: false,
+        routine: assessmentProcessIsProtectedFollowupTestMember(member)
+          ? { label:'Azione test', cls:'test', detail:'Socio test' }
+          : { label:'Bloccato', cls:'err', detail:'Socio test' },
+        phase: assessmentProcessIsProtectedFollowupTestMember(member)
+          ? { label:'Socio test', cls:'test', detail:'' }
+          : { label:'Email socio test non verificata', cls:'err', detail:'' },
+        nextStep: assessmentProcessIsProtectedFollowupTestMember(member) ? 'Test richiamo manuale' : 'Scheda socio',
+        actions: assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`)
+      };
+    }
+    function clearAssessmentProcessTestMemberFocus() {
+      window.assessmentProcessForceTestMember = false;
+      window.assessmentProcessTestMemberNotice = null;
+    }
+    function openAssessmentProcessTestMember() {
+      const member = assessmentProcessFindFollowupTestMember();
+      window.assessmentProcessForceTestMember = true;
+      window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
+      window.assessmentProcessSearchText = '';
+      const input = document.getElementById('assessmentProcessSearch');
+      if (input) input.value = '';
+      if (!member) {
+        window.assessmentProcessTestMemberNotice = { message:'Socio test non trovato.', type:'error' };
+      } else if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
+        window.assessmentProcessTestMemberNotice = { message:'Email socio test non verificata.', type:'error' };
+      } else {
+        window.assessmentProcessTestMemberNotice = { message:'Socio test aperto.', type:'info' };
+      }
+      renderAssessmentEmailMorningPanel();
+      setTimeout(() => {
+        const row = Array.from(document.querySelectorAll('[data-assessment-email-member]'))
+          .find(el => String(el.dataset.assessmentEmailMember || '') === String(member?.id || ''));
+        if (!row) return;
+        row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
+        row.classList.add('assessment-email-row-focus');
+        setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
+      }, 0);
+    }
     function assessmentProcessFilterConfig(rows, search='') {
       const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
       const count = filter => sourceRows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
@@ -23594,6 +23672,7 @@ Per confermare scrivi ELIMINA.`);
       return keys;
     }
     function setAssessmentProcessFilter(filter='all') {
+      clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessFilter = assessmentProcessNormalizeFilter(filter);
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
@@ -23602,6 +23681,7 @@ Per confermare scrivi ELIMINA.`);
       return cleanCell(document.getElementById('assessmentProcessSearch')?.value || window.assessmentProcessSearchText || '');
     }
     function setAssessmentProcessSearch(value='') {
+      clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessSearchText = cleanCell(value || '');
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
@@ -23609,6 +23689,7 @@ Per confermare scrivi ELIMINA.`);
     function clearAssessmentProcessSearch() {
       const input = document.getElementById('assessmentProcessSearch');
       if (input) input.value = '';
+      clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessSearchText = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
@@ -23618,6 +23699,7 @@ Per confermare scrivi ELIMINA.`);
       return Math.max(ASSESSMENT_PROCESS_PAGE_SIZE, Number.isFinite(raw) ? raw : ASSESSMENT_PROCESS_PAGE_SIZE);
     }
     function showMoreAssessmentProcessRows() {
+      clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessVisibleRowsLimit = getAssessmentProcessVisibleLimit() + ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
@@ -23790,6 +23872,7 @@ Per confermare scrivi ELIMINA.`);
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
+      buttons.push(`<button class="assessment-email-mini test" type="button" onclick="setActionAnchor(this); openAssessmentProcessTestMember()">Socio test</button>`);
       return buttons.join('');
     }
     function assessmentManualBatchRowHtml(row) {
@@ -23904,7 +23987,11 @@ Per confermare scrivi ELIMINA.`);
       const search = getAssessmentProcessSearchValue();
       window.assessmentProcessSearchText = search;
       const searchableRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
-      const filteredRows = searchableRows.filter(row => activeFilter === 'all' || (activeFilter === 'today' ? row.today : row.filter === activeFilter));
+      let filteredRows = searchableRows.filter(row => activeFilter === 'all' || (activeFilter === 'today' ? row.today : row.filter === activeFilter));
+      if (window.assessmentProcessForceTestMember) {
+        const testEntry = assessmentProcessTestMemberEntry(rows);
+        filteredRows = testEntry ? [testEntry] : [];
+      }
       const visibleLimit = getAssessmentProcessVisibleLimit();
       const visibleRows = filteredRows.slice(0, visibleLimit);
       const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
@@ -23925,6 +24012,7 @@ Per confermare scrivi ELIMINA.`);
       const activeFilterHtml = activeFilter !== 'all'
         ? `<div class="assessment-process-active-filter">Filtro attivo: <strong>${escapeHtml(ASSESSMENT_PROCESS_FILTER_LABELS[activeFilter] || 'Tutti')}</strong><button type="button" class="assessment-email-mini" data-assessment-process-filter="all">Tutti</button></div>`
         : '';
+      const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
       const manualBatchHtml = assessmentManualBatchPanelHtml();
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
@@ -23938,6 +24026,7 @@ Per confermare scrivi ELIMINA.`);
       box.innerHTML = `${searchHtml}
         ${filterHtml}
         ${activeFilterHtml}
+        ${testNoticeHtml}
         ${tableHtml}
         ${manualBatchHtml}`;
       box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
@@ -24685,7 +24774,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
-        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000956 con email aprea.maurizio@gmail.com in ambiente TEST.', 'danger');
+        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000956 con email aprea.maurizio@gmail.com.', 'danger');
       }
       const safeTemplate = cleanCell(templateKey || '');
       if (!['recall-email', 'third-email'].includes(safeTemplate)) {
@@ -24697,7 +24786,7 @@ Per confermare scrivi ELIMINA.`);
         return showAlert('Prima email non ancora inviata: il test del richiamo parte solo dopo il primo invio manuale.', 'warning');
       }
       const label = safeTemplate === 'third-email' ? 'terza email' : 'seconda email';
-      if (!confirm(`Confermi l'invio TEST della ${label} a ${playerFullName(member)}? In TEST il destinatario resta protetto.`)) return;
+      if (!confirm(`Confermi l'invio manuale della ${label} a ${playerFullName(member)} (${ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL})?`)) return;
       return assessmentEmailSendMember(member.id, safeTemplate, { skipSameDayConfirm:true });
     }
     function assessmentEmailPauseMember(memberId) {
