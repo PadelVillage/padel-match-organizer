@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-17 23:14
+Ultimo aggiornamento: 2026-05-17 23:26
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.448 | `main` | `f7b4814` |
-| TEST | v5.466 | `test-preview` | `a080396` |
-| TEST sviluppo | v5.466 | `test/accessi-staff-guidati` | `a080396` |
+| TEST | v5.467 | `test-preview` | `72fb28e` |
+| TEST sviluppo | v5.467 | `test/accessi-staff-guidati` | `72fb28e` |
+
+Nota TEST v5.467: corretto il test staff di `Autovalutazione > Scheda pubblica > Form autovalutazione`. Quando lo staff compila e preme `Invia autovalutazione` per il socio test `PMO-000948`, la richiesta viene salvata subito nello Storico locale TEST come `Richiesta da link esterno`, senza dover cliccare prima `Vedi storico`. Il pulsante `Vedi storico` resta come navigazione/controllo. Commit app `72fb28e`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.466: corretto lo `Storico` Autovalutazione per i nuovi invii da `Scheda pubblica > Link esterno` dello stesso contatto. La deduplica continua a mostrare una sola riga per persona/socio, ma ora sceglie prima la richiesta piu recente e usa lo stato operativo piu avanzato solo come spareggio a pari data: un nuovo test su `PMO-000948` non resta nascosto dietro una vecchia richiesta gia agganciata. Commit app `a080396`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 

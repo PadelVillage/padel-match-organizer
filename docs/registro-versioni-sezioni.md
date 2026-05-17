@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-17 23:14
+Ultimo aggiornamento: 2026-05-17 23:26
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Link esterno TEST v5.467: corretto il test staff della sottotab `Form autovalutazione`. Premendo `Invia autovalutazione` per `PMO-000948`, la richiesta viene salvata subito nello `Storico` locale TEST tra le `Richieste da link esterno`; non e' piu necessario cliccare `Vedi storico` per materializzare la riga. `Vedi storico` resta disponibile per aprire la tab Storico. Commit app `72fb28e`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.466: corretto il criterio di scelta della riga visibile nello `Storico` quando lo stesso contatto invia piu richieste dal link pubblico. La deduplica mantiene una sola riga per persona/socio, ma ora mostra prima la richiesta piu recente e usa lo stato operativo piu avanzato solo a pari data; cosi un nuovo invio/test `PMO-000948` non viene nascosto da una richiesta precedente gia agganciata. Commit app `a080396`. Nessuna cancellazione record Supabase, nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione TEST v5.465: quando lo staff entra nella sezione `Autovalutazione`, parte un refresh automatico read-only dei dati della sezione. Il refresh importa log cloud email Autovalutazione, aggiorna le richieste `Link esterno`, legge eventuali risposte scheda da Supabase, compatta la cache locale e ridisegna i pannelli. Per sicurezza il refresh automatico non auto-applica livelli, non invia email di conferma, non avvia routine e non modifica dati cloud. Commit app `bca77fb`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Link esterno TEST v5.464: corretto lo `Storico` delle richieste da link esterno dopo aggancio/accorpamento a socio esistente. La deduplica ora usa email, telefono e ID socio espliciti, mantiene una sola riga per persona/socio e preferisce la richiesta con stato operativo piu avanzato. Rimossi dallo header Storico i comandi `Pulisci filtri` ed `Esporta vista`; `Aggiorna link esterno` e' ora azione primaria e lo Storico avvia un refresh silenzioso quando viene aperto, oltre al refresh post-azione dopo creazione/aggancio/validazione. Commit app `32db333`. Nessuna cancellazione record Supabase, nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
