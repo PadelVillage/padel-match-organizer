@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 00:18
+Ultimo aggiornamento: 2026-05-19 00:31
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.488 | `main` | `9701f86` |
-| TEST | v5.488 | `test-preview` | `9701f86` |
-| TEST sviluppo | v5.488 | `test/accessi-staff-guidati` | `9701f86` |
+| TEST | v5.489 | `test-preview` | `ddab294` |
+| TEST sviluppo | v5.489 | `test/accessi-staff-guidati` | `ddab294` |
+
+Nota TEST v5.489: semplificata la diagnostica conteggi soci dopo verifica in PROD v5.488. La vista principale mostra solo le correzioni approvate da applicare, mentre la lista dei candidati da verificare resta nascosta dietro il comando opzionale `Mostra candidati da verificare`, per evitare confusione operativa. Il pulsante usa ora l'etichetta coerente con l'ambiente (`TEST` o `PROD`) e, quando promosso, consente l'applicazione manuale in PROD solo dopo conferma esplicita, senza hard-delete. Commit app `ddab294`. Nessuna correzione dati applicata durante lo sviluppo TEST. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.488 - 2026-05-19 00:18: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.488 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html`, `supabase_pmo_member_count_audit_dry_run.sql` e documentazione collegata. Non e' stato applicato SQL a Supabase PROD, non e' stata creata la RPC del dry-run in PROD, non sono state eseguite correzioni dati o cleanup soci, nessun deploy Edge Function, nessuna modifica scheduler, segreti, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`. Rollback annotato verso PROD v5.484, commit app `e658126`, origin/main `1723a4a`.
 

@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 00:18
+Ultimo aggiornamento: 2026-05-19 00:31
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Dati Matchpoint / Conteggi soci TEST v5.489: semplificata la diagnostica dopo verifica in PROD v5.488. La vista principale mostra solo le correzioni approvate da applicare; i candidati da verificare restano nascosti dietro `Mostra candidati da verificare` e non vengono toccati dal comando operativo. Il pulsante usa l'ambiente corretto (`TEST` o `PROD`) e, quando promosso, permette l'applicazione manuale in PROD solo dopo conferma esplicita, senza hard-delete. Commit app `ddab294`. Nessuna correzione dati applicata in TEST durante lo sviluppo.
 - Promozione PROD v5.488 - 2026-05-19: pubblicata in PROD la patch TEST validata v5.488 per `Amministrazione > Dati Matchpoint > Diagnostica conteggi soci`. La promozione e' app UI + file SQL preparatorio + documentazione: il file `supabase_pmo_member_count_audit_dry_run.sql` entra nel repository ma non viene applicato a Supabase PROD. Nessun cleanup soci, nessuna correzione dati, nessun hard-delete, nessun deploy Edge Function, nessuna modifica SQL applicata, scheduler, segreti, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` preservati attivi.
 - Dati Matchpoint / Conteggi soci TEST v5.488: corretta la classificazione del duplicato `PMO-000948` / `aprea.maurizio@gmail.com`. `Test Maurizio Autovalutazione` viene marcato `Soft-delete approvato`, mentre `Maurizio Aprea` viene tenuto e, se era gia in soft-delete, passa a `Ripristino approvato`. Il comando diventa `Applica correzioni approvate in TEST` e applica solo soft-delete/ripristino controllati, senza hard-delete. Aggiornato anche il dry-run SQL read-only. Commit app `9701f86`. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 - Dati Matchpoint / Conteggi soci TEST v5.487: rifinita la diagnostica. Il bottone `Applica soft-delete approvati in TEST` resta sempre visibile dopo il dry-run, disabilitato quando non ci sono record approvati. La tabella viene compattata accorpando contatti, chiavi e motivazione per ridurre lo scroll orizzontale. Nessuna modifica alla classificazione v5.486, nessuna applicazione SQL e nessuna modifica PROD.
