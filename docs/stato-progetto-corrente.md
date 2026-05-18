@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 16:21
+Ultimo aggiornamento: 2026-05-18 16:50
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.479 | `main` | `ea72b7d` |
-| TEST | v5.479 | `test-preview` | `ea72b7d` |
-| TEST sviluppo | v5.479 | `test/accessi-staff-guidati` | `ea72b7d` |
+| TEST | v5.480 | `test-preview` | `1e7cefc` |
+| TEST sviluppo | v5.480 | `test/accessi-staff-guidati` | `1e7cefc` |
+
+Nota TEST v5.480: nello `Storico` Autovalutazione, lo stato `Matchpoint da aggiornare` diventa una scorciatoia cliccabile verso la sezione Matchpoint esistente. Il click apre il pannello Matchpoint, evidenzia il socio interessato e lascia la chiusura operativa al comando gia esistente `Segna inserito su Matchpoint`. Non viene chiusa nessuna pratica direttamente dallo Storico. Commit app `1e7cefc`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.479 - 2026-05-18 16:21: dopo nuovo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione app da TEST a PROD. La promozione include il pacchetto scheduler follow-up email Autovalutazione v5.478 e la correzione Storico link esterno v5.479. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato come versione `15`, `verify_jwt=true`. Applicato in PROD il file `supabase_pmo_assessment_followup_scheduler_prod.sql`: `cron.job` contiene `pmo-assessment-followup-dispatcher-prod` attivo `*/5 * * * *` e conserva `pmo-data-routines-dispatcher-prod` attivo `*/5 * * * *`. Il dispatcher follow-up esegue `routine-check` solo alle 09:00 Europe/Rome e `routine-followup` solo alle 09:30 Europe/Rome; non contiene azione di primo invio automatico. TEST resta senza cron (`cron.job` vuoto). Verificati 0 invii email Autovalutazione e 0 dispatch follow-up imprevisti durante il deploy. Nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 
@@ -131,7 +133,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.479 e' pubblicata in PROD. TEST e PROD sono allineati sul pacchetto app v5.479, con Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD attivo. La modifica piu recente corregge lo Storico Autovalutazione: le richieste link esterno gia validate o gia applicate sulla scheda socio non restano piu nel blocco operativo alto e non ripropongono `Valida livello`; restano nello storico chiuso. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
+La versione v5.479 e' pubblicata in PROD. TEST e' avanzato a v5.480 per la scorciatoia operativa `Matchpoint da aggiornare` nello Storico Autovalutazione; PROD resta v5.479 finche' non viene richiesta una nuova promozione. Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD restano attivi. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
 
 Contiene:
 
