@@ -137,6 +137,19 @@ Stato pacchetto scheduler follow-up Autovalutazione TEST 2026-05-18 15:08:
 - i follow-up automatici partono solo dopo un primo invio manuale registrato e rispettano stop su scheda compilata, risposta Gmail, bounce/mancata consegna, pausa cloud e livello non piu 0.5;
 - attivazione PROD consentita solo a Promuovi Prod Admin dopo preflight pulito e comando esplicito `PROMUOVI PROD`.
 
+Stato PROD scheduler follow-up Autovalutazione verificato il 2026-05-18 16:21:
+
+- app PROD pubblicata: v5.479 su branch `main`;
+- app TEST pubblicata: v5.479 su branch `test-preview`;
+- Edge Function PROD `assessment-email-send` pubblicata come versione `15`, `verify_jwt=true`;
+- `cron.job` PROD contiene `pmo-assessment-followup-dispatcher-prod` attivo con schedule `*/5 * * * *`;
+- `cron.job` PROD conserva `pmo-data-routines-dispatcher-prod` attivo con schedule `*/5 * * * *`;
+- il dispatcher follow-up esegue `routine-check` solo alle 09:00 Europe/Rome e `routine-followup` solo alle 09:30 Europe/Rome;
+- il primo invio email Autovalutazione resta manuale dal lotto staff;
+- TEST `cron.job` resta vuoto, quindi TEST resta manuale;
+- durante il deploy non sono stati rilevati invii email o dispatch follow-up imprevisti;
+- nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
+
 Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:
 
 - app PROD pubblicata: v5.440 su branch `main`;

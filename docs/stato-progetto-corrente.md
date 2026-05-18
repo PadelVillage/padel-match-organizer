@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 16:00
+Ultimo aggiornamento: 2026-05-18 16:21
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,13 +28,15 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.477 | `main` | `545f2cf` |
+| PROD | v5.479 | `main` | `ea72b7d` |
 | TEST | v5.479 | `test-preview` | `ea72b7d` |
 | TEST sviluppo | v5.479 | `test/accessi-staff-guidati` | `ea72b7d` |
 
-Nota TEST v5.479: corretto lo `Storico` Autovalutazione per le richieste da `Scheda pubblica > Link esterno` gia validate. Le richieste chiuse (`validated`/`rejected`) o gia applicate sulla scheda socio non compaiono piu nel blocco operativo `Richieste da link esterno`, non mostrano piu l'azione `Valida livello` e restano leggibili solo nello storico chiuso sotto. Il conteggio del `Cruscotto mattutino` continua a considerare solo richieste operative non chiuse. Commit app `ea72b7d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
+Nota promozione PROD v5.479 - 2026-05-18 16:21: dopo nuovo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione app da TEST a PROD. La promozione include il pacchetto scheduler follow-up email Autovalutazione v5.478 e la correzione Storico link esterno v5.479. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato come versione `15`, `verify_jwt=true`. Applicato in PROD il file `supabase_pmo_assessment_followup_scheduler_prod.sql`: `cron.job` contiene `pmo-assessment-followup-dispatcher-prod` attivo `*/5 * * * *` e conserva `pmo-data-routines-dispatcher-prod` attivo `*/5 * * * *`. Il dispatcher follow-up esegue `routine-check` solo alle 09:00 Europe/Rome e `routine-followup` solo alle 09:30 Europe/Rome; non contiene azione di primo invio automatico. TEST resta senza cron (`cron.job` vuoto). Verificati 0 invii email Autovalutazione e 0 dispatch follow-up imprevisti durante il deploy. Nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 
-Nota TEST v5.478: preparato in TEST il pacchetto tecnico per l'eventuale attivazione PROD dello scheduler follow-up email Autovalutazione. La Edge Function `assessment-email-send` aggiunge l'azione `routine-followup`, che puo inviare solo secondo/terzo richiamo dopo almeno 48 ore dall'ultimo invio e non puo inviare la prima email automatica; prima di inviare controlla compilazione scheda, risposte Gmail, bounce/mancate consegne, livello non piu 0.5 e pausa/problema operativo sincronizzati in cloud tramite `assessmentPausedTokens`. Aggiunto il file PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql`, che prevede il job `pmo-assessment-followup-dispatcher-prod` con dispatcher ogni 5 minuti: `routine-check` alle 09:00 Europe/Rome e `routine-followup` alle 09:30 Europe/Rome. Il file non e' stato applicato in TEST e nessun cron TEST e' stato creato o attivato. PROD resta v5.477 finche Promuovi Prod Admin non esegue nuovo preflight pulito e riceve il comando esplicito `PROMUOVI PROD`.
+Nota TEST/PROD v5.479: corretto lo `Storico` Autovalutazione per le richieste da `Scheda pubblica > Link esterno` gia validate. Le richieste chiuse (`validated`/`rejected`) o gia applicate sulla scheda socio non compaiono piu nel blocco operativo `Richieste da link esterno`, non mostrano piu l'azione `Valida livello` e restano leggibili solo nello storico chiuso sotto. Il conteggio del `Cruscotto mattutino` continua a considerare solo richieste operative non chiuse. Commit app `ea72b7d`.
+
+Nota TEST/PROD v5.478: attivato in PROD il pacchetto tecnico dello scheduler follow-up email Autovalutazione. La Edge Function `assessment-email-send` aggiunge l'azione `routine-followup`, che puo inviare solo secondo/terzo richiamo dopo almeno 48 ore dall'ultimo invio e non puo inviare la prima email automatica; prima di inviare controlla compilazione scheda, risposte Gmail, bounce/mancate consegne, livello non piu 0.5 e pausa/problema operativo sincronizzati in cloud tramite `assessmentPausedTokens`. Il file PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql` crea il job `pmo-assessment-followup-dispatcher-prod` con dispatcher ogni 5 minuti: `routine-check` alle 09:00 Europe/Rome e `routine-followup` alle 09:30 Europe/Rome. TEST resta manuale e senza cron.
 
 Nota promozione PROD v5.477 - 2026-05-18 14:25: dopo nuovo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione app da TEST a PROD. Le prime 3 migrazioni SQL del pacchetto erano gia state applicate in PROD nel tentativo precedente; prima del merge app e' stata applicata e verificata anche la migrazione correttiva `supabase/migrations/20260518140758_revoke_anon_assessment_external_admin.sql`, che revoca `public` e `anon` dalle tre RPC admin `get_assessment_external_requests_admin`, `update_assessment_external_request_admin` e `cleanup_assessment_external_requests_admin`, concede `execute` solo ad `authenticated` e mantiene pubblica solo `submit_assessment_external_request_public(jsonb)`. Rollback annotato verso PROD v5.448, commit app `f7b4814`, origin/main `d3706e5`.
 
@@ -129,7 +131,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.477 e' pubblicata in PROD. TEST e' avanti a v5.479 al commit app `ea72b7d`. La modifica piu recente corregge lo Storico Autovalutazione: le richieste link esterno gia validate o gia applicate sulla scheda socio non restano piu nel blocco operativo alto e non ripropongono `Valida livello`; restano nello storico chiuso. Il pacchetto tecnico v5.478 per l'eventuale scheduler follow-up email PROD resta preparato ma non attivo in TEST. Non e' stato eseguito deploy app PROD per v5.479, nessun cron TEST e' stato creato o attivato e nessuna email reale a soci e' stata inviata.
+La versione v5.479 e' pubblicata in PROD. TEST e PROD sono allineati sul pacchetto app v5.479, con Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD attivo. La modifica piu recente corregge lo Storico Autovalutazione: le richieste link esterno gia validate o gia applicate sulla scheda socio non restano piu nel blocco operativo alto e non ripropongono `Valida livello`; restano nello storico chiuso. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
 
 Contiene:
 
