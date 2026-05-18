@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 15:08
+Ultimo aggiornamento: 2026-05-18 16:00
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.477 | `main` | `545f2cf` |
-| TEST | v5.478 | `test-preview` | `ba2ceb8` |
-| TEST sviluppo | v5.478 | `test/accessi-staff-guidati` | `ba2ceb8` |
+| TEST | v5.479 | `test-preview` | `ea72b7d` |
+| TEST sviluppo | v5.479 | `test/accessi-staff-guidati` | `ea72b7d` |
+
+Nota TEST v5.479: corretto lo `Storico` Autovalutazione per le richieste da `Scheda pubblica > Link esterno` gia validate. Le richieste chiuse (`validated`/`rejected`) o gia applicate sulla scheda socio non compaiono piu nel blocco operativo `Richieste da link esterno`, non mostrano piu l'azione `Valida livello` e restano leggibili solo nello storico chiuso sotto. Il conteggio del `Cruscotto mattutino` continua a considerare solo richieste operative non chiuse. Commit app `ea72b7d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.478: preparato in TEST il pacchetto tecnico per l'eventuale attivazione PROD dello scheduler follow-up email Autovalutazione. La Edge Function `assessment-email-send` aggiunge l'azione `routine-followup`, che puo inviare solo secondo/terzo richiamo dopo almeno 48 ore dall'ultimo invio e non puo inviare la prima email automatica; prima di inviare controlla compilazione scheda, risposte Gmail, bounce/mancate consegne, livello non piu 0.5 e pausa/problema operativo sincronizzati in cloud tramite `assessmentPausedTokens`. Aggiunto il file PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql`, che prevede il job `pmo-assessment-followup-dispatcher-prod` con dispatcher ogni 5 minuti: `routine-check` alle 09:00 Europe/Rome e `routine-followup` alle 09:30 Europe/Rome. Il file non e' stato applicato in TEST e nessun cron TEST e' stato creato o attivato. PROD resta v5.477 finche Promuovi Prod Admin non esegue nuovo preflight pulito e riceve il comando esplicito `PROMUOVI PROD`.
 
@@ -127,7 +129,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.477 e' pubblicata in PROD. TEST e' avanti a v5.478 al commit app `ba2ceb8`, con il pacchetto tecnico per l'eventuale scheduler follow-up email Autovalutazione. La modifica piu recente prepara, ma non attiva in TEST, il pacchetto PROD per lo scheduler follow-up email: nuova azione Edge Function `routine-followup`, sincronizzazione cloud delle pause Autovalutazione e SQL PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql`. Il primo invio resta manuale; il scheduler previsto serve solo per controllo stop e secondo/terzo richiamo dopo almeno 48 ore. Non e' stato eseguito deploy app PROD per v5.478, nessun cron TEST e' stato creato o attivato e nessuna email reale a soci e' stata inviata.
+La versione v5.477 e' pubblicata in PROD. TEST e' avanti a v5.479 al commit app `ea72b7d`. La modifica piu recente corregge lo Storico Autovalutazione: le richieste link esterno gia validate o gia applicate sulla scheda socio non restano piu nel blocco operativo alto e non ripropongono `Valida livello`; restano nello storico chiuso. Il pacchetto tecnico v5.478 per l'eventuale scheduler follow-up email PROD resta preparato ma non attivo in TEST. Non e' stato eseguito deploy app PROD per v5.479, nessun cron TEST e' stato creato o attivato e nessuna email reale a soci e' stata inviata.
 
 Contiene:
 
