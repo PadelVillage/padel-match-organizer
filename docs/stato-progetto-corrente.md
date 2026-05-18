@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 21:53
+Ultimo aggiornamento: 2026-05-18 22:00
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.482 | `main` | `ed9de1c` |
-| TEST | v5.482 | `test-preview` | `ed9de1c` |
-| TEST sviluppo | v5.482 | `test/accessi-staff-guidati` | `ed9de1c` |
+| TEST | v5.483 | `test-preview` | `2c7bff9` |
+| TEST sviluppo | v5.483 | `test/accessi-staff-guidati` | `2c7bff9` |
+
+Nota TEST v5.483: micro-correzione UX delle ricerche Autovalutazione con pulsante esplicito `Cerca`. In `Cruscotto mattutino > Cerca nel processo` e in `Lotto email manuale > Cerca socio da inviare`, il click su `Cerca` applica il filtro, svuota il campo testuale e mostra una riga compatta `Ricerca attiva: ...`; `Pulisci` rimuove il filtro. Le ricerche live senza bottone e i campi dati/anagrafica non vengono modificati. Commit app `2c7bff9`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.482 - 2026-05-18 21:53: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.482 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html` e documentazione collegata. Nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron.
 
