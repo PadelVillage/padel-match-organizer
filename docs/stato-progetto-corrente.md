@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 14:25
+Ultimo aggiornamento: 2026-05-18 15:08
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.477 | `main` | `545f2cf` |
-| TEST | v5.477 | `test-preview` | `545f2cf` |
-| TEST sviluppo | v5.477 | `test/accessi-staff-guidati` | `545f2cf` |
+| TEST | v5.478 | `test-preview` | `ba2ceb8` |
+| TEST sviluppo | v5.478 | `test/accessi-staff-guidati` | `ba2ceb8` |
+
+Nota TEST v5.478: preparato in TEST il pacchetto tecnico per l'eventuale attivazione PROD dello scheduler follow-up email Autovalutazione. La Edge Function `assessment-email-send` aggiunge l'azione `routine-followup`, che puo inviare solo secondo/terzo richiamo dopo almeno 48 ore dall'ultimo invio e non puo inviare la prima email automatica; prima di inviare controlla compilazione scheda, risposte Gmail, bounce/mancate consegne, livello non piu 0.5 e pausa/problema operativo sincronizzati in cloud tramite `assessmentPausedTokens`. Aggiunto il file PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql`, che prevede il job `pmo-assessment-followup-dispatcher-prod` con dispatcher ogni 5 minuti: `routine-check` alle 09:00 Europe/Rome e `routine-followup` alle 09:30 Europe/Rome. Il file non e' stato applicato in TEST e nessun cron TEST e' stato creato o attivato. PROD resta v5.477 finche Promuovi Prod Admin non esegue nuovo preflight pulito e riceve il comando esplicito `PROMUOVI PROD`.
 
 Nota promozione PROD v5.477 - 2026-05-18 14:25: dopo nuovo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione app da TEST a PROD. Le prime 3 migrazioni SQL del pacchetto erano gia state applicate in PROD nel tentativo precedente; prima del merge app e' stata applicata e verificata anche la migrazione correttiva `supabase/migrations/20260518140758_revoke_anon_assessment_external_admin.sql`, che revoca `public` e `anon` dalle tre RPC admin `get_assessment_external_requests_admin`, `update_assessment_external_request_admin` e `cleanup_assessment_external_requests_admin`, concede `execute` solo ad `authenticated` e mantiene pubblica solo `submit_assessment_external_request_public(jsonb)`. Rollback annotato verso PROD v5.448, commit app `f7b4814`, origin/main `d3706e5`.
 
@@ -125,7 +127,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.477 e' pubblicata in PROD e allineata a TEST. La modifica piu recente rimuove dallo `Storico` Autovalutazione il box introduttivo di `Richieste da link esterno`, mantenendo invariati tabella, refresh, deduplica e azioni operative. In PROD sono state applicate e verificate le migrazioni SQL gia testate in TEST per richieste link esterno, eliminazione autorizzazioni staff, pulizia richieste link esterno duplicate e hardening grant `anon`, piu l'aggiornamento coerente di `supabase_pmo_staff_admin_schema.sql`; inclusa anche la pulizia approvata dei 15 snapshot HTML storici non referenziati. Non sono stati eseguiti deploy Edge Function, modifiche scheduler, modifiche segreti, invii email reali, WhatsApp automatico, Matchpoint operativo o modifiche dati reali.
+La versione v5.477 e' pubblicata in PROD. TEST e' avanti a v5.478 al commit app `ba2ceb8`, con il pacchetto tecnico per l'eventuale scheduler follow-up email Autovalutazione. La modifica piu recente prepara, ma non attiva in TEST, il pacchetto PROD per lo scheduler follow-up email: nuova azione Edge Function `routine-followup`, sincronizzazione cloud delle pause Autovalutazione e SQL PROD dedicato `supabase_pmo_assessment_followup_scheduler_prod.sql`. Il primo invio resta manuale; il scheduler previsto serve solo per controllo stop e secondo/terzo richiamo dopo almeno 48 ore. Non e' stato eseguito deploy app PROD per v5.478, nessun cron TEST e' stato creato o attivato e nessuna email reale a soci e' stata inviata.
 
 Contiene:
 

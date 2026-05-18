@@ -126,6 +126,17 @@ Stato diagnostica protezione email Autovalutazione TEST verificato il 2026-05-16
 - il codice e' predisposto a bloccare in PROD gli invii Autovalutazione se la diagnostica segnala modalita test email o controllo non verificabile;
 - PROD non e' stato modificato da questa integrazione TEST.
 
+Stato pacchetto scheduler follow-up Autovalutazione TEST 2026-05-18 15:08:
+
+- TEST app preparata a v5.478 con sorgente `assessment-email-send` che supporta `routine-followup`;
+- TEST resta senza scheduler email Autovalutazione persistenti;
+- il file `supabase_pmo_assessment_followup_scheduler_prod.sql` e' solo pacchetto PROD, non applicato a TEST;
+- lo scheduler previsto in PROD si chiama `pmo-assessment-followup-dispatcher-prod` e usa il dispatcher `public.pmo_dispatch_assessment_followup_email_prod()`;
+- il dispatcher e' progettato per eseguire `routine-check` alle 09:00 Europe/Rome e `routine-followup` alle 09:30 Europe/Rome;
+- il primo invio email Autovalutazione resta manuale dal lotto staff;
+- i follow-up automatici partono solo dopo un primo invio manuale registrato e rispettano stop su scheda compilata, risposta Gmail, bounce/mancata consegna, pausa cloud e livello non piu 0.5;
+- attivazione PROD consentita solo a Promuovi Prod Admin dopo preflight pulito e comando esplicito `PROMUOVI PROD`.
+
 Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:
 
 - app PROD pubblicata: v5.440 su branch `main`;
