@@ -5549,7 +5549,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.482';
+    const APP_VERSION = '5.483';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -24095,6 +24095,7 @@ Per confermare scrivi ELIMINA.`);
     }
     window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'morning');
     window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
+    window.assessmentEmailQueueSearchDraft = window.assessmentEmailQueueSearchDraft || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
     function assessmentEmailFeaturePending(message) {
       showAlert(message || 'Funzione prevista nel prossimo step tecnico.', 'info');
@@ -24600,7 +24601,20 @@ Per confermare scrivi ELIMINA.`);
       });
     }
     function assessmentEmailQueueSearchValue() {
-      return cleanCell(document.getElementById('assessmentEmailQueueSearch')?.value || window.assessmentEmailQueueSearch || '');
+      return cleanCell(window.assessmentEmailQueueSearch || '');
+    }
+    function assessmentEmailQueueSearchDraftValue() {
+      return cleanCell(document.getElementById('assessmentEmailQueueSearch')?.value || window.assessmentEmailQueueSearchDraft || '');
+    }
+    function setAssessmentEmailQueueSearch(value='') {
+      window.assessmentEmailQueueSearch = cleanCell(value || '');
+      window.assessmentEmailQueueSearchDraft = '';
+      renderAssessmentEmailQueuePanel();
+    }
+    function clearAssessmentEmailQueueSearch() {
+      window.assessmentEmailQueueSearch = '';
+      window.assessmentEmailQueueSearchDraft = '';
+      renderAssessmentEmailQueuePanel();
     }
     function assessmentEmailQueueFilteredRows(rows=null) {
       const sourceRows = rows || assessmentEmailQueueRows();
@@ -25039,6 +25053,7 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentProcessFilter = window.assessmentProcessFilter || 'all';
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
     window.assessmentProcessSearchText = window.assessmentProcessSearchText || '';
+    window.assessmentProcessSearchDraft = window.assessmentProcessSearchDraft || '';
     window.assessmentProcessForceTestMember = window.assessmentProcessForceTestMember || false;
     window.assessmentProcessTestMemberNotice = window.assessmentProcessTestMemberNotice || null;
     window.assessmentHistorySearchText = window.assessmentHistorySearchText || '';
@@ -25528,6 +25543,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessForceTestMember = !!member;
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       window.assessmentProcessSearchText = '';
+      window.assessmentProcessSearchDraft = '';
       const input = document.getElementById('assessmentProcessSearch');
       if (input) input.value = '';
       if (!member) {
@@ -25582,11 +25598,15 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailMorningPanel();
     }
     function getAssessmentProcessSearchValue() {
-      return cleanCell(document.getElementById('assessmentProcessSearch')?.value || window.assessmentProcessSearchText || '');
+      return cleanCell(window.assessmentProcessSearchText || '');
+    }
+    function getAssessmentProcessSearchDraft() {
+      return cleanCell(document.getElementById('assessmentProcessSearch')?.value || window.assessmentProcessSearchDraft || '');
     }
     function setAssessmentProcessSearch(value='') {
       clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessSearchText = cleanCell(value || '');
+      window.assessmentProcessSearchDraft = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
@@ -25595,6 +25615,7 @@ Per confermare scrivi ELIMINA.`);
       if (input) input.value = '';
       clearAssessmentProcessTestMemberFocus();
       window.assessmentProcessSearchText = '';
+      window.assessmentProcessSearchDraft = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
       renderAssessmentEmailMorningPanel();
     }
@@ -25901,10 +25922,11 @@ Per confermare scrivi ELIMINA.`);
       const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
       const filters = assessmentProcessFilterConfig(rows, search);
       const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
+      const searchDraft = getAssessmentProcessSearchDraft();
       const searchHtml = `<div class="assessment-process-search">
         <label for="assessmentProcessSearch">Cerca nel processo</label>
         <div class="assessment-process-search-row">
-          <input id="assessmentProcessSearch" value="${escapeHtml(search)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchText=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
+          <input id="assessmentProcessSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
           <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
           <button class="assessment-email-mini" type="button" onclick="clearAssessmentProcessSearch()">Pulisci</button>
         </div>
@@ -25915,6 +25937,9 @@ Per confermare scrivi ELIMINA.`);
       </button>`).join('')}</div>`;
       const activeFilterHtml = activeFilter !== 'all'
         ? `<div class="assessment-process-active-filter">Filtro attivo: <strong>${escapeHtml(ASSESSMENT_PROCESS_FILTER_LABELS[activeFilter] || 'Tutti')}</strong><button type="button" class="assessment-email-mini" data-assessment-process-filter="all">Tutti</button></div>`
+        : '';
+      const activeSearchHtml = search
+        ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
         : '';
       const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
       const manualBatchHtml = assessmentManualBatchPanelHtml();
@@ -25929,6 +25954,7 @@ Per confermare scrivi ELIMINA.`);
         : emptyHtml;
       box.innerHTML = `${searchHtml}
         ${filterHtml}
+        ${activeSearchHtml}
         ${activeFilterHtml}
         ${testNoticeHtml}
         ${tableHtml}
@@ -26119,12 +26145,17 @@ Per confermare scrivi ELIMINA.`);
       const allRows = assessmentEmailQueueRows();
       const currentSearch = assessmentEmailQueueSearchValue();
       window.assessmentEmailQueueSearch = currentSearch;
+      const searchDraft = assessmentEmailQueueSearchDraftValue();
       const rows = assessmentEmailQueueFilteredRows(allRows);
+      const activeSearchHtml = currentSearch
+        ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(currentSearch)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentEmailQueueSearch()">Pulisci</button></div>`
+        : '';
       const filterHtml = `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px;">
-        <div style="flex:1 1 260px;min-width:0;"><label for="assessmentEmailQueueSearch">Cerca socio da inviare</label><input id="assessmentEmailQueueSearch" value="${escapeHtml(currentSearch)}" placeholder="Nome, cognome, email o telefono" oninput="window.assessmentEmailQueueSearch=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.assessmentEmailQueueSearch=this.value; renderAssessmentEmailQueuePanel();}"></div>
-        <button class="assessment-email-mini success" type="button" onclick="window.assessmentEmailQueueSearch=document.getElementById('assessmentEmailQueueSearch')?.value || ''; renderAssessmentEmailQueuePanel()">Cerca</button>
-        <button class="assessment-email-mini" type="button" onclick="window.assessmentEmailQueueSearch=''; renderAssessmentEmailQueuePanel()">Pulisci</button>
+        <div style="flex:1 1 260px;min-width:0;"><label for="assessmentEmailQueueSearch">Cerca socio da inviare</label><input id="assessmentEmailQueueSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email o telefono" oninput="window.assessmentEmailQueueSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentEmailQueueSearch(this.value);}"></div>
+        <button class="assessment-email-mini success" type="button" onclick="setAssessmentEmailQueueSearch(document.getElementById('assessmentEmailQueueSearch')?.value || '')">Cerca</button>
+        <button class="assessment-email-mini" type="button" onclick="clearAssessmentEmailQueueSearch()">Pulisci</button>
       </div>
+      ${activeSearchHtml}
       <div class="assessment-email-footer-note" style="margin-top:-6px;margin-bottom:10px;">Mostrati ${rows.length} soci su ${allRows.length}. La lista non si ferma piu' ai primi nominativi.</div>`;
       if (!allRows.length) return void (box.innerHTML = filterHtml + (currentSearch ? assessmentEmailSearchRedirectHtml(currentSearch, 'queue') : assessmentEmailEmpty('Nessun socio 0.5 da inviare in questo momento.')));
       if (!rows.length) return void (box.innerHTML = filterHtml + assessmentEmailSearchRedirectHtml(currentSearch, 'queue'));
@@ -27954,11 +27985,10 @@ Per confermare scrivi ELIMINA.`);
       switchTab('assessment');
       if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
       window.assessmentEmailQueueSearch = playerFullName(member);
+      window.assessmentEmailQueueSearchDraft = '';
       window.assessmentPreQuickFilter = '';
       renderAssessmentEmailPanels();
       setTimeout(() => {
-        const search = document.getElementById('assessmentEmailQueueSearch');
-        if (search) search.value = playerFullName(member);
         const anchor = document.getElementById('assessmentEmailQueuePanel') || document.getElementById('assessmentEmailRoutinePanel');
         if (anchor) {
           scrollMainContentToElement(anchor);
