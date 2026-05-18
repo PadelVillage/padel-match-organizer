@@ -4748,9 +4748,6 @@ body.assessment-public-mode .assessment-public-only-card {
                 <h3 class="assessment-email-panel-title">Storico</h3>
                 <p class="assessment-email-panel-copy">Archivio ricercabile dei giri chiusi: livelli applicati, auto-applicati e soci messi in pausa.</p>
               </div>
-              <div class="assessment-email-actions">
-                <button class="btn-primary small-btn" onclick="setActionAnchor(this); syncAssessmentExternalRequestsFromSupabase()">Aggiorna link esterno</button>
-              </div>
             </div>
             <div id="assessmentEmailHistoryContent" class="assessment-email-content"></div>
           </section>
@@ -5552,7 +5549,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.480';
+    const APP_VERSION = '5.481';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
