@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.478';
+    const APP_VERSION = '5.479';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -19201,12 +19201,24 @@ Grazie!`
       renderAssessmentEmailPanels();
       assessmentExternalScheduleHistoryRefresh({ force:true });
     }
-    function assessmentExternalRequestsForMorning() {
+    function assessmentExternalRequestIsClosed(row = {}) {
+      const normalized = assessmentExternalNormalizeRequest(row);
+      const status = cleanCell(normalized.status || '');
+      if (status === 'validated' || status === 'rejected') return true;
+      const member = assessmentExternalMemberForRequest(normalized);
+      if (!member) return false;
+      try {
+        return assessmentEmailMemberApplied(member, assessmentRecordFor(member));
+      } catch (err) {
+        return false;
+      }
+    }
+    function assessmentExternalOperationalRequests() {
       assessmentExternalCompactLocalCache();
-      return assessmentExternalDedupedRequests().filter(row => {
-        const status = cleanCell(row.status || '');
-        return status !== 'validated' && status !== 'rejected';
-      });
+      return assessmentExternalDedupedRequests().filter(row => !assessmentExternalRequestIsClosed(row));
+    }
+    function assessmentExternalRequestsForMorning() {
+      return assessmentExternalOperationalRequests();
     }
     function assessmentExternalRequestMemberForProcess(row = {}) {
       const member = assessmentExternalMemberForRequest(row);
@@ -19235,12 +19247,13 @@ Grazie!`
       const key = escapeJs(assessmentExternalRequestKey(normalized));
       const member = assessmentExternalMemberForRequest(normalized);
       const status = cleanCell(normalized.status || '');
+      const closed = assessmentExternalRequestIsClosed(normalized);
       const actions = [];
-      if (status === 'received') {
+      if (!closed && status === 'received') {
         if (!member) actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentExternalCreateMember('${key}')">Crea scheda socio</button>`);
         actions.push(`<button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentExternalLinkExistingMember('${key}')">Aggancia a socio esistente</button>`);
       }
-      if (member || status === 'member_created' || status === 'linked') {
+      if (!closed && (member || status === 'member_created' || status === 'linked')) {
         actions.push(`<button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentExternalOpenLevelCheck('${key}')">Valida livello</button>`);
       }
       if (member) {
@@ -26220,11 +26233,10 @@ Per confermare scrivi ELIMINA.`);
       }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Post-invio non contiene email fallite, email mancanti, mancate consegne o soci senza risposta. Quei casi restano in Problemi finche non vengono risolti o messi in pausa.</div>`;
     }
     function assessmentExternalRequestsHistoryHtml() {
-      assessmentExternalCompactLocalCache();
-      const rows = assessmentExternalDedupedRequests().slice(0, 50);
+      const rows = assessmentExternalOperationalRequests().slice(0, 50);
       const header = `<div class="assessment-email-section-block">`;
       if (!rows.length) {
-        return `${header}${assessmentEmailEmpty('Nessuna richiesta link esterno caricata. Usa Aggiorna link esterno per leggere Supabase TEST.')}</div>`;
+        return '';
       }
       const body = rows.map(row => {
         const status = assessmentExternalStatusLabel(row);
