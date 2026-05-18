@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 22:12
+Ultimo aggiornamento: 2026-05-18 22:29
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,7 +15,8 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
-- Autovalutazione / Ricerche TEST v5.484: rimosso il `Pulisci` fisso accanto al bottone `Cerca` nei due pannelli modificati in v5.483. Il comando `Pulisci` resta visibile solo nella riga `Ricerca attiva: ...`, quindi compare solo dopo una ricerca applicata. Commit app `e658126`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
+- Promozione PROD v5.484 - 2026-05-18: pubblicata in PROD la patch TEST validata v5.484. La promozione e' solo app UI + documentazione: nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` preservati attivi; TEST resta senza cron.
+- Autovalutazione / Ricerche TEST/PROD v5.484: rimosso il `Pulisci` fisso accanto al bottone `Cerca` nei due pannelli modificati in v5.483. Il comando `Pulisci` resta visibile solo nella riga `Ricerca attiva: ...`, quindi compare solo dopo una ricerca applicata. Commit app `e658126`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Ricerche TEST v5.483: nei pannelli con pulsante esplicito `Cerca` (`Cruscotto mattutino > Cerca nel processo` e `Lotto email manuale > Cerca socio da inviare`) la ricerca applicata svuota il campo e resta visibile come `Ricerca attiva: ...`, con `Pulisci` per rimuoverla. Ricerche live e campi dati non modificati. Commit app `2c7bff9`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Promozione PROD v5.482 - 2026-05-18: pubblicata in PROD la patch TEST validata v5.482. La promozione e' solo app UI + documentazione: nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` preservati attivi; TEST resta senza cron.
 - Autovalutazione / Link esterno TEST/PROD v5.482: aggiunta guardia ambiente sul submit pubblico delle richieste da `Scheda pubblica > Link esterno`. Il salvataggio verso `submit_assessment_external_request_public` procede solo se il project ref Supabase caricato dalla config coincide con l'ambiente runtime: TEST `cudiqnrrlbyqryrtaprd`, PROD `qqbfphyslczzkxoncgex`; in caso contrario l'invio viene bloccato prima di ogni scrittura. La diagnostica `Verifica TEST/PROD` usa lo stesso confronto esatto. Commit app `ed9de1c`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
