@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 23:59
+Ultimo aggiornamento: 2026-05-19 00:18
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.484 | `main` | `e658126` |
+| PROD | v5.488 | `main` | `9701f86` |
 | TEST | v5.488 | `test-preview` | `9701f86` |
 | TEST sviluppo | v5.488 | `test/accessi-staff-guidati` | `9701f86` |
+
+Nota promozione PROD v5.488 - 2026-05-19 00:18: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.488 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html`, `supabase_pmo_member_count_audit_dry_run.sql` e documentazione collegata. Non e' stato applicato SQL a Supabase PROD, non e' stata creata la RPC del dry-run in PROD, non sono state eseguite correzioni dati o cleanup soci, nessun deploy Edge Function, nessuna modifica scheduler, segreti, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`. Rollback annotato verso PROD v5.484, commit app `e658126`, origin/main `1723a4a`.
 
 Nota TEST v5.488: corretta la diagnostica conteggi soci per il duplicato `PMO-000948` / `aprea.maurizio@gmail.com`. La decisione funzionale e' esplicita: tenere `Maurizio Aprea` come scheda ufficiale e mandare in soft-delete `Test Maurizio Autovalutazione`. Se `Maurizio Aprea` risulta gia marcato deleted, il dry-run lo classifica come `Ripristino approvato`; il pulsante TEST diventa `Applica correzioni approvate in TEST` e applica solo correzioni controllate (`deleted=false` per il ripristino, `deleted=true` per il duplicato), senza hard-delete. Aggiornato anche il dry-run SQL read-only `supabase_pmo_member_count_audit_dry_run.sql`. Commit app `9701f86`. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
