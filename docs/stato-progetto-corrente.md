@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 23:48
+Ultimo aggiornamento: 2026-05-18 23:59
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.484 | `main` | `e658126` |
-| TEST | v5.487 | `test-preview` | `96c65fc` |
-| TEST sviluppo | v5.487 | `test/accessi-staff-guidati` | `96c65fc` |
+| TEST | v5.488 | `test-preview` | `9701f86` |
+| TEST sviluppo | v5.488 | `test/accessi-staff-guidati` | `9701f86` |
+
+Nota TEST v5.488: corretta la diagnostica conteggi soci per il duplicato `PMO-000948` / `aprea.maurizio@gmail.com`. La decisione funzionale e' esplicita: tenere `Maurizio Aprea` come scheda ufficiale e mandare in soft-delete `Test Maurizio Autovalutazione`. Se `Maurizio Aprea` risulta gia marcato deleted, il dry-run lo classifica come `Ripristino approvato`; il pulsante TEST diventa `Applica correzioni approvate in TEST` e applica solo correzioni controllate (`deleted=false` per il ripristino, `deleted=true` per il duplicato), senza hard-delete. Aggiornato anche il dry-run SQL read-only `supabase_pmo_member_count_audit_dry_run.sql`. Commit app `9701f86`. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.487: rifinita la diagnostica conteggi soci. Il comando `Applica soft-delete approvati in TEST` resta sempre visibile dopo il dry-run, ma disabilitato quando non ci sono record approvati; la tabella dettagli viene compattata accorpando contatti, chiavi e motivazione per ridurre lo scroll orizzontale. Nessuna modifica alla logica di classificazione e nessuna applicazione SQL. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 

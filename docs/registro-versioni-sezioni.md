@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 23:48
+Ultimo aggiornamento: 2026-05-18 23:59
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Dati Matchpoint / Conteggi soci TEST v5.488: corretta la classificazione del duplicato `PMO-000948` / `aprea.maurizio@gmail.com`. `Test Maurizio Autovalutazione` viene marcato `Soft-delete approvato`, mentre `Maurizio Aprea` viene tenuto e, se era gia in soft-delete, passa a `Ripristino approvato`. Il comando diventa `Applica correzioni approvate in TEST` e applica solo soft-delete/ripristino controllati, senza hard-delete. Aggiornato anche il dry-run SQL read-only. Commit app `9701f86`. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 - Dati Matchpoint / Conteggi soci TEST v5.487: rifinita la diagnostica. Il bottone `Applica soft-delete approvati in TEST` resta sempre visibile dopo il dry-run, disabilitato quando non ci sono record approvati. La tabella viene compattata accorpando contatti, chiavi e motivazione per ridurre lo scroll orizzontale. Nessuna modifica alla classificazione v5.486, nessuna applicazione SQL e nessuna modifica PROD.
 - Dati Matchpoint / Conteggi soci TEST v5.486: la diagnostica recepisce la decisione funzionale sui duplicati noti. `Test di autovalutazione` viene marcato `Soft-delete approvato` solo se collegato tecnicamente a `Maurizio Aprea` tramite PMO/email/telefono, preservando sempre il socio test ufficiale `PMO-000948` / `aprea.maurizio@gmail.com`. I record tecnici `Tennis Up/Tennis App` non Matchpoint vengono marcati `Soft-delete approvato`, mentre la sorgente Matchpoint resta mantenuta. Aggiunto bottone TEST `Applica soft-delete approvati in TEST`, con conferma manuale e solo soft-delete cloud. Commit app `c8bc20b`. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 - Dati Matchpoint / Conteggi soci TEST v5.485: aggiunta diagnostica read-only in `Amministrazione > Dati Matchpoint` per confrontare cloud soci, Anagrafica, Dashboard e fotografia clienti Matchpoint. Il pannello classifica record tecnici esclusi, soci Matchpoint, soci non Matchpoint senza gemello e candidati a verifica manuale per eventuale soft-delete. Preparato il file SQL read-only `supabase_pmo_member_count_audit_dry_run.sql`, con grant solo `authenticated`, nessun grant `anon`, nessun cleanup e nessun hard-delete. Commit app `dcd19ad`. Non e' pronto per PROD finche' Maurizio non approva esplicitamente la lista record candidata.
