@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.484 | `main` | `e658126` |
-| TEST | v5.487 | `test-preview` | `da confermare` |
-| TEST sviluppo | v5.487 | `test/accessi-staff-guidati` | `da confermare` |
+| TEST | v5.487 | `test-preview` | `96c65fc` |
+| TEST sviluppo | v5.487 | `test/accessi-staff-guidati` | `96c65fc` |
 
 Nota TEST v5.487: rifinita la diagnostica conteggi soci. Il comando `Applica soft-delete approvati in TEST` resta sempre visibile dopo il dry-run, ma disabilitato quando non ci sono record approvati; la tabella dettagli viene compattata accorpando contatti, chiavi e motivazione per ridurre lo scroll orizzontale. Nessuna modifica alla logica di classificazione e nessuna applicazione SQL. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
