@@ -5549,7 +5549,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.483';
+    const APP_VERSION = '5.484';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25928,7 +25928,6 @@ Per confermare scrivi ELIMINA.`);
         <div class="assessment-process-search-row">
           <input id="assessmentProcessSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
           <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
-          <button class="assessment-email-mini" type="button" onclick="clearAssessmentProcessSearch()">Pulisci</button>
         </div>
       </div>`;
       const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}">
@@ -26153,7 +26152,6 @@ Per confermare scrivi ELIMINA.`);
       const filterHtml = `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px;">
         <div style="flex:1 1 260px;min-width:0;"><label for="assessmentEmailQueueSearch">Cerca socio da inviare</label><input id="assessmentEmailQueueSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email o telefono" oninput="window.assessmentEmailQueueSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentEmailQueueSearch(this.value);}"></div>
         <button class="assessment-email-mini success" type="button" onclick="setAssessmentEmailQueueSearch(document.getElementById('assessmentEmailQueueSearch')?.value || '')">Cerca</button>
-        <button class="assessment-email-mini" type="button" onclick="clearAssessmentEmailQueueSearch()">Pulisci</button>
       </div>
       ${activeSearchHtml}
       <div class="assessment-email-footer-note" style="margin-top:-6px;margin-bottom:10px;">Mostrati ${rows.length} soci su ${allRows.length}. La lista non si ferma piu' ai primi nominativi.</div>`;
