@@ -5549,7 +5549,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.481';
+    const APP_VERSION = '5.482';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5565,6 +5565,7 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     const PMO_PUBLIC_BASE_URL = pmoDetectPublicBaseUrl();
     const PMO_PROD_SUPABASE_PROJECT_REF = 'qqbfphyslczzkxoncgex';
+    const PMO_TEST_SUPABASE_PROJECT_REF = 'cudiqnrrlbyqryrtaprd';
     function pmoDetectRuntimeEnv() {
       try {
         const params = new URLSearchParams(window.location.search || '');
@@ -21932,6 +21933,22 @@ Per confermare scrivi ELIMINA.`);
 	        return '';
 	      }
 	    }
+	    function pmoExpectedSupabaseProjectRef() {
+	      return PMO_IS_TEST_ENV ? PMO_TEST_SUPABASE_PROJECT_REF : PMO_PROD_SUPABASE_PROJECT_REF;
+	    }
+	    function pmoAssertSupabaseMatchesRuntime(supabaseUrl, actionLabel='questa operazione') {
+	      const projectRef = pmoSupabaseProjectRefFromUrl(supabaseUrl || '');
+	      const expectedRef = pmoExpectedSupabaseProjectRef();
+	      if (projectRef && projectRef === expectedRef) return { ok:true, projectRef, expectedRef };
+	      console.warn('Blocco ambiente Supabase non coerente', {
+	        action: actionLabel,
+	        runtimeEnv: PMO_RUNTIME_ENV,
+	        expectedRef,
+	        projectRef,
+	        supabaseUrl
+	      });
+	      throw new Error('Invio bloccato: configurazione ambiente non coerente. Contattare la segreteria.');
+	    }
 	    function pmoExpectedAuthSiteUrl() {
 	      return PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}?env=test` : PMO_PUBLIC_BASE_URL;
 	    }
@@ -22425,12 +22442,11 @@ Per confermare scrivi ELIMINA.`);
 	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
 	        const staffAccessToken = await pmoGetSupabaseStaffAccessToken().catch(() => '');
 	        const projectRef = pmoSupabaseProjectRefFromUrl(supabaseUrl);
-	        const envOk = PMO_IS_TEST_ENV ? !!projectRef && projectRef !== PMO_PROD_SUPABASE_PROJECT_REF : projectRef === PMO_PROD_SUPABASE_PROJECT_REF;
+	        const expectedProjectRef = pmoExpectedSupabaseProjectRef();
+	        const envOk = projectRef === expectedProjectRef;
 	        rows.push({
 	          title:'Separazione TEST/PROD',
-	          detail: PMO_IS_TEST_ENV
-	            ? `TEST punta al progetto ${projectRef || 'non riconosciuto'}${projectRef === PMO_PROD_SUPABASE_PROJECT_REF ? ', che e il ref PROD' : ''}.`
-	            : `PROD punta al progetto ${projectRef || 'non riconosciuto'}.`,
+	          detail: `${PMO_IS_TEST_ENV ? 'TEST' : 'PROD'} punta al progetto ${projectRef || 'non riconosciuto'}; atteso ${expectedProjectRef}.`,
 	          ok: envOk
 	        });
 	        rows.push({ title:'Config Supabase', detail:`${configUrl} -> ${supabaseUrl}`, ok:true });
@@ -28443,6 +28459,7 @@ Per confermare scrivi ELIMINA.`);
       const error = assessmentPublicExternalValidationError(payload);
       if (error) throw new Error(error);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      pmoAssertSupabaseMatchesRuntime(supabaseUrl, 'salvare una richiesta link esterno');
       const response = await fetch(`${supabaseUrl}/rest/v1/rpc/submit_assessment_external_request_public`, {
         method: 'POST',
         headers: {
