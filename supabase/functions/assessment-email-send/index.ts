@@ -17,13 +17,15 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-approve', 'routine-send', 'routine-check', 'config-check']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-approve', 'routine-send', 'routine-check', 'routine-followup', 'config-check']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
 const ASSESSMENT_SUPPORT_WHATSAPP_URL = ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL;
 const ASSESSMENT_ROUTINE_DAILY_LIMIT = 10;
 const ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS = 10000;
+const ASSESSMENT_FOLLOWUP_INTERVAL_HOURS = 48;
+const ASSESSMENT_FOLLOWUP_DAILY_LIMIT = 20;
 const SUPABASE_PAGE_SIZE = 1000;
 
 function json(body: unknown, status = 200) {
@@ -854,6 +856,23 @@ async function loadAssessmentCommunicationTemplates(admin: any) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
+async function loadAppSettingValue(admin: any, key: string) {
+  const { data, error } = await admin
+    .from('pmo_cloud_records')
+    .select('payload')
+    .eq('record_type', 'app_setting')
+    .eq('local_key', key)
+    .eq('deleted', false)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.payload?.value;
+}
+
+async function loadAssessmentPausedTokens(admin: any) {
+  const value = await loadAppSettingValue(admin, 'assessmentPausedTokens');
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function renderRoutinePrimaryEmail(member: JsonMap, link: string, templates: JsonMap = {}) {
   const data: JsonMap = {
     nome: firstName(member),
@@ -886,6 +905,51 @@ Per informazioni o chiarimenti puoi contattare la segreteria Padel Village anche
 Grazie,
 Padel Village`;
   const template = templates['primary-email'] && typeof templates['primary-email'] === 'object' ? templates['primary-email'] : {};
+  return {
+    subject: replaceTokens(clean(template.subject || subject)),
+    body: replaceTokens(clean(template.body || body)),
+  };
+}
+
+function renderRoutineFollowupEmail(member: JsonMap, link: string, mode: string, templates: JsonMap = {}) {
+  const data: JsonMap = {
+    nome: firstName(member),
+    nome_completo: playerName(member),
+    link_autovalutazione: link,
+    telefono_segreteria: ASSESSMENT_SUPPORT_PHONE_DISPLAY,
+    whatsapp_segreteria: ASSESSMENT_SUPPORT_WHATSAPP_URL,
+  };
+  const replaceTokens = (text: string) => Object.entries(data).reduce((out, [key, value]) => out.replaceAll(`{${key}}`, clean(value)), text);
+  const isThird = mode === 'third-email';
+  const subject = isThird
+    ? 'Padel Village - Ultimo promemoria autovalutazione livello di gioco'
+    : 'Padel Village - Promemoria autovalutazione livello di gioco';
+  const body = isThird
+    ? `Ciao {nome},
+
+ti ricordiamo per l'ultima volta di completare la scheda di autovalutazione del livello di gioco Padel Village:
+{link_autovalutazione}
+
+Se hai dubbi o preferisci essere aiutato, puoi contattare la segreteria Padel Village:
+{telefono_segreteria}
+{whatsapp_segreteria}
+
+Grazie,
+Padel Village`
+    : `Ciao {nome},
+
+ti ricordiamo di completare la scheda di autovalutazione del livello di gioco Padel Village:
+{link_autovalutazione}
+
+Richiede meno di 1 minuto.
+
+Se hai dubbi o preferisci essere aiutato, puoi contattare la segreteria Padel Village:
+{telefono_segreteria}
+{whatsapp_segreteria}
+
+Grazie,
+Padel Village`;
+  const template = templates[mode] && typeof templates[mode] === 'object' ? templates[mode] : {};
   return {
     subject: replaceTokens(clean(template.subject || subject)),
     body: replaceTokens(clean(template.body || body)),
@@ -1094,6 +1158,256 @@ function routineBatchMemberPayload(member: JsonMap, token = '') {
     phone: clean(member.phone || ''),
     level: clean(member.level || ''),
     token: clean(token || ''),
+  };
+}
+
+function dateMs(value: unknown) {
+  const text = clean(value);
+  if (!text) return 0;
+  const time = Date.parse(text);
+  return Number.isFinite(time) ? time : 0;
+}
+
+function followupLogTimeMs(payload: JsonMap) {
+  return dateMs(payload.sentAt || payload.replyDate || payload.bounceDate || payload.scannedAt || payload.createdAt);
+}
+
+function followupLogMatches(payload: JsonMap, aliases: Set<string>, token = '') {
+  const memberId = clean(payload.memberId || payload.member_local_id).toLocaleLowerCase('it-IT');
+  const payloadToken = clean(payload.token).toLocaleLowerCase('it-IT');
+  const wantedToken = clean(token).toLocaleLowerCase('it-IT');
+  return (memberId && aliases.has(memberId)) || (!!wantedToken && payloadToken === wantedToken);
+}
+
+function followupTokenRowsForMember(tokens: JsonMap[], member: JsonMap) {
+  const aliases = new Set(routineMemberAliases(member));
+  return tokens
+    .filter((row) => aliases.has(clean(row.member_local_id).toLocaleLowerCase('it-IT')))
+    .sort((a, b) => clean(b.created_at || b.registered_at).localeCompare(clean(a.created_at || a.registered_at)));
+}
+
+function followupPauseKeys(member: JsonMap, token = '') {
+  return [
+    token,
+    member.id,
+    member.memberId,
+    member.__localKey,
+    member.localKey,
+  ].map((value) => clean(value)).filter(Boolean);
+}
+
+function isFollowupPaused(member: JsonMap, token: string, pausedTokens: JsonMap) {
+  if (truthyFlag(member.selfAssessmentPaused) || truthyFlag(member.assessmentPaused)) return true;
+  return followupPauseKeys(member, token).some((key) => !!pausedTokens[key]);
+}
+
+function hasFollowupStopLog(logs: JsonMap[], type: string, aliases: Set<string>, token: string, afterMs: number) {
+  return logs.some((payload) => {
+    if (payload?.type !== type) return false;
+    if (!followupLogMatches(payload, aliases, token)) return false;
+    const eventMs = followupLogTimeMs(payload);
+    return !eventMs || !afterMs || eventMs >= afterMs;
+  });
+}
+
+function followupTemplateForSends(sendLogs: JsonMap[]): JsonMap {
+  const primaryLogs = sendLogs.filter((payload) => clean(payload.mode) === 'primary-email');
+  const recallLogs = sendLogs.filter((payload) => clean(payload.mode) === 'recall-email');
+  const thirdLogs = sendLogs.filter((payload) => clean(payload.mode) === 'third-email');
+  if (!primaryLogs.length) return { reason: 'NO_PRIMARY_MANUAL_SEND' };
+  if (thirdLogs.length || sendLogs.length >= 3) return { reason: 'MAX_FOLLOWUPS_REACHED' };
+  if (!recallLogs.length) return { mode: 'recall-email', lastLog: primaryLogs[primaryLogs.length - 1], sentCount: sendLogs.length };
+  return { mode: 'third-email', lastLog: recallLogs[recallLogs.length - 1], sentCount: sendLogs.length };
+}
+
+async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supabaseUrl: string, body: JsonMap) {
+  const startedAt = new Date().toISOString();
+  const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
+  const targets = targetMemberIdSet(body);
+  const allowTestBulk = truthyFlag(body.allowTestBulkFollowup);
+  if (runtimeEnv === 'test' && !targets.size && !allowTestBulk) {
+    await logAssessmentRoutineRun(admin, 'assessment_email_followup_send', 'blocked', startedAt, {
+      runtimeEnv,
+      reason: 'TEST_BULK_FOLLOWUP_BLOCKED',
+      message: 'In TEST i follow-up automatici non partono senza target esplicito.',
+    }, [], 'TEST_BULK_FOLLOWUP_BLOCKED');
+    return {
+      action: 'routine-followup',
+      runtimeEnv,
+      blocked: true,
+      reason: 'TEST_BULK_FOLLOWUP_BLOCKED',
+      sent: [],
+      failed: [],
+    };
+  }
+
+  if (body.checkBeforeSend !== false) {
+    await runAssessmentRoutineCheck(admin, actor, { ...body, source: clean(body.source || 'pmo_assessment_followup_scheduler') });
+  }
+
+  const now = new Date();
+  const intervalHours = Math.max(1, parseInt(clean(Deno.env.get('ASSESSMENT_FOLLOWUP_INTERVAL_HOURS') || body.intervalHours || ASSESSMENT_FOLLOWUP_INTERVAL_HOURS), 10) || ASSESSMENT_FOLLOWUP_INTERVAL_HOURS);
+  const intervalMs = intervalHours * 60 * 60 * 1000;
+  const limit = Math.max(1, Math.min(ASSESSMENT_FOLLOWUP_DAILY_LIMIT, parseInt(clean(body.limit || ASSESSMENT_FOLLOWUP_DAILY_LIMIT), 10) || ASSESSMENT_FOLLOWUP_DAILY_LIMIT));
+  const spacingMs = Math.max(0, Math.min(30000, parseInt(clean(Deno.env.get('ASSESSMENT_ROUTINE_SEND_SPACING_MS') || body.spacingMs || ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS), 10) || 0));
+  const localDate = clean(body.scheduledLocalDate || localDateIso(now));
+  const members = await loadCloudMembers(admin);
+  const tokens = await loadAssessmentTokens(admin);
+  const completedTokens = await loadCompletedAssessmentTokens(admin);
+  const logs = await loadAssessmentEmailRecords(admin);
+  const templates = await loadAssessmentCommunicationTemplates(admin);
+  const pausedTokens = await loadAssessmentPausedTokens(admin);
+  const skipped: JsonMap[] = [];
+  const candidates: JsonMap[] = [];
+
+  members
+    .filter((member) => memberMatchesTarget(member, targets))
+    .forEach((member) => {
+      const memberId = routineMemberId(member);
+      const aliases = new Set(routineMemberAliases(member));
+      if (!memberId) return;
+      if (!isActiveMember(member)) { skipped.push({ memberId, reason: 'INACTIVE' }); return; }
+      if (!isValidEmail(member.email)) { skipped.push({ memberId, reason: 'INVALID_EMAIL' }); return; }
+      if (!isLevelZeroPointFive(member)) { skipped.push({ memberId, reason: 'LEVEL_NOT_0_5' }); return; }
+
+      const sendLogs = logs
+        .filter((payload) => payload?.type === 'assessment_email_send')
+        .filter((payload) => ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
+        .filter((payload) => followupLogMatches(payload, aliases, ''))
+        .sort((a, b) => followupLogTimeMs(a) - followupLogTimeMs(b));
+      const template = followupTemplateForSends(sendLogs);
+      if (!template.mode || !template.lastLog) { skipped.push({ memberId, reason: template.reason || 'NOT_DUE' }); return; }
+
+      const tokenRows = followupTokenRowsForMember(tokens, member);
+      const token = clean(template.lastLog.token || tokenRows.find((row) => clean(row.status) !== 'completed')?.token || tokenRows[0]?.token || '');
+      if (!token) { skipped.push({ memberId, reason: 'TOKEN_MISSING' }); return; }
+      if (completedTokens.has(token) || tokenRows.some((row) => clean(row.token) === token && clean(row.status) === 'completed')) {
+        skipped.push({ memberId, reason: 'ASSESSMENT_COMPLETED' });
+        return;
+      }
+      if (isFollowupPaused(member, token, pausedTokens)) { skipped.push({ memberId, reason: 'PAUSED' }); return; }
+
+      const firstSentMs = followupLogTimeMs(sendLogs.find((payload) => clean(payload.mode) === 'primary-email') || sendLogs[0]);
+      if (hasFollowupStopLog(logs, 'assessment_email_reply', aliases, token, firstSentMs)) {
+        skipped.push({ memberId, reason: 'EMAIL_REPLY_RECEIVED' });
+        return;
+      }
+      if (hasFollowupStopLog(logs, 'assessment_email_bounce', aliases, token, firstSentMs)) {
+        skipped.push({ memberId, reason: 'EMAIL_BOUNCED' });
+        return;
+      }
+
+      const lastSentMs = followupLogTimeMs(template.lastLog);
+      const dueAtMs = lastSentMs ? lastSentMs + intervalMs : 0;
+      if (!lastSentMs || dueAtMs > now.getTime()) {
+        skipped.push({
+          memberId,
+          reason: 'WAITING_48H_WINDOW',
+          nextMode: template.mode,
+          dueAt: dueAtMs ? new Date(dueAtMs).toISOString() : '',
+        });
+        return;
+      }
+
+      candidates.push({
+        member,
+        memberId,
+        token,
+        mode: template.mode,
+        sentCount: template.sentCount,
+        lastSentAt: new Date(lastSentMs).toISOString(),
+        dueAt: new Date(dueAtMs).toISOString(),
+      });
+    });
+
+  candidates.sort((a, b) => clean(a.dueAt).localeCompare(clean(b.dueAt)) || playerName(a.member).localeCompare(playerName(b.member), 'it'));
+  const toSend = candidates.slice(0, limit);
+  const sent: JsonMap[] = [];
+  const failed: JsonMap[] = [];
+
+  for (let i = 0; i < toSend.length; i += 1) {
+    const item = toSend[i];
+    const member = item.member;
+    const memberId = item.memberId;
+    try {
+      const link = assessmentPublicLink(supabaseUrl, item.token, member);
+      const rendered = renderRoutineFollowupEmail(member, link, item.mode, templates);
+      const result = await sendAssessmentEmailCore(admin, actor, {
+        mode: item.mode,
+        memberId,
+        member: {
+          id: memberId,
+          memberId: clean(member.memberId || ''),
+          name: playerName(member),
+          firstName: clean(member.firstName || ''),
+          surname: clean(member.surname || ''),
+          email: clean(member.email || ''),
+          phone: clean(member.phone || ''),
+          level: clean(member.level || ''),
+        },
+        level: clean(member.level || ''),
+        originalRecipient: clean(member.email || ''),
+        token: item.token,
+        link,
+        subject: rendered.subject,
+        body: rendered.body,
+        source: clean(body.source || 'pmo_assessment_followup_scheduler'),
+        appVersion: clean(body.appVersion || ''),
+        runtimeEnv,
+      });
+      await upsertRoutineToken(admin, member, item.token, 'sent', result.sentAt);
+      sent.push({
+        memberId,
+        memberName: playerName(member),
+        mode: item.mode,
+        token: item.token,
+        sentAt: result.sentAt,
+        actualRecipient: result.actualRecipient,
+      });
+      if (spacingMs && i < toSend.length - 1) await routineDelay(spacingMs);
+    } catch (err) {
+      failed.push({ memberId, memberName: playerName(member), mode: item.mode, error: errorText(err) });
+    }
+  }
+
+  await logAudit(admin, actor, 'assessment_email_followup_send', {
+    source: clean(body.source || 'pmo_assessment_followup_scheduler'),
+    localDate,
+    runtimeEnv,
+    intervalHours,
+    limit,
+    candidates: candidates.length,
+    selected: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+    skipped: skipped.length,
+    targetMemberIds: [...targets],
+  });
+  await logAssessmentRoutineRun(admin, 'assessment_email_followup_send', failed.length ? (sent.length ? 'blocked' : 'error') : (sent.length ? 'success' : 'noop'), startedAt, {
+    localDate,
+    runtimeEnv,
+    intervalHours,
+    limit,
+    candidates: candidates.length,
+    selected: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+    skipped: skipped.length,
+    targetMemberIds: [...targets],
+    firstSendAutomatic: false,
+  }, sent, failed.length ? JSON.stringify(failed.slice(0, 10)) : '');
+
+  return {
+    action: 'routine-followup',
+    runtimeEnv,
+    localDate,
+    intervalHours,
+    limit,
+    candidates: candidates.length,
+    selected: toSend.length,
+    sent,
+    failed,
+    skipped: skipped.slice(0, 50),
   };
 }
 
@@ -1519,6 +1833,11 @@ Deno.serve(async (req) => {
 
     if (action === 'routine-check') {
       const result = await runAssessmentRoutineCheck(admin, actor, body);
+      return okResponse(result);
+    }
+
+    if (action === 'routine-followup') {
+      const result = await runAssessmentRoutineFollowup(admin, actor, supabaseUrl, body);
       return okResponse(result);
     }
 

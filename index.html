@@ -5550,7 +5550,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.477';
+    const APP_VERSION = '5.478';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -21593,6 +21593,21 @@ Per confermare scrivi ELIMINA.`);
 	      if (!key || !payload) return;
 	      records.push({ record_type: recordType, local_key: key, payload });
 	    }
+	    function pmoBuildAppSettingCloudRecord(key, value) {
+	      const settingKey = cleanCell(key);
+	      if (!settingKey || value === undefined) return null;
+	      let safeValue = value;
+	      if (settingKey === 'assessmentSettings' && value && typeof value === 'object') {
+	        const { adminPin, ...rest } = value;
+	        safeValue = rest;
+	      }
+	      return { record_type:'app_setting', local_key:settingKey, payload:{ key:settingKey, value:safeValue } };
+	    }
+	    function pmoQueueAppSettingCloudSync(key, value, actionLabel='aggiornare impostazione cloud') {
+	      const record = pmoBuildAppSettingCloudRecord(key, value);
+	      if (!record) return;
+	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
+	    }
 	    function pmoMemberCloudLocalKey(member, fallbackKey='') {
 	      const key = cleanCell(member?.id || member?.memberId || fallbackKey);
 	      if (key) return key;
@@ -21670,19 +21685,14 @@ Per confermare scrivi ELIMINA.`);
 	        'potentialSlotSchedule',
 	        'dailyAssistantState',
 	        'assessmentSettings',
+	        'assessmentPausedTokens',
 	        'assessmentCommunicationTemplates',
 	        'whatsappOpenSettings',
 	        'postMatchFeedbackSettings'
 	      ].forEach(key => {
-	        const value = window[key] !== undefined ? window[key] : ({ potentialSlotSchedule, dailyAssistantState, assessmentSettings, assessmentCommunicationTemplates, whatsappOpenSettings, postMatchFeedbackSettings })[key];
-	        if (value !== undefined) {
-	          let safeValue = value;
-	          if (key === 'assessmentSettings' && value && typeof value === 'object') {
-	            const { adminPin, ...rest } = value;
-	            safeValue = rest;
-	          }
-	          pmoAddCloudRecord(records, 'app_setting', key, { key, value: safeValue });
-	        }
+	        const value = window[key] !== undefined ? window[key] : ({ potentialSlotSchedule, dailyAssistantState, assessmentSettings, assessmentPausedTokens, assessmentCommunicationTemplates, whatsappOpenSettings, postMatchFeedbackSettings })[key];
+	        const record = pmoBuildAppSettingCloudRecord(key, value);
+	        if (record) records.push(record);
 	      });
 	      return records;
 	    }
@@ -23742,6 +23752,7 @@ Per confermare scrivi ELIMINA.`);
         pausedAt: new Date().toISOString()
       };
       save('assessmentPausedTokens', assessmentPausedTokens);
+      pmoQueueAppSettingCloudSync('assessmentPausedTokens', assessmentPausedTokens, 'sincronizzare pausa Autovalutazione');
       renderAssessmentPostPanel();
       showAlert(`⏸️ ${playerFullName(member)} messo in pausa.`, 'info');
     }
@@ -23752,6 +23763,7 @@ Per confermare scrivi ELIMINA.`);
       const key = assessmentPauseKeyFor(member, rec);
       if (key && assessmentPausedTokens) delete assessmentPausedTokens[key];
       save('assessmentPausedTokens', assessmentPausedTokens || {});
+      pmoQueueAppSettingCloudSync('assessmentPausedTokens', assessmentPausedTokens || {}, 'sincronizzare riattivazione Autovalutazione');
       renderAssessmentPostPanel();
       showAlert(`▶️ ${playerFullName(member)} riattivato.`, 'success');
     }
@@ -26673,6 +26685,7 @@ Per confermare scrivi ELIMINA.`);
         pausedAt: new Date().toISOString()
       };
       save('assessmentPausedTokens', assessmentPausedTokens);
+      pmoQueueAppSettingCloudSync('assessmentPausedTokens', assessmentPausedTokens, 'sincronizzare pausa Autovalutazione');
       displayAssessment();
       showAlert(`${playerFullName(member)} messo in pausa senza sospendere il socio.`, 'info');
     }
