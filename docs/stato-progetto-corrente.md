@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 17:02
+Ultimo aggiornamento: 2026-05-18 17:35
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,13 +28,15 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.479 | `main` | `ea72b7d` |
+| PROD | v5.481 | `main` | `bb7e6fd` |
 | TEST | v5.481 | `test-preview` | `bb7e6fd` |
 | TEST sviluppo | v5.481 | `test/accessi-staff-guidati` | `bb7e6fd` |
 
-Nota TEST v5.481: rimosso dalla testata dello `Storico` Autovalutazione il bottone visibile `Aggiorna link esterno`, ormai ridondante rispetto al refresh automatico all'ingresso nella sezione e ai refresh post-azione. La funzione tecnica di sincronizzazione delle richieste link esterno resta disponibile internamente e non viene rimossa. Commit app `bb7e6fd`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+Nota promozione PROD v5.481 - 2026-05-18 17:35: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD il pacchetto TEST validato v5.481 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html` e documentazione collegata. Nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron.
 
-Nota TEST v5.480: nello `Storico` Autovalutazione, lo stato `Matchpoint da aggiornare` diventa una scorciatoia cliccabile verso la sezione Matchpoint esistente. Il click apre il pannello Matchpoint, evidenzia il socio interessato e lascia la chiusura operativa al comando gia esistente `Segna inserito su Matchpoint`. Non viene chiusa nessuna pratica direttamente dallo Storico. Commit app `1e7cefc`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+Nota TEST/PROD v5.481: rimosso dalla testata dello `Storico` Autovalutazione il bottone visibile `Aggiorna link esterno`, ormai ridondante rispetto al refresh automatico all'ingresso nella sezione e ai refresh post-azione. La funzione tecnica di sincronizzazione delle richieste link esterno resta disponibile internamente e non viene rimossa. Commit app `bb7e6fd`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+
+Nota TEST/PROD v5.480: nello `Storico` Autovalutazione, lo stato `Matchpoint da aggiornare` diventa una scorciatoia cliccabile verso la sezione Matchpoint esistente. Il click apre il pannello Matchpoint, evidenzia il socio interessato e lascia la chiusura operativa al comando gia esistente `Segna inserito su Matchpoint`. Non viene chiusa nessuna pratica direttamente dallo Storico. Commit app `1e7cefc`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.479 - 2026-05-18 16:21: dopo nuovo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione app da TEST a PROD. La promozione include il pacchetto scheduler follow-up email Autovalutazione v5.478 e la correzione Storico link esterno v5.479. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato come versione `15`, `verify_jwt=true`. Applicato in PROD il file `supabase_pmo_assessment_followup_scheduler_prod.sql`: `cron.job` contiene `pmo-assessment-followup-dispatcher-prod` attivo `*/5 * * * *` e conserva `pmo-data-routines-dispatcher-prod` attivo `*/5 * * * *`. Il dispatcher follow-up esegue `routine-check` solo alle 09:00 Europe/Rome e `routine-followup` solo alle 09:30 Europe/Rome; non contiene azione di primo invio automatico. TEST resta senza cron (`cron.job` vuoto). Verificati 0 invii email Autovalutazione e 0 dispatch follow-up imprevisti durante il deploy. Nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 
