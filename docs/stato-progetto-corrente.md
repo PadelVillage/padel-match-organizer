@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.488 | `main` | `9701f86` |
+| PROD | v5.489 | `main` | `ddab294` |
 | TEST | v5.489 | `test-preview` | `ddab294` |
 | TEST sviluppo | v5.489 | `test/accessi-staff-guidati` | `ddab294` |
+
+Nota promozione PROD v5.489 - 2026-05-19 00:43: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.489 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html`, `docs/stato-progetto-corrente.md`, `docs/registro-versioni-sezioni.md` e `docs/matchpoint.md`. Nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`. Rollback annotato verso PROD v5.488, commit app `9701f86`, origin/main `1299d49`.
 
 Nota TEST v5.489: semplificata la diagnostica conteggi soci dopo verifica in PROD v5.488. La vista principale mostra solo le correzioni approvate da applicare, mentre la lista dei candidati da verificare resta nascosta dietro il comando opzionale `Mostra candidati da verificare`, per evitare confusione operativa. Il pulsante usa ora l'etichetta coerente con l'ambiente (`TEST` o `PROD`) e, quando promosso, consente l'applicazione manuale in PROD solo dopo conferma esplicita, senza hard-delete. Commit app `ddab294`. Nessuna correzione dati applicata durante lo sviluppo TEST. Nessuna modifica a PROD, SQL applicato, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 

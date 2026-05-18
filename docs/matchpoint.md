@@ -2,11 +2,13 @@
 
 Stato: sezione spostata in TEST v5.455 dentro `Amministrazione > Dati Matchpoint`, mantenendo invariati contenuti e logiche operative; pubblicata in v5.310; flusso clienti automatici pubblicato in PROD v5.346; hotfix sincronizzazione cancellazioni cloud in v5.347; hotfix deduplica import automatico in v5.348/funzione v19; policy no-archivio file clienti in v5.349/funzione v20; fallback diretto worker in v5.350; fotografia clienti cloud in v5.351/funzione v21; pulizia duplicati fotografia in v5.352/funzione v22; feedback righe importate in v5.353; deduplica batch finale upsert pubblicata in v5.354/funzione v23 TEST e v7 PROD; hotfix quota `dailyDiffHistory` validato in v5.355 TEST e incluso in PROD da v5.356; retry worker Render pubblicato in v5.356/funzione v24 TEST e v8 PROD; backup cloud sovrascritto pubblicato in v5.357/funzione `pmo-cloud-backup` v1 TEST e v1 PROD; storico Matchpoint automatico pubblicato in PROD v5.360 con funzione `matchpoint-history-sync` v1 TEST e v1 PROD; layout riepilogo storico compatto e pulizia testi azione Clienti/Storico inclusi in v5.360; box Backup compatto pubblicato in PROD v5.361; riepilogo clienti pubblicato in PROD v5.362; hotfix paginazione record cloud clienti pubblicato in v5.363; RPC paginata stabile pubblicata in v5.364; prenotazioni future automatiche pubblicate in PROD v5.367 con funzione `matchpoint-bookings-sync` v1 TEST e v1 PROD; hotfix quota localStorage per prenotazioni/storico incluso in v5.367; metriche operative prenotazioni future pubblicate in v5.367; pannello routine dati automatiche pubblicato in PROD v5.373; intestazione sezione DATI rimossa in PROD v5.373; formato prossime esecuzioni aggiornato in PROD v5.373; orari Clienti/Storico invertiti in PROD v5.373; backup cloud e backup locale separati in PROD v5.373; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per aggiornare automaticamente la colonna `Prossima esecuzione` mentre DATI resta aperta; in TEST v5.470 il pannello routine legge i riepiloghi cloud e sincronizza il browser locale se il cloud e' piu recente.
 
-Ultimo aggiornamento: 2026-05-19 00:31
+Ultimo aggiornamento: 2026-05-19 00:43
 
-## Nota TEST v5.489
+## Nota TEST/PROD v5.489
 
 La diagnostica conteggi soci viene resa piu operativa: la vista principale mostra solo le correzioni approvate, mentre i candidati da verificare restano nascosti dietro un comando opzionale. Il pulsante di applicazione usa il nome dell'ambiente corrente (`TEST` o `PROD`) e richiede conferma esplicita prima di qualunque soft-delete/ripristino. Nessun hard-delete.
+
+Promossa in PROD il 2026-05-19 con app v5.489. La promozione e' solo app UI + documentazione: nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati attivi.
 
 ## Nota TEST/PROD v5.488
 
