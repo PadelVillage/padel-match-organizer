@@ -1154,6 +1154,8 @@
     .assessment-email-compact-info strong { color:#101828; font-weight:900; }
     .assessment-email-compact-info span { color:#667085; font-size:12px; }
     .assessment-email-inline-status { display:inline-flex; align-items:center; border:1px solid #e7edf6; border-radius:999px; padding:4px 8px; color:#344054; background:#fbfdff; font-size:12px; font-weight:900; white-space:nowrap; }
+    .assessment-email-inline-action { appearance:none; cursor:pointer; font:inherit; text-align:left; }
+    .assessment-email-inline-action:hover { filter:brightness(.98); box-shadow:0 0 0 3px rgba(245,158,11,.14); }
     .assessment-email-inline-status.ok { color:#168a53; border-color:#b8e6ca; background:#eefaf3; }
     .assessment-email-inline-status.warn { color:#7a4d00; border-color:#f2d39b; background:#fff7e6; }
     .assessment-email-inline-status.err { color:#b42318; border-color:#f1b9b3; background:#fff1f0; }
@@ -5550,7 +5552,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.479';
+    const APP_VERSION = '5.480';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -24410,7 +24412,28 @@ Per confermare scrivi ELIMINA.`);
         const operator = info.doneBy || 'Staff';
         return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status ok">Inserito su Matchpoint</span><span>Inserito su Matchpoint da ${escapeHtml(operator)}</span><span>${escapeHtml(assessmentEmailFormatDateTime(info.doneAt))}</span></div>`;
       }
-      return `<div class="assessment-email-compact-info"><span class="assessment-email-inline-status warn">Matchpoint da aggiornare</span><span>Livello validato: ${escapeHtml(String(info.level || '-'))}</span></div>`;
+      const memberId = escapeJs(String(row.member?.id || ''));
+      const statusHtml = memberId
+        ? `<button type="button" class="assessment-email-inline-status warn assessment-email-inline-action" onclick="setActionAnchor(this); assessmentGoToMatchpointPending('${memberId}')" title="Vai alla sezione Matchpoint">Matchpoint da aggiornare</button>`
+        : '<span class="assessment-email-inline-status warn">Matchpoint da aggiornare</span>';
+      return `<div class="assessment-email-compact-info">${statusHtml}<span>Livello validato: ${escapeHtml(String(info.level || '-'))}</span></div>`;
+    }
+    function assessmentGoToMatchpointPending(memberId) {
+      const targetId = String(memberId || '');
+      window.assessmentProcessFilter = 'matchpoint';
+      window.assessmentProcessSearchText = '';
+      setAssessmentEmailPanel('matchpoint');
+      setTimeout(() => {
+        const row = Array.from(document.querySelectorAll('#assessmentEmailMatchpointContent [data-assessment-email-member]'))
+          .find(el => String(el.dataset.assessmentEmailMember || '') === targetId);
+        if (!row) {
+          showAlert('Sezione Matchpoint aperta. Se il socio non compare, aggiorna Autovalutazione o verifica che il livello sia ancora da inserire su Matchpoint.', 'info');
+          return;
+        }
+        row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
+        row.classList.add('assessment-email-row-focus');
+        setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
+      }, 0);
     }
     function assessmentMarkMatchpointInserted(memberId) {
       if (String(memberId || '') === 'demo-matchpoint-preview') {
