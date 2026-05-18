@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 17:35
+Ultimo aggiornamento: 2026-05-18 21:40
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Link esterno TEST v5.482: aggiunta guardia ambiente sul submit pubblico delle richieste da `Scheda pubblica > Link esterno`. Il salvataggio verso `submit_assessment_external_request_public` procede solo se il project ref Supabase caricato dalla config coincide con l'ambiente runtime: TEST `cudiqnrrlbyqryrtaprd`, PROD `qqbfphyslczzkxoncgex`; in caso contrario l'invio viene bloccato prima di ogni scrittura. La diagnostica `Verifica TEST/PROD` usa lo stesso confronto esatto. Commit app `ed9de1c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Promozione PROD v5.481 - 2026-05-18: pubblicato in PROD il pacchetto TEST validato v5.480/v5.481. La promozione e' solo app UI + documentazione: nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` preservati attivi; TEST resta senza cron.
 - Autovalutazione / Storico TEST/PROD v5.481: rimosso dalla testata dello Storico il bottone grande `Aggiorna link esterno`, perche' l'aggiornamento delle richieste link esterno e' gia gestito dal refresh automatico e dai refresh post-azione. La funzione tecnica di sincronizzazione resta disponibile internamente come fallback. Commit app `bb7e6fd`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Storico-Matchpoint TEST/PROD v5.480: lo stato `Matchpoint da aggiornare` nello Storico Autovalutazione diventa cliccabile e porta al pannello Matchpoint esistente, evidenziando il socio da lavorare. La pratica non viene chiusa dallo Storico: resta necessario usare il comando operativo gia presente `Segna inserito su Matchpoint`. Commit app `1e7cefc`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
