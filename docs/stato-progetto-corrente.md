@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 23:40
+Ultimo aggiornamento: 2026-05-18 23:48
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.484 | `main` | `e658126` |
-| TEST | v5.486 | `test-preview` | `c8bc20b` |
-| TEST sviluppo | v5.486 | `test/accessi-staff-guidati` | `c8bc20b` |
+| TEST | v5.487 | `test-preview` | `da confermare` |
+| TEST sviluppo | v5.487 | `test/accessi-staff-guidati` | `da confermare` |
+
+Nota TEST v5.487: rifinita la diagnostica conteggi soci. Il comando `Applica soft-delete approvati in TEST` resta sempre visibile dopo il dry-run, ma disabilitato quando non ci sono record approvati; la tabella dettagli viene compattata accorpando contatti, chiavi e motivazione per ridurre lo scroll orizzontale. Nessuna modifica alla logica di classificazione e nessuna applicazione SQL. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.486: la diagnostica `Amministrazione > Dati Matchpoint > Diagnostica conteggi soci` recepisce la decisione funzionale di Maurizio sui duplicati noti. I record `Test di autovalutazione` duplicati di `Maurizio Aprea` vengono marcati come `Soft-delete approvato` solo se collegati tecnicamente a una scheda Maurizio Aprea tramite PMO/email/telefono; il socio test ufficiale `PMO-000948` / `aprea.maurizio@gmail.com` resta preservato. I record tecnici `Tennis Up/Tennis App` non Matchpoint vengono marcati come `Soft-delete approvato`, mentre la sorgente Matchpoint resta mantenuta. Aggiunto bottone TEST `Applica soft-delete approvati in TEST`, con conferma manuale e solo soft-delete cloud (`deleted=true`, `payload.active=false`, `cleanupReason`, `mergedInto` se presente). Commit app `c8bc20b`. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 

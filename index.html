@@ -1738,10 +1738,16 @@
     .member-count-audit-card strong { display:block; color:#111827; font-size:22px; line-height:1.1; }
     .member-count-audit-card span { display:block; color:#667085; font-size:12px; font-weight:800; margin-top:3px; }
     .member-count-audit-note { margin:8px 0 0; color:#667085; font-size:13px; line-height:1.35; }
-    .member-count-audit-table-wrap { width:100%; overflow-x:auto; border:1px solid #e4ebf4; border-radius:8px; background:#fff; margin-top:12px; }
-    .member-count-audit-table { width:100%; min-width:1040px; border-collapse:collapse; font-size:12px; line-height:1.35; }
-    .member-count-audit-table th { background:#f3f6fb; color:#344054; font-weight:900; text-align:left; padding:9px 10px; border-bottom:1px solid #e4ebf4; white-space:nowrap; }
-    .member-count-audit-table td { padding:10px; border-top:1px solid #e8eef6; vertical-align:top; color:#344054; }
+    .member-count-audit-table-wrap { width:100%; overflow-x:visible; border:1px solid #e4ebf4; border-radius:8px; background:#fff; margin-top:12px; }
+    .member-count-audit-table { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-size:12px; line-height:1.35; }
+    .member-count-audit-table th { background:#f3f6fb; color:#344054; font-weight:900; text-align:left; padding:9px 10px; border-bottom:1px solid #e4ebf4; white-space:normal; overflow-wrap:anywhere; }
+    .member-count-audit-table td { padding:10px; border-top:1px solid #e8eef6; vertical-align:top; color:#344054; overflow-wrap:anywhere; }
+    .member-count-audit-table th:nth-child(1) { width:18%; }
+    .member-count-audit-table th:nth-child(2) { width:18%; }
+    .member-count-audit-table th:nth-child(3) { width:18%; }
+    .member-count-audit-table th:nth-child(4) { width:20%; }
+    .member-count-audit-table th:nth-child(5) { width:11%; }
+    .member-count-audit-table th:nth-child(6) { width:15%; }
     .member-count-audit-table tr:first-child td { border-top:0; }
     .member-count-audit-classification { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; font-weight:900; white-space:nowrap; }
     .member-count-audit-classification.keep { background:#e8f5ee; color:#168a53; }
@@ -5580,7 +5586,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.486';
+    const APP_VERSION = '5.487';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9266,23 +9272,21 @@ Grazie.`
         ['Candidati verifica', summary.candidates]
       ].map(([label, value]) => `<div class="member-count-audit-card"><strong>${escapeHtml(String(value))}</strong><span>${escapeHtml(label)}</span></div>`).join('');
       const approvedRows = (pmoMemberCountAuditState.allRows || []).filter(row => row.classification === 'approved_soft_delete');
-      const approvedAction = approvedRows.length
-        ? `<div class="member-count-audit-note"><button type="button" class="btn-danger small-btn" onclick="setActionAnchor(this); pmoApplyApprovedMemberCountAuditSoftDelete()">Applica soft-delete approvati in TEST</button> <strong>${escapeHtml(String(approvedRows.length))}</strong> record verranno marcati deleted solo in TEST dopo conferma.</div>`
-        : '<p class="member-count-audit-note">Nessun record con soft-delete approvato automatico dalla decisione funzionale corrente.</p>';
+      const approvedAction = `<div class="member-count-audit-note"><button type="button" class="btn-danger small-btn" onclick="setActionAnchor(this); pmoApplyApprovedMemberCountAuditSoftDelete()" ${approvedRows.length ? '' : 'disabled'}>Applica soft-delete approvati in TEST</button> ${
+        approvedRows.length
+          ? `<strong>${escapeHtml(String(approvedRows.length))}</strong> record verranno marcati deleted solo in TEST dopo conferma.`
+          : 'Nessun record approvato nel dry-run corrente: il comando resta visibile ma non eseguibile.'
+      }</div>`;
       const rows = (pmoMemberCountAuditState.rows || []).slice(0, 150);
       const table = rows.length ? `<div class="member-count-audit-table-wrap">
         <table class="member-count-audit-table">
-          <thead><tr><th>Classificazione</th><th>Socio</th><th>PMO</th><th>Email</th><th>Telefono</th><th>Source</th><th>Local key</th><th>Gemello Matchpoint</th><th>Aggiornato</th><th>Motivo</th></tr></thead>
+          <thead><tr><th>Classificazione</th><th>Socio</th><th>Contatti</th><th>Chiavi</th><th>Aggiornato</th><th>Motivo</th></tr></thead>
           <tbody>${rows.map(row => `
             <tr>
               <td><span class="member-count-audit-classification ${pmoMemberAuditClassName(row.classification)}">${escapeHtml(pmoMemberAuditClassLabel(row.classification))}</span><div class="routine-mini">Rischio: ${escapeHtml(row.risk)}</div></td>
-              <td><strong>${escapeHtml(row.fullName)}</strong></td>
-              <td>${escapeHtml(row.memberId || '-')}</td>
-              <td>${escapeHtml(row.email || '-')}</td>
-              <td>${escapeHtml(row.phone || '-')}</td>
-              <td>${escapeHtml(row.source || '-')}</td>
-              <td>${escapeHtml(row.localKey || '-')}</td>
-              <td>${escapeHtml(row.matchedLocalKey || '-')}</td>
+              <td><strong>${escapeHtml(row.fullName)}</strong><div class="routine-mini">${escapeHtml(row.memberId || 'PMO assente')}</div></td>
+              <td><strong>Email</strong>: ${escapeHtml(row.email || '-')}<div class="routine-mini">Tel: ${escapeHtml(row.phone || '-')}</div></td>
+              <td><strong>Source</strong>: ${escapeHtml(row.source || '-')}<div class="routine-mini">local_key: ${escapeHtml(row.localKey || '-')}</div><div class="routine-mini">gemello: ${escapeHtml(row.matchedLocalKey || '-')}</div></td>
               <td>${escapeHtml(pmoFormatDateTime(row.updatedAt) || '-')}</td>
               <td>${escapeHtml(row.reason || '-')}</td>
             </tr>`).join('')}</tbody>
