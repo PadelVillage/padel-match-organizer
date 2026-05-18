@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 23:18
+Ultimo aggiornamento: 2026-05-18 23:40
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.484 | `main` | `e658126` |
-| TEST | v5.485 | `test-preview` | `dcd19ad` |
-| TEST sviluppo | v5.485 | `test/accessi-staff-guidati` | `dcd19ad` |
+| TEST | v5.486 | `test-preview` | `c8bc20b` |
+| TEST sviluppo | v5.486 | `test/accessi-staff-guidati` | `c8bc20b` |
+
+Nota TEST v5.486: la diagnostica `Amministrazione > Dati Matchpoint > Diagnostica conteggi soci` recepisce la decisione funzionale di Maurizio sui duplicati noti. I record `Test di autovalutazione` duplicati di `Maurizio Aprea` vengono marcati come `Soft-delete approvato` solo se collegati tecnicamente a una scheda Maurizio Aprea tramite PMO/email/telefono; il socio test ufficiale `PMO-000948` / `aprea.maurizio@gmail.com` resta preservato. I record tecnici `Tennis Up/Tennis App` non Matchpoint vengono marcati come `Soft-delete approvato`, mentre la sorgente Matchpoint resta mantenuta. Aggiunto bottone TEST `Applica soft-delete approvati in TEST`, con conferma manuale e solo soft-delete cloud (`deleted=true`, `payload.active=false`, `cleanupReason`, `mergedInto` se presente). Commit app `c8bc20b`. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.485: preparata la diagnostica read-only per analisi conteggi soci in `Amministrazione > Dati Matchpoint`. Il pannello `Diagnostica conteggi soci` confronta cloud, Anagrafica, Dashboard e fotografia Matchpoint, classifica record tecnici, soci Matchpoint, soci non Matchpoint senza gemello e candidati a verifica manuale per eventuale soft-delete. Aggiunto il file SQL preparatorio `supabase_pmo_member_count_audit_dry_run.sql`, solo dry-run read-only con grant `authenticated` e nessun grant `anon`; non contiene cleanup, non fa hard-delete e non deve essere applicato in PROD senza approvazione esplicita della lista record. Commit app `dcd19ad`. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
