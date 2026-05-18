@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 12:08
+Ultimo aggiornamento: 2026-05-18 14:08
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Supabase / Autovalutazione Link esterno TEST 2026-05-18: preparata migrazione correttiva `supabase/migrations/20260518140758_revoke_anon_assessment_external_admin.sql` dopo alert del preflight/promozione PROD v5.477. La migrazione revoca esplicitamente `public` e `anon` dalle RPC admin `get_assessment_external_requests_admin(text, integer)`, `update_assessment_external_request_admin(uuid, text, text, text, text)` e `cleanup_assessment_external_requests_admin(uuid)`, concedendo `execute` solo ad `authenticated`; `submit_assessment_external_request_public(jsonb)` resta pubblica per il link esterno. PROD app non e' stata promossa e il comando `PROMUOVI PROD` precedente non vale piu.
 - Preflight PROD v5.477 / perimetro pacchetto: dichiarati come approvati i due elementi emersi in alert nel preflight. La cancellazione dei 15 snapshot HTML storici `padel_match_organizer_v5_123.html`, `v5_133`, `v5_152`, `v5_153`, `v5_154`, `v5_155`, `v5_156`, `v5_157`, `v5_174`, `v5_175`, `v5_412`, `v5_413`, `v5_414`, `v5_415`, `v5_416` fa parte della pulizia GitHub gia verificata: nessun riferimento in `docs`, `index.html`, `autovalutazione.html` o `test`. Anche `supabase_pmo_staff_admin_schema.sql` resta nel pacchetto per allineare lo schema SQL di riferimento alla migrazione `20260517181502_pmo_delete_staff_user_admin.sql`, senza grant `anon` e senza cancellazione Supabase Auth. PROD non e' stato promosso.
 - Autovalutazione / Storico TEST v5.477: rimossa dalla tabella `Richieste da link esterno` la testata introduttiva con titolo e descrizione, perche' l'origine e' gia indicata dalla colonna `Origine` con badge `Da link esterno`. La tabella e tutte le azioni operative restano invariate. Commit app `545f2cf`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 - Autovalutazione / Validazione livello TEST v5.476: spostata la validazione manuale dentro la scheda socio reale. Le righe operative mostrano `Valida livello`, aprono la scheda socio sul pannello `Autovalutazione da validare` e non espongono piu il vecchio bottone `Controlla livello`; nelle richieste da link esterno viene rimosso anche il bottone secondario `Scheda socio`. Le nuove risposte dello stesso socio non vengono considerate gia applicate per effetto di validazioni storiche precedenti; le richieste da link esterno restano manuali, mentre le schede coerenti del lotto possono continuare a chiudersi automaticamente tramite `applyAssessmentLevel()`. Commit app `889d061`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint o WhatsApp automatico.

@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 12:08
+Ultimo aggiornamento: 2026-05-18 14:08
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -31,6 +31,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | PROD | v5.448 | `main` | `f7b4814` |
 | TEST | v5.477 | `test-preview` | `545f2cf` |
 | TEST sviluppo | v5.477 | `test/accessi-staff-guidati` | `545f2cf` |
+
+Nota SQL TEST 2026-05-18 14:08: dopo l'avvio della promozione v5.477, Promuovi Prod Admin ha applicato in PROD le prime 3 migrazioni SQL ma si e' fermato prima della promozione app per un alert sui grant: le RPC admin `get_assessment_external_requests_admin`, `update_assessment_external_request_admin` e `cleanup_assessment_external_requests_admin` risultavano ancora eseguibili da `anon`. Preparata in TEST la migrazione correttiva `supabase/migrations/20260518140758_revoke_anon_assessment_external_admin.sql`, che revoca esplicitamente `public` e `anon` dalle tre RPC admin, concede `execute` solo ad `authenticated` e mantiene pubblica solo `submit_assessment_external_request_public(jsonb)`. PROD app non e' stata promossa; il comando `PROMUOVI PROD` precedente non vale piu finche' il nuovo preflight non e' pulito.
 
 Nota preflight PROD v5.477: il pacchetto TEST -> PROD include in modo approvato anche la pulizia GitHub dei 15 snapshot HTML storici non referenziati (`padel_match_organizer_v5_123.html`, `v5_133`, `v5_152`, `v5_153`, `v5_154`, `v5_155`, `v5_156`, `v5_157`, `v5_174`, `v5_175`, `v5_412`, `v5_413`, `v5_414`, `v5_415`, `v5_416`). I file sono stati verificati come non referenziati in `docs`, `index.html`, `autovalutazione.html` e `test`. Il pacchetto include inoltre `supabase_pmo_staff_admin_schema.sql`, perche' mantiene allineato lo schema SQL di riferimento alla migrazione `supabase/migrations/20260517181502_pmo_delete_staff_user_admin.sql`: la RPC `pmo_delete_staff_user_admin(p_email text)` elimina solo da `public.pmo_staff_profiles`, blocca il proprietario, scrive audit e ha grant solo `authenticated`. Questi elementi sono parte dichiarata del prossimo preflight; PROD non e' ancora stato promosso e le migrazioni SQL restano da applicare solo durante promozione autorizzata.
 
@@ -123,7 +125,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.477 e' preparata in TEST al commit app `545f2cf`, con documentazione/HEAD TEST aggiornati dopo il preflight di promozione. PROD resta v5.448 al commit app `f7b4814`. La modifica piu recente rimuove dallo `Storico` Autovalutazione il box introduttivo di `Richieste da link esterno`, mantenendo invariati tabella, refresh, deduplica e azioni operative. Il pacchetto TEST -> PROD include anche le migrazioni SQL gia testate in TEST per richieste link esterno, eliminazione autorizzazioni staff e pulizia richieste link esterno duplicate, piu l'aggiornamento coerente di `supabase_pmo_staff_admin_schema.sql`; include inoltre la pulizia approvata dei 15 snapshot HTML storici non referenziati. Non e' stato eseguito deploy PROD.
+La versione v5.477 e' preparata in TEST al commit app `545f2cf`, con documentazione/HEAD TEST aggiornati dopo il preflight di promozione. PROD resta v5.448 al commit app `f7b4814`. La modifica piu recente rimuove dallo `Storico` Autovalutazione il box introduttivo di `Richieste da link esterno`, mantenendo invariati tabella, refresh, deduplica e azioni operative. Il pacchetto TEST -> PROD include anche le migrazioni SQL gia testate in TEST per richieste link esterno, eliminazione autorizzazioni staff, pulizia richieste link esterno duplicate e hardening grant `anon`, piu l'aggiornamento coerente di `supabase_pmo_staff_admin_schema.sql`; include inoltre la pulizia approvata dei 15 snapshot HTML storici non referenziati. Non e' stato eseguito deploy app PROD.
 
 Contiene:
 
