@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-18 16:50
+Ultimo aggiornamento: 2026-05-18 17:02
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Storico TEST v5.481: rimosso dalla testata dello Storico il bottone grande `Aggiorna link esterno`, perche' l'aggiornamento delle richieste link esterno e' gia gestito dal refresh automatico e dai refresh post-azione. La funzione tecnica di sincronizzazione resta disponibile internamente come fallback. Commit app `bb7e6fd`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Storico-Matchpoint TEST v5.480: lo stato `Matchpoint da aggiornare` nello Storico Autovalutazione diventa cliccabile e porta al pannello Matchpoint esistente, evidenziando il socio da lavorare. La pratica non viene chiusa dallo Storico: resta necessario usare il comando operativo gia presente `Segna inserito su Matchpoint`. Commit app `1e7cefc`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.479 - 2026-05-18: pubblicata app PROD v5.479 dal pacchetto TEST validato, includendo scheduler follow-up email Autovalutazione v5.478 e correzione Storico link esterno v5.479. Edge Function PROD `assessment-email-send` aggiornata a v15 con `verify_jwt=true`; applicato `supabase_pmo_assessment_followup_scheduler_prod.sql`; `cron.job` PROD contiene `pmo-assessment-followup-dispatcher-prod` attivo `*/5 * * * *` e conserva `pmo-data-routines-dispatcher-prod` attivo `*/5 * * * *`. Il primo invio email resta manuale; il dispatcher esegue solo `routine-check` alle 09:00 e `routine-followup` alle 09:30 Europe/Rome. TEST resta senza cron. Nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 - Autovalutazione / Storico link esterno TEST v5.479: corretto il doppio stato operativo delle richieste da `Scheda pubblica > Link esterno` gia validate. Il blocco alto `Richieste da link esterno` mostra solo richieste ancora operative; le richieste `validated`/`rejected` o gia applicate sulla scheda socio vengono lette solo nello storico chiuso e non propongono piu `Valida livello`. Il conteggio del `Cruscotto mattutino` resta legato alle sole richieste operative non chiuse. Commit app `ea72b7d`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.

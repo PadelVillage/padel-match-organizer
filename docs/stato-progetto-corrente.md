@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 16:50
+Ultimo aggiornamento: 2026-05-18 17:02
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.479 | `main` | `ea72b7d` |
-| TEST | v5.480 | `test-preview` | `1e7cefc` |
-| TEST sviluppo | v5.480 | `test/accessi-staff-guidati` | `1e7cefc` |
+| TEST | v5.481 | `test-preview` | `bb7e6fd` |
+| TEST sviluppo | v5.481 | `test/accessi-staff-guidati` | `bb7e6fd` |
+
+Nota TEST v5.481: rimosso dalla testata dello `Storico` Autovalutazione il bottone visibile `Aggiorna link esterno`, ormai ridondante rispetto al refresh automatico all'ingresso nella sezione e ai refresh post-azione. La funzione tecnica di sincronizzazione delle richieste link esterno resta disponibile internamente e non viene rimossa. Commit app `bb7e6fd`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.480: nello `Storico` Autovalutazione, lo stato `Matchpoint da aggiornare` diventa una scorciatoia cliccabile verso la sezione Matchpoint esistente. Il click apre il pannello Matchpoint, evidenzia il socio interessato e lascia la chiusura operativa al comando gia esistente `Segna inserito su Matchpoint`. Non viene chiusa nessuna pratica direttamente dallo Storico. Commit app `1e7cefc`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
@@ -133,7 +135,7 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.479 e' pubblicata in PROD. TEST e' avanzato a v5.480 per la scorciatoia operativa `Matchpoint da aggiornare` nello Storico Autovalutazione; PROD resta v5.479 finche' non viene richiesta una nuova promozione. Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD restano attivi. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
+La versione v5.479 e' pubblicata in PROD. TEST e' avanzato a v5.481 per rifiniture UI dello Storico Autovalutazione; PROD resta v5.479 finche' non viene richiesta una nuova promozione. Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD restano attivi. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
 
 Contiene:
 
