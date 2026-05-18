@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 22:29
+Ultimo aggiornamento: 2026-05-18 23:18
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.484 | `main` | `e658126` |
-| TEST | v5.484 | `test-preview` | `e658126` |
-| TEST sviluppo | v5.484 | `test/accessi-staff-guidati` | `e658126` |
+| TEST | v5.485 | `test-preview` | `dcd19ad` |
+| TEST sviluppo | v5.485 | `test/accessi-staff-guidati` | `dcd19ad` |
+
+Nota TEST v5.485: preparata la diagnostica read-only per analisi conteggi soci in `Amministrazione > Dati Matchpoint`. Il pannello `Diagnostica conteggi soci` confronta cloud, Anagrafica, Dashboard e fotografia Matchpoint, classifica record tecnici, soci Matchpoint, soci non Matchpoint senza gemello e candidati a verifica manuale per eventuale soft-delete. Aggiunto il file SQL preparatorio `supabase_pmo_member_count_audit_dry_run.sql`, solo dry-run read-only con grant `authenticated` e nessun grant `anon`; non contiene cleanup, non fa hard-delete e non deve essere applicato in PROD senza approvazione esplicita della lista record. Commit app `dcd19ad`. Nessuna modifica a PROD, scheduler, Edge Function, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.484 - 2026-05-18 22:29: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.484 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html` e documentazione collegata. Nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron.
 
