@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 22:00
+Ultimo aggiornamento: 2026-05-18 22:12
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.482 | `main` | `ed9de1c` |
-| TEST | v5.483 | `test-preview` | `2c7bff9` |
-| TEST sviluppo | v5.483 | `test/accessi-staff-guidati` | `2c7bff9` |
+| TEST | v5.484 | `test-preview` | `e658126` |
+| TEST sviluppo | v5.484 | `test/accessi-staff-guidati` | `e658126` |
+
+Nota TEST v5.484: rifinita la UX delle ricerche Autovalutazione introdotte in v5.483. Il bottone `Pulisci` fisso accanto a `Cerca` viene rimosso da `Cruscotto mattutino > Cerca nel processo` e da `Lotto email manuale > Cerca socio da inviare`; `Pulisci` compare solo nella riga `Ricerca attiva: ...` dopo una ricerca applicata. Commit app `e658126`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota TEST v5.483: micro-correzione UX delle ricerche Autovalutazione con pulsante esplicito `Cerca`. In `Cruscotto mattutino > Cerca nel processo` e in `Lotto email manuale > Cerca socio da inviare`, il click su `Cerca` applica il filtro, svuota il campo testuale e mostra una riga compatta `Ricerca attiva: ...`; `Pulisci` rimuove il filtro. Le ricerche live senza bottone e i campi dati/anagrafica non vengono modificati. Commit app `2c7bff9`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
