@@ -77,6 +77,7 @@ begin
   enriched as (
     select
       b.*,
+      lower(regexp_replace(b.full_name, '[[:space:]]+', ' ', 'g')) as full_name_key,
       (b.record_deleted or b.payload ? 'deletedAt') as is_deleted,
       (
         not b.record_deleted
@@ -96,19 +97,27 @@ begin
   matchpoint_rows as (
     select *
     from enriched
-    where is_active and not is_technical and is_matchpoint
+    where is_active and is_matchpoint
+  ),
+  maurizio_rows as (
+    select *
+    from enriched
+    where is_active
+      and full_name_key like '%maurizio%'
+      and full_name_key like '%aprea%'
   ),
   classified as (
     select
       e.*,
-      twin.local_key as matched_local_key
+      coalesce(twin.local_key, maurizio_twin.local_key) as matched_local_key,
+      coalesce(twin.full_name_key, maurizio_twin.full_name_key) as matched_full_name_key,
+      twin.local_key as matchpoint_matched_local_key
     from enriched e
     left join lateral (
-      select mp.local_key
+      select mp.local_key, mp.full_name_key
       from matchpoint_rows mp
       where mp.local_key <> e.local_key
         and e.is_active
-        and not e.is_technical
         and not e.is_matchpoint
         and (
           (e.member_id <> '' and mp.member_id = e.member_id) or
@@ -122,6 +131,23 @@ begin
         mp.updated_at desc
       limit 1
     ) twin on true
+    left join lateral (
+      select mr.local_key, mr.full_name_key
+      from maurizio_rows mr
+      where mr.local_key <> e.local_key
+        and e.is_active
+        and (
+          (e.member_id <> '' and mr.member_id = e.member_id) or
+          (e.email <> '' and mr.email = e.email) or
+          (e.phone_digits <> '' and mr.phone_digits = e.phone_digits)
+        )
+      order by
+        case when e.member_id <> '' and mr.member_id = e.member_id then 0 else 1 end,
+        case when e.email <> '' and mr.email = e.email then 0 else 1 end,
+        case when e.phone_digits <> '' and mr.phone_digits = e.phone_digits then 0 else 1 end,
+        mr.updated_at desc
+      limit 1
+    ) maurizio_twin on true
   )
   select
     c.local_key,
@@ -138,38 +164,76 @@ begin
     coalesce(c.matched_local_key, '') as matched_local_key,
     case
       when c.is_deleted then 'deleted'
-      when c.is_technical then 'technical_excluded'
+      when c.member_id = 'PMO-000948' and c.email = 'aprea.maurizio@gmail.com' then 'keep_non_matchpoint'
+      when c.is_technical and not c.is_matchpoint and c.full_name_key in ('tennisup', 'tennis up', 'tennis app') then 'approved_soft_delete'
+      when not c.is_matchpoint
+        and c.full_name_key like '%test%'
+        and c.full_name_key like '%autovalutaz%'
+        and coalesce(c.matched_full_name_key, '') like '%maurizio%'
+        and coalesce(c.matched_full_name_key, '') like '%aprea%' then 'approved_soft_delete'
+      when c.is_technical then case when c.is_matchpoint then 'keep_matchpoint' else 'technical_excluded' end
       when c.is_matchpoint then 'keep_matchpoint'
-      when c.matched_local_key is not null then 'candidate_soft_delete'
+      when c.matchpoint_matched_local_key is not null then 'candidate_soft_delete'
       else 'keep_non_matchpoint'
     end as classification,
     case
       when c.is_deleted then 'Gia soft-delete'
-      when c.is_technical then 'Escludere dalla UI'
+      when c.member_id = 'PMO-000948' and c.email = 'aprea.maurizio@gmail.com' then 'Mantenere socio test ufficiale'
+      when c.is_technical and not c.is_matchpoint and c.full_name_key in ('tennisup', 'tennis up', 'tennis app') then 'Soft-delete approvato'
+      when not c.is_matchpoint
+        and c.full_name_key like '%test%'
+        and c.full_name_key like '%autovalutaz%'
+        and coalesce(c.matched_full_name_key, '') like '%maurizio%'
+        and coalesce(c.matched_full_name_key, '') like '%aprea%' then 'Soft-delete approvato'
+      when c.is_technical then case when c.is_matchpoint then 'Mantenere in Matchpoint' else 'Escludere dalla UI' end
       when c.is_matchpoint then 'Mantenere'
-      when c.matched_local_key is not null then 'Verifica manuale per soft-delete'
+      when c.matchpoint_matched_local_key is not null then 'Verifica manuale per soft-delete'
       else 'Mantenere o verificare'
     end as suggested_action,
     case
-      when c.is_deleted or c.is_technical or c.is_matchpoint then 'Basso'
-      when c.matched_local_key is not null and (c.email <> '' or c.phone_digits <> '') then 'Medio'
-      when c.matched_local_key is not null then 'Alto'
+      when c.is_deleted or c.is_matchpoint then 'Basso'
+      when c.member_id = 'PMO-000948' and c.email = 'aprea.maurizio@gmail.com' then 'Basso'
+      when c.is_technical and not c.is_matchpoint and c.full_name_key in ('tennisup', 'tennis up', 'tennis app') then 'Basso'
+      when not c.is_matchpoint
+        and c.full_name_key like '%test%'
+        and c.full_name_key like '%autovalutaz%'
+        and coalesce(c.matched_full_name_key, '') like '%maurizio%'
+        and coalesce(c.matched_full_name_key, '') like '%aprea%' then 'Medio'
+      when c.is_technical then 'Basso'
+      when c.matchpoint_matched_local_key is not null and (c.email <> '' or c.phone_digits <> '') then 'Medio'
+      when c.matchpoint_matched_local_key is not null then 'Alto'
       when c.email = '' and c.phone_digits = '' and c.member_id = '' then 'Medio'
       else 'Basso'
     end as risk,
     case
       when c.is_deleted then 'Record gia marcato deleted o payload con deletedAt.'
-      when c.is_technical then 'Record tecnico riconosciuto: non va contato in Dashboard.'
+      when c.member_id = 'PMO-000948' and c.email = 'aprea.maurizio@gmail.com' then 'Socio test ufficiale preservato dalla pulizia automatica.'
+      when c.is_technical and not c.is_matchpoint and c.full_name_key in ('tennisup', 'tennis up', 'tennis app') then 'Decisione Maurizio: record tecnico Tennis Up/App da rimuovere dalla base soci app; resta disponibile solo la sorgente Matchpoint.'
+      when not c.is_matchpoint
+        and c.full_name_key like '%test%'
+        and c.full_name_key like '%autovalutaz%'
+        and coalesce(c.matched_full_name_key, '') like '%maurizio%'
+        and coalesce(c.matched_full_name_key, '') like '%aprea%' then 'Decisione Maurizio: record Test di autovalutazione duplicato di Maurizio Aprea; tenere la scheda Maurizio Aprea.'
+      when c.is_technical then case when c.is_matchpoint then 'Record tecnico Matchpoint mantenuto come sorgente Matchpoint.' else 'Record tecnico riconosciuto: non va contato in Dashboard.' end
       when c.is_matchpoint then 'Record Matchpoint attivo o sorgente Matchpoint riconosciuta.'
-      when c.matched_local_key is not null then 'Possibile gemello Matchpoint su PMO, email o telefono. Serve approvazione manuale prima del soft-delete.'
+      when c.matchpoint_matched_local_key is not null then 'Possibile gemello Matchpoint su PMO, email o telefono. Serve approvazione manuale prima del soft-delete.'
       else 'Socio non Matchpoint senza gemello Matchpoint trovato: non cancellare automaticamente.'
     end as reason
   from classified c
   order by
     case
       when c.is_deleted then 4
+      when (
+        c.is_technical and not c.is_matchpoint and c.full_name_key in ('tennisup', 'tennis up', 'tennis app')
+      ) or (
+        not c.is_matchpoint
+        and c.full_name_key like '%test%'
+        and c.full_name_key like '%autovalutaz%'
+        and coalesce(c.matched_full_name_key, '') like '%maurizio%'
+        and coalesce(c.matched_full_name_key, '') like '%aprea%'
+      ) then 0
       when c.is_technical then 3
-      when c.matched_local_key is not null then 1
+      when c.matchpoint_matched_local_key is not null then 1
       when not c.is_matchpoint then 2
       else 5
     end,

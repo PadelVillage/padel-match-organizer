@@ -1745,6 +1745,7 @@
     .member-count-audit-table tr:first-child td { border-top:0; }
     .member-count-audit-classification { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; font-weight:900; white-space:nowrap; }
     .member-count-audit-classification.keep { background:#e8f5ee; color:#168a53; }
+    .member-count-audit-classification.approved { background:#fdecec; color:#b42318; }
     .member-count-audit-classification.review { background:#fff6db; color:#91640b; }
     .member-count-audit-classification.technical { background:#eef4ff; color:#234f91; }
     .member-count-audit-classification.deleted { background:#fef3f2; color:#b42318; }
@@ -5579,7 +5580,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.485';
+    const APP_VERSION = '5.486';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9087,6 +9088,32 @@ Grazie.`
       return candidates.find(row => row && row.localKey !== item.localKey) || null;
     }
 
+    function pmoMemberAuditIsOfficialTestMember(row={}) {
+      return cleanCell(row.memberId || '') === 'PMO-000948' && row.emailKey === 'aprea.maurizio@gmail.com';
+    }
+
+    function pmoMemberAuditApprovedDecision(row={}, twin=null) {
+      if (!row || row.deleted || pmoMemberAuditIsOfficialTestMember(row)) return null;
+      const nameKey = normalizeText(row.fullName || '');
+      if (row.technical && !row.matchpoint && ['tennis app', 'tennis up', 'tennisup'].includes(nameKey)) {
+        return {
+          action: 'Soft-delete approvato',
+          reason: 'Decisione Maurizio: record tecnico Tennis Up/App da rimuovere dalla base soci app; resta disponibile solo la sorgente Matchpoint.',
+          risk: 'Basso'
+        };
+      }
+      const isAssessmentTestDuplicate = nameKey.includes('test') && nameKey.includes('autovalutaz');
+      const linkedToMaurizio = !!twin && normalizeText(twin.fullName || '').includes('maurizio') && normalizeText(twin.fullName || '').includes('aprea');
+      if (!row.matchpoint && isAssessmentTestDuplicate && linkedToMaurizio) {
+        return {
+          action: 'Soft-delete approvato',
+          reason: 'Decisione Maurizio: record Test di autovalutazione duplicato di Maurizio Aprea; tenere la scheda Maurizio Aprea.',
+          risk: 'Medio'
+        };
+      }
+      return null;
+    }
+
     function pmoBuildMemberCountAudit(rows=[]) {
       const cloudRows = (Array.isArray(rows) ? rows : [])
         .filter(row => row?.record_type === 'member')
@@ -9096,15 +9123,30 @@ Grazie.`
       const localActive = localAll.filter(member => member && member.active !== false);
       const localTechnical = localActive.filter(isTechnicalMemberRecord);
       const matchpointRows = cloudActiveRows.filter(row => !row.technical && row.matchpoint);
+      const allMatchpointRows = cloudActiveRows.filter(row => row.matchpoint);
       const nonMatchpointRows = cloudActiveRows.filter(row => !row.technical && !row.matchpoint);
       const maps = { memberId:new Map(), email:new Map(), phone:new Map() };
-      matchpointRows.forEach(row => {
+      const maurizioMaps = { memberId:new Map(), email:new Map(), phone:new Map() };
+      allMatchpointRows.forEach(row => {
         pmoMemberAuditAddKey(maps.memberId, row.memberId, row);
         pmoMemberAuditAddKey(maps.email, row.emailKey, row);
         pmoMemberAuditAddKey(maps.phone, row.phoneKey, row);
       });
+      cloudActiveRows
+        .filter(row => {
+          const nameKey = normalizeText(row.fullName || '');
+          return nameKey.includes('maurizio') && nameKey.includes('aprea');
+        })
+        .forEach(row => {
+          pmoMemberAuditAddKey(maurizioMaps.memberId, row.memberId, row);
+          pmoMemberAuditAddKey(maurizioMaps.email, row.emailKey, row);
+          pmoMemberAuditAddKey(maurizioMaps.phone, row.phoneKey, row);
+        });
       const classifiedRows = cloudRows.map(row => {
-        const twin = !row.deleted && !row.technical && !row.matchpoint ? pmoMemberAuditFindTwin(row, maps) : null;
+        const matchpointTwin = !row.deleted && !row.matchpoint ? pmoMemberAuditFindTwin(row, maps) : null;
+        const maurizioTwin = !row.deleted ? pmoMemberAuditFindTwin(row, maurizioMaps) : null;
+        const twin = matchpointTwin || maurizioTwin;
+        const approvedDecision = pmoMemberAuditApprovedDecision(row, twin);
         let classification = 'keep_matchpoint';
         let suggestedAction = 'Mantenere';
         let risk = 'Basso';
@@ -9114,21 +9156,26 @@ Grazie.`
           suggestedAction = 'Gia soft-delete';
           risk = 'Basso';
           reason = 'Record gia marcato deleted o payload con deletedAt.';
+        } else if (approvedDecision) {
+          classification = 'approved_soft_delete';
+          suggestedAction = approvedDecision.action;
+          risk = approvedDecision.risk;
+          reason = approvedDecision.reason;
         } else if (row.technical) {
-          classification = 'technical_excluded';
-          suggestedAction = 'Escludere dalla UI';
+          classification = row.matchpoint ? 'keep_matchpoint' : 'technical_excluded';
+          suggestedAction = row.matchpoint ? 'Mantenere in Matchpoint' : 'Escludere dalla UI';
           risk = 'Basso';
-          reason = 'Record tecnico riconosciuto: non va contato in Dashboard.';
-        } else if (!row.matchpoint && twin) {
+          reason = row.matchpoint ? 'Record tecnico Matchpoint mantenuto come sorgente Matchpoint.' : 'Record tecnico riconosciuto: non va contato in Dashboard.';
+        } else if (!row.matchpoint && matchpointTwin) {
           classification = 'candidate_soft_delete';
           suggestedAction = 'Verifica manuale per soft-delete';
           risk = row.emailKey || row.phoneKey ? 'Medio' : 'Alto';
           const matchReasons = [
-            row.memberId && twin.memberId === row.memberId ? 'PMO uguale' : '',
-            row.emailKey && twin.emailKey === row.emailKey ? 'email uguale' : '',
-            row.phoneKey && twin.phoneKey === row.phoneKey ? 'telefono uguale' : ''
+            row.memberId && matchpointTwin.memberId === row.memberId ? 'PMO uguale' : '',
+            row.emailKey && matchpointTwin.emailKey === row.emailKey ? 'email uguale' : '',
+            row.phoneKey && matchpointTwin.phoneKey === row.phoneKey ? 'telefono uguale' : ''
           ].filter(Boolean).join(', ');
-          reason = `Possibile gemello Matchpoint (${matchReasons || 'chiave collegata'}). Matchpoint collegato: ${twin.localKey || twin.memberId || '-'}.`;
+          reason = `Possibile gemello Matchpoint (${matchReasons || 'chiave collegata'}). Matchpoint collegato: ${matchpointTwin.localKey || matchpointTwin.memberId || '-'}.`;
         } else if (!row.matchpoint) {
           classification = 'keep_non_matchpoint';
           suggestedAction = 'Mantenere o verificare';
@@ -9140,13 +9187,14 @@ Grazie.`
       const visibleRows = classifiedRows
         .filter(row => row.classification !== 'keep_matchpoint')
         .sort((a, b) => {
-          const rank = { candidate_soft_delete:0, keep_non_matchpoint:1, technical_excluded:2, deleted:3 };
+          const rank = { approved_soft_delete:0, candidate_soft_delete:1, keep_non_matchpoint:2, technical_excluded:3, deleted:4 };
           const ar = rank[a.classification] ?? 9;
           const br = rank[b.classification] ?? 9;
           if (ar !== br) return ar - br;
           return (b.updatedAt || '').localeCompare(a.updatedAt || '');
         });
       const candidateRows = classifiedRows.filter(row => row.classification === 'candidate_soft_delete');
+      const approvedRows = classifiedRows.filter(row => row.classification === 'approved_soft_delete');
       const nonMatchpointStandalone = classifiedRows.filter(row => row.classification === 'keep_non_matchpoint');
       const technicalRows = classifiedRows.filter(row => row.classification === 'technical_excluded');
       const deletedRows = classifiedRows.filter(row => row.classification === 'deleted');
@@ -9161,6 +9209,7 @@ Grazie.`
           localTechnical: localTechnical.length,
           matchpointMembers: matchpointRows.length,
           nonMatchpointMembers: nonMatchpointRows.length,
+          approved: approvedRows.length,
           candidates: candidateRows.length,
           nonMatchpointStandalone: nonMatchpointStandalone.length,
           deleted: deletedRows.length
@@ -9172,6 +9221,7 @@ Grazie.`
 
     function pmoMemberAuditClassLabel(classification='') {
       const labels = {
+        approved_soft_delete: 'Soft-delete approvato',
         candidate_soft_delete: 'Candidato verifica',
         keep_non_matchpoint: 'Non Matchpoint da preservare/verificare',
         technical_excluded: 'Tecnico escluso UI',
@@ -9181,6 +9231,7 @@ Grazie.`
     }
 
     function pmoMemberAuditClassName(classification='') {
+      if (classification === 'approved_soft_delete') return 'approved';
       if (classification === 'candidate_soft_delete') return 'review';
       if (classification === 'technical_excluded') return 'technical';
       if (classification === 'deleted') return 'deleted';
@@ -9211,8 +9262,13 @@ Grazie.`
         ['Tecnici cloud esclusi', summary.cloudTechnical],
         ['Soci Matchpoint cloud', summary.matchpointMembers],
         ['Non Matchpoint cloud', summary.nonMatchpointMembers],
+        ['Soft-delete approvati', summary.approved],
         ['Candidati verifica', summary.candidates]
       ].map(([label, value]) => `<div class="member-count-audit-card"><strong>${escapeHtml(String(value))}</strong><span>${escapeHtml(label)}</span></div>`).join('');
+      const approvedRows = (pmoMemberCountAuditState.allRows || []).filter(row => row.classification === 'approved_soft_delete');
+      const approvedAction = approvedRows.length
+        ? `<div class="member-count-audit-note"><button type="button" class="btn-danger small-btn" onclick="setActionAnchor(this); pmoApplyApprovedMemberCountAuditSoftDelete()">Applica soft-delete approvati in TEST</button> <strong>${escapeHtml(String(approvedRows.length))}</strong> record verranno marcati deleted solo in TEST dopo conferma.</div>`
+        : '<p class="member-count-audit-note">Nessun record con soft-delete approvato automatico dalla decisione funzionale corrente.</p>';
       const rows = (pmoMemberCountAuditState.rows || []).slice(0, 150);
       const table = rows.length ? `<div class="member-count-audit-table-wrap">
         <table class="member-count-audit-table">
@@ -9238,6 +9294,7 @@ Grazie.`
       target.innerHTML = `
         <div class="member-count-audit-summary">${cards}</div>
         <p class="member-count-audit-note">Dry-run generato ${escapeHtml(pmoFormatDateTime(pmoMemberCountAuditState.generatedAt))}. Nessun record e stato modificato. I candidati richiedono approvazione esplicita prima di qualunque soft-delete.</p>
+        ${approvedAction}
         ${table}
         ${capped}
       `;
@@ -9248,6 +9305,49 @@ Grazie.`
       if (!box) return;
       box.className = `matchpoint-action-state ${type}`;
       box.textContent = message;
+    }
+
+    async function pmoApplyApprovedMemberCountAuditSoftDelete() {
+      if (!PMO_IS_TEST_ENV) {
+        showAlert('Pulizia bloccata: questa azione e consentita solo in TEST.', 'danger');
+        return;
+      }
+      const rows = (pmoMemberCountAuditState.allRows || []).filter(row => row.classification === 'approved_soft_delete' && row.localKey);
+      if (!rows.length) {
+        showAlert('Nessun record approvato per soft-delete nel dry-run corrente.', 'info');
+        return;
+      }
+      const names = rows.map(row => `${row.fullName} (${row.localKey})`).join('\n');
+      if (!confirm(`Applicare soft-delete in TEST a questi record?\n\n${names}\n\nNessun record verra cancellato fisicamente.`)) return;
+      const now = new Date().toISOString();
+      const operator = pmoStaffProfile?.email || pmoStaffProfile?.full_name || 'staff TEST';
+      const records = rows.map(row => ({
+        record_type: 'member',
+        local_key: row.localKey,
+        deleted: true,
+        payload: {
+          ...row.payload,
+          id: row.payload?.id || row.localKey,
+          memberId: row.memberId || row.payload?.memberId || '',
+          active: false,
+          deletedAt: now,
+          updatedAt: now,
+          cleanupReason: row.reason || 'Soft-delete approvato da diagnostica conteggi soci.',
+          cleanupApprovedAt: now,
+          cleanupApprovedBy: operator,
+          mergedInto: row.matchedLocalKey || row.payload?.mergedInto || ''
+        }
+      }));
+      try {
+        pmoSetMemberCountAuditStatus('Soft-delete TEST in corso', 'pending');
+        await pmoSyncCloudRecordsNow(records, 'applicare soft-delete approvati conteggi soci TEST');
+        showAlert(`Soft-delete TEST applicato a ${records.length} record.`, 'success');
+        await pmoRunMemberCountAuditDryRun();
+      } catch (err) {
+        const message = pmoFriendlyCloudError(err?.message || err || 'Soft-delete TEST non riuscito.');
+        pmoSetMemberCountAuditStatus(message, 'error');
+        showAlert('❌ ' + message, 'danger');
+      }
     }
 
     async function pmoRunMemberCountAuditDryRun() {
