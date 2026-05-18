@@ -5587,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.488';
+    const APP_VERSION = '5.489';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5934,6 +5934,7 @@ Grazie.`
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
 	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
 	    let pmoMemberCountAuditState = { status:'idle', summary:null, rows:[], generatedAt:'' };
+	    let pmoMemberCountAuditShowDiagnostics = false;
 	    let pmoStaffUserInlineMode = 'none';
 	    let pmoStaffUserInlineEmail = '';
 	    const PMO_STAFF_NOTIFICATIONS_STORAGE_KEY = 'pmoStaffNotificationRecipientsV1';
@@ -9271,6 +9272,11 @@ Grazie.`
       return 'keep';
     }
 
+    function pmoToggleMemberCountAuditDiagnostics() {
+      pmoMemberCountAuditShowDiagnostics = !pmoMemberCountAuditShowDiagnostics;
+      pmoRenderMemberCountAuditPanel();
+    }
+
     function pmoRenderMemberCountAuditPanel() {
       const target = document.getElementById('memberCountAuditContent');
       if (!target) return;
@@ -9299,13 +9305,19 @@ Grazie.`
         ['Soft-delete approvati', summary.approved],
         ['Candidati verifica', summary.candidates]
       ].map(([label, value]) => `<div class="member-count-audit-card"><strong>${escapeHtml(String(value))}</strong><span>${escapeHtml(label)}</span></div>`).join('');
+      const auditEnvLabel = PMO_IS_TEST_ENV ? 'TEST' : 'PROD';
       const approvedRows = (pmoMemberCountAuditState.allRows || []).filter(row => ['approved_soft_delete', 'approved_restore'].includes(row.classification));
-      const approvedAction = `<div class="member-count-audit-note"><button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); pmoApplyApprovedMemberCountAuditSoftDelete()" ${approvedRows.length ? '' : 'disabled'}>Applica correzioni approvate in TEST</button> ${
+      const diagnosticRows = (pmoMemberCountAuditState.rows || []).filter(row => !['approved_soft_delete', 'approved_restore'].includes(row.classification));
+      const approvedAction = `<div class="member-count-audit-note"><button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); pmoApplyApprovedMemberCountAuditSoftDelete()" ${approvedRows.length ? '' : 'disabled'}>Applica correzioni approvate in ${auditEnvLabel}</button> ${
         approvedRows.length
-          ? `<strong>${escapeHtml(String(approvedRows.length))}</strong> correzioni verranno applicate solo in TEST dopo conferma, senza hard-delete.`
+          ? `<strong>${escapeHtml(String(approvedRows.length))}</strong> correzioni verranno applicate in ${auditEnvLabel} solo dopo conferma, senza hard-delete.`
           : 'Nessuna correzione approvata nel dry-run corrente: il comando resta visibile ma non eseguibile.'
       }</div>`;
-      const rows = (pmoMemberCountAuditState.rows || []).slice(0, 150);
+      const diagnosticsToggle = diagnosticRows.length
+        ? `<div class="member-count-audit-note"><button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoToggleMemberCountAuditDiagnostics()">${pmoMemberCountAuditShowDiagnostics ? 'Nascondi candidati da verificare' : `Mostra candidati da verificare (${diagnosticRows.length})`}</button> <span>${pmoMemberCountAuditShowDiagnostics ? 'Dettaglio tecnico aperto: questi record non verranno toccati dal comando approvato.' : 'I candidati non approvati restano nascosti per evitare confusione operativa.'}</span></div>`
+        : '';
+      const sourceRows = pmoMemberCountAuditShowDiagnostics ? (pmoMemberCountAuditState.rows || []) : approvedRows;
+      const rows = sourceRows.slice(0, 150);
       const table = rows.length ? `<div class="member-count-audit-table-wrap">
         <table class="member-count-audit-table">
           <thead><tr><th>Classificazione</th><th>Socio</th><th>Contatti</th><th>Chiavi</th><th>Aggiornato</th><th>Motivo</th></tr></thead>
@@ -9319,14 +9331,15 @@ Grazie.`
               <td>${escapeHtml(row.reason || '-')}</td>
             </tr>`).join('')}</tbody>
         </table>
-      </div>` : '<div class="ux-empty-state"><strong>Nessun record non Matchpoint o tecnico da mostrare nel dry-run.</strong></div>';
-      const capped = (pmoMemberCountAuditState.rows || []).length > rows.length
+      </div>` : '<div class="ux-empty-state"><strong>Nessuna correzione approvata da applicare.</strong><br>I candidati da verificare restano solo diagnostica e non vengono modificati.</div>';
+      const capped = sourceRows.length > rows.length
         ? `<p class="member-count-audit-note">Vista limitata alle prime ${rows.length} righe operative. Il dry-run SQL allegato produce la lista completa.</p>`
         : '';
       target.innerHTML = `
         <div class="member-count-audit-summary">${cards}</div>
-        <p class="member-count-audit-note">Dry-run generato ${escapeHtml(pmoFormatDateTime(pmoMemberCountAuditState.generatedAt))}. Nessun record e stato modificato. I candidati richiedono approvazione esplicita prima di qualunque correzione.</p>
+        <p class="member-count-audit-note">Dry-run generato ${escapeHtml(pmoFormatDateTime(pmoMemberCountAuditState.generatedAt))}. Nessun record e stato modificato. La vista principale mostra solo le correzioni approvate.</p>
         ${approvedAction}
+        ${diagnosticsToggle}
         ${table}
         ${capped}
       `;
@@ -9340,17 +9353,15 @@ Grazie.`
     }
 
     async function pmoApplyApprovedMemberCountAuditSoftDelete() {
-      if (!PMO_IS_TEST_ENV) {
-        showAlert('Pulizia bloccata: questa azione e consentita solo in TEST.', 'danger');
-        return;
-      }
+      const auditEnvLabel = PMO_IS_TEST_ENV ? 'TEST' : 'PROD';
       const rows = (pmoMemberCountAuditState.allRows || []).filter(row => ['approved_soft_delete', 'approved_restore'].includes(row.classification) && row.localKey);
       if (!rows.length) {
         showAlert('Nessuna correzione approvata nel dry-run corrente.', 'info');
         return;
       }
       const names = rows.map(row => `${row.classification === 'approved_restore' ? 'Ripristina' : 'Soft-delete'}: ${row.fullName} (${row.localKey})`).join('\n');
-      if (!confirm(`Applicare queste correzioni in TEST?\n\n${names}\n\nNessun record verra cancellato fisicamente.`)) return;
+      const prodWarning = PMO_IS_TEST_ENV ? '' : '\n\nATTENZIONE: sei in PROD. Verifica che la lista contenga solo record gia approvati prima di continuare.';
+      if (!confirm(`Applicare queste correzioni in ${auditEnvLabel}?\n\n${names}\n\nNessun record verra cancellato fisicamente.${prodWarning}`)) return;
       const now = new Date().toISOString();
       const operator = pmoStaffProfile?.email || pmoStaffProfile?.full_name || 'staff TEST';
       const records = rows.map(row => {
@@ -9396,9 +9407,9 @@ Grazie.`
         };
       });
       try {
-        pmoSetMemberCountAuditStatus('Correzioni TEST in corso', 'pending');
-        await pmoSyncCloudRecordsNow(records, 'applicare correzioni approvate conteggi soci TEST');
-        showAlert(`Correzioni TEST applicate a ${records.length} record.`, 'success');
+        pmoSetMemberCountAuditStatus(`Correzioni ${auditEnvLabel} in corso`, 'pending');
+        await pmoSyncCloudRecordsNow(records, `applicare correzioni approvate conteggi soci ${auditEnvLabel}`);
+        showAlert(`Correzioni ${auditEnvLabel} applicate a ${records.length} record.`, 'success');
         await pmoRunMemberCountAuditDryRun();
       } catch (err) {
         const message = pmoFriendlyCloudError(err?.message || err || 'Correzioni TEST non riuscite.');
@@ -9411,6 +9422,7 @@ Grazie.`
       const button = document.getElementById('memberCountAuditButton');
       try {
         if (button) button.disabled = true;
+        pmoMemberCountAuditShowDiagnostics = false;
         pmoMemberCountAuditState = { status:'loading', summary:null, rows:[], generatedAt:'' };
         pmoSetMemberCountAuditStatus('Dry-run read-only in corso', 'pending');
         pmoRenderMemberCountAuditPanel();
