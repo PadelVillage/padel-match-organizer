@@ -150,14 +150,14 @@ Stato PROD scheduler follow-up Autovalutazione verificato il 2026-05-18 16:21:
 - durante il deploy non sono stati rilevati invii email o dispatch follow-up imprevisti;
 - nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 
-Stato guardia ambiente Link esterno TEST 2026-05-18 21:40:
+Stato guardia ambiente Link esterno TEST/PROD 2026-05-18 21:53:
 
-- app TEST preparata a v5.482 con controllo prima del salvataggio pubblico `assessment=link-esterno`;
+- app TEST/PROD allineata a v5.482 con controllo prima del salvataggio pubblico `assessment=link-esterno`;
 - TEST puo salvare richieste link esterno solo se la config Supabase punta al project ref `cudiqnrrlbyqryrtaprd`;
 - PROD puo salvare richieste link esterno solo se la config Supabase punta al project ref `qqbfphyslczzkxoncgex`;
 - se una vecchia configurazione locale o un link/config incrociato carica il project ref sbagliato, l'invio viene bloccato prima della scrittura;
 - la diagnostica `Amministrazione > Supabase > Verifica TEST/PROD` confronta il project ref esatto atteso per l'ambiente corrente;
-- nessuna modifica a SQL, Supabase schema, Edge Function, scheduler o dati reali.
+- nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, segreti, Matchpoint, Gmail, WhatsApp automatico o dati reali.
 
 Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:
 

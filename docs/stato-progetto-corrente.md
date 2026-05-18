@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-18 21:40
+Ultimo aggiornamento: 2026-05-18 21:53
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.481 | `main` | `bb7e6fd` |
+| PROD | v5.482 | `main` | `ed9de1c` |
 | TEST | v5.482 | `test-preview` | `ed9de1c` |
 | TEST sviluppo | v5.482 | `test/accessi-staff-guidati` | `ed9de1c` |
 
-Nota TEST v5.482: aggiunta guardia ambiente al salvataggio pubblico `Autovalutazione > Scheda pubblica > Link esterno`. Prima di chiamare `submit_assessment_external_request_public`, la app verifica che il project ref Supabase caricato dalla config coincida con l'ambiente runtime: TEST deve salvare solo su `cudiqnrrlbyqryrtaprd`, PROD solo su `qqbfphyslczzkxoncgex`. Se la config e' incoerente o vecchia, l'invio viene bloccato con il messaggio `Invio bloccato: configurazione ambiente non coerente. Contattare la segreteria.`. La diagnostica `Amministrazione > Supabase > Verifica TEST/PROD` confronta ora il project ref esatto atteso. Commit app `ed9de1c`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
+Nota promozione PROD v5.482 - 2026-05-18 21:53: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la patch TEST validata v5.482 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html` e documentazione collegata. Nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron.
+
+Nota TEST/PROD v5.482: aggiunta guardia ambiente al salvataggio pubblico `Autovalutazione > Scheda pubblica > Link esterno`. Prima di chiamare `submit_assessment_external_request_public`, la app verifica che il project ref Supabase caricato dalla config coincida con l'ambiente runtime: TEST deve salvare solo su `cudiqnrrlbyqryrtaprd`, PROD solo su `qqbfphyslczzkxoncgex`. Se la config e' incoerente o vecchia, l'invio viene bloccato con il messaggio `Invio bloccato: configurazione ambiente non coerente. Contattare la segreteria.`. La diagnostica `Amministrazione > Supabase > Verifica TEST/PROD` confronta ora il project ref esatto atteso. Commit app `ed9de1c`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.481 - 2026-05-18 17:35: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD il pacchetto TEST validato v5.481 con fast-forward remoto da `origin/test/accessi-staff-guidati` a `main`. Perimetro promosso: `index.html` e documentazione collegata. Nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron.
 
