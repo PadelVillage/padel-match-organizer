@@ -1710,8 +1710,10 @@
     .matchpoint-data-box.history { border-top-color:#7c3aed; }
     .matchpoint-data-box.backup { border-top-color:#168a53; }
     .matchpoint-data-box.potential { border-top-color:#b7791f; }
+    .matchpoint-data-box.member-audit { border-top-color:#b7791f; }
     .matchpoint-data-box.routines.wide { grid-column:1 / -1; }
     .matchpoint-data-box.potential.wide { grid-column:1 / -1; }
+    .matchpoint-data-box.member-audit.wide { grid-column:1 / -1; }
     .matchpoint-data-box.potential.wide .matchpoint-data-copy { min-height:0; margin-bottom:10px; }
     .matchpoint-data-box h3 { display:flex; align-items:center; gap:8px; margin:0 0 8px; color:#111827; font-size:17px; line-height:1.2; letter-spacing:0; }
     .matchpoint-data-step { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; flex:0 0 24px; border-radius:50%; background:var(--primary); color:#fff; font-size:12px; font-weight:900; }
@@ -1720,6 +1722,7 @@
     .matchpoint-data-box.history .matchpoint-data-step { background:#7c3aed; }
     .matchpoint-data-box.backup .matchpoint-data-step { background:#168a53; }
     .matchpoint-data-box.potential .matchpoint-data-step { background:#b7791f; }
+    .matchpoint-data-box.member-audit .matchpoint-data-step { background:#b7791f; }
     .matchpoint-data-copy { margin:0 0 14px; color:#667085; font-size:13px; min-height:38px; }
     .matchpoint-routine-head { display:grid; grid-template-columns:minmax(240px,.85fr) minmax(320px,1.15fr); gap:14px; align-items:end; margin-bottom:12px; }
     .matchpoint-routine-head .matchpoint-data-copy { min-height:0; margin:0; }
@@ -1730,6 +1733,23 @@
     .matchpoint-routine-table th { background:#f3f6fb; color:#344054; font-weight:900; text-align:left; padding:9px 10px; border-bottom:1px solid #e4ebf4; white-space:nowrap; }
     .matchpoint-routine-table td { padding:10px; border-top:1px solid #e8eef6; vertical-align:middle; color:#344054; }
     .matchpoint-routine-table tr:first-child td { border-top:0; }
+    .member-count-audit-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:12px 0; }
+    .member-count-audit-card { border:1px solid #e4ebf4; border-radius:8px; background:#f8fafc; padding:10px; min-width:0; }
+    .member-count-audit-card strong { display:block; color:#111827; font-size:22px; line-height:1.1; }
+    .member-count-audit-card span { display:block; color:#667085; font-size:12px; font-weight:800; margin-top:3px; }
+    .member-count-audit-note { margin:8px 0 0; color:#667085; font-size:13px; line-height:1.35; }
+    .member-count-audit-table-wrap { width:100%; overflow-x:auto; border:1px solid #e4ebf4; border-radius:8px; background:#fff; margin-top:12px; }
+    .member-count-audit-table { width:100%; min-width:1040px; border-collapse:collapse; font-size:12px; line-height:1.35; }
+    .member-count-audit-table th { background:#f3f6fb; color:#344054; font-weight:900; text-align:left; padding:9px 10px; border-bottom:1px solid #e4ebf4; white-space:nowrap; }
+    .member-count-audit-table td { padding:10px; border-top:1px solid #e8eef6; vertical-align:top; color:#344054; }
+    .member-count-audit-table tr:first-child td { border-top:0; }
+    .member-count-audit-classification { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; font-weight:900; white-space:nowrap; }
+    .member-count-audit-classification.keep { background:#e8f5ee; color:#168a53; }
+    .member-count-audit-classification.review { background:#fff6db; color:#91640b; }
+    .member-count-audit-classification.technical { background:#eef4ff; color:#234f91; }
+    .member-count-audit-classification.deleted { background:#fef3f2; color:#b42318; }
+    @media (max-width:1050px) { .member-count-audit-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:680px) { .member-count-audit-summary { grid-template-columns:1fr; } }
     .matchpoint-routine-name { color:#111827; font-weight:900; white-space:nowrap; }
     .matchpoint-routine-note { display:block; margin-top:3px; color:#667085; font-size:11px; font-weight:700; white-space:normal; }
     .matchpoint-routine-result { display:inline-flex; align-items:center; justify-content:center; min-width:78px; border-radius:999px; padding:4px 8px; font-size:11px; font-weight:900; text-align:center; white-space:nowrap; border:1px solid #d7e2ef; background:#f6f7f9; color:#475467; }
@@ -5307,6 +5327,16 @@ body.assessment-public-mode .assessment-public-only-card {
                 </div>
               </article>
 
+              <article class="matchpoint-data-box member-audit wide" id="anchor-matchpoint-conteggi-soci">
+                <h3><span class="matchpoint-data-step">A</span> Diagnostica conteggi soci</h3>
+                <p class="matchpoint-data-copy">Analisi read-only tra cloud, Anagrafica, Dashboard e fotografia Matchpoint. Non cancella e non modifica record.</p>
+                <div class="matchpoint-data-actions">
+                  <button id="memberCountAuditButton" class="btn-secondary" onclick="setActionAnchor(this); pmoRunMemberCountAuditDryRun()">Analizza conteggi soci</button>
+                  <div id="memberCountAuditActionState" class="matchpoint-action-state">Dry-run non ancora eseguito</div>
+                </div>
+                <div id="memberCountAuditContent" class="member-count-audit-content"></div>
+              </article>
+
               <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
                 <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
                   <span>
@@ -5549,7 +5579,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.484';
+    const APP_VERSION = '5.485';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5895,6 +5925,7 @@ Grazie.`
 	    let fillSlotsFastAnalysisCache = safeLoad('fillSlotsFastAnalysisCache', null);
 	    let pmoCloudState = safeLoad('pmoCloudState', { lastSyncAt:'', lastSyncCount:0, lastRoutineSyncAt:'', routines:[] });
 	    let pmoAdminState = safeLoad('pmoAdminState', { staffUsers:[], auditLog:[], lastStaffReadAt:'', lastAuditReadAt:'' });
+	    let pmoMemberCountAuditState = { status:'idle', summary:null, rows:[], generatedAt:'' };
 	    let pmoStaffUserInlineMode = 'none';
 	    let pmoStaffUserInlineEmail = '';
 	    const PMO_STAFF_NOTIFICATIONS_STORAGE_KEY = 'pmoStaffNotificationRecipientsV1';
@@ -8972,6 +9003,277 @@ Grazie.`
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
       const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_clients_auto_import_last')?.payload || null;
       return { members, summary };
+    }
+
+    function pmoMemberAuditPayload(row={}) {
+      const payload = row?.payload && typeof row.payload === 'object' ? row.payload : {};
+      const localKey = cleanCell(row?.local_key || payload.id || payload.memberId || '');
+      return { ...payload, id: payload.id || localKey };
+    }
+
+    function pmoMemberAuditFullName(payload={}) {
+      return compactSpaces(payload.name || `${payload.firstName || payload.nome || ''} ${payload.surname || payload.cognome || ''}`) || '-';
+    }
+
+    function pmoMemberAuditEmail(payload={}) {
+      return cleanCell(payload.email || payload.mail || payload['e-mail'] || '');
+    }
+
+    function pmoMemberAuditPhone(payload={}) {
+      return cleanCell(payload.phone || payload.telefono || payload.mobile || payload.cellulare || '');
+    }
+
+    function pmoMemberAuditSourceText(payload={}) {
+      return normalizeText([
+        payload.source,
+        payload.matchpointSource,
+        payload.origin,
+        payload.importSource,
+        payload.createdFrom
+      ].filter(Boolean).join(' '));
+    }
+
+    function pmoMemberAuditSourceLabel(payload={}, row={}) {
+      return cleanCell(payload.source || payload.matchpointSource || payload.origin || payload.importSource || row?.record_type || '-');
+    }
+
+    function pmoMemberAuditIsMatchpoint(payload={}) {
+      const sourceText = pmoMemberAuditSourceText(payload);
+      return sourceText.includes('matchpoint') ||
+        !!payload.matchpointImportedAt ||
+        !!payload.matchpointLastImportedAt ||
+        !!payload.matchpointClientId ||
+        !!payload.matchpointCode;
+    }
+
+    function pmoMemberAuditBaseRow(row={}) {
+      const payload = pmoMemberAuditPayload(row);
+      const email = pmoMemberAuditEmail(payload);
+      const phone = pmoMemberAuditPhone(payload);
+      const memberId = cleanCell(payload.memberId || payload.pmoId || payload.idPmo || '');
+      const deleted = !!row?.deleted || !!payload.deletedAt;
+      const active = !deleted && payload.active !== false;
+      return {
+        row,
+        payload,
+        localKey: cleanCell(row?.local_key || payload.id || memberId || ''),
+        memberId,
+        fullName: pmoMemberAuditFullName(payload),
+        email,
+        emailKey: normalizeEmailForMatch(email),
+        phone,
+        phoneKey: phoneDigitsForWhatsApp(phone),
+        source: pmoMemberAuditSourceLabel(payload, row),
+        updatedAt: cleanCell(payload.updatedAt || row?.updated_at || row?.synced_at || ''),
+        active,
+        deleted,
+        technical: isTechnicalMemberRecord(payload),
+        matchpoint: pmoMemberAuditIsMatchpoint(payload)
+      };
+    }
+
+    function pmoMemberAuditAddKey(map, key, item) {
+      const normalized = cleanCell(key || '');
+      if (!normalized) return;
+      if (!map.has(normalized)) map.set(normalized, []);
+      map.get(normalized).push(item);
+    }
+
+    function pmoMemberAuditFindTwin(item, maps) {
+      const candidates = []
+        .concat(item.memberId ? (maps.memberId.get(item.memberId) || []) : [])
+        .concat(item.emailKey ? (maps.email.get(item.emailKey) || []) : [])
+        .concat(item.phoneKey ? (maps.phone.get(item.phoneKey) || []) : []);
+      return candidates.find(row => row && row.localKey !== item.localKey) || null;
+    }
+
+    function pmoBuildMemberCountAudit(rows=[]) {
+      const cloudRows = (Array.isArray(rows) ? rows : [])
+        .filter(row => row?.record_type === 'member')
+        .map(pmoMemberAuditBaseRow);
+      const cloudActiveRows = cloudRows.filter(row => row.active);
+      const localAll = Array.isArray(giocatori) ? giocatori : [];
+      const localActive = localAll.filter(member => member && member.active !== false);
+      const localTechnical = localActive.filter(isTechnicalMemberRecord);
+      const matchpointRows = cloudActiveRows.filter(row => !row.technical && row.matchpoint);
+      const nonMatchpointRows = cloudActiveRows.filter(row => !row.technical && !row.matchpoint);
+      const maps = { memberId:new Map(), email:new Map(), phone:new Map() };
+      matchpointRows.forEach(row => {
+        pmoMemberAuditAddKey(maps.memberId, row.memberId, row);
+        pmoMemberAuditAddKey(maps.email, row.emailKey, row);
+        pmoMemberAuditAddKey(maps.phone, row.phoneKey, row);
+      });
+      const classifiedRows = cloudRows.map(row => {
+        const twin = !row.deleted && !row.technical && !row.matchpoint ? pmoMemberAuditFindTwin(row, maps) : null;
+        let classification = 'keep_matchpoint';
+        let suggestedAction = 'Mantenere';
+        let risk = 'Basso';
+        let reason = 'Record Matchpoint attivo o sorgente Matchpoint riconosciuta.';
+        if (row.deleted) {
+          classification = 'deleted';
+          suggestedAction = 'Gia soft-delete';
+          risk = 'Basso';
+          reason = 'Record gia marcato deleted o payload con deletedAt.';
+        } else if (row.technical) {
+          classification = 'technical_excluded';
+          suggestedAction = 'Escludere dalla UI';
+          risk = 'Basso';
+          reason = 'Record tecnico riconosciuto: non va contato in Dashboard.';
+        } else if (!row.matchpoint && twin) {
+          classification = 'candidate_soft_delete';
+          suggestedAction = 'Verifica manuale per soft-delete';
+          risk = row.emailKey || row.phoneKey ? 'Medio' : 'Alto';
+          const matchReasons = [
+            row.memberId && twin.memberId === row.memberId ? 'PMO uguale' : '',
+            row.emailKey && twin.emailKey === row.emailKey ? 'email uguale' : '',
+            row.phoneKey && twin.phoneKey === row.phoneKey ? 'telefono uguale' : ''
+          ].filter(Boolean).join(', ');
+          reason = `Possibile gemello Matchpoint (${matchReasons || 'chiave collegata'}). Matchpoint collegato: ${twin.localKey || twin.memberId || '-'}.`;
+        } else if (!row.matchpoint) {
+          classification = 'keep_non_matchpoint';
+          suggestedAction = 'Mantenere o verificare';
+          risk = row.emailKey || row.phoneKey || row.memberId ? 'Basso' : 'Medio';
+          reason = 'Socio non Matchpoint senza gemello tecnico trovato: non cancellare automaticamente.';
+        }
+        return { ...row, classification, suggestedAction, risk, reason, matchedLocalKey: twin?.localKey || '' };
+      });
+      const visibleRows = classifiedRows
+        .filter(row => row.classification !== 'keep_matchpoint')
+        .sort((a, b) => {
+          const rank = { candidate_soft_delete:0, keep_non_matchpoint:1, technical_excluded:2, deleted:3 };
+          const ar = rank[a.classification] ?? 9;
+          const br = rank[b.classification] ?? 9;
+          if (ar !== br) return ar - br;
+          return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+        });
+      const candidateRows = classifiedRows.filter(row => row.classification === 'candidate_soft_delete');
+      const nonMatchpointStandalone = classifiedRows.filter(row => row.classification === 'keep_non_matchpoint');
+      const technicalRows = classifiedRows.filter(row => row.classification === 'technical_excluded');
+      const deletedRows = classifiedRows.filter(row => row.classification === 'deleted');
+      return {
+        generatedAt: new Date().toISOString(),
+        summary: {
+          cloudActive: cloudActiveRows.length,
+          localActive: localActive.length,
+          dashboardActive: getDashboardActiveMembers().length,
+          matchpointClientCount: parseInt(matchpointData?.clientCount, 10) || 0,
+          cloudTechnical: technicalRows.length,
+          localTechnical: localTechnical.length,
+          matchpointMembers: matchpointRows.length,
+          nonMatchpointMembers: nonMatchpointRows.length,
+          candidates: candidateRows.length,
+          nonMatchpointStandalone: nonMatchpointStandalone.length,
+          deleted: deletedRows.length
+        },
+        rows: visibleRows,
+        allRows: classifiedRows
+      };
+    }
+
+    function pmoMemberAuditClassLabel(classification='') {
+      const labels = {
+        candidate_soft_delete: 'Candidato verifica',
+        keep_non_matchpoint: 'Non Matchpoint da preservare/verificare',
+        technical_excluded: 'Tecnico escluso UI',
+        deleted: 'Gia soft-delete'
+      };
+      return labels[classification] || 'Mantenere';
+    }
+
+    function pmoMemberAuditClassName(classification='') {
+      if (classification === 'candidate_soft_delete') return 'review';
+      if (classification === 'technical_excluded') return 'technical';
+      if (classification === 'deleted') return 'deleted';
+      return 'keep';
+    }
+
+    function pmoRenderMemberCountAuditPanel() {
+      const target = document.getElementById('memberCountAuditContent');
+      if (!target) return;
+      if (pmoMemberCountAuditState.status === 'loading') {
+        target.innerHTML = '<div class="info-box">Analisi conteggi soci in corso. Nessuna modifica ai dati.</div>';
+        return;
+      }
+      if (pmoMemberCountAuditState.status === 'error') {
+        target.innerHTML = `<div class="alert alert-danger">${escapeHtml(pmoMemberCountAuditState.error || 'Diagnostica non riuscita.')}</div>`;
+        return;
+      }
+      const summary = pmoMemberCountAuditState.summary;
+      if (!summary) {
+        target.innerHTML = '<div class="info-box">Esegui il dry-run per confrontare cloud, Anagrafica, Dashboard e Matchpoint. La diagnostica e solo read-only.</div>';
+        return;
+      }
+      const cards = [
+        ['Cloud attivi', summary.cloudActive],
+        ['Anagrafica attivi', summary.localActive],
+        ['Dashboard attivi', summary.dashboardActive],
+        ['Clienti Matchpoint', summary.matchpointClientCount],
+        ['Tecnici cloud esclusi', summary.cloudTechnical],
+        ['Soci Matchpoint cloud', summary.matchpointMembers],
+        ['Non Matchpoint cloud', summary.nonMatchpointMembers],
+        ['Candidati verifica', summary.candidates]
+      ].map(([label, value]) => `<div class="member-count-audit-card"><strong>${escapeHtml(String(value))}</strong><span>${escapeHtml(label)}</span></div>`).join('');
+      const rows = (pmoMemberCountAuditState.rows || []).slice(0, 150);
+      const table = rows.length ? `<div class="member-count-audit-table-wrap">
+        <table class="member-count-audit-table">
+          <thead><tr><th>Classificazione</th><th>Socio</th><th>PMO</th><th>Email</th><th>Telefono</th><th>Source</th><th>Local key</th><th>Gemello Matchpoint</th><th>Aggiornato</th><th>Motivo</th></tr></thead>
+          <tbody>${rows.map(row => `
+            <tr>
+              <td><span class="member-count-audit-classification ${pmoMemberAuditClassName(row.classification)}">${escapeHtml(pmoMemberAuditClassLabel(row.classification))}</span><div class="routine-mini">Rischio: ${escapeHtml(row.risk)}</div></td>
+              <td><strong>${escapeHtml(row.fullName)}</strong></td>
+              <td>${escapeHtml(row.memberId || '-')}</td>
+              <td>${escapeHtml(row.email || '-')}</td>
+              <td>${escapeHtml(row.phone || '-')}</td>
+              <td>${escapeHtml(row.source || '-')}</td>
+              <td>${escapeHtml(row.localKey || '-')}</td>
+              <td>${escapeHtml(row.matchedLocalKey || '-')}</td>
+              <td>${escapeHtml(pmoFormatDateTime(row.updatedAt) || '-')}</td>
+              <td>${escapeHtml(row.reason || '-')}</td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>` : '<div class="ux-empty-state"><strong>Nessun record non Matchpoint o tecnico da mostrare nel dry-run.</strong></div>';
+      const capped = (pmoMemberCountAuditState.rows || []).length > rows.length
+        ? `<p class="member-count-audit-note">Vista limitata alle prime ${rows.length} righe operative. Il dry-run SQL allegato produce la lista completa.</p>`
+        : '';
+      target.innerHTML = `
+        <div class="member-count-audit-summary">${cards}</div>
+        <p class="member-count-audit-note">Dry-run generato ${escapeHtml(pmoFormatDateTime(pmoMemberCountAuditState.generatedAt))}. Nessun record e stato modificato. I candidati richiedono approvazione esplicita prima di qualunque soft-delete.</p>
+        ${table}
+        ${capped}
+      `;
+    }
+
+    function pmoSetMemberCountAuditStatus(message, type='info') {
+      const box = document.getElementById('memberCountAuditActionState');
+      if (!box) return;
+      box.className = `matchpoint-action-state ${type}`;
+      box.textContent = message;
+    }
+
+    async function pmoRunMemberCountAuditDryRun() {
+      const button = document.getElementById('memberCountAuditButton');
+      try {
+        if (button) button.disabled = true;
+        pmoMemberCountAuditState = { status:'loading', summary:null, rows:[], generatedAt:'' };
+        pmoSetMemberCountAuditStatus('Dry-run read-only in corso', 'pending');
+        pmoRenderMemberCountAuditPanel();
+        const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
+          p_record_types: ['member'],
+          p_since: null
+        }, 'cloud_sync', 'analizzare conteggi soci cloud');
+        const result = pmoBuildMemberCountAudit(rows);
+        pmoMemberCountAuditState = { status:'ready', summary:result.summary, rows:result.rows, allRows:result.allRows, generatedAt:result.generatedAt };
+        pmoSetMemberCountAuditStatus(`Dry-run completato: ${result.summary.candidates} candidati verifica, ${result.summary.nonMatchpointStandalone} non Matchpoint da preservare/verificare.`, 'success');
+        pmoRenderMemberCountAuditPanel();
+      } catch (err) {
+        const message = pmoFriendlyCloudError(err?.message || err || 'Diagnostica conteggi soci non riuscita.');
+        pmoMemberCountAuditState = { status:'error', error:message, summary:null, rows:[], generatedAt:'' };
+        pmoSetMemberCountAuditStatus(message, 'error');
+        pmoRenderMemberCountAuditPanel();
+        showAlert('❌ ' + message, 'danger');
+      } finally {
+        if (button) button.disabled = false;
+      }
     }
 
     async function importMatchpointClientsAutomatic() {
@@ -22257,6 +22559,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoRenderAdminSessionPanel();
 	      pmoRenderStaffNotificationsPanel();
 	      pmoRenderEnvironmentCheck();
+	      pmoRenderMemberCountAuditPanel();
 	      pmoRenderStaffUsersTable();
 	      pmoRenderAuditLogTable();
 	      pmoMaybeAutoLoadStaffUsers();
