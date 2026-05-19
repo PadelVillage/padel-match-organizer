@@ -5581,7 +5581,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.502';
+    const APP_VERSION = '5.503';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26226,7 +26226,8 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailTodayRoutineBatch() {
       const batch = assessmentEmailRoutineBatches?.[getTodayKey()] || null;
-      return batch?.type === 'assessment_email_batch' ? batch : null;
+      if (batch?.type === 'assessment_email_batch' && cleanCell(batch.status || '') === 'pending') return batch;
+      return assessmentEmailLatestPendingRoutineBatch() || (batch?.type === 'assessment_email_batch' ? batch : null);
     }
     function assessmentEmailRoutineBatchSelectedCount(batch=null) {
       const rows = Array.isArray(batch?.selected) ? batch.selected : [];
@@ -26298,6 +26299,21 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentManualBatchUnsentRows(batch=null) {
       return assessmentManualBatchRows(batch).filter(row => !row.sent);
+    }
+    function assessmentEmailBatchSortValue(batch=null) {
+      const candidates = [batch?.updatedAt, batch?.selectionUpdatedAt, batch?.createdAt, batch?.localDate, batch?.scheduledLocalDate].map(cleanCell).filter(Boolean);
+      for (const value of candidates) {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return 0;
+    }
+    function assessmentEmailLatestPendingRoutineBatch() {
+      return Object.values(assessmentEmailRoutineBatches || {})
+        .filter(batch => batch?.type === 'assessment_email_batch')
+        .filter(batch => cleanCell(batch.status || '') === 'pending')
+        .filter(batch => assessmentManualBatchUnsentRows(batch).some(row => assessmentManualBatchRowIsSelected(row)))
+        .sort((a,b) => assessmentEmailBatchSortValue(b) - assessmentEmailBatchSortValue(a))[0] || null;
     }
     function assessmentManualBatchEnsureSelection(batch=null) {
       if (!batch) return new Set();
@@ -26373,6 +26389,11 @@ Per confermare scrivi ELIMINA.`);
       if (sentRows.length && !unsentRows.length) return `Inviato ${assessmentEmailFormatDateTime(sentAt)}`;
       if (sentRows.length) return `${sentRows.length} inviate, ${unsentRows.length} da inviare${failedRows.length ? `, ${failedRows.length} errori` : ''}`;
       return `${rows.length}/${DAILY_ASSESSMENT_REQUEST_LIMIT} disponibili`;
+    }
+    function assessmentManualBatchTitle(batch=null) {
+      const key = assessmentManualBatchKey(batch);
+      const label = /^\d{4}-\d{2}-\d{2}$/.test(key || '') ? key.split('-').reverse().join('/') : '';
+      return label && key !== getTodayKey() ? `Lotto email manuale (${label})` : 'Lotto email manuale';
     }
     function assessmentManualBatchCanRegenerate(batch=null) {
       if (!batch || cleanCell(batch.status || '') !== 'pending') return false;
@@ -26462,15 +26483,16 @@ Per confermare scrivi ELIMINA.`);
       const rows = assessmentManualBatchRows(batch);
       const status = cleanCell(batch.status || '');
       const titleCount = assessmentManualBatchStatusText(batch);
+      const title = assessmentManualBatchTitle(batch);
       if (!rows.length) {
-        return `<div class="assessment-email-table-wrap assessment-manual-batch"><div class="assessment-manual-batch-title"><h4>Lotto email manuale</h4><span>${escapeHtml(titleCount)}</span></div><div class="assessment-empty">Nessun socio pronto nel lotto di oggi. Nessuna email parte senza conferma dello staff.</div></div>`;
+        return `<div class="assessment-email-table-wrap assessment-manual-batch"><div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div><div class="assessment-empty">Nessun socio pronto nel lotto preparato. Nessuna email parte senza conferma dello staff.</div></div>`;
       }
       const tableRows = rows.map(assessmentManualBatchRowHtml).join('');
       const statusClass = status === 'sent_with_errors' ? ' warn' : '';
       const sendBlock = pmoAssessmentEmailSendBlock();
       const blockHtml = sendBlock.blocked ? `<div class="alert alert-warning" style="margin:8px 0;">${escapeHtml(sendBlock.message)}</div>` : '';
       return `<div class="assessment-email-table-wrap assessment-manual-batch${statusClass}">
-        <div class="assessment-manual-batch-title"><h4>Lotto email manuale</h4><span>${escapeHtml(titleCount)}</span></div>
+        <div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div>
         ${blockHtml}
         <table class="assessment-email-table assessment-manual-batch-table"><thead><tr><th>Sel.</th><th>Socio</th><th>Routine</th><th>Fase</th><th>Prossimo step</th><th>Email</th><th>Invii</th><th>Azioni</th></tr></thead><tbody>${tableRows}</tbody></table>
       </div>`;

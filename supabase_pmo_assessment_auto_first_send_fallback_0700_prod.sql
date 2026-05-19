@@ -82,9 +82,10 @@ begin
     'scheduledLocalTimestamp', v_local_ts,
     'status', 'dispatching',
     'runtimeEnv', 'prod',
-    'appVersion', '5.502',
+    'appVersion', '5.503',
     'firstSendAutomaticFallback', v_action = 'routine-autosend-selected',
     'requiresPreparedBatch', v_action = 'routine-autosend-selected',
+    'allowLatestPendingBatch', v_action = 'routine-autosend-selected',
     'createdAt', now()
   );
 
@@ -171,7 +172,7 @@ begin
     'scheduledLocalDate', v_local_date,
     'scheduledLocalTime', v_local_time,
     'runtimeEnv', 'prod',
-    'appVersion', '5.502',
+    'appVersion', '5.503',
     'limit', case when v_action = 'routine-followup' then 20 else 10 end
   );
 
@@ -184,7 +185,9 @@ begin
     v_body := v_body || jsonb_build_object(
       'firstSendAutomaticFallback', true,
       'requiresPreparedBatch', true,
-      'sendOnlySelected', true
+      'sendOnlySelected', true,
+      'allowLatestPendingBatch', true,
+      'batchLookupMode', 'latest_pending_selected'
     );
   end if;
 

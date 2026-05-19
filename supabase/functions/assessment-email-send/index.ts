@@ -1223,6 +1223,47 @@ function routineBatchItemWasFailed(item: JsonMap, failedRows: JsonMap[] = []) {
   });
 }
 
+function routineBatchHasPendingSelectedRows(batch: JsonMap | null) {
+  if (!batch || clean(batch.status || '') !== 'pending') return false;
+  const selected = Array.isArray(batch.selected) ? batch.selected : [];
+  const sentRows = Array.isArray(batch.sent) ? batch.sent : [];
+  const failedRows = Array.isArray(batch.failed) ? batch.failed : [];
+  return selected.some((item) => {
+    if (!routineBatchItemIsSelected(item)) return false;
+    if (routineBatchItemWasSent(item, sentRows)) return false;
+    if (routineBatchItemWasFailed(item, failedRows)) return false;
+    return true;
+  });
+}
+
+async function loadLatestPendingAssessmentRoutineBatch(admin: any) {
+  const { data, error } = await admin
+    .from('pmo_cloud_records')
+    .select('local_key,payload,deleted,created_at,synced_at')
+    .eq('record_type', EMAIL_RECORD_TYPE)
+    .eq('deleted', false)
+    .order('synced_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .map((row: JsonMap) => {
+      const payload = row?.payload && typeof row.payload === 'object' ? row.payload : null;
+      if (payload?.type !== 'assessment_email_batch') return null;
+      return {
+        ...payload,
+        localDate: clean(payload.localDate || payload.scheduledLocalDate || clean(row.local_key).split('|').pop() || ''),
+        _cloudSyncedAt: clean(row.synced_at || row.created_at || ''),
+      };
+    })
+    .filter((batch): batch is JsonMap => !!batch && routineBatchHasPendingSelectedRows(batch))
+    .sort((a: JsonMap, b: JsonMap) => {
+      const aTime = dateMs(a.updatedAt || a.selectionUpdatedAt || a.createdAt || a._cloudSyncedAt || a.localDate);
+      const bTime = dateMs(b.updatedAt || b.selectionUpdatedAt || b.createdAt || b._cloudSyncedAt || b.localDate);
+      return bTime - aTime;
+    })[0] || null;
+}
+
 function dateMs(value: unknown) {
   const text = clean(value);
   if (!text) return 0;
@@ -1859,10 +1900,11 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
 async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActor, supabaseUrl: string, body: JsonMap) {
   const startedAt = new Date().toISOString();
   const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
-  const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  const requestedLocalDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  const allowLatestPendingBatch = body.allowLatestPendingBatch !== false;
   if (runtimeEnv !== 'prod') {
     await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'blocked', startedAt, {
-      localDate,
+      localDate: requestedLocalDate,
       runtimeEnv,
       reason: 'AUTO_FIRST_SEND_ONLY_PROD',
       message: 'Invio automatico del lotto selezionato consentito solo in PROD.',
@@ -1870,7 +1912,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     return {
       action: 'routine-autosend-selected',
       runtimeEnv,
-      localDate,
+      localDate: requestedLocalDate,
       blocked: true,
       reason: 'AUTO_FIRST_SEND_ONLY_PROD',
       sent: [],
@@ -1878,17 +1920,24 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     };
   }
 
-  const context = await buildAssessmentRoutineContext(admin, body);
-  let batch = await loadAssessmentRoutineBatch(admin, context.localDate);
+  let batch = allowLatestPendingBatch ? await loadLatestPendingAssessmentRoutineBatch(admin) : null;
+  const batchLookupMode = batch ? 'latest_pending_selected' : 'scheduled_date';
+  const context = await buildAssessmentRoutineContext(admin, {
+    ...body,
+    scheduledLocalDate: clean(batch?.localDate || requestedLocalDate),
+  });
+  if (!batch) batch = await loadAssessmentRoutineBatch(admin, context.localDate);
   if (!batch) {
     await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'noop', startedAt, {
       localDate: context.localDate,
+      requestedLocalDate,
       runtimeEnv,
       reason: 'BATCH_MISSING',
+      batchLookupMode,
       firstSendAutomaticFallback: true,
       requiresPreparedBatch: true,
     });
-    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], reason: 'BATCH_MISSING' };
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, requestedLocalDate, selected: 0, sent: [], failed: [], reason: 'BATCH_MISSING', batchLookupMode };
   }
 
   const status = clean(batch.status || '');
@@ -1897,7 +1946,9 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
       action: 'routine-autosend-selected',
       runtimeEnv,
       localDate: context.localDate,
+      requestedLocalDate,
       alreadySentBatch: true,
+      batchLookupMode,
       batch,
       sent: batch.sent || [],
       failed: batch.failed || [],
@@ -1906,12 +1957,14 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
   if (status !== 'pending') {
     await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'blocked', startedAt, {
       localDate: context.localDate,
+      requestedLocalDate,
       runtimeEnv,
       reason: `BATCH_${status || 'UNKNOWN'}`,
+      batchLookupMode,
       firstSendAutomaticFallback: true,
       requiresPreparedBatch: true,
     }, [], `BATCH_${status || 'UNKNOWN'}`);
-    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], blocked: true, batchStatus: status };
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, requestedLocalDate, selected: 0, sent: [], failed: [], blocked: true, batchStatus: status, batchLookupMode };
   }
 
   const candidateByAlias = new Map<string, JsonMap>();
@@ -1940,6 +1993,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
   if (!toSend.length) {
     await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'noop', startedAt, {
       localDate: context.localDate,
+      requestedLocalDate,
       runtimeEnv,
       limit: context.limit,
       alreadySentToday: context.todaySent.length,
@@ -1948,10 +2002,11 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
       sent: 0,
       failed: 0,
       skipped: skipped.length,
+      batchLookupMode,
       firstSendAutomaticFallback: true,
       requiresPreparedBatch: true,
     }, skipped.slice(0, 20));
-    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], skipped: skipped.slice(0, 50), batch };
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, requestedLocalDate, selected: 0, sent: [], failed: [], skipped: skipped.slice(0, 50), batchLookupMode, batch };
   }
 
   batch = await saveAssessmentRoutineBatch(admin, context.localDate, {
@@ -2015,6 +2070,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
   await logAudit(admin, actor, 'assessment_email_auto_first_send', {
     source: clean(body.source || 'pmo_assessment_auto_first_send_fallback_prod'),
     localDate: context.localDate,
+    requestedLocalDate,
     runtimeEnv,
     limit: context.limit,
     candidates: context.candidates.length,
@@ -2022,11 +2078,13 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     sent: sent.length,
     failed: failed.length,
     skipped: skipped.length,
+    batchLookupMode,
     firstSendAutomaticFallback: true,
     requiresPreparedBatch: true,
   });
   await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', failed.length ? (sent.length ? 'blocked' : 'error') : (sent.length ? 'success' : 'noop'), startedAt, {
     localDate: context.localDate,
+    requestedLocalDate,
     runtimeEnv,
     limit: context.limit,
     alreadySentToday: context.todaySent.length,
@@ -2036,6 +2094,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     sent: sent.length,
     failed: failed.length,
     skipped: skipped.length,
+    batchLookupMode,
     firstSendAutomaticFallback: true,
     requiresPreparedBatch: true,
   }, sent, failed.length ? JSON.stringify(failed.slice(0, 10)) : '');
@@ -2044,10 +2103,12 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     action: 'routine-autosend-selected',
     runtimeEnv,
     localDate: context.localDate,
+    requestedLocalDate,
     selected: toSend.length,
     sent,
     failed,
     skipped: skipped.slice(0, 50),
+    batchLookupMode,
     batch,
   };
 }
