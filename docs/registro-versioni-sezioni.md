@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 15:20
+Ultimo aggiornamento: 2026-05-19 15:38
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Filtri Cruscotto TEST v5.496: aggiornata la barra filtri sticky compatta secondo la nuova decisione operativa. Rimangono solo `Storico`, `Matchpoint`, `Da controllare`, `Risposte`, `Problemi`, `In attesa`, `Da inviare`; rimossi `Tutti` e `Oggi`. Il Cruscotto mattutino usa `Da inviare` come filtro operativo di default e il click sui filtri e' gestito dal contenitore della barra, per mantenere coerente il cambio vista anche dopo rerender. Commit app `e037e48`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Filtri Cruscotto TEST v5.495: micro-correzione della barra filtri sticky compatta introdotta in v5.494. I pulsanti generati nella barra usano ora un handler esplicito nel markup, cosi il click su `Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint` e `Storico` aggiorna sempre filtro o vista sottostante anche dopo rerender. Commit app `32909ef`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Filtri Cruscotto TEST v5.494: integrata la barra filtri sticky compatta approvata dal mock-up `mockup/autovalutazione-filtri-sticky-compatti-mockup.html`. I box filtro del `Cruscotto mattutino` diventano filtri testuali con conteggio reale e stato attivo sottolineato, sempre disponibili sopra i pannelli Autovalutazione; `Storico` e `Matchpoint` navigano alle viste gia esistenti. Ricerca, lotto manuale, comandi email, Storico, Matchpoint, Scheda pubblica, Testi e protezioni TEST/PROD restano invariati. Commit app `c77e560`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.493 - 2026-05-19: pubblicata in PROD la micro-correzione UI TEST validata v5.493. La promozione e' solo app UI + documentazione: nel pannello `Amministrazione > Supabase > Scheduler email Autovalutazione` il PROD mostra stato `OK` e il testo `dispatcher applicato e verificato da Promuovi Prod/Admin`, mantenendo la nota che la UI non legge `cron.job` in tempo reale. Nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.

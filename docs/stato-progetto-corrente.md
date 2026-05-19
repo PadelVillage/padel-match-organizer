@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 15:20
+Ultimo aggiornamento: 2026-05-19 15:38
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.495 | `test-preview` | `32909ef` |
-| TEST sviluppo | v5.495 | `test/accessi-staff-guidati` | `32909ef` |
+| TEST | v5.496 | `test-preview` | `e037e48` |
+| TEST sviluppo | v5.496 | `test/accessi-staff-guidati` | `e037e48` |
+
+Nota TEST v5.496: rifinita la barra filtri sticky compatta di `Autovalutazione` secondo la nuova decisione operativa. Rimangono solo i filtri utili nello stesso ordine di lavoro indicato: `Storico`, `Matchpoint`, `Da controllare`, `Risposte`, `Problemi`, `In attesa`, `Da inviare`; rimossi dalla barra `Tutti` e `Oggi`. Il default del Cruscotto mattutino diventa `Da inviare`. Il click e' gestito con handler delegato stabile sul contenitore della barra, cosi il contenuto sottostante cambia in modo coerente anche dopo rerender. Commit app `e037e48`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.495: micro-correzione sulla barra filtri sticky compatta di `Autovalutazione`. I pulsanti della barra (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Storico`) usano ora un handler esplicito sul markup generato, cosi il click cambia sempre il filtro/pannello sottostante anche dopo rerender della barra. Commit app `32909ef`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
