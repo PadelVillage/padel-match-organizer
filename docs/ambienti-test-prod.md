@@ -76,6 +76,19 @@ Project ref:
 - PROD: `qqbfphyslczzkxoncgex`
 - TEST: `cudiqnrrlbyqryrtaprd`
 
+Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 18:23:
+
+- app PROD pubblicata: v5.502 su branch `main`;
+- app TEST pubblicata: v5.502 su branch `test-preview`;
+- `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati a `307fd47`;
+- `assessment-email-send` PROD resta `ACTIVE`, versione `17`, `verify_jwt=true`;
+- Vault PROD contiene `pmo_assessment_email_routine_jwt`, verificato presente e con formato JWT valido senza stampare il valore;
+- applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`;
+- il dispatcher `public.pmo_dispatch_assessment_followup_email_prod()` usa il JWT Vault per `Authorization`, non la publishable key come Bearer token;
+- `cron.job` PROD contiene `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`, entrambi attivi `*/5 * * * *`;
+- TEST `cron.job` resta vuoto;
+- nessun deploy Edge Function, nessun invio email reale, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
+
 Stato Edge Function PROD verificato il 2026-05-16 08:47:
 
 - la funzione residua `assessment-email-cron-test` e' stata rimossa da Supabase PROD dopo audit e autorizzazione esplicita;

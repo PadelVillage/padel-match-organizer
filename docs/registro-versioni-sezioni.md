@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 17:29
+Ultimo aggiornamento: 2026-05-19 18:23
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Promozione PROD v5.502 - 2026-05-19: pubblicata in PROD la correzione scheduler email Autovalutazione. Creato/impostato in Vault PROD il secret `pmo_assessment_email_routine_jwt` senza stamparne il valore; applicato il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`; app PROD aggiornata a `APP_VERSION = 5.502`. Il dispatcher PROD usa ora la publishable key solo come `apikey`, il JWT Vault per `Authorization` e `x-pmo-routine-secret` per l'autorizzazione interna. Edge Function PROD `assessment-email-send` resta v17 con `verify_jwt=true` e non e' stata deployata. Scheduler PROD preservati, TEST senza cron, nessun invio email reale, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
 - Autovalutazione / Scheduler email TEST v5.502: corretta la preparazione del dispatcher PROD `pmo_dispatch_assessment_followup_email_prod()` per le chiamate a `assessment-email-send` con `verify_jwt=true`. Il SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql` non usa piu la publishable key come Bearer token: la mantiene come `apikey`, richiede un JWT Vault dedicato `pmo_assessment_email_routine_jwt` per `Authorization` e preserva `x-pmo-routine-secret` come autorizzazione interna della routine. Commit app `68ddbfc`. Nessun cron TEST attivato, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Socio test TEST v5.501: rimosso dalla testata `Autovalutazione > Da inviare` il bottone visibile `Socio test`. Le funzioni e le protezioni interne per `PMO-000948` restano nel codice, ma non sono piu esposte nel cruscotto operativo. Commit app `fe6b933`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.500 - 2026-05-19: pubblicato in PROD il pacchetto TEST validato v5.500. La promozione aggiorna la barra operativa Autovalutazione fino a `Da inviare` / `In attesa risposta` / `Da controllare` / `Problemi` / `Risposte` / `Matchpoint` / `Storico`, neutralizza operativamente il vecchio socio test `PMO-000956` preservando `PMO-000948`, e deploya `assessment-email-send` PROD a versione `17` con `verify_jwt=true`. Il file `supabase_pmo_member_count_audit_dry_run.sql` entra solo come riferimento versionato: nessuna applicazione SQL a PROD, nessuna correzione dati, nessun hard-delete, nessuna cancellazione Auth. Scheduler PROD preservati, nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
