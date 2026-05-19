@@ -5587,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.494';
+    const APP_VERSION = '5.495';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26077,17 +26077,10 @@ Per confermare scrivi ELIMINA.`);
       const filters = assessmentProcessFilterConfig(rows, search);
       const activeFilter = assessmentProcessStickyActiveFilter();
       const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
-      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}">
+      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}" onclick="setActionAnchor(this); setAssessmentProcessFilter('${escapeJs(key)}')">
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(String(count))}</span>
       </button>`).join('');
-      box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || 'all');
-        });
-      });
     }
     function openAssessmentProcessTestMember() {
       const member = assessmentProcessFindFollowupTestMember();
