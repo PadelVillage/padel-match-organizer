@@ -5587,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.495';
+    const APP_VERSION = '5.496';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25575,7 +25575,8 @@ Per confermare scrivi ELIMINA.`);
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000948';
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
-    window.assessmentProcessFilter = window.assessmentProcessFilter || 'all';
+    const ASSESSMENT_PROCESS_DEFAULT_FILTER = 'queue';
+    window.assessmentProcessFilter = window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER;
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
     window.assessmentProcessSearchText = window.assessmentProcessSearchText || '';
     window.assessmentProcessSearchDraft = window.assessmentProcessSearchDraft || '';
@@ -25587,19 +25588,17 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentManualBatchSelections = window.assessmentManualBatchSelections || {};
     window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
     const ASSESSMENT_PROCESS_FILTER_LABELS = {
-      all:'Tutti',
-      today:'Oggi',
-      queue:'Da inviare',
-      pending:'In attesa',
-      problems:'Problemi',
-      responses:'Risposte',
-      review:'Da controllare',
+      history:'Storico',
       matchpoint:'Matchpoint',
-      history:'Storico'
+      review:'Da controllare',
+      responses:'Risposte',
+      problems:'Problemi',
+      pending:'In attesa',
+      queue:'Da inviare'
     };
-    function assessmentProcessNormalizeFilter(filter='all') {
-      const key = cleanCell(filter || 'all');
-      return Object.prototype.hasOwnProperty.call(ASSESSMENT_PROCESS_FILTER_LABELS, key) ? key : 'all';
+    function assessmentProcessNormalizeFilter(filter=ASSESSMENT_PROCESS_DEFAULT_FILTER) {
+      const key = cleanCell(filter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
+      return Object.prototype.hasOwnProperty.call(ASSESSMENT_PROCESS_FILTER_LABELS, key) ? key : ASSESSMENT_PROCESS_DEFAULT_FILTER;
     }
     function assessmentProcessDateIsToday(value) {
       const ms = assessmentEmailDateMs(value);
@@ -26066,7 +26065,7 @@ Per confermare scrivi ELIMINA.`);
     function assessmentProcessStickyActiveFilter() {
       const panel = window.assessmentEmailActivePanel || 'morning';
       if (panel === 'history' || panel === 'matchpoint') return panel;
-      if (panel === 'morning') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || 'all');
+      if (panel === 'morning') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       return '';
     }
     function renderAssessmentProcessStickyFilters() {
@@ -26077,10 +26076,18 @@ Per confermare scrivi ELIMINA.`);
       const filters = assessmentProcessFilterConfig(rows, search);
       const activeFilter = assessmentProcessStickyActiveFilter();
       const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
-      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}" onclick="setActionAnchor(this); setAssessmentProcessFilter('${escapeJs(key)}')">
+      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}">
         <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
         <span class="assessment-process-filter-count">${escapeHtml(String(count))}</span>
       </button>`).join('');
+      box.onclick = event => {
+        const button = event.target?.closest?.('[data-assessment-process-filter]');
+        if (!button || !box.contains(button)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setActionAnchor(button);
+        setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
+      };
     }
     function openAssessmentProcessTestMember() {
       const member = assessmentProcessFindFollowupTestMember();
@@ -26109,18 +26116,16 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentProcessFilterConfig(rows, search='') {
       const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
-      const count = filter => sourceRows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
+      const count = filter => sourceRows.filter(row => row.filter === filter).length;
       const historyCount = count('history');
       return [
-        ['all', 'Tutti', sourceRows.length, `${sourceRows.length} righe`],
-        ['today', 'Oggi', count('today'), `${count('today')} oggi`],
-        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`],
-        ['pending', 'In attesa', count('pending'), `${count('pending')} soci`],
-        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
-        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
-        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
+        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`],
         ['matchpoint', 'Matchpoint', count('matchpoint'), `${count('matchpoint')} soci`],
-        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
+        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
+        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
+        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
+        ['pending', 'In attesa', count('pending'), `${count('pending')} soci`],
+        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`]
       ];
     }
     function assessmentProcessSearchStageKeys(rows, search='') {
@@ -26131,11 +26136,10 @@ Per confermare scrivi ELIMINA.`);
         .filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch))
         .forEach(row => {
           if (row.filter) keys.add(row.filter);
-          if (row.today) keys.add('today');
         });
       return keys;
     }
-    function setAssessmentProcessFilter(filter='all') {
+    function setAssessmentProcessFilter(filter=ASSESSMENT_PROCESS_DEFAULT_FILTER) {
       clearAssessmentProcessTestMemberFocus();
       const normalized = assessmentProcessNormalizeFilter(filter);
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
@@ -26489,7 +26493,7 @@ Per confermare scrivi ELIMINA.`);
       const headerActions = document.getElementById('assessmentEmailMorningHeaderActions');
       if (headerActions) headerActions.innerHTML = assessmentEmailRoutineApprovalControlsHtml();
       const rows = assessmentProcessRows();
-      const activeFilter = assessmentProcessNormalizeFilter(window.assessmentProcessFilter || 'all');
+      const activeFilter = assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       window.assessmentProcessFilter = activeFilter;
       const search = getAssessmentProcessSearchValue();
       window.assessmentProcessSearchText = search;
@@ -26518,9 +26522,9 @@ Per confermare scrivi ELIMINA.`);
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
         : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
-      const emptyHtml = search && searchableRows.length && !visibleRows.length && activeFilter !== 'all'
-        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Usa <button type="button" class="assessment-email-mini success" data-assessment-process-filter="all">Tutti</button> per vederlo.</div>`
-        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : (activeFilter === 'all' ? 'Nessun socio in questa vista.' : 'Nessun socio in questo stato.'));
+      const emptyHtml = search && searchableRows.length && !visibleRows.length
+        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Scegli un altro filtro dalla barra superiore.</div>`
+        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questo stato.');
       const tableHtml = visibleRows.length
         ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
