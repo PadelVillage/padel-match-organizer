@@ -985,18 +985,16 @@
     .assessment-email-tab-count strong { color:var(--primary); font-size:11px; }
     .assessment-email-tab.active .assessment-email-tab-count { color:rgba(255,255,255,.82); }
     .assessment-email-tab.active .assessment-email-tab-count strong { color:#fff; }
-    .assessment-process-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(105px,1fr)); gap:7px; margin-bottom:10px; }
-    .assessment-process-filter { min-width:0; text-align:left; border:1px solid #d9e0ea; background:#fff; color:#344054; border-radius:8px; padding:7px 8px; cursor:pointer; box-shadow:0 1px 3px rgba(31,71,136,.04); }
-    .assessment-process-filter.active { background:var(--primary); border-color:var(--primary); color:#fff; }
-    .assessment-process-filter.search-hit { border-color:#f59e0b; background:#fff8e8; box-shadow:0 0 0 2px rgba(245,158,11,.20), 0 5px 14px rgba(31,71,136,.10); }
-    .assessment-process-filter.search-hit .assessment-process-filter-title { color:#7a4d00; }
+    .assessment-process-sticky-filters { position:sticky; top:0; z-index:30; display:flex; flex-wrap:wrap; align-items:center; gap:3px 15px; margin:0 0 10px; padding:7px 2px 8px; background:rgba(255,255,255,.98); border-bottom:1px solid #e7edf6; box-shadow:0 3px 9px rgba(31,71,136,.06); }
+    .assessment-process-filter { min-width:0; text-align:left; border:0; border-bottom:3px solid transparent; background:transparent; color:#344054; border-radius:0; padding:4px 0 5px; cursor:pointer; box-shadow:none; display:inline-flex; align-items:baseline; gap:5px; font-weight:900; white-space:nowrap; }
+    .assessment-process-filter.active { color:var(--primary); border-bottom-color:var(--primary); background:transparent; }
+    .assessment-process-filter.search-hit { border-bottom-color:#f59e0b; color:#7a4d00; background:transparent; box-shadow:none; }
+    .assessment-process-filter.active.search-hit { color:var(--primary); border-bottom-color:var(--primary); background:transparent; box-shadow:none; }
+    .assessment-process-filter-title { display:inline; font-size:12px; font-weight:950; line-height:1.15; white-space:nowrap; overflow:visible; text-overflow:clip; }
+    .assessment-process-filter-count { display:inline; margin-top:0; font-size:14px; font-weight:950; color:#667085; line-height:1; white-space:nowrap; }
+    .assessment-process-filter.active .assessment-process-filter-count { color:var(--primary); }
     .assessment-process-filter.search-hit .assessment-process-filter-count { color:#8a5a00; }
-    .assessment-process-filter.active.search-hit { background:var(--primary); border-color:#f59e0b; color:#fff; box-shadow:0 0 0 3px rgba(245,158,11,.36), 0 5px 14px rgba(31,71,136,.14); }
-    .assessment-process-filter.active.search-hit .assessment-process-filter-title,
-    .assessment-process-filter.active.search-hit .assessment-process-filter-count { color:#fff; }
-    .assessment-process-filter-title { display:block; font-size:12px; font-weight:900; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .assessment-process-filter-count { display:block; margin-top:2px; font-size:11px; font-weight:850; color:#667085; line-height:1.2; white-space:nowrap; }
-    .assessment-process-filter.active .assessment-process-filter-count { color:rgba(255,255,255,.84); }
+    .assessment-process-filter.active.search-hit .assessment-process-filter-count { color:var(--primary); }
     .assessment-process-active-filter { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 10px; color:#667085; font-size:12px; font-weight:850; }
     .assessment-process-active-filter strong { color:var(--primary); }
     .assessment-process-search { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; margin-bottom:10px; }
@@ -4687,6 +4685,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')"><span class="assessment-email-tab-title">Testi</span><span class="assessment-email-tab-count">email e WhatsApp</span></button>
             <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
           </nav>
+          <div id="assessmentProcessStickyFilters" class="assessment-process-sticky-filters" aria-label="Filtri Autovalutazione"></div>
 
           <section id="assessmentEmailMorningPanel" class="assessment-email-panel active" data-assessment-email-panel="morning">
             <div class="assessment-email-panel-head">
@@ -5588,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.493';
+    const APP_VERSION = '5.494';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26064,6 +26063,32 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessForceTestMember = false;
       window.assessmentProcessTestMemberNotice = null;
     }
+    function assessmentProcessStickyActiveFilter() {
+      const panel = window.assessmentEmailActivePanel || 'morning';
+      if (panel === 'history' || panel === 'matchpoint') return panel;
+      if (panel === 'morning') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || 'all');
+      return '';
+    }
+    function renderAssessmentProcessStickyFilters() {
+      const box = document.getElementById('assessmentProcessStickyFilters');
+      if (!box) return;
+      const rows = assessmentProcessRows();
+      const search = getAssessmentProcessSearchValue();
+      const filters = assessmentProcessFilterConfig(rows, search);
+      const activeFilter = assessmentProcessStickyActiveFilter();
+      const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
+      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}">
+        <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
+        <span class="assessment-process-filter-count">${escapeHtml(String(count))}</span>
+      </button>`).join('');
+      box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || 'all');
+        });
+      });
+    }
     function openAssessmentProcessTestMember() {
       const member = assessmentProcessFindFollowupTestMember();
       window.assessmentProcessForceTestMember = !!member;
@@ -26079,7 +26104,7 @@ Per confermare scrivi ELIMINA.`);
       } else {
         window.assessmentProcessTestMemberNotice = { message:'Socio test aperto.', type:'info' };
       }
-      renderAssessmentEmailMorningPanel();
+      renderAssessmentEmailPanels();
       setTimeout(() => {
         const row = Array.from(document.querySelectorAll('[data-assessment-email-member]'))
           .find(el => String(el.dataset.assessmentEmailMember || '') === String(member?.id || ''));
@@ -26094,15 +26119,15 @@ Per confermare scrivi ELIMINA.`);
       const count = filter => sourceRows.filter(row => filter === 'all' || (filter === 'today' ? row.today : row.filter === filter)).length;
       const historyCount = count('history');
       return [
-        ['all', 'Tutti', `${sourceRows.length} righe`],
-        ['today', 'Oggi', `${count('today')} oggi`],
-        ['queue', 'Da inviare', `${count('queue')} soci`],
-        ['pending', 'In attesa', `${count('pending')} soci`],
-        ['problems', 'Problemi', `${count('problems')} da risolvere`],
-        ['responses', 'Risposte', `${count('responses')} da leggere`],
-        ['review', 'Da controllare', `${count('review')} livelli`],
-        ['matchpoint', 'Matchpoint', `${count('matchpoint')} soci`],
-        ['history', 'Storico', historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
+        ['all', 'Tutti', sourceRows.length, `${sourceRows.length} righe`],
+        ['today', 'Oggi', count('today'), `${count('today')} oggi`],
+        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`],
+        ['pending', 'In attesa', count('pending'), `${count('pending')} soci`],
+        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
+        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
+        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
+        ['matchpoint', 'Matchpoint', count('matchpoint'), `${count('matchpoint')} soci`],
+        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
       ];
     }
     function assessmentProcessSearchStageKeys(rows, search='') {
@@ -26119,9 +26144,18 @@ Per confermare scrivi ELIMINA.`);
     }
     function setAssessmentProcessFilter(filter='all') {
       clearAssessmentProcessTestMemberFocus();
-      window.assessmentProcessFilter = assessmentProcessNormalizeFilter(filter);
+      const normalized = assessmentProcessNormalizeFilter(filter);
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
-      renderAssessmentEmailMorningPanel();
+      if (normalized === 'history' || normalized === 'matchpoint') {
+        setAssessmentEmailPanel(normalized);
+        return;
+      }
+      window.assessmentProcessFilter = normalized;
+      if ((window.assessmentEmailActivePanel || 'morning') !== 'morning') {
+        setAssessmentEmailPanel('morning');
+        return;
+      }
+      renderAssessmentEmailPanels();
     }
     function getAssessmentProcessSearchValue() {
       return cleanCell(window.assessmentProcessSearchText || '');
@@ -26134,7 +26168,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessSearchText = cleanCell(value || '');
       window.assessmentProcessSearchDraft = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
-      renderAssessmentEmailMorningPanel();
+      renderAssessmentEmailPanels();
     }
     function clearAssessmentProcessSearch() {
       const input = document.getElementById('assessmentProcessSearch');
@@ -26143,7 +26177,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessSearchText = '';
       window.assessmentProcessSearchDraft = '';
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
-      renderAssessmentEmailMorningPanel();
+      renderAssessmentEmailPanels();
     }
     function getAssessmentProcessVisibleLimit() {
       const raw = parseInt(String(window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE), 10);
@@ -26475,8 +26509,6 @@ Per confermare scrivi ELIMINA.`);
       const visibleLimit = getAssessmentProcessVisibleLimit();
       const visibleRows = filteredRows.slice(0, visibleLimit);
       const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
-      const filters = assessmentProcessFilterConfig(rows, search);
-      const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
       const searchDraft = getAssessmentProcessSearchDraft();
       const searchHtml = `<div class="assessment-process-search">
         <label for="assessmentProcessSearch">Cerca nel processo</label>
@@ -26485,13 +26517,6 @@ Per confermare scrivi ELIMINA.`);
           <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
         </div>
       </div>`;
-      const filterHtml = `<div class="assessment-process-filters">${filters.map(([key, title, count]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}">
-        <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
-        <span class="assessment-process-filter-count">${escapeHtml(count)}</span>
-      </button>`).join('')}</div>`;
-      const activeFilterHtml = activeFilter !== 'all'
-        ? `<div class="assessment-process-active-filter">Filtro attivo: <strong>${escapeHtml(ASSESSMENT_PROCESS_FILTER_LABELS[activeFilter] || 'Tutti')}</strong><button type="button" class="assessment-email-mini" data-assessment-process-filter="all">Tutti</button></div>`
-        : '';
       const activeSearchHtml = search
         ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
         : '';
@@ -26508,9 +26533,7 @@ Per confermare scrivi ELIMINA.`);
         : emptyHtml;
       box.innerHTML = `${manualBatchHtml}
         ${searchHtml}
-        ${filterHtml}
         ${activeSearchHtml}
-        ${activeFilterHtml}
         ${testNoticeHtml}
         ${tableHtml}`;
       box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
@@ -27013,6 +27036,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function renderAssessmentEmailPanels() {
       renderAssessmentEmailKpis();
+      renderAssessmentProcessStickyFilters();
       renderAssessmentEmailMorningPanel();
       renderAssessmentEmailRoutinePanel();
       renderAssessmentEmailQueuePanel();
