@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 11:10
+Ultimo aggiornamento: 2026-05-19 11:26
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.492 | `main` | `5f63f84` |
-| TEST | v5.492 | `test-preview` | `5f63f84` |
-| TEST sviluppo | v5.492 | `test/accessi-staff-guidati` | `5f63f84` |
+| TEST | v5.493 | `test-preview` | `07b3572` |
+| TEST sviluppo | v5.493 | `test/accessi-staff-guidati` | `07b3572` |
+
+Nota TEST v5.493: micro-correzione UI in `Amministrazione > Supabase > Scheduler email Autovalutazione`. Dopo la promozione e verifica PROD v5.492, il pannello in ambiente PROD mostra lo stato `OK` e il testo `PROD: dispatcher applicato e verificato da Promuovi Prod/Admin.`; resta esplicito che la UI non legge `cron.job` in tempo reale e che la verifica tecnica resta nel preflight/promozione PROD. In TEST il pannello continua a indicare gestione manuale e nessun cron email automatico attivo. Commit app `07b3572`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.492 - 2026-05-19 11:10: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha completato la promozione del pacchetto TEST validato v5.492. `main`, `test-preview` e `test/accessi-staff-guidati` sono stati allineati al pacchetto TEST. Perimetro promosso: `index.html`, documentazione Autovalutazione, `supabase/functions/assessment-email-send/index.ts` e `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`. Applicato in PROD il solo SQL scheduler autorizzato: il dispatcher `public.pmo_dispatch_assessment_followup_email_prod()` ora gestisce `routine-autosend-selected` alle 07:00 Europe/Rome, `routine-check` alle 09:00 e `routine-followup` alle 09:30. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato come versione `16`, `verify_jwt=true`. `cron.job` PROD contiene solo `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`, entrambi attivi `*/5 * * * *`; TEST resta senza cron. Verificati 0 nuovi record `assessment_email` dopo l'avvio del deploy. Nessuna modifica a segreti, dati reali, Matchpoint reale, Gmail, WhatsApp automatico o scheduler non dichiarati. Rollback annotato verso PROD v5.490, commit app `444b2a5`, origin/main `a28eb39`.
 
