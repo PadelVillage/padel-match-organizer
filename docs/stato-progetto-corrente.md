@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 15:38
+Ultimo aggiornamento: 2026-05-19 16:25
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.499 | `test-preview` | `727129f` |
-| TEST sviluppo | v5.499 | `test/accessi-staff-guidati` | `727129f` |
+| TEST | v5.500 | `test-preview` | `772ff35` |
+| TEST sviluppo | v5.500 | `test/accessi-staff-guidati` | `772ff35` |
+
+Nota TEST v5.500: neutralizzato in TEST il vecchio socio test Autovalutazione `PMO-000956` con email `aprea.maurizio@gmail.com`, sostituito dal socio test ufficiale `PMO-000948`. La diagnostica conteggi soci classifica `PMO-000956` come `Soft-delete approvato` con riferimento `mergedInto: PMO-000948`; il codice Autovalutazione lo esclude da cruscotto, lotto, import log cloud e candidati follow-up operativi anche se resta in cache/browser o nei dati cloud fino alla correzione manuale. Il sorgente Edge Function `assessment-email-send` lo considera inattivo per routine/follow-up quando verra' eventualmente deployato. Commit app `772ff35`. Nessun hard-delete, nessuna applicazione SQL, nessun deploy Edge Function, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.499: corretta la barra operativa di `Autovalutazione`. Il filtro `Da inviare` mostra il conteggio delle righe fleggiate nel lotto attivo, non tutto il bacino dei soci da inviare; `In attesa` viene rinominato `In attesa risposta`; il pannello `Lotto email manuale` resta visibile solo quando il filtro attivo e' `Da inviare`, cosi `Da controllare`, `Problemi` e `Risposte` mostrano direttamente le rispettive liste operative. Commit app `727129f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
