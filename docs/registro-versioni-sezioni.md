@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 16:25
+Ultimo aggiornamento: 2026-05-19 16:54
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Promozione PROD v5.500 - 2026-05-19: pubblicato in PROD il pacchetto TEST validato v5.500. La promozione aggiorna la barra operativa Autovalutazione fino a `Da inviare` / `In attesa risposta` / `Da controllare` / `Problemi` / `Risposte` / `Matchpoint` / `Storico`, neutralizza operativamente il vecchio socio test `PMO-000956` preservando `PMO-000948`, e deploya `assessment-email-send` PROD a versione `17` con `verify_jwt=true`. Il file `supabase_pmo_member_count_audit_dry_run.sql` entra solo come riferimento versionato: nessuna applicazione SQL a PROD, nessuna correzione dati, nessun hard-delete, nessuna cancellazione Auth. Scheduler PROD preservati, nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
 - Autovalutazione / Socio test TEST v5.500: neutralizzato il vecchio record operativo `PMO-000956` / `aprea.maurizio@gmail.com`, sostituito dal socio test ufficiale `PMO-000948`. `PMO-000956` viene classificato dalla diagnostica come `Soft-delete approvato` con `mergedInto: PMO-000948`, escluso da cruscotto, lotto, import log cloud e follow-up operativi, e trattato come inattivo dal sorgente Edge Function quando verra' eventualmente deployato. Commit app `772ff35`. Nessun hard-delete, nessuna applicazione SQL, nessun deploy Edge Function, nessuna modifica a PROD, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Barra operativa TEST v5.499: corretto il significato operativo della barra. `Da inviare` conta solo le righe fleggiate nel lotto attivo; `In attesa` diventa `In attesa risposta`; il lotto manuale viene mostrato solo sul filtro `Da inviare`, mentre `Da controllare`, `Problemi` e `Risposte` mostrano direttamente le rispettive liste. Commit app `727129f`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Barra operativa TEST v5.498: riordinata la barra sticky nel flusso operativo `Da inviare`, `In attesa`, `Da controllare`, `Problemi`, `Risposte`, `Matchpoint`, `Storico`. I primi cinque pulsanti restano filtri del processo utenti nella vista `Email da inviare`; `Matchpoint` e `Storico` aprono i rispettivi pannelli dedicati. Commit app `ddc38c8`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.

@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 16:25
+Ultimo aggiornamento: 2026-05-19 16:54
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.493 | `main` | `07b3572` |
+| PROD | v5.500 | `main` | `772ff35` |
 | TEST | v5.500 | `test-preview` | `772ff35` |
 | TEST sviluppo | v5.500 | `test/accessi-staff-guidati` | `772ff35` |
+
+Nota promozione PROD v5.500 - 2026-05-19 16:54: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD il pacchetto TEST validato v5.500. Perimetro promosso: `index.html`, documentazione Autovalutazione, `supabase/functions/assessment-email-send/index.ts` e `supabase_pmo_member_count_audit_dry_run.sql` solo come file versionato. Edge Function PROD `assessment-email-send` aggiornata a versione `17` mantenendo `verify_jwt=true`; nessun segreto modificato. Il file SQL dry-run conteggi soci non e' stato applicato a Supabase PROD e non sono state eseguite correzioni dati, hard-delete o cancellazioni Auth. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali. Rollback annotato verso PROD v5.493, commit app `07b3572`, origin/main `89e7f41`.
 
 Nota TEST v5.500: neutralizzato in TEST il vecchio socio test Autovalutazione `PMO-000956` con email `aprea.maurizio@gmail.com`, sostituito dal socio test ufficiale `PMO-000948`. La diagnostica conteggi soci classifica `PMO-000956` come `Soft-delete approvato` con riferimento `mergedInto: PMO-000948`; il codice Autovalutazione lo esclude da cruscotto, lotto, import log cloud e candidati follow-up operativi anche se resta in cache/browser o nei dati cloud fino alla correzione manuale. Il sorgente Edge Function `assessment-email-send` lo considera inattivo per routine/follow-up quando verra' eventualmente deployato. Commit app `772ff35`. Nessun hard-delete, nessuna applicazione SQL, nessun deploy Edge Function, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
