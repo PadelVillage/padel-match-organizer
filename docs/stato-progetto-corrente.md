@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 17:11
+Ultimo aggiornamento: 2026-05-19 17:29
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.500 | `main` | `772ff35` |
-| TEST | v5.501 | `test-preview` | `fe6b933` |
-| TEST sviluppo | v5.501 | `test/accessi-staff-guidati` | `fe6b933` |
+| TEST | v5.502 | `test-preview` | `68ddbfc` |
+| TEST sviluppo | v5.502 | `test/accessi-staff-guidati` | `68ddbfc` |
+
+Nota TEST v5.502: preparata la correzione tecnica per il blocco HTTP 401 dello scheduler email Autovalutazione PROD. La causa confermata e' l'uso della publishable key come `Authorization: Bearer ...` nella chiamata SQL `pg_net` verso `assessment-email-send`, mentre la funzione PROD resta con `verify_jwt=true` e richiede un JWT valido al gateway Supabase. Il dispatcher `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql` ora usa la publishable key solo come `apikey`, legge da Vault il nuovo secret `pmo_assessment_email_routine_jwt` per l'header `Authorization`, mantiene `x-pmo-routine-secret` come controllo interno e blocca il dispatch con errore esplicito se il JWT manca o non ha formato valido. `APP_VERSION` aggiornata a `5.502` solo per tracciare il pacchetto; nessun cron TEST attivato, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica a PROD, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.501: rimossa dalla testata di `Autovalutazione > Da inviare` l'azione visibile `Socio test`, ormai ridondante dopo l'allineamento del socio test ufficiale a `PMO-000948` e la neutralizzazione del vecchio `PMO-000956`. Restano preservate le funzioni/protezioni interne legate al socio test ufficiale, ma non sono piu esposte come bottone operativo nel cruscotto. Commit app `fe6b933`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 

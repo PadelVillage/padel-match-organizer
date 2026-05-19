@@ -150,6 +150,15 @@ Stato PROD scheduler follow-up Autovalutazione verificato il 2026-05-18 16:21:
 - durante il deploy non sono stati rilevati invii email o dispatch follow-up imprevisti;
 - nessuna modifica a segreti, Matchpoint, WhatsApp automatico o dati reali non previsti.
 
+Stato TEST scheduler email Autovalutazione preparato il 2026-05-19 17:29:
+
+- pacchetto TEST v5.502 prepara la correzione del dispatcher PROD per Edge Function `assessment-email-send` con `verify_jwt=true`;
+- `apikey` resta il secret Vault `pmo_data_routine_publishable_key`;
+- `Authorization` non deve usare la publishable key: deve usare un JWT valido salvato in Vault come `pmo_assessment_email_routine_jwt`;
+- `x-pmo-routine-secret` resta il controllo interno tramite `pmo_data_routine_secret`;
+- Promuovi Prod Admin deve verificare/creare il secret Vault PROD senza stampare il valore prima di applicare il SQL;
+- TEST resta senza scheduler email Autovalutazione persistenti e nessun cron TEST viene attivato da questa patch.
+
 Stato guardia ambiente Link esterno TEST/PROD 2026-05-18 21:53:
 
 - app TEST/PROD allineata a v5.482 con controllo prima del salvataggio pubblico `assessment=link-esterno`;
