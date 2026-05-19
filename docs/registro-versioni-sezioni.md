@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 12:05
+Ultimo aggiornamento: 2026-05-19 15:05
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Filtri Cruscotto TEST v5.494: integrata la barra filtri sticky compatta approvata dal mock-up `mockup/autovalutazione-filtri-sticky-compatti-mockup.html`. I box filtro del `Cruscotto mattutino` diventano filtri testuali con conteggio reale e stato attivo sottolineato, sempre disponibili sopra i pannelli Autovalutazione; `Storico` e `Matchpoint` navigano alle viste gia esistenti. Ricerca, lotto manuale, comandi email, Storico, Matchpoint, Scheda pubblica, Testi e protezioni TEST/PROD restano invariati. Commit app `c77e560`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.493 - 2026-05-19: pubblicata in PROD la micro-correzione UI TEST validata v5.493. La promozione e' solo app UI + documentazione: nel pannello `Amministrazione > Supabase > Scheduler email Autovalutazione` il PROD mostra stato `OK` e il testo `dispatcher applicato e verificato da Promuovi Prod/Admin`, mantenendo la nota che la UI non legge `cron.job` in tempo reale. Nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Amministrazione / Supabase TEST v5.493: micro-correzione UI del pannello `Scheduler email Autovalutazione`. In PROD, dopo promozione e verifica v5.492, il pannello comunica stato `OK` e `PROD: dispatcher applicato e verificato da Promuovi Prod/Admin.`; resta la nota che la UI non legge `cron.job` in tempo reale e che la verifica tecnica resta nel preflight/promozione PROD. In TEST resta visibile la gestione manuale e nessun cron email automatico attivo. Commit app `07b3572`. Nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.492 - 2026-05-19: pubblicato in PROD il pacchetto TEST validato v5.492. La promozione include la diagnostica informativa `Scheduler email Autovalutazione`, la persistenza cloud della selezione lotto tramite `routine-selection`, il fallback PROD `routine-autosend-selected` alle 07:00 Europe/Rome e l'aggiornamento del dispatcher esistente. Applicato solo il SQL PROD `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`; Edge Function PROD `assessment-email-send` aggiornata a versione `16` con `verify_jwt=true`. `cron.job` PROD contiene solo `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`, entrambi attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a segreti, dati reali o Matchpoint reale.
