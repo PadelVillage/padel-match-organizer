@@ -80,7 +80,7 @@ Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 18:23:
 
 - app PROD pubblicata: v5.502 su branch `main`;
 - app TEST pubblicata: v5.502 su branch `test-preview`;
-- `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati a `307fd47`;
+- `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati dopo commit documentale post-deploy;
 - `assessment-email-send` PROD resta `ACTIVE`, versione `17`, `verify_jwt=true`;
 - Vault PROD contiene `pmo_assessment_email_routine_jwt`, verificato presente e con formato JWT valido senza stampare il valore;
 - applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`;
