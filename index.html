@@ -5581,7 +5581,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.499';
+    const APP_VERSION = '5.500';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9104,6 +9104,11 @@ Grazie.`
       return pmoMemberAuditIsOfficialTestIdentity(row) && nameKey.includes('test') && nameKey.includes('autovalutaz');
     }
 
+    function pmoMemberAuditIsOldAssessmentTestMember(row={}) {
+      return cleanCell(row.memberId || '') === 'PMO-000956' &&
+        row.emailKey === 'aprea.maurizio@gmail.com';
+    }
+
     function pmoMemberAuditApprovedDecision(row={}, twin=null) {
       if (!row) return null;
       const nameKey = normalizeText(row.fullName || '');
@@ -9117,6 +9122,15 @@ Grazie.`
       }
       if (row.deleted) return null;
       if (pmoMemberAuditIsMaurizioAprea(row)) return null;
+      if (!row.matchpoint && pmoMemberAuditIsOldAssessmentTestMember(row)) {
+        return {
+          classification: 'approved_soft_delete',
+          action: 'Soft-delete approvato',
+          reason: 'Decisione Maurizio: vecchio socio test Autovalutazione PMO-000956 sostituito da PMO-000948; neutralizzare il record senza hard-delete.',
+          risk: 'Basso',
+          mergedInto: 'PMO-000948'
+        };
+      }
       if (row.technical && !row.matchpoint && ['tennis app', 'tennis up', 'tennisup'].includes(nameKey)) {
         return {
           classification: 'approved_soft_delete',
@@ -9206,7 +9220,7 @@ Grazie.`
           risk = row.emailKey || row.phoneKey || row.memberId ? 'Basso' : 'Medio';
           reason = 'Socio non Matchpoint senza gemello tecnico trovato: non cancellare automaticamente.';
         }
-        return { ...row, classification, suggestedAction, risk, reason, matchedLocalKey: twin?.localKey || '' };
+        return { ...row, classification, suggestedAction, risk, reason, matchedLocalKey: approvedDecision?.mergedInto || twin?.localKey || '' };
       });
       const visibleRows = classifiedRows
         .filter(row => row.classification !== 'keep_matchpoint')
@@ -18989,6 +19003,24 @@ Grazie!`
     function findAssessmentMemberByAnyId(value) {
       return (giocatori || []).find(member => assessmentMemberMatchesAnyId(member, value)) || null;
     }
+    function assessmentIsObsoleteAssessmentTestMember(member={}) {
+      const email = assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT');
+      if (email !== 'aprea.maurizio@gmail.com') return false;
+      return [
+        member?.id,
+        member?.memberId,
+        member?.pmoId,
+        member?.pmo_id,
+        member?.memberCode,
+        member?.member_code,
+        member?.codiceSocio,
+        member?.codice_socio,
+        member?.idSocio,
+        member?.id_socio,
+        member?.externalId,
+        member?.external_id
+      ].some(value => cleanCell(value || '').toLocaleUpperCase('it-IT') === 'PMO-000956');
+    }
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
     }
@@ -24224,7 +24256,9 @@ Per confermare scrivi ELIMINA.`);
 
     // v5.40 - Controllo operativo collegata al collegamento locale: record tecnici esclusi e guida token Supabase.
     function assessmentAllActiveMembers() {
-      return giocatori.filter(g => g && g.active !== false && !isTechnicalMemberRecord(g)).sort((a,b) => playerFullName(a).localeCompare(playerFullName(b), 'it'));
+      return giocatori
+        .filter(g => g && g.active !== false && !isTechnicalMemberRecord(g) && !assessmentIsObsoleteAssessmentTestMember(g))
+        .sort((a,b) => playerFullName(a).localeCompare(playerFullName(b), 'it'));
     }
     function assessmentLevelMatches(member, filter) {
       if (!filter || filter === 'all') return true;
@@ -25178,6 +25212,7 @@ Per confermare scrivi ELIMINA.`);
         sends.forEach(payload => {
           const member = findAssessmentMemberByAnyId(payload.memberId || payload.memberCode || payload.memberLocalId || '');
           if (!member) return;
+          if (assessmentIsObsoleteAssessmentTestMember(member)) return;
           const key = String(member.id);
           const rec = assessmentTokens[key] || {
             memberId:key,
@@ -26027,7 +26062,7 @@ Per confermare scrivi ELIMINA.`);
     function assessmentProcessFindFollowupTestMember() {
       return findAssessmentMemberByAnyId(ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID)
         || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberId(member))
-        || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberEmail(member))
+        || (giocatori || []).find(member => assessmentProcessIsFollowupTestMemberEmail(member) && !assessmentIsObsoleteAssessmentTestMember(member))
         || null;
     }
     function assessmentProcessTestMemberEntry(rows=[]) {
@@ -26256,7 +26291,7 @@ Per confermare scrivi ELIMINA.`);
         const failed = sent ? null : assessmentManualBatchFindFailed(batch, item, member);
         const id = cleanCell(member?.id || assessmentManualBatchItemId(item) || `batch-${index}`);
         return { batch, item, member, rec, id, sent, failed, index };
-      }).filter(row => row.id);
+      }).filter(row => row.id && !assessmentIsObsoleteAssessmentTestMember(row.member || row.item || {}));
     }
     function assessmentManualBatchRowIsSelected(row) {
       return row?.item?.selected !== false && row?.item?.sendEnabled !== false;

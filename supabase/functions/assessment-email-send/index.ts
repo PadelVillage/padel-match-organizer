@@ -26,6 +26,8 @@ const ASSESSMENT_ROUTINE_DAILY_LIMIT = 10;
 const ASSESSMENT_ROUTINE_DEFAULT_SPACING_MS = 10000;
 const ASSESSMENT_FOLLOWUP_INTERVAL_HOURS = 48;
 const ASSESSMENT_FOLLOWUP_DAILY_LIMIT = 20;
+const ASSESSMENT_OFFICIAL_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
+const OBSOLETE_ASSESSMENT_TEST_MEMBER_ID = 'PMO-000956';
 const SUPABASE_PAGE_SIZE = 1000;
 
 function json(body: unknown, status = 200) {
@@ -765,12 +767,34 @@ function phoneLast4(value: unknown) {
   return clean(value).replace(/\D/g, '').slice(-4);
 }
 
-function isActiveMember(member: JsonMap) {
-  return member.active !== false && clean(member.status).toLocaleLowerCase('it-IT') !== 'inactive';
-}
-
 function isLevelZeroPointFive(member: JsonMap) {
   return Math.abs(parseLevel(member.level, -1) - 0.5) < 0.001;
+}
+
+function isObsoleteAssessmentTestMember(member: JsonMap) {
+  const email = clean(member.email || member.mail).toLocaleLowerCase('it-IT');
+  if (email !== ASSESSMENT_OFFICIAL_TEST_MEMBER_EMAIL) return false;
+  return [
+    member.id,
+    member.memberId,
+    member.__localKey,
+    member.localKey,
+    member.pmoId,
+    member.pmo_id,
+    member.memberCode,
+    member.member_code,
+    member.codiceSocio,
+    member.codice_socio,
+    member.idSocio,
+    member.id_socio,
+    member.externalId,
+    member.external_id,
+  ].some((value) => clean(value).toLocaleUpperCase('it-IT') === OBSOLETE_ASSESSMENT_TEST_MEMBER_ID);
+}
+
+function isActiveMember(member: JsonMap) {
+  if (isObsoleteAssessmentTestMember(member)) return false;
+  return member.active !== false && clean(member.status).toLocaleLowerCase('it-IT') !== 'inactive';
 }
 
 function localDateIso(value: Date, timeZone = 'Europe/Rome') {
