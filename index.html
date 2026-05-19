@@ -5587,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.490';
+    const APP_VERSION = '5.491';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -10204,6 +10204,8 @@ Grazie.`
       if (raw.includes('ROUTINE_BATCH_MISSING')) return 'Prima prepara il lotto di invio mattutino.';
       if (raw.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return 'Il lotto non e in uno stato approvabile.';
       if (raw.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.';
+      if (raw.includes('ROUTINE_BATCH_SELECTION_LOCKED')) return 'La selezione del lotto non puo essere modificata in questo stato.';
+      if (raw.includes('AUTO_FIRST_SEND_ONLY_PROD')) return 'Invio automatico lotto consentito solo in PROD.';
       if (raw.includes('PROD_TEST_EMAIL_MODE_BLOCKED')) return 'Invio bloccato: PROD risulta in modalità test email. Controllare configurazione Supabase.';
       return raw || 'Invio email autovalutazione non riuscito.';
     }
@@ -10230,7 +10232,9 @@ Grazie.`
           ? 'aggiornare le risposte Gmail'
           : (action === 'routine-plan'
             ? 'preparare il lotto email mattutino'
-            : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione')));
+            : (action === 'routine-selection'
+              ? 'aggiornare la selezione del lotto email'
+              : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione'))));
       if (pmoAssessmentEmailShouldBlockAction(action)) throw new Error('PROD_TEST_EMAIL_MODE_BLOCKED');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -26114,7 +26118,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailRoutineBatchSelectedCount(batch=null) {
       const rows = Array.isArray(batch?.selected) ? batch.selected : [];
-      return rows.length;
+      return rows.filter(item => item?.selected !== false && item?.sendEnabled !== false).length;
     }
     function assessmentManualBatchKey(batch=null) {
       return cleanCell(batch?.localDate || batch?.scheduledLocalDate || getTodayKey());
@@ -26177,6 +26181,9 @@ Per confermare scrivi ELIMINA.`);
         return { batch, item, member, rec, id, sent, failed, index };
       }).filter(row => row.id);
     }
+    function assessmentManualBatchRowIsSelected(row) {
+      return row?.item?.selected !== false && row?.item?.sendEnabled !== false;
+    }
     function assessmentManualBatchUnsentRows(batch=null) {
       return assessmentManualBatchRows(batch).filter(row => !row.sent);
     }
@@ -26184,17 +26191,41 @@ Per confermare scrivi ELIMINA.`);
       if (!batch) return new Set();
       const key = assessmentManualBatchKey(batch);
       const rows = assessmentManualBatchUnsentRows(batch);
-      const validIds = rows.map(row => String(row.id));
-      if (!Array.isArray(window.assessmentManualBatchSelections[key])) {
-        window.assessmentManualBatchSelections[key] = validIds.slice();
-      } else {
-        window.assessmentManualBatchSelections[key] = window.assessmentManualBatchSelections[key].filter(id => validIds.includes(String(id)));
-      }
+      const validIds = rows.filter(assessmentManualBatchRowIsSelected).map(row => String(row.id));
+      window.assessmentManualBatchSelections[key] = validIds.slice();
       return new Set(window.assessmentManualBatchSelections[key].map(String));
     }
     function assessmentManualBatchSelectedRows(batch=null) {
       const selected = assessmentManualBatchEnsureSelection(batch);
       return assessmentManualBatchUnsentRows(batch).filter(row => selected.has(String(row.id)));
+    }
+    function assessmentManualBatchApplySelection(batch, selectedSet) {
+      if (!batch || !Array.isArray(batch.selected)) return batch;
+      const rows = assessmentManualBatchRows(batch);
+      const selectedByIndex = new Map(rows.map(row => [row.index, selectedSet.has(String(row.id))]));
+      const updated = {
+        ...batch,
+        selected: batch.selected.map((item, index) => ({
+          ...item,
+          selected: selectedByIndex.get(index) === true
+        })),
+        selectionUpdatedAt: new Date().toISOString()
+      };
+      assessmentEmailStoreRoutineBatch(updated);
+      return updated;
+    }
+    async function assessmentManualBatchPersistSelection(batch, selectedSet) {
+      try {
+        const result = await pmoInvokeAssessmentEmail({
+          action: 'routine-selection',
+          scheduledLocalDate: assessmentManualBatchKey(batch),
+          selectedMemberIds: Array.from(selectedSet)
+        });
+        if (result?.batch) assessmentEmailStoreRoutineBatch(result.batch);
+        renderAssessmentEmailMorningPanel();
+      } catch (err) {
+        showAlert('Selezione lotto non salvata: ' + pmoFriendlyAssessmentEmailError(err, 'aggiornare la selezione del lotto email'), 'danger');
+      }
     }
     function assessmentManualBatchToggleSelection(memberId, checked) {
       const batch = assessmentEmailTodayRoutineBatch();
@@ -26204,8 +26235,10 @@ Per confermare scrivi ELIMINA.`);
       if (checked) selected.add(String(memberId || ''));
       else selected.delete(String(memberId || ''));
       window.assessmentManualBatchSelections[key] = Array.from(selected).filter(Boolean);
+      const updatedBatch = assessmentManualBatchApplySelection(batch, selected);
       const headerActions = document.getElementById('assessmentEmailMorningHeaderActions');
       if (headerActions) headerActions.innerHTML = assessmentEmailRoutineApprovalControlsHtml();
+      assessmentManualBatchPersistSelection(updatedBatch, selected);
     }
     function assessmentManualBatchSendCount(row) {
       const recCount = parseInt(row?.rec?.emailSentCount, 10) || 0;

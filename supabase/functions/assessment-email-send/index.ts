@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-approve', 'routine-send', 'routine-check', 'routine-followup', 'config-check']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
@@ -794,6 +794,11 @@ function targetMemberIdSet(body: JsonMap) {
   return new Set(ids.map((item) => item.toLocaleLowerCase('it-IT')));
 }
 
+function normalizedIdSet(values: unknown) {
+  const list = Array.isArray(values) ? values : [];
+  return new Set(list.map((item) => clean(item).toLocaleLowerCase('it-IT')).filter(Boolean));
+}
+
 function memberMatchesTarget(member: JsonMap, targets: Set<string>) {
   if (!targets.size) return true;
   return [
@@ -1158,7 +1163,40 @@ function routineBatchMemberPayload(member: JsonMap, token = '') {
     phone: clean(member.phone || ''),
     level: clean(member.level || ''),
     token: clean(token || ''),
+    selected: true,
   };
+}
+
+function routineBatchItemAliases(item: JsonMap = {}) {
+  return [
+    item.memberId,
+    item.memberCode,
+    item.memberLocalId,
+    item.id,
+  ].map((value) => clean(value).toLocaleLowerCase('it-IT')).filter(Boolean);
+}
+
+function routineBatchItemMatches(item: JsonMap, ids: Set<string>) {
+  if (!ids.size) return false;
+  return routineBatchItemAliases(item).some((id) => ids.has(id));
+}
+
+function routineBatchItemIsSelected(item: JsonMap = {}) {
+  return item.selected !== false && item.sendEnabled !== false;
+}
+
+function routineBatchItemWasSent(item: JsonMap, sentRows: JsonMap[] = []) {
+  return sentRows.some((row) => {
+    const sentIds = normalizedIdSet([row.memberId, row.memberCode, row.memberLocalId, row.id]);
+    return routineBatchItemMatches(item, sentIds);
+  });
+}
+
+function routineBatchItemWasFailed(item: JsonMap, failedRows: JsonMap[] = []) {
+  return failedRows.some((row) => {
+    const failedIds = normalizedIdSet([row.memberId, row.memberCode, row.memberLocalId, row.id]);
+    return routineBatchItemMatches(item, failedIds);
+  });
 }
 
 function dateMs(value: unknown) {
@@ -1509,6 +1547,45 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
   };
 }
 
+async function runAssessmentRoutineSelection(admin: any, actor: StaffActor, body: JsonMap) {
+  const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  const batch = await loadAssessmentRoutineBatch(admin, localDate);
+  if (!batch) throw new Error('ROUTINE_BATCH_MISSING');
+  const status = clean(batch.status || '');
+  if (status !== 'pending') throw new Error(`ROUTINE_BATCH_SELECTION_LOCKED:${status || 'unknown'}`);
+
+  const selectedIds = normalizedIdSet(body.selectedMemberIds);
+  const selected = Array.isArray(batch.selected) ? batch.selected : [];
+  const updatedSelected = selected.map((item) => ({
+    ...item,
+    selected: routineBatchItemMatches(item, selectedIds),
+  }));
+  const activeCount = updatedSelected.filter(routineBatchItemIsSelected).length;
+  const updatedBatch = await saveAssessmentRoutineBatch(admin, localDate, {
+    ...batch,
+    selected: updatedSelected,
+    selectionUpdatedAt: new Date().toISOString(),
+    selectionUpdatedBy: clean(actor.email || ''),
+  });
+
+  await logAudit(admin, actor, 'assessment_email_routine_selection', {
+    source: clean(body.source || 'pmo_assessment_email_manual_selection'),
+    localDate,
+    total: updatedSelected.length,
+    selected: activeCount,
+    appVersion: clean(body.appVersion || ''),
+    runtimeEnv: clean(body.runtimeEnv || ''),
+  });
+
+  return {
+    action: 'routine-selection',
+    localDate,
+    selected: activeCount,
+    total: updatedSelected.length,
+    batch: updatedBatch,
+  };
+}
+
 async function upsertRoutineToken(admin: any, member: JsonMap, token: string, status = 'created', sentAt = '') {
   const now = new Date().toISOString();
   const row: JsonMap = {
@@ -1645,8 +1722,8 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
       };
     }
     const approvedIds = new Set((Array.isArray(batch.selected) ? batch.selected : [])
-      .map((item) => clean(item?.memberId || item?.memberCode || item?.id).toLocaleLowerCase('it-IT'))
-      .filter(Boolean));
+      .filter(routineBatchItemIsSelected)
+      .flatMap(routineBatchItemAliases));
     toSend = context.candidates
       .filter((member) => routineMemberAliases(member).some((id) => approvedIds.has(id)))
       .slice(0, context.remaining);
@@ -1755,6 +1832,202 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
   };
 }
 
+async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActor, supabaseUrl: string, body: JsonMap) {
+  const startedAt = new Date().toISOString();
+  const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
+  const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  if (runtimeEnv !== 'prod') {
+    await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'blocked', startedAt, {
+      localDate,
+      runtimeEnv,
+      reason: 'AUTO_FIRST_SEND_ONLY_PROD',
+      message: 'Invio automatico del lotto selezionato consentito solo in PROD.',
+    }, [], 'AUTO_FIRST_SEND_ONLY_PROD');
+    return {
+      action: 'routine-autosend-selected',
+      runtimeEnv,
+      localDate,
+      blocked: true,
+      reason: 'AUTO_FIRST_SEND_ONLY_PROD',
+      sent: [],
+      failed: [],
+    };
+  }
+
+  const context = await buildAssessmentRoutineContext(admin, body);
+  let batch = await loadAssessmentRoutineBatch(admin, context.localDate);
+  if (!batch) {
+    await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'noop', startedAt, {
+      localDate: context.localDate,
+      runtimeEnv,
+      reason: 'BATCH_MISSING',
+      firstSendAutomaticFallback: true,
+      requiresPreparedBatch: true,
+    });
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], reason: 'BATCH_MISSING' };
+  }
+
+  const status = clean(batch.status || '');
+  if (['sent', 'sent_with_errors'].includes(status)) {
+    return {
+      action: 'routine-autosend-selected',
+      runtimeEnv,
+      localDate: context.localDate,
+      alreadySentBatch: true,
+      batch,
+      sent: batch.sent || [],
+      failed: batch.failed || [],
+    };
+  }
+  if (status !== 'pending') {
+    await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'blocked', startedAt, {
+      localDate: context.localDate,
+      runtimeEnv,
+      reason: `BATCH_${status || 'UNKNOWN'}`,
+      firstSendAutomaticFallback: true,
+      requiresPreparedBatch: true,
+    }, [], `BATCH_${status || 'UNKNOWN'}`);
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], blocked: true, batchStatus: status };
+  }
+
+  const candidateByAlias = new Map<string, JsonMap>();
+  context.candidates.forEach((member) => {
+    routineMemberAliases(member).forEach((id) => candidateByAlias.set(id, member));
+  });
+  const sentRows = Array.isArray(batch.sent) ? batch.sent : [];
+  const failedRows = Array.isArray(batch.failed) ? batch.failed : [];
+  const skipped: JsonMap[] = [];
+  const selectedItems = (Array.isArray(batch.selected) ? batch.selected : [])
+    .filter((item) => {
+      if (!routineBatchItemIsSelected(item)) return false;
+      if (routineBatchItemWasSent(item, sentRows)) { skipped.push({ item, reason: 'ALREADY_SENT' }); return false; }
+      if (routineBatchItemWasFailed(item, failedRows)) { skipped.push({ item, reason: 'PREVIOUS_FAILURE' }); return false; }
+      return true;
+    });
+  const toSend = selectedItems
+    .map((item) => {
+      const member = routineBatchItemAliases(item).map((id) => candidateByAlias.get(id)).find(Boolean);
+      if (!member) skipped.push({ item, reason: 'NOT_CURRENTLY_SENDABLE' });
+      return member ? { item, member } : null;
+    })
+    .filter(Boolean)
+    .slice(0, context.remaining) as { item: JsonMap; member: JsonMap }[];
+
+  if (!toSend.length) {
+    await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', 'noop', startedAt, {
+      localDate: context.localDate,
+      runtimeEnv,
+      limit: context.limit,
+      alreadySentToday: context.todaySent.length,
+      remainingBeforeRun: context.remaining,
+      selected: selectedItems.length,
+      sent: 0,
+      failed: 0,
+      skipped: skipped.length,
+      firstSendAutomaticFallback: true,
+      requiresPreparedBatch: true,
+    }, skipped.slice(0, 20));
+    return { action: 'routine-autosend-selected', runtimeEnv, localDate: context.localDate, selected: 0, sent: [], failed: [], skipped: skipped.slice(0, 50), batch };
+  }
+
+  batch = await saveAssessmentRoutineBatch(admin, context.localDate, {
+    ...batch,
+    status: 'sending',
+    sendingAt: new Date().toISOString(),
+    autoFallbackAt: new Date().toISOString(),
+  });
+
+  const sent: JsonMap[] = [];
+  const failed: JsonMap[] = [];
+  for (let i = 0; i < toSend.length; i += 1) {
+    const member = toSend[i].member;
+    const memberId = routineMemberId(member);
+    const existing = (context.tokenByMember.get(memberId) || []).find((row) => clean(row.status) !== 'completed');
+    const token = clean(existing?.token || makeRoutineAssessmentToken(memberId));
+    try {
+      await upsertRoutineToken(admin, member, token, 'created');
+      const link = assessmentPublicLink(supabaseUrl, token, member);
+      const rendered = renderRoutinePrimaryEmail(member, link, context.templates);
+      const result = await sendAssessmentEmailCore(admin, actor, {
+        mode: 'primary-email',
+        memberId,
+        member: {
+          id: memberId,
+          memberId: clean(member.memberId || ''),
+          name: playerName(member),
+          firstName: clean(member.firstName || ''),
+          surname: clean(member.surname || ''),
+          email: clean(member.email || ''),
+          phone: clean(member.phone || ''),
+          level: clean(member.level || ''),
+        },
+        level: clean(member.level || ''),
+        originalRecipient: clean(member.email || ''),
+        token,
+        link,
+        subject: rendered.subject,
+        body: rendered.body,
+        source: clean(body.source || 'pmo_assessment_auto_first_send_fallback_prod'),
+        appVersion: clean(body.appVersion || ''),
+        runtimeEnv,
+      });
+      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt);
+      sent.push({ memberId, memberName: playerName(member), token, sentAt: result.sentAt, actualRecipient: result.actualRecipient });
+      if (context.spacingMs && i < toSend.length - 1) await routineDelay(context.spacingMs);
+    } catch (err) {
+      failed.push({ memberId, memberName: playerName(member), error: errorText(err) });
+    }
+  }
+
+  batch = await saveAssessmentRoutineBatch(admin, context.localDate, {
+    ...batch,
+    status: failed.length ? (sent.length ? 'sent_with_errors' : 'error') : 'sent',
+    sentAt: new Date().toISOString(),
+    sent,
+    failed,
+    autoFallbackCompletedAt: new Date().toISOString(),
+  });
+
+  await logAudit(admin, actor, 'assessment_email_auto_first_send', {
+    source: clean(body.source || 'pmo_assessment_auto_first_send_fallback_prod'),
+    localDate: context.localDate,
+    runtimeEnv,
+    limit: context.limit,
+    candidates: context.candidates.length,
+    selected: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+    skipped: skipped.length,
+    firstSendAutomaticFallback: true,
+    requiresPreparedBatch: true,
+  });
+  await logAssessmentRoutineRun(admin, 'assessment_email_auto_first_send', failed.length ? (sent.length ? 'blocked' : 'error') : (sent.length ? 'success' : 'noop'), startedAt, {
+    localDate: context.localDate,
+    runtimeEnv,
+    limit: context.limit,
+    alreadySentToday: context.todaySent.length,
+    remainingBeforeRun: context.remaining,
+    candidates: context.candidates.length,
+    selected: toSend.length,
+    sent: sent.length,
+    failed: failed.length,
+    skipped: skipped.length,
+    firstSendAutomaticFallback: true,
+    requiresPreparedBatch: true,
+  }, sent, failed.length ? JSON.stringify(failed.slice(0, 10)) : '');
+
+  return {
+    action: 'routine-autosend-selected',
+    runtimeEnv,
+    localDate: context.localDate,
+    selected: toSend.length,
+    sent,
+    failed,
+    skipped: skipped.slice(0, 50),
+    batch,
+  };
+}
+
 async function runAssessmentRoutineApprove(admin: any, actor: StaffActor, supabaseUrl: string, body: JsonMap) {
   assertStaffApprovalActor(actor);
   const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
@@ -1821,6 +2094,11 @@ Deno.serve(async (req) => {
       return okResponse(result);
     }
 
+    if (action === 'routine-selection') {
+      const result = await runAssessmentRoutineSelection(admin, actor, body);
+      return okResponse(result);
+    }
+
     if (action === 'routine-approve') {
       const result = await runAssessmentRoutineApprove(admin, actor, supabaseUrl, body);
       return okResponse(result);
@@ -1828,6 +2106,11 @@ Deno.serve(async (req) => {
 
     if (action === 'routine-send') {
       const result = await runAssessmentRoutineSend(admin, actor, supabaseUrl, body);
+      return okResponse(result);
+    }
+
+    if (action === 'routine-autosend-selected') {
+      const result = await runAssessmentRoutineAutoSendSelected(admin, actor, supabaseUrl, body);
       return okResponse(result);
     }
 
