@@ -4679,12 +4679,6 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assessment" class="tab-content">
       <div class="section assessment-v5144-section assessment-compact-page">
         <div id="assessmentEmailRoot" class="assessment-email-page">
-          <nav class="assessment-email-tabs" aria-label="Viste autovalutazione">
-            <button id="anchor-assessment-cruscotto" class="assessment-email-tab active" data-panel="morning" onclick="setAssessmentEmailPanel('morning')"><span class="assessment-email-tab-title">Cruscotto mattutino</span><span id="assessmentEmailMorningTabCount" class="assessment-email-tab-count">-</span></button>
-            <button id="anchor-assessment-storico" class="assessment-email-tab" data-panel="history" onclick="setAssessmentEmailPanel('history')"><span class="assessment-email-tab-title">Storico</span><span id="assessmentEmailHistoryTabCount" class="assessment-email-tab-count">-</span></button>
-            <button id="anchor-assessment-testi" class="assessment-email-tab" data-panel="texts" onclick="setAssessmentEmailPanel('texts')"><span class="assessment-email-tab-title">Testi</span><span class="assessment-email-tab-count">email e WhatsApp</span></button>
-            <button class="assessment-email-tab" data-panel="public" onclick="setAssessmentEmailPanel('public')"><span class="assessment-email-tab-title">Scheda pubblica</span><span class="assessment-email-tab-count">anteprima</span></button>
-          </nav>
           <div id="assessmentProcessStickyFilters" class="assessment-process-sticky-filters" aria-label="Filtri Autovalutazione"></div>
 
           <section id="assessmentEmailMorningPanel" class="assessment-email-panel active" data-assessment-email-panel="morning">
@@ -7292,16 +7286,16 @@ Grazie.`
       },
       assessment: {
         'stato invio': '#assessmentEmailRoutinePanel',
-        'cruscotto mattutino': '#anchor-assessment-cruscotto, #assessmentEmailMorningPanel',
+        'cruscotto mattutino': '#assessmentEmailMorningPanel',
         'da inviare 0.5': '#assessmentEmailQueuePanel',
         'contattati in attesa': '#assessmentEmailPendingPanel',
         'contattati': '#assessmentEmailPendingPanel',
         'problemi': '#assessmentEmailProblemsPanel',
         'post invio': '#assessmentEmailPostPanel',
         'post-invio': '#assessmentEmailPostPanel',
-        'storico': '#anchor-assessment-storico',
+        'storico': '#assessmentEmailHistoryPanel',
         'matchpoint': '#assessmentEmailMatchpointPanel',
-        'testi': '#anchor-assessment-testi',
+        'testi': '#assessmentEmailTextsPanel',
         'scheda pubblica': '#anchor-assessment-scheda',
         'strumenti tecnici': '#anchor-assessment-impostazioni',
         'impostazioni link': '#anchor-assessment-impostazioni',
