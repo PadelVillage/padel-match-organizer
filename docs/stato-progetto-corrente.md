@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.498 | `test-preview` | `ddc38c8` |
-| TEST sviluppo | v5.498 | `test/accessi-staff-guidati` | `ddc38c8` |
+| TEST | v5.499 | `test-preview` | `727129f` |
+| TEST sviluppo | v5.499 | `test/accessi-staff-guidati` | `727129f` |
+
+Nota TEST v5.499: corretta la barra operativa di `Autovalutazione`. Il filtro `Da inviare` mostra il conteggio delle righe fleggiate nel lotto attivo, non tutto il bacino dei soci da inviare; `In attesa` viene rinominato `In attesa risposta`; il pannello `Lotto email manuale` resta visibile solo quando il filtro attivo e' `Da inviare`, cosi `Da controllare`, `Problemi` e `Risposte` mostrano direttamente le rispettive liste operative. Commit app `727129f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.498: riordinata la barra sticky di `Autovalutazione` secondo il flusso operativo approvato: `Da inviare`, `In attesa`, `Da controllare`, `Problemi`, `Risposte`, `Matchpoint`, `Storico`. I primi cinque pulsanti filtrano il processo utenti dentro la vista `Email da inviare`, mentre `Matchpoint` e `Storico` aprono i pannelli dedicati. Commit app `ddc38c8`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
