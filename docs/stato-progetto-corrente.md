@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 15:05
+Ultimo aggiornamento: 2026-05-19 15:20
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.494 | `test-preview` | `c77e560` |
-| TEST sviluppo | v5.494 | `test/accessi-staff-guidati` | `c77e560` |
+| TEST | v5.495 | `test-preview` | `32909ef` |
+| TEST sviluppo | v5.495 | `test/accessi-staff-guidati` | `32909ef` |
+
+Nota TEST v5.495: micro-correzione sulla barra filtri sticky compatta di `Autovalutazione`. I pulsanti della barra (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Storico`) usano ora un handler esplicito sul markup generato, cosi il click cambia sempre il filtro/pannello sottostante anche dopo rerender della barra. Commit app `32909ef`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.494: integrata in `Autovalutazione` la barra filtri sticky compatta approvata dal mock-up `autovalutazione-filtri-sticky-compatti-mockup.html`. I vecchi box filtro del `Cruscotto mattutino` vengono sostituiti da filtri testuali sempre visibili con conteggi reali (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Storico`); `Matchpoint` e `Storico` aprono le viste Autovalutazione esistenti. Restano invariati ricerca, lotto manuale, invii, storico, Matchpoint, Scheda pubblica, protezioni TEST/PROD e scheduler. Commit app `c77e560`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
