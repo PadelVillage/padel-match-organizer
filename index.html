@@ -5493,6 +5493,7 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
             <div class="admin-diagnostic-note">Usa questa sezione solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.</div>
             <div id="pmoSupabaseStatus" class="info-box" style="margin-top:12px;">Controlli tecnici disponibili solo per diagnosi.</div>
+            <div id="pmoAssessmentEmailSchedulerPanel"></div>
             <div id="pmoEnvironmentCheckPanel"></div>
             <details class="admin-technical-details">
               <summary>Registro attivita</summary>
@@ -5587,7 +5588,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.491';
+    const APP_VERSION = '5.492';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22456,6 +22457,54 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
 	      `;
 	    }
+	    function pmoRenderAssessmentEmailSchedulerPanel() {
+	      const target = document.getElementById('pmoAssessmentEmailSchedulerPanel');
+	      if (!target) return;
+	      const envLabel = PMO_IS_TEST_ENV ? 'TEST' : 'PROD';
+	      const intro = PMO_IS_TEST_ENV
+	        ? 'In TEST gli scheduler email restano disattivati: le verifiche sono manuali o simulate.'
+	        : 'In PROD lo stato reale del cron va confermato da Promuovi Prod/Admin; questo pannello mostra la configurazione prevista dal pacchetto validato.';
+	      const rows = [
+	        {
+	          title: 'Ambiente attuale',
+	          detail: `${envLabel}: ${PMO_IS_TEST_ENV ? 'manuale, nessun cron email automatico attivo in TEST.' : 'operativo solo se il dispatcher PROD e stato applicato e verificato.'}`,
+	          state: PMO_IS_TEST_ENV ? 'warn' : 'pending',
+	          badge: PMO_IS_TEST_ENV ? 'Manuale' : 'Da verificare'
+	        },
+	        {
+	          title: 'Lotto ore 07:00',
+	          detail: 'Fallback PROD: non crea il lotto, invia solo un lotto gia preparato, ancora pending, con righe selezionate e non gia inviate.',
+	          state: PMO_IS_TEST_ENV ? 'warn' : 'pending',
+	          badge: PMO_IS_TEST_ENV ? 'Solo PROD' : 'Previsto'
+	        },
+	        {
+	          title: 'Controllo stop',
+	          detail: 'Finestra prevista 09:00 Europe/Rome: controlli operativi prima dei richiami automatici.',
+	          state: 'pending',
+	          badge: '09:00'
+	        },
+	        {
+	          title: 'Follow-up automatici',
+	          detail: 'Finestra prevista 09:30 Europe/Rome: solo secondo/terzo richiamo, mai primo invio generato da zero.',
+	          state: 'pending',
+	          badge: '09:30'
+	        },
+	        {
+	          title: 'WhatsApp',
+	          detail: 'Nessun WhatsApp automatico collegato a questa routine.',
+	          state: 'ok',
+	          badge: 'Manuale'
+	        }
+	      ];
+	      target.innerHTML = `
+	        <div class="admin-diagnostic-note" style="margin-top:12px;">
+	          <strong>Scheduler email Autovalutazione</strong>
+	          <div class="routine-mini">${escapeHtml(intro)}</div>
+	          <div class="routine-mini">Job PROD previsto: <strong>pmo-assessment-followup-dispatcher-prod</strong>. La verifica tecnica del cron resta nel preflight/promozione PROD.</div>
+	        </div>
+	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
+	      `;
+	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
 	      if (['users', 'notifications', 'matchpoint-data', 'supabase'].includes(key)) return key;
@@ -22731,6 +22780,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoRenderAdminKpis();
 	      pmoRenderAdminSessionPanel();
 	      pmoRenderStaffNotificationsPanel();
+	      pmoRenderAssessmentEmailSchedulerPanel();
 	      pmoRenderEnvironmentCheck();
 	      pmoRenderMemberCountAuditPanel();
 	      pmoRenderStaffUsersTable();
