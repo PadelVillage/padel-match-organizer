@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.497 | `test-preview` | `f5fc82f` |
-| TEST sviluppo | v5.497 | `test/accessi-staff-guidati` | `f5fc82f` |
+| TEST | v5.498 | `test-preview` | `ddc38c8` |
+| TEST sviluppo | v5.498 | `test/accessi-staff-guidati` | `ddc38c8` |
+
+Nota TEST v5.498: riordinata la barra sticky di `Autovalutazione` secondo il flusso operativo approvato: `Da inviare`, `In attesa`, `Da controllare`, `Problemi`, `Risposte`, `Matchpoint`, `Storico`. I primi cinque pulsanti filtrano il processo utenti dentro la vista `Email da inviare`, mentre `Matchpoint` e `Storico` aprono i pannelli dedicati. Commit app `ddc38c8`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.497: rinominata la vista operativa iniziale di `Autovalutazione` per coerenza con il nuovo default. Nel menu laterale la voce `Cruscotto mattutino` diventa `Da inviare`; il pannello corrispondente mostra il titolo `Email da inviare` e continua ad aprire la vista principale con filtro operativo `Da inviare`. Commit app `f5fc82f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
