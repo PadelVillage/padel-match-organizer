@@ -172,6 +172,14 @@ Stato TEST scheduler email Autovalutazione preparato il 2026-05-19 17:29:
 - Promuovi Prod Admin deve verificare/creare il secret Vault PROD senza stampare il valore prima di applicare il SQL;
 - TEST resta senza scheduler email Autovalutazione persistenti e nessun cron TEST viene attivato da questa patch.
 
+Stato TEST fallback Lotto email Autovalutazione preparato il 2026-05-19 18:54:
+
+- pacchetto TEST v5.503 aggiorna il comportamento previsto per il dispatcher PROD delle 07:00;
+- `routine-autosend-selected` puo cercare il lotto `pending` selezionato piu recente, anche se preparato in una data precedente;
+- lo scheduler non prepara lotti, non seleziona soci e non reinvia righe gia inviate;
+- se non trova righe selezionate pending, fa noop;
+- TEST resta senza scheduler email Autovalutazione persistenti e nessun cron TEST viene attivato.
+
 Stato guardia ambiente Link esterno TEST/PROD 2026-05-18 21:53:
 
 - app TEST/PROD allineata a v5.482 con controllo prima del salvataggio pubblico `assessment=link-esterno`;

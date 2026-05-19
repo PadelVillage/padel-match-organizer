@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 18:23
+Ultimo aggiornamento: 2026-05-19 18:54
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.502 | `main` | `68ddbfc` |
-| TEST | v5.502 | `test-preview` | `68ddbfc` |
-| TEST sviluppo | v5.502 | `test/accessi-staff-guidati` | `68ddbfc` |
+| TEST | v5.503 | `test-preview` | `1d7d1b8` |
+| TEST sviluppo | v5.503 | `test/accessi-staff-guidati` | `1d7d1b8` |
+
+Nota TEST v5.503: preparata la modifica del fallback automatico PROD delle 07:00 per il Lotto email Autovalutazione. Lo scheduler continua a non creare lotti e a non selezionare utenti: quando esegue `routine-autosend-selected`, la Edge Function cerca il lotto `pending` piu recente con righe selezionate/attive non ancora inviate, anche se il lotto e' stato preparato in una data precedente. Se non trova righe selezionate pending fa noop. La UI `Da inviare` mostra il lotto pending operativo piu recente invece del solo lotto della data corrente, cosi lo staff vede e mantiene le righe fleggiate fino all'invio manuale o automatico. Aggiornato il dispatcher SQL PROD per passare `allowLatestPendingBatch=true`. Nessun cron TEST attivato, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica a PROD, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.502 - 2026-05-19 18:23: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la correzione scheduler email Autovalutazione v5.502. Prima del deploy e' stato creato/impostato in Vault PROD il secret `pmo_assessment_email_routine_jwt` senza stampare il valore, usando un JWT Supabase valido per superare il gateway Edge Function con `verify_jwt=true`. Applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`: il dispatcher `public.pmo_dispatch_assessment_followup_email_prod()` ora usa la publishable key solo come `apikey`, usa il JWT Vault per `Authorization`, mantiene `x-pmo-routine-secret` e blocca con `PMO_ASSESSMENT_SCHEDULER_AUTH_SECRET_MISSING` se il JWT manca/non e' valido. App PROD pubblicata a `APP_VERSION = 5.502`; `main`, `test-preview` e `test/accessi-staff-guidati` allineati dopo commit documentale post-deploy. Edge Function PROD `assessment-email-send` resta versione `17`, `verify_jwt=true`, senza deploy. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali. Rollback annotato verso PROD v5.500, commit app `772ff35`, origin/main `c41a7b2`.
 
