@@ -5581,7 +5581,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.500';
+    const APP_VERSION = '5.501';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26414,7 +26414,6 @@ Per confermare scrivi ELIMINA.`);
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
-      buttons.push(`<button class="assessment-email-mini test" type="button" onclick="setActionAnchor(this); openAssessmentProcessTestMember()">Socio test</button>`);
       return buttons.join('');
     }
     function assessmentManualBatchRowHtml(row) {
