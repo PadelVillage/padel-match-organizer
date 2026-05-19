@@ -8,6 +8,13 @@
 -- - 09:00 Europe/Rome: scan replies and bounces;
 -- - 09:30 Europe/Rome: send only due second/third follow-up emails;
 -- - TEST must remain without persistent cron jobs.
+--
+-- Auth:
+-- - `apikey` uses Vault `pmo_data_routine_publishable_key`;
+-- - `Authorization` must use a real Supabase JWT from Vault
+--   `pmo_assessment_email_routine_jwt`, because `assessment-email-send`
+--   remains deployed with `verify_jwt=true`;
+-- - `x-pmo-routine-secret` keeps the internal routine authorization.
 
 create extension if not exists pg_net;
 create extension if not exists pg_cron;
@@ -30,6 +37,7 @@ declare
   v_record_id uuid;
   v_project_url text;
   v_publishable_key text;
+  v_routine_jwt text;
   v_secret text;
   v_request_id bigint;
   v_payload jsonb;
@@ -74,7 +82,7 @@ begin
     'scheduledLocalTimestamp', v_local_ts,
     'status', 'dispatching',
     'runtimeEnv', 'prod',
-    'appVersion', '5.491',
+    'appVersion', '5.502',
     'firstSendAutomaticFallback', v_action = 'routine-autosend-selected',
     'requiresPreparedBatch', v_action = 'routine-autosend-selected',
     'createdAt', now()
@@ -123,11 +131,24 @@ begin
   from vault.decrypted_secrets
   where name = 'pmo_data_routine_secret';
 
-  if coalesce(v_project_url, '') = '' or coalesce(v_publishable_key, '') = '' or coalesce(v_secret, '') = '' then
+  select decrypted_secret into v_routine_jwt
+  from vault.decrypted_secrets
+  where name = 'pmo_assessment_email_routine_jwt';
+
+  if coalesce(v_routine_jwt, '') = '' and coalesce(v_publishable_key, '') like '%.%.%' then
+    v_routine_jwt := v_publishable_key;
+  end if;
+
+  if coalesce(v_project_url, '') = ''
+    or coalesce(v_publishable_key, '') = ''
+    or coalesce(v_secret, '') = ''
+    or coalesce(v_routine_jwt, '') = ''
+    or coalesce(v_routine_jwt, '') not like '%.%.%'
+  then
     update public.pmo_cloud_records
     set payload = v_payload || jsonb_build_object(
         'status', 'blocked',
-        'error', 'PMO_ASSESSMENT_SCHEDULER_VAULT_SECRET_MISSING',
+        'error', 'PMO_ASSESSMENT_SCHEDULER_AUTH_SECRET_MISSING',
         'updatedAt', now()
       ),
       synced_at = now()
@@ -137,7 +158,7 @@ begin
     return jsonb_build_object(
       'ok', false,
       'dispatched', false,
-      'error', 'PMO_ASSESSMENT_SCHEDULER_VAULT_SECRET_MISSING',
+      'error', 'PMO_ASSESSMENT_SCHEDULER_AUTH_SECRET_MISSING',
       'routine', v_routine_key,
       'action', v_action
     );
@@ -150,7 +171,7 @@ begin
     'scheduledLocalDate', v_local_date,
     'scheduledLocalTime', v_local_time,
     'runtimeEnv', 'prod',
-    'appVersion', '5.491',
+    'appVersion', '5.502',
     'limit', case when v_action = 'routine-followup' then 20 else 10 end
   );
 
@@ -172,7 +193,7 @@ begin
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'apikey', v_publishable_key,
-      'Authorization', 'Bearer ' || v_publishable_key,
+      'Authorization', 'Bearer ' || v_routine_jwt,
       'x-pmo-routine-secret', v_secret
     ),
     body := v_body,
