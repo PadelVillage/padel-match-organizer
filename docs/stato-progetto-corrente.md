@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 00:31
+Ultimo aggiornamento: 2026-05-19 10:46
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.489 | `main` | `ddab294` |
-| TEST | v5.491 | `test-preview` | `ca12d40` |
-| TEST sviluppo | v5.491 | `test/accessi-staff-guidati` | `ca12d40` |
+| TEST | v5.492 | `test-preview` | `5f63f84` |
+| TEST sviluppo | v5.492 | `test/accessi-staff-guidati` | `5f63f84` |
+
+Nota TEST v5.492: aggiunta in `Amministrazione > Supabase` la diagnostica informativa `Scheduler email Autovalutazione`. Il pannello mostra in modo esplicito che TEST resta manuale e senza cron email, che il fallback `Lotto ore 07:00` e' solo previsto per PROD dopo promozione, che richiede un lotto gia preparato e righe selezionate, e che restano separate le finestre 09:00 controllo stop e 09:30 follow-up. La diagnostica non legge o modifica cron, non attiva scheduler, non invia email e non tocca Supabase. Commit app `5f63f84`. Nessuna modifica a PROD, SQL applicato, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.491: preparato il pacchetto per il fallback automatico PROD del primo invio Autovalutazione alle 07:00. Il lotto resta preparato manualmente dallo staff; i flag selezionati vengono salvati nel lotto cloud tramite la nuova azione Edge Function `routine-selection`; la nuova azione `routine-autosend-selected` puo inviare solo in PROD, solo se trova un lotto gia preparato per la data, solo righe ancora selezionate e non gia inviate. Aggiunto il file SQL PROD dedicato `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`, che aggiorna il dispatcher esistente aggiungendo la finestra 07:00 e preservando 09:00 controllo stop e 09:30 follow-up. Commit app `ca12d40`. Nessun cron TEST attivato, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica a PROD, scheduler PROD, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
