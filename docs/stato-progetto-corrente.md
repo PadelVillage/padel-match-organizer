@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 16:54
+Ultimo aggiornamento: 2026-05-19 17:11
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.500 | `main` | `772ff35` |
-| TEST | v5.500 | `test-preview` | `772ff35` |
-| TEST sviluppo | v5.500 | `test/accessi-staff-guidati` | `772ff35` |
+| TEST | v5.501 | `test-preview` | `fe6b933` |
+| TEST sviluppo | v5.501 | `test/accessi-staff-guidati` | `fe6b933` |
+
+Nota TEST v5.501: rimossa dalla testata di `Autovalutazione > Da inviare` l'azione visibile `Socio test`, ormai ridondante dopo l'allineamento del socio test ufficiale a `PMO-000948` e la neutralizzazione del vecchio `PMO-000956`. Restano preservate le funzioni/protezioni interne legate al socio test ufficiale, ma non sono piu esposte come bottone operativo nel cruscotto. Commit app `fe6b933`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota promozione PROD v5.500 - 2026-05-19 16:54: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD il pacchetto TEST validato v5.500. Perimetro promosso: `index.html`, documentazione Autovalutazione, `supabase/functions/assessment-email-send/index.ts` e `supabase_pmo_member_count_audit_dry_run.sql` solo come file versionato. Edge Function PROD `assessment-email-send` aggiornata a versione `17` mantenendo `verify_jwt=true`; nessun segreto modificato. Il file SQL dry-run conteggi soci non e' stato applicato a Supabase PROD e non sono state eseguite correzioni dati, hard-delete o cancellazioni Auth. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali. Rollback annotato verso PROD v5.493, commit app `07b3572`, origin/main `89e7f41`.
 
