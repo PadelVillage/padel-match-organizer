@@ -5588,7 +5588,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.492';
+    const APP_VERSION = '5.493';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -22463,30 +22463,30 @@ Per confermare scrivi ELIMINA.`);
 	      const envLabel = PMO_IS_TEST_ENV ? 'TEST' : 'PROD';
 	      const intro = PMO_IS_TEST_ENV
 	        ? 'In TEST gli scheduler email restano disattivati: le verifiche sono manuali o simulate.'
-	        : 'In PROD lo stato reale del cron va confermato da Promuovi Prod/Admin; questo pannello mostra la configurazione prevista dal pacchetto validato.';
+	        : 'In PROD il dispatcher email Autovalutazione e stato applicato e verificato da Promuovi Prod/Admin.';
 	      const rows = [
 	        {
 	          title: 'Ambiente attuale',
-	          detail: `${envLabel}: ${PMO_IS_TEST_ENV ? 'manuale, nessun cron email automatico attivo in TEST.' : 'operativo solo se il dispatcher PROD e stato applicato e verificato.'}`,
-	          state: PMO_IS_TEST_ENV ? 'warn' : 'pending',
-	          badge: PMO_IS_TEST_ENV ? 'Manuale' : 'Da verificare'
+	          detail: `${envLabel}: ${PMO_IS_TEST_ENV ? 'manuale, nessun cron email automatico attivo in TEST.' : 'dispatcher applicato e verificato da Promuovi Prod/Admin.'}`,
+	          state: PMO_IS_TEST_ENV ? 'warn' : 'ok',
+	          badge: PMO_IS_TEST_ENV ? 'Manuale' : 'OK'
 	        },
 	        {
 	          title: 'Lotto ore 07:00',
 	          detail: 'Fallback PROD: non crea il lotto, invia solo un lotto gia preparato, ancora pending, con righe selezionate e non gia inviate.',
-	          state: PMO_IS_TEST_ENV ? 'warn' : 'pending',
-	          badge: PMO_IS_TEST_ENV ? 'Solo PROD' : 'Previsto'
+	          state: PMO_IS_TEST_ENV ? 'warn' : 'ok',
+	          badge: PMO_IS_TEST_ENV ? 'Solo PROD' : '07:00'
 	        },
 	        {
 	          title: 'Controllo stop',
 	          detail: 'Finestra prevista 09:00 Europe/Rome: controlli operativi prima dei richiami automatici.',
-	          state: 'pending',
+	          state: PMO_IS_TEST_ENV ? 'pending' : 'ok',
 	          badge: '09:00'
 	        },
 	        {
 	          title: 'Follow-up automatici',
 	          detail: 'Finestra prevista 09:30 Europe/Rome: solo secondo/terzo richiamo, mai primo invio generato da zero.',
-	          state: 'pending',
+	          state: PMO_IS_TEST_ENV ? 'pending' : 'ok',
 	          badge: '09:30'
 	        },
 	        {
@@ -22500,7 +22500,7 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-diagnostic-note" style="margin-top:12px;">
 	          <strong>Scheduler email Autovalutazione</strong>
 	          <div class="routine-mini">${escapeHtml(intro)}</div>
-	          <div class="routine-mini">Job PROD previsto: <strong>pmo-assessment-followup-dispatcher-prod</strong>. La verifica tecnica del cron resta nel preflight/promozione PROD.</div>
+	          <div class="routine-mini">Job PROD: <strong>pmo-assessment-followup-dispatcher-prod</strong>. La UI non legge cron.job in tempo reale; la verifica tecnica resta nel preflight/promozione PROD.</div>
 	        </div>
 	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
 	      `;
