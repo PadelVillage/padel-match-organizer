@@ -76,18 +76,18 @@ Project ref:
 - PROD: `qqbfphyslczzkxoncgex`
 - TEST: `cudiqnrrlbyqryrtaprd`
 
-Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 18:23:
+Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 19:22:
 
-- app PROD pubblicata: v5.502 su branch `main`;
-- app TEST pubblicata: v5.502 su branch `test-preview`;
+- app PROD pubblicata: v5.503 su branch `main`;
+- app TEST pubblicata: v5.503 su branch `test-preview`;
 - `main`, `test-preview` e `test/accessi-staff-guidati` risultano allineati dopo commit documentale post-deploy;
-- `assessment-email-send` PROD resta `ACTIVE`, versione `17`, `verify_jwt=true`;
+- `assessment-email-send` PROD resta `ACTIVE`, versione `18`, `verify_jwt=true`;
 - Vault PROD contiene `pmo_assessment_email_routine_jwt`, verificato presente e con formato JWT valido senza stampare il valore;
 - applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`;
-- il dispatcher `public.pmo_dispatch_assessment_followup_email_prod()` usa il JWT Vault per `Authorization`, non la publishable key come Bearer token;
+- il dispatcher `public.pmo_dispatch_assessment_followup_email_prod(timestamp with time zone)` usa il JWT Vault per `Authorization`, non la publishable key come Bearer token, e passa `allowLatestPendingBatch=true` / `batchLookupMode=latest_pending_selected`;
 - `cron.job` PROD contiene `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`, entrambi attivi `*/5 * * * *`;
 - TEST `cron.job` resta vuoto;
-- nessun deploy Edge Function, nessun invio email reale, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
+- nessun invio email reale, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
 
 Stato Edge Function PROD verificato il 2026-05-16 08:47:
 
