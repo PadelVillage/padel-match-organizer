@@ -29,10 +29,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.493 | `main` | `07b3572` |
-| TEST | v5.496 | `test-preview` | `43bf35b` |
-| TEST sviluppo | v5.496 | `test/accessi-staff-guidati` | `43bf35b` |
+| TEST | v5.497 | `test-preview` | `f5fc82f` |
+| TEST sviluppo | v5.497 | `test/accessi-staff-guidati` | `f5fc82f` |
 
-Nota TEST v5.496: rifinita la navigazione di `Autovalutazione` secondo la nuova decisione operativa. Rimangono nella barra sticky solo i filtri utili: `Storico`, `Matchpoint`, `Da controllare`, `Risposte`, `Problemi`, `In attesa`, `Da inviare`; rimossi dalla barra `Tutti` e `Oggi`. Il default del Cruscotto mattutino diventa `Da inviare`. Rimossa anche la barra orizzontale superiore con `Cruscotto mattutino`, `Storico`, `Testi`, `Scheda pubblica`, perche' quelle voci restano disponibili dal menu laterale. Il click e' gestito con handler delegato stabile sul contenitore della barra, cosi il contenuto sottostante cambia in modo coerente anche dopo rerender. Commit app `43bf35b`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+Nota TEST v5.497: rinominata la vista operativa iniziale di `Autovalutazione` per coerenza con il nuovo default. Nel menu laterale la voce `Cruscotto mattutino` diventa `Da inviare`; il pannello corrispondente mostra il titolo `Email da inviare` e continua ad aprire la vista principale con filtro operativo `Da inviare`. Commit app `f5fc82f`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+
+Nota TEST v5.496: rifinita la navigazione di `Autovalutazione` secondo la nuova decisione operativa. Rimangono nella barra sticky solo i filtri utili: `Storico`, `Matchpoint`, `Da controllare`, `Risposte`, `Problemi`, `In attesa`, `Da inviare`; rimossi dalla barra `Tutti` e `Oggi`. Il default del Cruscotto mattutino diventa `Da inviare`. Rimossa anche la barra orizzontale superiore con `Cruscotto mattutino`, `Storico`, `Testi`, `Scheda pubblica`, perche' quelle voci restano disponibili dal menu laterale. Il click e' gestito con handler delegato stabile sul contenitore della barra, cosi il contenuto sottostante cambia in modo coerente anche dopo rerender. Commit app `2c47160`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.495: micro-correzione sulla barra filtri sticky compatta di `Autovalutazione`. I pulsanti della barra (`Tutti`, `Oggi`, `Da inviare`, `In attesa`, `Problemi`, `Risposte`, `Da controllare`, `Matchpoint`, `Storico`) usano ora un handler esplicito sul markup generato, cosi il click cambia sempre il filtro/pannello sottostante anche dopo rerender della barra. Commit app `32909ef`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
