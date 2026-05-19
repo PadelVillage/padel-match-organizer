@@ -5587,7 +5587,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.489';
+    const APP_VERSION = '5.490';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26423,13 +26423,13 @@ Per confermare scrivi ELIMINA.`);
       const tableHtml = visibleRows.length
         ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
-      box.innerHTML = `${searchHtml}
+      box.innerHTML = `${manualBatchHtml}
+        ${searchHtml}
         ${filterHtml}
         ${activeSearchHtml}
         ${activeFilterHtml}
         ${testNoticeHtml}
-        ${tableHtml}
-        ${manualBatchHtml}`;
+        ${tableHtml}`;
       box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
         button.addEventListener('click', event => {
           event.preventDefault();
