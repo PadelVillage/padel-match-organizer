@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.489 | `main` | `ddab294` |
-| TEST | v5.490 | `test-preview` | `444b2a5` |
-| TEST sviluppo | v5.490 | `test/accessi-staff-guidati` | `444b2a5` |
+| TEST | v5.491 | `test-preview` | `ca12d40` |
+| TEST sviluppo | v5.491 | `test/accessi-staff-guidati` | `ca12d40` |
+
+Nota TEST v5.491: preparato il pacchetto per il fallback automatico PROD del primo invio Autovalutazione alle 07:00. Il lotto resta preparato manualmente dallo staff; i flag selezionati vengono salvati nel lotto cloud tramite la nuova azione Edge Function `routine-selection`; la nuova azione `routine-autosend-selected` puo inviare solo in PROD, solo se trova un lotto gia preparato per la data, solo righe ancora selezionate e non gia inviate. Aggiunto il file SQL PROD dedicato `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`, che aggiorna il dispatcher esistente aggiungendo la finestra 07:00 e preservando 09:00 controllo stop e 09:30 follow-up. Commit app `ca12d40`. Nessun cron TEST attivato, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica a PROD, scheduler PROD, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
 Nota TEST v5.490: corretto il `Cruscotto mattutino` Autovalutazione dopo la preparazione del lotto manuale. Quando esiste un `Lotto email manuale`, il pannello viene mostrato come primo blocco del cruscotto, prima di ricerca, filtri e tabella `Processo utenti`, cosi lo staff vede subito le email pronte e le azioni di invio. Commit app `444b2a5`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 

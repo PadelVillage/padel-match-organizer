@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-19 10:14
+Ultimo aggiornamento: 2026-05-19 10:34
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Lotto email manuale TEST v5.491: preparato il pacchetto tecnico per il fallback automatico PROD del primo invio Autovalutazione alle 07:00 Europe/Rome. La selezione del lotto viene ora sincronizzata in cloud tramite `routine-selection`; la nuova azione Edge Function `routine-autosend-selected` puo inviare solo in PROD, solo se esiste gia un lotto `pending` preparato per la data, solo per righe selezionate/attive e non ancora inviate. Aggiunto SQL PROD dedicato `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`, che estende il dispatcher esistente senza attivare cron TEST. Commit app `ca12d40`. Nessuna modifica a PROD, nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Autovalutazione / Cruscotto mattutino TEST v5.490: dopo la preparazione del lotto manuale, il pannello `Lotto email manuale` viene mostrato come primo blocco del cruscotto, prima di ricerca, filtri e tabella `Processo utenti`. La testata continua a mostrare `Invia selezionati`, `Invia tutti` e `Rigenera lotto`, ma le righe del lotto diventano subito visibili senza scorrere sotto il processo utenti. Commit app `444b2a5`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 - Promozione PROD v5.489 - 2026-05-19: pubblicata in PROD la patch TEST validata v5.489 per `Amministrazione > Dati Matchpoint > Diagnostica conteggi soci`. La promozione e' solo app UI + documentazione: nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali PROD, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` preservati attivi.
 - Dati Matchpoint / Conteggi soci TEST/PROD v5.489: semplificata la diagnostica dopo verifica in PROD v5.488. La vista principale mostra solo le correzioni approvate da applicare; i candidati da verificare restano nascosti dietro `Mostra candidati da verificare` e non vengono toccati dal comando operativo. Il pulsante usa l'ambiente corretto (`TEST` o `PROD`) e permette l'applicazione manuale in PROD solo dopo conferma esplicita, senza hard-delete. Commit app `ddab294`. Nessuna correzione dati applicata durante sviluppo o promozione.
