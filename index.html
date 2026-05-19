@@ -5581,7 +5581,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.498';
+    const APP_VERSION = '5.499';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25583,7 +25583,7 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
     const ASSESSMENT_PROCESS_FILTER_LABELS = {
       queue:'Da inviare',
-      pending:'In attesa',
+      pending:'In attesa risposta',
       review:'Da controllare',
       problems:'Problemi',
       responses:'Risposte',
@@ -26112,9 +26112,11 @@ Per confermare scrivi ELIMINA.`);
       const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
       const count = filter => sourceRows.filter(row => row.filter === filter).length;
       const historyCount = count('history');
+      const batch = assessmentEmailTodayRoutineBatch();
+      const selectedQueueCount = batch ? assessmentManualBatchSelectedRows(batch).length : count('queue');
       return [
-        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`],
-        ['pending', 'In attesa', count('pending'), `${count('pending')} soci`],
+        ['queue', 'Da inviare', selectedQueueCount, `${selectedQueueCount} selezionate`],
+        ['pending', 'In attesa risposta', count('pending'), `${count('pending')} soci`],
         ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
         ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
         ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
@@ -26512,7 +26514,7 @@ Per confermare scrivi ELIMINA.`);
         ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
         : '';
       const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
-      const manualBatchHtml = assessmentManualBatchPanelHtml();
+      const manualBatchHtml = activeFilter === 'queue' ? assessmentManualBatchPanelHtml() : '';
       const moreHtml = remainingRows
         ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
         : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
