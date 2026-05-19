@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 11:26
+Ultimo aggiornamento: 2026-05-19 12:05
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.492 | `main` | `5f63f84` |
+| PROD | v5.493 | `main` | `07b3572` |
 | TEST | v5.493 | `test-preview` | `07b3572` |
 | TEST sviluppo | v5.493 | `test/accessi-staff-guidati` | `07b3572` |
+
+Nota promozione PROD v5.493 - 2026-05-19 12:05: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la micro-correzione UI TEST validata v5.493. Perimetro promosso: `index.html`, `docs/stato-progetto-corrente.md`, `docs/registro-versioni-sezioni.md` e `docs/autovalutazioni-email-routine.md`. La pagina PROD mostra `APP_VERSION = 5.493` e nel pannello `Amministrazione > Supabase > Scheduler email Autovalutazione` il testo PROD indica `dispatcher applicato e verificato da Promuovi Prod/Admin`, mantenendo la nota che la UI non legge `cron.job` in tempo reale. Nessun SQL applicato, nessun deploy Edge Function, nessuna modifica scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Scheduler PROD preservati e TEST resta senza cron. Rollback annotato verso PROD v5.492, commit app `5f63f84`, origin/main `9e05a3d`.
 
 Nota TEST v5.493: micro-correzione UI in `Amministrazione > Supabase > Scheduler email Autovalutazione`. Dopo la promozione e verifica PROD v5.492, il pannello in ambiente PROD mostra lo stato `OK` e il testo `PROD: dispatcher applicato e verificato da Promuovi Prod/Admin.`; resta esplicito che la UI non legge `cron.job` in tempo reale e che la verifica tecnica resta nel preflight/promozione PROD. In TEST il pannello continua a indicare gestione manuale e nessun cron email automatico attivo. Commit app `07b3572`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
 
