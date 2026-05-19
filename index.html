@@ -5581,7 +5581,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.497';
+    const APP_VERSION = '5.498';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25582,13 +25582,13 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentManualBatchSelections = window.assessmentManualBatchSelections || {};
     window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
     const ASSESSMENT_PROCESS_FILTER_LABELS = {
-      history:'Storico',
-      matchpoint:'Matchpoint',
-      review:'Da controllare',
-      responses:'Risposte',
-      problems:'Problemi',
+      queue:'Da inviare',
       pending:'In attesa',
-      queue:'Da inviare'
+      review:'Da controllare',
+      problems:'Problemi',
+      responses:'Risposte',
+      matchpoint:'Matchpoint',
+      history:'Storico'
     };
     function assessmentProcessNormalizeFilter(filter=ASSESSMENT_PROCESS_DEFAULT_FILTER) {
       const key = cleanCell(filter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
@@ -26113,13 +26113,13 @@ Per confermare scrivi ELIMINA.`);
       const count = filter => sourceRows.filter(row => row.filter === filter).length;
       const historyCount = count('history');
       return [
-        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`],
-        ['matchpoint', 'Matchpoint', count('matchpoint'), `${count('matchpoint')} soci`],
-        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
-        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
-        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
+        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`],
         ['pending', 'In attesa', count('pending'), `${count('pending')} soci`],
-        ['queue', 'Da inviare', count('queue'), `${count('queue')} soci`]
+        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
+        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
+        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
+        ['matchpoint', 'Matchpoint', count('matchpoint'), `${count('matchpoint')} soci`],
+        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
       ];
     }
     function assessmentProcessSearchStageKeys(rows, search='') {
