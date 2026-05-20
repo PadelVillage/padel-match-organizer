@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-20 19:37
+Ultimo aggiornamento: 2026-05-20 19:57
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Scheda socio / Testi TEST v5.515: rafforzata l'apertura `SMS` manuale verso Google Messaggi web/PWA. Il bottone diventa `Copia destinatario e apri SMS`, passa il numero normalizzato del socio selezionato con piu parametri best-effort (`recipient`, `to`, `phone`, `number`, `contact` e varianti numeriche) e copia comunque il destinatario negli appunti per il campo `A:` se Google lo ignora. Nessun invio automatico, nessuna API SMS/Google, nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
 - Autovalutazione / Scheda socio / Testi TEST v5.514: rifinito il canale `SMS` manuale per Google Messaggi web/PWA. Il bottone del popup diventa `Copia numero e apri SMS`: copia il numero normalizzato del socio e apre `https://messages.google.com/web/conversations/new` con parametri best-effort `recipient`/`to`. Se Google Messaggi ignora i parametri, lo staff incolla manualmente il numero gia copiato; il testo resta separato e si copia con `Copia SMS`. Nessun invio automatico, nessuna API SMS/Google, nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
 - Autovalutazione / Scheda socio / Testi TEST v5.513: corretto il canale `SMS` manuale per l'uso reale con il telefono Padel Village Android. Il bottone passa a `Apri SMS Padel Village` e apre Google Messaggi web/PWA (`https://messages.google.com/web/conversations`), evitando il protocollo Apple/macOS `sms:` che apriva Messaggi del Mac con il numero personale. Il testo resta da copiare manualmente con `Copia SMS`; numero e corpo messaggio non vengono precompilati e nessun SMS viene inviato automaticamente. Nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 - Autovalutazione / Scheda socio / Testi TEST v5.512: il canale `SMS` manuale ora usa `Apri app SMS` e il protocollo di sistema `sms:+numero`, invece di aprire Google Messaggi web. L'app aperta dipende dal gestore SMS configurato sul computer/dispositivo; il testo resta da copiare con `Copia SMS`, non viene precompilato e nessun SMS viene inviato automaticamente. Nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.

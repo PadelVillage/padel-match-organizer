@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 19:37
+Ultimo aggiornamento: 2026-05-20 19:57
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.514 | `test-preview` | `a50eddc` |
-| TEST sviluppo | v5.514 | `test/accessi-staff-guidati` | `a50eddc` |
+| TEST | v5.515 | `test-preview` | `ef25362` |
+| TEST sviluppo | v5.515 | `test/accessi-staff-guidati` | `ef25362` |
+
+Nota TEST v5.515: rafforzato il canale `SMS` manuale per Google Messaggi web/PWA quando viene aperto dalla scheda socio. Il bottone del popup diventa `Copia destinatario e apri SMS`, usa il numero normalizzato del socio selezionato e tenta l'apertura della nuova conversazione passando piu parametri best-effort (`recipient`, `to`, `phone`, `number`, `contact` e varianti numeriche). Il numero del destinatario resta sempre copiato negli appunti per incollarlo nel campo `A:` se Google Messaggi ignora i parametri, come osservato in test operativo. Nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
 Nota TEST v5.514: rifinito il canale `SMS` manuale per tentare un'apertura piu utile di Google Messaggi web/PWA. Il bottone del popup diventa `Copia numero e apri SMS`: copia negli appunti il numero normalizzato del socio e apre `https://messages.google.com/web/conversations/new` con parametri best-effort `recipient`/`to`. Google Messaggi web non documenta un deep-link stabile per precompilare destinatario o testo, quindi se i parametri vengono ignorati lo staff incolla manualmente il numero copiato; il testo continua a essere copiato separatamente con `Copia SMS`. Nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
