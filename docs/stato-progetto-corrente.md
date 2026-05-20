@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 11:05
+Ultimo aggiornamento: 2026-05-20 11:37
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.505 | `test-preview` | `765b515` |
-| TEST sviluppo | v5.505 | `test/accessi-staff-guidati` | `765b515` |
+| TEST | v5.506 | `test-preview` | `8b70467` |
+| TEST sviluppo | v5.506 | `test/accessi-staff-guidati` | `8b70467` |
+
+Nota TEST v5.506: rifinita la UI Autovalutazione dopo la diagnostica Gmail e l'introduzione dell'import temporaneo Excel. In `Email da inviare` resta un solo comando Gmail nella testata: il pannello diagnostico sotto compare solo durante il controllo, per pochi secondi dopo esito OK o in modo persistente se Gmail richiede attenzione. Il bottone `Import livelli Excel` viene rimosso dalla testata `Email da inviare` e diventa sottosezione dedicata del menu laterale `Autovalutazione`, visibile solo in TEST. L'import Excel ora legge tutti i fogli del file, riconosce la colonna reale `Giocatore` + `livello app` del file `Uomini per livello.xlsx`, conserva nome foglio/riga in anteprima e mette le righe del foglio `Dubbi` in stato `Da controllare` non applicabile automaticamente. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
 Nota TEST v5.505: aggiunta in `Autovalutazione` una diagnostica non inviante `Verifica Gmail` per controllare lo stato del collegamento Gmail prima di invii manuali o automatici. La Edge Function `assessment-email-send` espone la nuova azione `gmail-check`, che verifica solo la presenza dei secret Gmail e prova il refresh dell'access token tramite `GMAIL_REFRESH_TOKEN`, senza inviare email, leggere email dei soci o modificare dati. In caso di refresh token scaduto/revocato viene restituito `GMAIL_TOKEN_EXPIRED_OR_REVOKED` e la UI mostra `Gmail da verificare` con guida operativa per ricollegare Gmail e aggiornare il secret in Supabase tramite Promuovi PROD Admin. Pubblicata su Supabase TEST il 2026-05-20 come `assessment-email-send` versione `22` con `verify_jwt=false`, coerente con l'ambiente TEST protetto. Nessun token o secret viene salvato in HTML, localStorage, documentazione o repository. Nessun cron TEST attivato, nessun SQL applicato, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
 
