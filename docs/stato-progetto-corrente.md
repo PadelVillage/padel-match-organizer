@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 14:45
+Ultimo aggiornamento: 2026-05-20 15:00
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.509 | `test-preview` | `38d3f35` |
-| TEST sviluppo | v5.509 | `test/accessi-staff-guidati` | `38d3f35` |
+| TEST | v5.510 | `test-preview` | `f7fc026` |
+| TEST sviluppo | v5.510 | `test/accessi-staff-guidati` | `f7fc026` |
+
+Nota TEST v5.510: nella sottosezione transitoria solo TEST `Autovalutazione > Import livelli Excel`, il conteggio `Nuovo livello / aggiornabili` diventa un filtro rapido operativo: cliccandolo restano visibili solo le righe aggiornabili e quelle righe vengono selezionate automaticamente. Su ogni riga aggiornabile compare inoltre il bottone esplicito `Scheda socio`, che apre la scheda del giocatore collegato. Le regole di applicazione restano invariate: aggiornamento solo manuale, solo righe selezionate, solo soci a livello `0.5`, nessun aggiornamento senza conferma. La funzione resta solo TEST e non deve essere inclusa in pacchetti PROD. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
 Nota TEST v5.509: nella sottosezione transitoria solo TEST `Autovalutazione > Import livelli Excel`, il valore della colonna `Nuovo livello` diventa cliccabile quando la riga ha un socio trovato. Il click apre la scheda socio agganciata, cosi lo staff puo controllare rapidamente il giocatore prima di applicare aggiornamenti. Le righe senza socio collegato restano non cliccabili. La funzione resta solo TEST e non deve essere inclusa in pacchetti PROD. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
