@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 19:57
+Ultimo aggiornamento: 2026-05-20 20:23
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.515 | `test-preview` | `ef25362` |
-| TEST sviluppo | v5.515 | `test/accessi-staff-guidati` | `ef25362` |
+| TEST | v5.516 | `test-preview` | `4cd8819` |
+| TEST sviluppo | v5.516 | `test/accessi-staff-guidati` | `4cd8819` |
+
+Nota TEST v5.516: rimosso completamente l'esperimento del canale `SMS` manuale da `Scheda socio` e `Autovalutazione > Testi`. Eliminati bottone `SMS` dalla scheda socio, selettore canale `WhatsApp/SMS`, azioni `Copia SMS` / `Apri Google Messaggi`, costanti e funzioni dedicate a Google Messaggi/deep-link SMS. Il flusso WhatsApp manuale resta preservato con popup `Messaggio WhatsApp manuale`, testi manuali esistenti, `Copia WhatsApp`, `Apri WhatsApp` e `Segna gestito`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
 Nota TEST v5.515: rafforzato il canale `SMS` manuale per Google Messaggi web/PWA quando viene aperto dalla scheda socio. Il bottone del popup diventa `Copia destinatario e apri SMS`, usa il numero normalizzato del socio selezionato e tenta l'apertura della nuova conversazione passando piu parametri best-effort (`recipient`, `to`, `phone`, `number`, `contact` e varianti numeriche). Il numero del destinatario resta sempre copiato negli appunti per incollarlo nel campo `A:` se Google Messaggi ignora i parametri, come osservato in test operativo. Nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
