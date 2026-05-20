@@ -26425,7 +26425,8 @@ Per confermare scrivi ELIMINA.`);
         errorCode: cleanCell(data.errorCode || ''),
         gmailConnected: data.gmailConnected === true,
         runtimeEnv: cleanCell(data.runtimeEnv || PMO_RUNTIME_ENV),
-        showGuide: data.showGuide === true
+        showGuide: data.showGuide === true,
+        visibleUntil: Number(data.visibleUntil || 0) || 0
       };
     }
     function assessmentGmailCheckSave(state) {
@@ -26446,7 +26447,9 @@ Per confermare scrivi ELIMINA.`);
     function assessmentGmailCheckButtonHtml() {
       const state = assessmentGmailCheckCurrent();
       const disabled = state.status === 'checking' ? 'disabled' : '';
-      const label = state.status === 'error' ? 'Gmail da verificare' : 'Verifica Gmail';
+      const label = state.status === 'checking'
+        ? 'Verifico Gmail'
+        : (state.status === 'ok' ? 'Gmail OK' : (state.status === 'error' ? 'Gmail da verificare' : 'Verifica Gmail'));
       const cls = state.status === 'error' ? 'danger' : (state.status === 'ok' ? 'success' : 'warn');
       return `<button class="assessment-email-mini ${cls}" type="button" ${disabled} onclick="setActionAnchor(this); assessmentRunGmailCheck()">${escapeHtml(label)}</button>`;
     }
@@ -26459,21 +26462,16 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentGmailCheckPanelHtml() {
       const state = assessmentGmailCheckCurrent();
+      if (state.status === 'unknown') return '';
+      if (state.status === 'ok' && (!state.visibleUntil || Date.now() > state.visibleUntil)) return '';
       const cardCls = state.status === 'ok' ? ' ok' : (state.status === 'error' ? ' error' : '');
       const checkedAt = state.checkedAt ? `Ultimo controllo: ${assessmentEmailFormatDateTime(state.checkedAt)}` : 'Controllo non ancora eseguito.';
-      const reconnectButton = state.status === 'error'
-        ? `<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentShowGmailReconnectGuide()">Ricollega Gmail</button>`
-        : '';
       return `<div class="assessment-email-card assessment-gmail-check-card${cardCls}">
         <div class="assessment-gmail-check-row">
           <div>
             <div class="assessment-gmail-check-title">Gmail Padel Village ${assessmentGmailCheckBadgeHtml(state)}</div>
             <p class="assessment-gmail-check-message">${escapeHtml(state.message || 'Gmail non verificato.')}</p>
             <p class="assessment-gmail-check-message">${escapeHtml(checkedAt)}</p>
-          </div>
-          <div class="assessment-email-mini-actions">
-            ${assessmentGmailCheckButtonHtml()}
-            ${reconnectButton}
           </div>
         </div>
         ${assessmentGmailReconnectGuideHtml(state)}
@@ -26485,7 +26483,7 @@ Per confermare scrivi ELIMINA.`);
       showAlert('La riattivazione Gmail richiede login Google e aggiornamento sicuro del secret in Supabase.', 'warning');
     }
     async function assessmentRunGmailCheck() {
-      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false });
+      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false, visibleUntil:0 });
       renderAssessmentEmailPanels();
       try {
         const result = await pmoInvokeAssessmentEmail({ action:'gmail-check' });
@@ -26497,9 +26495,11 @@ Per confermare scrivi ELIMINA.`);
           errorCode: cleanCell(result?.errorCode || ''),
           gmailConnected: ok,
           runtimeEnv: cleanCell(result?.runtimeEnv || PMO_RUNTIME_ENV),
-          showGuide: !ok
+          showGuide: !ok,
+          visibleUntil: ok ? Date.now() + 3500 : 0
         });
         renderAssessmentEmailPanels();
+        if (ok) setTimeout(() => renderAssessmentEmailPanels(), 3700);
         showAlert(state.message, ok ? 'success' : 'danger');
       } catch (err) {
         const message = pmoFriendlyAssessmentEmailError(err, 'verificare il collegamento Gmail');
@@ -26510,7 +26510,8 @@ Per confermare scrivi ELIMINA.`);
           errorCode:'GMAIL_CHECK_FAILED',
           gmailConnected:false,
           runtimeEnv:PMO_RUNTIME_ENV,
-          showGuide:true
+          showGuide:true,
+          visibleUntil:0
         });
         renderAssessmentEmailPanels();
         showAlert(message, 'danger');
