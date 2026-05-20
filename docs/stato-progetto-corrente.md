@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 11:37
+Ultimo aggiornamento: 2026-05-20 12:22
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.506 | `test-preview` | `8b70467` |
-| TEST sviluppo | v5.506 | `test/accessi-staff-guidati` | `8b70467` |
+| TEST | v5.507 | `test-preview` | `4cf52c1` |
+| TEST sviluppo | v5.507 | `test/accessi-staff-guidati` | `4cf52c1` |
+
+Nota TEST v5.507: rifinita la sottosezione transitoria solo TEST `Autovalutazione > Import livelli Excel`. Rimossi i riquadri riepilogativi sopra l'anteprima; i conteggi sono ora compatti dentro l'intestazione `Riga Excel`. Aggiunti filtri direttamente nella testata tabella per `Nome Excel`, `Livello Excel`, `Socio trovato` e `Livello attuale`; il selettore generale agisce solo sulle righe visibili dal filtro. La funzione resta esplicitamente solo TEST e non deve essere inclusa in pacchetti PROD. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
 Nota TEST v5.506: rifinita la UI Autovalutazione dopo la diagnostica Gmail e l'introduzione dell'import temporaneo Excel. In `Email da inviare` resta un solo comando Gmail nella testata: il pannello diagnostico sotto compare solo durante il controllo, per pochi secondi dopo esito OK o in modo persistente se Gmail richiede attenzione. Il bottone `Import livelli Excel` viene rimosso dalla testata `Email da inviare` e diventa sottosezione dedicata del menu laterale `Autovalutazione`, visibile solo in TEST. L'import Excel ora legge tutti i fogli del file, riconosce la colonna reale `Giocatore` + `livello app` del file `Uomini per livello.xlsx`, conserva nome foglio/riga in anteprima e mette le righe del foglio `Dubbi` in stato `Da controllare` non applicabile automaticamente. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
