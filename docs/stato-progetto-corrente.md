@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 18:54
+Ultimo aggiornamento: 2026-05-20 10:29
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.503 | `test-preview` | `1d7d1b8` |
-| TEST sviluppo | v5.503 | `test/accessi-staff-guidati` | `1d7d1b8` |
+| TEST handoff PROD | v5.505 | `test/prod-handoff-v5.510-no-import-excel` | `da pubblicare` |
+| TEST sviluppo | v5.510 | `test/accessi-staff-guidati` | `f7fc026` |
+
+Nota TEST v5.505: aggiunta in `Autovalutazione` una diagnostica non inviante `Verifica Gmail` per controllare lo stato del collegamento Gmail prima di invii manuali o automatici. La Edge Function `assessment-email-send` espone la nuova azione `gmail-check`, che verifica solo la presenza dei secret Gmail e prova il refresh dell'access token tramite `GMAIL_REFRESH_TOKEN`, senza inviare email, leggere email dei soci o modificare dati. In caso di refresh token scaduto/revocato viene restituito `GMAIL_TOKEN_EXPIRED_OR_REVOKED` e la UI mostra `Gmail da verificare` con guida operativa per ricollegare Gmail e aggiornare il secret in Supabase tramite Promuovi PROD Admin. Nessun token o secret viene salvato in HTML, localStorage, documentazione o repository. Nessun cron TEST attivato, nessun SQL applicato, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
 
 Nota promozione PROD v5.503 - 2026-05-19 19:22: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la modifica del fallback automatico delle 07:00 per il Lotto email Autovalutazione. App PROD pubblicata a `APP_VERSION = 5.503`; `main`, `test-preview` e `test/accessi-staff-guidati` allineati dopo commit documentale post-deploy. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato a versione `18`, mantenendo `verify_jwt=true`. Applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`: il dispatcher `public.pmo_dispatch_assessment_followup_email_prod(timestamp with time zone)` passa `allowLatestPendingBatch=true` e `batchLookupMode=latest_pending_selected`, usando `apikey` con publishable key, `Authorization` con JWT Vault `pmo_assessment_email_routine_jwt` e `x-pmo-routine-secret`. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali. Rollback annotato verso PROD v5.502, commit app `68ddbfc`, origin/main `d0e6f0e`.
 

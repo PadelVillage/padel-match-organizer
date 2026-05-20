@@ -1081,6 +1081,13 @@
     .assessment-email-status-layout { display:grid; grid-template-columns:minmax(360px,.72fr) minmax(460px,1fr); gap:14px; align-items:start; }
     .assessment-email-card { border:1px solid #e7edf6; border-radius:8px; background:#fff; padding:14px; }
     .assessment-email-card h3 { margin:0 0 10px; color:var(--primary); font-size:17px; line-height:1.2; }
+    .assessment-gmail-check-card { margin-bottom:12px; background:#fbfdff; }
+    .assessment-gmail-check-card.error { border-color:#f1b9b3; background:#fffafa; }
+    .assessment-gmail-check-card.ok { border-color:#b8e6ca; background:#f8fffb; }
+    .assessment-gmail-check-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; }
+    .assessment-gmail-check-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 4px; color:#101828; font-weight:900; }
+    .assessment-gmail-check-message { margin:0; color:#667085; font-size:13px; line-height:1.35; font-weight:750; }
+    .assessment-gmail-check-guide { margin-top:10px; border-top:1px solid #e7edf6; padding-top:10px; color:#667085; font-size:12px; line-height:1.4; font-weight:750; }
     .assessment-email-routine-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; margin-bottom:12px; }
     .assessment-email-routine-title { margin:0 0 4px; color:var(--primary); font-size:20px; line-height:1.15; }
     .assessment-email-routine-title-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:3px; }
@@ -5581,7 +5588,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.503';
+    const APP_VERSION = '5.505';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5682,6 +5689,7 @@ body.assessment-public-mode .assessment-public-only-card {
     let postMatchFeedbackSettings = safeLoad('postMatchFeedbackSettings', { baseUrl: PMO_DEFAULT_FEEDBACK_BASE_URL });
     let assessmentDailySendLog = safeLoad('assessmentDailySendLog', {});
     let assessmentEmailRoutineBatches = safeLoad('assessmentEmailRoutineBatches', {});
+    let assessmentGmailCheckState = safeLoad('assessmentGmailCheckState', { status:'unknown', checkedAt:'', message:'Gmail non verificato.', errorCode:'', gmailConnected:false, showGuide:false });
     let assessmentPausedTokens = safeLoad('assessmentPausedTokens', {});
     const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
     const ASSESSMENT_SUPPORT_WHATSAPP_URL = 'https://wa.me/393791151472';
@@ -10202,6 +10210,7 @@ Grazie.`
       if (raw.includes('PERMISSION_DENIED')) return `Il tuo profilo non ha il permesso per ${actionLabel}.`;
       if (raw.includes('GMAIL_SECRETS_MISSING')) return 'Gmail Padel Village non e ancora configurato nei segreti Supabase.';
       if (raw.includes('GMAIL_SENDER_EMAIL_MISSING')) return 'Email mittente Gmail non configurata nei segreti Supabase.';
+      if (raw.includes('GMAIL_TOKEN_EXPIRED_OR_REVOKED') || raw.toLocaleLowerCase('it-IT').includes('expired or revoked')) return 'Token Gmail scaduto o revocato. Ricollega Gmail prima degli invii.';
       if (raw.includes('TEST_RECIPIENT_MISSING')) return 'Destinatario prova non configurato.';
       if (raw.includes('INVALID_ORIGINAL_RECIPIENT')) return 'Email del socio mancante o non valida.';
       if (raw.includes('TOKEN_LINK_REQUIRED')) return 'Link personale non pronto.';
@@ -10238,11 +10247,13 @@ Grazie.`
         ? 'controllare le mancate consegne Gmail'
         : (action === 'scan-replies'
           ? 'aggiornare le risposte Gmail'
+          : (action === 'gmail-check'
+            ? 'verificare il collegamento Gmail'
           : (action === 'routine-plan'
             ? 'preparare il lotto email mattutino'
             : (action === 'routine-selection'
               ? 'aggiornare la selezione del lotto email'
-              : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione'))));
+              : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione')))));
       if (pmoAssessmentEmailShouldBlockAction(action)) throw new Error('PROD_TEST_EMAIL_MODE_BLOCKED');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -10258,6 +10269,9 @@ Grazie.`
       const text = await response.text();
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (action === 'gmail-check' && response.ok && data && typeof data === 'object') {
+        return data;
+      }
       if (!response.ok || data?.ok === false) {
         throw new Error(pmoFriendlyAssessmentEmailError(data || text || `Errore HTTP ${response.status}`, actionLabel));
       }
@@ -26401,6 +26415,107 @@ Per confermare scrivi ELIMINA.`);
       if (!rows.length) return false;
       return !rows.some(row => row.sent || row.failed);
     }
+    function assessmentGmailCheckNormalizeState(value=null) {
+      const data = value && typeof value === 'object' ? value : {};
+      const status = ['unknown', 'checking', 'ok', 'error'].includes(cleanCell(data.status || '')) ? cleanCell(data.status || '') : 'unknown';
+      return {
+        status,
+        checkedAt: cleanCell(data.checkedAt || ''),
+        message: cleanCell(data.message || (status === 'ok' ? 'Gmail collegato. Invii Autovalutazione disponibili.' : 'Gmail non verificato.')),
+        errorCode: cleanCell(data.errorCode || ''),
+        gmailConnected: data.gmailConnected === true,
+        runtimeEnv: cleanCell(data.runtimeEnv || PMO_RUNTIME_ENV),
+        showGuide: data.showGuide === true
+      };
+    }
+    function assessmentGmailCheckSave(state) {
+      assessmentGmailCheckState = assessmentGmailCheckNormalizeState(state);
+      save('assessmentGmailCheckState', assessmentGmailCheckState);
+      return assessmentGmailCheckState;
+    }
+    function assessmentGmailCheckCurrent() {
+      return assessmentGmailCheckNormalizeState(assessmentGmailCheckState);
+    }
+    function assessmentGmailCheckBadgeHtml(state=null) {
+      const current = assessmentGmailCheckNormalizeState(state || assessmentGmailCheckCurrent());
+      if (current.status === 'checking') return assessmentEmailBadge('Verifico Gmail', 'info');
+      if (current.status === 'ok') return assessmentEmailBadge('Gmail OK', 'ok');
+      if (current.status === 'error') return assessmentEmailBadge('Gmail da verificare', 'err');
+      return assessmentEmailBadge('Gmail non verificato', 'warn');
+    }
+    function assessmentGmailCheckButtonHtml() {
+      const state = assessmentGmailCheckCurrent();
+      const disabled = state.status === 'checking' ? 'disabled' : '';
+      const label = state.status === 'error' ? 'Gmail da verificare' : 'Verifica Gmail';
+      const cls = state.status === 'error' ? 'danger' : (state.status === 'ok' ? 'success' : 'warn');
+      return `<button class="assessment-email-mini ${cls}" type="button" ${disabled} onclick="setActionAnchor(this); assessmentRunGmailCheck()">${escapeHtml(label)}</button>`;
+    }
+    function assessmentGmailReconnectGuideHtml(state=null) {
+      const current = assessmentGmailCheckNormalizeState(state || assessmentGmailCheckCurrent());
+      if (current.status !== 'error' && !current.showGuide) return '';
+      return `<div class="assessment-gmail-check-guide">
+        <strong>Ricollega Gmail.</strong> La riattivazione richiede il login Google dell'account mittente ufficiale. I token non vengono mai salvati nel browser, nei documenti o nel repository. Dopo la riattivazione, Promuovi PROD Admin aggiornera il secret <code>GMAIL_REFRESH_TOKEN</code> in Supabase PROD senza stampare il valore.
+      </div>`;
+    }
+    function assessmentGmailCheckPanelHtml() {
+      const state = assessmentGmailCheckCurrent();
+      const cardCls = state.status === 'ok' ? ' ok' : (state.status === 'error' ? ' error' : '');
+      const checkedAt = state.checkedAt ? `Ultimo controllo: ${assessmentEmailFormatDateTime(state.checkedAt)}` : 'Controllo non ancora eseguito.';
+      const reconnectButton = state.status === 'error'
+        ? `<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentShowGmailReconnectGuide()">Ricollega Gmail</button>`
+        : '';
+      return `<div class="assessment-email-card assessment-gmail-check-card${cardCls}">
+        <div class="assessment-gmail-check-row">
+          <div>
+            <div class="assessment-gmail-check-title">Gmail Padel Village ${assessmentGmailCheckBadgeHtml(state)}</div>
+            <p class="assessment-gmail-check-message">${escapeHtml(state.message || 'Gmail non verificato.')}</p>
+            <p class="assessment-gmail-check-message">${escapeHtml(checkedAt)}</p>
+          </div>
+          <div class="assessment-email-mini-actions">
+            ${assessmentGmailCheckButtonHtml()}
+            ${reconnectButton}
+          </div>
+        </div>
+        ${assessmentGmailReconnectGuideHtml(state)}
+      </div>`;
+    }
+    function assessmentShowGmailReconnectGuide() {
+      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), showGuide:true });
+      renderAssessmentEmailPanels();
+      showAlert('La riattivazione Gmail richiede login Google e aggiornamento sicuro del secret in Supabase.', 'warning');
+    }
+    async function assessmentRunGmailCheck() {
+      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false });
+      renderAssessmentEmailPanels();
+      try {
+        const result = await pmoInvokeAssessmentEmail({ action:'gmail-check' });
+        const ok = result?.ok === true && result?.gmailConnected === true;
+        const state = assessmentGmailCheckSave({
+          status: ok ? 'ok' : 'error',
+          checkedAt: result?.checkedAt || new Date().toISOString(),
+          message: cleanCell(result?.message || (ok ? 'Gmail collegato. Invii Autovalutazione disponibili.' : 'Gmail non collegato: token scaduto o revocato. Ricollega Gmail prima degli invii.')),
+          errorCode: cleanCell(result?.errorCode || ''),
+          gmailConnected: ok,
+          runtimeEnv: cleanCell(result?.runtimeEnv || PMO_RUNTIME_ENV),
+          showGuide: !ok
+        });
+        renderAssessmentEmailPanels();
+        showAlert(state.message, ok ? 'success' : 'danger');
+      } catch (err) {
+        const message = pmoFriendlyAssessmentEmailError(err, 'verificare il collegamento Gmail');
+        assessmentGmailCheckSave({
+          status:'error',
+          checkedAt:new Date().toISOString(),
+          message,
+          errorCode:'GMAIL_CHECK_FAILED',
+          gmailConnected:false,
+          runtimeEnv:PMO_RUNTIME_ENV,
+          showGuide:true
+        });
+        renderAssessmentEmailPanels();
+        showAlert(message, 'danger');
+      }
+    }
     function assessmentEmailRoutineApprovalStatus(batch=null) {
       const status = cleanCell(batch?.status || '');
       if (!batch) return { label:'Da preparare', detail:'nessun lotto pronto', cls:'warn' };
@@ -26435,6 +26550,7 @@ Per confermare scrivi ELIMINA.`);
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
+      buttons.push(assessmentGmailCheckButtonHtml());
       return buttons.join('');
     }
     function assessmentManualBatchRowHtml(row) {
@@ -26580,7 +26696,8 @@ Per confermare scrivi ELIMINA.`);
       const tableHtml = visibleRows.length
         ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
         : emptyHtml;
-      box.innerHTML = `${manualBatchHtml}
+      box.innerHTML = `${assessmentGmailCheckPanelHtml()}
+        ${manualBatchHtml}
         ${searchHtml}
         ${activeSearchHtml}
         ${testNoticeHtml}
@@ -26723,8 +26840,18 @@ Per confermare scrivi ELIMINA.`);
       assessmentEmailSetRoutinePills(sentToday, attentionCount, lastLabel);
       const envStatus = PMO_IS_TEST_ENV ? assessmentEmailBadge('Prova attiva','info') : assessmentEmailBadge('Produzione','warn');
       const envDetail = PMO_IS_TEST_ENV ? 'Destinatario prova impostato: le email reali non partono ai soci.' : 'Ambiente reale: usare solo dopo autorizzazione e controllo destinatari.';
+      const gmailState = assessmentGmailCheckCurrent();
+      const gmailSituation = gmailState.status === 'ok'
+        ? 'Invio disponibile'
+        : (gmailState.status === 'error' ? 'Token da verificare' : 'Da verificare');
+      const gmailLast = gmailState.checkedAt ? assessmentEmailFormatDateTime(gmailState.checkedAt) : lastLabel;
+      const gmailNext = gmailState.status === 'ok'
+        ? 'Gmail collegato. Invii Autovalutazione disponibili.'
+        : (gmailState.status === 'error'
+          ? 'Token Gmail scaduto o revocato: ricollega Gmail prima degli invii.'
+          : 'Usa Verifica Gmail prima del lotto o degli invii automatici.');
       const rows = [
-        ['Gmail Padel Village', 'Invio e lettura risposte', assessmentEmailBadge('Collegato','ok'), lastLabel, 'Il sistema puo inviare email, leggere risposte e controllare mancate consegne.'],
+        ['Gmail Padel Village', gmailSituation, assessmentGmailCheckBadgeHtml(gmailState), gmailLast, gmailNext],
         ['Modalita invio', 'TEST o produzione', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Controllare destinatari e scheduler prima di inviare ai soci.'],
         ['Invio mattutino', 'Lotto manuale', assessmentEmailBadge(approvalInfo.label, approvalInfo.cls === 'err' ? 'err' : (approvalInfo.cls === 'warn' ? 'warn' : 'info')), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `Il Cruscotto mattutino prepara il lotto e lo staff decide se inviare tutti, selezionati o singole righe.`],
         ['Soci ancora da invitare', 'Coda livello 0.5', assessmentEmailBadge(`${queueRows.length} rimasti`,'info'), lastLabel, 'La routine prende solo soci attivi con email valida e link personale pronto.'],

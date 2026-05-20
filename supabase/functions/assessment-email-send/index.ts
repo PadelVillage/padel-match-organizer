@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
@@ -100,6 +100,69 @@ function assessmentEmailConfigCheck(supabaseUrl: string, body: JsonMap) {
     message,
     checkedAt,
   };
+}
+
+function gmailCheckErrorCode(value: unknown) {
+  const text = errorText(value).toLocaleLowerCase('it-IT');
+  if (text.includes('gmail_secrets_missing')) return 'GMAIL_SECRETS_MISSING';
+  if (text.includes('invalid_grant') || text.includes('expired') || text.includes('revoked')) return 'GMAIL_TOKEN_EXPIRED_OR_REVOKED';
+  if (text.includes('gmail_token_failed')) return 'GMAIL_TOKEN_FAILED';
+  return 'GMAIL_CHECK_FAILED';
+}
+
+function gmailCheckMessage(code: string) {
+  if (code === 'GMAIL_SECRETS_MISSING') return 'Segreti Gmail non configurati nella Edge Function.';
+  if (code === 'GMAIL_TOKEN_EXPIRED_OR_REVOKED') return 'Token Gmail scaduto o revocato. Ricollega Gmail prima degli invii.';
+  if (code === 'GMAIL_TOKEN_FAILED') return 'Gmail non ha autorizzato il refresh token.';
+  return 'Controllo Gmail non riuscito.';
+}
+
+async function assessmentEmailGmailCheck(supabaseUrl: string, body: JsonMap) {
+  const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
+  const checkedAt = new Date().toISOString();
+  const hasClientId = !!clean(Deno.env.get('GMAIL_CLIENT_ID'));
+  const hasClientSecret = !!clean(Deno.env.get('GMAIL_CLIENT_SECRET'));
+  const hasRefreshToken = !!clean(Deno.env.get('GMAIL_REFRESH_TOKEN'));
+  const gmailSecretsConfigured = hasClientId && hasClientSecret && hasRefreshToken;
+
+  if (!gmailSecretsConfigured) {
+    return {
+      action: 'gmail-check',
+      ok: false,
+      gmailConnected: false,
+      gmailSecretsConfigured: false,
+      errorCode: 'GMAIL_SECRETS_MISSING',
+      message: gmailCheckMessage('GMAIL_SECRETS_MISSING'),
+      checkedAt,
+      runtimeEnv,
+    };
+  }
+
+  try {
+    await getGmailAccessToken();
+    return {
+      action: 'gmail-check',
+      ok: true,
+      gmailConnected: true,
+      gmailSecretsConfigured: true,
+      errorCode: '',
+      message: 'Gmail collegato. Invii Autovalutazione disponibili.',
+      checkedAt,
+      runtimeEnv,
+    };
+  } catch (err) {
+    const code = gmailCheckErrorCode(err);
+    return {
+      action: 'gmail-check',
+      ok: false,
+      gmailConnected: false,
+      gmailSecretsConfigured: true,
+      errorCode: code,
+      message: gmailCheckMessage(code),
+      checkedAt,
+      runtimeEnv,
+    };
+  }
 }
 
 function hasPermission(actor: StaffActor, permission: string) {
@@ -2172,6 +2235,10 @@ Deno.serve(async (req) => {
 
     if (action === 'config-check') {
       return json(assessmentEmailConfigCheck(supabaseUrl, body));
+    }
+
+    if (action === 'gmail-check') {
+      return json(await assessmentEmailGmailCheck(supabaseUrl, body));
     }
 
     if (action === 'routine-plan') {

@@ -89,6 +89,13 @@ Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 19:22:
 - TEST `cron.job` resta vuoto;
 - nessun invio email reale, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali.
 
+Nota Gmail Autovalutazione 2026-05-20:
+
+- il dispatcher PROD e la Edge Function sono stati raggiunti correttamente, ma il lotto automatico delle 07:00 non ha inviato email per `GMAIL_TOKEN_FAILED: Token has been expired or revoked`;
+- da TEST v5.505 viene preparata l'azione non inviante `gmail-check` per verificare il refresh token Gmail prima degli invii;
+- eventuali nuovi token Gmail devono essere gestiti solo tramite procedura sicura Supabase/Promuovi PROD Admin, mai in browser, localStorage, documenti, repository o chat;
+- TEST resta senza cron email automatici.
+
 Stato Edge Function PROD verificato il 2026-05-16 08:47:
 
 - la funzione residua `assessment-email-cron-test` e' stata rimossa da Supabase PROD dopo audit e autorizzazione esplicita;
