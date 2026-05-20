@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 14:09
+Ultimo aggiornamento: 2026-05-20 14:45
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.508 | `test-preview` | `aec0be7` |
-| TEST sviluppo | v5.508 | `test/accessi-staff-guidati` | `aec0be7` |
+| TEST | v5.509 | `test-preview` | `38d3f35` |
+| TEST sviluppo | v5.509 | `test/accessi-staff-guidati` | `38d3f35` |
+
+Nota TEST v5.509: nella sottosezione transitoria solo TEST `Autovalutazione > Import livelli Excel`, il valore della colonna `Nuovo livello` diventa cliccabile quando la riga ha un socio trovato. Il click apre la scheda socio agganciata, cosi lo staff puo controllare rapidamente il giocatore prima di applicare aggiornamenti. Le righe senza socio collegato restano non cliccabili. La funzione resta solo TEST e non deve essere inclusa in pacchetti PROD. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
 Nota TEST v5.508: rifinita ulteriormente la testata tabella della sottosezione transitoria solo TEST `Autovalutazione > Import livelli Excel`. Le metriche non sono piu concentrate sotto `Riga Excel`: ogni intestazione mostra il proprio numero compatto (`Sel.`, `Riga Excel`, `Nome Excel`, `Livello Excel`, `Socio trovato`, `Livello attuale`, `Nuovo livello`, `Esito`). I filtri restano direttamente nelle colonne e il conteggio si adatta alle righe visibili. La funzione resta solo TEST e non deve essere inclusa in pacchetti PROD. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
 
