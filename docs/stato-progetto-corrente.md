@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 10:29
+Ultimo aggiornamento: 2026-05-20 11:05
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -32,7 +32,7 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | TEST | v5.505 | `test-preview` | `765b515` |
 | TEST sviluppo | v5.505 | `test/accessi-staff-guidati` | `765b515` |
 
-Nota TEST v5.505: aggiunta in `Autovalutazione` una diagnostica non inviante `Verifica Gmail` per controllare lo stato del collegamento Gmail prima di invii manuali o automatici. La Edge Function `assessment-email-send` espone la nuova azione `gmail-check`, che verifica solo la presenza dei secret Gmail e prova il refresh dell'access token tramite `GMAIL_REFRESH_TOKEN`, senza inviare email, leggere email dei soci o modificare dati. In caso di refresh token scaduto/revocato viene restituito `GMAIL_TOKEN_EXPIRED_OR_REVOKED` e la UI mostra `Gmail da verificare` con guida operativa per ricollegare Gmail e aggiornare il secret in Supabase tramite Promuovi PROD Admin. Nessun token o secret viene salvato in HTML, localStorage, documentazione o repository. Nessun cron TEST attivato, nessun SQL applicato, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
+Nota TEST v5.505: aggiunta in `Autovalutazione` una diagnostica non inviante `Verifica Gmail` per controllare lo stato del collegamento Gmail prima di invii manuali o automatici. La Edge Function `assessment-email-send` espone la nuova azione `gmail-check`, che verifica solo la presenza dei secret Gmail e prova il refresh dell'access token tramite `GMAIL_REFRESH_TOKEN`, senza inviare email, leggere email dei soci o modificare dati. In caso di refresh token scaduto/revocato viene restituito `GMAIL_TOKEN_EXPIRED_OR_REVOKED` e la UI mostra `Gmail da verificare` con guida operativa per ricollegare Gmail e aggiornare il secret in Supabase tramite Promuovi PROD Admin. Pubblicata su Supabase TEST il 2026-05-20 come `assessment-email-send` versione `22` con `verify_jwt=false`, coerente con l'ambiente TEST protetto. Nessun token o secret viene salvato in HTML, localStorage, documentazione o repository. Nessun cron TEST attivato, nessun SQL applicato, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
 
 Nota TEST v5.504: integrato in `Autovalutazione` il pannello temporaneo `Import livelli da Excel`. Lo strumento carica file `.xlsx/.xls`, riconosce intestazioni flessibili per nome/cognome/nome completo, livello, email, telefono e ID PMO, mostra sempre anteprima prima di applicare aggiornamenti e consente l'aggiornamento solo delle righe selezionate con match sicuro e socio attualmente a livello `0.5`. I match ambigui, non trovati, soci disattivati, livelli Excel non validi e soci con livello diverso da `0.5` restano visibili ma non applicabili. L'applicazione richiede conferma manuale, aggiorna la scheda socio e registra una traccia locale `Import livelli Excel`; se disponibile, usa il normale sync cloud staff per salvare i soci modificati. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail o WhatsApp automatico modificato.
 
