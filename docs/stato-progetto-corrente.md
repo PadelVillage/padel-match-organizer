@@ -29,8 +29,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.504 | `test-preview` | `da pubblicare` |
-| TEST sviluppo | v5.504 | `test/accessi-staff-guidati` | `da pubblicare` |
+| TEST | v5.504 | `test-preview` | `28fd20d` |
+| TEST sviluppo | v5.504 | `test/accessi-staff-guidati` | `28fd20d` |
 
 Nota TEST v5.504: integrato in `Autovalutazione` il pannello temporaneo `Import livelli da Excel`. Lo strumento carica file `.xlsx/.xls`, riconosce intestazioni flessibili per nome/cognome/nome completo, livello, email, telefono e ID PMO, mostra sempre anteprima prima di applicare aggiornamenti e consente l'aggiornamento solo delle righe selezionate con match sicuro e socio attualmente a livello `0.5`. I match ambigui, non trovati, soci disattivati, livelli Excel non validi e soci con livello diverso da `0.5` restano visibili ma non applicabili. L'applicazione richiede conferma manuale, aggiorna la scheda socio e registra una traccia locale `Import livelli Excel`; se disponibile, usa il normale sync cloud staff per salvare i soci modificati. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail o WhatsApp automatico modificato.
 
