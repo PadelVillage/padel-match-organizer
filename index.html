@@ -4900,7 +4900,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="assessment-email-actions">
                   <button type="button" class="btn-secondary small-btn" data-assessment-manual-copy onclick="copyAssessmentEmailWhatsappMessage()">Copia WhatsApp</button>
                   <button type="button" class="btn-primary small-btn" data-assessment-manual-whatsapp-action data-assessment-whatsapp-open onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
-                  <button type="button" class="btn-primary small-btn" data-assessment-manual-sms-action onclick="openAssessmentEmailSmsFromModal()">Copia numero e apri SMS</button>
+                  <button type="button" class="btn-primary small-btn" data-assessment-manual-sms-action onclick="openAssessmentEmailSmsFromModal()">Copia destinatario e apri SMS</button>
                   <button type="button" class="btn-success small-btn" data-assessment-manual-managed onclick="markAssessmentEmailManualContactFromModal()">Segna gestito</button>
                   <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailWhatsappModal()">Chiudi</button>
                 </div>
@@ -5647,7 +5647,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.514';
+    const APP_VERSION = '5.515';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5762,6 +5762,23 @@ Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Villag
     const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
     const GOOGLE_MESSAGES_WEB_URL = 'https://messages.google.com/web/conversations';
     const GOOGLE_MESSAGES_NEW_CONVERSATION_URL = 'https://messages.google.com/web/conversations/new';
+    function buildGoogleMessagesNewConversationUrl(recipient='', digits='') {
+      const cleanRecipient = String(recipient || '').trim();
+      const cleanDigits = String(digits || '').replace(/\D/g, '');
+      const primary = cleanRecipient || (cleanDigits ? `+${cleanDigits}` : '');
+      if (!primary) return GOOGLE_MESSAGES_WEB_URL;
+      const params = new URLSearchParams();
+      params.set('recipient', primary);
+      params.set('to', primary);
+      params.set('phone', primary);
+      params.set('number', primary);
+      params.set('contact', primary);
+      if (cleanDigits) {
+        params.set('recipientDigits', cleanDigits);
+        params.set('phoneNumber', cleanDigits);
+      }
+      return `${GOOGLE_MESSAGES_NEW_CONVERSATION_URL}?${params.toString()}`;
+    }
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
         subject: 'Padel Village - Completa la tua autovalutazione del livello di gioco',
@@ -28245,10 +28262,10 @@ Per confermare scrivi ELIMINA.`);
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
       if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
       if (note) note.textContent = channel === 'sms'
-        ? 'SMS manuale: copia il testo e invialo da Google Messaggi Padel Village.'
+        ? 'SMS manuale: apri Google Messaggi Padel Village per il socio selezionato, poi copia e invia il testo manualmente.'
         : 'WhatsApp manuale: controlla il testo prima di inviarlo.';
       if (feedback) feedback.textContent = phoneCheck.ok
-        ? (channel === 'sms' ? 'SMS manuale: copia il testo e apri Google Messaggi Padel Village.' : 'Copia il testo, apri WhatsApp o segna il contatto come gestito.')
+        ? (channel === 'sms' ? 'SMS manuale: il destinatario e quello della scheda socio selezionata.' : 'Copia il testo, apri WhatsApp o segna il contatto come gestito.')
         : "Telefono mancante: aggiorna la scheda socio prima di usare SMS.";
       document.querySelectorAll('[data-assessment-whatsapp-template]').forEach(button => {
         button.classList.toggle('active', button.dataset.assessmentWhatsappTemplate === key);
@@ -28260,7 +28277,7 @@ Per confermare scrivi ELIMINA.`);
         button.textContent = channel === 'sms' ? 'Copia SMS' : 'Copia WhatsApp';
       });
       document.querySelectorAll('[data-assessment-manual-sms-action]').forEach(button => {
-        button.textContent = 'Copia numero e apri SMS';
+        button.textContent = 'Copia destinatario e apri SMS';
       });
       document.querySelectorAll('[data-assessment-manual-whatsapp-action]').forEach(button => {
         button.style.display = channel === 'sms' ? 'none' : '';
@@ -28363,16 +28380,15 @@ Per confermare scrivi ELIMINA.`);
       const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
       if (!phoneCheck.ok) return showAlert('Telefono mancante: aggiorna la scheda socio prima di usare SMS.', 'warning');
       const recipient = phoneCheck.info?.display || phoneCheck.info?.e164 || (phoneCheck.digits ? `+${phoneCheck.digits}` : '');
-      const url = recipient
-        ? `${GOOGLE_MESSAGES_NEW_CONVERSATION_URL}?recipient=${encodeURIComponent(recipient)}&to=${encodeURIComponent(recipient)}`
-        : GOOGLE_MESSAGES_WEB_URL;
-      copyTextWithFallback(recipient, `Numero SMS copiato: ${recipient}. Incollalo nel campo destinatario di Google Messaggi se non viene compilato automaticamente.`);
+      const memberName = playerFullName(member);
+      const url = buildGoogleMessagesNewConversationUrl(recipient, phoneCheck.digits || '');
+      copyTextWithFallback(recipient, `Destinatario SMS copiato per ${memberName}: ${recipient}. Incollalo nel campo A: se Google Messaggi non lo precompila.`);
       const smsWindow = window.open(url, 'pmo_google_messages');
       if (smsWindow && typeof smsWindow.focus === 'function') smsWindow.focus();
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
       if (feedback) feedback.textContent = smsWindow
-        ? 'Google Messaggi Padel Village aperto in nuova conversazione. Il numero e stato copiato: incollalo se Google non lo precompila.'
-        : 'Il browser ha bloccato Google Messaggi. Numero copiato: apri Google Messaggi manualmente.';
+        ? `Google Messaggi Padel Village aperto per ${memberName}. Destinatario copiato: ${recipient}. Se il campo A: resta vuoto, incollalo li.`
+        : `Il browser ha bloccato Google Messaggi. Destinatario copiato per ${memberName}: ${recipient}.`;
     }
     function markAssessmentEmailManualContactFromModal() {
       const state = window.assessmentEmailWhatsappModalState || {};
