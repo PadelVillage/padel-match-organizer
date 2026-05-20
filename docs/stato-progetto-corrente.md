@@ -29,7 +29,7 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST handoff PROD | v5.505 | `test/prod-handoff-v5.510-no-import-excel` | `da pubblicare` |
+| TEST handoff PROD | v5.505 | `test/prod-handoff-v5.510-no-import-excel` | `70f28b4` |
 | TEST sviluppo | v5.510 | `test/accessi-staff-guidati` | `f7fc026` |
 
 Nota TEST v5.505: aggiunta in `Autovalutazione` una diagnostica non inviante `Verifica Gmail` per controllare lo stato del collegamento Gmail prima di invii manuali o automatici. La Edge Function `assessment-email-send` espone la nuova azione `gmail-check`, che verifica solo la presenza dei secret Gmail e prova il refresh dell'access token tramite `GMAIL_REFRESH_TOKEN`, senza inviare email, leggere email dei soci o modificare dati. In caso di refresh token scaduto/revocato viene restituito `GMAIL_TOKEN_EXPIRED_OR_REVOKED` e la UI mostra `Gmail da verificare` con guida operativa per ricollegare Gmail e aggiornare il secret in Supabase tramite Promuovi PROD Admin. Nessun token o secret viene salvato in HTML, localStorage, documentazione o repository. Nessun cron TEST attivato, nessun SQL applicato, nessuna modifica a PROD, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.
