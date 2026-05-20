@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 18:08
+Ultimo aggiornamento: 2026-05-20 19:12
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.512 | `test-preview` | `9a30e25` |
-| TEST sviluppo | v5.512 | `test/accessi-staff-guidati` | `9a30e25` |
+| TEST | v5.513 | `test-preview` | `8cc25c3` |
+| TEST sviluppo | v5.513 | `test/accessi-staff-guidati` | `8cc25c3` |
+
+Nota TEST v5.513: corretto il canale `SMS` manuale dopo verifica operativa con il telefono Padel Village su Android. Il bottone SMS non usa piu il protocollo Apple/macOS `sms:` introdotto in v5.512, perche' apriva l'app Messaggi del Mac e quindi il numero dell'iPhone personale. Il bottone diventa `Apri SMS Padel Village` e apre Google Messaggi web/PWA collegato al telefono Android Padel Village (`https://messages.google.com/web/conversations`). Il testo resta da copiare manualmente con `Copia SMS`; numero e corpo messaggio non vengono precompilati e nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
 Nota TEST v5.512: rifinito il canale `SMS` manuale introdotto in v5.511. Il bottone nel popup non apre piu Google Messaggi web, ma diventa `Apri app SMS` e usa il protocollo di sistema `sms:+numero` per aprire l'app SMS predefinita del computer/dispositivo, quando configurata. Il testo resta da copiare manualmente con `Copia SMS`; non viene precompilato il corpo del messaggio e non parte alcun invio automatico. Il comportamento esatto dell'app aperta dipende dal gestore SMS configurato sul sistema operativo. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
