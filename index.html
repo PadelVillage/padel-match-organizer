@@ -1149,6 +1149,8 @@
     .assessment-excel-th { display:flex; flex-direction:column; gap:5px; min-width:0; }
     .assessment-excel-th-count { color:#667085; font-size:10px; line-height:1.25; font-weight:850; }
     .assessment-excel-filter { width:100%; min-width:0; border:1px solid #d9e0ea; border-radius:7px; background:#fff; color:#344054; padding:5px 6px; font-size:11px; font-weight:800; line-height:1.2; }
+    .assessment-excel-level-link { display:inline-flex; align-items:center; justify-content:center; border:1px solid #bdd5ff; border-radius:8px; background:#eef5ff; color:#1d4ed8; padding:5px 8px; font-size:12px; font-weight:900; line-height:1.1; cursor:pointer; }
+    .assessment-excel-level-link:hover { border-color:#2f5597; background:#e3edff; color:#173b7a; }
     .assessment-excel-import-table th:nth-child(1) { width:5%; text-align:center; }
     .assessment-excel-import-table th:nth-child(2) { width:7%; }
     .assessment-excel-import-table th:nth-child(3) { width:16%; }
@@ -5625,7 +5627,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.508';
+    const APP_VERSION = '5.509';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27123,6 +27125,13 @@ Per confermare scrivi ELIMINA.`);
         skipped: visible.filter(row => row.status && row.status !== 'Aggiornabile').length
       };
     }
+    function assessmentExcelImportNewLevelHtml(row) {
+      const label = cleanCell(row?.newLevel || '-');
+      const memberId = cleanCell(row?.memberId || '');
+      if (!memberId || !label || label === '-') return escapeHtml(label || '-');
+      const memberName = cleanCell(row?.memberName || 'socio');
+      return `<button class="assessment-excel-level-link" type="button" title="Apri scheda socio ${escapeHtml(memberName)}" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(memberId)}')">${escapeHtml(label)}</button>`;
+    }
     function assessmentExcelImportAppendHistory(member, oldLevel, newLevel, now) {
       const entry = {
         at: now,
@@ -27203,7 +27212,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Livello Excel">${escapeHtml(row.levelRaw || '-')}</td>
           <td data-label="Socio trovato">${row.memberName ? `${escapeHtml(row.memberName)}<span class="assessment-email-meta">${escapeHtml(row.method || '')}</span>` : '-'}</td>
           <td data-label="Livello attuale">${escapeHtml(row.currentLevel || '-')}</td>
-          <td data-label="Nuovo livello">${escapeHtml(row.newLevel || '-')}</td>
+          <td data-label="Nuovo livello">${assessmentExcelImportNewLevelHtml(row)}</td>
           <td data-label="Esito"><span class="assessment-excel-status ${escapeHtml(row.statusClass || '')}">${escapeHtml(row.status || '-')}</span></td>
           <td data-label="Note">${escapeHtml(row.note || '-')}</td>
         </tr>`;
