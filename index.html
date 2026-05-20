@@ -1148,9 +1148,14 @@
     .assessment-excel-check { width:18px; height:18px; accent-color:var(--primary); }
     .assessment-excel-th { display:flex; flex-direction:column; gap:5px; min-width:0; }
     .assessment-excel-th-count { color:#667085; font-size:10px; line-height:1.25; font-weight:850; }
+    .assessment-excel-th-count-button { appearance:none; border:0; background:transparent; color:#1d4ed8; padding:0; text-align:left; font-size:10px; line-height:1.25; font-weight:900; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+    .assessment-excel-th-count-button:hover { color:#173b7a; }
     .assessment-excel-filter { width:100%; min-width:0; border:1px solid #d9e0ea; border-radius:7px; background:#fff; color:#344054; padding:5px 6px; font-size:11px; font-weight:800; line-height:1.2; }
+    .assessment-excel-level-actions { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
     .assessment-excel-level-link { display:inline-flex; align-items:center; justify-content:center; border:1px solid #bdd5ff; border-radius:8px; background:#eef5ff; color:#1d4ed8; padding:5px 8px; font-size:12px; font-weight:900; line-height:1.1; cursor:pointer; }
     .assessment-excel-level-link:hover { border-color:#2f5597; background:#e3edff; color:#173b7a; }
+    .assessment-excel-card-link { display:inline-flex; align-items:center; justify-content:center; border:1px solid #d9e0ea; border-radius:7px; background:#fff; color:#344054; padding:5px 8px; font-size:11px; font-weight:900; line-height:1.1; cursor:pointer; white-space:nowrap; }
+    .assessment-excel-card-link:hover { border-color:#2f5597; color:#173b7a; }
     .assessment-excel-import-table th:nth-child(1) { width:5%; text-align:center; }
     .assessment-excel-import-table th:nth-child(2) { width:7%; }
     .assessment-excel-import-table th:nth-child(3) { width:16%; }
@@ -5627,7 +5632,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.509';
+    const APP_VERSION = '5.510';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27050,7 +27055,8 @@ Per confermare scrivi ELIMINA.`);
         excelName: cleanCell(filters.excelName || ''),
         levelExcel: cleanCell(filters.levelExcel || ''),
         memberName: cleanCell(filters.memberName || ''),
-        currentLevel: cleanCell(filters.currentLevel || '')
+        currentLevel: cleanCell(filters.currentLevel || ''),
+        status: cleanCell(filters.status || '')
       };
     }
     function assessmentExcelImportHasFilters(filters=null) {
@@ -27066,6 +27072,7 @@ Per confermare scrivi ELIMINA.`);
         if (filters.levelExcel && cleanCell(row.levelRaw || '') !== filters.levelExcel) return false;
         if (memberNeedle && !normalizeText(`${row.memberName || ''} ${row.method || ''} ${row.status || ''}`).includes(memberNeedle)) return false;
         if (filters.currentLevel && cleanCell(row.currentLevel || '-') !== filters.currentLevel) return false;
+        if (filters.status && cleanCell(row.status || '') !== filters.status) return false;
         return true;
       });
     }
@@ -27089,6 +27096,12 @@ Per confermare scrivi ELIMINA.`);
       state.filters = {};
       renderAssessmentExcelImportPanel();
     }
+    function assessmentExcelImportFocusReadyRows() {
+      const state = assessmentExcelImportGetState();
+      state.filters = { ...(state.filters || {}), status:'Aggiornabile' };
+      state.rows = state.rows.map(row => row.selectable && row.status === 'Aggiornabile' ? { ...row, selected:true } : row);
+      renderAssessmentExcelImportPanel();
+    }
     function assessmentExcelImportFilterOptions(rows=[], key='') {
       const values = new Set();
       (Array.isArray(rows) ? rows : []).forEach(row => {
@@ -27107,6 +27120,11 @@ Per confermare scrivi ELIMINA.`);
     function assessmentExcelImportHeaderMetric(value, label='') {
       const suffix = cleanCell(label || '');
       return `<span class="assessment-excel-th-count">${escapeHtml(suffix ? `${value} ${suffix}` : String(value))}</span>`;
+    }
+    function assessmentExcelImportReadyMetricHtml(count=0) {
+      const label = `${count} aggiornabili`;
+      if (!count) return assessmentExcelImportHeaderMetric(0, 'aggiornabili');
+      return `<button class="assessment-excel-th-count-button" type="button" title="Mostra e seleziona le righe aggiornabili" onclick="assessmentExcelImportFocusReadyRows()">${escapeHtml(label)}</button>`;
     }
     function assessmentExcelImportHeaderStats(rows=[], visibleRows=[]) {
       const source = Array.isArray(rows) ? rows : [];
@@ -27130,7 +27148,12 @@ Per confermare scrivi ELIMINA.`);
       const memberId = cleanCell(row?.memberId || '');
       if (!memberId || !label || label === '-') return escapeHtml(label || '-');
       const memberName = cleanCell(row?.memberName || 'socio');
-      return `<button class="assessment-excel-level-link" type="button" title="Apri scheda socio ${escapeHtml(memberName)}" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(memberId)}')">${escapeHtml(label)}</button>`;
+      const openAction = `setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(memberId)}')`;
+      const levelButton = `<button class="assessment-excel-level-link" type="button" title="Apri scheda socio ${escapeHtml(memberName)}" onclick="${openAction}">${escapeHtml(label)}</button>`;
+      const cardButton = row?.status === 'Aggiornabile'
+        ? `<button class="assessment-excel-card-link" type="button" title="Apri scheda socio ${escapeHtml(memberName)}" onclick="${openAction}">Scheda socio</button>`
+        : '';
+      return `<span class="assessment-excel-level-actions">${levelButton}${cardButton}</span>`;
     }
     function assessmentExcelImportAppendHistory(member, oldLevel, newLevel, now) {
       const entry = {
@@ -27231,7 +27254,7 @@ Per confermare scrivi ELIMINA.`);
             <th><span class="assessment-excel-th">Livello Excel${assessmentExcelImportHeaderMetric(headerStats.excelLevels, 'livelli')}${assessmentExcelImportFilterSelectHtml('levelExcel', filters.levelExcel, rows, 'Filtra livello Excel')}</span></th>
             <th><span class="assessment-excel-th">Socio trovato${assessmentExcelImportHeaderMetric(headerStats.found, 'trovati')}${memberFilter}</span></th>
             <th><span class="assessment-excel-th">Livello attuale${assessmentExcelImportHeaderMetric(headerStats.currentHalf, 'a 0.5')}${assessmentExcelImportFilterSelectHtml('currentLevel', filters.currentLevel, rows, 'Filtra livello attuale')}</span></th>
-            <th><span class="assessment-excel-th">Nuovo livello${assessmentExcelImportHeaderMetric(headerStats.ready, 'aggiornabili')}</span></th>
+            <th><span class="assessment-excel-th">Nuovo livello${assessmentExcelImportReadyMetricHtml(headerStats.ready)}</span></th>
             <th><span class="assessment-excel-th">Esito${assessmentExcelImportHeaderMetric(headerStats.skipped, 'saltate')}</span></th>
             <th>Note</th>
           </tr></thead>
