@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-20 17:16
+Ultimo aggiornamento: 2026-05-20 18:08
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Scheda socio / Testi TEST v5.512: il canale `SMS` manuale ora usa `Apri app SMS` e il protocollo di sistema `sms:+numero`, invece di aprire Google Messaggi web. L'app aperta dipende dal gestore SMS configurato sul computer/dispositivo; il testo resta da copiare con `Copia SMS`, non viene precompilato e nessun SMS viene inviato automaticamente. Nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 - Autovalutazione / Scheda socio / Testi TEST v5.511: aggiunto il canale `SMS` manuale accanto a `WhatsApp` nella scheda socio. I due canali aprono il popup unico `Messaggio manuale`, con selettore `WhatsApp` / `SMS`, testi manuali condivisi e azioni coerenti: copia/apertura WhatsApp oppure copia/apertura Google Messaggi. `Apri Google Messaggi` apre solo `https://messages.google.com/web/conversations`, senza precompilare numero o testo e senza invio automatico. Il blocco testi diventa `WhatsApp / SMS manuale`; i tre testi sono neutri e validi per entrambi i canali. `Segna gestito` riusa il flag locale esistente del recupero manuale, senza nuovi campi persistenti. Nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 - Promozione PROD v5.505 - 2026-05-20: pubblicata in PROD la diagnostica Gmail Autovalutazione con pacchetto selettivo senza `Import livelli Excel`. App PROD aggiornata a `APP_VERSION = 5.505` su `main` a `39c20ca`; Edge Function PROD `assessment-email-send` aggiornata a versione `24` con `verify_jwt=true`. La nuova azione non inviante `gmail-check` verifica il collegamento Gmail senza inviare email, leggere messaggi soci o scrivere dati. Scheduler PROD preservati, TEST senza cron, nessun SQL applicato, nessuna modifica segreti, nessuna modifica dati reali, nessun WhatsApp automatico e nessuna modifica a Matchpoint reale. `test-preview` e `test/accessi-staff-guidati` restano intenzionalmente a v5.510 per lo sviluppo TEST.
 - Autovalutazione / Import livelli Excel TEST v5.510: aggiunto filtro rapido sugli aggiornabili. Il conteggio `Nuovo livello / aggiornabili` e' cliccabile, mostra solo le righe aggiornabili e le seleziona automaticamente; su ogni riga aggiornabile compare il bottone `Scheda socio` per aprire direttamente la scheda del giocatore prima di applicare il livello. Funzione ancora **solo TEST / non promuovere in PROD**. Nessuna modifica a SQL, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.

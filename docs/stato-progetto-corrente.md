@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 17:16
+Ultimo aggiornamento: 2026-05-20 18:08
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.511 | `test-preview` | `603a120` |
-| TEST sviluppo | v5.511 | `test/accessi-staff-guidati` | `603a120` |
+| TEST | v5.512 | `test-preview` | `9a30e25` |
+| TEST sviluppo | v5.512 | `test/accessi-staff-guidati` | `9a30e25` |
+
+Nota TEST v5.512: rifinito il canale `SMS` manuale introdotto in v5.511. Il bottone nel popup non apre piu Google Messaggi web, ma diventa `Apri app SMS` e usa il protocollo di sistema `sms:+numero` per aprire l'app SMS predefinita del computer/dispositivo, quando configurata. Il testo resta da copiare manualmente con `Copia SMS`; non viene precompilato il corpo del messaggio e non parte alcun invio automatico. Il comportamento esatto dell'app aperta dipende dal gestore SMS configurato sul sistema operativo. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
 Nota TEST v5.511: integrato in `Scheda socio` e `Autovalutazione > Testi` il canale `SMS` manuale accanto al flusso WhatsApp manuale. Nella scheda socio compare `SMS` vicino a `WhatsApp`; entrambi aprono il popup unico `Messaggio manuale`, con selettore canale `WhatsApp` / `SMS`, gli stessi testi manuali condivisi e azioni contestuali. `Apri Google Messaggi` apre solo `https://messages.google.com/web/conversations` senza precompilare numero o testo e senza invio automatico; lo staff copia il testo e invia manualmente. I testi manuali sono stati resi neutri per entrambi i canali e il blocco in `Autovalutazione > Testi` diventa `WhatsApp / SMS manuale`. `Segna gestito` riusa il flag locale gia esistente del recupero manuale, senza creare nuovi campi persistenti. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
