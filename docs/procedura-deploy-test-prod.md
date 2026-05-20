@@ -266,6 +266,7 @@ Questi alert bloccano automaticamente il deploy PROD finche' l'utente non decide
 |---|---|---|
 | File inattesi nel diff | TEST contiene modifiche non previste | Fermarsi e chiarire |
 | Sezione protetta modificata | Una sezione non richiesta risulta toccata | Fermarsi e valutare rischio |
+| Funzione solo TEST nel diff PROD | Una funzione dichiarata transitoria solo TEST sta entrando verso `main` | Fermarsi ed escluderla dal pacchetto |
 | Scheduler PROD modificato | Un cron approvato cambia o sparisce | Fermarsi, salvo richiesta esplicita |
 | Scheduler TEST attivo | TEST non e' completamente manuale | Fermarsi e spegnere/giustificare |
 | Nuova routine PROD attiva | Automazione nuova pronta a partire in PROD | Fermarsi e chiedere autorizzazione separata |
