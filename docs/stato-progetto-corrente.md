@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-19 18:54
+Ultimo aggiornamento: 2026-05-20 08:40
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.503 | `main` | `1d7d1b8` |
-| TEST | v5.503 | `test-preview` | `1d7d1b8` |
-| TEST sviluppo | v5.503 | `test/accessi-staff-guidati` | `1d7d1b8` |
+| TEST | v5.504 | `test-preview` | `da pubblicare` |
+| TEST sviluppo | v5.504 | `test/accessi-staff-guidati` | `da pubblicare` |
+
+Nota TEST v5.504: integrato in `Autovalutazione` il pannello temporaneo `Import livelli da Excel`. Lo strumento carica file `.xlsx/.xls`, riconosce intestazioni flessibili per nome/cognome/nome completo, livello, email, telefono e ID PMO, mostra sempre anteprima prima di applicare aggiornamenti e consente l'aggiornamento solo delle righe selezionate con match sicuro e socio attualmente a livello `0.5`. I match ambigui, non trovati, soci disattivati, livelli Excel non validi e soci con livello diverso da `0.5` restano visibili ma non applicabili. L'applicazione richiede conferma manuale, aggiorna la scheda socio e registra una traccia locale `Import livelli Excel`; se disponibile, usa il normale sync cloud staff per salvare i soci modificati. Nessun SQL, Edge Function, scheduler, segreto, dato reale PROD, Matchpoint reale, Gmail o WhatsApp automatico modificato.
 
 Nota promozione PROD v5.503 - 2026-05-19 19:22: dopo comando esplicito `PROMUOVI PROD`, Promuovi Prod Admin ha promosso in PROD la modifica del fallback automatico delle 07:00 per il Lotto email Autovalutazione. App PROD pubblicata a `APP_VERSION = 5.503`; `main`, `test-preview` e `test/accessi-staff-guidati` allineati dopo commit documentale post-deploy. Edge Function PROD `assessment-email-send` deployata dal sorgente TEST validato a versione `18`, mantenendo `verify_jwt=true`. Applicato in PROD il solo SQL `supabase_pmo_assessment_auto_first_send_fallback_0700_prod.sql`: il dispatcher `public.pmo_dispatch_assessment_followup_email_prod(timestamp with time zone)` passa `allowLatestPendingBatch=true` e `batchLookupMode=latest_pending_selected`, usando `apikey` con publishable key, `Authorization` con JWT Vault `pmo_assessment_email_routine_jwt` e `x-pmo-routine-secret`. Scheduler PROD preservati: `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` attivi `*/5 * * * *`; TEST resta senza cron. Nessun invio email reale creato durante il deploy, nessun WhatsApp automatico, nessuna modifica a Matchpoint reale o dati reali. Rollback annotato verso PROD v5.502, commit app `68ddbfc`, origin/main `d0e6f0e`.
 
