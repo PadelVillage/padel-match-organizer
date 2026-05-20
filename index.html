@@ -2483,6 +2483,8 @@
     .side-sub-link, .side-submenu .tab-button { min-height:0; box-shadow:none; border:0; background:transparent; border-radius:10px; margin:0 6px 4px 0; padding:8px 10px; color:#d9e8ff; font-size:12.5px; font-weight:600; display:block; width:calc(100% - 6px); }
     .side-sub-link:hover, .side-submenu .tab-button:hover { background:rgba(255,255,255,.10); }
     .side-submenu .tab-button.active, .side-sub-link.active-sub { background:#fff; color:var(--primary); box-shadow:none; }
+    [data-test-only-section] { display:none !important; }
+    body.pmo-env-test [data-test-only-section] { display:block !important; }
     @media (max-width:800px) { .side-nav { width:304px; } }
 
     /* v5.96 - layout storico anagrafica soci */
@@ -4459,6 +4461,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('assessment','Testi')">Testi</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
           <button class="side-sub-link" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
+          <button class="side-sub-link" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
         </div>
 
         <button class="tab-button side-nav-main-item" onclick="switchTab('members', this)">
@@ -5623,7 +5626,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.505';
+    const APP_VERSION = '5.506';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7341,6 +7344,8 @@ Grazie.`
         'testi': '#assessmentEmailTextsPanel',
         'scheda pubblica': '#anchor-assessment-scheda',
         'strumenti tecnici': '#anchor-assessment-impostazioni',
+        'import livelli excel': '#assessmentExcelImportPanel',
+        'import excel': '#assessmentExcelImportPanel',
         'impostazioni link': '#anchor-assessment-impostazioni',
         'token e supabase': '#anchor-assessment-impostazioni',
         'sincronizza': '#assessmentEmailPostPanel, #assessmentActionBanner, .assessment-toolbar',
@@ -7697,6 +7702,32 @@ Grazie.`
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
           console.log('Colonne Excel:', rows.length ? Object.keys(rows[0]) : []);
+          onSuccess(rows);
+        } catch (err) {
+          console.error(err);
+          showAlert('❌ Errore lettura Excel: ' + err.message, 'danger');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    function readExcelAllSheets(file, onSuccess) {
+      if (!window.XLSX) {
+        showAlert('❌ Libreria Excel non caricata. Controlla la connessione internet e ricarica la pagina.', 'danger');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const rows = [];
+          workbook.SheetNames.forEach(sheetName => {
+            const sheet = workbook.Sheets[sheetName];
+            const sheetRows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+            sheetRows.forEach((row, index) => rows.push({ ...row, __sheetName:sheetName, __sheetRowNumber:index + 2 }));
+          });
+          console.log('Fogli Excel:', workbook.SheetNames);
+          console.log('Colonne Excel import livelli:', rows.length ? Object.keys(rows[0]) : []);
           onSuccess(rows);
         } catch (err) {
           console.error(err);
@@ -26463,7 +26494,8 @@ Per confermare scrivi ELIMINA.`);
         errorCode: cleanCell(data.errorCode || ''),
         gmailConnected: data.gmailConnected === true,
         runtimeEnv: cleanCell(data.runtimeEnv || PMO_RUNTIME_ENV),
-        showGuide: data.showGuide === true
+        showGuide: data.showGuide === true,
+        visibleUntil: Number(data.visibleUntil || 0) || 0
       };
     }
     function assessmentGmailCheckSave(state) {
@@ -26484,7 +26516,9 @@ Per confermare scrivi ELIMINA.`);
     function assessmentGmailCheckButtonHtml() {
       const state = assessmentGmailCheckCurrent();
       const disabled = state.status === 'checking' ? 'disabled' : '';
-      const label = state.status === 'error' ? 'Gmail da verificare' : 'Verifica Gmail';
+      const label = state.status === 'checking'
+        ? 'Verifico Gmail'
+        : (state.status === 'ok' ? 'Gmail OK' : (state.status === 'error' ? 'Gmail da verificare' : 'Verifica Gmail'));
       const cls = state.status === 'error' ? 'danger' : (state.status === 'ok' ? 'success' : 'warn');
       return `<button class="assessment-email-mini ${cls}" type="button" ${disabled} onclick="setActionAnchor(this); assessmentRunGmailCheck()">${escapeHtml(label)}</button>`;
     }
@@ -26497,21 +26531,16 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentGmailCheckPanelHtml() {
       const state = assessmentGmailCheckCurrent();
+      if (state.status === 'unknown') return '';
+      if (state.status === 'ok' && (!state.visibleUntil || Date.now() > state.visibleUntil)) return '';
       const cardCls = state.status === 'ok' ? ' ok' : (state.status === 'error' ? ' error' : '');
       const checkedAt = state.checkedAt ? `Ultimo controllo: ${assessmentEmailFormatDateTime(state.checkedAt)}` : 'Controllo non ancora eseguito.';
-      const reconnectButton = state.status === 'error'
-        ? `<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentShowGmailReconnectGuide()">Ricollega Gmail</button>`
-        : '';
       return `<div class="assessment-email-card assessment-gmail-check-card${cardCls}">
         <div class="assessment-gmail-check-row">
           <div>
             <div class="assessment-gmail-check-title">Gmail Padel Village ${assessmentGmailCheckBadgeHtml(state)}</div>
             <p class="assessment-gmail-check-message">${escapeHtml(state.message || 'Gmail non verificato.')}</p>
             <p class="assessment-gmail-check-message">${escapeHtml(checkedAt)}</p>
-          </div>
-          <div class="assessment-email-mini-actions">
-            ${assessmentGmailCheckButtonHtml()}
-            ${reconnectButton}
           </div>
         </div>
         ${assessmentGmailReconnectGuideHtml(state)}
@@ -26523,7 +26552,7 @@ Per confermare scrivi ELIMINA.`);
       showAlert('La riattivazione Gmail richiede login Google e aggiornamento sicuro del secret in Supabase.', 'warning');
     }
     async function assessmentRunGmailCheck() {
-      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false });
+      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false, visibleUntil:0 });
       renderAssessmentEmailPanels();
       try {
         const result = await pmoInvokeAssessmentEmail({ action:'gmail-check' });
@@ -26535,9 +26564,11 @@ Per confermare scrivi ELIMINA.`);
           errorCode: cleanCell(result?.errorCode || ''),
           gmailConnected: ok,
           runtimeEnv: cleanCell(result?.runtimeEnv || PMO_RUNTIME_ENV),
-          showGuide: !ok
+          showGuide: !ok,
+          visibleUntil: ok ? Date.now() + 3500 : 0
         });
         renderAssessmentEmailPanels();
+        if (ok) setTimeout(() => renderAssessmentEmailPanels(), 3700);
         showAlert(state.message, ok ? 'success' : 'danger');
       } catch (err) {
         const message = pmoFriendlyAssessmentEmailError(err, 'verificare il collegamento Gmail');
@@ -26548,7 +26579,8 @@ Per confermare scrivi ELIMINA.`);
           errorCode:'GMAIL_CHECK_FAILED',
           gmailConnected:false,
           runtimeEnv:PMO_RUNTIME_ENV,
-          showGuide:true
+          showGuide:true,
+          visibleUntil:0
         });
         renderAssessmentEmailPanels();
         showAlert(message, 'danger');
@@ -26589,7 +26621,6 @@ Per confermare scrivi ELIMINA.`);
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
       buttons.push(assessmentGmailCheckButtonHtml());
-      buttons.push(`<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); setAssessmentEmailPanel('excel-import')">Import livelli Excel</button>`);
       return buttons.join('');
     }
     function assessmentManualBatchRowHtml(row) {
@@ -26895,15 +26926,18 @@ Per confermare scrivi ELIMINA.`);
       const firstName = assessmentExcelImportCell(row, ['Nome', 'First name', 'Nome socio']);
       const surname = assessmentExcelImportCell(row, ['Cognome', 'Surname', 'Last name']);
       const fullName = assessmentExcelImportCell(row, ['Nome e cognome', 'Nome completo', 'Socio', 'Giocatore', 'Nominativo', 'Cliente']);
-      const levelRaw = assessmentExcelImportCell(row, ['Livello', 'Level', 'Livello giocatore', 'Livello Padel', 'Nuovo livello']);
+      const levelRaw = assessmentExcelImportCell(row, ['Livello', 'Level', 'Livello giocatore', 'Livello Padel', 'Livello app', 'Nuovo livello']);
       const email = assessmentExcelImportCell(row, ['Email', 'E-mail', 'Mail']);
       const phone = assessmentExcelImportCell(row, ['Telefono', 'Cellulare', 'Phone', 'Mobile', 'Numero']);
       const pmoId = assessmentExcelImportCell(row, ['ID PMO', 'PMO', 'Codice PMO', 'Codice socio', 'Member ID']);
       const matchpointId = assessmentExcelImportCell(row, ['Matchpoint ID', 'ID Matchpoint', 'Codice Matchpoint', 'Codice cliente', 'Cliente ID']);
+      const sheetName = cleanCell(row.__sheetName || '');
+      const sheetRowNumber = parseInt(String(row.__sheetRowNumber || ''), 10) || index + 2;
       const excelName = cleanCell(fullName || `${firstName} ${surname}`.trim());
       const base = {
         id: `excel-import-${index}`,
-        rowNumber: index + 2,
+        rowNumber: sheetRowNumber,
+        sheetName,
         excelName,
         levelRaw,
         email,
@@ -26947,6 +26981,9 @@ Per confermare scrivi ELIMINA.`);
         method: match.method,
         note: `Match sicuro via ${match.method}.`
       };
+      if (normalizeText(sheetName).includes('dubbi')) {
+        return { ...common, status:'Da controllare', statusClass:'warn', note:'Foglio Dubbi: verifica manuale prima di applicare un aggiornamento.' };
+      }
       if (member.active === false) {
         return { ...common, status:'Socio disattivato', statusClass:'err', note:'Il socio trovato non è attivo.' };
       }
@@ -26976,7 +27013,7 @@ Per confermare scrivi ELIMINA.`);
         renderAssessmentExcelImportPanel();
         return showAlert('Nessun file caricato.', 'warning');
       }
-      readExcel(file, rows => {
+      readExcelAllSheets(file, rows => {
         state.rows = assessmentExcelImportAnalyzeRows(rows);
         state.analyzedAt = new Date().toISOString();
         state.summary = null;
@@ -27089,7 +27126,7 @@ Per confermare scrivi ELIMINA.`);
           : `<input class="assessment-excel-check" type="checkbox" disabled>`;
         return `<tr>
           <td data-label="Sel.">${checkbox}</td>
-          <td data-label="Riga Excel">${escapeHtml(String(row.rowNumber || '-'))}</td>
+          <td data-label="Riga Excel">${escapeHtml(row.sheetName ? `${row.sheetName} · ${row.rowNumber || '-'}` : String(row.rowNumber || '-'))}</td>
           <td data-label="Nome Excel"><strong>${escapeHtml(row.excelName || '-')}</strong>${row.email ? `<span class="assessment-email-meta">${escapeHtml(row.email)}</span>` : ''}${row.phone ? `<span class="assessment-email-meta">${escapeHtml(row.phone)}</span>` : ''}</td>
           <td data-label="Livello Excel">${escapeHtml(row.levelRaw || '-')}</td>
           <td data-label="Socio trovato">${row.memberName ? `${escapeHtml(row.memberName)}<span class="assessment-email-meta">${escapeHtml(row.method || '')}</span>` : '-'}</td>
@@ -27134,6 +27171,7 @@ Per confermare scrivi ELIMINA.`);
       </div>`;
     }
     function setAssessmentEmailPanel(panel='morning') {
+      if (panel === 'excel-import' && !PMO_IS_TEST_ENV) panel = 'morning';
       window.assessmentEmailActivePanel = panel || 'morning';
       document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === window.assessmentEmailActivePanel));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
@@ -27148,7 +27186,7 @@ Per confermare scrivi ELIMINA.`);
       if (key.includes('post')) return 'post';
       if (key.includes('storico')) return 'history';
       if (key.includes('matchpoint')) return 'matchpoint';
-      if (key.includes('excel') || key.includes('import livelli')) return 'excel-import';
+      if ((key.includes('excel') || key.includes('import livelli')) && PMO_IS_TEST_ENV) return 'excel-import';
       if (key.includes('testi')) return 'texts';
       if (key.includes('scheda')) return 'public';
       if (key.includes('stato')) return 'routine';
@@ -27620,6 +27658,7 @@ Per confermare scrivi ELIMINA.`);
       hydrateAssessmentCommunicationTemplateForm();
     }
     function renderAssessmentEmailPanels() {
+      if ((window.assessmentEmailActivePanel || '') === 'excel-import' && !PMO_IS_TEST_ENV) window.assessmentEmailActivePanel = 'morning';
       renderAssessmentEmailKpis();
       renderAssessmentProcessStickyFilters();
       renderAssessmentEmailMorningPanel();
