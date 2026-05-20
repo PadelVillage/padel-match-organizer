@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 19:12
+Ultimo aggiornamento: 2026-05-20 19:37
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.513 | `test-preview` | `8cc25c3` |
-| TEST sviluppo | v5.513 | `test/accessi-staff-guidati` | `8cc25c3` |
+| TEST | v5.514 | `test-preview` | `a50eddc` |
+| TEST sviluppo | v5.514 | `test/accessi-staff-guidati` | `a50eddc` |
+
+Nota TEST v5.514: rifinito il canale `SMS` manuale per tentare un'apertura piu utile di Google Messaggi web/PWA. Il bottone del popup diventa `Copia numero e apri SMS`: copia negli appunti il numero normalizzato del socio e apre `https://messages.google.com/web/conversations/new` con parametri best-effort `recipient`/`to`. Google Messaggi web non documenta un deep-link stabile per precompilare destinatario o testo, quindi se i parametri vengono ignorati lo staff incolla manualmente il numero copiato; il testo continua a essere copiato separatamente con `Copia SMS`. Nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
 Nota TEST v5.513: corretto il canale `SMS` manuale dopo verifica operativa con il telefono Padel Village su Android. Il bottone SMS non usa piu il protocollo Apple/macOS `sms:` introdotto in v5.512, perche' apriva l'app Messaggi del Mac e quindi il numero dell'iPhone personale. Il bottone diventa `Apri SMS Padel Village` e apre Google Messaggi web/PWA collegato al telefono Android Padel Village (`https://messages.google.com/web/conversations`). Il testo resta da copiare manualmente con `Copia SMS`; numero e corpo messaggio non vengono precompilati e nessun SMS viene inviato automaticamente. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
