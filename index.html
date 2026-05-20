@@ -1219,6 +1219,10 @@
     .assessment-email-modal-title { margin:0 0 4px; color:var(--primary); font-size:20px; line-height:1.15; }
     .assessment-email-modal-body { display:grid; gap:14px; padding:16px 18px 18px; }
     .assessment-email-modal-summary { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:11px 12px; color:#344054; line-height:1.35; }
+    .assessment-email-channel-switch { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .assessment-email-channel-choice { border:1px solid #d9e0ea; border-radius:8px; background:#fff; color:#344054; padding:8px 12px; font:inherit; font-weight:900; cursor:pointer; }
+    .assessment-email-channel-choice.active { border-color:#b9cbea; background:#f3f7ff; color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+    .assessment-email-channel-note { margin-top:6px; color:#667085; font-size:12px; line-height:1.35; }
     .assessment-email-message-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
     .assessment-email-message-choice { text-align:left; border:1px solid #e7edf6; border-left:5px solid #d9e0ea; border-radius:8px; background:#fff; padding:11px 12px; cursor:pointer; font:inherit; }
     .assessment-email-message-choice.active { border-color:#b9cbea; border-left-color:#2563eb; background:#f3f7ff; }
@@ -4838,7 +4842,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-email-panel-head">
               <div>
                 <h3 class="assessment-email-panel-title">Testi</h3>
-                <p class="assessment-email-panel-copy">Sottosezione per gestire testi email automatici e messaggi WhatsApp manuali dello stesso flusso.</p>
+                <p class="assessment-email-panel-copy">Sottosezione per gestire testi email automatici e messaggi WhatsApp/SMS manuali dello stesso flusso.</p>
               </div>
               <div class="assessment-email-actions">
                 <button class="btn-secondary small-btn" onclick="setActionAnchor(this); resetAssessmentCommunicationTemplate()">Ripristina testo base</button>
@@ -4853,7 +4857,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="assessment-email-modal-card" role="dialog" aria-modal="true" aria-labelledby="assessmentEmailWhatsappModalTitle">
               <div class="assessment-email-modal-head">
                 <div>
-                  <h3 id="assessmentEmailWhatsappModalTitle" class="assessment-email-modal-title">Scegli messaggio WhatsApp</h3>
+                  <h3 id="assessmentEmailWhatsappModalTitle" class="assessment-email-modal-title">Messaggio manuale</h3>
                   <p class="assessment-email-panel-copy">Testi Autovalutazione disponibili dalla scheda socio. Il messaggio non contiene il link diretto alla scheda.</p>
                 </div>
                 <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailWhatsappModal()">Chiudi</button>
@@ -4861,9 +4865,18 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="assessment-email-modal-body">
                 <div class="assessment-email-modal-summary">
                   <strong id="assessmentEmailWhatsappPlayer">-</strong><br>
+                  <span id="assessmentEmailWhatsappPhone">Telefono: -</span><br>
                   <span id="assessmentEmailWhatsappProblem">Problema da verificare</span>
                 </div>
-                <div class="assessment-email-message-grid" aria-label="Messaggi WhatsApp disponibili">
+                <div>
+                  <label>Canale</label>
+                  <div class="assessment-email-channel-switch" aria-label="Canale messaggio manuale">
+                    <button type="button" class="assessment-email-channel-choice" data-assessment-manual-channel="whatsapp" onclick="setAssessmentEmailManualChannel('whatsapp')">WhatsApp</button>
+                    <button type="button" class="assessment-email-channel-choice" data-assessment-manual-channel="sms" onclick="setAssessmentEmailManualChannel('sms')">SMS</button>
+                  </div>
+                  <div id="assessmentEmailManualChannelNote" class="assessment-email-channel-note">WhatsApp resta manuale: controlla il testo prima di inviarlo.</div>
+                </div>
+                <div class="assessment-email-message-grid" aria-label="Messaggi manuali disponibili">
                   <button type="button" class="assessment-email-message-choice" data-assessment-whatsapp-template="whatsapp-email-missing" onclick="selectAssessmentEmailWhatsappMessage('whatsapp-email-missing')">
                     <strong>Richiesta email mancante</strong>
                     <span>Per soci senza email in anagrafica.</span>
@@ -4885,9 +4898,11 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="assessment-email-modal-actions">
                 <span id="assessmentEmailWhatsappFeedback" class="assessment-email-modal-feedback">Copia il testo e gestisci il contatto dalla scheda socio.</span>
                 <div class="assessment-email-actions">
-                  <button type="button" class="btn-secondary small-btn" onclick="copyAssessmentEmailWhatsappMessage()">Copia testo</button>
-                  <button type="button" class="btn-primary small-btn" data-assessment-whatsapp-open onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp con testo</button>
-                  <button type="button" class="btn-secondary small-btn" data-assessment-whatsapp-open onclick="openAssessmentEmailWhatsappWithoutText()">Apri senza testo</button>
+                  <button type="button" class="btn-secondary small-btn" data-assessment-manual-copy onclick="copyAssessmentEmailWhatsappMessage()">Copia WhatsApp</button>
+                  <button type="button" class="btn-primary small-btn" data-assessment-manual-whatsapp-action data-assessment-whatsapp-open onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
+                  <button type="button" class="btn-primary small-btn" data-assessment-manual-sms-action onclick="openAssessmentEmailSmsFromModal()">Apri Google Messaggi</button>
+                  <button type="button" class="btn-success small-btn" data-assessment-manual-managed onclick="markAssessmentEmailManualContactFromModal()">Segna gestito</button>
+                  <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailWhatsappModal()">Chiudi</button>
                 </div>
               </div>
             </div>
@@ -5632,7 +5647,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.510';
+    const APP_VERSION = '5.511';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -5745,6 +5760,7 @@ body.assessment-public-mode .assessment-public-only-card {
 Puoi scriverci su WhatsApp cliccando il bottone qui sotto. Lo staff Padel Village, con LoZio, ti aiutera a definire insieme il tuo livello.`;
     const ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000;
     const ASSESSMENT_EMAIL_TEMPLATE_KEYS = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
+    const GOOGLE_MESSAGES_WEB_URL = 'https://messages.google.com/web/conversations';
     const DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES = {
       'primary-email': {
         subject: 'Padel Village - Completa la tua autovalutazione del livello di gioco',
@@ -5838,45 +5854,47 @@ Grazie,
 Padel Village`
       },
       'whatsapp-email-missing': {
-        subject: 'Non previsto per WhatsApp',
-        type: 'WhatsApp - richiesta email mancante',
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - richiesta email mancante',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
 Stiamo aggiornando le schede dei soci per inviare la nuova autovalutazione del livello di gioco e organizzare partite piu equilibrate.
 
 Nel gestionale non trovo la tua email aggiornata.
 
-Me la scrivi qui, cosi ti mandiamo la scheda via email?
+Puoi risponderci qui con l'email corretta, cosi ti mandiamo la scheda via email?
 
 Grazie.`
       },
       'whatsapp-check': {
-        subject: 'Non previsto per WhatsApp',
-        type: 'WhatsApp - verifica ricezione email',
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - verifica ricezione email',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
-Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.
+Ti scriviamo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.
 
 Puoi controllare anche in spam o promozioni?
 
-Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.
+Se non l'hai ricevuta, puoi risponderci qui con la tua email corretta e te la rinviamo.
 
 Grazie.`
       },
       'whatsapp-reminder': {
-        subject: 'Non previsto per WhatsApp',
-        type: 'WhatsApp - promemoria controllo mail',
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - promemoria controllo mail',
         body: `Ciao {nome}, sono Maurizio di Padel Village.
 
 Ti ricordiamo di controllare la mail che ti abbiamo inviato per la scheda di autovalutazione del livello di gioco.
 
 Quando riesci, compilala dalla mail ricevuta.
 
+Se hai difficolta, puoi risponderci qui.
+
 Grazie.`
       },
       'whatsapp-level': {
-        subject: 'Non previsto per WhatsApp',
-        type: 'WhatsApp - livello validato',
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - livello validato',
         body: `Ciao {nome}, ti confermo che abbiamo aggiornato il tuo livello di gioco Padel Village.
 
 Il livello di gioco validato e':
@@ -5906,6 +5924,13 @@ Grazie.`
         .replaceAll('Il livello aggiornato nel gestionale Padel Village e', 'Il livello di gioco aggiornato nel gestionale Padel Village e')
         .replaceAll('Il livello validato e', 'Il livello di gioco validato e')
         .replaceAll('aggiornato il tuo livello Padel Village', 'aggiornato il tuo livello di gioco Padel Village');
+      if (String(key || '').startsWith('whatsapp-')) {
+        body = body
+          .replaceAll('Me la scrivi qui, cosi ti mandiamo la scheda via email?', "Puoi risponderci qui con l'email corretta, cosi ti mandiamo la scheda via email?")
+          .replaceAll('Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.', 'Ti scriviamo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.')
+          .replaceAll("Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.", "Se non l'hai ricevuta, puoi risponderci qui con la tua email corretta e te la rinviamo.")
+          .replaceAll('Quando riesci, compilala dalla mail ricevuta.\n\nGrazie.', 'Quando riesci, compilala dalla mail ricevuta.\n\nSe hai difficolta, puoi risponderci qui.\n\nGrazie.');
+      }
       if (key === 'primary-email' && !/LoZio|ti aiutiamo noi|preferisci non compilare la scheda da solo/i.test(body)) {
         if (/Richiede meno di 1 minuto\./i.test(body)) {
           body = body.replace(/Richiede meno di 1 minuto\./i, `Richiede meno di 1 minuto.\n\n${ASSESSMENT_EMAIL_PRIMARY_HELP_TEXT}`);
@@ -5939,7 +5964,7 @@ Grazie.`
         }
         out[key] = {
           subject,
-          type: cleanCell(saved.type || base.type),
+          type: String(key || '').startsWith('whatsapp-') ? cleanCell(base.type) : cleanCell(saved.type || base.type),
           body: normalizeAssessmentCommunicationTemplateBody(key, saved.body || base.body)
         };
       });
@@ -11249,7 +11274,8 @@ Grazie.`
             <section class="member-panel">
               <div class="member-panel-head"><h4>Azioni operative</h4></div>
               <div class="member-card-action-row">
-                <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">Apri WhatsApp</button>
+                <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">WhatsApp</button>
+                <button class="btn-secondary" ${validateWhatsAppPhone(g.phone || '').ok ? '' : 'disabled title="Telefono mancante: aggiorna la scheda socio prima di usare SMS."'} onclick="setActionAnchor(this); openMemberSms('${escapeHtml(String(g.id))}')">SMS</button>
                 <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
@@ -11404,7 +11430,18 @@ Grazie.`
         : '';
       const phoneCheck = validateWhatsAppPhone(cardPhone || member.phone || member.telefono || '');
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
-      openAssessmentMemberWhatsappModal(member.id, cardPhone || member.phone || member.telefono || '');
+      openAssessmentMemberWhatsappModal(member.id, cardPhone || member.phone || member.telefono || '', 'whatsapp');
+    }
+
+    function openMemberSms(memberId) {
+      const member = giocatori.find(p => String(p.id) === String(memberId));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const cardPhone = String(memberInlineOpenId || '') === String(memberId)
+        ? cleanCell(document.getElementById('cardPhone')?.value || '')
+        : '';
+      const phoneCheck = validateWhatsAppPhone(cardPhone || member.phone || member.telefono || '');
+      if (!phoneCheck.ok) return showAlert('Telefono mancante: aggiorna la scheda socio prima di usare SMS.', 'warning');
+      openAssessmentMemberWhatsappModal(member.id, cardPhone || member.phone || member.telefono || '', 'sms');
     }
 
 
@@ -25153,7 +25190,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailHistoryChannelLabel(row) {
       const key = assessmentEmailHistoryChannelKey(row);
-      if (key === 'whatsapp') return 'Email + WhatsApp';
+      if (key === 'whatsapp') return 'Email + recupero manuale';
       if (key === 'email_not_sent') return 'Email non inviata';
       return 'Email';
     }
@@ -25164,7 +25201,7 @@ Per confermare scrivi ELIMINA.`);
       const sentAt = cleanCell(rec.sentAt || rec.createdAt || member.selfAssessmentEmailSentAt || '');
       const whatsappAt = cleanCell(member.selfAssessmentWhatsappCheckAt || '');
       if (key === 'whatsapp') {
-        return `<div class="assessment-email-compact-info"><strong>Email + WhatsApp</strong>${sentAt ? `<span>Email inviata ${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>` : ''}<span>Ultimo WhatsApp ${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span></div>`;
+        return `<div class="assessment-email-compact-info"><strong>Email + recupero manuale</strong>${sentAt ? `<span>Email inviata ${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>` : ''}<span>Ultimo contatto ${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span></div>`;
       }
       if (key === 'email_not_sent') {
         return '<span class="assessment-email-inline-status muted">Email non inviata</span>';
@@ -27523,7 +27560,7 @@ Per confermare scrivi ELIMINA.`);
         const contactText = replyAt
           ? `Risposta email ricevuta<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(replyAt))}${replyFrom ? ` · ${escapeHtml(replyFrom)}` : ''}</span>${replySnippet ? `<span class="assessment-email-meta">${escapeHtml(replySnippet.slice(0, 140))}${replySnippet.length > 140 ? '...' : ''}</span>` : ''}`
           : whatsappAt
-          ? `WhatsApp aperto<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
+          ? `Recupero manuale<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(whatsappAt))}</span>`
           : `${escapeHtml(sentLabel)}<br><span class="assessment-email-meta">${escapeHtml(assessmentEmailFormatDateTime(sentAt))}</span>`;
         const contactBadge = replyAt ? assessmentEmailBadge('Ha risposto via email','ok') : (whatsappAt ? assessmentEmailBadge('In attesa risposta','warn') : assessmentEmailBadge('Inviata','info'));
         const nextRule = assessmentEmailNextPendingRule(sentCount, replyAt, whatsappAt);
@@ -27558,8 +27595,8 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailWhatsappLastLabel(member) {
       return member?.selfAssessmentWhatsappCheckAt
-        ? `Ultimo WhatsApp aperto: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
-        : 'WhatsApp non ancora aperto';
+        ? `Ultimo recupero manuale: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
+        : 'Recupero manuale non ancora segnato';
     }
     function renderAssessmentEmailProblemsPanel() {
       const box = document.getElementById('assessmentEmailProblemsContent');
@@ -27750,7 +27787,7 @@ Per confermare scrivi ELIMINA.`);
             ${row('third-email','Terzo invio dopo altri 2 giorni','Ultimo promemoria: segnala eventuali difficolta prima della gestione manuale.')}
             ${row('received-email','Conferma ricezione scheda','Parte subito dopo la compilazione.')}
             ${row('level-email','Livello validato','Parte quando lo staff applica il livello.')}
-            <div class="assessment-email-template-section">WhatsApp manuale</div>
+            <div class="assessment-email-template-section">WhatsApp / SMS manuale</div>
             ${row('whatsapp-email-missing','Richiesta email mancante',"Chiede al socio l'email corretta per poter inviare la scheda.")}
             ${row('whatsapp-check','Verifica ricezione email',"Chiede se la mail e arrivata; se no, chiede l'email corretta.")}
             ${row('whatsapp-reminder','Promemoria controllo mail','Ricorda di controllare la mail gia inviata.')}
@@ -27768,7 +27805,7 @@ Per confermare scrivi ELIMINA.`);
           <textarea id="assessmentTemplateBody" class="assessment-email-template-body" oninput="refreshAssessmentCommunicationTemplatePreview()"></textarea>
           <div id="assessmentTemplatePreview" class="assessment-email-preview"></div>
         </div>
-      </div><div class="assessment-email-footer-note">In modalita prova il sistema inviera questi testi solo alla email personale staff. Il messaggio WhatsApp non contiene mai il link diretto alla scheda.</div>`;
+      </div><div class="assessment-email-footer-note">In modalita prova il sistema inviera questi testi solo alla email personale staff. Il messaggio manuale WhatsApp/SMS non contiene mai il link diretto alla scheda.</div>`;
       hydrateAssessmentCommunicationTemplateForm();
     }
     function renderAssessmentEmailPanels() {
@@ -28086,7 +28123,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailWhatsappTemplateTitle(key) {
       const template = assessmentCommunicationTemplates[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['whatsapp-check'];
-      return cleanCell(template.type || '').replace(/^WhatsApp\s*-\s*/i, '') || 'Messaggio WhatsApp';
+      return cleanCell(template.type || '').replace(/^(WhatsApp|Manuale)\s*-\s*/i, '') || 'Messaggio manuale';
     }
     function assessmentEmailBuildWhatsappMessage(member, key) {
       const template = assessmentCommunicationTemplates[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['whatsapp-check'];
@@ -28168,7 +28205,7 @@ Per confermare scrivi ELIMINA.`);
       if (rec.sentAt || rec.createdAt || member.selfAssessmentEmailSentAt) return 'whatsapp-reminder';
       return 'whatsapp-check';
     }
-    function openAssessmentMemberWhatsappModal(memberId, phoneValue='') {
+    function openAssessmentMemberWhatsappModal(memberId, phoneValue='', channel='whatsapp') {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const phoneCheck = validateWhatsAppPhone(phoneValue || member.phone || member.telefono || '');
@@ -28178,7 +28215,8 @@ Per confermare scrivi ELIMINA.`);
         templateKey: assessmentDefaultWhatsappTemplateForMember(member),
         problemLabel: 'Scegli uno dei testi Autovalutazione disponibili dalla scheda socio.',
         source: 'member-card',
-        phoneValue: phoneValue || member.phone || member.telefono || ''
+        phoneValue: phoneValue || member.phone || member.telefono || '',
+        channel: channel === 'sms' ? 'sms' : 'whatsapp'
       };
       const modal = ensureAssessmentEmailWhatsappModalLayer();
       if (modal) {
@@ -28191,23 +28229,54 @@ Per confermare scrivi ELIMINA.`);
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       const key = state.templateKey || 'whatsapp-check';
+      const channel = state.channel === 'sms' ? 'sms' : 'whatsapp';
       const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
       const player = document.getElementById('assessmentEmailWhatsappPlayer');
+      const phone = document.getElementById('assessmentEmailWhatsappPhone');
       const problem = document.getElementById('assessmentEmailWhatsappProblem');
       const title = document.getElementById('assessmentEmailWhatsappSelectedTitle');
       const text = document.getElementById('assessmentEmailWhatsappSelectedText');
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
+      const note = document.getElementById('assessmentEmailManualChannelNote');
       if (player) player.textContent = member ? playerFullName(member) : '-';
+      if (phone) phone.textContent = phoneCheck.ok ? `Telefono: ${phoneCheck.info?.display || phoneCheck.digits}` : 'Telefono: mancante o non valido';
       if (problem) problem.textContent = state.problemLabel || 'Problema da verificare';
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
       if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
-      if (feedback) feedback.textContent = phoneCheck.ok ? "Scegli un testo oppure apri WhatsApp senza testo prefatto." : "Telefono mancante o non valido: aggiorna la scheda socio prima di aprire WhatsApp.";
+      if (note) note.textContent = channel === 'sms'
+        ? 'SMS manuale: copia il testo e invialo da Google Messaggi.'
+        : 'WhatsApp manuale: controlla il testo prima di inviarlo.';
+      if (feedback) feedback.textContent = phoneCheck.ok
+        ? (channel === 'sms' ? 'SMS manuale: copia il testo e invialo da Google Messaggi.' : 'Copia il testo, apri WhatsApp o segna il contatto come gestito.')
+        : "Telefono mancante: aggiorna la scheda socio prima di usare SMS.";
       document.querySelectorAll('[data-assessment-whatsapp-template]').forEach(button => {
         button.classList.toggle('active', button.dataset.assessmentWhatsappTemplate === key);
+      });
+      document.querySelectorAll('[data-assessment-manual-channel]').forEach(button => {
+        button.classList.toggle('active', button.dataset.assessmentManualChannel === channel);
+      });
+      document.querySelectorAll('[data-assessment-manual-copy]').forEach(button => {
+        button.textContent = channel === 'sms' ? 'Copia SMS' : 'Copia WhatsApp';
+      });
+      document.querySelectorAll('[data-assessment-manual-whatsapp-action]').forEach(button => {
+        button.style.display = channel === 'sms' ? 'none' : '';
+      });
+      document.querySelectorAll('[data-assessment-manual-sms-action]').forEach(button => {
+        button.style.display = channel === 'sms' ? '' : 'none';
       });
       document.querySelectorAll('[data-assessment-whatsapp-open]').forEach(button => {
         button.disabled = !phoneCheck.ok;
       });
+      document.querySelectorAll('[data-assessment-manual-managed], [data-assessment-manual-sms-action]').forEach(button => {
+        button.disabled = !phoneCheck.ok;
+      });
+    }
+    function setAssessmentEmailManualChannel(channel='whatsapp') {
+      window.assessmentEmailWhatsappModalState = {
+        ...(window.assessmentEmailWhatsappModalState || {}),
+        channel: channel === 'sms' ? 'sms' : 'whatsapp'
+      };
+      renderAssessmentEmailWhatsappModal();
     }
     function selectAssessmentEmailWhatsappMessage(key) {
       window.assessmentEmailWhatsappModalState = {
@@ -28226,7 +28295,8 @@ Per confermare scrivi ELIMINA.`);
         templateKey: templateKey || 'whatsapp-check',
         problemLabel: problemLabel || 'Email da verificare',
         source: 'assessment-flow',
-        phoneValue: member.phone || ''
+        phoneValue: member.phone || '',
+        channel: 'whatsapp'
       };
       const modal = ensureAssessmentEmailWhatsappModalLayer();
       if (modal) {
@@ -28264,18 +28334,50 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
-      const copiedMessage = state.source === 'member-card'
-        ? "Testo WhatsApp copiato. WhatsApp resta manuale."
-        : "Testo WhatsApp copiato. La data viene registrata solo con Apri WhatsApp.";
+      const channel = state.channel === 'sms' ? 'sms' : 'whatsapp';
+      const copiedMessage = channel === 'sms'
+        ? 'Testo SMS copiato. Apri Google Messaggi e invialo manualmente.'
+        : (state.source === 'member-card'
+          ? "Testo WhatsApp copiato. WhatsApp resta manuale."
+          : "Testo WhatsApp copiato. La data viene registrata solo con Apri WhatsApp o Segna gestito.");
       copyTextWithFallback(text, copiedMessage);
       const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
-      if (feedback) feedback.textContent = state.source === 'member-card' ? "Testo copiato. WhatsApp resta manuale." : "Testo copiato. La data viene registrata solo con Apri WhatsApp.";
+      if (feedback) feedback.textContent = channel === 'sms'
+        ? 'Testo copiato. Google Messaggi resta manuale.'
+        : (state.source === 'member-card' ? "Testo copiato. WhatsApp resta manuale." : "Testo copiato. La data viene registrata solo con Apri WhatsApp o Segna gestito.");
     }
     function openSelectedAssessmentEmailWhatsapp() {
       return openAssessmentEmailWhatsappFromModal(true);
     }
     function openAssessmentEmailWhatsappWithoutText() {
       return openAssessmentEmailWhatsappFromModal(false);
+    }
+    function openAssessmentEmailSmsFromModal() {
+      const state = window.assessmentEmailWhatsappModalState || {};
+      const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
+      if (!phoneCheck.ok) return showAlert('Telefono mancante: aggiorna la scheda socio prima di usare SMS.', 'warning');
+      const smsWindow = window.open(GOOGLE_MESSAGES_WEB_URL, 'pmo_google_messages');
+      if (smsWindow && typeof smsWindow.focus === 'function') smsWindow.focus();
+      showAlert('SMS manuale: Google Messaggi aperto. Copia il testo e invialo manualmente.', smsWindow ? 'success' : 'warning');
+      const feedback = document.getElementById('assessmentEmailWhatsappFeedback');
+      if (feedback) feedback.textContent = smsWindow
+        ? 'Google Messaggi aperto. Nessun SMS viene inviato automaticamente.'
+        : 'Il browser ha bloccato Google Messaggi. Copia il testo e apri Google Messaggi manualmente.';
+    }
+    function markAssessmentEmailManualContactFromModal() {
+      const state = window.assessmentEmailWhatsappModalState || {};
+      const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
+      if (!member) return showAlert('Socio non trovato.', 'warning');
+      const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
+      if (!phoneCheck.ok) return showAlert('Telefono mancante: aggiorna la scheda socio prima di usare SMS.', 'warning');
+      const channel = state.channel === 'sms' ? 'SMS' : 'WhatsApp';
+      assessmentEmailRegisterWhatsappOpen(member);
+      closeAssessmentEmailWhatsappModal();
+      if (state.source !== 'member-card') assessmentEmailReturnToProblemMember(member.id);
+      displayAssessment();
+      showAlert(`Contatto manuale ${channel} segnato come gestito.`, 'success');
     }
     function openAssessmentEmailWhatsappFromModal(withText=true) {
       const state = window.assessmentEmailWhatsappModalState || {};
