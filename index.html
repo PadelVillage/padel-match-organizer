@@ -5625,7 +5625,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.507';
+    const APP_VERSION = '5.508';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27102,16 +27102,26 @@ Per confermare scrivi ELIMINA.`);
         ${options.map(option => `<option value="${escapeHtml(option)}" ${option === value ? 'selected' : ''}>${escapeHtml(option)}</option>`).join('')}
       </select>`;
     }
-    function assessmentExcelImportHeaderCountsHtml(rows=[], visibleRows=[]) {
-      const counts = {
-        total: rows.length,
-        visible: visibleRows.length,
-        ready: rows.filter(row => row.status === 'Aggiornabile').length,
-        selected: rows.filter(row => row.selectable && row.selected).length,
-        skipped: rows.filter(row => row.status && row.status !== 'Aggiornabile').length
+    function assessmentExcelImportHeaderMetric(value, label='') {
+      const suffix = cleanCell(label || '');
+      return `<span class="assessment-excel-th-count">${escapeHtml(suffix ? `${value} ${suffix}` : String(value))}</span>`;
+    }
+    function assessmentExcelImportHeaderStats(rows=[], visibleRows=[]) {
+      const source = Array.isArray(rows) ? rows : [];
+      const visible = Array.isArray(visibleRows) ? visibleRows : [];
+      const totalText = visible.length !== source.length ? `${visible.length}/${source.length}` : String(source.length);
+      const visibleLevelOptions = assessmentExcelImportFilterOptions(visible, 'levelExcel').length;
+      return {
+        selected: visible.filter(row => row.selectable && row.selected).length,
+        selectable: visible.filter(row => row.selectable).length,
+        rows: totalText,
+        names: visible.filter(row => cleanCell(row.excelName || '')).length,
+        excelLevels: visibleLevelOptions,
+        found: visible.filter(row => cleanCell(row.memberName || '')).length,
+        currentHalf: visible.filter(row => Math.abs(parseLevel(row.currentLevel, -1) - 0.5) < 0.001).length,
+        ready: visible.filter(row => row.status === 'Aggiornabile').length,
+        skipped: visible.filter(row => row.status && row.status !== 'Aggiornabile').length
       };
-      const filtered = counts.visible !== counts.total ? `${counts.visible}/${counts.total} righe` : `${counts.total} righe`;
-      return `${filtered} · ${counts.ready} aggiornabili · ${counts.selected} selezionate · ${counts.skipped} saltate`;
     }
     function assessmentExcelImportAppendHistory(member, oldLevel, newLevel, now) {
       const entry = {
@@ -27178,6 +27188,7 @@ Per confermare scrivi ELIMINA.`);
       if (!rows.length) return `<div class="assessment-empty">Nessun file analizzato. Carica un Excel e premi Analizza file.</div>`;
       const filters = assessmentExcelImportFilters();
       const visibleRows = assessmentExcelImportFilteredRows(rows);
+      const headerStats = assessmentExcelImportHeaderStats(rows, visibleRows);
       const selectable = visibleRows.filter(row => row.selectable).length;
       const selected = visibleRows.filter(row => row.selectable && row.selected).length;
       const allChecked = selectable && selected === selectable;
@@ -27205,13 +27216,15 @@ Per confermare scrivi ELIMINA.`);
       return `<div class="assessment-email-table-wrap">
         <table class="assessment-email-table assessment-excel-import-table">
           <thead><tr>
-            <th><input class="assessment-excel-check" type="checkbox" ${allChecked ? 'checked' : ''} ${selectable ? '' : 'disabled'} onchange="assessmentExcelImportToggleAll(this.checked)"></th>
-            <th><span class="assessment-excel-th">Riga Excel<span class="assessment-excel-th-count">${escapeHtml(assessmentExcelImportHeaderCountsHtml(rows, visibleRows))}</span>${clearFiltersHtml}</span></th>
-            <th><span class="assessment-excel-th">Nome Excel${nameFilter}</span></th>
-            <th><span class="assessment-excel-th">Livello Excel${assessmentExcelImportFilterSelectHtml('levelExcel', filters.levelExcel, rows, 'Filtra livello Excel')}</span></th>
-            <th><span class="assessment-excel-th">Socio trovato${memberFilter}</span></th>
-            <th><span class="assessment-excel-th">Livello attuale${assessmentExcelImportFilterSelectHtml('currentLevel', filters.currentLevel, rows, 'Filtra livello attuale')}</span></th>
-            <th>Nuovo livello</th><th>Esito</th><th>Note</th>
+            <th><span class="assessment-excel-th">Sel.${assessmentExcelImportHeaderMetric(`${headerStats.selected}/${headerStats.selectable}`)}<input class="assessment-excel-check" type="checkbox" ${allChecked ? 'checked' : ''} ${selectable ? '' : 'disabled'} onchange="assessmentExcelImportToggleAll(this.checked)"></span></th>
+            <th><span class="assessment-excel-th">Riga Excel${assessmentExcelImportHeaderMetric(headerStats.rows, 'righe')}${clearFiltersHtml}</span></th>
+            <th><span class="assessment-excel-th">Nome Excel${assessmentExcelImportHeaderMetric(headerStats.names, 'nomi')}${nameFilter}</span></th>
+            <th><span class="assessment-excel-th">Livello Excel${assessmentExcelImportHeaderMetric(headerStats.excelLevels, 'livelli')}${assessmentExcelImportFilterSelectHtml('levelExcel', filters.levelExcel, rows, 'Filtra livello Excel')}</span></th>
+            <th><span class="assessment-excel-th">Socio trovato${assessmentExcelImportHeaderMetric(headerStats.found, 'trovati')}${memberFilter}</span></th>
+            <th><span class="assessment-excel-th">Livello attuale${assessmentExcelImportHeaderMetric(headerStats.currentHalf, 'a 0.5')}${assessmentExcelImportFilterSelectHtml('currentLevel', filters.currentLevel, rows, 'Filtra livello attuale')}</span></th>
+            <th><span class="assessment-excel-th">Nuovo livello${assessmentExcelImportHeaderMetric(headerStats.ready, 'aggiornabili')}</span></th>
+            <th><span class="assessment-excel-th">Esito${assessmentExcelImportHeaderMetric(headerStats.skipped, 'saltate')}</span></th>
+            <th>Note</th>
           </tr></thead>
           <tbody>${body}</tbody>
         </table>
