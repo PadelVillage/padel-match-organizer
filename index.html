@@ -4602,7 +4602,7 @@ body.assessment-public-mode .assessment-public-only-card {
     .phone-device .screen-content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 16px 100px;
+      padding: 16px 16px 140px;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -29118,6 +29118,7 @@ Per confermare scrivi ELIMINA.`);
       
       // Content screens
       let screenContentHtml = '';
+      let stickyBottomPanelHtml = '';
       
       if (state === 'loading') {
         screenContentHtml = `
@@ -29262,18 +29263,21 @@ Per confermare scrivi ELIMINA.`);
             <div class="candidates-list">
               ${cardsHtml}
             </div>
-            <div class="sticky-bottom-panel">
-              <button class="btn-approve" id="btn-approve" ${selected === 0 ? 'disabled' : ''} onclick="assessmentMobileWidgetApproveBatch()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Approva e Invia (<span id="btn-count">${selected}</span>)
-              </button>
-              <p class="bottom-info-text">
-                Autorizza l'invio delle email ai soci selezionati.<br>
-                Flusso protetto: in TEST l'invio è limitato allo staff.
-              </p>
-            </div>
+          </div>
+        `;
+        
+        stickyBottomPanelHtml = `
+          <div class="sticky-bottom-panel">
+            <button class="btn-approve" id="btn-approve" ${selected === 0 ? 'disabled' : ''} onclick="assessmentMobileWidgetApproveBatch()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Approva e Invia (<span id="btn-count">${selected}</span>)
+            </button>
+            <p class="bottom-info-text">
+              Autorizza l'invio delle email ai soci selezionati.<br>
+              Flusso protetto: in TEST l'invio è limitato allo staff.
+            </p>
           </div>
         `;
       } else if (state === 'approving') {
@@ -29348,6 +29352,7 @@ Per confermare scrivi ELIMINA.`);
             <div class="app-screen">
               ${headerHtml}
               ${screenContentHtml}
+              ${stickyBottomPanelHtml}
             </div>
           </div>
         </div>
