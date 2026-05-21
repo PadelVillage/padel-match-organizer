@@ -28,9 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.516 | `main` | `40e7d08` |
-| TEST | v5.516 | `test-preview` | `970a76e` |
-| TEST sviluppo | v5.516 | `test/accessi-staff-guidati` | `970a76e` |
+| PROD | v5.517 | `main` | `851d05b` |
+| TEST | v5.517 | `test-preview` | `851d05b` |
+| TEST sviluppo | v5.517 | `test/accessi-staff-guidati` | `851d05b` |
+
+Nota promozione PROD v5.517 - 2026-05-21 16:50: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.517, allineando `main` a commit `851d05b`. Questo rilascio integra il widget mobile staff Fase 2 per la gestione delle autovalutazioni da cellulare (in particolare risolvendo il bug di scroll con il pannello sticky bottom "Approva e Invia" ancorato correttamente alla viewport del dispositivo). La funzionalità è stata testata e validata su Pixel 9. Nessuna modifica a SQL, scheduler o Edge Function, e gli scheduler automatici PROD rimangono attivi ed invariati.
+
+Nota TEST v5.517: integrato il widget mobile staff Fase 2 per la gestione delle autovalutazioni da cellulare con il fix per lo scroll sticky del pannello bottom ed E2E routine execution.
 
 Nota operativa PROD scheduler - 2026-05-21 11:00: dopo la verifica manuale andata a buon fine sulla nuova Hetzner VM worker (sincronizzazione dei Clienti alle 10:55 e dello Storico alle 10:57), su richiesta esplicita di Maurizio, gli scheduler automatici su Supabase PROD `qqbfphyslczzkxoncgex` sono stati riattivati impostando `active=true` tramite SQL. Stato verificato: `pmo-data-routines-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_data_routines();`, `active=true`; `pmo-assessment-followup-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_assessment_followup_email_prod();`, `active=true`. Supabase TEST `cron.job` verificato vuoto. Nessun deploy app, nessun deploy Edge Function, nessuna modifica a segreti, dati reali, Matchpoint reale, Gmail o WhatsApp. Il sistema ha ripreso la piena operatività automatica.
 
