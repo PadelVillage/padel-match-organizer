@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-20 20:23
+Ultimo aggiornamento: 2026-05-21 09:05
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.505 | `main` | `70f28b4` |
-| TEST | v5.516 | `test-preview` | `4cd8819` |
-| TEST sviluppo | v5.516 | `test/accessi-staff-guidati` | `4cd8819` |
+| PROD | v5.516 | `main` | `40e7d08` |
+| TEST | v5.516 | `test-preview` | `970a76e` |
+| TEST sviluppo | v5.516 | `test/accessi-staff-guidati` | `970a76e` |
+
+Nota promozione PROD v5.516 - 2026-05-21 09:05: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.516, allineando `main` a commit `40e7d08`. Questo rilascio consolida l'applicazione e rimuove l'esperimento SMS manuale, mantenendo il canale WhatsApp manuale e la nuova funzionalità 'Segna gestito'. La funzionalità temporanea di import livelli Excel rimane bloccata e invisibile in PROD. Nessuna modifica a SQL, scheduler o Edge Function poiché il backend reale di produzione è già stabile e aggiornato.
 
 Nota TEST v5.516: rimosso completamente l'esperimento del canale `SMS` manuale da `Scheda socio` e `Autovalutazione > Testi`. Eliminati bottone `SMS` dalla scheda socio, selettore canale `WhatsApp/SMS`, azioni `Copia SMS` / `Apri Google Messaggi`, costanti e funzioni dedicate a Google Messaggi/deep-link SMS. Il flusso WhatsApp manuale resta preservato con popup `Messaggio WhatsApp manuale`, testi manuali esistenti, `Copia WhatsApp`, `Apri WhatsApp` e `Segna gestito`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 
