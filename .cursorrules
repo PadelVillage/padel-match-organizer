@@ -1,0 +1,43 @@
+# Padel Village - AI Coding Rules & Directives
+
+## CRITICAL: READ-BEFORE-WRITE RULE
+Before answering the user's prompt, suggesting architectural changes, or writing any code, you **MUST** search the `docs/` folder (or equivalent documentation files in the workspace, such as `docs/autovalutazioni-email-routine.md`, `docs/routine-dati-automatiche.md`, `docs/stato-progetto-corrente.md`, `VERSIONI.md`, etc.).
+1. Read the relevant documentation first to understand existing rules, level formulas, database states, and schedules.
+2. In your very first response, **you must explicitly cite** the files and specific line ranges you read (e.g., "Consulted `docs/autovalutazioni-email-routine.md:L2294-2300`...").
+3. Never propose logic, states, or features that contradict the established documentation unless the user explicitly requests a deviation.
+
+---
+
+## 1. TOKEN & CREDIT EFFICIENCY (CRITICAL FOR USER SAVINGS)
+To maximize the user's AI credits and prevent slow response times due to context bloat, you **MUST** adhere to these strict limits:
+- **Proactive Chat Refresh Directive**: The moment you finish a specific task (e.g., a migration is executed, a bug is fixed, a mockup is approved, a file is written), you **MUST** explicitly end your message by telling the user to close the chat and open a new one. Provide a ready-to-use copy-paste prompt for their next chat.
+  * *Example: "Ho completato la migrazione del database. Per risparmiare i tuoi crediti ed evitare rallentamenti, chiudi questa chat e aprine una nuova con questo prompt: [Prompt per il passo successivo]"*.
+- **Context Bloat Warning**: If the current chat exceeds 5-6 turn interactions or contains multiple large file reads, proactively warn the user to refresh the chat to save tokens.
+- **Output Diffs Only**: Never rewrite an entire 1000-line file. Only output the exact modified lines (unified diff format or precise code blocks to replace) to keep output token consumption to an absolute minimum.
+- **Extreme Conciseness**: Keep explanations, greetings, and conversational text to an absolute minimum (max 2-3 lines of summary). Go straight to the code and technical actions.
+
+---
+
+## 2. LANGUAGE & NOMENCLATURE (ITALIAN)
+- All user-facing UI text, buttons, labels, tooltips, and interactive elements **MUST** be strictly in Italian (e.g., "Approva e Invia", "Casi da Controllare").
+- All database state values, statuses, and logs **MUST** use the official Italian terminology defined in the docs (e.g., "Da validare staff", "Autovalutazione in pausa - nessuna risposta").
+- Code comments and strategy discussions with the user should be in Italian.
+
+---
+
+## 3. PREMIUM DESIGN & VISUAL AESTHETICS
+- **Zero Browser Defaults**: Never use generic colors (pure red, green, blue). Use curated, harmonious dark/light mode palettes (e.g., HSL tailoring, glassmorphism, smooth gradients).
+- **Modern Typography**: Import and use premium Google Fonts (e.g., Outfit, Inter, Montserrat) instead of generic system sans-serif.
+- **Micro-Animations & Transitions**: Implement smooth hover states, active transitions, and responsive behaviors to make the UI feel alive and premium.
+- **Responsiveness**: Design with mobile-first or highly responsive layouts suitable for PWAs and modern desktop apps.
+
+---
+
+## 4. SECURITY & CREDENTIALS
+- **No Hardcoded Passwords/Keys**: Never hardcode credentials, SMTP details, API keys, or Supabase service roles. Always guide the user to store them in secure Vaults or environment variables.
+
+---
+
+## 5. PROFESSIONAL COMMUNICATION
+- Be concise, professional, and humble.
+- Avoid overconfident language, bragging, or superlatives (e.g., do not use "perfectly", "flawlessly", "100% correct"). Ground all claims in verified facts.

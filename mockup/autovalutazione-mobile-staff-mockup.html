@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Mobile Widget - Autovalutazioni</title>
+  
+  <!-- Google Fonts: Outfit per un'estetica premium e moderna -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ---------------------------------------------------------
+       DESIGN SYSTEM & DOCKING TOKENS
+       --------------------------------------------------------- */
+    :root {
+      --bg-dark: #07090e;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      --bg-card-hover: rgba(255, 255, 255, 0.06);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.16);
+      
+      /* Palette HSL Curata e Harmonious (No Pure colors) */
+      --primary-hsl: 142, 70%, 45%;   /* Green smeraldo */
+      --primary: hsl(var(--primary-hsl));
+      --primary-glow: hsla(var(--primary-hsl), 0.35);
+      
+      --accent-hsl: 220, 95%, 60%;    /* Blue elettrico */
+      --accent: hsl(var(--accent-hsl));
+      
+      --warning-hsl: 28, 95%, 55%;    /* Arancione Padel Village */
+      --warning: hsl(var(--warning-hsl));
+      --warning-glow: hsla(var(--warning-hsl), 0.25);
+      
+      --danger-hsl: 0, 85%, 60%;      /* Rosso morbido */
+      --danger: hsl(var(--danger-hsl));
+      --danger-glow: hsla(var(--danger-hsl), 0.25);
+      
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      
+      --glass-blur: blur(20px);
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-quick: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Reset di Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      /* Sfondo spaziale con gradienti radiali luminosi */
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, #080c14 0%, #030508 100%);
+    }
+
+    /* Scrollbar personalizzata per container interni */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.01);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ---------------------------------------------------------
+       LAYOUT WRAPPER & GLOWING EFFECT
+       --------------------------------------------------------- */
+    .dashboard-container {
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      align-items: center;
+      justify-content: center;
+      max-width: 1000px;
+      width: 100%;
+      z-index: 10;
+    }
+
+    @media (max-width: 850px) {
+      .dashboard-container {
+        flex-direction: column;
+        gap: 30px;
+      }
+    }
+
+    /* ---------------------------------------------------------
+       CONTROLS PANEL (DASHBOARD DI TEST ESTERNO)
+       --------------------------------------------------------- */
+    .control-panel {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 380px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-panel h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .control-panel p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .state-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .btn-state {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-quick);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-state:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--border-focus);
+    }
+
+    .btn-state.active {
+      background: hsla(var(--accent-hsl), 0.15);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .info-badge-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .info-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--text-dim);
+    }
+
+    .info-dot.primary { background-color: var(--primary); }
+    .info-dot.warning { background-color: var(--warning); }
+    .info-dot.danger { background-color: var(--danger); }
+    
+    /* ---------------------------------------------------------
+       DEVICE FRAME (SLEEK SMARTPHONE MOCKUP)
+       --------------------------------------------------------- */
+    .phone-wrapper {
+      position: relative;
+    }
+
+    .phone-glow {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background: radial-gradient(circle at center, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .phone-device {
+      position: relative;
+      width: 390px;
+      height: 780px;
+      background: #090d16;
+      border: 11px solid #1a202c;
+      border-radius: 46px;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.8),
+        0 0 0 2px rgba(255, 255, 255, 0.05),
+        inset 0 0 6px rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+    }
+
+    /* Isola Dinamica (Dynamic Island) */
+    .phone-notch {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 28px;
+      background: #1a202c;
+      border-radius: 20px;
+      z-index: 99;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+    }
+
+    .phone-notch::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: #0c1017;
+      border-radius: 50%;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+    }
+    
+    .phone-notch::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #111827;
+      border-radius: 50%;
+    }
+
+    /* Status Bar */
+    .phone-status-bar {
+      height: 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 28px 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #fff;
+      z-index: 90;
+      user-select: none;
+      background: linear-gradient(to bottom, rgba(9, 13, 22, 0.8) 0%, transparent 100%);
+    }
+
+    .status-left {
+      letter-spacing: -0.2px;
+    }
+
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-signal {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5px;
+      height: 10px;
+    }
+    .icon-signal span {
+      width: 2.5px;
+      background: #fff;
+      border-radius: 0.5px;
+    }
+    .icon-signal span:nth-child(1) { height: 3px; }
+    .icon-signal span:nth-child(2) { height: 5px; }
+    .icon-signal span:nth-child(3) { height: 7px; }
+    .icon-signal span:nth-child(4) { height: 10px; }
+
+    .icon-battery {
+      width: 18px;
+      height: 9px;
+      border: 1px solid #fff;
+      border-radius: 2.5px;
+      position: relative;
+      padding: 1px;
+    }
+    .icon-battery::after {
+      content: '';
+      position: absolute;
+      right: -2.5px;
+      top: 2.5px;
+      width: 1.5px;
+      height: 3px;
+      background: #fff;
+      border-radius: 0 1px 1px 0;
+    }
+    .battery-level {
+      height: 100%;
+      width: 85%;
+      background: #fff;
+      border-radius: 1px;
+    }
+
+    /* App Container */
+    .app-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ---------------------------------------------------------
+       STYLING DEL COMPONENTE APPLICAZIONE (WIDGET STAFF)
+       --------------------------------------------------------- */
+    .app-header {
+      padding: 14px 20px 10px;
+      background: linear-gradient(to bottom, rgba(9, 13, 22, 0.95), rgba(9, 13, 22, 0.8));
+      backdrop-filter: var(--glass-blur);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 10;
+    }
+
+    .brand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--primary);
+      text-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
+
+    .badge-staff {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .app-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--primary);
+      animation: pulse-green 2s infinite;
+    }
+
+    /* ---------------------------------------------------------
+       DYNAMIC SCREEN STATES CONTROLLER
+       --------------------------------------------------------- */
+    .screen-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 16px 100px; /* Padding bottom extra per sticky buttons */
+      position: relative;
+      display: none;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .screen-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ---------------------------------------------------------
+       STATE 1: LOADING SKELETON
+       --------------------------------------------------------- */
+    .skeleton-summary {
+      height: 38px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .skeleton-card {
+      height: 108px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shimmer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.03) 30%, 
+        rgba(255, 255, 255, 0.08) 50%, 
+        rgba(255, 255, 255, 0.03) 70%, 
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer-anim 1.5s infinite;
+    }
+
+    @keyframes shimmer-anim {
+      0% { background-position: 150% 0; }
+      100% { background-position: -50% 0; }
+    }
+
+    /* Spinner */
+    .loading-spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.05);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ---------------------------------------------------------
+       STATE 2: NO BATCH / EMPTY
+       --------------------------------------------------------- */
+    .empty-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      flex: 1;
+    }
+
+    .empty-icon-wrap {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--text-muted);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .empty-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .btn-action-primary {
+      background: linear-gradient(135deg, hsl(var(--accent-hsl)), hsla(var(--accent-hsl), 0.8));
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition-quick);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-action-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-action-primary:active {
+      transform: translateY(0);
+    }
+
+    /* ---------------------------------------------------------
+       STATE 3: READY / LISTA SOCI INTERATTIVA
+       --------------------------------------------------------- */
+    .batch-summary-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .batch-summary-bar strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .batch-date-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .candidates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Riga Socio (Card Glassmorphism) */
+    .member-card {
+      background: var(--bg-card);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 14px 16px;
+      transition: var(--transition-quick);
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .member-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+    }
+
+    .member-card:active {
+      transform: translateY(0);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Custom Checkbox con ripple */
+    .checkbox-container {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .checkbox-real {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .checkbox-custom {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--text-dim);
+      border-radius: 7px;
+      transition: var(--transition-quick);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+    }
+
+    .checkbox-custom svg {
+      width: 12px;
+      height: 10px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 18;
+      stroke-dashoffset: 18;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .checkbox-real:checked + .checkbox-custom {
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    }
+
+    .checkbox-real:checked + .checkbox-custom svg {
+      stroke-dashoffset: 0;
+    }
+
+    /* Disabilitato */
+    .checkbox-real:disabled + .checkbox-custom {
+      border-color: var(--border-color);
+      background: rgba(255, 255, 255, 0.02);
+      cursor: not-allowed;
+    }
+
+    .member-card.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    
+    .member-card.disabled:hover {
+      transform: none;
+      border-color: var(--border-color);
+      background: var(--bg-card);
+    }
+
+    /* Informazioni Socio */
+    .member-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .member-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-mail {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Livello e Coerenza */
+    .level-flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding-top: 8px;
+    }
+
+    .level-path {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .level-path strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .arrow-level {
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+
+    /* Badges */
+    .consistency-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .badge-high {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+    }
+
+    .badge-medium {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      color: #fbbf24;
+    }
+
+    /* Caso da Controllare - Pulsing */
+    .badge-low {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #f87171;
+      animation: pulse-border-orange 1.5s infinite;
+    }
+
+    @keyframes pulse-border-orange {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+      70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .badge-error {
+      background: rgba(156, 163, 175, 0.08);
+      border: 1px solid rgba(156, 163, 175, 0.2);
+      color: var(--text-muted);
+    }
+
+    /* Warning/Info Area interna alla Card */
+    .card-alert-box {
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+
+    .card-alert-box.low {
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.12);
+      color: #f87171;
+    }
+
+    .card-alert-box.missing {
+      background: rgba(156, 163, 175, 0.03);
+      border: 1px solid rgba(156, 163, 175, 0.08);
+      color: var(--text-muted);
+    }
+
+    /* Sticky Bottom Action Panel inside Device */
+    .sticky-bottom-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: linear-gradient(to top, rgba(9, 13, 22, 1) 0%, rgba(9, 13, 22, 0.95) 60%, rgba(9, 13, 22, 0) 100%);
+      padding: 16px 20px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .btn-approve {
+      width: 100%;
+      background: linear-gradient(135deg, hsl(var(--primary-hsl)), hsla(var(--primary-hsl), 0.85));
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      box-shadow: 
+        0 8px 24px var(--primary-glow),
+        inset 0 1px 1px rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Continuo Shimmer Effect */
+    .btn-approve::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 150%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.15) 30%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        rgba(255, 255, 255, 0.15) 70%, 
+        transparent 100%
+      );
+      transform: skewX(-20deg);
+      animation: shimmer-btn 4s infinite linear;
+    }
+
+    @keyframes shimmer-btn {
+      0% { left: -150%; }
+      35% { left: 150%; }
+      100% { left: 150%; }
+    }
+
+    .btn-approve:hover {
+      box-shadow: 
+        0 12px 30px var(--primary-glow),
+        inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .btn-approve:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .btn-approve:disabled {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-dim);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-approve:disabled::after {
+      display: none;
+    }
+
+    .bottom-info-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* ---------------------------------------------------------
+       STATE 4: APPROVING SINK
+       --------------------------------------------------------- */
+    .approving-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      flex: 1;
+      gap: 20px;
+    }
+
+    .progress-bar-wrap {
+      width: 180px;
+      height: 6px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      border-radius: 10px;
+      box-shadow: 0 0 10px var(--primary);
+      transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .step-log-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--primary);
+      min-height: 18px;
+    }
+
+    /* ---------------------------------------------------------
+       STATE 5: SENT / SUCCESS SCREEN
+       --------------------------------------------------------- */
+    .success-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      flex: 1;
+    }
+
+    /* Animazione Checkmark SVG */
+    .success-icon-wrap {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .success-circle-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--primary-glow);
+      filter: blur(8px);
+      opacity: 0.6;
+    }
+
+    .checkmark-svg {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: block;
+      stroke-width: 3;
+      stroke: #fff;
+      stroke-miterlimit: 10;
+      box-shadow: inset 0px 0px 0px var(--primary);
+      animation: fill-checkmark .4s ease-in-out .4s forwards, scale-checkmark .3s ease-in-out .9s forwards;
+    }
+
+    .checkmark-circle {
+      stroke-width: 3;
+      stroke: var(--primary);
+      fill: none;
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      stroke-linecap: round;
+      animation: stroke-checkmark 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+
+    .checkmark-check {
+      transform-origin: 50% 50%;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      stroke-linecap: round;
+      animation: stroke-checkmark 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+    }
+
+    @keyframes stroke-checkmark {
+      100% { stroke-dashoffset: 0; }
+    }
+
+    @keyframes fill-checkmark {
+      100% { box-shadow: inset 0px 0px 0px 40px var(--primary); }
+    }
+
+    @keyframes scale-checkmark {
+      0%, 100% { transform: none; }
+      50% { transform: scale3d(1.1, 1.1, 1); }
+    }
+
+    .success-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .success-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+
+    /* ---------------------------------------------------------
+       STATE 6: ERROR SCREEN
+       --------------------------------------------------------- */
+    .error-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      flex: 1;
+    }
+
+    .error-icon-wrap {
+      width: 72px;
+      height: 72px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--danger);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .error-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .error-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    /* ---------------------------------------------------------
+       MICRO-ANIMATIONS & COMPONENT STATES
+       --------------------------------------------------------- */
+    @keyframes pulse-green {
+      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Layout Principale: Controlli Esterni + Smartphone -->
+  <div class="dashboard-container">
+    
+    <!-- Pannello di Controllo / Live Simulator per lo Staff -->
+    <div class="control-panel">
+      <h1>Autovalutazioni 1-Tap</h1>
+      <p>Simulatore interattivo per la <strong>FASE 2 (Mobile Staff Widget)</strong>. Clicca sui bottoni per testare tutti gli stati previsti dal piano di ottimizzazione.</p>
+      
+      <div class="state-buttons">
+        <button class="btn-state active" onclick="switchState('ready')" id="btn-state-ready">
+          <span style="font-size: 14px;">🗂️</span> Pronto (Interattivo)
+        </button>
+        <button class="btn-state" onclick="switchState('loading')" id="btn-state-loading">
+          <span style="font-size: 14px;">🔄</span> Caricamento
+        </button>
+        <button class="btn-state" onclick="switchState('no_batch')" id="btn-state-no_batch">
+          <span style="font-size: 14px;">🚫</span> Lotto Assente
+        </button>
+        <button class="btn-state" onclick="switchState('error')" id="btn-state-error">
+          <span style="font-size: 14px;">⚠️</span> Errore Sync
+        </button>
+        <button class="btn-state" onclick="triggerApprovalFlow()" id="btn-state-approve" style="grid-column: span 2; background: hsla(142, 70%, 45%, 0.08); border-color: hsla(142, 70%, 45%, 0.3);">
+          <span style="font-size: 14px;">🚀</span> Avvia Giro Approvazione
+        </button>
+      </div>
+      
+      <div class="info-badge-list">
+        <div class="info-item">
+          <div class="info-dot primary"></div>
+          <span><strong>Coerente (±0.5):</strong> Differenza ≤ 0.5 tra livello dichiarato e calcolato (approvabile direttamente).</span>
+        </div>
+        <div class="info-item">
+          <div class="info-dot warning"></div>
+          <span><strong>Caso da Controllare:</strong> Divergenza > 0.5, segnalato visivamente ma escludibile/selezionabile.</span>
+        </div>
+        <div class="info-item">
+          <div class="info-dot danger"></div>
+          <span><strong>Errore / email:</strong> Dati mancanti (es. email assente), escluso automaticamente dall'invio.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Smartphone Realistico -->
+    <div class="phone-wrapper">
+      <div class="phone-glow"></div>
+      
+      <div class="phone-device">
+        <!-- Notch (Isola Dinamica) -->
+        <div class="phone-notch"></div>
+        
+        <!-- Barra di Stato Mobile -->
+        <div class="phone-status-bar">
+          <div class="status-left" id="phone-time">15:13</div>
+          <div class="status-right">
+            <!-- Icona Segnale -->
+            <div class="icon-signal" aria-label="Segnale cellulare ottimo">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <!-- Testo 5G -->
+            <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.5px; margin-right: 2px;">5G</span>
+            <!-- Icona Batteria -->
+            <div class="icon-battery" aria-label="Batteria 85%">
+              <div class="battery-level"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schermo dell'applicazione -->
+        <div class="app-screen">
+          
+          <!-- Testata App (Persistente tranne per success/loading assoluto) -->
+          <div class="app-header" id="app-header">
+            <div class="brand-row">
+              <span class="brand-name">🏓 Padel Village</span>
+              <span class="badge-staff">STAFF</span>
+            </div>
+            <div class="title-row">
+              <div>
+                <h2 class="app-title">Autovalutazioni</h2>
+                <p class="app-subtitle" id="app-header-desc">Lotto giornaliero (06:30)</p>
+              </div>
+              <div class="live-indicator" id="live-indicator">
+                <span class="live-dot"></span>
+                <span>TEST MODE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 1: LOADING (SKELETON SHIMMER)
+               ======================================================= -->
+          <div id="screen-loading" class="screen-content">
+            <div class="skeleton-summary">
+              <div class="shimmer"></div>
+            </div>
+            <div class="candidates-list">
+              <div class="skeleton-card"><div class="shimmer"></div></div>
+              <div class="skeleton-card"><div class="shimmer"></div></div>
+              <div class="skeleton-card"><div class="shimmer"></div></div>
+              <div class="skeleton-card"><div class="shimmer"></div></div>
+            </div>
+            <div class="loading-spinner-wrap">
+              <div class="spinner"></div>
+              <span class="loading-text">Caricamento lotto in corso...</span>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 2: NO BATCH (VUOTO CON AZIONE PLAN)
+               ======================================================= -->
+          <div id="screen-no_batch" class="screen-content">
+            <div class="empty-container">
+              <div class="empty-icon-wrap">
+                <!-- SVG Icona Calendario Vuoto o Orologio -->
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <line x1="9" y1="14" x2="15" y2="14"></line>
+                  <line x1="9" y1="18" x2="13" y2="18"></line>
+                </svg>
+              </div>
+              <h3 class="empty-title">Nessun lotto pianificato</h3>
+              <p class="empty-desc">Il job automatico `routine-plan` non è ancora partito oggi alle 06:30, oppure non ci sono soci candidati in coda.</p>
+              <button class="btn-action-primary" onclick="generateBatchManual()">
+                <!-- SVG Orologio/Fulmine -->
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                Genera Lotto Ora
+              </button>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 3: READY (LISTA INTERATTIVA DEI SOCI)
+               ======================================================= -->
+          <div id="screen-ready" class="screen-content active">
+            
+            <!-- Barra di Riepilogo Lotto -->
+            <div class="batch-summary-bar">
+              <span>Selezionati: <strong id="selected-text">4 / 4</strong> soci</span>
+              <span class="batch-date-badge" id="batch-date-badge">OGGI (06:30)</span>
+            </div>
+
+            <!-- Lista dei candidati -->
+            <div class="candidates-list">
+              
+              <!-- SOCIO 1: COERENTE (ALTO) -->
+              <div class="member-card" onclick="toggleMember(this, 'mario-rossi')">
+                <div class="card-top">
+                  <div class="checkbox-container">
+                    <input type="checkbox" id="check-mario-rossi" class="checkbox-real" checked onclick="event.stopPropagation(); updateButtonState();">
+                    <div class="checkbox-custom">
+                      <svg viewBox="0 0 12 10">
+                        <polyline points="1.5 5 4.5 8 10.5 1.5"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="member-info">
+                    <h4 class="member-name">Mario Rossi</h4>
+                    <p class="member-mail">mario.rossi@gmail.com</p>
+                  </div>
+                  <span class="consistency-badge badge-high">🟢 Coerente</span>
+                </div>
+                <div class="level-flow-row">
+                  <div class="level-path">
+                    <span>Livello: <strong>0.5</strong></span>
+                    <span class="arrow-level">➔</span>
+                    <span>Calcolato: <strong>0.8</strong></span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-dim);">Diff: +0.3 (≤0.5)</span>
+                </div>
+              </div>
+
+              <!-- SOCIO 2: COERENTE (MEDIO) -->
+              <div class="member-card" onclick="toggleMember(this, 'anna-bianchi')">
+                <div class="card-top">
+                  <div class="checkbox-container">
+                    <input type="checkbox" id="check-anna-bianchi" class="checkbox-real" checked onclick="event.stopPropagation(); updateButtonState();">
+                    <div class="checkbox-custom">
+                      <svg viewBox="0 0 12 10">
+                        <polyline points="1.5 5 4.5 8 10.5 1.5"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="member-info">
+                    <h4 class="member-name">Anna Bianchi</h4>
+                    <p class="member-mail">anna.bianchi@outlook.com</p>
+                  </div>
+                  <span class="consistency-badge badge-medium">🟡 Medio</span>
+                </div>
+                <div class="level-flow-row">
+                  <div class="level-path">
+                    <span>Livello: <strong>0.5</strong></span>
+                    <span class="arrow-level">➔</span>
+                    <span>Calcolato: <strong>0.9</strong></span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-dim);">Diff: +0.4 (≤0.5)</span>
+                </div>
+              </div>
+
+              <!-- SOCIO 3: COERENTE (ALTO) -->
+              <div class="member-card" onclick="toggleMember(this, 'giovanni-neri')">
+                <div class="card-top">
+                  <div class="checkbox-container">
+                    <input type="checkbox" id="check-giovanni-neri" class="checkbox-real" checked onclick="event.stopPropagation(); updateButtonState();">
+                    <div class="checkbox-custom">
+                      <svg viewBox="0 0 12 10">
+                        <polyline points="1.5 5 4.5 8 10.5 1.5"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="member-info">
+                    <h4 class="member-name">Giovanni Neri</h4>
+                    <p class="member-mail">g.neri@hotmail.it</p>
+                  </div>
+                  <span class="consistency-badge badge-high">🟢 Coerente</span>
+                </div>
+                <div class="level-flow-row">
+                  <div class="level-path">
+                    <span>Livello: <strong>0.5</strong></span>
+                    <span class="arrow-level">➔</span>
+                    <span>Calcolato: <strong>0.6</strong></span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-dim);">Diff: +0.1 (≤0.5)</span>
+                </div>
+              </div>
+
+              <!-- SOCIO 4: DA CONTROLLARE (DIVERGENZA) -->
+              <div class="member-card" onclick="toggleMember(this, 'roberto-russo')">
+                <div class="card-top">
+                  <div class="checkbox-container">
+                    <input type="checkbox" id="check-roberto-russo" class="checkbox-real" checked onclick="event.stopPropagation(); updateButtonState();">
+                    <div class="checkbox-custom">
+                      <svg viewBox="0 0 12 10">
+                        <polyline points="1.5 5 4.5 8 10.5 1.5"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="member-info">
+                    <h4 class="member-name">Roberto Russo</h4>
+                    <p class="member-mail">roberto.russo88@gmail.com</p>
+                  </div>
+                  <span class="consistency-badge badge-low">🟠 Controllare</span>
+                </div>
+                <div class="level-flow-row">
+                  <div class="level-path">
+                    <span>Livello: <strong>0.5</strong></span>
+                    <span class="arrow-level">➔</span>
+                    <span>Calcolato: <strong>1.2</strong></span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--warning); font-weight: 600;">Diff: +0.7 (&gt;0.5)</span>
+                </div>
+                <div class="card-alert-box low">
+                  ⚠️ <strong>Divergenza elevata (+0.7):</strong> Il livello calcolato differisce di oltre 0.5 dal livello dichiarato.
+                </div>
+              </div>
+
+              <!-- SOCIO 5: ANOMALO (EMAIL MANCANTE - ESCLUSO) -->
+              <div class="member-card disabled" onclick="event.stopPropagation();">
+                <div class="card-top">
+                  <div class="checkbox-container">
+                    <input type="checkbox" id="check-elena-verde" class="checkbox-real" disabled>
+                    <div class="checkbox-custom">
+                      <svg viewBox="0 0 12 10">
+                        <polyline points="1.5 5 4.5 8 10.5 1.5"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="member-info">
+                    <h4 class="member-name">Elena Verde</h4>
+                    <p class="member-mail" style="color: var(--danger);">Email mancante</p>
+                  </div>
+                  <span class="consistency-badge badge-error">🔴 Bloccato</span>
+                </div>
+                <div class="level-flow-row">
+                  <div class="level-path">
+                    <span>Livello: <strong>0.5</strong></span>
+                    <span class="arrow-level">➔</span>
+                    <span>Calcolato: <strong>0.8</strong></span>
+                  </div>
+                  <span style="font-size: 11px; color: var(--text-dim);">Coerente (±0.5)</span>
+                </div>
+                <div class="card-alert-box missing">
+                  🚫 Impossibile inviare l'email: indirizzo non presente nel database del socio.
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Pannello Azioni Sticky in basso -->
+            <div class="sticky-bottom-panel">
+              <button class="btn-approve" id="btn-approve" onclick="triggerApprovalFlow()">
+                <!-- SVG Checkbox o Invio aereo -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Approva e Invia (<span id="btn-count">4</span>)
+              </button>
+              <p class="bottom-info-text">
+                Autorizza l'invio delle email ai soci selezionati.<br>
+                Flusso protetto: in TEST l'invio è limitato allo staff.
+              </p>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 4: APPROVING (IN PROGRESS OVERLAY)
+               ======================================================= -->
+          <div id="screen-approving" class="screen-content">
+            <div class="approving-container">
+              <div class="loading-spinner-wrap" style="padding: 0;">
+                <div class="spinner" style="width: 48px; height: 48px; border-top-color: var(--accent);"></div>
+              </div>
+              <h3 class="empty-title">Approvazione in corso</h3>
+              <p class="empty-desc" id="approving-desc">Sincronizzazione della selezione dei soci e invio comandi di approvazione manuale a Supabase...</p>
+              
+              <!-- Progress Bar Realistica -->
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+              </div>
+              
+              <!-- Log dei passaggi in tempo reale -->
+              <span class="step-log-text" id="step-log-text">Sincronizzazione selezione...</span>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 5: SENT / SUCCESS (GIRO INVIATO CON SUCCESSO)
+               ======================================================= -->
+          <div id="screen-sent" class="screen-content">
+            <div class="success-container">
+              <div class="success-icon-wrap">
+                <div class="success-circle-glow"></div>
+                <svg class="checkmark-svg" viewBox="0 0 52 52">
+                  <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                  <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+              </div>
+              <h3 class="success-title">Lotto Approvato!</h3>
+              <p class="success-desc" id="success-desc">L'approvazione è stata registrata correttamente. 4 email di autovalutazione sono state accodate per la spedizione immediata.</p>
+              
+              <button class="btn-action-primary" onclick="resetDemo()" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: #fff; box-shadow: none;">
+                <!-- SVG Freccia indietro / Reset -->
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                </svg>
+                Gestisci Nuovo Lotto
+              </button>
+            </div>
+          </div>
+
+          <!-- =======================================================
+               STATE 6: ERROR (FALLIMENTO CONNESSIONE O SYNC)
+               ======================================================= -->
+          <div id="screen-error" class="screen-content">
+            <div class="error-container">
+              <div class="error-icon-wrap">
+                <!-- SVG Punto Esclamativo -->
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+              <h3 class="error-title">Errore di Sincronizzazione</h3>
+              <p class="error-desc">Impossibile contattare Supabase per sincronizzare le selezioni locali. Verifica la connessione di rete e riprova.</p>
+              <button class="btn-action-primary" onclick="switchState('ready')" style="background: linear-gradient(135deg, var(--danger), hsla(var(--danger-hsl), 0.8)); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);">
+                Riprova Connessione
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Script per la gestione interattiva del Mockup -->
+  <script>
+    // Gestione dell'orologio in tempo reale nello smartphone
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours().toString().padStart(2, '0');
+      let minutes = now.getMinutes().toString().padStart(2, '0');
+      document.getElementById('phone-time').innerText = hours + ':' + minutes;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Elenco degli ID degli elementi delle schermate per switch di stato
+    const screens = {
+      loading: document.getElementById('screen-loading'),
+      no_batch: document.getElementById('screen-no_batch'),
+      ready: document.getElementById('screen-ready'),
+      approving: document.getElementById('screen-approving'),
+      sent: document.getElementById('screen-sent'),
+      error: document.getElementById('screen-error')
+    };
+
+    const stateButtons = {
+      loading: document.getElementById('btn-state-loading'),
+      no_batch: document.getElementById('btn-state-no_batch'),
+      ready: document.getElementById('btn-state-ready'),
+      error: document.getElementById('btn-state-error')
+    };
+
+    // Funzione principale per cambiare stato nello smartphone
+    function switchState(stateName) {
+      // Disattiva tutte le schermate
+      Object.keys(screens).forEach(key => {
+        screens[key].classList.remove('active');
+      });
+
+      // Attiva la schermata selezionata
+      if (screens[stateName]) {
+        screens[stateName].classList.add('active');
+      }
+
+      // Aggiorna lo stile dei bottoni nel pannello di controllo esterno
+      Object.keys(stateButtons).forEach(key => {
+        if (stateButtons[key]) {
+          stateButtons[key].classList.remove('active');
+        }
+      });
+      if (stateButtons[stateName]) {
+        stateButtons[stateName].classList.add('active');
+      }
+
+      // Gestione del log e visibilità header
+      const header = document.getElementById('app-header');
+      if (stateName === 'sent' || stateName === 'loading') {
+        header.style.display = 'none';
+      } else {
+        header.style.display = 'block';
+      }
+      
+      if (stateName === 'ready') {
+        updateButtonState();
+      }
+    }
+
+    // Gestione selezione checkbox interattiva
+    function toggleMember(cardElement, memberId) {
+      const checkbox = document.getElementById('check-' + memberId);
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        
+        // Animazione a ripple/flash visivo sulla card
+        cardElement.style.transform = 'scale(0.98)';
+        setTimeout(() => {
+          cardElement.style.transform = '';
+        }, 100);
+        
+        updateButtonState();
+      }
+    }
+
+    // Aggiorna lo stato del bottone primario in base alle selezioni
+    function updateButtonState() {
+      const checkboxes = [
+        document.getElementById('check-mario-rossi'),
+        document.getElementById('check-anna-bianchi'),
+        document.getElementById('check-giovanni-neri'),
+        document.getElementById('check-roberto-russo')
+      ];
+
+      const selectedCount = checkboxes.filter(cb => cb && cb.checked).length;
+      
+      // Aggiorna conteggi UI
+      const selectedTextEl = document.getElementById('selected-text');
+      const btnCountEl = document.getElementById('btn-count');
+      const btnApprove = document.getElementById('btn-approve');
+      
+      if (selectedTextEl) {
+        selectedTextEl.innerText = selectedCount + ' / 4';
+      }
+      if (btnCountEl) {
+        btnCountEl.innerText = selectedCount;
+      }
+      
+      // Abilitazione / Disabilitazione intelligente
+      if (btnApprove) {
+        btnApprove.disabled = (selectedCount === 0);
+      }
+    }
+
+    // Esegue il flusso di simulazione di invio batch
+    function triggerApprovalFlow() {
+      const checkboxes = [
+        document.getElementById('check-mario-rossi'),
+        document.getElementById('check-anna-bianchi'),
+        document.getElementById('check-giovanni-neri'),
+        document.getElementById('check-roberto-russo')
+      ];
+      const selectedCount = checkboxes.filter(cb => cb && cb.checked).length;
+      if (selectedCount === 0) return; // Blocco se nessuno è selezionato
+
+      switchState('approving');
+      
+      // Reset della barra di caricamento
+      const bar = document.getElementById('progress-bar-fill');
+      const logText = document.getElementById('step-log-text');
+      const successDesc = document.getElementById('success-desc');
+      
+      bar.style.width = '0%';
+      logText.innerText = 'Sincronizzazione selezione...';
+      
+      // Step 1: Sincronizzazione selezione (chiamata fittizia a routine-selection)
+      setTimeout(() => {
+        bar.style.width = '40%';
+        logText.innerText = 'Chiamata a routine-approve...';
+        
+        // Step 2: Chiamata a routine-approve
+        setTimeout(() => {
+          bar.style.width = '80%';
+          logText.innerText = 'Finalizzazione spedizione Gmail...';
+          
+          // Step 3: Completamento
+          setTimeout(() => {
+            bar.style.width = '100%';
+            
+            // Aggiorna il testo di successo indicando i soci inviati reali
+            successDesc.innerHTML = `L'approvazione del lotto è stata registrata con successo.<br><strong>${selectedCount} email</strong> di autovalutazione sono state accodate per l'invio immediato.`;
+            
+            switchState('sent');
+          }, 600);
+        }, 800);
+      }, 700);
+    }
+
+    // Genera un lotto manualmente dallo stato vuoto
+    function generateBatchManual() {
+      switchState('loading');
+      setTimeout(() => {
+        switchState('ready');
+      }, 1500);
+    }
+
+    // Ripristina la demo allo stato pronto interattivo iniziale
+    function resetDemo() {
+      const checkboxes = [
+        document.getElementById('check-mario-rossi'),
+        document.getElementById('check-anna-bianchi'),
+        document.getElementById('check-giovanni-neri'),
+        document.getElementById('check-roberto-russo')
+      ];
+      
+      checkboxes.forEach(cb => {
+        if (cb) cb.checked = true;
+      });
+      
+      switchState('ready');
+    }
+  </script>
+</body>
+</html>
