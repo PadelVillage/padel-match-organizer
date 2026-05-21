@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-21 17:30
+Ultimo aggiornamento: 2026-05-21 23:25
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,8 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.518 | `main` | `7a077a7` |
-| TEST | v5.520 | `test-preview` | `bbb167a` |
-| TEST sviluppo | v5.520 | `test/accessi-staff-guidati` | `bbb167a` |
+| TEST | v5.521 | `test-preview` | `f9a985c` |
+| TEST sviluppo | v5.521 | `test/accessi-staff-guidati` | `f9a985c` |
+
+Nota TEST v5.521 - 2026-05-21 23:25: Esteso l'avviso di data e orario di invio automatico programmato per comparire anche quando il lotto è in stato `sent` o `sent_with_errors` (ovvero quando è parzialmente o interamente inviato, mantenendo comunque l'indicazione della prossima esecuzione automatica). Nessuna modifica a SQL, Edge Function o scheduler.
 
 Nota TEST v5.520 - 2026-05-21 23:07: Aggiunto l'orario di invio automatico programmato ("· 🚀 Invio automatico previsto il gg/mm/aaaa alle 07:00") accanto al timestamp di predisposizione del lotto sotto il titolo nella tab Da inviare, per i lotti in stato `pending`. Inserito l'helper `assessmentEmailNextAutoSendDateTime` per calcolare dinamicamente la prossima esecuzione del cron. Nessuna modifica a SQL, Edge Function o scheduler.
 

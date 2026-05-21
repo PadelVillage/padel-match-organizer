@@ -5708,7 +5708,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.520';
+    const APP_VERSION = '5.521';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25012,8 +25012,8 @@ Per confermare scrivi ELIMINA.`);
       if (target.getTime() <= startMs) {
         target.setDate(target.getDate() + 1);
       }
-      const dateStr = target.toLocaleDateString('it-IT', { 
-        day: '2-digit', month: '2-digit', year: 'numeric' 
+      const dateStr = target.toLocaleDateString('it-IT', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
       });
       return `${dateStr} alle 07:00`;
     }
@@ -26797,7 +26797,7 @@ Per confermare scrivi ELIMINA.`);
       let createdNoticeHtml = '';
       if (createdAtLabel) {
         let noticeText = createdAtLabel;
-        if (status === 'pending') {
+        if (status === 'pending' || status === 'sent' || status === 'sent_with_errors') {
           const autoSendTime = assessmentEmailNextAutoSendDateTime(createdAtRaw);
           noticeText += ` · 🚀 Invio automatico previsto il ${autoSendTime}`;
         }
