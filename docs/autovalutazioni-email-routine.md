@@ -2,9 +2,160 @@
 
 Stato: mockup approvato; prima integrazione UI in TEST `index.html` v5.375, rifiniture UI fino a v5.382; prima funzione backend Gmail TEST predisposta in v5.383 per prova invio su email staff, con segreti Gmail solo lato Supabase; ricerca completa nella coda `Da inviare 0.5` integrata in v5.384; email HTML e log invio piu robusto in TEST v5.385; area alta Autovalutazione piu compatta e ricerca con rimando alla sottosezione corretta in TEST v5.386; reinvio email manuale e scheda pubblica come pannello dedicato in TEST v5.387; tab operative riordinate in TEST v5.388; testi email e impaginazione bottone aggiornati in TEST v5.389; bottone WhatsApp segreteria e testo fallback link rifiniti in TEST v5.390; stato controllo scheda reso automatico e leggibile in TEST v5.391; storico e conferma livello via email chiariti in TEST v5.392; chiusura automatica delle schede coerenti post-invio integrata in TEST v5.393; controlli dati e ripristino livello validato integrati in TEST v5.394; testo assistenza staff/LoZio nel primo invio email integrato in TEST v5.395; indicatori testata compattati con conteggio `senza email` in TEST v5.396; barra schede separata tra processi operativi e consultazione in TEST v5.397; bottone `Apri WhatsApp` aggiunto a scheda socio e storico in TEST v5.398; barra alta Autovalutazione rimossa e tab compatte con conteggi integrate in TEST v5.400; lettura Gmail di risposte e mancate consegne e WhatsApp precompilato dalle email integrati in TEST v5.401; regola a tre invii email integrata in TEST v5.402; visibilita delle risposte Gmail agganciate chiarita in TEST v5.403; risposte email rese visibili anche nello Storico in TEST v5.404; scheda lettura risposte e sospensione solleciti su risposta email integrate in TEST/PROD v5.405; storico compatto e filtri aggiornati in TEST/PROD v5.406; `Stato invio` compattato come cruscotto operativo in TEST/PROD v5.407; pubblicata in PROD dentro `index.html` v5.408 con `assessment-email-send` v12 TEST / v1 PROD e `verify_jwt=true`; tab `Matchpoint` integrata in TEST v5.409 per tenere traccia dei livelli validati da riportare manualmente su Matchpoint; modalita demo non persistente `demoMatchpoint=1` aggiunta in TEST v5.410 per verifica visiva; tab `Cruscotto mattutino` integrata in TEST/PROD v5.411 come riepilogo operativo compatto; prima routine backend email TEST v5.412 impostata con invio 05:45 massimo 10 soci/giorno e controlli Gmail quattro volte al giorno; cruscotto mattutino tabellare `Processo utenti` integrato in TEST v5.413, con `Stato invio` assorbito nella vista unica; barra informativa Matchpoint rimossa dal cruscotto in TEST v5.414; cruscotto limitato a 20 righe progressive per filtro in TEST v5.415; hotfix box filtro cruscotto in TEST v5.416; ricerca cruscotto/storico rafforzata in TEST v5.417; controlli manuali Gmail spostati in `Strumenti tecnici avanzati` in TEST/PROD v5.418, senza attivazione scheduler email PROD; import log cloud e nuovo ciclo post-storico corretti in TEST v5.419; evidenza dello stadio sui box filtro del cruscotto integrata in TEST v5.420; ricerca a parole indipendenti nel cruscotto/storico integrata in TEST/PROD v5.421; refresh Autovalutazione dopo modifiche socio e ricerca Database soci a parole indipendenti integrati in TEST/PROD v5.422, senza attivazione scheduler email PROD; sync cloud puntuale delle modifiche scheda socio pubblicato in TEST v5.423; invio mattutino con approvazione manuale staff pubblicato in TEST v5.424; comando `Prepara lotto` / `Approva invio N` spostato nella testata del `Cruscotto mattutino` in TEST v5.425; fix del pulsante `Pulisci` nella ricerca del `Cruscotto mattutino` pubblicato in TEST v5.426; pulsanti WhatsApp diretti rimossi dalle sottosezioni operative Autovalutazione in TEST v5.427; oggetto del primo invio email chiarito in TEST v5.428; barra alta dei sei box routine rimossa dal `Cruscotto mattutino` in TEST v5.429; popup scelta messaggio WhatsApp dalla scheda socio integrato in TEST v5.430; lotto email manuale con invio tutti/selezionati/singola riga integrato nel `Cruscotto mattutino` in TEST v5.434; rigenerazione controllata del lotto non inviato integrata in TEST v5.435; bugfix filtri rapidi reali del `Processo utenti` integrato in TEST v5.437; lotto manuale spostato sotto i risultati filtrati del `Processo utenti` in TEST v5.438; diagnostica protezione email Autovalutazione integrata in TEST v5.439; testo diagnostico rifinito in TEST v5.440 e promosso in PROD con Edge Function PROD v14 `verify_jwt=true`; follow-up email riga per riga nel `Cruscotto mattutino` integrato in TEST/PROD v5.441; link esterno in `Scheda pubblica` integrato in TEST v5.442; bottone `Socio test` nel `Cruscotto mattutino` integrato in TEST v5.443; campo `Sesso` nel flusso `Link esterno` integrato in TEST v5.444; bugfix recupero `Socio test` integrato in TEST v5.445; socio test ufficiale allineato a `PMO-000948` in TEST v5.446; titolo/meta/link preview del flusso pubblico `Link esterno` corretti in TEST v5.447; bypass login staff per `assessment=link-esterno` integrato in TEST v5.448; salvataggio controllato delle pratiche link esterno su Supabase TEST e gestione da Storico integrati in TEST v5.449; rifinitura della scheda pubblica/tokenizzata con `Contatta segreteria`, logo in testata e privacy completa espandibile integrata in TEST v5.450; configurazione locale `Notifiche staff` in Amministrazione predisposta in TEST v5.451 per future notifiche interne dopo validazione livello, senza invii reali.
 
-Ultimo aggiornamento: 2026-05-20 11:05
+Ultimo aggiornamento: 2026-05-20 20:23
 
 Nota TEST/PROD: le regole operative generali su invii, destinatari TEST, scheduler, separazione dati, promozione PROD e rollback sono centralizzate in `docs/pmo-policy-test-prod-routine-deploy.md`. Questo documento descrive il funzionamento specifico dell'Autovalutazione.
+
+## Nota tecnica TEST v5.516 - 2026-05-20 20:23
+
+Rimosso completamente l'esperimento del canale `SMS` manuale dal flusso Autovalutazione.
+
+- la scheda socio non mostra piu il bottone `SMS`;
+- il popup torna a essere solo `Messaggio WhatsApp manuale`;
+- rimossi selettore canale `WhatsApp/SMS`, `Copia SMS`, `Apri Google Messaggi` e funzioni/deep-link Google Messaggi;
+- il blocco `Autovalutazione > Testi` torna a `WhatsApp manuale`;
+- restano preservati i testi WhatsApp manuali, `Copia WhatsApp`, `Apri WhatsApp` e `Segna gestito`.
+
+La rimozione non tocca invii email, scheduler, Edge Function, SQL, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
+
+## Nota tecnica TEST v5.515 - 2026-05-20 19:57
+
+Rafforzato il canale `SMS` manuale verso Google Messaggi web/PWA quando viene aperto dal popup della scheda socio:
+
+- il pulsante diventa `Copia destinatario e apri SMS`;
+- la app usa il numero normalizzato del socio selezionato;
+- la app apre `https://messages.google.com/web/conversations/new` con piu parametri best-effort (`recipient`, `to`, `phone`, `number`, `contact` e varianti numeriche);
+- il destinatario viene sempre copiato negli appunti, cosi puo essere incollato nel campo `A:` se Google Messaggi ignora i parametri;
+- il testo continua a essere copiato separatamente tramite `Copia SMS`;
+- nessun SMS viene inviato automaticamente.
+
+Google Messaggi web non documenta un deep-link stabile per precompilare destinatario o testo, quindi la compilazione automatica resta best-effort. La modifica non introduce API SMS o Google Messaggi e non salva credenziali o token. Nessun SQL, Edge Function, scheduler, segreto, dato reale, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
+
+## Nota tecnica TEST v5.514 - 2026-05-20 19:37
+
+Rifinito il canale `SMS` manuale per ridurre i passaggi con Google Messaggi web/PWA:
+
+- il pulsante del popup diventa `Copia numero e apri SMS`;
+- la app copia negli appunti il numero normalizzato del socio;
+- la app apre `https://messages.google.com/web/conversations/new` con parametri best-effort `recipient`/`to`;
+- Google Messaggi web non documenta un deep-link stabile per precompilare destinatario o testo, quindi il numero puo' dover essere incollato manualmente;
+- il testo continua a essere copiato separatamente tramite `Copia SMS`;
+- nessun SMS viene inviato automaticamente.
+
+La modifica non introduce API SMS o Google Messaggi e non salva credenziali o token. Nessun SQL, Edge Function, scheduler, segreto, dato reale, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
+
+## Nota tecnica TEST v5.513 - 2026-05-20 19:12
+
+Corretto il canale `SMS` manuale per il caso operativo reale: il numero Padel Village `379 115 1472` e' su telefono Android e non puo essere usato come mittente da Apple Messaggi/macOS.
+
+- il pulsante del popup diventa `Apri SMS Padel Village`;
+- il pulsante apre Google Messaggi web/PWA collegato al telefono Android Padel Village;
+- non viene piu usato il protocollo `sms:` del sistema operativo;
+- il testo resta da copiare manualmente tramite `Copia SMS`;
+- numero e corpo del messaggio non vengono precompilati;
+- nessun SMS viene inviato automaticamente.
+
+La v5.513 sostituisce operativamente la scelta v5.512 per evitare che il Mac apra Apple Messaggi con il numero personale dell'iPhone. Nessuna API SMS o Google Messaggi e' stata introdotta. Nessuna email, SMS o WhatsApp viene inviato automaticamente. Nessun SQL, Edge Function, scheduler, segreto, dato reale, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
+
+## Nota tecnica TEST v5.512 - 2026-05-20 18:08
+
+Rifinito il canale `SMS` manuale:
+
+- il pulsante del popup diventa `Apri app SMS`;
+- l'apertura non usa piu Google Messaggi web;
+- la app chiama il protocollo di sistema `sms:+numero`, cosi il computer/dispositivo apre il gestore SMS predefinito se configurato;
+- il testo resta da copiare manualmente tramite `Copia SMS`;
+- il corpo del messaggio non viene precompilato e nessun SMS viene inviato automaticamente;
+- l'app effettivamente aperta dipende dal sistema operativo e dal gestore SMS configurato.
+
+Nessuna API SMS o Google Messaggi e' stata introdotta. Nessuna email, SMS o WhatsApp viene inviato automaticamente. Nessun SQL, Edge Function, scheduler, segreto, dato reale, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
+
+## Nota tecnica TEST v5.511 - 2026-05-20 17:16
+
+Integrato il canale `SMS` manuale nel flusso di recupero contatto Autovalutazione:
+
+- nella scheda socio il bottone `SMS` compare accanto a `WhatsApp`;
+- `WhatsApp` e `SMS` aprono lo stesso popup `Messaggio manuale`;
+- il popup contiene selettore canale `WhatsApp` / `SMS`, telefono del socio, lista testi e anteprima;
+- il canale WhatsApp mantiene copia testo e apertura WhatsApp manuale;
+- il canale SMS aggiunge `Copia SMS` e `Apri Google Messaggi`;
+- `Apri Google Messaggi` apre solo `https://messages.google.com/web/conversations`, senza precompilare numero o testo e senza inviare SMS;
+- i tre testi manuali sono condivisi tra WhatsApp e SMS e sono stati resi neutri;
+- il blocco in `Autovalutazione > Testi` si chiama `WhatsApp / SMS manuale`.
+
+`Segna gestito` resta un'azione manuale e riusa il flag locale gia esistente per il recupero manuale, senza creare nuovi campi persistenti. Nessuna API SMS o Google Messaggi e' stata introdotta. Nessuna email, SMS o WhatsApp viene inviato automaticamente. Nessun SQL, Edge Function, scheduler, segreto, dato reale, Matchpoint reale, Gmail operativo o WhatsApp automatico modificato.
+
+## Nota PROD v5.505 - 2026-05-20 16:54
+
+Promossa in PROD la diagnostica Gmail non inviante per Autovalutazione.
+
+Stato pubblicato:
+
+- app PROD aggiornata a `APP_VERSION = 5.505`;
+- branch `main` aggiornato a `39c20ca` dal pacchetto selettivo `test/prod-handoff-v5.510-no-import-excel`;
+- Edge Function PROD `assessment-email-send` aggiornata a versione `24`, mantenendo `verify_jwt=true`;
+- nuova azione `gmail-check` disponibile per verificare il refresh token Gmail senza inviare email, leggere messaggi soci o scrivere dati;
+- UI Autovalutazione con `Verifica Gmail`, `Gmail OK` e `Gmail da verificare`.
+
+La funzione solo TEST `Import livelli Excel` resta esclusa da PROD. Non e' stato applicato SQL, non sono stati modificati scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico. `cron.job` PROD conserva `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`; TEST resta senza cron.
+
+## Nota tecnica TEST v5.510 - 2026-05-20 15:00
+
+Rifinita la sottosezione transitoria solo TEST `Import livelli Excel`:
+
+- il conteggio `Nuovo livello / aggiornabili` diventa un filtro rapido cliccabile;
+- cliccando il conteggio restano visibili solo le righe aggiornabili e vengono selezionate automaticamente;
+- ogni riga aggiornabile mostra il bottone esplicito `Scheda socio`, oltre al livello cliccabile;
+- il bottone apre la scheda del giocatore collegato per controllo manuale prima dell'applicazione;
+- restano invariate le protezioni: aggiornamento solo righe selezionate, solo soci attualmente a livello `0.5`, conferma manuale obbligatoria.
+
+La sottosezione resta solo TEST e non deve essere promossa in PROD. Nessuna email e' stata inviata, nessun token o secret e' stato salvato in repo, nessun cron TEST e' stato attivato e non sono stati modificati SQL, Edge Function, scheduler, dati reali, Matchpoint reale o WhatsApp automatico.
+
+## Nota tecnica TEST v5.509 - 2026-05-20 14:45
+
+Rifinita la sottosezione transitoria solo TEST `Import livelli Excel`:
+
+- il valore della colonna `Nuovo livello` diventa cliccabile quando la riga ha un socio trovato;
+- il click apre direttamente la scheda socio collegata, cosi lo staff puo controllare il giocatore prima di applicare aggiornamenti;
+- le righe senza socio agganciato restano non cliccabili;
+- restano invariati filtri, selezione righe, anteprima obbligatoria e conferma manuale prima degli aggiornamenti.
+
+La sottosezione resta solo TEST e non deve essere promossa in PROD. Nessuna email e' stata inviata, nessun token o secret e' stato salvato in repo, nessun cron TEST e' stato attivato e non sono stati modificati SQL, Edge Function, scheduler, dati reali, Matchpoint reale o WhatsApp automatico.
+
+## Nota tecnica TEST v5.508 - 2026-05-20 14:09
+
+Rifinita la testata tabella della sottosezione transitoria solo TEST `Import livelli Excel`:
+
+- le statistiche non sono piu concentrate sotto `Riga Excel`;
+- ogni intestazione mostra il proprio numero compatto: selezionate/selezionabili, righe, nomi, livelli Excel, soci trovati, soci a livello attuale `0.5`, aggiornabili e saltate;
+- i numeri si adattano alle righe visibili dopo i filtri;
+- restano invariati i filtri colonna, l'anteprima obbligatoria e la conferma manuale prima di qualsiasi aggiornamento.
+
+La sottosezione resta solo TEST e non deve essere promossa in PROD. Nessuna email e' stata inviata, nessun token o secret e' stato salvato in repo, nessun cron TEST e' stato attivato e non sono stati modificati SQL, Edge Function, scheduler, dati reali, Matchpoint reale o WhatsApp automatico.
+
+## Nota tecnica TEST v5.507 - 2026-05-20 12:22
+
+Rifinita la sottosezione transitoria solo TEST `Import livelli Excel`:
+
+- rimossi i riquadri riepilogativi sopra l'anteprima;
+- i conteggi dell'import sono ora mostrati direttamente nell'intestazione `Riga Excel`;
+- aggiunti filtri nella testata tabella per `Nome Excel`, `Livello Excel`, `Socio trovato` e `Livello attuale`;
+- il checkbox generale seleziona/deseleziona solo le righe attualmente visibili dopo i filtri;
+- resta invariata la regola di sicurezza: nessun aggiornamento viene applicato senza conferma e sono applicabili solo righe con match sicuro e socio a livello `0.5`.
+
+La sottosezione resta solo TEST e non deve essere promossa in PROD. Nessuna email e' stata inviata, nessun token o secret e' stato salvato in repo, nessun cron TEST e' stato attivato e non sono stati modificati SQL, Edge Function, scheduler, dati reali, Matchpoint reale o WhatsApp automatico.
+
+## Nota tecnica TEST v5.506 - 2026-05-20 11:37
+
+Rifinita la UI operativa Autovalutazione:
+
+- il comando Gmail resta solo nella testata di `Email da inviare`;
+- il pannello `Gmail Padel Village` sotto la testata non resta piu sempre visibile: compare durante la verifica, per pochi secondi dopo esito OK oppure resta visibile in caso di errore/attenzione;
+- `Import livelli Excel` non e' piu un bottone nella testata `Email da inviare`, ma una sottosezione dedicata del menu laterale `Autovalutazione`;
+- la sottosezione `Import livelli Excel` resta transitoria, visibile solo in TEST e non destinata alla promozione PROD;
+- l'import livelli legge tutti i fogli del file Excel, riconosce le colonne reali `Giocatore` e `livello app`, mostra foglio/riga nell'anteprima e mette le righe del foglio `Dubbi` in stato `Da controllare` non applicabile automaticamente.
+
+Nessuna email e' stata inviata, nessun token o secret e' stato salvato in repo, nessun cron TEST e' stato attivato e non sono stati modificati SQL, Edge Function, scheduler, dati reali, Matchpoint reale o WhatsApp automatico.
 
 ## Nota tecnica TEST v5.505 - 2026-05-20 10:29
 
@@ -32,6 +183,24 @@ Regola sicurezza:
 - il browser non salva refresh token e non completa OAuth;
 - dopo il login Google dell'account mittente ufficiale, l'eventuale nuovo `GMAIL_REFRESH_TOKEN` deve essere aggiornato in Supabase tramite procedura sicura di Promuovi PROD Admin, senza stampare il valore;
 - TEST resta senza cron email automatici e non invia email reali per questa diagnostica.
+
+## Nota tecnica TEST v5.504 - 2026-05-20 08:40
+
+Aggiunto in `Autovalutazione` il pannello temporaneo `Import livelli da Excel`.
+
+Regole operative:
+
+- lo staff carica un file `.xlsx/.xls` e preme `Analizza file`;
+- l'app riconosce colonne flessibili per nome, cognome, nome completo, livello, email, telefono e ID PMO;
+- prima di ogni modifica viene mostrata una anteprima;
+- sono selezionabili solo righe con match sicuro e socio attualmente a livello `0.5`;
+- match ambigui, soci non trovati, soci disattivati, livelli Excel non validi, dati mancanti e soci con livello diverso da `0.5` restano visibili ma non applicabili;
+- `Applica aggiornamenti selezionati` richiede conferma manuale;
+- per ogni socio aggiornato viene registrata una traccia locale con vecchio livello, nuovo livello, data/ora, operatore e fonte `Import livelli Excel`;
+- se il profilo staff ha permesso cloud, viene usato il normale sync cloud dei soci modificati.
+
+La funzione e' transitoria e non invia email, non invia WhatsApp, non aggiorna Matchpoint reale, non attiva scheduler, non modifica SQL, Edge Function o segreti.
+
 ## Nota PROD v5.503 - 2026-05-19 19:22
 
 Promossa in PROD la modifica del fallback automatico delle 07:00 per il Lotto email Autovalutazione.
