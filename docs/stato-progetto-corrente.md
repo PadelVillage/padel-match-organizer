@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-21 17:10
+Ultimo aggiornamento: 2026-05-21 17:30
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -29,10 +29,10 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
 | PROD | v5.517 | `main` | `851d05b` |
-| TEST | v5.518 | `test-preview` | `ac4b039` |
+| TEST | v5.518 | `test-preview` | `e01cf47` |
 | TEST sviluppo | v5.517 | `test/accessi-staff-guidati` | `851d05b` |
 
-Nota TEST v5.518 - 2026-05-21 17:10: ottimizzazione mobile completa della sezione Admin Autovalutazioni. Aggiunto blocco CSS `/* === MOBILE AUTOVALUTAZIONE v5.518 === */` con regole in `@media (max-width: 760px)` per tutte e 3 le fasi: Fase 1 — barra filtri sticky trasformata in pill scrollabili orizzontalmente con snap (min-height 40px, scroll-snap-type x proximity); righe lotto email `.assessment-clean-row.minimal` trasformate in card verticali con checkbox 22px e area azioni touch-friendly; tabella lotto `.assessment-manual-batch-table` trasformata in card layout. Fase 2 — processo utenti `.assessment-clean-row` stacking a 2 colonne; storico `.assessment-archive-row` in card verticale; pannello Matchpoint con touch targets ampliati. Fase 3 — modal WhatsApp `.assessment-email-modal-card` come bottom sheet con handle pill e slide-up animation; intestazioni pannelli in stack verticale; routine pills su griglia 2 colonne. Commit app `ac4b039`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico.
+Nota TEST v5.518 - 2026-05-21 17:30: decisione strategica di mantenere l'interfaccia di amministrazione e la cabina di regia riservata a Desktop e Tablet per garantire la massima operatività e sicurezza visiva. Rimosso interamente il widget mobile staff (precedentemente introdotto per gestire le autovalutazioni da cellulare) eliminando oltre 2200 righe di codice HTML, CSS e JS ridondanti. Introdotta una schermata blocco 'mobile blocker gate' premium (blur glassmorphism, radial gradient backdrop, font Outfit e card esplicativa) visibile solo su schermi <= 760px. La schermata di blocco si attiva dinamicamente al resize ma è protetta tramite guardia `!pmoIsPublicAccessMode()` per evitare di bloccare l'accesso dei giocatori da cellulare alle schede pubbliche di autovalutazione o ai moduli di feedback post-partita. Commit app `e01cf47`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti o dati reali.
 
 Nota promozione PROD v5.517 - 2026-05-21 16:50: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.517, allineando `main` a commit `851d05b`. Questo rilascio integra il widget mobile staff Fase 2 per la gestione delle autovalutazioni da cellulare (in particolare risolvendo il bug di scroll con il pannello sticky bottom "Approva e Invia" ancorato correttamente alla viewport del dispositivo). La funzionalità è stata testata e validata su Pixel 9. Nessuna modifica a SQL, scheduler o Edge Function, e gli scheduler automatici PROD rimangono attivi ed invariati.
 
