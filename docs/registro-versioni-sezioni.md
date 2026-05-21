@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-21 09:05
+Ultimo aggiornamento: 2026-05-21 11:00
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Ripristino operatività scheduler PROD - 2026-05-21 11:00: dopo la verifica manuale andata a buon fine sulla nuova Hetzner VM worker (sincronizzazione dei Clienti alle 10:55 e dello Storico alle 10:57), su richiesta esplicita di Maurizio, gli scheduler automatici su Supabase PROD `qqbfphyslczzkxoncgex` sono stati riattivati impostando `active=true` tramite SQL. Stato verificato: `pmo-data-routines-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_data_routines();`, `active=true`; `pmo-assessment-followup-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_assessment_followup_email_prod();`, `active=true`. Supabase TEST `cron.job` verificato vuoto. Nessun deploy app, nessun deploy Edge Function, nessuna modifica a segreti, dati reali, Matchpoint reale, Gmail o WhatsApp. Il sistema ha ripreso la piena operatività automatica.
 - Promozione PROD v5.516 - 2026-05-21: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.516, allineando `main` a commit `40e7d08`. Questo rilascio consolida l'applicazione e rimuove l'esperimento SMS manuale, mantenendo il canale WhatsApp manuale e la nuova funzionalità 'Segna gestito'. La funzionalità temporanea di import livelli Excel rimane bloccata e invisibile in PROD. Nessuna modifica a SQL, scheduler o Edge Function poiché il backend reale di produzione è già stabile e aggiornato.
 - Autovalutazione / Scheda socio / Testi TEST v5.516: rimosso completamente l'esperimento `SMS` manuale. Dalla scheda socio sparisce il bottone `SMS`; dal popup manuale spariscono selettore `WhatsApp/SMS`, `Copia SMS`, `Apri Google Messaggi`, deep-link e funzioni Google Messaggi. Resta solo il flusso WhatsApp manuale esistente con `Messaggio WhatsApp manuale`, `Copia WhatsApp`, `Apri WhatsApp` e `Segna gestito`. Nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo, WhatsApp automatico o Google API.
 - Autovalutazione / Scheda socio / Testi TEST v5.515: rafforzata l'apertura `SMS` manuale verso Google Messaggi web/PWA. Il bottone diventa `Copia destinatario e apri SMS`, passa il numero normalizzato del socio selezionato con piu parametri best-effort (`recipient`, `to`, `phone`, `number`, `contact` e varianti numeriche) e copia comunque il destinatario negli appunti per il campo `A:` se Google lo ignora. Nessun invio automatico, nessuna API SMS/Google, nessuna modifica a SQL, Supabase, Edge Function, scheduler, segreti, dati reali, Matchpoint reale, Gmail operativo o WhatsApp automatico.

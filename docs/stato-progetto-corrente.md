@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-21 09:05
+Ultimo aggiornamento: 2026-05-21 11:00
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -31,6 +31,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | PROD | v5.516 | `main` | `40e7d08` |
 | TEST | v5.516 | `test-preview` | `970a76e` |
 | TEST sviluppo | v5.516 | `test/accessi-staff-guidati` | `970a76e` |
+
+Nota operativa PROD scheduler - 2026-05-21 11:00: dopo la verifica manuale andata a buon fine sulla nuova Hetzner VM worker (sincronizzazione dei Clienti alle 10:55 e dello Storico alle 10:57), su richiesta esplicita di Maurizio, gli scheduler automatici su Supabase PROD `qqbfphyslczzkxoncgex` sono stati riattivati impostando `active=true` tramite SQL. Stato verificato: `pmo-data-routines-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_data_routines();`, `active=true`; `pmo-assessment-followup-dispatcher-prod` presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_assessment_followup_email_prod();`, `active=true`. Supabase TEST `cron.job` verificato vuoto. Nessun deploy app, nessun deploy Edge Function, nessuna modifica a segreti, dati reali, Matchpoint reale, Gmail o WhatsApp. Il sistema ha ripreso la piena operatività automatica.
 
 Nota promozione PROD v5.516 - 2026-05-21 09:05: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.516, allineando `main` a commit `40e7d08`. Questo rilascio consolida l'applicazione e rimuove l'esperimento SMS manuale, mantenendo il canale WhatsApp manuale e la nuova funzionalità 'Segna gestito'. La funzionalità temporanea di import livelli Excel rimane bloccata e invisibile in PROD. Nessuna modifica a SQL, scheduler o Edge Function poiché il backend reale di produzione è già stabile e aggiornato.
 

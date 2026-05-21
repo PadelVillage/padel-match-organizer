@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Autovalutazione - Matchpoint</title>
+  <style>
+    :root {
+      --primary: #173b70;
+      --green: #168a53;
+      --amber: #b7791f;
+      --red: #b42318;
+      --ink: #101828;
+      --muted: #667085;
+      --line: #d9e0ea;
+      --soft-line: #e7edf6;
+      --panel: #fbfdff;
+      --green-soft: #eefaf3;
+      --amber-soft: #fff7e6;
+      --red-soft: #fff1f0;
+      --blue-soft: #eef5ff;
+      --gray-soft: #f6f7f9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: #fff;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      border-bottom: 4px solid #f0ad2c;
+      box-shadow: 0 1px 6px rgba(16,24,40,.12);
+    }
+    .menu-btn {
+      border: 0;
+      border-radius: 10px;
+      background: #244789;
+      color: #fff;
+      padding: 9px 14px;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .topbar-title {
+      color: #244789;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .page {
+      width: min(1980px, 100%);
+      margin: 0 auto;
+      padding: 16px 20px 22px;
+      background: #fff;
+    }
+    .tabs-wrap {
+      border: 1px solid var(--soft-line);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 1px 5px rgba(31,71,136,.08);
+      padding: 10px;
+      margin-bottom: 14px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+    .tab {
+      border: 2px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      color: #344054;
+      padding: 8px 11px;
+      min-height: 50px;
+      min-width: 98px;
+      text-align: left;
+      font-weight: 900;
+      font-size: 14px;
+      line-height: 1.1;
+      cursor: default;
+    }
+    .tab small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .tab.active {
+      background: #244789;
+      border-color: #244789;
+      color: #fff;
+    }
+    .tab.active small { color: rgba(255,255,255,.88); }
+    .panel {
+      border: 1px solid var(--line);
+      border-top: 6px solid #244789;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 1px 5px rgba(31,71,136,.1);
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--soft-line);
+      background: var(--panel);
+    }
+    h1 {
+      margin: 0 0 6px;
+      color: #244789;
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 8px;
+      color: #244789;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+    .head-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #344054;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn.primary {
+      background: #244789;
+      border-color: #244789;
+      color: #fff;
+    }
+    .btn.success {
+      border-color: #b8e6ca;
+      background: var(--green-soft);
+      color: #2f8a4d;
+    }
+    .btn.warning {
+      border-color: #f2d39b;
+      background: var(--amber-soft);
+      color: #7a4d00;
+    }
+    .content {
+      padding: 14px 18px 18px;
+    }
+    .notice {
+      border: 1px solid #f2d39b;
+      border-left: 5px solid var(--amber);
+      border-radius: 8px;
+      background: var(--amber-soft);
+      color: #7a4d00;
+      padding: 9px 11px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 850;
+    }
+    .table-wrap {
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      background: #f1f4fa;
+      color: #344054;
+      text-align: left;
+      padding: 9px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      border-bottom: 1px solid var(--soft-line);
+    }
+    th.action-col,
+    td.action-col {
+      text-align: right;
+    }
+    td {
+      padding: 10px;
+      border-top: 1px solid var(--soft-line);
+      vertical-align: middle;
+    }
+    tr:first-child td { border-top: 0; }
+    .name {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .meta {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+    .level {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid #b8e6ca;
+      background: var(--green-soft);
+      color: #2f8a4d;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .badge.todo {
+      border: 2px solid #f2d39b;
+      background: var(--amber-soft);
+      color: #7a4d00;
+    }
+    .badge.done {
+      border: 2px solid #b8e6ca;
+      background: var(--green-soft);
+      color: #2f8a4d;
+    }
+    .row-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .history-search {
+      max-width: 360px;
+      margin-bottom: 10px;
+    }
+    .history-search label {
+      display: block;
+      margin: 0 0 4px;
+      color: #333;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .history-search input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    .empty {
+      display: none;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 850;
+      text-align: center;
+    }
+    .empty.show { display: block; }
+    .footnote {
+      margin-top: 12px;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 11px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: none;
+      max-width: min(520px, calc(100vw - 36px));
+      border-radius: 10px;
+      background: #155724;
+      color: #fff;
+      padding: 11px 13px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, .22);
+      font-size: 13px;
+      font-weight: 900;
+      z-index: 30;
+    }
+    .toast.show { display: block; }
+    @media (max-width: 980px) {
+      .page { padding: 12px 10px; }
+      .topbar-title { font-size: 22px; }
+      .tabs { gap: 8px; }
+      .tab { min-width: 0; flex: 1 1 150px; }
+      .panel-head { display: block; }
+      .head-actions { justify-content: flex-start; margin-top: 14px; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 960px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn" type="button">☰ Menu</button>
+    <div class="topbar-title">Autovalutazione</div>
+  </header>
+
+  <main class="page">
+    <nav class="tabs-wrap" aria-label="Sottosezioni Autovalutazione">
+      <div class="tabs">
+        <button class="tab" type="button">Da inviare 0.5<small>0/20 oggi · 439 rimasti</small></button>
+        <button class="tab" type="button">Contattati / in attesa<small>1 in attesa</small></button>
+        <button class="tab" type="button">Problemi<small>1 da risolvere</small></button>
+        <button class="tab" type="button">Post-invio<small>0 risposte</small></button>
+        <button class="tab" type="button">Storico<small>1 chiusi</small></button>
+        <button class="tab active" type="button">Matchpoint<small><span id="tabCount">2</span> soci</small></button>
+        <button class="tab" type="button">Testi<small>email e WhatsApp</small></button>
+        <button class="tab" type="button">Scheda pubblica<small>anteprima</small></button>
+        <button class="tab" type="button">Stato invio<small>05:45 · limite 20</small></button>
+      </div>
+    </nav>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Matchpoint</h1>
+          <p>Soci con livello validato internamente, ancora da riportare manualmente su Matchpoint.</p>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="table-wrap" id="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>Contatto</th>
+                <th>Livello validato</th>
+                <th class="action-col">Azione</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr>
+                <td><div class="name">Marco Bianchi</div></td>
+                <td><div>333 234 5510</div><div class="meta">marco.bianchi@example.it</div></td>
+                <td><span class="level">3.0</span></td>
+                <td class="action-col">
+                  <div class="row-actions">
+                    <button class="btn success" data-complete="Marco Bianchi" type="button">Segna inserito su Matchpoint</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><div class="name">Laura Conti</div></td>
+                <td><div class="meta">telefono mancante</div><div>laura.conti@example.it</div></td>
+                <td><span class="level">2.5</span></td>
+                <td class="action-col">
+                  <div class="row-actions">
+                    <button class="btn success" data-complete="Laura Conti" type="button">Segna inserito su Matchpoint</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty" id="emptyState">Nessun livello Matchpoint in sospeso.</div>
+
+        <div class="footnote">Quando clicchi “Segna inserito su Matchpoint”, il socio sparisce da questa lista. Il dettaglio resta nello Storico Autovalutazione.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Storico Autovalutazione</h1>
+          <p>Esempio di riga dopo l’inserimento manuale su Matchpoint.</p>
+        </div>
+      </div>
+      <div class="content">
+        <div class="history-search">
+          <label for="historySearch">Cerca nello storico</label>
+          <input id="historySearch" type="search" placeholder="Nome o cognome">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>Livello</th>
+                <th>Evento Matchpoint</th>
+                <th>Quando</th>
+              </tr>
+            </thead>
+            <tbody id="historyRows">
+              <tr data-name="andrea rizzo">
+                <td><div class="name">Andrea Rizzo</div><div class="meta">autovalutazione chiusa</div></td>
+                <td><span class="level">3.5</span></td>
+                <td><strong>Inserito su Matchpoint da Laura</strong><div class="meta">Registrato manualmente dopo aggiornamento Matchpoint</div></td>
+                <td>13/05/2026, 09:18</td>
+              </tr>
+              <tr data-name="paolo greco">
+                <td><div class="name">Paolo Greco</div><div class="meta">autovalutazione chiusa</div></td>
+                <td><span class="level">4.0</span></td>
+                <td><strong>Inserito su Matchpoint da Marta</strong><div class="meta">Registrato manualmente dopo aggiornamento Matchpoint</div></td>
+                <td>12/05/2026, 18:05</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const rows = document.getElementById('rows');
+    const tableWrap = document.getElementById('tableWrap');
+    const emptyState = document.getElementById('emptyState');
+    const tabCount = document.getElementById('tabCount');
+    const toast = document.getElementById('toast');
+    const historySearch = document.getElementById('historySearch');
+    const historyRows = document.getElementById('historyRows');
+
+    function updateCount() {
+      const count = rows.querySelectorAll('tr').length;
+      tabCount.textContent = count;
+      tableWrap.style.display = count ? 'block' : 'none';
+      emptyState.classList.toggle('show', count === 0);
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    document.querySelectorAll('[data-complete]').forEach(button => {
+      button.addEventListener('click', () => {
+        const name = button.dataset.complete;
+        const row = button.closest('tr');
+        row.remove();
+        updateCount();
+        showToast(`${name}: inserimento Matchpoint registrato nello storico.`);
+      });
+    });
+
+    historySearch.addEventListener('input', () => {
+      const query = historySearch.value.trim().toLowerCase();
+      historyRows.querySelectorAll('tr').forEach(row => {
+        row.style.display = row.dataset.name.includes(query) ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup Chiudi Partite - messaggio sopra scheda</title>
+  <style>
+    :root {
+      --primary:#264a88;
+      --primary-dark:#173567;
+      --line:#dbe3ef;
+      --soft:#f4f7fb;
+      --text:#252a33;
+      --muted:#697386;
+      --green:#4caf50;
+      --red:#e74c3c;
+      --orange:#f39c34;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      font-family:Arial, Helvetica, sans-serif;
+      color:var(--text);
+      background:#eef3f8;
+      overflow:hidden;
+    }
+
+    .app-shell {
+      display:grid;
+      grid-template-columns:292px 1fr;
+      height:100vh;
+    }
+
+    .side {
+      background:#163b70;
+      color:#fff;
+      padding:18px 16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .brand {
+      padding:12px 14px;
+      border-radius:8px;
+      background:rgba(255,255,255,.1);
+      font-weight:900;
+      font-size:20px;
+    }
+
+    .nav-card {
+      border-radius:8px;
+      background:#fff;
+      color:#173567;
+      padding:14px;
+      display:grid;
+      gap:5px;
+      font-weight:900;
+    }
+
+    .nav-card span {
+      color:#7b8798;
+      font-weight:700;
+    }
+
+    .subnav {
+      margin-left:78px;
+      padding-left:22px;
+      border-left:2px solid rgba(255,255,255,.3);
+      display:grid;
+      gap:22px;
+      font-weight:900;
+      color:#dce8ff;
+    }
+
+    .main {
+      position:relative;
+      padding:24px;
+      overflow:hidden;
+    }
+
+    .topbar {
+      height:78px;
+      display:flex;
+      align-items:center;
+      gap:18px;
+      padding:0 20px;
+      background:#fff;
+      border-radius:8px;
+      box-shadow:0 6px 20px rgba(15,23,42,.08);
+      color:var(--primary);
+      font-size:28px;
+      font-weight:900;
+    }
+
+    .menu-button {
+      background:var(--primary);
+      color:#fff;
+      border:0;
+      border-radius:8px;
+      padding:15px 22px;
+      font-size:20px;
+      font-weight:900;
+    }
+
+    .content-card {
+      margin-top:26px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:18px;
+      box-shadow:0 6px 20px rgba(15,23,42,.06);
+    }
+
+    .filters {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:12px;
+      margin-bottom:14px;
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fbfdff;
+    }
+
+    .filter {
+      height:48px;
+      display:flex;
+      align-items:center;
+      padding:0 14px;
+      border:1px solid #ccd7e7;
+      border-radius:8px;
+      font-size:18px;
+      color:#333;
+      background:#fff;
+    }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      font-size:19px;
+    }
+
+    th {
+      padding:16px 14px;
+      background:#f0f3f8;
+      color:#173567;
+      text-align:left;
+      font-size:16px;
+      font-weight:900;
+      border-bottom:2px solid #cfd8e6;
+    }
+
+    td {
+      padding:20px 14px;
+      border-bottom:1px solid var(--line);
+      vertical-align:middle;
+    }
+
+    .priority {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:84px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#fff4d7;
+      color:#7c5600;
+      font-size:15px;
+      font-weight:900;
+    }
+
+    .btn {
+      border:0;
+      border-radius:8px;
+      padding:12px 17px;
+      font-weight:900;
+      font-size:16px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:#667085; color:#fff; }
+    .btn-success { background:var(--green); color:#fff; }
+    .btn-danger { background:var(--red); color:#fff; }
+    .btn-ghost { background:#eef3fb; color:var(--primary); }
+
+    .background-dim {
+      position:fixed;
+      inset:0;
+      z-index:10;
+      background:rgba(14,27,47,.34);
+      backdrop-filter:blur(1px);
+    }
+
+    .match-modal {
+      position:fixed;
+      inset:26px 34px;
+      z-index:20;
+      background:#fff;
+      border:1px solid var(--line);
+      border-top:7px solid var(--orange);
+      border-radius:8px;
+      box-shadow:0 20px 60px rgba(15,23,42,.24);
+      display:grid;
+      grid-template-rows:auto 1fr;
+      overflow:hidden;
+    }
+
+    .match-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:18px 24px;
+      border-bottom:1px solid var(--line);
+      background:#fbfdff;
+    }
+
+    .match-title {
+      display:flex;
+      align-items:center;
+      gap:16px;
+      color:var(--primary);
+      font-size:26px;
+      font-weight:900;
+    }
+
+    .match-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:8px;
+      color:#667085;
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#eef5ff;
+      color:var(--primary);
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .confirmed-pill {
+      background:#eaf7ec;
+      color:#2f7d32;
+      border:1px solid #c9e7cf;
+    }
+
+    .match-body {
+      padding:20px 24px 28px;
+      overflow:auto;
+    }
+
+    .players-table {
+      border:1px solid var(--line);
+      border-radius:8px;
+      overflow:hidden;
+    }
+
+    .player-row {
+      display:grid;
+      grid-template-columns:1.1fr 1fr 1.1fr 1fr;
+      align-items:center;
+      gap:18px;
+      padding:18px 20px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .player-row:last-child { border-bottom:0; }
+
+    .player-head {
+      background:#f0f3f8;
+      color:var(--primary);
+      font-weight:900;
+      padding:13px 20px;
+      font-size:15px;
+      text-transform:uppercase;
+    }
+
+    .name {
+      font-size:19px;
+      font-weight:900;
+    }
+
+    .sub {
+      margin-top:5px;
+      color:#667085;
+      font-weight:750;
+      font-size:14px;
+    }
+
+    .status {
+      display:inline-flex;
+      width:max-content;
+      padding:8px 12px;
+      border-radius:8px;
+      background:#e6f3e8;
+      color:#2f7d32;
+      font-weight:900;
+    }
+
+    .status.pending {
+      background:#fff4d7;
+      color:#7c5600;
+    }
+
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:flex-start;
+    }
+
+    .message-dim {
+      position:fixed;
+      inset:0;
+      z-index:30;
+      background:rgba(9,18,33,.44);
+    }
+
+    .message-modal {
+      position:fixed;
+      z-index:40;
+      left:50%;
+      top:50%;
+      width:min(980px, calc(100vw - 52px));
+      max-height:calc(100vh - 74px);
+      transform:translate(-50%, -50%);
+      background:#fff;
+      border:1px solid var(--line);
+      border-top:7px solid var(--primary);
+      border-radius:8px;
+      box-shadow:0 28px 80px rgba(7,14,28,.42);
+      overflow:hidden;
+    }
+
+    .message-head {
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      padding:18px 20px;
+      border-bottom:1px solid var(--line);
+      background:#fbfdff;
+    }
+
+    .message-title {
+      color:var(--primary);
+      font-size:25px;
+      font-weight:900;
+      line-height:1.15;
+    }
+
+    .message-context {
+      margin-top:6px;
+      color:#667085;
+      font-weight:800;
+      font-size:14px;
+    }
+
+    .message-body {
+      display:grid;
+      grid-template-columns:minmax(260px,.66fr) minmax(360px,1fr);
+      gap:14px;
+      padding:16px;
+    }
+
+    .template-list,
+    .message-preview {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    .panel-label {
+      padding:12px 14px;
+      background:#f4f7fb;
+      color:var(--primary);
+      font-weight:900;
+      border-bottom:1px solid var(--line);
+    }
+
+    .template-choice {
+      display:block;
+      width:100%;
+      padding:14px;
+      border:0;
+      border-bottom:1px solid #edf1f6;
+      background:#fff;
+      text-align:left;
+      cursor:pointer;
+    }
+
+    .template-choice.active {
+      background:#f0f6ff;
+      border-left:6px solid var(--primary);
+      padding-left:8px;
+    }
+
+    .template-choice strong {
+      display:block;
+      color:#1f2937;
+      font-size:16px;
+      margin-bottom:5px;
+    }
+
+    .template-choice span {
+      color:#667085;
+      font-size:13px;
+      font-weight:750;
+    }
+
+    .preview-inner {
+      padding:14px;
+      display:grid;
+      gap:12px;
+    }
+
+    textarea {
+      width:100%;
+      min-height:220px;
+      resize:vertical;
+      padding:14px;
+      border:1px solid #cfd8e6;
+      border-radius:8px;
+      font:17px/1.45 Arial, Helvetica, sans-serif;
+    }
+
+    .mode-row {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:8px;
+      padding:10px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fbfdff;
+      color:#667085;
+      font-weight:850;
+    }
+
+    .message-actions {
+      display:flex;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .stack-note {
+      position:fixed;
+      right:38px;
+      bottom:28px;
+      z-index:45;
+      max-width:390px;
+      padding:13px 15px;
+      border-radius:8px;
+      background:#173567;
+      color:#fff;
+      box-shadow:0 16px 40px rgba(7,14,28,.3);
+      font-weight:800;
+      line-height:1.35;
+    }
+
+    @media (max-width:900px) {
+      body { overflow:auto; }
+      .app-shell { grid-template-columns:1fr; }
+      .side { display:none; }
+      .main { min-height:100vh; }
+      .filters { grid-template-columns:1fr; }
+      .match-modal { inset:12px; }
+      .match-head,
+      .message-head { flex-direction:column; align-items:flex-start; }
+      .player-row { grid-template-columns:1fr; }
+      .message-body { grid-template-columns:1fr; }
+      .stack-note { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side">
+      <div class="brand">Padel Match Organizer</div>
+      <div class="nav-card">2 Chiudi Partite <span>Inviti, risposte e chiusura</span></div>
+      <div class="subnav">
+        <div>Storico partite</div>
+        <div>Messaggi WhatsApp</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <button class="menu-button">☰ Menu</button>
+        🎾 Chiudi Partite
+      </div>
+
+      <section class="content-card">
+        <div class="filters">
+          <div class="filter">Giorno: tutti</div>
+          <div class="filter">Slot: tutti</div>
+          <div class="filter">Tipologia: tutte</div>
+          <div class="filter">Cerca gruppo, giocatore, giorno</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>DATA</th>
+              <th>ORIGINE</th>
+              <th>ORARIO</th>
+              <th>CAMPO</th>
+              <th>TIPOLOGIA</th>
+              <th>CONFERMATI</th>
+              <th>AZIONE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>10/05/2026</strong><br><span class="sub">Domenica</span></td>
+              <td>Gruppo potenziale da storico</td>
+              <td><strong>10:30 - 12:00</strong></td>
+              <td>Campo 1</td>
+              <td>Mista</td>
+              <td><strong>2/4</strong></td>
+              <td><button class="btn btn-primary">Scheda partita</button></td>
+            </tr>
+            <tr>
+              <td><strong>11/05/2026</strong><br><span class="sub">Lunedì</span></td>
+              <td>Gruppo staff pranzo</td>
+              <td><strong>12:30 - 14:00</strong></td>
+              <td>Campo 2</td>
+              <td>Maschile</td>
+              <td><strong>1/4</strong></td>
+              <td><button class="btn btn-primary">Scheda partita</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <div class="background-dim"></div>
+
+  <section class="match-modal" aria-label="Scheda partita">
+    <header class="match-head">
+      <div>
+        <div class="match-title">
+          Scheda partita
+          <span class="pill confirmed-pill">2/4 confermati</span>
+        </div>
+        <div class="match-meta">
+          <span>Domenica 10/05/2026</span>
+          <span>10:30 - 12:00</span>
+          <span>Campo 1</span>
+          <span>Mista</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-success">Conferma partita</button>
+        <button class="btn btn-danger">Annulla partita</button>
+        <button class="btn btn-secondary">Chiudi scheda</button>
+      </div>
+    </header>
+
+    <div class="match-body">
+      <div class="players-table">
+        <div class="player-row player-head">
+          <div>Giocatore</div>
+          <div>Stato</div>
+          <div>Messaggi</div>
+          <div>Risposta</div>
+        </div>
+
+        <div class="player-row">
+          <div>
+            <div class="name">Eddy Tormena</div>
+            <div class="sub">3.5 · M</div>
+          </div>
+          <div><span class="status">Confermato</span></div>
+          <div class="actions">
+            <button class="btn btn-primary">Rispondi</button>
+            <button class="btn btn-ghost">Libero</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-success">Sì</button>
+            <button class="btn btn-danger">No</button>
+            <button class="btn btn-secondary">Forse</button>
+          </div>
+        </div>
+
+        <div class="player-row">
+          <div>
+            <div class="name">Gian Maria Samogin</div>
+            <div class="sub">3.5 · M</div>
+          </div>
+          <div><span class="status pending">Invito inviato</span></div>
+          <div class="actions">
+            <button class="btn btn-primary">Sollecito</button>
+            <button class="btn btn-ghost">Libero</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-success">Sì</button>
+            <button class="btn btn-danger">No</button>
+            <button class="btn btn-secondary">Forse</button>
+          </div>
+        </div>
+
+        <div class="player-row">
+          <div>
+            <div class="name">Claudio Di Giusto</div>
+            <div class="sub">3.0 · M</div>
+          </div>
+          <div><span class="status pending">Da invitare</span></div>
+          <div class="actions">
+            <button class="btn btn-primary">Invita</button>
+            <button class="btn btn-ghost">Libero</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-success">Sì</button>
+            <button class="btn btn-danger">No</button>
+            <button class="btn btn-secondary">Forse</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="message-dim"></div>
+
+  <section class="message-modal" aria-label="Compositore messaggio">
+    <header class="message-head">
+      <div>
+        <div class="message-title">Invita · Claudio Di Giusto</div>
+        <div class="message-context">Domenica 10/05/2026 · 10:30 - 12:00 · Partita mista</div>
+      </div>
+      <button class="btn btn-secondary">Chiudi messaggio</button>
+    </header>
+
+    <div class="message-body">
+      <div class="template-list">
+        <div class="panel-label">Testi disponibili per “Invita”</div>
+        <button class="template-choice active">
+          <strong>Invito standard</strong>
+          <span>Messaggio breve con giorno e orario</span>
+        </button>
+        <button class="template-choice">
+          <strong>Invito morbido</strong>
+          <span>Più colloquiale, adatto a primo contatto</span>
+        </button>
+        <button class="template-choice">
+          <strong>Invito ultimo posto</strong>
+          <span>Quando manca una sola persona</span>
+        </button>
+      </div>
+
+      <div class="message-preview">
+        <div class="panel-label">Testo modificabile prima dell’invio</div>
+        <div class="preview-inner">
+          <div class="mode-row">
+            Modalità: copia testo oppure apertura WhatsApp solo quando decidi tu
+          </div>
+          <textarea>Ciao Claudio! Ti va di giocare una partita di padel domenica 10/05/2026 dalle 10:30 alle 12:00?
+
+Fammi sapere appena riesci, grazie.</textarea>
+          <div class="message-actions">
+            <button class="btn btn-secondary">Copia testo</button>
+            <button class="btn btn-primary">Apri WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="stack-note">
+    Lettura del mockup: la scheda partita resta sotto, il messaggio si apre sopra tutto. Quando cambi giocatore o tipo messaggio, si riusa questo pannello invece di aprirne altri.
+  </div>
+</body>
+</html>

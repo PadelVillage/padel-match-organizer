@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Autovalutazione - filtri sticky compatti</title>
+  <style>
+    :root {
+      --blue:#274d8f;
+      --blue-dark:#1f3f78;
+      --line:#dbe3ee;
+      --muted:#667085;
+      --soft:#f6f8fb;
+      --green:#3f8f55;
+      --green-bg:#eaf7ee;
+      --amber:#a66b13;
+      --amber-bg:#fff7e6;
+      --red:#b23324;
+      --red-bg:#fff2f0;
+      --purple:#6b48b7;
+      --purple-bg:#f4efff;
+      --shadow:0 1px 4px rgba(21,41,75,.08);
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; min-height:100%; }
+    body {
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      color:#111827;
+      background:#f3f6fb;
+      font-size:14px;
+      line-height:1.32;
+    }
+    button, input, select {
+      font:inherit;
+    }
+    .app {
+      min-height:100vh;
+      display:grid;
+      grid-template-columns:260px minmax(0,1fr);
+    }
+    .sidebar {
+      background:#1f3f78;
+      color:#fff;
+      padding:14px 10px;
+      overflow:auto;
+    }
+    .nav-item {
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr);
+      gap:10px;
+      align-items:center;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:8px;
+      padding:10px;
+      margin-bottom:8px;
+      color:#dfe8f8;
+      font-weight:850;
+    }
+    .nav-item.active {
+      background:#fff;
+      color:var(--blue);
+      border-color:#fff;
+    }
+    .nav-num {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:32px;
+      height:32px;
+      border-radius:8px;
+      background:rgba(255,255,255,.14);
+      font-weight:900;
+    }
+    .nav-item.active .nav-num {
+      background:#e9f0fb;
+    }
+    .nav-text span {
+      display:block;
+      color:inherit;
+      font-size:13px;
+      opacity:.78;
+      margin-top:2px;
+      font-weight:700;
+    }
+    .content {
+      min-width:0;
+      overflow:auto;
+    }
+    .topbar {
+      position:sticky;
+      top:0;
+      z-index:50;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      height:56px;
+      padding:10px 16px;
+      background:#fff;
+      border-bottom:4px solid #f4b333;
+      box-shadow:0 1px 4px rgba(16,24,40,.08);
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--blue);
+      color:#fff;
+      padding:9px 14px;
+      font-weight:900;
+    }
+    .topbar-title {
+      color:var(--blue);
+      font-size:21px;
+      font-weight:950;
+    }
+    .page {
+      padding:14px;
+    }
+    .panel {
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:var(--shadow);
+      overflow:visible;
+    }
+    .page-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px 10px;
+      border-bottom:1px solid var(--line);
+    }
+    h1 {
+      margin:0;
+      color:var(--blue);
+      font-size:28px;
+      line-height:1.08;
+      font-weight:950;
+    }
+    .page-sub {
+      margin:5px 0 0;
+      color:var(--muted);
+      font-weight:750;
+    }
+    .version {
+      white-space:nowrap;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 9px;
+      color:var(--blue);
+      background:#fff;
+      font-size:12px;
+      font-weight:900;
+    }
+    .sticky-workbar {
+      position:sticky;
+      top:56px;
+      z-index:40;
+      background:rgba(255,255,255,.98);
+      border-bottom:1px solid var(--line);
+      box-shadow:0 3px 10px rgba(16,24,40,.07);
+    }
+    .section-tabs {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      padding:10px 12px 0;
+    }
+    .section-tab {
+      min-height:34px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      padding:7px 11px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .section-tab.active {
+      background:var(--blue);
+      border-color:var(--blue);
+      color:#fff;
+    }
+    .filter-strip {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:4px 12px;
+      padding:8px 12px 9px;
+    }
+    .filter-link {
+      border:0;
+      border-bottom:3px solid transparent;
+      background:transparent;
+      color:#344054;
+      padding:4px 2px 5px;
+      min-height:31px;
+      display:inline-flex;
+      align-items:baseline;
+      gap:5px;
+      cursor:pointer;
+      text-align:left;
+      white-space:nowrap;
+      font-weight:900;
+    }
+    .filter-link.active {
+      color:var(--blue);
+      border-bottom-color:var(--blue);
+    }
+    .filter-link.alert .count {
+      color:var(--red);
+    }
+    .filter-link.warn .count {
+      color:var(--amber);
+    }
+    .filter-link.good .count {
+      color:var(--green);
+    }
+    .filter-link .label {
+      font-size:13px;
+      line-height:1.05;
+      font-weight:950;
+    }
+    .filter-link .meta {
+      display:none;
+    }
+    .filter-link .count {
+      color:#667085;
+      font-size:15px;
+      line-height:1;
+      font-weight:950;
+    }
+    .filter-link.active .count {
+      color:var(--blue);
+    }
+    .body {
+      padding:14px;
+    }
+    .context-row {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      min-height:40px;
+    }
+    .context-title {
+      color:var(--blue);
+      font-size:22px;
+      font-weight:950;
+    }
+    .context-meta {
+      color:var(--muted);
+      font-size:13px;
+      font-weight:800;
+    }
+    .actions {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      min-height:34px;
+      padding:7px 10px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .btn.primary {
+      background:var(--blue);
+      border-color:var(--blue);
+      color:#fff;
+    }
+    .search-row {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:8px;
+      margin-bottom:12px;
+      padding:10px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fbfcfe;
+    }
+    input {
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:8px;
+      min-height:36px;
+      padding:7px 10px;
+      font-weight:750;
+    }
+    .table-wrap {
+      border:1px solid var(--line);
+      border-radius:8px;
+      overflow:hidden;
+      background:#fff;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+    }
+    th {
+      background:#f1f4f9;
+      color:var(--blue-dark);
+      font-size:12px;
+      text-align:left;
+      padding:9px;
+      font-weight:950;
+    }
+    td {
+      padding:10px 9px;
+      border-top:1px solid #e6ebf2;
+      vertical-align:top;
+      font-weight:750;
+    }
+    .name {
+      display:block;
+      color:#2f3440;
+      font-weight:950;
+    }
+    .sub {
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+      margin-top:2px;
+      font-weight:750;
+    }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:26px;
+      border-radius:999px;
+      padding:4px 9px;
+      background:#eef3fb;
+      color:var(--blue);
+      font-size:12px;
+      font-weight:950;
+      white-space:nowrap;
+    }
+    .badge.ok { background:var(--green-bg); color:var(--green); }
+    .badge.warn { background:var(--amber-bg); color:var(--amber); }
+    .badge.fail { background:var(--red-bg); color:var(--red); }
+    .badge.purple { background:var(--purple-bg); color:var(--purple); }
+    .mini-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .empty {
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:20px;
+      color:var(--muted);
+      text-align:center;
+      font-weight:850;
+      background:#fff;
+    }
+    .sticky-demo-space {
+      height:420px;
+      margin-top:12px;
+      border:1px dashed #cad5e4;
+      border-radius:8px;
+      background:linear-gradient(#fff,#f7f9fc);
+      color:#98a2b3;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+    }
+    @media (max-width: 1160px) {
+      .app { grid-template-columns:1fr; }
+      .sidebar { display:none; }
+      .filter-strip { gap:4px 10px; }
+      .sticky-workbar { top:56px; }
+    }
+    @media (max-width: 760px) {
+      .page { padding:10px; }
+      .page-head, .context-row { flex-direction:column; align-items:stretch; }
+      .filter-strip { gap:3px 9px; }
+      .filter-link { min-height:28px; }
+      .filter-link .label { font-size:12px; }
+      .filter-link .count { font-size:14px; }
+      .search-row { grid-template-columns:1fr; }
+      table, thead, tbody, tr, th, td { display:block; }
+      thead { display:none; }
+      tr {
+        border-top:1px solid var(--line);
+      }
+      tr:first-child { border-top:0; }
+      td {
+        display:grid;
+        grid-template-columns:116px minmax(0,1fr);
+        gap:8px;
+        border-top:0;
+        padding:8px 10px;
+      }
+      td::before {
+        content:attr(data-label);
+        color:var(--blue-dark);
+        font-weight:950;
+      }
+    }
+    @media (max-width: 460px) {
+      .section-tab, .btn { width:100%; }
+      .actions { display:grid; grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Menu principale">
+      <div class="nav-item"><div class="nav-num">1</div><div class="nav-text">Apri Partite<span>Slot liberi e proposte</span></div></div>
+      <div class="nav-item"><div class="nav-num">2</div><div class="nav-text">Chiudi Partite<span>Inviti e chiusura</span></div></div>
+      <div class="nav-item active"><div class="nav-num">3</div><div class="nav-text">Autovalutazione<span>Invio email e risposte</span></div></div>
+      <div class="nav-item"><div class="nav-num">4</div><div class="nav-text">Anagrafica soci<span>Schede e contatti</span></div></div>
+      <div class="nav-item"><div class="nav-num">5</div><div class="nav-text">Messaggi WhatsApp<span>Libreria testi</span></div></div>
+      <div class="nav-item"><div class="nav-num">6</div><div class="nav-text">Amministrazione<span>Utenti e controlli</span></div></div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <button class="menu-btn" type="button">Menu</button>
+        <div class="topbar-title">Autovalutazione</div>
+      </header>
+
+      <main class="page">
+        <section class="panel">
+          <div class="page-head">
+            <div>
+              <h1>Autovalutazione</h1>
+              <p class="page-sub">Cruscotto operativo, storico, Matchpoint e scheda pubblica.</p>
+            </div>
+            <span class="version">TEST v5.493</span>
+          </div>
+
+          <div class="sticky-workbar">
+            <div class="section-tabs" aria-label="Sottosezioni Autovalutazione">
+              <button class="section-tab active" type="button" data-section="cruscotto">Cruscotto mattutino</button>
+              <button class="section-tab" type="button" data-section="storico">Storico</button>
+              <button class="section-tab" type="button" data-section="matchpoint">Matchpoint</button>
+              <button class="section-tab" type="button" data-section="testi">Testi</button>
+              <button class="section-tab" type="button" data-section="scheda">Scheda pubblica</button>
+            </div>
+
+            <div class="filter-strip" aria-label="Filtri rapidi Autovalutazione">
+              <button class="filter-link active" type="button" data-filter="tutti" data-target-section="cruscotto">
+                <span><span class="label">Tutti</span><span class="meta">righe</span></span><span class="count">460</span>
+              </button>
+              <button class="filter-link good" type="button" data-filter="oggi" data-target-section="cruscotto">
+                <span><span class="label">Oggi</span><span class="meta">oggi</span></span><span class="count">10</span>
+              </button>
+              <button class="filter-link" type="button" data-filter="da-inviare" data-target-section="cruscotto">
+                <span><span class="label">Da inviare</span><span class="meta">soci</span></span><span class="count">436</span>
+              </button>
+              <button class="filter-link warn" type="button" data-filter="in-attesa" data-target-section="cruscotto">
+                <span><span class="label">In attesa</span><span class="meta">soci</span></span><span class="count">21</span>
+              </button>
+              <button class="filter-link alert" type="button" data-filter="problemi" data-target-section="cruscotto">
+                <span><span class="label">Problemi</span><span class="meta">da risolvere</span></span><span class="count">1</span>
+              </button>
+              <button class="filter-link" type="button" data-filter="risposte" data-target-section="cruscotto">
+                <span><span class="label">Risposte</span><span class="meta">da leggere</span></span><span class="count">0</span>
+              </button>
+              <button class="filter-link warn" type="button" data-filter="da-controllare" data-target-section="cruscotto">
+                <span><span class="label">Da controllare</span><span class="meta">livelli</span></span><span class="count">1</span>
+              </button>
+              <button class="filter-link" type="button" data-filter="matchpoint" data-target-section="matchpoint">
+                <span><span class="label">Matchpoint</span><span class="meta">soci</span></span><span class="count">0</span>
+              </button>
+              <button class="filter-link purple" type="button" data-filter="storico" data-target-section="storico">
+                <span><span class="label">Storico</span><span class="meta">nuove</span></span><span class="count">0</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="body">
+            <div class="context-row">
+              <div>
+                <div class="context-title" id="viewTitle">Processo utenti</div>
+                <div class="context-meta" id="viewMeta">Filtro attivo: Tutti · 460 righe</div>
+              </div>
+              <div class="actions" id="viewActions">
+                <button class="btn primary" type="button">Prepara lotto</button>
+                <button class="btn" type="button">Socio test</button>
+              </div>
+            </div>
+
+            <div class="search-row" id="searchBlock">
+              <input id="searchInput" type="text" placeholder="Nome, cognome, email, telefono o ID socio">
+              <button class="btn primary" type="button" id="searchBtn">Cerca</button>
+            </div>
+
+            <div id="tableArea" class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Socio</th>
+                    <th>Routine</th>
+                    <th>Fase</th>
+                    <th>Prossimo step</th>
+                    <th>Ultimo evento</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody id="rowsBody"></tbody>
+              </table>
+            </div>
+
+            <div id="emptyArea" class="empty" hidden>Nessun socio in questo stato.</div>
+            <div class="sticky-demo-space">Scorri: i filtri restano fissi in alto</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const rows = [
+      {name:'Alberto Ceschin', sub:'PMO-000761 · alberto@example.com', routine:'Lotto pronto', fase:'Da inviare', step:'Invia email', event:'Selezionato oggi', filter:['tutti','oggi','da-inviare'], badge:'', action:'Invia email'},
+      {name:'Laura Conti', sub:'PMO-000284 · laura.conti@example.com', routine:'Email inviata', fase:'In attesa', step:'Attendi risposta', event:'Ultimo invio 18/05/26', filter:['tutti','in-attesa'], badge:'warn', action:'Dettaglio'},
+      {name:'Marco Bianchi', sub:'PMO-000193 · marco.bianchi@example.com', routine:'Richiamo 2', fase:'In attesa', step:'Seconda email programmata', event:'Prossima finestra 21/05/26', filter:['tutti','in-attesa'], badge:'warn', action:'Dettaglio'},
+      {name:'Giulia Ferri', sub:'PMO-000318 · giulia.ferri@example.com', routine:'Blocco', fase:'Problema', step:'Correggi email', event:'Mancata consegna', filter:['tutti','problemi'], badge:'fail', action:'Correggi email'},
+      {name:'Maurizio Aprea', sub:'PMO-000948 · aprea.maurizio@gmail.com', routine:'Scheda ricevuta', fase:'Da controllare', step:'Valida livello', event:'Link esterno ricevuto', filter:['tutti','da-controllare'], badge:'purple', action:'Valida livello'}
+    ];
+
+    const filterLabels = {
+      'tutti':['Tutti','460 righe'],
+      'oggi':['Oggi','10 oggi'],
+      'da-inviare':['Da inviare','436 soci'],
+      'in-attesa':['In attesa','21 soci'],
+      'problemi':['Problemi','1 da risolvere'],
+      'risposte':['Risposte','0 da leggere'],
+      'da-controllare':['Da controllare','1 livelli'],
+      'matchpoint':['Matchpoint','0 soci'],
+      'storico':['Storico','0 nuove']
+    };
+
+    const sectionTitles = {
+      cruscotto:'Processo utenti',
+      storico:'Storico Autovalutazione',
+      matchpoint:'Matchpoint',
+      testi:'Testi Autovalutazione',
+      scheda:'Scheda pubblica'
+    };
+
+    let activeFilter = 'tutti';
+    let activeSection = 'cruscotto';
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    }
+
+    function setSection(section) {
+      activeSection = section;
+      document.querySelectorAll('[data-section]').forEach(btn => btn.classList.toggle('active', btn.dataset.section === section));
+      if (section === 'matchpoint') activeFilter = 'matchpoint';
+      if (section === 'storico') activeFilter = 'storico';
+      if (section !== 'cruscotto' && section !== 'matchpoint' && section !== 'storico') activeFilter = 'tutti';
+      render();
+    }
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      const target = document.querySelector(`[data-filter="${filter}"]`).dataset.targetSection;
+      activeSection = target;
+      document.querySelectorAll('[data-section]').forEach(btn => btn.classList.toggle('active', btn.dataset.section === activeSection));
+      render();
+    }
+
+    function renderRows(list) {
+      const body = document.getElementById('rowsBody');
+      body.innerHTML = list.map(row => `
+        <tr>
+          <td data-label="Socio"><span class="name">${esc(row.name)}</span><span class="sub">${esc(row.sub)}</span></td>
+          <td data-label="Routine"><span class="badge ${row.badge}">${esc(row.routine)}</span></td>
+          <td data-label="Fase">${esc(row.fase)}</td>
+          <td data-label="Prossimo step">${esc(row.step)}</td>
+          <td data-label="Ultimo evento">${esc(row.event)}</td>
+          <td data-label="Azioni"><div class="mini-actions"><button class="btn" type="button">${esc(row.action)}</button></div></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderSpecialSection() {
+      const table = document.getElementById('tableArea');
+      const empty = document.getElementById('emptyArea');
+      table.hidden = true;
+      empty.hidden = false;
+      if (activeSection === 'testi') empty.textContent = 'Libreria testi Autovalutazione.';
+      if (activeSection === 'scheda') empty.textContent = 'Pannello Scheda pubblica.';
+    }
+
+    function render() {
+      document.querySelectorAll('[data-filter]').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === activeFilter));
+      document.getElementById('viewTitle').textContent = sectionTitles[activeSection] || 'Processo utenti';
+      const label = filterLabels[activeFilter] || filterLabels.tutti;
+      document.getElementById('viewMeta').textContent = `Filtro attivo: ${label[0]} · ${label[1]}`;
+      const table = document.getElementById('tableArea');
+      const empty = document.getElementById('emptyArea');
+      const search = document.getElementById('searchBlock');
+      const actions = document.getElementById('viewActions');
+
+      search.hidden = activeSection !== 'cruscotto';
+      actions.hidden = activeSection !== 'cruscotto';
+
+      if (activeSection === 'testi' || activeSection === 'scheda') {
+        renderSpecialSection();
+        return;
+      }
+
+      table.hidden = false;
+      empty.hidden = true;
+      const list = activeFilter === 'tutti'
+        ? rows
+        : rows.filter(row => row.filter.includes(activeFilter));
+      if (!list.length) {
+        table.hidden = true;
+        empty.hidden = false;
+        empty.textContent = activeFilter === 'matchpoint' ? 'Nessun socio da inserire su Matchpoint.' : 'Nessun socio in questo stato.';
+      } else {
+        renderRows(list);
+      }
+    }
+
+    document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => setFilter(btn.dataset.filter)));
+    document.querySelectorAll('[data-section]').forEach(btn => btn.addEventListener('click', () => setSection(btn.dataset.section)));
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      const value = document.getElementById('searchInput').value.trim();
+      document.getElementById('viewMeta').textContent = value ? `Ricerca attiva: ${value}` : 'Filtro attivo: Tutti · 460 righe';
+    });
+    render();
+  </script>
+</body>
+</html>

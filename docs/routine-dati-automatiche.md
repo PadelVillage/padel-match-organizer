@@ -1,8 +1,30 @@
 # Routine dati automatiche
 
-Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST e attivo su Supabase PROD dal 2026-05-11; hotfix UI v5.374 pubblicato in PROD per ricalcolo automatico della colonna `Prossima esecuzione`; in TEST v5.470 il pannello legge i riepiloghi cloud `matchpoint_data` e sincronizza il browser locale quando il cloud e' piu recente.
+Stato: mockup grafico approvato; pannello UI integrato in `index.html` v5.368; intestazione DATI rimossa in TEST v5.369; formato prossime esecuzioni aggiornato in TEST v5.370; orari Clienti/Storico invertiti in TEST v5.371; backup cloud e backup locale separati in TEST v5.372; auto-backup cloud post aggiornamento dati pubblicato in PROD v5.373; scheduler backend Matchpoint automatico disattivato su Supabase TEST, attivo su Supabase PROD dal 2026-05-11 fino allo stop operativo del 2026-05-21 e successivamente riattivato il 2026-05-21 dopo migrazione e test su Hetzner VM; hotfix UI v5.374 pubblicato in PROD per ricalcolo automatico della colonna `Prossima esecuzione`; in TEST v5.470 il pannello legge i riepiloghi cloud `matchpoint_data` e sincronizza il browser locale quando il cloud e' piu recente.
 
-Ultimo aggiornamento: 2026-05-18 00:13
+Ultimo aggiornamento: 2026-05-21 11:00
+
+## Nota operativa PROD scheduler - 2026-05-21 11:00
+
+Su richiesta esplicita di Maurizio, dopo aver verificato con successo le routine manuali sul nuovo server Hetzner dedicato (`91.99.131.243`), il job automatico Matchpoint/Dati su Supabase PROD è stato riattivato:
+
+- job: `pmo-data-routines-dispatcher-prod`;
+- schedule: `*/5 * * * *`;
+- comando: `select public.pmo_dispatch_data_routines();`;
+- stato verificato dopo l'operazione: `active=true`.
+
+Effetto operativo: il sistema ha ripreso pienamente la sincronizzazione automatica a intervalli regolari (Clienti, Storico, Prenotazioni future) instradando le chiamate verso la nuova infrastruttura Hetzner in totale sicurezza.
+
+## Nuova Infrastruttura Headless Worker (Hetzner Cloud)
+
+A partire dal **2026-05-21**, il backend dell'automazione browser Matchpoint per le Edge Function (Clienti, Storico, Prenotazioni future) è stato migrato su un'infrastruttura dedicata:
+* **Hetzner Cloud VM**: `padel-matchpoint-bot-prod` (IP: `91.99.131.243`, porta `8787`).
+* **Hardware**: Istanza `cpx22` (Intel, 2 vCPU, **4 GB RAM**, 80 GB SSD) — Risolve definitivamente tutti i problemi di crash di memoria legati all'esecuzione headless di Playwright/Chromium riscontrati in precedenza.
+* **Sicurezza**: 
+  * Accesso SSH blindato con chiavi ED25519 (`pmo_deploy_key`). Accesso con password interamente rimosso.
+  * UFW attivo sul server, consentendo il traffico solo sulle porte `22` (SSH) e `8787` (Worker API).
+* **Flusso di Comunicazione**:
+  * Supabase Edge Functions $\rightarrow$ Hetzner Worker (HTTP POST autorizzato con JWT/API Key in Header) $\rightarrow$ Esecuzione Playwright/Chromium Headless $\rightarrow$ Login ed Export Excel su portale Matchpoint $\rightarrow$ Invio stream base64 a Supabase $\rightarrow$ Parsing dei record ed aggiornamento del database reale.
 
 ## Nota UI TEST v5.470 - 2026-05-18 00:13
 

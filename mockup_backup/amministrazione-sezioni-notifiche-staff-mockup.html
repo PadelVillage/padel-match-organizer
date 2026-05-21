@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Amministrazione - Notifiche staff</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --primary-dark:#17386f;
+      --accent:#f0a323;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --line:#dfe8f3;
+      --line-strong:#cdd9e8;
+      --text:#1f2937;
+      --muted:#667085;
+      --success:#267a37;
+      --success-bg:#eaf7ef;
+      --warning:#a86b00;
+      --warning-bg:#fff8e8;
+      --danger:#b42318;
+      --danger-bg:#fff3f1;
+      --blue-bg:#eef5ff;
+    }
+    * { box-sizing:border-box; }
+    html, body { min-width:0; }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    button, input, select { font:inherit; }
+    button { cursor:pointer; }
+    .topbar {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      background:#fff;
+      border-bottom:4px solid var(--accent);
+      box-shadow:0 1px 5px rgba(16,24,40,.08);
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--primary);
+      color:#fff;
+      padding:9px 13px;
+      font-size:17px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .topbar-title {
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .page {
+      width:min(100%, 1220px);
+      margin:0 auto;
+      padding:14px;
+    }
+    .admin-shell {
+      border:1px solid var(--line);
+      border-top:6px solid var(--primary);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 5px rgba(31,71,136,.08);
+      overflow:hidden;
+      min-width:0;
+    }
+    .page-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      background:#fbfdff;
+    }
+    h1, h2, h3, p { margin-top:0; }
+    h1 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:27px;
+      line-height:1.1;
+      font-weight:900;
+    }
+    .subtitle {
+      margin:0;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.35;
+      font-weight:750;
+    }
+    .env {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:7px 10px;
+      background:#fff;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .admin-body { padding:14px; }
+    .admin-panel { display:none; }
+    .admin-panel.active { display:block; }
+    .panel-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    h2 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:21px;
+      line-height:1.15;
+    }
+    .panel-head p {
+      margin:0;
+      color:var(--muted);
+      line-height:1.35;
+      font-weight:750;
+    }
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:flex-end;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      padding:9px 11px;
+      font-weight:900;
+      line-height:1.1;
+      white-space:nowrap;
+    }
+    .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .btn.success { background:var(--success); border-color:var(--success); color:#fff; }
+    .btn.warn { background:var(--warning); border-color:var(--warning); color:#fff; }
+    .btn.danger { background:var(--danger); border-color:var(--danger); color:#fff; }
+    .btn:disabled {
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .grid-kpi {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+      margin:0 0 12px;
+    }
+    .kpi {
+      border:1px solid var(--line);
+      border-left:4px solid var(--primary);
+      border-radius:8px;
+      background:#fff;
+      padding:10px 12px;
+      min-width:0;
+    }
+    .kpi.green { border-left-color:var(--success); }
+    .kpi.warn { border-left-color:var(--warning); background:#fffdf7; }
+    .kpi.red { border-left-color:var(--danger); background:#fffafa; }
+    .kpi .label {
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      font-weight:900;
+      line-height:1.2;
+    }
+    .kpi .value {
+      margin-top:4px;
+      color:#111827;
+      font-size:24px;
+      font-weight:900;
+      line-height:1.1;
+      overflow-wrap:anywhere;
+    }
+    .kpi .meta {
+      margin-top:3px;
+      color:var(--muted);
+      font-weight:850;
+      line-height:1.25;
+    }
+    .split {
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    .box {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      min-width:0;
+      overflow:hidden;
+    }
+    .box-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      background:#f8fbff;
+    }
+    .box-title {
+      color:var(--primary);
+      font-size:17px;
+      font-weight:900;
+      line-height:1.15;
+    }
+    .box-subtitle {
+      margin-top:3px;
+      color:var(--muted);
+      font-weight:750;
+      line-height:1.3;
+    }
+    .box-body { padding:12px; }
+    .form-grid {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      align-items:end;
+    }
+    .field {
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+      min-width:0;
+    }
+    label {
+      color:#344054;
+      font-size:12px;
+      font-weight:900;
+    }
+    input, select {
+      width:100%;
+      min-height:40px;
+      border:1px solid #cfd8e6;
+      border-radius:8px;
+      background:#fff;
+      color:#111827;
+      padding:9px 10px;
+      outline:none;
+      min-width:0;
+    }
+    input:focus, select:focus {
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(35,79,145,.12);
+    }
+    .toggle-row {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fbfdff;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    .toggle-main {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:900;
+      color:#111827;
+    }
+    .toggle-main input { width:20px; min-height:20px; }
+    .recipient-line {
+      display:flex;
+      align-items:flex-start;
+      gap:9px;
+      min-width:0;
+    }
+    .recipient-toggle {
+      width:20px;
+      min-height:20px;
+      margin-top:2px;
+      accent-color:var(--primary);
+      flex:0 0 auto;
+    }
+    .recipient-text { min-width:0; }
+    .table-wrap {
+      width:100%;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:8px;
+      margin-top:10px;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      min-width:700px;
+      background:#fff;
+    }
+    th, td {
+      padding:10px 11px;
+      border-bottom:1px solid #edf1f7;
+      text-align:left;
+      vertical-align:middle;
+    }
+    th {
+      background:#f3f7fc;
+      color:#17386f;
+      font-size:12px;
+      text-transform:uppercase;
+      font-weight:900;
+    }
+    tbody tr:last-child td { border-bottom:0; }
+    .name {
+      color:#111827;
+      font-weight:900;
+      line-height:1.25;
+    }
+    .sub {
+      display:block;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.25;
+      overflow-wrap:anywhere;
+    }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      padding:6px 9px;
+      background:#eef3fb;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .badge.ok { background:var(--success-bg); color:var(--success); border:1px solid #bfe8cc; }
+    .badge.warn { background:var(--warning-bg); color:var(--warning); border:1px solid #f2d389; }
+    .badge.fail { background:var(--danger-bg); color:var(--danger); border:1px solid #ffc9c3; }
+    .mini-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .mini-actions .btn { padding:7px 9px; font-size:12px; }
+    .feedback {
+      display:none;
+      margin-top:10px;
+      border-radius:8px;
+      padding:10px 12px;
+      font-weight:850;
+      line-height:1.35;
+    }
+    .feedback.show { display:block; }
+    .feedback.ok { background:var(--success-bg); color:var(--success); border:1px solid #bfe8cc; }
+    .feedback.warn { background:var(--warning-bg); color:var(--warning); border:1px solid #f2d389; }
+    .feedback.fail { background:var(--danger-bg); color:var(--danger); border:1px solid #ffc9c3; }
+    .empty {
+      border:1px dashed var(--line-strong);
+      border-radius:8px;
+      background:#fbfdff;
+      color:var(--muted);
+      padding:14px;
+      font-weight:850;
+      line-height:1.35;
+    }
+    .preview-list {
+      display:grid;
+      gap:8px;
+    }
+    .preview-row {
+      display:grid;
+      grid-template-columns:128px minmax(0,1fr);
+      gap:8px;
+      border-bottom:1px solid #edf1f7;
+      padding-bottom:7px;
+    }
+    .preview-row:last-child { border-bottom:0; padding-bottom:0; }
+    .preview-label {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .preview-value {
+      color:#111827;
+      font-weight:850;
+      overflow-wrap:anywhere;
+    }
+    .preview-inline {
+      grid-template-columns:minmax(220px,1.45fr) minmax(110px,.75fr) minmax(70px,.45fr) minmax(86px,.55fr) minmax(136px,.75fr) minmax(170px,1fr);
+      gap:0;
+      border:1px solid var(--line);
+      border-radius:8px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .preview-inline .preview-row {
+      display:block;
+      border:0;
+      border-right:1px solid #edf1f7;
+      padding:9px 10px;
+      min-width:0;
+    }
+    .preview-inline .preview-row:last-child { border-right:0; }
+    .preview-inline .preview-label {
+      display:block;
+      margin-bottom:4px;
+      font-size:11px;
+      line-height:1.1;
+    }
+    .preview-inline .preview-value {
+      display:block;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1.2;
+    }
+    .check-list {
+      display:grid;
+      gap:8px;
+    }
+    .check-row {
+      display:grid;
+      grid-template-columns:86px minmax(0,1fr);
+      gap:10px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:9px 10px;
+      background:#fff;
+      align-items:start;
+    }
+    .check-row.loading { background:#fbfdff; }
+    .row-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+    }
+    .session-strip {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:12px;
+      align-items:center;
+      border:1px solid var(--line);
+      border-left:4px solid var(--primary);
+      border-radius:8px;
+      background:#f8fbff;
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .permission-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+    }
+    .permission {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      padding:10px;
+      font-weight:900;
+      color:#344054;
+    }
+    .log-box {
+      display:none;
+      margin-top:10px;
+    }
+    .log-box.show { display:block; }
+    .stack { display:grid; gap:12px; }
+    @media (max-width: 900px) {
+      .page-head, .panel-head, .session-strip { grid-template-columns:1fr; flex-direction:column; }
+      .grid-kpi { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .split { grid-template-columns:1fr; }
+      .permission-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .preview-inline { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .preview-inline .preview-row:nth-child(2n) { border-right:0; }
+    }
+    @media (max-width: 640px) {
+      .topbar-title { font-size:20px; }
+      .page { padding:10px; }
+      .page-head { padding:12px; }
+      .admin-body { padding:10px; }
+      h1 { font-size:24px; }
+      .grid-kpi, .form-grid, .permission-grid { grid-template-columns:1fr; }
+      table { min-width:0; }
+      .table-wrap { border:0; overflow:visible; }
+      table, thead, tbody, tr, th, td { display:block; }
+      thead { display:none; }
+      tr {
+        border:1px solid var(--line);
+        border-radius:8px;
+        margin-bottom:8px;
+        overflow:hidden;
+      }
+      td {
+        display:grid;
+        grid-template-columns:112px minmax(0,1fr);
+        gap:8px;
+        border-bottom:1px solid #edf1f7;
+      }
+      td::before {
+        content:attr(data-label);
+        color:var(--muted);
+        font-size:11px;
+        font-weight:900;
+        text-transform:uppercase;
+      }
+      .preview-row, .check-row { grid-template-columns:1fr; gap:4px; }
+      .preview-inline { grid-template-columns:1fr; }
+      .preview-inline .preview-row { border-right:0; border-bottom:1px solid #edf1f7; }
+      .preview-inline .preview-row:last-child { border-bottom:0; }
+      .actions { justify-content:flex-start; }
+      .btn { width:100%; }
+      .mini-actions .btn { width:auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn" type="button">☰ Menu</button>
+    <div class="topbar-title">Amministrazione</div>
+  </header>
+
+  <main class="page">
+    <section class="admin-shell">
+      <div class="page-head">
+        <div>
+          <h1>Amministrazione</h1>
+          <p class="subtitle">Utenti, sessione, notifiche e controlli tecnici separati.</p>
+        </div>
+        <span class="env">TEST v5.452 · PROD v5.448</span>
+      </div>
+
+      <div class="admin-body">
+        <section class="admin-panel" id="panel-users" data-panel="users">
+          <div class="box">
+            <div class="box-head">
+              <div>
+                <div class="box-title">Utenti autorizzati</div>
+              </div>
+              <div class="actions">
+                <button class="btn primary" type="button" id="newUserBtn">+ Nuovo</button>
+              </div>
+            </div>
+            <div class="box-body">
+              <div class="table-wrap" id="usersTableWrap">
+                <table>
+                  <thead><tr><th>Utente</th><th>Ruolo</th><th>Stato</th><th>Ultimo accesso</th><th>Azioni</th></tr></thead>
+                  <tbody id="usersBody">
+                    <tr>
+                      <td data-label="Utente"><span class="name">Maurizio Aprea</span><span class="sub">padelvillage.club@gmail.com</span></td>
+                      <td data-label="Ruolo"><span class="badge">Proprietario</span></td>
+                      <td data-label="Stato"><span class="badge ok">Attivo</span></td>
+                      <td data-label="Ultimo accesso">17/05/26, 17:18</td>
+                      <td data-label="Azioni"><div class="mini-actions"><button class="btn" type="button" data-user-action="edit">Modifica</button><button class="btn danger" type="button" disabled>Elimina</button></div></td>
+                    </tr>
+                    <tr>
+                      <td data-label="Utente"><span class="name">Codex Test</span><span class="sub">aprea.maurizio+codex.test@gmail.com</span></td>
+                      <td data-label="Ruolo"><span class="badge">Admin</span></td>
+                      <td data-label="Stato"><span class="badge ok">Attivo</span></td>
+                      <td data-label="Ultimo accesso">17/05/26, 20:39</td>
+                      <td data-label="Azioni"><div class="mini-actions"><button class="btn" type="button" data-user-action="edit">Modifica</button><button class="btn danger" type="button" data-user-action="delete">Elimina</button></div></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="feedback ok" id="usersFeedback">Lista utenti caricata.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel active" id="panel-notifications" data-panel="notifications">
+          <div class="split">
+            <div class="stack">
+              <div class="box">
+                <div class="box-head">
+                  <div>
+                    <div class="box-title">Configurazione destinatari</div>
+                    <div class="box-subtitle">Gestione globale usata dopo la conferma livello in Autovalutazione.</div>
+                  </div>
+                </div>
+                <div class="box-body">
+                  <div class="form-grid">
+                    <div class="field">
+                      <label for="recipientInput">Email collaboratore</label>
+                      <input id="recipientInput" type="email" value="" placeholder="nome@padelvillage.example">
+                    </div>
+                    <button class="btn primary" type="button" id="addRecipientBtn">Aggiungi destinatario</button>
+                  </div>
+
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>Destinatario</th><th>Stato</th><th>Azioni</th></tr></thead>
+                      <tbody id="recipientsBody">
+                        <tr>
+                          <td data-label="Destinatario"><label class="recipient-line"><input class="recipient-toggle" type="checkbox" checked data-recipient-enabled><span class="recipient-text"><span class="name">Reception</span><span class="sub">reception@padelvillage.example</span></span></label></td>
+                          <td data-label="Stato"><span class="badge ok" data-recipient-status>Attivo</span></td>
+                          <td data-label="Azioni"><button class="btn danger" type="button" data-remove-recipient>Rimuovi</button></td>
+                        </tr>
+                        <tr>
+                          <td data-label="Destinatario"><label class="recipient-line"><input class="recipient-toggle" type="checkbox" checked data-recipient-enabled><span class="recipient-text"><span class="name">Maestro</span><span class="sub">maestro@padelvillage.example</span></span></label></td>
+                          <td data-label="Stato"><span class="badge ok" data-recipient-status>Attivo</span></td>
+                          <td data-label="Azioni"><button class="btn danger" type="button" data-remove-recipient>Rimuovi</button></td>
+                        </tr>
+                        <tr>
+                          <td data-label="Destinatario"><label class="recipient-line"><input class="recipient-toggle" type="checkbox" checked data-recipient-enabled><span class="recipient-text"><span class="name">Maurizio Aprea</span><span class="sub">PMO-000948 · aprea.maurizio@gmail.com</span></span></label></td>
+                          <td data-label="Stato"><span class="badge ok" data-recipient-status>Attivo</span></td>
+                          <td data-label="Azioni"><button class="btn primary" type="button" data-test-email>Invia email di test</button></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="feedback" id="notificationFeedback"></div>
+                </div>
+              </div>
+
+              <div class="box" id="emptyNotificationBox" style="display:none;">
+                <div class="box-body">
+                  <div class="empty">Nessun destinatario configurato.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="box-head">
+                <div>
+                  <div class="box-title">Anteprima notifica</div>
+                  <div class="box-subtitle">Dati inviati ai collaboratori dopo validazione livello.</div>
+                </div>
+              </div>
+              <div class="box-body">
+                <div class="preview-list preview-inline">
+                  <div class="preview-row"><div class="preview-label">Oggetto</div><div class="preview-value">Livello validato - Giulia Rossi</div></div>
+                  <div class="preview-row"><div class="preview-label">Nome</div><div class="preview-value">Giulia Rossi</div></div>
+                  <div class="preview-row"><div class="preview-label">Livello</div><div class="preview-value">1.5</div></div>
+                  <div class="preview-row"><div class="preview-label">Sesso</div><div class="preview-value">Femmina</div></div>
+                  <div class="preview-row"><div class="preview-label">Telefono</div><div class="preview-value">+39 333 000 0000</div></div>
+                  <div class="preview-row"><div class="preview-label">Email</div><div class="preview-value">giulia.rossi@example.com</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-session" data-panel="session">
+          <div class="panel-head">
+            <div>
+              <h2>Sessione</h2>
+              <p>Account corrente e permessi attivi.</p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="button" id="refreshProfileBtn">Aggiorna profilo</button>
+              <button class="btn danger" type="button" id="logoutBtn">Esci</button>
+            </div>
+          </div>
+
+          <div class="session-strip">
+            <div>
+              <span class="sub">Account corrente</span>
+              <div class="name">aprea.maurizio@gmail.com</div>
+              <span class="sub">Ruolo: Proprietario · Stato: Attivo</span>
+            </div>
+            <span class="badge ok" id="sessionBadge">Sessione attiva</span>
+          </div>
+
+          <div class="box">
+            <div class="box-head">
+              <div>
+                <div class="box-title">Permessi attivi</div>
+                <div class="box-subtitle">Visibili solo in Sessione, non nelle altre sottosezioni.</div>
+              </div>
+            </div>
+            <div class="box-body">
+              <div class="permission-grid">
+                <div class="permission">Utenti</div>
+                <div class="permission">Cloud</div>
+                <div class="permission">Routine</div>
+                <div class="permission">Diagnostica</div>
+              </div>
+              <div class="feedback ok" id="sessionFeedback">Profilo aggiornato.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-supabase" data-panel="supabase">
+          <div class="panel-head">
+            <div>
+              <h2>Supabase</h2>
+              <p>Diagnostica tecnica e verifica ambiente.</p>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="button" id="runCheckBtn">Verifica TEST/PROD</button>
+              <button class="btn" type="button" id="auditLogBtn">Registro attivita</button>
+            </div>
+          </div>
+
+          <div class="grid-kpi">
+            <div class="kpi"><div class="label">Ambiente app</div><div class="value">TEST</div><div class="meta">mockup</div></div>
+            <div class="kpi"><div class="label">Config</div><div class="value">config-test.js</div><div class="meta">canale test</div></div>
+            <div class="kpi"><div class="label">Project ref</div><div class="value">cudiqn...</div><div class="meta">simulato</div></div>
+            <div class="kpi green"><div class="label">Ultima verifica</div><div class="value" id="lastCheck">15:40</div><div class="meta">17/05/2026</div></div>
+          </div>
+
+          <div class="box">
+            <div class="box-head">
+              <div>
+                <div class="box-title">Verifica TEST/PROD</div>
+                <div class="box-subtitle">Controlli tecnici separati da utenti e notifiche staff.</div>
+              </div>
+            </div>
+            <div class="box-body">
+              <div class="check-list" id="checkList">
+                <div class="check-row"><span class="badge ok">OK</span><div><span class="name">Config Supabase</span><span class="sub">config-test.js collegato a TEST.</span></div></div>
+                <div class="check-row"><span class="badge ok">OK</span><div><span class="name">Auth raggiungibile</span><span class="sub">Login staff disponibile.</span></div></div>
+                <div class="check-row"><span class="badge ok">OK</span><div><span class="name">Schema staff admin</span><span class="sub">RPC staff raggiungibili.</span></div></div>
+                <div class="check-row"><span class="badge ok">Protetto</span><div><span class="name">Protezione email Autovalutazione</span><span class="sub">TEST protetto: destinatari reali sostituiti.</span></div></div>
+                <div class="check-row"><span class="badge warn">Manuale</span><div><span class="name">Scheduler email Autovalutazione</span><span class="sub">Nessuno scheduler email automatico attivo.</span></div></div>
+              </div>
+              <div class="feedback ok" id="supabaseFeedback">Verifica TEST/PROD completata.</div>
+              <div class="log-box" id="auditLogBox">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Data</th><th>Utente</th><th>Azione</th><th>Dettaglio</th></tr></thead>
+                    <tbody>
+                      <tr><td data-label="Data">17/05/2026 15:40</td><td data-label="Utente">aprea.maurizio@gmail.com</td><td data-label="Azione">Verifica TEST/PROD</td><td data-label="Dettaglio">Protezione email Autovalutazione OK.</td></tr>
+                      <tr><td data-label="Data">17/05/2026 15:35</td><td data-label="Utente">aprea.maurizio@gmail.com</td><td data-label="Azione">Login</td><td data-label="Dettaglio">Sessione staff attiva.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function showFeedback(id, text, type) {
+      const box = document.getElementById(id);
+      if (!box) return;
+      box.textContent = text;
+      box.className = `feedback show ${type || 'ok'}`;
+    }
+    function validEmail(value) {
+      return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(value || '').trim());
+    }
+    function updateRecipientCount() {
+      const rows = Array.from(document.querySelectorAll('#recipientsBody tr'));
+      const count = rows.length;
+      const recipientCount = document.getElementById('recipientCount');
+      if (recipientCount) recipientCount.textContent = count;
+      document.getElementById('emptyNotificationBox').style.display = count ? 'none' : '';
+    }
+
+    document.getElementById('addRecipientBtn').addEventListener('click', () => {
+      const input = document.getElementById('recipientInput');
+      const email = input.value.trim();
+      if (!validEmail(email)) {
+        showFeedback('notificationFeedback', 'Inserisci un indirizzo email valido.', 'fail');
+        return;
+      }
+      const name = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td data-label="Destinatario"><label class="recipient-line"><input class="recipient-toggle" type="checkbox" checked data-recipient-enabled><span class="recipient-text"><span class="name">${name}</span><span class="sub">${email}</span></span></label></td><td data-label="Stato"><span class="badge ok" data-recipient-status>Attivo</span></td><td data-label="Azioni"><button class="btn danger" type="button" data-remove-recipient>Rimuovi</button></td>`;
+      document.getElementById('recipientsBody').appendChild(tr);
+      input.value = '';
+      updateRecipientCount();
+      showFeedback('notificationFeedback', 'Destinatario aggiunto.', 'ok');
+    });
+    document.getElementById('recipientsBody').addEventListener('click', event => {
+      if (event.target.matches('[data-remove-recipient]')) {
+        event.target.closest('tr').remove();
+        updateRecipientCount();
+        showFeedback('notificationFeedback', 'Destinatario rimosso.', 'warn');
+      }
+      if (event.target.matches('[data-test-email]')) {
+        showFeedback('notificationFeedback', 'Email di test inviata a Maurizio Aprea.', 'ok');
+      }
+    });
+    document.getElementById('recipientsBody').addEventListener('change', event => {
+      if (!event.target.matches('[data-recipient-enabled]')) return;
+      const badge = event.target.closest('tr').querySelector('[data-recipient-status]');
+      const active = event.target.checked;
+      badge.textContent = active ? 'Attivo' : 'Disattivo';
+      badge.className = active ? 'badge ok' : 'badge warn';
+      showFeedback('notificationFeedback', active ? 'Destinatario attivato.' : 'Destinatario disattivato.', active ? 'ok' : 'warn');
+    });
+
+    document.getElementById('newUserBtn').addEventListener('click', () => showFeedback('usersFeedback', 'Nuovo utente pronto: compila email e ruolo nella UI reale.', 'ok'));
+    document.getElementById('usersBody').addEventListener('click', event => {
+      const action = event.target.dataset.userAction;
+      if (!action) return;
+      showFeedback('usersFeedback', action === 'edit' ? 'Modifica utente aperta.' : 'Conferma eliminazione aperta nel prototipo.', action === 'edit' ? 'ok' : 'warn');
+    });
+
+    document.getElementById('refreshProfileBtn').addEventListener('click', () => {
+      document.getElementById('sessionBadge').textContent = 'Profilo aggiornato';
+      showFeedback('sessionFeedback', 'Profilo aggiornato.', 'ok');
+    });
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      document.getElementById('sessionBadge').textContent = 'Uscita simulata';
+      document.getElementById('sessionBadge').className = 'badge warn';
+      showFeedback('sessionFeedback', 'Uscita simulata nel mock-up.', 'warn');
+    });
+
+    document.getElementById('runCheckBtn').addEventListener('click', () => {
+      const now = new Date();
+      document.getElementById('lastCheck').textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      showFeedback('supabaseFeedback', 'Verifica TEST/PROD completata.', 'ok');
+    });
+    document.getElementById('auditLogBtn').addEventListener('click', () => {
+      const box = document.getElementById('auditLogBox');
+      box.classList.toggle('show');
+      showFeedback('supabaseFeedback', box.classList.contains('show') ? 'Registro attivita caricato.' : 'Registro attivita chiuso.', 'ok');
+    });
+  </script>
+</body>
+</html>

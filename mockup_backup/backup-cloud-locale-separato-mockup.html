@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup DATI - backup cloud e locale separati</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1F4788; --secondary: #2E5C8A; --success: #4CAF50;
+      --danger: #f44336; --warning: #ff9800; --light: #f5f5f5;
+      --border: #ddd; --text: #333;
+    }
+    body { font-family: Arial, sans-serif; background: #f8f9fb; color: var(--text); line-height: 1.5; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    header { background: var(--primary); color: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; }
+    header h1 { font-size: 28px; margin-bottom: 4px; }
+    .version { font-size: 12px; opacity: .85; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+    .tab-button { border: 0; background: transparent; padding: 12px 18px; cursor: default; font-weight: bold; color: #666; border-bottom: 3px solid transparent; border-radius: 5px 5px 0 0; margin: 0; }
+    .tab-button.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .section { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    button { border: 0; border-radius: 5px; padding: 10px 16px; font-size: 14px; font-weight: bold; cursor: default; margin: 0 8px 10px 0; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #666; color: white; }
+    .mock-caption { margin: 0 0 12px; color: #667085; font-size: 12px; font-weight: 800; }
+
+    .matchpoint-data-page { display: grid; gap: 16px; }
+    .matchpoint-data-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; align-items: stretch; }
+    .matchpoint-data-box { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-top: 4px solid var(--primary); border-radius: 8px; background: #fff; padding: 15px; box-shadow: 0 1px 4px rgba(31,71,136,.05); }
+    .matchpoint-data-box.routines { border-top-color: #168a53; }
+    .matchpoint-data-box.clients { border-top-color: var(--primary); }
+    .matchpoint-data-box.bookings { border-top-color: #2563eb; }
+    .matchpoint-data-box.history { border-top-color: #7c3aed; }
+    .matchpoint-data-box.backup { border-top-color: #168a53; }
+    .matchpoint-data-box.routines.wide { grid-column: 1 / -1; }
+    .matchpoint-data-box h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: #111827; font-size: 17px; line-height: 1.2; letter-spacing: 0; }
+    .matchpoint-data-step { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 900; }
+    .matchpoint-data-box.routines .matchpoint-data-step { background: #168a53; }
+    .matchpoint-data-box.bookings .matchpoint-data-step { background: #2563eb; }
+    .matchpoint-data-box.history .matchpoint-data-step { background: #7c3aed; }
+    .matchpoint-data-box.backup .matchpoint-data-step { background: #168a53; }
+    .matchpoint-data-copy { margin: 0 0 14px; color: #667085; font-size: 13px; min-height: 38px; }
+    .matchpoint-routine-head { display: grid; grid-template-columns: minmax(240px,.85fr) minmax(320px,1.15fr); gap: 14px; align-items: end; margin-bottom: 12px; }
+    .matchpoint-routine-head .matchpoint-data-copy { min-height: 0; margin: 0; }
+    .matchpoint-routine-schedule { border: 1px solid #e4ebf4; border-radius: 8px; background: #fbfdff; padding: 10px 12px; color: #344054; font-size: 12px; line-height: 1.35; }
+    .matchpoint-routine-schedule strong { display: block; margin-bottom: 5px; color: #111827; font-size: 13px; }
+    .matchpoint-routine-table-wrap { width: 100%; overflow-x: auto; border: 1px solid #e4ebf4; border-radius: 8px; background: #fff; }
+    .matchpoint-routine-table { width: 100%; min-width: 930px; border-collapse: collapse; font-size: 12px; line-height: 1.3; }
+    .matchpoint-routine-table th { background: #f3f6fb; color: #344054; font-weight: 900; text-align: left; padding: 9px 10px; border-bottom: 1px solid #e4ebf4; white-space: nowrap; }
+    .matchpoint-routine-table td { padding: 10px; border-top: 1px solid #e8eef6; vertical-align: middle; color: #344054; }
+    .matchpoint-routine-table tr:first-child td { border-top: 0; }
+    .matchpoint-routine-name { color: #111827; font-weight: 900; white-space: nowrap; }
+    .matchpoint-routine-note { display: block; margin-top: 3px; color: #667085; font-size: 11px; font-weight: 700; white-space: normal; }
+    .matchpoint-routine-result { display: inline-flex; align-items: center; justify-content: center; min-width: 78px; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 900; text-align: center; white-space: nowrap; border: 1px solid #d7e2ef; background: #f6f7f9; color: #475467; }
+    .matchpoint-routine-result.ok { border-color: #b7e4c7; background: #eefaf2; color: #168a53; }
+    .matchpoint-routine-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .matchpoint-routine-action { border: 1px solid #d7e2ef; border-radius: 7px; background: #fff; color: #344054; min-height: 28px; padding: 5px 8px; font-size: 11px; font-weight: 900; cursor: default; margin: 0; }
+    .matchpoint-routine-action.primary { border-color: #b7e4c7; background: #eefaf2; color: #168a53; }
+    .matchpoint-routine-rules { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .matchpoint-routine-rule { border: 1px solid #e4ebf4; border-radius: 999px; background: #fbfdff; color: #475467; padding: 5px 9px; font-size: 11px; font-weight: 800; }
+    .matchpoint-data-accordion { border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(31,71,136,.04); }
+    .matchpoint-data-accordion-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: #fbfdff; padding: 13px 15px; color: #111827; text-align: left; cursor: default; margin: 0; }
+    .matchpoint-data-accordion-title { display: flex; align-items: center; gap: 8px; color: #111827; font-size: 16px; font-weight: 900; line-height: 1.2; }
+    .matchpoint-data-accordion-subtitle { display: block; margin: 4px 0 0 32px; color: #667085; font-size: 12px; font-weight: 700; }
+    .matchpoint-data-chevron { color: #667085; font-size: 18px; font-weight: 900; transform: rotate(90deg); }
+    .matchpoint-data-accordion-panel { display: block; padding: 14px; border-top: 1px solid #e4ebf4; background: #fff; }
+    .matchpoint-data-file { margin-top: auto; display: grid; gap: 8px; }
+    .matchpoint-data-hint { min-height: 33px; color: #667085; font-size: 12px; }
+    .matchpoint-history-metrics { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0 0 12px; border: 1px solid #e4ebf4; border-radius: 8px; background: #fbfdff; padding: 8px 10px; color: #344054; font-size: 12px; }
+    .matchpoint-history-metrics span { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #e8eef6; padding: 7px 0; line-height: 1.25; }
+    .matchpoint-history-metrics span:first-child { border-top: 0; }
+    .matchpoint-history-metrics strong { color: #101828; font-size: 13px; text-align: right; white-space: nowrap; }
+    .matchpoint-data-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+    .matchpoint-data-actions button { width: 100%; min-height: 38px; border-radius: 7px; padding: 9px 11px; font-size: 13px; margin: 0; }
+    .matchpoint-cloud-note { color: #667085; font-size: 11px; line-height: 1.35; }
+    .matchpoint-action-state { min-height: 18px; color: #667085; font-size: 11px; font-weight: 800; }
+    .matchpoint-action-state.done { color: #168a53; }
+    #matchpointCloudBackupActionState.done,
+    #matchpointBackupActionState.done { display: flex; align-items: center; justify-content: center; min-height: 42px; border: 1px solid #b7e4c7; border-radius: 8px; background: #eefaf2; color: #168a53; font-size: 13px; font-weight: 900; line-height: 1.2; text-align: center; padding: 8px 10px; }
+    @media (max-width: 1100px) {
+      .matchpoint-data-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .matchpoint-routine-head { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .container { padding: 12px; }
+      .matchpoint-data-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Padel Match Organizer</h1>
+      <div class="version">Mockup TEST - DATI</div>
+    </header>
+
+    <nav class="tabs" aria-label="Navigazione app">
+      <button class="tab-button">Dashboard</button>
+      <button class="tab-button">Soci</button>
+      <button class="tab-button">Apri Partite</button>
+      <button class="tab-button active">DATI</button>
+      <button class="tab-button">Staff</button>
+    </nav>
+
+    <section class="section matchpoint-data-page">
+      <p class="mock-caption">Vista statica del TEST con accordion aperto per approvare la separazione backup cloud / backup locale.</p>
+
+      <article class="matchpoint-data-box routines wide">
+        <h3><span class="matchpoint-data-step">1</span> Stato routine automatiche</h3>
+        <div class="matchpoint-routine-head">
+          <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
+          <div class="matchpoint-routine-schedule">
+            <strong>Sequenza proposta</strong>
+            Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud dopo il controllo dati.
+          </div>
+        </div>
+        <div class="matchpoint-routine-table-wrap">
+          <table class="matchpoint-routine-table">
+            <thead>
+              <tr>
+                <th>Routine</th>
+                <th>Ultimo dato valido</th>
+                <th>Ultimo tentativo</th>
+                <th>Esito</th>
+                <th>Prossima esecuzione</th>
+                <th>Azione manuale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="matchpoint-routine-name">Clienti Matchpoint</span><span class="matchpoint-routine-note">Anagrafica e contatti</span></td>
+                <td>10/05/2026 - 22:40</td>
+                <td>10/05/2026 - 22:40</td>
+                <td><span class="matchpoint-routine-result ok">OK</span></td>
+                <td>Lun 11/05/2026 - 04:30</td>
+                <td><div class="matchpoint-routine-actions"><button class="matchpoint-routine-action">Dettagli</button><button class="matchpoint-routine-action primary">Aggiorna ora</button></div></td>
+              </tr>
+              <tr>
+                <td><span class="matchpoint-routine-name">Storico Matchpoint</span><span class="matchpoint-routine-note">Prenotazioni ultimi 12 mesi</span></td>
+                <td>10/05/2026 - 22:44</td>
+                <td>10/05/2026 - 22:44</td>
+                <td><span class="matchpoint-routine-result ok">OK</span></td>
+                <td>Lun 11/05/2026 - 05:00</td>
+                <td><div class="matchpoint-routine-actions"><button class="matchpoint-routine-action">Dettagli</button><button class="matchpoint-routine-action primary">Aggiorna ora</button></div></td>
+              </tr>
+              <tr>
+                <td><span class="matchpoint-routine-name">Prenotazioni future</span><span class="matchpoint-routine-note">Occupazioni prossimi 30 giorni</span></td>
+                <td>10/05/2026 - 22:42</td>
+                <td>10/05/2026 - 22:42</td>
+                <td><span class="matchpoint-routine-result ok">OK</span></td>
+                <td>Lun 11/05/2026 - 05:30</td>
+                <td><div class="matchpoint-routine-actions"><button class="matchpoint-routine-action">Dettagli</button><button class="matchpoint-routine-action primary">Aggiorna ora</button></div></td>
+              </tr>
+              <tr>
+                <td><span class="matchpoint-routine-name">Backup cloud</span><span class="matchpoint-routine-note">Backup unico sovrascritto</span></td>
+                <td>10/05/2026 - 22:44</td>
+                <td>10/05/2026 - 22:44</td>
+                <td><span class="matchpoint-routine-result ok">OK</span></td>
+                <td>Lun 11/05/2026 - 05:45</td>
+                <td><div class="matchpoint-routine-actions"><button class="matchpoint-routine-action">Dettagli</button><button class="matchpoint-routine-action primary">Salva ora</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="matchpoint-routine-rules">
+          <span class="matchpoint-routine-rule">Se fallisce, resta attivo l'ultimo dato valido</span>
+          <span class="matchpoint-routine-rule">Nessun Excel Matchpoint viene archiviato</span>
+          <span class="matchpoint-routine-rule">Storico operativo limitato agli ultimi 12 mesi</span>
+        </div>
+      </article>
+
+      <div class="matchpoint-data-accordion">
+        <button type="button" class="matchpoint-data-accordion-toggle">
+          <span>
+            <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti Matchpoint e backup</span>
+            <span class="matchpoint-data-accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud.</span>
+          </span>
+          <span class="matchpoint-data-chevron">›</span>
+        </button>
+        <div class="matchpoint-data-accordion-panel">
+          <div class="matchpoint-data-grid">
+            <article class="matchpoint-data-box clients">
+              <h3><span class="matchpoint-data-step">2</span> Clienti Matchpoint</h3>
+              <p class="matchpoint-data-copy">Aggiorna anagrafica, telefono e dati base dal cloud senza sovrascrivere i dati operativi curati nell'app.</p>
+              <div class="matchpoint-history-metrics">
+                <span>Totale clienti database<strong>949</strong></span>
+                <span>Variazione ultimo import<strong>0</strong></span>
+              </div>
+              <div class="matchpoint-data-file">
+                <div class="matchpoint-data-hint">Avvia login, export e validazione clienti sul server.</div>
+                <div class="matchpoint-data-actions">
+                  <button class="btn-primary">Aggiorna clienti</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="matchpoint-data-box bookings">
+              <h3><span class="matchpoint-data-step">3</span> Prenotazioni future Matchpoint</h3>
+              <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
+              <div class="matchpoint-history-metrics">
+                <span>Periodo<strong>10/05 - 09/06</strong></span>
+                <span>Ore campo prenotate<strong>184</strong></span>
+                <span>Occupazione stimata<strong>58%</strong></span>
+              </div>
+              <div class="matchpoint-data-file">
+                <div class="matchpoint-data-actions">
+                  <button class="btn-primary">Aggiorna prenotazioni</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="matchpoint-data-box history">
+              <h3><span class="matchpoint-data-step">4</span> Storico Matchpoint</h3>
+              <p class="matchpoint-data-copy">Analisi prenotazioni degli ultimi 12 mesi.</p>
+              <div class="matchpoint-history-metrics">
+                <span>Periodo file<strong>Ultimi 12 mesi</strong></span>
+                <span>Nuove righe<strong>0</strong></span>
+                <span>Totale prenotazioni storiche<strong>12.438</strong></span>
+              </div>
+              <div class="matchpoint-data-file">
+                <div class="matchpoint-data-actions">
+                  <button class="btn-primary">Aggiorna storico</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="matchpoint-data-box backup">
+              <h3><span class="matchpoint-data-step">5</span> Backup dati</h3>
+              <p class="matchpoint-data-copy">Salva il backup cloud su Supabase e scarica una copia locale solo quando vuoi tu.</p>
+              <div class="matchpoint-data-file">
+                <div class="matchpoint-data-hint">Da fare prima di import importanti o prima di cancellare dati locali.</div>
+                <div class="matchpoint-data-actions">
+                  <button class="btn-primary">Salva backup cloud</button>
+                  <div id="matchpointCloudBackupActionState" class="matchpoint-action-state done">Ultimo backup cloud: 10/05/2026 - 22:44</div>
+                  <button class="btn-secondary">Ripristina backup cloud</button>
+                  <button class="btn-secondary">Scarica backup locale</button>
+                  <div id="matchpointBackupActionState" class="matchpoint-action-state done">Ultima copia locale: solo su richiesta</div>
+                  <div class="matchpoint-cloud-note">Backup cloud unico sovrascritto su Supabase. Copia locale solo su richiesta.</div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Database soci - Esporta rubrica soci</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --primary-dark:#17366d;
+      --accent:#f0a323;
+      --ink:#172033;
+      --muted:#667085;
+      --line:#dce5f2;
+      --soft-line:#edf1f7;
+      --bg:#f6f8fb;
+      --panel:#ffffff;
+      --green:#2e7d32;
+      --green-soft:#eaf7ef;
+      --amber:#b76e00;
+      --amber-soft:#fff8e6;
+      --red:#b42318;
+      --red-soft:#fff2f0;
+      --blue-soft:#edf4ff;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      background:#eef3f8;
+      color:var(--ink);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    .topbar {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:9px 12px;
+      background:#fff;
+      border-bottom:4px solid var(--accent);
+      box-shadow:0 1px 5px rgba(16,24,40,.08);
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--primary);
+      color:#fff;
+      padding:9px 13px;
+      font-size:17px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .topbar-title {
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .page {
+      width:min(100%,1280px);
+      margin:0 auto;
+      padding:12px;
+    }
+    .mock-note {
+      margin:0 0 10px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+    }
+    .tabs-wrap {
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      padding:10px;
+      margin-bottom:10px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+    }
+    .tab {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      padding:7px 10px;
+      min-height:42px;
+      min-width:0;
+      flex:1 1 150px;
+      text-align:left;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .tab small {
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:850;
+    }
+    .tab.active {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .tab.active small { color:rgba(255,255,255,.88); }
+    .panel {
+      border:1px solid var(--line);
+      border-top:6px solid var(--primary);
+      border-radius:10px;
+      background:var(--panel);
+      box-shadow:0 1px 5px rgba(31,71,136,.1);
+      overflow:hidden;
+    }
+    .panel-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:13px 15px 12px;
+      border-bottom:1px solid var(--soft-line);
+      background:var(--bg);
+    }
+    h1 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:24px;
+      line-height:1.1;
+      letter-spacing:0;
+    }
+    h2 {
+      margin:0;
+      color:var(--primary);
+      font-size:17px;
+      line-height:1.15;
+      letter-spacing:0;
+    }
+    p {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      font-weight:700;
+    }
+    .head-actions,
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:var(--primary);
+      padding:8px 10px;
+      min-height:34px;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.15;
+      cursor:pointer;
+      white-space:normal;
+    }
+    .btn.primary {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .btn.success {
+      background:var(--green-soft);
+      border-color:#bde6cb;
+      color:var(--green);
+    }
+    .btn.warn {
+      background:var(--amber-soft);
+      border-color:#f0d899;
+      color:var(--amber);
+    }
+    .btn:disabled {
+      opacity:.55;
+      cursor:not-allowed;
+      background:#f6f7f9;
+      color:#7a8291;
+    }
+    .view-switch {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      width:min(100%,420px);
+    }
+    .view-btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      padding:8px 10px;
+      min-width:0;
+      text-align:left;
+      font-size:12px;
+      font-weight:900;
+      line-height:1.15;
+      cursor:pointer;
+      overflow-wrap:anywhere;
+    }
+    .view-btn small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:800;
+    }
+    .view-btn.active {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .view-btn.active small { color:rgba(255,255,255,.86); }
+    .content {
+      display:grid;
+      gap:10px;
+      padding:12px;
+    }
+    .summary-wrap,
+    .toolbar,
+    .export-box,
+    .table-card,
+    .note {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .summary-wrap { overflow:auto; }
+    .summary-table {
+      width:100%;
+      min-width:860px;
+      border-collapse:collapse;
+    }
+    .summary-table th,
+    .summary-table td {
+      border-left:1px solid var(--soft-line);
+      padding:8px 10px;
+      text-align:left;
+      vertical-align:middle;
+    }
+    .summary-table th:first-child,
+    .summary-table td:first-child { border-left:0; }
+    .summary-table th {
+      background:#f8fbff;
+      color:var(--muted);
+      font-size:10.5px;
+      font-weight:900;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    .summary-table td {
+      border-top:1px solid var(--soft-line);
+      color:var(--ink);
+    }
+    .summary-value {
+      display:block;
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1;
+    }
+    .summary-value.good { color:var(--green); }
+    .summary-value.warn { color:var(--amber); }
+    .summary-value.danger { color:var(--red); }
+    .summary-note {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:800;
+    }
+    .toolbar {
+      display:grid;
+      grid-template-columns:minmax(190px,1fr) repeat(3,minmax(110px,150px)) auto;
+      gap:8px;
+      align-items:end;
+      padding:10px;
+      overflow:visible;
+    }
+    label {
+      display:block;
+      color:#303846;
+      font-size:12px;
+      font-weight:900;
+      margin-bottom:4px;
+    }
+    input,
+    select {
+      width:100%;
+      min-height:34px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:#fff;
+      color:var(--ink);
+      padding:7px 9px;
+      font-size:13px;
+      font-weight:750;
+    }
+    .data-menu {
+      position:relative;
+      min-width:150px;
+    }
+    .menu-popover {
+      position:absolute;
+      right:0;
+      top:calc(100% + 6px);
+      z-index:10;
+      display:none;
+      width:235px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      box-shadow:0 10px 30px rgba(16,24,40,.16);
+      padding:7px;
+    }
+    .menu-popover.open { display:block; }
+    .menu-item {
+      display:block;
+      width:100%;
+      border:0;
+      border-radius:7px;
+      background:#fff;
+      color:var(--primary);
+      padding:8px 9px;
+      text-align:left;
+      font-size:13px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .menu-item small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:750;
+    }
+    .menu-item:hover { background:var(--blue-soft); }
+    .export-box {
+      border-top:5px solid var(--primary);
+    }
+    .export-head {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      padding:11px 12px;
+      border-bottom:1px solid var(--soft-line);
+      background:#fbfcff;
+    }
+    .export-title {
+      margin:0;
+      color:var(--primary);
+      font-size:21px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .badge-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+      gap:7px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--soft-line);
+    }
+    .badge {
+      border:1px solid var(--line);
+      border-left:5px solid var(--primary);
+      border-radius:8px;
+      background:#fff;
+      padding:8px;
+      min-width:0;
+    }
+    .badge.good { border-left-color:var(--green); background:var(--green-soft); }
+    .badge.warn { border-left-color:var(--amber); background:var(--amber-soft); }
+    .badge.danger { border-left-color:var(--red); background:var(--red-soft); }
+    .badge strong {
+      display:block;
+      color:var(--ink);
+      font-size:22px;
+      line-height:1;
+      font-weight:900;
+    }
+    .badge span {
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:900;
+      line-height:1.15;
+      text-transform:uppercase;
+    }
+    .export-body {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 310px;
+      gap:10px;
+      padding:10px 12px 12px;
+    }
+    .format-box {
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:10px;
+      background:#fff;
+      min-width:0;
+    }
+    .mode-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-bottom:8px;
+    }
+    .mode-card {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      padding:9px;
+      min-width:0;
+    }
+    .mode-card.active {
+      border-color:#bde6cb;
+      background:var(--green-soft);
+      box-shadow:inset 5px 0 0 var(--green);
+    }
+    .mode-card.muted {
+      background:#fbfcff;
+    }
+    .mode-card strong {
+      display:block;
+      color:var(--ink);
+      font-size:14px;
+      line-height:1.15;
+    }
+    .mode-card span {
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.3;
+    }
+    .format-row {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:8px;
+      align-items:center;
+      padding:8px 0;
+      border-top:1px solid var(--soft-line);
+    }
+    .format-row:first-child { border-top:0; padding-top:0; }
+    .format-row:last-child { padding-bottom:0; }
+    .format-title {
+      color:var(--ink);
+      font-size:14px;
+      font-weight:900;
+      line-height:1.2;
+    }
+    .format-copy {
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.3;
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:4px 8px;
+      background:#fff;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      line-height:1.1;
+      white-space:normal;
+    }
+    .pill.good { border-color:#bde6cb; background:var(--green-soft); color:var(--green); }
+    .pill.warn { border-color:#f0d899; background:var(--amber-soft); color:var(--amber); }
+    .pill.danger { border-color:#f2b8b5; background:var(--red-soft); color:var(--red); }
+    .pill-action {
+      cursor:pointer;
+      font-family:inherit;
+    }
+    .pill-action:hover,
+    .pill-action:focus {
+      outline:0;
+      border-color:var(--primary);
+      box-shadow:0 0 0 2px rgba(35,79,145,.16);
+      color:var(--primary);
+    }
+    .info-list {
+      display:grid;
+      gap:8px;
+    }
+    .info-box {
+      border:1px solid var(--line);
+      border-left:5px solid var(--primary);
+      border-radius:8px;
+      padding:8px;
+      background:#fff;
+    }
+    .info-box.warn { border-left-color:var(--amber); background:var(--amber-soft); }
+    .info-box.good { border-left-color:var(--green); background:var(--green-soft); }
+    .info-box strong {
+      display:block;
+      color:var(--ink);
+      font-size:13px;
+      line-height:1.2;
+    }
+    .info-box span {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.3;
+    }
+    .table-grid {
+      display:grid;
+      grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);
+      gap:10px;
+    }
+    .table-card {
+      min-width:0;
+    }
+    .table-head {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      padding:9px 10px;
+      border-bottom:1px solid var(--soft-line);
+      background:#fbfcff;
+    }
+    .table-head h2 {
+      font-size:16px;
+    }
+    .table-wrap {
+      width:100%;
+      overflow:auto;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    th,
+    td {
+      border-top:1px solid var(--soft-line);
+      padding:8px 9px;
+      text-align:left;
+      vertical-align:top;
+      font-size:12px;
+      line-height:1.3;
+    }
+    thead th {
+      border-top:0;
+      background:#f2f5fb;
+      color:#344054;
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    td strong {
+      display:block;
+      color:var(--ink);
+      font-size:13px;
+      line-height:1.2;
+    }
+    td small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:750;
+      line-height:1.25;
+    }
+    .note {
+      border-left:5px solid var(--primary);
+      padding:9px 10px;
+      color:var(--primary);
+      background:var(--blue-soft);
+      font-weight:900;
+      line-height:1.3;
+    }
+    .privacy-note {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.35;
+    }
+    .empty-state {
+      display:none;
+      padding:18px 12px;
+      border:1px dashed var(--line);
+      border-radius:8px;
+      color:var(--muted);
+      text-align:center;
+      font-size:14px;
+      font-weight:900;
+      background:#fbfcff;
+    }
+    .success-banner {
+      display:none;
+      border:1px solid #bde6cb;
+      border-left:5px solid var(--green);
+      border-radius:8px;
+      background:var(--green-soft);
+      color:var(--green);
+      padding:9px 10px;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.3;
+    }
+    .show-empty .normal-content { display:none; }
+    .show-empty .empty-state { display:block; }
+    .show-success .success-banner { display:block; }
+    .hidden { display:none !important; }
+    .member-overlay {
+      position:fixed;
+      inset:0;
+      z-index:40;
+      display:none;
+      align-items:flex-start;
+      justify-content:center;
+      padding:28px 14px;
+      background:rgba(15,23,42,.38);
+      overflow:auto;
+    }
+    .member-overlay.open { display:flex; }
+    .member-card {
+      width:min(100%,720px);
+      border:2px solid var(--primary);
+      border-top:7px solid var(--primary);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 18px 50px rgba(16,24,40,.24);
+      overflow:hidden;
+    }
+    .member-card-head {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      padding:12px 14px;
+      border-bottom:1px solid var(--soft-line);
+      background:#fbfcff;
+    }
+    .member-card-title {
+      margin:0;
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.12;
+    }
+    .member-card-subtitle {
+      margin-top:3px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:850;
+    }
+    .member-card-body {
+      display:grid;
+      gap:10px;
+      padding:12px 14px 14px;
+    }
+    .member-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:9px;
+    }
+    .member-field {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      padding:9px 10px;
+      min-width:0;
+    }
+    .member-field span {
+      display:block;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      line-height:1.15;
+    }
+    .member-field strong {
+      display:block;
+      margin-top:4px;
+      color:var(--ink);
+      font-size:15px;
+      line-height:1.2;
+      overflow-wrap:anywhere;
+    }
+    .member-actions {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      gap:7px;
+      padding-top:10px;
+      border-top:1px solid var(--soft-line);
+    }
+    @media (max-width:980px) {
+      .panel-head,
+      .export-head {
+        display:block;
+      }
+      .view-switch,
+      .head-actions {
+        margin-top:9px;
+        width:100%;
+      }
+      .toolbar {
+        grid-template-columns:1fr 1fr;
+      }
+      .export-body,
+      .table-grid {
+        grid-template-columns:1fr;
+      }
+      .badge-grid {
+        grid-template-columns:repeat(3,minmax(0,1fr));
+      }
+    }
+    @media (max-width:620px) {
+      .page { padding:10px; }
+      .topbar-title { font-size:20px; }
+      .toolbar,
+      .badge-grid,
+      .mode-grid,
+      .view-switch {
+        grid-template-columns:1fr;
+      }
+      .head-actions,
+      .actions {
+        justify-content:flex-start;
+      }
+      .btn,
+      h1 { font-size:21px; }
+      .export-title { font-size:19px; }
+      .member-grid {
+        grid-template-columns:1fr;
+      }
+      .member-card-head {
+        display:block;
+      }
+      .member-card-head .actions {
+        margin-top:8px;
+      }
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display:block;
+        width:100% !important;
+      }
+      thead { display:none; }
+      tbody tr {
+        border-top:1px solid var(--soft-line);
+        padding:8px;
+      }
+      tbody tr:first-child { border-top:0; }
+      td {
+        border-top:0;
+        padding:5px 0;
+      }
+      td::before {
+        content:attr(data-label);
+        display:block;
+        color:var(--muted);
+        font-size:10.5px;
+        font-weight:900;
+        text-transform:uppercase;
+        margin-bottom:2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn" type="button">Menu</button>
+    <div class="topbar-title">Anagrafica soci</div>
+  </header>
+
+  <main class="page view-b">
+    <p class="mock-note">Mock-up separato. Riferimento TEST v5.431. Nessun collegamento a Google, Supabase, WhatsApp, Matchpoint o dati reali.</p>
+
+    <nav class="tabs-wrap" aria-label="Sottosezioni Anagrafica soci">
+      <button class="tab active" type="button">Database soci<small>Schede e contatti</small></button>
+      <button class="tab" type="button">Gruppi soci<small>Liste operative</small></button>
+    </nav>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Database soci</h1>
+          <p>Schede soci, ricerca, filtri e dati di contatto.</p>
+        </div>
+        <div class="view-switch" aria-label="Alternative grafiche">
+          <button class="view-btn active" type="button" data-view="a">Opzione A<small>Bottone in testata</small></button>
+          <button class="view-btn" type="button" data-view="b">Opzione B<small>Menu Azioni dati</small></button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="summary-wrap" aria-label="Indicatori database soci">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Soci attivi</th>
+                <th>Totale soci</th>
+                <th>Livello 0.5</th>
+                <th>Senza email</th>
+                <th>Senza telefono</th>
+                <th>Maschi</th>
+                <th>Femmine</th>
+                <th>Sesso da completare</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="summary-value good">946</span><span class="summary-note">utilizzabili nei flussi</span></td>
+                <td><span class="summary-value">969</span><span class="summary-note">archivio soci</span></td>
+                <td><span class="summary-value warn">442</span><span class="summary-note">da autovalutare</span></td>
+                <td><span class="summary-value danger">17</span><span class="summary-note">email da completare</span></td>
+                <td><span class="summary-value danger">17</span><span class="summary-note">telefono mancante</span></td>
+                <td><span class="summary-value">697</span><span class="summary-note">soci attivi</span></td>
+                <td><span class="summary-value">249</span><span class="summary-note">soci attivi</span></td>
+                <td><span class="summary-value">0</span><span class="summary-note">dato mancante</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="toolbar" aria-label="Barra ricerca Database soci">
+          <div>
+            <label>Cerca socio</label>
+            <input value="" placeholder="Nome, cognome, email o telefono">
+          </div>
+          <div>
+            <label>Stato</label>
+            <select>
+              <option>Tutti</option>
+              <option>Solo attivi</option>
+              <option>Inattivi</option>
+            </select>
+          </div>
+          <div>
+            <label>Attenzione dati</label>
+            <select>
+              <option>Tutte</option>
+              <option>Senza telefono</option>
+              <option>Senza email</option>
+            </select>
+          </div>
+          <div>
+            <label>Livello</label>
+            <select>
+              <option>Tutti</option>
+              <option>0.5</option>
+              <option>2.0 - 4.0</option>
+            </select>
+          </div>
+          <div class="head-actions">
+            <button class="btn primary" type="button">+ Nuovo socio</button>
+            <button id="directExportBtn" class="btn success" type="button" onclick="openExport()">Esporta rubrica soci</button>
+            <div id="dataMenu" class="data-menu">
+              <button class="btn" type="button" onclick="toggleMenu()">Azioni dati</button>
+              <div id="menuPopover" class="menu-popover open">
+                <button class="menu-item" type="button" onclick="openExport()">Esporta rubrica soci<small>Crea CSV Google</small></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section id="exportBox" class="export-box" aria-label="Esporta rubrica soci">
+          <div class="export-head">
+            <div>
+              <div class="export-title">Esporta rubrica soci</div>
+              <p>Crea un file per Google Contatti e WhatsApp.</p>
+              <p>Ultimo export: 15/05/2026 20:10. La web app ricorda gli ID soci gia esportati.</p>
+            </div>
+            <div class="actions">
+              <button class="btn warn" type="button">Riesporta tutti</button>
+              <button class="btn" type="button" onclick="closeExport()">Chiudi</button>
+            </div>
+          </div>
+
+          <div class="badge-grid normal-content" aria-label="Riepilogo esportazione">
+            <div class="badge good"><strong>12</strong><span>Nuovi da Matchpoint</span></div>
+            <div class="badge"><strong>184</strong><span>Gia esportati</span></div>
+            <div class="badge warn"><strong>3</strong><span>Telefono cambiato</span></div>
+            <div class="badge"><strong>5</strong><span>Senza email</span></div>
+            <div class="badge danger"><strong>17</strong><span>Senza telefono</span></div>
+            <div class="badge warn"><strong>6</strong><span>Da verificare</span></div>
+            <div class="badge warn"><strong>4</strong><span>Duplicati</span></div>
+            <div class="badge"><strong>23</strong><span>Inattivi esclusi</span></div>
+          </div>
+
+          <div class="export-body">
+            <div>
+              <div id="successBanner" class="success-banner">File pronto: rubrica-soci-padel-village-nuovi.csv con 12 nuovi contatti, inclusi 5 senza email ma con telefono valido. Import manuale in Google Contatti.</div>
+              <div class="empty-state">
+                Nessun contatto esportabile.<br>
+                Correggi i telefoni validi prima di scaricare la rubrica.
+                <div class="actions" style="justify-content:center; margin-top:10px;">
+                  <button class="btn" type="button" disabled>Scarica CSV Google</button>
+                </div>
+              </div>
+
+              <div class="normal-content">
+                <div class="mode-grid" aria-label="Modalita export rubrica">
+                  <div class="mode-card muted">
+                    <strong>Prima esportazione</strong>
+                    <span>Scarica tutti i contatti validi una sola volta, quando la rubrica Google e vuota o non e mai stata importata.</span>
+                  </div>
+                  <div class="mode-card active">
+                    <strong>Aggiornamento rubrica</strong>
+                    <span>Dopo il primo export, scarica solo i nuovi soci aggiunti dall'ultimo import Matchpoint e non ancora esportati.</span>
+                  </div>
+                </div>
+                <div class="format-box">
+                  <div class="format-row">
+                    <div>
+                      <div class="format-title">CSV Google</div>
+                      <div class="format-copy">Formato per import manuale in Google Contatti. In questa modalita contiene solo i nuovi soci da aggiungere alla rubrica, con nome, cognome, telefono, email se presente e ID socio PMO. Il file puo includere contatti senza email, purche abbiano un telefono valido.</div>
+                    </div>
+                    <button class="btn primary" type="button" onclick="setState('success')">Scarica CSV Google</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="info-list normal-content">
+              <div class="info-box">
+                <strong>Import manuale</strong>
+                <span>Il file non aggiorna Google automaticamente. Dopo il download, importalo manualmente in Google Contatti con etichetta "Padel Village".</span>
+              </div>
+              <div class="info-box good">
+                <strong>Memoria export</strong>
+                <span>La web app registra data/ora e ID soci esportati, cosi gli export successivi propongono solo i nuovi soci.</span>
+              </div>
+              <div class="info-box warn">
+                <strong>Telefono cambiato</strong>
+                <span>Se un socio gia esportato cambia numero, non torna tra i nuovi: viene segnalato come da controllare.</span>
+              </div>
+              <div class="info-box">
+                <strong>Email mancante</strong>
+                <span>Non blocca l'export: il socio viene esportato se ha un telefono valido, ma resta segnalato come dato da completare.</span>
+              </div>
+              <div class="info-box good">
+                <strong>Export successivi</strong>
+                <span>Dopo il primo export completo, la web app propone solo i soci nuovi importati da Matchpoint e non ancora esportati.</span>
+              </div>
+              <div class="info-box warn">
+                <strong>Non invia WhatsApp</strong>
+                <span>La funzione serve solo a preparare la rubrica, cosi WhatsApp mostra nome e cognome al posto del numero.</span>
+              </div>
+              <div class="info-box good">
+                <strong>Privacy</strong>
+                <span>Il file contiene solo dati di contatto necessari alla rubrica.</span>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <div class="table-grid normal-content">
+          <section class="table-card">
+            <div class="table-head">
+              <h2>Anteprima nuovi contatti da esportare</h2>
+              <span class="pill good">Prime 8 di 12</span>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="Anteprima contatti esportabili">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cognome</th>
+                    <th>Telefono</th>
+                    <th>Email</th>
+                    <th>Nota</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="Nome"><strong>Marco</strong></td>
+                    <td data-label="Cognome">Bianchi</td>
+                    <td data-label="Telefono">+39 333 1234567</td>
+                    <td data-label="Email">marco.bianchi@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000142</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Laura</strong></td>
+                    <td data-label="Cognome">Conti</td>
+                    <td data-label="Telefono">+39 347 8890012</td>
+                    <td data-label="Email">laura.conti@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000948</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Andrea</strong></td>
+                    <td data-label="Cognome">Rizzo</td>
+                    <td data-label="Telefono">+39 339 5544332</td>
+                    <td data-label="Email">andrea.rizzo@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000512</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Giulia</strong></td>
+                    <td data-label="Cognome">Ferri</td>
+                    <td data-label="Telefono">+39 392 4411220</td>
+                    <td data-label="Email"><span class="pill">Email mancante</span><small>Esportato se telefono valido</small></td>
+                    <td data-label="Nota">ID socio PMO-000633</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Paolo</strong></td>
+                    <td data-label="Cognome">Greco</td>
+                    <td data-label="Telefono">+39 328 9012345</td>
+                    <td data-label="Email">paolo.greco@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000711</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Alberto</strong></td>
+                    <td data-label="Cognome">Ceschin</td>
+                    <td data-label="Telefono">+39 331 7788990</td>
+                    <td data-label="Email">alberto.ceschin@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000956</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Abdula</strong></td>
+                    <td data-label="Cognome">Kalus</td>
+                    <td data-label="Telefono">+39 351 2223344</td>
+                    <td data-label="Email">abdula.kalus@example.it</td>
+                    <td data-label="Nota">ID socio PMO-000502</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Nome"><strong>Adem</strong></td>
+                    <td data-label="Cognome">Ismaili</td>
+                    <td data-label="Telefono">+39 350 8877665</td>
+                    <td data-label="Email"><span class="pill">Email mancante</span><small>Esportato se telefono valido</small></td>
+                    <td data-label="Nota">ID socio PMO-000503</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="table-card">
+            <div class="table-head">
+              <h2>Da correggere</h2>
+              <button class="btn warn" type="button">Vedi anomalie</button>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="Anomalie export rubrica">
+                <thead>
+                  <tr>
+                    <th>Socio</th>
+                    <th>Problema</th>
+                    <th>Esito</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="Socio"><strong>Silvia Moretti</strong><small>PMO-000812</small></td>
+                    <td data-label="Problema"><span class="pill danger">Senza telefono</span></td>
+                    <td data-label="Esito">Esclusa dal CSV</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Martina Villa</strong><small>PMO-000734</small></td>
+                    <td data-label="Problema"><button class="pill pill-action" type="button" onclick="openMemberCard('Martina Villa', 'PMO-000734', '+39 347 1188200')">Email mancante</button><small>Telefono valido presente</small></td>
+                    <td data-label="Esito">Esportata, dato da completare</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Roberto Sala</strong><small>PMO-000846</small></td>
+                    <td data-label="Problema"><span class="pill danger">Senza telefono</span><small>Email mancante</small></td>
+                    <td data-label="Esito">Escluso senza telefono</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Davide Romano</strong><small>PMO-000228</small></td>
+                    <td data-label="Problema"><span class="pill warn">Da verificare</span><small>Numero troppo corto</small></td>
+                    <td data-label="Esito">Escluso dal CSV</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Francesca Neri</strong><small>PMO-000305</small></td>
+                    <td data-label="Problema"><span class="pill warn">Duplicato</span><small>Stesso telefono di Luca Neri</small></td>
+                    <td data-label="Esito">Non esportata automaticamente</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Simone Galli</strong><small>PMO-000620</small></td>
+                    <td data-label="Problema"><span class="pill warn">Telefono cambiato</span><small>Gia esportato con altro numero</small></td>
+                    <td data-label="Esito">Da controllare</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Enrico Costa</strong><small>PMO-000417</small></td>
+                    <td data-label="Problema"><span class="pill">Inattivo</span></td>
+                    <td data-label="Esito">Escluso</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="note normal-content">Non modifica Google Contatti e non invia messaggi WhatsApp. Senza telefono esclude dal CSV; email mancante non blocca se il telefono e valido. I duplicati e i telefoni cambiati sono solo evidenziati: lo staff decide cosa correggere nella scheda socio. Usa "Riesporta tutti" solo se devi ricreare da zero la rubrica.</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="memberOverlay" class="member-overlay" aria-hidden="true">
+    <section class="member-card" role="dialog" aria-modal="true" aria-labelledby="memberCardTitle">
+      <div class="member-card-head">
+        <div>
+          <div id="memberCardTitle" class="member-card-title">Scheda socio</div>
+          <div id="memberCardSubtitle" class="member-card-subtitle">Email da completare</div>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" onclick="closeMemberCard()">Chiudi</button>
+        </div>
+      </div>
+      <div class="member-card-body">
+        <div class="member-grid">
+          <div class="member-field">
+            <span>Socio</span>
+            <strong id="memberCardName">Martina Villa</strong>
+          </div>
+          <div class="member-field">
+            <span>ID socio</span>
+            <strong id="memberCardId">PMO-000734</strong>
+          </div>
+          <div class="member-field">
+            <span>Telefono</span>
+            <strong id="memberCardPhone">+39 347 1188200</strong>
+          </div>
+          <div class="member-field">
+            <span>Email</span>
+            <strong><span class="pill">Email mancante</span></strong>
+          </div>
+        </div>
+        <div class="note">Da questa scheda lo staff puo usare WhatsApp manualmente per recuperare la mail, poi salvare l'email nella scheda socio.</div>
+        <div class="member-actions">
+          <button class="btn success" type="button">Apri WhatsApp</button>
+          <button class="btn primary" type="button">Salva scheda</button>
+          <button class="btn" type="button" onclick="closeMemberCard()">Annulla</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const page = document.querySelector('.page');
+    const exportBox = document.getElementById('exportBox');
+    const menuPopover = document.getElementById('menuPopover');
+    const memberOverlay = document.getElementById('memberOverlay');
+
+    function setView(view) {
+      page.classList.toggle('view-a', view === 'a');
+      page.classList.toggle('view-b', view === 'b');
+      document.getElementById('directExportBtn').classList.toggle('hidden', view !== 'a');
+      document.getElementById('dataMenu').classList.toggle('hidden', view === 'a');
+      document.querySelectorAll('.view-btn').forEach(button => {
+        button.classList.toggle('active', button.dataset.view === view);
+      });
+    }
+
+    function toggleMenu() {
+      menuPopover.classList.toggle('open');
+    }
+
+    function openExport() {
+      exportBox.classList.remove('hidden');
+      exportBox.scrollIntoView({ block:'nearest', inline:'nearest' });
+    }
+
+    function closeExport() {
+      exportBox.classList.add('hidden');
+    }
+
+    function setState(state) {
+      exportBox.classList.toggle('show-empty', state === 'empty');
+      exportBox.classList.toggle('show-success', state === 'success');
+    }
+
+    function openMemberCard(name, id, phone) {
+      document.getElementById('memberCardName').textContent = name;
+      document.getElementById('memberCardId').textContent = id;
+      document.getElementById('memberCardPhone').textContent = phone;
+      document.getElementById('memberCardSubtitle').textContent = `${id} - email da completare`;
+      memberOverlay.classList.add('open');
+      memberOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeMemberCard() {
+      memberOverlay.classList.remove('open');
+      memberOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    memberOverlay.addEventListener('click', event => {
+      if (event.target === memberOverlay) closeMemberCard();
+    });
+
+    document.querySelectorAll('.view-btn').forEach(button => {
+      button.addEventListener('click', () => setView(button.dataset.view));
+    });
+    setView('a');
+  </script>
+</body>
+</html>

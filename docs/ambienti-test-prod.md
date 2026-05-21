@@ -8,6 +8,18 @@ Per ogni passaggio TEST -> PROD leggere anche:
 
 `docs/procedura-deploy-test-prod.md`
 
+## Nomenclatura ambienti Admin
+
+Per ridurre ambiguita nei prompt e nelle chat, gli ambienti Admin vanno indicati con questi nomi:
+
+| Nome umano | Branch | Uso |
+|---|---|---|
+| Admin PROD | `main` | produzione stabile usata dallo staff |
+| Admin TEST | `test-preview` | TEST pubblicato, visibile e validabile |
+| Admin LAVORO | `test/accessi-staff-guidati` | branch di lavoro della chat Sviluppo TEST Admin |
+
+I branch tecnici non vanno rinominati. Cambia solo l'etichetta usata nei documenti e nei prompt.
+
 ## URL
 
 - PROD: https://padelvillage.github.io/padel-match-organizer/
@@ -76,6 +88,31 @@ Project ref:
 - PROD: `qqbfphyslczzkxoncgex`
 - TEST: `cudiqnrrlbyqryrtaprd`
 
+## Hetzner Cloud (Headless Matchpoint Worker)
+
+A partire dal **2026-05-21**, il bot Playwright per l'automazione del browser Matchpoint è ospitato su un'istanza dedicata Hetzner Cloud:
+* **Nome Host**: `padel-matchpoint-bot-prod`
+* **Tipo Server**: `cpx22` (Intel Cost-Optimized, 2 vCPU, 4 GB RAM, 80 GB SSD)
+* **IP Pubblico**: `91.99.131.243`
+* **Porta Worker**: `8787`
+* **Sicurezza**:
+  * Autenticazione password SSH **totalmente disabilitata** (`PasswordAuthentication no`). Accesso consentito solo tramite chiave privata autorizzata (`pmo_deploy_key`).
+  * Firewall attivo (**UFW**): Aperte solo le porte 22 (SSH) e 8787 (Worker API).
+* **Integrazione Supabase PROD**:
+  * Configurato nei Secret del progetto Supabase PROD (`qqbfphyslczzkxoncgex`):
+    * `MATCHPOINT_BROWSER_WORKER_URL` = `http://91.99.131.243:8787`
+    * `MATCHPOINT_BROWSER_WORKER_API_KEY` = `pmo_wk_auth_key_prod_8b31a547d2c9`
+
+Stato operativo scheduler PROD verificato e riattivato il 2026-05-21 11:00:
+
+- dopo il successo dei test manuali sulla nuova infrastruttura Hetzner VM worker (sincronizzazione dei Clienti alle 10:55 e dello Storico alle 10:57), su richiesta esplicita di Maurizio, gli scheduler automatici su Supabase PROD sono stati riattivati impostando `active=true` tramite SQL;
+- `pmo-data-routines-dispatcher-prod`: presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_data_routines();`, `active=true`;
+- `pmo-assessment-followup-dispatcher-prod`: presente, schedule `*/5 * * * *`, comando `select public.pmo_dispatch_assessment_followup_email_prod();`, `active=true`;
+- Supabase TEST `cron.job` verificato vuoto;
+- Edge Function PROD restano presenti e non modificate: `matchpoint-clients-sync`, `matchpoint-history-sync`, `matchpoint-bookings-sync`, `assessment-email-send`, `pmo-cloud-backup`;
+- nessun deploy app, nessun deploy Edge Function, nessuna modifica a segreti, dati reali, Matchpoint reale, Gmail o WhatsApp.
+
+
 Stato PROD scheduler email Autovalutazione verificato il 2026-05-19 19:22:
 
 - app PROD pubblicata: v5.503 su branch `main`;
@@ -95,6 +132,16 @@ Nota Gmail Autovalutazione 2026-05-20:
 - da TEST v5.505 viene preparata l'azione non inviante `gmail-check` per verificare il refresh token Gmail prima degli invii;
 - eventuali nuovi token Gmail devono essere gestiti solo tramite procedura sicura Supabase/Promuovi PROD Admin, mai in browser, localStorage, documenti, repository o chat;
 - TEST resta senza cron email automatici.
+
+Stato promozione PROD diagnostica Gmail verificato il 2026-05-20 16:54:
+
+- app PROD pubblicata: v5.505 su branch `main`;
+- branch `main` aggiornato a `39c20ca` con pacchetto selettivo senza `Import livelli Excel`;
+- `assessment-email-send` PROD e' `ACTIVE`, versione `24`, `verify_jwt=true`;
+- `gmail-check` e' disponibile come azione non inviante;
+- `cron.job` PROD contiene solo `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod`, entrambi attivi `*/5 * * * *`;
+- TEST `cron.job` resta vuoto;
+- nessun SQL, scheduler, segreto, dato reale, Matchpoint reale, invio email reale o WhatsApp automatico modificato.
 
 Stato Edge Function PROD verificato il 2026-05-16 08:47:
 

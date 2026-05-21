@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Autovalutazione - Follow-up email</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --accent:#f0a323;
+      --ink:#172033;
+      --muted:#667085;
+      --line:#dce5f2;
+      --soft:#f6f9fd;
+      --bg:#f3f6fa;
+      --green:#267a37;
+      --green-soft:#eaf7ef;
+      --blue:#2563a8;
+      --blue-soft:#edf4ff;
+      --amber:#a66700;
+      --amber-soft:#fff8e6;
+      --red:#b42318;
+      --red-soft:#fff2f0;
+      --purple:#5b3db8;
+      --purple-soft:#f1edff;
+    }
+    * { box-sizing:border-box; }
+    html, body { min-width:0; }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    .topbar {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:9px 12px;
+      background:#fff;
+      border-bottom:4px solid var(--accent);
+      box-shadow:0 1px 5px rgba(16,24,40,.08);
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--primary);
+      color:#fff;
+      padding:9px 13px;
+      font-size:17px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .topbar-title {
+      color:var(--primary);
+      font-size:21px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .page {
+      width:min(100%,1360px);
+      margin:0 auto;
+      padding:12px;
+    }
+    .tabs-wrap {
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      padding:7px;
+      margin-bottom:10px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      box-shadow:0 1px 5px rgba(31,71,136,.06);
+    }
+    .tab {
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:#fff;
+      color:#344054;
+      padding:6px 8px;
+      min-height:40px;
+      min-width:0;
+      flex:0 1 136px;
+      text-align:left;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .tab small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:850;
+    }
+    .tab.active {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .tab.active small { color:rgba(255,255,255,.88); }
+    .panel {
+      border:1px solid var(--line);
+      border-top:6px solid var(--primary);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 5px rgba(31,71,136,.1);
+      overflow:hidden;
+    }
+    .panel-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 14px;
+      border-bottom:1px solid var(--line);
+      background:#fbfdff;
+    }
+    h1, h2, p { margin-top:0; }
+    h1 {
+      margin:0 0 2px;
+      color:var(--primary);
+      font-size:21px;
+      line-height:1.1;
+    }
+    h2 {
+      margin:0;
+      color:var(--primary);
+      font-size:17px;
+      line-height:1.15;
+    }
+    p {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      font-weight:700;
+    }
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:var(--primary);
+      padding:7px 9px;
+      min-height:32px;
+      font-size:12px;
+      font-weight:900;
+      line-height:1.15;
+      cursor:pointer;
+      white-space:normal;
+    }
+    .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .btn.success { background:var(--green-soft); border-color:#bde6cb; color:var(--green); }
+    .btn.warn { background:var(--amber-soft); border-color:#f0d899; color:var(--amber); }
+    .btn.neutral { background:#f7f9fc; color:#344054; }
+    .btn.test { background:var(--purple-soft); border-color:#d8ccff; color:var(--purple); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; background:#f6f7f9; color:#7a8291; }
+    .content {
+      display:grid;
+      gap:10px;
+      padding:12px;
+    }
+    .search-row {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fbfdff;
+      padding:9px 10px;
+    }
+    .search-row input {
+      flex:1 1 260px;
+      min-width:0;
+      height:36px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:var(--ink);
+      padding:0 10px;
+      font-size:13px;
+      font-weight:800;
+      outline:none;
+    }
+    .filters {
+      display:grid;
+      grid-template-columns:repeat(9,minmax(95px,1fr));
+      gap:7px;
+    }
+    .filter {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      padding:8px 9px;
+      min-height:52px;
+      color:#344054;
+      font-weight:900;
+      text-align:left;
+      box-shadow:0 1px 3px rgba(16,24,40,.03);
+    }
+    .filter.active {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .filter small {
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:900;
+    }
+    .filter.active small { color:rgba(255,255,255,.88); }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      border:1px solid var(--line);
+      padding:5px 8px;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.1;
+      white-space:nowrap;
+    }
+    .pill.ok { background:var(--green-soft); color:var(--green); border-color:#bde6cb; }
+    .pill.info { background:var(--blue-soft); color:var(--blue); border-color:#c7dcff; }
+    .pill.warn { background:var(--amber-soft); color:var(--amber); border-color:#f0d899; }
+    .pill.danger { background:var(--red-soft); color:var(--red); border-color:#f0b9b3; }
+    .pill.test { background:var(--purple-soft); color:var(--purple); border-color:#d8ccff; }
+    .process-table {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .process-header,
+    .process-row {
+      display:grid;
+      grid-template-columns:minmax(170px,1.35fr) 118px 138px 118px minmax(150px,1fr) 136px 132px minmax(148px,.9fr);
+      align-items:stretch;
+    }
+    .process-header {
+      background:#f2f5fa;
+      color:#253858;
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      line-height:1.15;
+    }
+    .process-header > div,
+    .process-row > div {
+      padding:8px;
+      border-bottom:1px solid var(--line);
+      min-width:0;
+      overflow-wrap:anywhere;
+    }
+    .process-row {
+      color:#303030;
+      font-size:12px;
+      font-weight:780;
+      line-height:1.3;
+    }
+    .process-row:nth-child(even) { background:#fcfdff; }
+    .member-name {
+      color:#111827;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.2;
+    }
+    .member-meta {
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:850;
+      line-height:1.25;
+    }
+    .step-strong {
+      color:var(--primary);
+      font-weight:900;
+    }
+    .actions-cell {
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      align-content:flex-start;
+    }
+    @media (max-width: 1180px) {
+      .filters { grid-template-columns:repeat(3,minmax(0,1fr)); }
+      .process-header { display:none; }
+      .process-row {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        border-bottom:1px solid var(--line);
+      }
+      .process-row > div {
+        border-bottom:0;
+        padding:7px 8px;
+      }
+      .process-row > div::before {
+        content:attr(data-label);
+        display:block;
+        color:var(--muted);
+        font-size:10px;
+        font-weight:900;
+        text-transform:uppercase;
+        margin-bottom:2px;
+      }
+    }
+    @media (max-width: 760px) {
+      .panel-head {
+        align-items:stretch;
+        flex-direction:column;
+      }
+      .actions { justify-content:flex-start; }
+      .filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 520px) {
+      .page { padding:8px; }
+      .topbar-title { font-size:18px; }
+      h1 { font-size:19px; }
+      .tab { flex:1 1 130px; }
+      .filters,
+      .process-row {
+        grid-template-columns:1fr;
+      }
+      .search-row { flex-direction:column; align-items:stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="menu-btn">☰ Menu</button>
+    <div class="topbar-title">Autovalutazione</div>
+  </div>
+
+  <main class="page">
+    <div class="tabs-wrap" aria-label="Sottosezioni Autovalutazione">
+      <button class="tab active"><span>Cruscotto mattutino</span><small>Processo utenti</small></button>
+      <button class="tab"><span>Storico</span><small>1 chiusi</small></button>
+      <button class="tab"><span>Testi</span><small>email e WhatsApp</small></button>
+      <button class="tab"><span>Scheda pubblica</span><small>anteprima</small></button>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Cruscotto mattutino</h1>
+          <p>Processo giornaliero Autovalutazione con follow-up email dopo il primo invio manuale.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary">Prepara lotto</button>
+          <button class="btn success">Invia selezionati</button>
+          <button class="btn neutral">Invia tutti</button>
+          <button class="btn warn">Rigenera lotto</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="search-row">
+          <input type="text" value="" placeholder="Nome, cognome, email, telefono o ID socio">
+          <button class="btn success">Cerca</button>
+          <button class="btn neutral">Pulisci</button>
+        </div>
+
+        <div class="filters">
+          <button class="filter active">Tutti<small>442 soci</small></button>
+          <button class="filter">Oggi<small>10 oggi</small></button>
+          <button class="filter">Da inviare<small>419 soci</small></button>
+          <button class="filter">In attesa<small>22 soci</small></button>
+          <button class="filter">Problemi<small>1 da risolvere</small></button>
+          <button class="filter">Risposte<small>2 da leggere</small></button>
+          <button class="filter">Da controllare<small>3 livelli</small></button>
+          <button class="filter">Matchpoint<small>0 soci</small></button>
+          <button class="filter">Completati<small>12 chiusi</small></button>
+        </div>
+
+        <div class="process-table" role="table" aria-label="Processo utenti follow-up email">
+          <div class="process-header" role="row">
+            <div>Socio</div>
+            <div>Routine</div>
+            <div>Fase</div>
+            <div>Ultimo invio</div>
+            <div>Prossimo step</div>
+            <div>Prossima finestra</div>
+            <div>Stop / Alert</div>
+            <div>Azioni</div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Prova Utente (mauri)</div>
+              <div class="member-meta">PMO-000956 · aprea.maurizio@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill test">Azione test</span></div>
+            <div data-label="Fase">Prima email inviata</div>
+            <div data-label="Ultimo invio">16/05/2026<br>09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Test richiamo manuale</span></div>
+            <div data-label="Prossima finestra">Disponibile ora</div>
+            <div data-label="Stop / Alert">Nessuno stop</div>
+            <div data-label="Azioni" class="actions-cell">
+              <button class="btn test">Invia seconda email</button>
+              <button class="btn test">Invia terza email</button>
+              <button class="btn neutral">Dettaglio</button>
+            </div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Marco Bianchi</div>
+              <div class="member-meta">PMO-000214 · marco.bianchi@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill info">Follow-up</span></div>
+            <div data-label="Fase">In attesa finestra richiamo</div>
+            <div data-label="Ultimo invio">Lun 11/05<br>18:00</div>
+            <div data-label="Prossimo step"><span class="step-strong">Seconda email programmata</span></div>
+            <div data-label="Prossima finestra">Gio 14/05<br>09:30</div>
+            <div data-label="Stop / Alert">48 ore reali non scadute mer 09:30</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Laura Conti</div>
+              <div class="member-meta">PMO-000318 · laura.conti@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill info">Follow-up</span></div>
+            <div data-label="Fase">Seconda email programmata</div>
+            <div data-label="Ultimo invio">Mar 12/05<br>09:20</div>
+            <div data-label="Prossimo step"><span class="step-strong">Invio automatico seconda email</span></div>
+            <div data-label="Prossima finestra">Gio 14/05<br>09:30</div>
+            <div data-label="Stop / Alert">Controllo stop 09:00</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Andrea Rizzo</div>
+              <div class="member-meta">PMO-000447 · andrea.rizzo@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill info">Follow-up</span></div>
+            <div data-label="Fase">Terza email programmata</div>
+            <div data-label="Ultimo invio">Mer 13/05<br>09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Invio automatico terza email</span></div>
+            <div data-label="Prossima finestra">Ven 15/05<br>09:30</div>
+            <div data-label="Stop / Alert">Controllo stop 09:00</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Giulia Ferri</div>
+              <div class="member-meta">PMO-000522 · giulia.ferri@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill warn">Sospeso</span></div>
+            <div data-label="Fase">Richiami sospesi - risposta da leggere</div>
+            <div data-label="Ultimo invio">Mer 13/05<br>09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Leggi risposta</span></div>
+            <div data-label="Prossima finestra">Nessun richiamo</div>
+            <div data-label="Stop / Alert">Risposta email ricevuta</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn primary">Leggi risposta</button><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Paolo Greco</div>
+              <div class="member-meta">PMO-000609 · paolo.greco@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill ok">Stop</span></div>
+            <div data-label="Fase">Da validare</div>
+            <div data-label="Ultimo invio">Gio 14/05<br>09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Controlla livello</span></div>
+            <div data-label="Prossima finestra">Nessun richiamo</div>
+            <div data-label="Stop / Alert">Scheda compilata</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn primary">Controlla livello</button><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Sara Neri</div>
+              <div class="member-meta">PMO-000711 · sara.neri@example.it</div>
+            </div>
+            <div data-label="Routine"><span class="pill danger">Problema</span></div>
+            <div data-label="Fase">Problema email</div>
+            <div data-label="Ultimo invio">Ven 15/05<br>09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Correggi email</span></div>
+            <div data-label="Prossima finestra">Bloccata</div>
+            <div data-label="Stop / Alert">Mancata consegna</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn warn">Correggi email</button><button class="btn neutral">Dettaglio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Luca Romano</div>
+              <div class="member-meta">PMO-000845 · luca.romano@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill warn">Manuale</span></div>
+            <div data-label="Fase">Recupero manuale</div>
+            <div data-label="Ultimo invio">Terza email<br>15/05 09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Apri scheda socio</span></div>
+            <div data-label="Prossima finestra">Nessun altro richiamo</div>
+            <div data-label="Stop / Alert">Tre email senza esito</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn neutral">Dettaglio</button><button class="btn neutral">Scheda socio</button></div>
+          </div>
+
+          <div class="process-row" role="row">
+            <div data-label="Socio">
+              <div class="member-name">Elena Costa</div>
+              <div class="member-meta">PMO-000902 · elena.costa@gmail.com</div>
+            </div>
+            <div data-label="Routine"><span class="pill ok">Chiuso</span></div>
+            <div data-label="Fase">Completato</div>
+            <div data-label="Ultimo invio">Prima email<br>12/05 09:30</div>
+            <div data-label="Prossimo step"><span class="step-strong">Nessuna azione</span></div>
+            <div data-label="Prossima finestra">-</div>
+            <div data-label="Stop / Alert">Livello validato</div>
+            <div data-label="Azioni" class="actions-cell"><button class="btn neutral">Storico</button></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+</body>
+</html>

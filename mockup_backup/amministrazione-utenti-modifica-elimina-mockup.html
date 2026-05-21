@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Amministrazione - Utenti</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --primary-dark:#17386f;
+      --accent:#f0a323;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --line:#dfe8f3;
+      --line-strong:#cdd9e8;
+      --text:#1f2937;
+      --muted:#667085;
+      --success:#267a37;
+      --success-bg:#eaf7ef;
+      --warning:#a86b00;
+      --warning-bg:#fff8e8;
+      --danger:#b42318;
+      --danger-bg:#fff3f1;
+      --blue-bg:#eef5ff;
+    }
+    * { box-sizing:border-box; }
+    html, body { min-width:0; }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    button, input, select { font:inherit; }
+    button { cursor:pointer; }
+    .topbar {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      background:#fff;
+      border-bottom:4px solid var(--accent);
+      box-shadow:0 1px 5px rgba(16,24,40,.08);
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--primary);
+      color:#fff;
+      padding:9px 13px;
+      font-size:17px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .topbar-title {
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .page {
+      width:min(100%, 1220px);
+      margin:0 auto;
+      padding:14px;
+    }
+    .admin-shell {
+      border:1px solid var(--line);
+      border-top:6px solid var(--primary);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 5px rgba(31,71,136,.08);
+      overflow:hidden;
+      min-width:0;
+    }
+    .page-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      background:#fbfdff;
+    }
+    h1, h2, h3, p { margin-top:0; }
+    h1 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:27px;
+      line-height:1.1;
+      font-weight:900;
+    }
+    .subtitle {
+      margin:0;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.35;
+      font-weight:750;
+    }
+    .env {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:7px 10px;
+      background:#fff;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .admin-body { padding:14px; }
+    .panel-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    h2 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:21px;
+      line-height:1.15;
+    }
+    .panel-head p {
+      margin:0;
+      color:var(--muted);
+      line-height:1.35;
+      font-weight:750;
+    }
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:flex-end;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:#344054;
+      padding:9px 11px;
+      font-weight:900;
+      line-height:1.1;
+      white-space:nowrap;
+    }
+    .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .btn.success { background:var(--success); border-color:var(--success); color:#fff; }
+    .btn.warn { background:var(--warning); border-color:var(--warning); color:#fff; }
+    .btn.danger { background:var(--danger); border-color:var(--danger); color:#fff; }
+    .btn:disabled {
+      opacity:.5;
+      cursor:not-allowed;
+    }
+    .box {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      min-width:0;
+      overflow:hidden;
+    }
+    .box-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      background:#f8fbff;
+    }
+    .box-title {
+      color:var(--primary);
+      font-size:17px;
+      font-weight:900;
+      line-height:1.15;
+    }
+    .box-subtitle {
+      margin-top:3px;
+      color:var(--muted);
+      font-weight:750;
+      line-height:1.3;
+    }
+    .table-wrap {
+      width:100%;
+      overflow:auto;
+      border-top:0;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      min-width:760px;
+      background:#fff;
+    }
+    th, td {
+      padding:10px 11px;
+      border-bottom:1px solid #edf1f7;
+      text-align:left;
+      vertical-align:middle;
+    }
+    th {
+      background:#f3f7fc;
+      color:#17386f;
+      font-size:12px;
+      text-transform:uppercase;
+      font-weight:900;
+    }
+    .name {
+      color:#111827;
+      font-weight:900;
+      line-height:1.25;
+    }
+    .sub {
+      display:block;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:750;
+      line-height:1.25;
+      overflow-wrap:anywhere;
+    }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      padding:6px 9px;
+      background:#eef3fb;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .badge.ok { background:var(--success-bg); color:var(--success); border:1px solid #bfe8cc; }
+    .badge.warn { background:var(--warning-bg); color:var(--warning); border:1px solid #f2d389; }
+    .badge.fail { background:var(--danger-bg); color:var(--danger); border:1px solid #ffc9c3; }
+    .mini-actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .mini-actions .btn { padding:7px 9px; font-size:12px; }
+    .detail-row { display:none; }
+    .detail-row.show { display:table-row; }
+    .detail-cell {
+      background:#fbfdff;
+      padding:0;
+    }
+    .user-card {
+      border-left:4px solid var(--primary);
+      padding:12px;
+    }
+    .user-card.delete-mode { border-left-color:var(--danger); background:#fffafa; }
+    .card-title {
+      color:var(--primary);
+      font-size:17px;
+      font-weight:900;
+      margin-bottom:10px;
+    }
+    .delete-mode .card-title { color:var(--danger); }
+    .form-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+      align-items:end;
+    }
+    .field {
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+      min-width:0;
+    }
+    label {
+      color:#344054;
+      font-size:12px;
+      font-weight:900;
+    }
+    input, select {
+      width:100%;
+      min-height:40px;
+      border:1px solid #cfd8e6;
+      border-radius:8px;
+      background:#fff;
+      color:#111827;
+      padding:9px 10px;
+      outline:none;
+      min-width:0;
+    }
+    input:focus, select:focus {
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(35,79,145,.12);
+    }
+    .permissions {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .perm {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      padding:9px;
+      color:#344054;
+      font-weight:850;
+      min-width:0;
+    }
+    .perm input {
+      width:18px;
+      min-height:18px;
+      accent-color:var(--primary);
+      flex:0 0 auto;
+    }
+    .card-actions {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      gap:8px;
+      margin-top:12px;
+    }
+    .new-user-panel {
+      display:none;
+      border-top:1px solid var(--line);
+      background:#fbfdff;
+    }
+    .new-user-panel.show { display:block; }
+    .confirm-text {
+      color:#344054;
+      font-weight:850;
+      line-height:1.35;
+      margin:0 0 10px;
+    }
+    .feedback {
+      display:none;
+      margin:10px 12px 12px;
+      border-radius:8px;
+      padding:10px 12px;
+      font-weight:850;
+      line-height:1.35;
+    }
+    .feedback.show { display:block; }
+    .feedback.ok { background:var(--success-bg); color:var(--success); border:1px solid #bfe8cc; }
+    .feedback.warn { background:var(--warning-bg); color:var(--warning); border:1px solid #f2d389; }
+    .feedback.fail { background:var(--danger-bg); color:var(--danger); border:1px solid #ffc9c3; }
+    .hidden-row { display:none !important; }
+    @media (max-width: 900px) {
+      .page-head, .panel-head { flex-direction:column; }
+      .form-grid, .permissions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 640px) {
+      .topbar-title { font-size:20px; }
+      .page { padding:10px; }
+      .page-head { padding:12px; }
+      .admin-body { padding:10px; }
+      h1 { font-size:24px; }
+      .form-grid, .permissions { grid-template-columns:1fr; }
+      table { min-width:0; }
+      .table-wrap { overflow:visible; }
+      table, thead, tbody, tr, th, td { display:block; }
+      thead { display:none; }
+      tbody tr:not(.detail-row) {
+        border:1px solid var(--line);
+        border-radius:8px;
+        margin-bottom:8px;
+        overflow:hidden;
+      }
+      td {
+        display:grid;
+        grid-template-columns:112px minmax(0,1fr);
+        gap:8px;
+        border-bottom:1px solid #edf1f7;
+      }
+      td::before {
+        content:attr(data-label);
+        color:var(--muted);
+        font-size:11px;
+        font-weight:900;
+        text-transform:uppercase;
+      }
+      .detail-row.show { display:block; }
+      .detail-cell {
+        display:block;
+        border:1px solid var(--line);
+        border-radius:8px;
+        margin:-4px 0 8px;
+      }
+      .detail-cell::before { display:none; }
+      .actions, .card-actions { justify-content:flex-start; }
+      .btn { width:100%; }
+      .mini-actions .btn { width:auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-btn" type="button">☰ Menu</button>
+    <div class="topbar-title">Amministrazione</div>
+  </header>
+
+  <main class="page">
+    <section class="admin-shell">
+      <div class="page-head">
+        <div>
+          <h1>Amministrazione</h1>
+          <p class="subtitle">Utenti, notifiche staff, sessione e controlli tecnici separati.</p>
+        </div>
+        <span class="env">TEST v5.452</span>
+      </div>
+
+      <div class="admin-body">
+        <section class="box">
+          <div class="box-head">
+            <div>
+              <div class="box-title">Utenti autorizzati</div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="button" id="newUserBtn">+ Nuovo</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table aria-label="Utenti autorizzati">
+              <thead>
+                <tr>
+                  <th>Utente</th>
+                  <th>Ruolo</th>
+                  <th>Stato</th>
+                  <th>Ultimo accesso</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody">
+                <tr data-user="maurizio">
+                  <td data-label="Utente"><span class="name">Maurizio Aprea</span><span class="sub">padelvillage.club@gmail.com</span></td>
+                  <td data-label="Ruolo"><span class="badge">Proprietario</span></td>
+                  <td data-label="Stato"><span class="badge ok">Attivo</span></td>
+                  <td data-label="Ultimo accesso">17/05/26, 17:18</td>
+                  <td data-label="Azioni">
+                    <div class="mini-actions">
+                      <button class="btn" type="button" data-action="edit" data-user="maurizio">Modifica</button>
+                      <button class="btn danger" type="button" disabled>Elimina</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="detail-row" id="detail-maurizio">
+                  <td class="detail-cell" colspan="5" data-label="">
+                    <div class="user-card">
+                      <div class="card-title">Scheda utente</div>
+                      <div class="form-grid">
+                        <div class="field"><label>Nome</label><input value="Maurizio Aprea"></div>
+                        <div class="field"><label>Email</label><input value="padelvillage.club@gmail.com" disabled></div>
+                        <div class="field"><label>Ruolo</label><select><option selected>Proprietario</option><option>Admin</option><option>Staff</option><option>Solo lettura</option></select></div>
+                        <div class="field"><label>Stato</label><select><option selected>Attivo</option><option>Sospeso</option></select></div>
+                      </div>
+                      <div class="permissions">
+                        <label class="perm"><input type="checkbox" checked> Gestione utenti</label>
+                        <label class="perm"><input type="checkbox" checked> Sincronizzazione dati cloud</label>
+                        <label class="perm"><input type="checkbox" checked> Routine</label>
+                        <label class="perm"><input type="checkbox" checked> Modifica soci</label>
+                        <label class="perm"><input type="checkbox" checked> Modifica partite</label>
+                        <label class="perm"><input type="checkbox" checked> Messaggi WhatsApp</label>
+                        <label class="perm"><input type="checkbox" checked> Esportazione/importazione dati</label>
+                        <label class="perm"><input type="checkbox"> Solo consultazione</label>
+                      </div>
+                      <div class="card-actions">
+                        <button class="btn success" type="button" data-action="save" data-user="maurizio">Salva modifiche</button>
+                        <button class="btn" type="button" data-action="cancel" data-user="maurizio">Annulla</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr data-user="codex">
+                  <td data-label="Utente"><span class="name">Codex Test</span><span class="sub">aprea.maurizio+codex.test@gmail.com</span></td>
+                  <td data-label="Ruolo"><span class="badge">Admin</span></td>
+                  <td data-label="Stato"><span class="badge ok">Attivo</span></td>
+                  <td data-label="Ultimo accesso">17/05/26, 17:17</td>
+                  <td data-label="Azioni">
+                    <div class="mini-actions">
+                      <button class="btn" type="button" data-action="edit" data-user="codex">Modifica</button>
+                      <button class="btn danger" type="button" data-action="delete" data-user="codex">Elimina</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="detail-row" id="detail-codex">
+                  <td class="detail-cell" colspan="5" data-label="">
+                    <div class="user-card">
+                      <div class="card-title">Scheda utente</div>
+                      <div class="form-grid">
+                        <div class="field"><label>Nome</label><input value="Codex Test"></div>
+                        <div class="field"><label>Email</label><input value="aprea.maurizio+codex.test@gmail.com" disabled></div>
+                        <div class="field"><label>Ruolo</label><select><option>Proprietario</option><option selected>Admin</option><option>Staff</option><option>Solo lettura</option></select></div>
+                        <div class="field"><label>Stato</label><select><option selected>Attivo</option><option>Sospeso</option></select></div>
+                      </div>
+                      <div class="permissions">
+                        <label class="perm"><input type="checkbox" checked> Gestione utenti</label>
+                        <label class="perm"><input type="checkbox" checked> Sincronizzazione dati cloud</label>
+                        <label class="perm"><input type="checkbox" checked> Routine</label>
+                        <label class="perm"><input type="checkbox" checked> Modifica soci</label>
+                        <label class="perm"><input type="checkbox" checked> Modifica partite</label>
+                        <label class="perm"><input type="checkbox" checked> Messaggi WhatsApp</label>
+                        <label class="perm"><input type="checkbox" checked> Esportazione/importazione dati</label>
+                        <label class="perm"><input type="checkbox"> Solo consultazione</label>
+                      </div>
+                      <div class="card-actions">
+                        <button class="btn success" type="button" data-action="save" data-user="codex">Salva modifiche</button>
+                        <button class="btn" type="button" data-action="cancel" data-user="codex">Annulla</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="detail-row" id="delete-codex">
+                  <td class="detail-cell" colspan="5" data-label="">
+                    <div class="user-card delete-mode">
+                      <div class="card-title">Elimina autorizzazione</div>
+                      <p class="confirm-text">Confermi la rimozione di Codex Test dagli utenti autorizzati?</p>
+                      <div class="card-actions">
+                        <button class="btn danger" type="button" data-action="confirm-delete" data-user="codex">Conferma elimina</button>
+                        <button class="btn" type="button" data-action="cancel" data-user="codex">Annulla</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+          <div class="new-user-panel" id="newUserPanel">
+            <div class="user-card">
+              <div class="card-title">Nuovo utente</div>
+              <div class="form-grid">
+                <div class="field"><label>Nome</label><input id="newUserName" placeholder="Nome staff"></div>
+                <div class="field"><label>Email</label><input id="newUserEmail" placeholder="nome@padelvillage.it"></div>
+                <div class="field">
+                  <label>Ruolo</label>
+                  <select id="newUserRole">
+                    <option>Admin</option>
+                    <option selected>Staff</option>
+                    <option>Solo lettura</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Stato</label>
+                  <select id="newUserStatus">
+                    <option selected>Invitato</option>
+                    <option>Attivo</option>
+                    <option>Sospeso</option>
+                  </select>
+                </div>
+              </div>
+              <div class="permissions">
+                <label class="perm"><input type="checkbox" id="permUsers"> Gestione utenti</label>
+                <label class="perm"><input type="checkbox" id="permCloud" checked> Sincronizzazione dati cloud</label>
+                <label class="perm"><input type="checkbox" id="permRoutine"> Routine</label>
+                <label class="perm"><input type="checkbox" id="permMembers" checked> Modifica soci</label>
+                <label class="perm"><input type="checkbox" id="permMatches" checked> Modifica partite</label>
+                <label class="perm"><input type="checkbox" id="permWhatsapp" checked> Messaggi WhatsApp</label>
+                <label class="perm"><input type="checkbox" id="permData"> Esportazione/importazione dati</label>
+                <label class="perm"><input type="checkbox" id="permRead"> Solo consultazione</label>
+              </div>
+              <div class="card-actions">
+                <button class="btn success" type="button" id="authorizeNewUserBtn">Autorizza email</button>
+                <button class="btn" type="button" id="cancelNewUserBtn">Annulla</button>
+              </div>
+            </div>
+          </div>
+          <div class="feedback ok" id="feedback">Utenti autorizzati caricati.</div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const feedback = document.getElementById('feedback');
+    const newUserPanel = document.getElementById('newUserPanel');
+    const usersBody = document.getElementById('usersBody');
+    const openRows = (user, mode) => {
+      document.querySelectorAll('.detail-row').forEach((row) => row.classList.remove('show'));
+      newUserPanel.classList.remove('show');
+      const row = document.getElementById(`${mode}-${user}`);
+      if (row) row.classList.add('show');
+    };
+    const showFeedback = (message, type = 'ok') => {
+      feedback.textContent = message;
+      feedback.className = `feedback ${type} show`;
+    };
+    const handleUserAction = (button) => {
+      const action = button.dataset.action;
+      const user = button.dataset.user;
+      if (action === 'edit') {
+        openRows(user, 'detail');
+        showFeedback('Scheda utente aperta.');
+      }
+      if (action === 'delete') {
+        openRows(user, 'delete');
+        showFeedback('Conferma richiesta prima di eliminare.', 'warn');
+      }
+      if (action === 'cancel') {
+        document.querySelectorAll('.detail-row').forEach((row) => row.classList.remove('show'));
+        newUserPanel.classList.remove('show');
+        showFeedback('Operazione annullata.', 'warn');
+      }
+      if (action === 'save') {
+        document.querySelectorAll('.detail-row').forEach((row) => row.classList.remove('show'));
+        showFeedback('Modifiche salvate nel mock-up.');
+      }
+      if (action === 'confirm-delete') {
+        const mainRow = document.querySelector(`tr[data-user="${user}"]`);
+        const detailRow = document.getElementById(`detail-${user}`);
+        const deleteRow = document.getElementById(`delete-${user}`);
+        if (mainRow) mainRow.classList.add('hidden-row');
+        if (detailRow) detailRow.classList.remove('show');
+        if (deleteRow) deleteRow.classList.remove('show');
+        showFeedback('Utente rimosso dalla lista nel mock-up.');
+      }
+    };
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-action]');
+      if (!button || button.disabled) return;
+      handleUserAction(button);
+    });
+    document.getElementById('newUserBtn').addEventListener('click', () => {
+      document.querySelectorAll('.detail-row').forEach((row) => row.classList.remove('show'));
+      newUserPanel.classList.add('show');
+      document.getElementById('newUserName').focus();
+      showFeedback('Compila la scheda nuovo utente.');
+    });
+    document.getElementById('cancelNewUserBtn').addEventListener('click', () => {
+      newUserPanel.classList.remove('show');
+      showFeedback('Nuovo utente annullato.', 'warn');
+    });
+    document.getElementById('authorizeNewUserBtn').addEventListener('click', () => {
+      const name = document.getElementById('newUserName').value.trim();
+      const email = document.getElementById('newUserEmail').value.trim();
+      const role = document.getElementById('newUserRole').value;
+      const status = document.getElementById('newUserStatus').value;
+      if (!name || !email || !email.includes('@')) {
+        showFeedback('Inserisci nome ed email valida.', 'fail');
+        return;
+      }
+      const statusClass = status === 'Attivo' ? 'ok' : status === 'Sospeso' ? 'fail' : 'warn';
+      const userKey = `new-${Date.now()}`;
+      const safeName = name.replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[char]));
+      const safeEmail = email.replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[char]));
+      usersBody.insertAdjacentHTML('beforeend', `
+        <tr data-user="${userKey}">
+          <td data-label="Utente"><span class="name">${safeName}</span><span class="sub">${safeEmail}</span></td>
+          <td data-label="Ruolo"><span class="badge">${role}</span></td>
+          <td data-label="Stato"><span class="badge ${statusClass}">${status}</span></td>
+          <td data-label="Ultimo accesso">-</td>
+          <td data-label="Azioni">
+            <div class="mini-actions">
+              <button class="btn" type="button" data-action="edit" data-user="${userKey}">Modifica</button>
+              <button class="btn danger" type="button" data-action="delete" data-user="${userKey}">Elimina</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="detail-row" id="detail-${userKey}">
+          <td class="detail-cell" colspan="5" data-label="">
+            <div class="user-card">
+              <div class="card-title">Scheda utente</div>
+              <div class="form-grid">
+                <div class="field"><label>Nome</label><input value="${safeName}"></div>
+                <div class="field"><label>Email</label><input value="${safeEmail}" disabled></div>
+                <div class="field"><label>Ruolo</label><select><option ${role === 'Admin' ? 'selected' : ''}>Admin</option><option ${role === 'Staff' ? 'selected' : ''}>Staff</option><option ${role === 'Solo lettura' ? 'selected' : ''}>Solo lettura</option></select></div>
+                <div class="field"><label>Stato</label><select><option ${status === 'Invitato' ? 'selected' : ''}>Invitato</option><option ${status === 'Attivo' ? 'selected' : ''}>Attivo</option><option ${status === 'Sospeso' ? 'selected' : ''}>Sospeso</option></select></div>
+              </div>
+              <div class="permissions">
+                <label class="perm"><input type="checkbox" ${document.getElementById('permUsers').checked ? 'checked' : ''}> Gestione utenti</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permCloud').checked ? 'checked' : ''}> Sincronizzazione dati cloud</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permRoutine').checked ? 'checked' : ''}> Routine</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permMembers').checked ? 'checked' : ''}> Modifica soci</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permMatches').checked ? 'checked' : ''}> Modifica partite</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permWhatsapp').checked ? 'checked' : ''}> Messaggi WhatsApp</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permData').checked ? 'checked' : ''}> Esportazione/importazione dati</label>
+                <label class="perm"><input type="checkbox" ${document.getElementById('permRead').checked ? 'checked' : ''}> Solo consultazione</label>
+              </div>
+              <div class="card-actions">
+                <button class="btn success" type="button" data-action="save" data-user="${userKey}">Salva modifiche</button>
+                <button class="btn" type="button" data-action="cancel" data-user="${userKey}">Annulla</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="detail-row" id="delete-${userKey}">
+          <td class="detail-cell" colspan="5" data-label="">
+            <div class="user-card delete-mode">
+              <div class="card-title">Elimina autorizzazione</div>
+              <p class="confirm-text">Confermi la rimozione di ${safeName} dagli utenti autorizzati?</p>
+              <div class="card-actions">
+                <button class="btn danger" type="button" data-action="confirm-delete" data-user="${userKey}">Conferma elimina</button>
+                <button class="btn" type="button" data-action="cancel" data-user="${userKey}">Annulla</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `);
+      newUserPanel.classList.remove('show');
+      document.getElementById('newUserName').value = '';
+      document.getElementById('newUserEmail').value = '';
+      showFeedback('Nuovo utente aggiunto alla lista nel mock-up.');
+    });
+  </script>
+</body>
+</html>

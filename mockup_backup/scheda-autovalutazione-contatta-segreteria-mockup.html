@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scheda di Autovalutazione - Contatta segreteria</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --primary-dark:#173f78;
+      --accent:#f0a323;
+      --ink:#172033;
+      --muted:#667085;
+      --line:#dce5f2;
+      --soft:#f6f9fd;
+      --green:#0bbf55;
+      --green-dark:#08a849;
+      --danger:#b42318;
+    }
+    * { box-sizing:border-box; }
+    html, body { min-width:0; }
+    body {
+      margin:0;
+      background:#eef3f9;
+      color:var(--ink);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    button, input, select { font:inherit; }
+    .page {
+      width:min(100%, 780px);
+      margin:0 auto;
+      padding:14px;
+    }
+    .public-card {
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      box-shadow:0 8px 28px rgba(31,71,136,.08);
+      padding:14px;
+    }
+    .section {
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:16px;
+      margin-bottom:14px;
+    }
+    .hero {
+      background:linear-gradient(135deg,#f8fbff,#eef6ff);
+    }
+    .hero-row {
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      align-items:center;
+      gap:14px;
+    }
+    .title-block h1 {
+      margin:0;
+      color:var(--primary);
+      font-size:28px;
+      line-height:1.08;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .logo {
+      width:76px;
+      height:76px;
+      border-radius:16px;
+      object-fit:contain;
+      border:1px solid var(--line);
+      background:#fff;
+      padding:8px;
+    }
+    .identity {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:14px;
+      align-items:center;
+      background:#f8fbff;
+    }
+    .eyebrow {
+      margin:0 0 8px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .member-name {
+      margin:0 0 8px;
+      color:var(--primary);
+      font-size:28px;
+      line-height:1.1;
+      font-weight:900;
+    }
+    .small-text {
+      margin:0;
+      color:var(--muted);
+      font-size:15px;
+      line-height:1.4;
+    }
+    .support-btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      width:100%;
+      max-width:260px;
+      min-height:48px;
+      padding:12px 18px;
+      border:0;
+      border-radius:999px;
+      background:var(--green);
+      color:#fff;
+      text-decoration:none;
+      font-weight:900;
+      box-shadow:0 8px 20px rgba(11,191,85,.24);
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .support-btn:hover,
+    .support-btn:focus {
+      background:var(--green-dark);
+      color:#fff;
+      text-decoration:none;
+    }
+    h2 {
+      margin:0 0 6px;
+      color:var(--ink);
+      font-size:22px;
+      line-height:1.15;
+    }
+    .form-grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:14px;
+    }
+    .field {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .field.full { grid-column:1 / -1; }
+    label {
+      color:var(--ink);
+      font-weight:900;
+    }
+    .required { color:var(--danger); }
+    input, select {
+      width:100%;
+      min-height:46px;
+      border:1px solid #cfd8e6;
+      border-radius:9px;
+      background:#fff;
+      color:var(--ink);
+      padding:10px 12px;
+      outline:none;
+    }
+    input:focus, select:focus {
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(35,79,145,.12);
+    }
+    .privacy-box {
+      margin-top:14px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fbfdff;
+    }
+    .privacy-row {
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:10px;
+      align-items:center;
+    }
+    .privacy input {
+      width:22px;
+      min-height:22px;
+      margin:0;
+    }
+    .privacy-text {
+      font-weight:900;
+      line-height:1.3;
+    }
+    .privacy-toggle {
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#fff;
+      color:var(--primary);
+      padding:9px 12px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .privacy-toggle:hover {
+      border-color:var(--primary);
+      background:#eef6ff;
+    }
+    .privacy-policy {
+      display:none;
+      margin-top:12px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      color:#344054;
+      line-height:1.45;
+    }
+    .privacy-policy.open { display:block; }
+    .privacy-policy h3 {
+      margin:0 0 8px;
+      color:var(--primary);
+      font-size:17px;
+      line-height:1.2;
+    }
+    .privacy-policy p {
+      margin:0 0 9px;
+    }
+    .questions {
+      display:grid;
+      gap:10px;
+      margin-top:14px;
+    }
+    .question {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 210px;
+      gap:12px;
+      align-items:center;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fbfdff;
+    }
+    .question-title {
+      font-weight:900;
+      line-height:1.3;
+    }
+    .actions {
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:14px;
+    }
+    .primary-btn {
+      min-height:48px;
+      border:0;
+      border-radius:9px;
+      background:var(--primary);
+      color:#fff;
+      padding:12px 18px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .primary-btn:hover { background:var(--primary-dark); }
+    .status {
+      display:none;
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:10px;
+      font-weight:850;
+    }
+    .status.show { display:block; }
+    .status.ok {
+      background:#eaf7ef;
+      color:#267a37;
+      border:1px solid #bfe8cc;
+    }
+    @media (max-width: 680px) {
+      .page { padding:10px; }
+      .public-card { padding:10px; border-radius:12px; }
+      .section { padding:13px; border-radius:12px; }
+      .hero-row { align-items:center; }
+      .title-block h1 { font-size:22px; }
+      .logo { width:64px; height:64px; border-radius:14px; }
+      .identity { grid-template-columns:1fr; }
+      .member-name { font-size:25px; }
+      .support-btn { max-width:none; }
+      .form-grid { grid-template-columns:1fr; }
+      .privacy-row { grid-template-columns:auto minmax(0,1fr); }
+      .privacy-toggle { grid-column:1 / -1; width:100%; }
+      .question { grid-template-columns:1fr; gap:7px; }
+      .actions { justify-content:stretch; }
+      .primary-btn { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="public-card">
+      <section class="section hero">
+        <div class="hero-row">
+          <img class="logo" src="../logo-padel-village.jpeg" alt="Padel Village">
+          <div class="title-block">
+            <h1>Scheda di Autovalutazione</h1>
+          </div>
+        </div>
+      </section>
+
+      <section class="section identity">
+        <div>
+          <p class="eyebrow">La scheda e' intestata a</p>
+          <p class="member-name">Socio Padel Village</p>
+          <p class="small-text">Se il nome non e' corretto o vuoi segnalarci una modifica, contatta la segreteria.</p>
+        </div>
+        <a class="support-btn" id="supportBtn" href="https://wa.me/393357615855?text=Ciao%2C%20sto%20compilando%20la%20scheda%20di%20autovalutazione.%20Vorrei%20segnalare%20una%20modifica%20o%20chiedere%20un%20chiarimento." target="_blank" rel="noopener">
+          <span>💬</span>
+          <span>Contatta segreteria</span>
+        </a>
+      </section>
+
+      <section class="section">
+        <h2>Registrazione</h2>
+        <p class="small-text">Completa i dati richiesti.</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="firstName">Nome<span class="required">*</span></label>
+            <input id="firstName" type="text" autocomplete="given-name">
+          </div>
+          <div class="field">
+            <label for="lastName">Cognome<span class="required">*</span></label>
+            <input id="lastName" type="text" autocomplete="family-name">
+          </div>
+          <div class="field">
+            <label for="phone">Telefono<span class="required">*</span></label>
+            <input id="phone" type="tel" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label for="email">Email<span class="required">*</span></label>
+            <input id="email" type="email" autocomplete="email">
+          </div>
+          <div class="field full">
+            <label for="gender">Sesso <span class="required">*</span></label>
+            <select id="gender">
+              <option value="" selected>Seleziona</option>
+              <option>Maschio</option>
+              <option>Femmina</option>
+              <option>Preferisco non indicarlo</option>
+            </select>
+          </div>
+        </div>
+        <div class="privacy-box">
+          <label class="privacy-row">
+            <input type="checkbox" id="privacy">
+            <span class="privacy-text">Ho letto e accetto la Privacy Policy Padel Village.</span>
+            <button class="privacy-toggle" id="togglePrivacy" type="button">Leggi Privacy Policy</button>
+          </label>
+          <div class="privacy-policy" id="privacyPolicy">
+            <h3>Informativa Privacy Padel Village</h3>
+            <p>Useremo i dati che inserisci in questo modulo per creare o aggiornare la tua scheda giocatore Padel Village e per gestire la tua autovalutazione del livello di gioco.</p>
+            <p>Ti chiediamo nome, cognome, numero di telefono, email, sesso e risposte sull'autovalutazione perche ci servono per riconoscerti correttamente, evitare doppioni, gestire la tua scheda e organizzare meglio le attivita' del circolo.</p>
+            <p>Potremo inoltre registrare che la richiesta arriva da link esterno e conservare lo storico delle autovalutazioni inviate, cosi lo staff puo seguire correttamente il processo.</p>
+            <p>I tuoi dati saranno usati per finalita' legate ai servizi Padel Village, alla gestione della tua scheda, all'autovalutazione del livello e all'organizzazione delle attivita' sportive e sociali del circolo.</p>
+            <p>Per aiutare Padel Village a organizzare attivita' ed eventi, il tuo nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione delle iniziative del circolo.</p>
+            <p>A titolo di esempio, questo puo avvenire per partite, tornei, stage, lezioni, campionati a squadre e altre attivita' sportive o sociali organizzate da Padel Village. L'elenco e' solo esemplificativo e non limita le possibili iniziative del circolo.</p>
+            <p>Il tuo numero di telefono e la tua email non saranno mostrati agli altri utenti della piattaforma.</p>
+            <p>I tuoi dati non saranno venduti a terzi. Potranno essere consultati dallo staff autorizzato di Padel Village e dai fornitori tecnici che ci aiutano a gestire la piattaforma e i sistemi collegati.</p>
+            <p>I dati saranno conservati per il tempo necessario alla gestione della tua scheda giocatore, delle attivita' del circolo e degli eventuali obblighi amministrativi o organizzativi.</p>
+            <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile, scrivendo a: padelvillage.club@gmail.com.</p>
+            <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Questionario livello</h2>
+        <div class="questions">
+          <div class="question">
+            <div class="question-title">1. Da quanto giochi a padel? <span class="required">*</span></div>
+            <select><option selected>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Piu' di 1 anno</option><option>Piu' di 3 anni</option></select>
+          </div>
+          <div class="question">
+            <div class="question-title">2. Quante volte giochi mediamente al mese? <span class="required">*</span></div>
+            <select><option selected>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Piu' di 10</option></select>
+          </div>
+          <div class="question">
+            <div class="question-title">3. Che livello pensi di avere? <span class="required">*</span></div>
+            <select><option selected>Seleziona</option><option>1.0</option><option>1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option></select>
+          </div>
+          <div class="question">
+            <div class="question-title">4. Come gestisci lo scambio da fondo campo? <span class="required">*</span></div>
+            <select><option selected>Seleziona</option><option>Faccio fatica a tenere lo scambio</option><option>Tengo scambi semplici</option><option>Gestisco direzione e profondita'</option><option>Costruisco il punto con continuita'</option></select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary-btn" id="submitBtn" type="button">Invia autovalutazione</button>
+        </div>
+        <div class="status ok" id="statusBox">Autovalutazione inviata. Lo staff verifichera' il livello indicato.</div>
+      </section>
+    </div>
+  </main>
+  <script>
+    document.getElementById('togglePrivacy').addEventListener('click', function () {
+      const policy = document.getElementById('privacyPolicy');
+      const isOpen = policy.classList.toggle('open');
+      this.textContent = isOpen ? 'Chiudi Privacy Policy' : 'Leggi Privacy Policy';
+    });
+    document.getElementById('submitBtn').addEventListener('click', function () {
+      document.getElementById('statusBox').classList.add('show');
+    });
+  </script>
+</body>
+</html>

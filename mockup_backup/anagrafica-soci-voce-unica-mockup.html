@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Anagrafica soci - voce unica</title>
+  <style>
+    :root {
+      --primary:#234f91;
+      --primary-dark:#17386f;
+      --accent:#f0a323;
+      --ink:#172033;
+      --muted:#667085;
+      --line:#dce5f2;
+      --soft-line:#edf1f7;
+      --bg:#f3f6fa;
+      --panel:#fff;
+      --green:#2e7d32;
+      --green-soft:#eaf7ef;
+      --amber:#b76e00;
+      --amber-soft:#fff8e6;
+      --red:#b42318;
+      --red-soft:#fff2f0;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:Arial, Helvetica, sans-serif;
+      font-size:14px;
+      letter-spacing:0;
+    }
+    .app-shell {
+      min-height:100vh;
+      display:grid;
+      grid-template-columns:304px minmax(0,1fr);
+    }
+    .side-nav {
+      background:var(--primary-dark);
+      color:#fff;
+      padding:18px 12px 26px;
+      min-width:0;
+    }
+    .brand {
+      padding:0 6px 14px;
+      margin-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,.16);
+    }
+    .brand-title {
+      font-size:19px;
+      font-weight:900;
+      line-height:1.15;
+    }
+    .brand-sub {
+      margin-top:4px;
+      color:rgba(255,255,255,.78);
+      font-size:12px;
+      font-weight:750;
+    }
+    .section-label {
+      color:#a9c2e6;
+      font-size:10px;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+      font-weight:900;
+      padding:12px 8px 7px;
+    }
+    .nav-item {
+      position:relative;
+      width:100%;
+      display:block;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      margin:0 0 8px;
+      padding:11px 14px 11px 48px;
+      background:#235296;
+      color:#fff;
+      text-align:left;
+      min-height:58px;
+      box-shadow:0 1px 4px rgba(0,0,0,.08);
+    }
+    .nav-item.active {
+      background:#fff;
+      border-color:#fff;
+      color:var(--primary);
+      box-shadow:0 2px 12px rgba(0,0,0,.18);
+    }
+    .nav-order {
+      position:absolute;
+      left:12px;
+      top:14px;
+      width:24px;
+      height:24px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      font-size:12px;
+      font-weight:900;
+    }
+    .nav-item.active .nav-order {
+      background:var(--primary);
+      color:#fff;
+    }
+    .nav-main {
+      display:block;
+      font-size:14px;
+      font-weight:900;
+      line-height:1.2;
+    }
+    .nav-sub {
+      display:block;
+      margin-top:4px;
+      color:rgba(255,255,255,.72);
+      font-size:10.5px;
+      line-height:1.25;
+      font-weight:700;
+    }
+    .nav-item.active .nav-sub { color:#667085; }
+    .main {
+      min-width:0;
+      padding:12px;
+    }
+    .topbar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-bottom:4px solid var(--accent);
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 1px 4px rgba(16,24,40,.08);
+    }
+    .topbar-left {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .menu-btn {
+      border:0;
+      border-radius:8px;
+      background:var(--primary);
+      color:#fff;
+      padding:8px 12px;
+      font-size:15px;
+      font-weight:900;
+    }
+    .topbar-title {
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .mock-note {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      text-align:right;
+    }
+    .panel {
+      border:1px solid var(--line);
+      border-top:6px solid var(--primary);
+      border-radius:10px;
+      background:var(--panel);
+      box-shadow:0 1px 5px rgba(31,71,136,.1);
+      overflow:hidden;
+    }
+    .panel-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:13px 15px 12px;
+      border-bottom:1px solid var(--soft-line);
+      background:#f8fbff;
+    }
+    h1 {
+      margin:0 0 4px;
+      color:var(--primary);
+      font-size:24px;
+      line-height:1.1;
+      letter-spacing:0;
+    }
+    h2 {
+      margin:0;
+      color:var(--primary);
+      font-size:17px;
+      line-height:1.15;
+      letter-spacing:0;
+    }
+    p {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      font-weight:700;
+    }
+    .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .btn {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      color:var(--primary);
+      padding:8px 10px;
+      min-height:34px;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.15;
+      cursor:pointer;
+      white-space:normal;
+    }
+    .btn.primary {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+    .btn.success {
+      background:var(--green-soft);
+      border-color:#bde6cb;
+      color:var(--green);
+    }
+    .content {
+      display:grid;
+      gap:10px;
+      padding:12px;
+    }
+    .summary-wrap,
+    .toolbar,
+    .table-card {
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .summary-wrap { overflow:auto; }
+    .summary-table {
+      width:100%;
+      min-width:780px;
+      border-collapse:collapse;
+    }
+    .summary-table th,
+    .summary-table td {
+      border-left:1px solid var(--soft-line);
+      padding:8px 10px;
+      text-align:left;
+      vertical-align:middle;
+    }
+    .summary-table th:first-child,
+    .summary-table td:first-child { border-left:0; }
+    .summary-table th {
+      background:#f8fbff;
+      color:var(--muted);
+      font-size:10.5px;
+      font-weight:900;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    .summary-table td {
+      border-top:1px solid var(--soft-line);
+    }
+    .summary-value {
+      display:block;
+      color:var(--primary);
+      font-size:22px;
+      font-weight:900;
+      line-height:1;
+    }
+    .summary-value.good { color:var(--green); }
+    .summary-value.warn { color:var(--amber); }
+    .summary-value.danger { color:var(--red); }
+    .summary-note {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:800;
+    }
+    .toolbar {
+      display:grid;
+      grid-template-columns:minmax(180px,1fr) repeat(3,minmax(110px,150px)) auto;
+      gap:8px;
+      align-items:end;
+      padding:10px;
+      overflow:visible;
+    }
+    label {
+      display:block;
+      color:#303846;
+      font-size:12px;
+      font-weight:900;
+      margin-bottom:4px;
+    }
+    input,
+    select {
+      width:100%;
+      min-height:34px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:#fff;
+      color:var(--ink);
+      padding:7px 9px;
+      font-size:13px;
+      font-weight:750;
+    }
+    .table-head {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      padding:9px 10px;
+      border-bottom:1px solid var(--soft-line);
+      background:#fbfcff;
+    }
+    .table-wrap { overflow:auto; }
+    table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    th,
+    td {
+      border-top:1px solid var(--soft-line);
+      padding:8px 9px;
+      text-align:left;
+      vertical-align:top;
+      font-size:12px;
+      line-height:1.3;
+    }
+    thead th {
+      border-top:0;
+      background:#f2f5fb;
+      color:#344054;
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    td strong {
+      display:block;
+      color:var(--ink);
+      font-size:13px;
+      line-height:1.2;
+    }
+    td small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:750;
+      line-height:1.25;
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:4px 8px;
+      background:#fff;
+      color:var(--primary);
+      font-size:12px;
+      font-weight:900;
+      line-height:1.1;
+    }
+    .pill.good { border-color:#bde6cb; background:var(--green-soft); color:var(--green); }
+    .pill.warn { border-color:#f0d899; background:var(--amber-soft); color:var(--amber); }
+    .pill.danger { border-color:#f2b8b5; background:var(--red-soft); color:var(--red); }
+    @media (max-width:1020px) {
+      .app-shell { grid-template-columns:1fr; }
+      .side-nav { display:none; }
+      .toolbar { grid-template-columns:1fr 1fr; }
+      .mock-note { display:none; }
+    }
+    @media (max-width:620px) {
+      .main { padding:10px; }
+      .topbar { align-items:flex-start; }
+      .topbar-title { font-size:20px; }
+      .toolbar { grid-template-columns:1fr; }
+      .panel-head { display:block; }
+      .actions { justify-content:flex-start; margin-top:10px; }
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display:block;
+        width:100% !important;
+      }
+      thead { display:none; }
+      tbody tr {
+        border-top:1px solid var(--soft-line);
+        padding:8px;
+      }
+      tbody tr:first-child { border-top:0; }
+      td {
+        border-top:0;
+        padding:5px 0;
+      }
+      td::before {
+        content:attr(data-label);
+        display:block;
+        color:var(--muted);
+        font-size:10.5px;
+        font-weight:900;
+        text-transform:uppercase;
+        margin-bottom:2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side-nav" aria-label="Menu laterale">
+      <div class="brand">
+        <div class="brand-title">Padel Village</div>
+        <div class="brand-sub">Match Organizer · TEST v5.432</div>
+      </div>
+      <div class="section-label">Capitoli</div>
+      <button class="nav-item" type="button">
+        <span class="nav-order">0</span>
+        <span class="nav-main">Dashboard</span>
+        <span class="nav-sub">Situazione ad oggi</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">1</span>
+        <span class="nav-main">Apri Partite</span>
+        <span class="nav-sub">Slot liberi e proposte</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">2</span>
+        <span class="nav-main">Chiudi Partite</span>
+        <span class="nav-sub">Inviti, risposte e chiusura</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">3</span>
+        <span class="nav-main">Autovalutazione</span>
+        <span class="nav-sub">Invio email e risposte</span>
+      </button>
+      <button class="nav-item active" type="button">
+        <span class="nav-order">4</span>
+        <span class="nav-main">Anagrafica soci</span>
+        <span class="nav-sub">Schede e contatti</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">5</span>
+        <span class="nav-main">DATI (in/out)</span>
+        <span class="nav-sub">Matchpoint e backup</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">6</span>
+        <span class="nav-main">Messaggi WhatsApp</span>
+        <span class="nav-sub">Libreria testi e template</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">7</span>
+        <span class="nav-main">Routine</span>
+        <span class="nav-sub">Automazioni e cloud</span>
+      </button>
+      <button class="nav-item" type="button">
+        <span class="nav-order">8</span>
+        <span class="nav-main">Amministrazione</span>
+        <span class="nav-sub">Utenti e controlli tecnici</span>
+      </button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button">Menu</button>
+          <div class="topbar-title">Anagrafica soci</div>
+        </div>
+        <div class="mock-note">Mock-up separato · solo riferimento visivo</div>
+      </header>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h1>Anagrafica soci</h1>
+            <p>Schede soci, ricerca, filtri e dati di contatto.</p>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="button">+ Nuovo socio</button>
+            <button class="btn success" type="button">Esporta rubrica soci</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="summary-wrap" aria-label="Indicatori anagrafica soci">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>Soci attivi</th>
+                  <th>Totale soci</th>
+                  <th>Livello 0.5</th>
+                  <th>Senza email</th>
+                  <th>Senza telefono</th>
+                  <th>Maschi</th>
+                  <th>Femmine</th>
+                  <th>Sesso da completare</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="summary-value good">946</span><span class="summary-note">utilizzabili nei flussi</span></td>
+                  <td><span class="summary-value">969</span><span class="summary-note">archivio soci</span></td>
+                  <td><span class="summary-value warn">442</span><span class="summary-note">da autovalutare</span></td>
+                  <td><span class="summary-value danger">17</span><span class="summary-note">email da completare</span></td>
+                  <td><span class="summary-value danger">17</span><span class="summary-note">telefono mancante</span></td>
+                  <td><span class="summary-value">697</span><span class="summary-note">soci attivi</span></td>
+                  <td><span class="summary-value">249</span><span class="summary-note">soci attivi</span></td>
+                  <td><span class="summary-value">0</span><span class="summary-note">dato mancante</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="toolbar" aria-label="Filtri anagrafica soci">
+            <div>
+              <label>Cerca socio</label>
+              <input placeholder="Nome, cognome, email o telefono">
+            </div>
+            <div>
+              <label>Stato</label>
+              <select>
+                <option>Tutti</option>
+                <option>Solo attivi</option>
+                <option>Inattivi</option>
+              </select>
+            </div>
+            <div>
+              <label>Attenzione dati</label>
+              <select>
+                <option>Tutte</option>
+                <option>Senza telefono</option>
+                <option>Senza email</option>
+              </select>
+            </div>
+            <div>
+              <label>Livello</label>
+              <select>
+                <option>Tutti</option>
+                <option>0.5</option>
+                <option>2.0 - 4.0</option>
+              </select>
+            </div>
+            <div class="actions">
+              <button class="btn" type="button">Pulisci</button>
+            </div>
+          </div>
+
+          <section class="table-card">
+            <div class="table-head">
+              <h2>Soci</h2>
+              <span class="pill good">946 attivi</span>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="Lista soci">
+                <thead>
+                  <tr>
+                    <th>Socio</th>
+                    <th>Telefono</th>
+                    <th>Email</th>
+                    <th>Livello</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="Socio"><strong>Marco Bianchi</strong><small>PMO-000142</small></td>
+                    <td data-label="Telefono">+39 333 1234567</td>
+                    <td data-label="Email">marco.bianchi@example.it</td>
+                    <td data-label="Livello"><span class="pill good">3.0</span></td>
+                    <td data-label="Stato"><span class="pill good">Attivo</span></td>
+                    <td data-label="Azioni"><button class="btn" type="button">Scheda socio</button></td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Laura Conti</strong><small>PMO-000948</small></td>
+                    <td data-label="Telefono">+39 347 8890012</td>
+                    <td data-label="Email">laura.conti@example.it</td>
+                    <td data-label="Livello"><span class="pill good">2.5</span></td>
+                    <td data-label="Stato"><span class="pill good">Attivo</span></td>
+                    <td data-label="Azioni"><button class="btn" type="button">Scheda socio</button></td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Giulia Ferri</strong><small>PMO-000633</small></td>
+                    <td data-label="Telefono">+39 392 4411220</td>
+                    <td data-label="Email"><span class="pill warn">Senza email</span></td>
+                    <td data-label="Livello"><span class="pill">0.5</span></td>
+                    <td data-label="Stato"><span class="pill good">Attivo</span></td>
+                    <td data-label="Azioni"><button class="btn" type="button">Scheda socio</button></td>
+                  </tr>
+                  <tr>
+                    <td data-label="Socio"><strong>Davide Romano</strong><small>PMO-000228</small></td>
+                    <td data-label="Telefono"><span class="pill danger">Da completare</span></td>
+                    <td data-label="Email">davide.romano@example.it</td>
+                    <td data-label="Livello"><span class="pill good">3.5</span></td>
+                    <td data-label="Stato"><span class="pill warn">Attenzione dati</span></td>
+                    <td data-label="Azioni"><button class="btn" type="button">Scheda socio</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

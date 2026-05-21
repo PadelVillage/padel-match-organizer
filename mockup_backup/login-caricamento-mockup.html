@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup login caricamento - Padel Match Organizer</title>
+  <style>
+    :root {
+      --primary: #214f96;
+      --primary-dark: #183e78;
+      --border: #dbe4f0;
+      --text: #101828;
+      --muted: #667085;
+      --bg: #f4f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .login-card {
+      width: min(520px, calc(100vw - 32px));
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 18px 46px rgba(15, 23, 42, .16);
+      padding: 28px;
+    }
+    h1 { margin: 0; font-size: 30px; color: var(--primary); letter-spacing: 0; }
+    p { margin: 8px 0 22px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; margin-bottom: 7px; font-weight: 800; color: #344054; font-size: 13px; }
+    input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #cfd8e6;
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 15px;
+    }
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    button {
+      border: 0;
+      border-radius: 7px;
+      min-height: 48px;
+      padding: 0 18px;
+      font-weight: 900;
+      font-size: 15px;
+      cursor: default;
+    }
+    .primary {
+      flex: 1;
+      color: #fff;
+      background: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .primary.loading { background: var(--primary-dark); }
+    .secondary { background: #eef3f9; color: #344054; }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255,255,255,.38);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    .status {
+      margin-top: 14px;
+      padding: 11px 12px;
+      border-left: 4px solid var(--primary);
+      background: #f8fbff;
+      border-radius: 7px;
+      color: #344054;
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 620px) {
+      .row { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login-card">
+    <h1>Padel Village</h1>
+    <p>Accesso staff a Match Organizer.</p>
+    <div class="row">
+      <div>
+        <label>Email utente</label>
+        <input value="staff@padelvillage.it">
+      </div>
+      <div>
+        <label>Password personale</label>
+        <input type="password" value="password">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary loading"><span class="spinner"></span> Accesso in corso...</button>
+      <button class="secondary">Recupera password</button>
+    </div>
+    <div class="status">Verifica credenziali e profilo staff. Tempo massimo: 20 secondi.</div>
+  </main>
+</body>
+</html>

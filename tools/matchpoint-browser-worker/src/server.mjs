@@ -981,6 +981,17 @@ async function handleHistoryExport(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+  console.log(JSON.stringify({
+    event: 'incoming_request',
+    method: req.method,
+    url: req.url,
+    headers: {
+      host: req.headers.host,
+      authorization: req.headers.authorization ? 'Present' : 'Absent',
+      'content-type': req.headers['content-type'],
+    },
+    time: new Date().toISOString(),
+  }));
   try {
     if (req.method === 'GET' && req.url === '/health') {
       return json(res, 200, {
@@ -1003,6 +1014,15 @@ const server = http.createServer(async (req, res) => {
     }
     return json(res, 404, { ok: false, error: 'NOT_FOUND' });
   } catch (error) {
+    console.error(JSON.stringify({
+      event: 'request_error',
+      method: req.method,
+      url: req.url,
+      error: error.message || String(error),
+      code: error.code || null,
+      status: error.status || 500,
+      time: new Date().toISOString(),
+    }));
     const status = error.status || 500;
     json(res, status, {
       ok: false,
