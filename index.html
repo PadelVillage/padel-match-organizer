@@ -27261,8 +27261,8 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailTodayRoutineBatch() {
       const batch = assessmentEmailRoutineBatches?.[getTodayKey()] || null;
-      if (batch?.type === 'assessment_email_batch' && cleanCell(batch.status || '') === 'pending') return batch;
-      return assessmentEmailLatestPendingRoutineBatch() || (batch?.type === 'assessment_email_batch' ? batch : null);
+      if (batch?.type === 'assessment_email_batch') return batch;
+      return assessmentEmailLatestPendingRoutineBatch();
     }
     function assessmentEmailRoutineBatchSelectedCount(batch=null) {
       const rows = Array.isArray(batch?.selected) ? batch.selected : [];
@@ -28898,7 +28898,7 @@ Per confermare scrivi ELIMINA.`);
         showAlert(`Invio approvato: sto inviando ${selected} email...`, 'info');
         const result = await pmoInvokeAssessmentEmail({
           action: 'routine-approve',
-          scheduledLocalDate: getTodayKey(),
+          scheduledLocalDate: assessmentManualBatchKey(batch),
           limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
           source: 'pmo_assessment_email_manual_approval'
         });
@@ -29004,7 +29004,7 @@ Per confermare scrivi ELIMINA.`);
           // Trigger real database Edge Function invocation via wrapper
           const result = await pmoInvokeAssessmentEmail({
             action: 'routine-approve',
-            scheduledLocalDate: getTodayKey(),
+            scheduledLocalDate: assessmentManualBatchKey(batch),
             limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
             source: 'pmo_assessment_email_mobile_approval'
           });
@@ -29045,6 +29045,10 @@ Per confermare scrivi ELIMINA.`);
     }
 
     function renderAssessmentEmailMorningMobileWidgetHtml(batch) {
+      const batchDate = batch ? (batch.localDate || batch.scheduledLocalDate || '') : '';
+      const isToday = batchDate === getTodayKey();
+      const dateLabel = isToday ? 'OGGI (06:30)' : `${batchDate} (06:30)`;
+
       // Determine the active state of the widget
       let state = 'ready';
       
@@ -29253,7 +29257,7 @@ Per confermare scrivi ELIMINA.`);
           <div id="screen-ready" class="screen-content active">
             <div class="batch-summary-bar">
               <span>Selezionati: <strong id="selected-text">${selected} / ${total}</strong> soci</span>
-              <span class="batch-date-badge" id="batch-date-badge">OGGI (06:30)</span>
+              <span class="batch-date-badge" id="batch-date-badge">${dateLabel}</span>
             </div>
             <div class="candidates-list">
               ${cardsHtml}
