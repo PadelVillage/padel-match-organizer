@@ -28954,6 +28954,7 @@ Per confermare scrivi ELIMINA.`);
 
     async function assessmentMobileWidgetGenerateBatch() {
       window.assessmentMobileWidgetOverrideState = 'loading';
+      window.assessmentMobileWidgetErrorMessage = null;
       renderAssessmentEmailMorningPanel();
       try {
         const result = await pmoInvokeAssessmentEmail({
@@ -28972,6 +28973,7 @@ Per confermare scrivi ELIMINA.`);
       } catch (err) {
         console.error(err);
         window.assessmentMobileWidgetOverrideState = 'error';
+        window.assessmentMobileWidgetErrorMessage = err.message || String(err);
         renderAssessmentEmailMorningPanel();
       }
     }
@@ -28989,6 +28991,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentMobileWidgetOverrideState = 'approving';
       window.assessmentMobileWidgetProgress = 0;
       window.assessmentMobileWidgetLogText = 'Sincronizzazione selezione...';
+      window.assessmentMobileWidgetErrorMessage = null;
       renderAssessmentEmailMorningPanel();
       
       // Phase 1: Sync (visual feedback first)
@@ -29027,6 +29030,7 @@ Per confermare scrivi ELIMINA.`);
         } catch (err) {
           console.error(err);
           window.assessmentMobileWidgetOverrideState = 'error';
+          window.assessmentMobileWidgetErrorMessage = err.message || String(err);
           renderAssessmentEmailMorningPanel();
         }
       }, 700);
@@ -29036,6 +29040,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentMobileWidgetOverrideState = null;
       window.assessmentMobileWidgetProgress = null;
       window.assessmentMobileWidgetLogText = null;
+      window.assessmentMobileWidgetErrorMessage = null;
       renderAssessmentEmailMorningPanel();
     }
 
@@ -29306,6 +29311,9 @@ Per confermare scrivi ELIMINA.`);
           </div>
         `;
       } else if (state === 'error') {
+        const errorDetailText = window.assessmentMobileWidgetErrorMessage
+          ? window.assessmentMobileWidgetErrorMessage
+          : "Impossibile contattare Supabase per completare l'operazione. Verifica la connessione di rete e riprova.";
         screenContentHtml = `
           <div id="screen-error" class="screen-content active">
             <div class="error-container">
@@ -29317,7 +29325,7 @@ Per confermare scrivi ELIMINA.`);
                 </svg>
               </div>
               <h3 class="error-title">Errore di Sincronizzazione</h3>
-              <p class="error-desc">Impossibile contattare Supabase per completare l'operazione. Verifica la connessione di rete e riprova.</p>
+              <p class="error-desc" style="max-height: 120px; overflow-y: auto; font-family: monospace; font-size: 13px; background: rgba(255, 68, 68, 0.08); border: 1px solid rgba(255, 68, 68, 0.15); padding: 10px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; line-height: 1.4; word-break: break-word;">${escapeHtml(errorDetailText)}</p>
               <button class="btn-action-primary" onclick="assessmentMobileWidgetResetState()" style="background: linear-gradient(135deg, var(--danger), hsla(var(--danger-hsl), 0.8)); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);">
                 Riprova Connessione
               </button>
