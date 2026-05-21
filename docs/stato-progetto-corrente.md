@@ -28,9 +28,11 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata |
 |---|---:|---|---|
-| PROD | v5.517 | `main` | `851d05b` |
-| TEST | v5.518 | `test-preview` | `e01cf47` |
-| TEST sviluppo | v5.517 | `test/accessi-staff-guidati` | `851d05b` |
+| PROD | v5.518 | `main` | `7a077a7` |
+| TEST | v5.519 | `test-preview` | `bbb167a` |
+| TEST sviluppo | v5.519 | `test/accessi-staff-guidati` | `bbb167a` |
+
+Nota TEST v5.519 - 2026-05-21 22:30: Aggiunto l'avviso visivo del timestamp di predisposizione del lotto email manuale ("🕐 Lotto predisposto il gg/mm/aaaa alle HH:MM") sotto il titolo "Lotto email manuale" nella tab Da inviare, per mostrare chiaramente quando è stato preparato l'invio. CSS dedicato `.assessment-manual-batch-created-notice`. Nessuna modifica a SQL, Edge Function o scheduler.
 
 Nota TEST v5.518 - 2026-05-21 17:30: decisione strategica di mantenere l'interfaccia di amministrazione e la cabina di regia riservata a Desktop e Tablet per garantire la massima operatività e sicurezza visiva. Rimosso interamente il widget mobile staff (precedentemente introdotto per gestire le autovalutazioni da cellulare) eliminando oltre 2200 righe di codice HTML, CSS e JS ridondanti. Introdotta una schermata blocco 'mobile blocker gate' premium (blur glassmorphism, radial gradient backdrop, font Outfit e card esplicativa) visibile solo su schermi <= 760px. La schermata di blocco si attiva dinamicamente al resize ma è protetta tramite guardia `!pmoIsPublicAccessMode()` per evitare di bloccare l'accesso dei giocatori da cellulare alle schede pubbliche di autovalutazione o ai moduli di feedback post-partita. Commit app `e01cf47`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti o dati reali.
 
