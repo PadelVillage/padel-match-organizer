@@ -10,6 +10,7 @@ Before answering the user's prompt, suggesting architectural changes, or writing
 
 ## 1. TOKEN & CREDIT EFFICIENCY (CRITICAL FOR USER SAVINGS)
 To maximize the user's AI credits and prevent slow response times due to context bloat, you **MUST** adhere to these strict limits:
+- **Active 20-Minute Chat Monitor**: At the start of a session or a complex task, the agent is encouraged to schedule a reminder/timer at 20-minute intervals (using the `schedule` tool when applicable or by tracking execution time). If a conversation is active for more than 20 minutes, or exceeds 5-6 turns, you MUST print a clear, highlighted warning message in the chat for the user, suggesting they close and restart the session to optimize credits.
 - **Proactive Chat Refresh Directive**: The moment you finish a specific task (e.g., a migration is executed, a bug is fixed, a mockup is approved, a file is written), you **MUST** explicitly end your message by telling the user to close the chat and open a new one. Provide a ready-to-use copy-paste prompt for their next chat.
   * *Example: "Ho completato la migrazione del database. Per risparmiare i tuoi crediti ed evitare rallentamenti, chiudi questa chat e aprine una nuova con questo prompt: [Prompt per il passo successivo]"*.
 - **Context Bloat Warning**: If the current chat exceeds 5-6 turn interactions or contains multiple large file reads, proactively warn the user to refresh the chat to save tokens.
@@ -41,3 +42,11 @@ To maximize the user's AI credits and prevent slow response times due to context
 ## 5. PROFESSIONAL COMMUNICATION
 - Be concise, professional, and humble.
 - Avoid overconfident language, bragging, or superlatives (e.g., do not use "perfectly", "flawlessly", "100% correct"). Ground all claims in verified facts.
+
+---
+
+## 6. DEPLOYMENT WORKFLOW: TEST → PROD (CRITICO)
+- **Ogni modifica va prima su `test-preview`**, mai direttamente su `main` (prod).
+- Prima di modificare `index.html` o qualsiasi file deployato, **chiedere sempre conferma esplicita** all'utente: *"Modifico index.html su test-preview?"*.
+- Il merge su `main`/prod avviene **solo dopo approvazione esplicita** dell'utente, mai in autonomia.
+- Sequenza obbligatoria: **modifica → commit test-preview → test utente → approvazione → merge prod**.
