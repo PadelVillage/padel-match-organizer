@@ -5708,7 +5708,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.519';
+    const APP_VERSION = '5.520';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25003,6 +25003,20 @@ Per confermare scrivi ELIMINA.`);
       const day = weekday ? weekday.charAt(0).toUpperCase() + weekday.slice(1).replace('.', '') : '';
       return `${day} ${next.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' })} alle 05:45`;
     }
+    function assessmentEmailNextAutoSendDateTime(baseTimeRaw) {
+      const baseMs = baseTimeRaw ? Date.parse(baseTimeRaw) : 0;
+      const startMs = Number.isFinite(baseMs) ? Math.max(baseMs, Date.now()) : Date.now();
+      const date = new Date(startMs);
+      const target = new Date(date);
+      target.setHours(7, 0, 0, 0);
+      if (target.getTime() <= startMs) {
+        target.setDate(target.getDate() + 1);
+      }
+      const dateStr = target.toLocaleDateString('it-IT', { 
+        day: '2-digit', month: '2-digit', year: 'numeric' 
+      });
+      return `${dateStr} alle 07:00`;
+    }
     function assessmentEmailAddDays(value, days) {
       const base = assessmentEmailDateMs(value) ? new Date(value) : new Date();
       base.setDate(base.getDate() + days);
@@ -26780,9 +26794,15 @@ Per confermare scrivi ELIMINA.`);
       const title = assessmentManualBatchTitle(batch);
       const createdAtRaw = cleanCell(batch?.createdAt || batch?.updatedAt || '');
       const createdAtLabel = createdAtRaw ? `Lotto predisposto il ${assessmentEmailFormatDateTime(createdAtRaw)}` : '';
-      const createdNoticeHtml = createdAtLabel
-        ? `<div class="assessment-manual-batch-created-notice">🕐 ${escapeHtml(createdAtLabel)}</div>`
-        : '';
+      let createdNoticeHtml = '';
+      if (createdAtLabel) {
+        let noticeText = createdAtLabel;
+        if (status === 'pending') {
+          const autoSendTime = assessmentEmailNextAutoSendDateTime(createdAtRaw);
+          noticeText += ` · 🚀 Invio automatico previsto il ${autoSendTime}`;
+        }
+        createdNoticeHtml = `<div class="assessment-manual-batch-created-notice">🕐 ${escapeHtml(noticeText)}</div>`;
+      }
       if (!rows.length) {
         return `<div class="assessment-email-table-wrap assessment-manual-batch"><div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div>${createdNoticeHtml}<div class="assessment-empty">Nessun socio pronto nel lotto preparato. Nessuna email parte senza conferma dello staff.</div></div>`;
       }

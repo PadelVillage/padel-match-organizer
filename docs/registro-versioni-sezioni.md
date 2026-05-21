@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-21 17:30
+Ultimo aggiornamento: 2026-05-21 23:07
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Autovalutazione / Lotto email manuale TEST v5.520 - 2026-05-21: aggiunta l'indicazione della data e dell'orario di invio automatico programmato ("· 🚀 Invio automatico previsto il gg/mm/aaaa alle 07:00") accanto al timestamp di predisposizione del lotto sotto il titolo nella tab Da inviare, quando il lotto si trova in stato `pending`. Inserita la funzione helper `assessmentEmailNextAutoSendDateTime` per calcolare in modo dinamico e robusto la prossima finestra di invio delle 07:00. Nessuna modifica a SQL, Edge Function o scheduler.
 - Autovalutazione / Lotto email manuale TEST v5.519 - 2026-05-21: aggiunta l'indicazione visiva del timestamp di predisposizione del lotto email manuale ("🕐 Lotto predisposto il gg/mm/aaaa alle HH:MM") sotto il titolo nella tab Da inviare. Aggiunto CSS `.assessment-manual-batch-created-notice`. Nessuna modifica a SQL, Edge Function o scheduler.
 - Autovalutazione / Mobile blocker gate TEST v5.518 - 2026-05-21: decisione strategica di mantenere l'interfaccia di amministrazione e la cabina di regia riservata a Desktop e Tablet per garantire la massima operatività. Rimosso interamente il widget mobile staff (precedentemente introdotto per gestire le autovalutazioni da cellulare) eliminando oltre 2200 righe di codice HTML, CSS e JS ridondanti. Introdotta una schermata blocco 'mobile blocker gate' premium (blur glassmorphism, radial gradient backdrop, font Outfit e card esplicativa) visibile solo su schermi <= 760px. La schermata di blocco si attiva dinamicamente al resize ma è protetta tramite guardia `!pmoIsPublicAccessMode()` per evitare di bloccare l'accesso dei giocatori da cellulare alle schede pubbliche di autovalutazione o ai moduli di feedback post-partita. Commit app `e01cf47`. Nessuna modifica a PROD, SQL, Supabase schema, Edge Function, scheduler, segreti o dati reali.
 - Promozione PROD v5.517 - 2026-05-21: dopo comando esplicito `PROMUOVI PROD` e approvazione utente, Promuovi Prod Admin ha completato l'allineamento all'ultima versione stabile v5.517, allineando `main` a commit `851d05b`. Questo rilascio integra il widget mobile staff Fase 2 per la gestione delle autovalutazioni da cellulare (in particolare risolvendo il bug di scroll con il pannello sticky bottom "Approva e Invia" ancorato correttamente alla viewport del dispositivo). La funzionalità è stata testata e validata su Pixel 9. Nessuna modifica a SQL, scheduler o Edge Function, e gli scheduler automatici PROD rimangono attivi ed invariati.
