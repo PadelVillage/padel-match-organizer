@@ -5118,6 +5118,8 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
   </div>
 
+  <div id="memberCardOverlay" class="member-card-overlay"></div>
+
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
     <form id="pmoLoginCard" class="pmo-login-card" data-pmo-login-mode="login" onsubmit="return handleStaffLoginSubmit(event)">
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
@@ -5435,7 +5437,6 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
           </section>
 
-              <div id="memberCardOverlay" class="member-card-overlay"></div>
               <section id="memberContactsExportPanel" class="member-contacts-export-panel" hidden></section>
               <div class="players-filter-grid">
                 <div><label>Ricerca socio</label><input id="searchFilter" placeholder="nome, telefono, email o ID" oninput="membersCurrentPage=1; displayMembers()" /></div>
@@ -30450,7 +30451,6 @@ Per confermare scrivi ELIMINA.`);
     }
 
     function assessmentOpenMemberCard(memberId, options = {}) {
-      switchTab('members');
       setTimeout(() => {
         try {
           openMemberCard(memberId, { force:options.force === true, focusAssessment:options.focusAssessment === true });
