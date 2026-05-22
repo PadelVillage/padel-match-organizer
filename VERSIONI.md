@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.526 / Compattazione filtri Autovalutazione su riga unica
+
+- Compattata la barra dei filtri della sezione Autovalutazione riducendo il gap orizzontale (da 24px a 12px) e il padding interno dei bottoni (da 16px a 12px) per assicurare che tutti i 5 tab stiano su una riga singola su desktop.
+- Ridotto lo spazio a sinistra del dot pulsante e del badge "Lotto pronto" per guadagnare ulteriore compattezza visiva.
+
 ## v5.525 / Evidenziato lotto pronto in Da inviare
 
 - Inserito un indicatore visivo "Lotto pronto" ed un dot verde pulsante sul tab "1. Da inviare" quando il lotto manuale di email quotidiano è preparato.
