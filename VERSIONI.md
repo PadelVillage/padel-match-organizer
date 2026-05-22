@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.531-TEST / Rimozione testi personalizzati Email e WhatsApp
+
+- Introdotto un bottone di eliminazione diretta (`🗑️`) accanto a ciascun modello personalizzato all'interno della griglia di scelta nel modal WhatsApp di Kanban (`assessmentEmailWhatsappModal`).
+- Aggiunta la possibilità di eliminare i modelli WhatsApp personalizzati direttamente dalla lista di selezione sinistra in "Amministrazione" > "Impostazioni" > "Modelli WhatsApp" tramite icona `🗑️` inline.
+- Aggiornata la logica di `deleteAssessmentCommunicationTemplate` e `deleteWhatsAppTemplate` per resettare in tempo reale le selezioni attive della UI e propagare i cambiamenti al cloud sync di Supabase senza lasciare chiavi orfane.
+
 ## v5.530-TEST / Integrazione WhatsApp Desktop App forzata
 
 - Creata la funzione globale `normalizeWhatsAppOpenSettings` che normalizza le impostazioni di WhatsApp convertendo e forzando la modalità `'web'` a `'desktop'`.
