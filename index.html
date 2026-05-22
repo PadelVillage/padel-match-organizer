@@ -5619,7 +5619,6 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="assessment-email-actions">
                   <button type="button" class="btn-secondary small-btn" data-assessment-manual-copy onclick="copyAssessmentEmailWhatsappMessage()">Copia WhatsApp</button>
                   <button type="button" class="btn-primary small-btn" data-assessment-manual-whatsapp-action data-assessment-whatsapp-open onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
-                  <button type="button" class="btn-success small-btn" data-assessment-manual-managed onclick="markAssessmentEmailManualContactFromModal()">Segna gestito</button>
                   <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailWhatsappModal()">Chiudi</button>
                 </div>
               </div>
@@ -6411,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.533';
+    const APP_VERSION = '5.534';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6658,7 +6657,7 @@ Grazie.`
       'whatsapp-saluto': {
         subject: 'Non previsto per messaggio manuale',
         type: 'Manuale - solo saluto',
-        body: 'Ciao {nome},\n\n'
+        body: 'Ciao {nome},\n '
       },
       'whatsapp-level': {
         subject: 'Non previsto per messaggio manuale',
@@ -6698,6 +6697,12 @@ Grazie.`
           .replaceAll('Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.', 'Ti scriviamo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.')
           .replaceAll("Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.", "Se non l'hai ricevuta, puoi risponderci qui con la tua email corretta e te la rinviamo.")
           .replaceAll('Quando riesci, compilala dalla mail ricevuta.\n\nGrazie.', 'Quando riesci, compilala dalla mail ricevuta.\n\nSe hai difficolta, puoi risponderci qui.\n\nGrazie.');
+        if (key === 'whatsapp-saluto') {
+          const cleaned = body.trim();
+          if (cleaned === 'Ciao {nome},' || cleaned === 'Ciao {nome},\n' || cleaned === 'Ciao {nome},\n\n') {
+            body = 'Ciao {nome},\n ';
+          }
+        }
       }
       if (key === 'primary-email' && !/LoZio|ti aiutiamo noi|preferisci non compilare la scheda da solo/i.test(body)) {
         if (/Richiede meno di 1 minuto\./i.test(body)) {

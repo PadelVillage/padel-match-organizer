@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.534-TEST / Spaziatura a capo WhatsApp forzata e rimozione pulsante gestito
+
+- Risolto il problema del comportamento del parser di WhatsApp Desktop che rimuove i caratteri a capo consecutivi al termine del testo: inserito uno spazio forzato a fine riga (`Ciao {nome},\n `) nel modello "Solo saluto" per obbligare l'app WhatsApp a posizionare il cursore direttamente sulla seconda riga pronta per la digitazione.
+- Rimossa la logica e il bottone verde "Segna gestito" dal modal WhatsApp manuale di Kanban per rendere l'interfaccia più pulita, essenziale ed evitare duplicazioni o confusioni sullo stato dei contatti.
+
 ## v5.533-TEST / Messaggi WhatsApp manuali interattivi ed editabili al volo
 
 - Trasformato il box di anteprima del messaggio all'interno del modal WhatsApp manuale di Kanban (`assessmentEmailWhatsappModal`) da elemento statico a un'area di testo dinamica (`<textarea>`) interamente editabile dallo staff.
