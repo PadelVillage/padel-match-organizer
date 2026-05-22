@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-22 13:35
+Ultimo aggiornamento: 2026-05-22 14:31
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | v5.521 | `main` | `f9b9ad6` |
-| TEST | v5.521 | `test-preview` | `f9b9ad6` |
-| TEST sviluppo | v5.521 | `test/accessi-staff-guidati` | `f9a985c` |
+| PROD | v5.522 | `main` | `fcba91e` |
+| TEST | v5.522 | `test-preview` | `fcba91e` |
+| TEST sviluppo | v5.522 | `test/accessi-staff-guidati` | `fcba91e` |
 | Assistente TEST | Fase 1 | `test/accessi-assistente` | Mockup unificato / DB TEST Popolato (`aylykijfirtegyxzdwgu`) |
 | Assistente LAVORO | Fase 1 | `test/accessi-assistente` | Locale (`padel-assistant-soci-mockup.html`) |
+
+Nota promozione PROD v5.522 - 2026-05-22 14:31: Completata la promozione in produzione (PROD) della versione v5.522. Aggiornata la costante `APP_VERSION` a `5.522` in `index.html` ed effettuato il deploy con successo della Edge Function `assessment-email-send` in PROD con JWT abilitato (`verify_jwt=true`). Integrata la routine di annullamento del lotto dell'autovalutazione (annullamento sicuro e protetto in PROD, totale in TEST). Allineati e pubblicati i branch Git `main` e `test-preview` al commit `fcba91e`. Gli scheduler automatici PROD rimangono attivi ed invariati.
 
 Nota promozione PROD v5.521 - 2026-05-22 13:35: Completato con successo il rilascio in produzione del redesign dell'Autovalutazione dello Staff. Eseguito lo script SQL `20260522120000_pmo_assessment_flow_redesign.sql` su Supabase PROD per l'aggiunta di `status_autovalutazione` e delle RPC di gestione. Effettuato il deploy della Edge Function `assessment-email-send` con `verify_jwt=true` (versione 28) ed eseguito il push delle modifiche sul branch `main` (`f9b9ad6`) per aggiornare la web-app su GitHub Pages. Schedulers PROD verificati e mantenuti attivi (`active=true`).
 
