@@ -27304,8 +27304,9 @@ Per confermare scrivi ELIMINA.`);
       return label && key !== getTodayKey() ? `Lotto email manuale (${label})` : 'Lotto email manuale';
     }
     function assessmentManualBatchCanRegenerate(batch=null) {
-      if (!batch || cleanCell(batch.status || '') !== 'pending') return false;
+      if (!batch) return false;
       if (PMO_IS_TEST_ENV) return true; // Consente sempre l'annullamento per facilitare i test nell'ambiente di TEST
+      if (cleanCell(batch.status || '') !== 'pending') return false;
       const rows = assessmentManualBatchRows(batch);
       if (!rows.length) return false;
       return !rows.some(row => row.sent || row.failed);
@@ -27439,9 +27440,9 @@ Per confermare scrivi ELIMINA.`);
       if (batch && unsentRows.length) {
         buttons.push(`<button class="assessment-email-mini success" type="button" ${selected && !sendBlock.blocked ? '' : 'disabled'} ${sendBlock.blocked ? `title="${escapeHtml(sendBlock.message)}"` : ''} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
         buttons.push(`<button class="assessment-email-mini success" type="button" ${sendDisabled} onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
-        if (assessmentManualBatchCanRegenerate(batch)) {
-          buttons.push(`<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentEmailCancelMorningBatch()">Annulla lotto</button>`);
-        }
+      }
+      if (batch && assessmentManualBatchCanRegenerate(batch)) {
+        buttons.push(`<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentEmailCancelMorningBatch()">Annulla lotto</button>`);
       }
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
