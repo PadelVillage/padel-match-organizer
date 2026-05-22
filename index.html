@@ -6410,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.534';
+    const APP_VERSION = '5.535';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6657,7 +6657,7 @@ Grazie.`
       'whatsapp-saluto': {
         subject: 'Non previsto per messaggio manuale',
         type: 'Manuale - solo saluto',
-        body: 'Ciao {nome},\n '
+        body: 'Ciao {nome},\n'
       },
       'whatsapp-level': {
         subject: 'Non previsto per messaggio manuale',
@@ -6698,9 +6698,9 @@ Grazie.`
           .replaceAll("Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.", "Se non l'hai ricevuta, puoi risponderci qui con la tua email corretta e te la rinviamo.")
           .replaceAll('Quando riesci, compilala dalla mail ricevuta.\n\nGrazie.', 'Quando riesci, compilala dalla mail ricevuta.\n\nSe hai difficolta, puoi risponderci qui.\n\nGrazie.');
         if (key === 'whatsapp-saluto') {
-          const cleaned = body.trim();
+          const cleaned = body.replace(/[\u200B\u200C\uFEFF]/g, '').trim();
           if (cleaned === 'Ciao {nome},' || cleaned === 'Ciao {nome},\n' || cleaned === 'Ciao {nome},\n\n') {
-            body = 'Ciao {nome},\n ';
+            body = 'Ciao {nome},\n';
           }
         }
       }
@@ -15057,8 +15057,12 @@ Ciao ${firstName}! Ti va di giocare una partita di padel il ${niceDate} ${timeTe
     }
     function buildWhatsAppWebUrl(phoneValue, message) {
       const phone = phoneDigitsForWhatsApp(phoneValue || '');
+      let finalMsg = message || '';
+      if (/\n\s*$/.test(finalMsg)) {
+        finalMsg = finalMsg.replace(/\s*$/, '\n\u200B');
+      }
       // v5.48: link Web diretto standard con numero centralmente normalizzato.
-      return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
     }
     const WHATSAPP_WEB_TARGET_NAME = 'PadelVillageWhatsAppWeb';
     function normalizeWhatsAppOpenSettings(settings) {
@@ -15128,9 +15132,13 @@ Ciao ${firstName}! Ti va di giocare una partita di padel il ${niceDate} ${timeTe
         showAlert('⚠️ ' + info.message, 'warning');
         return null;
       }
+      let finalMsg = message || '';
+      if (/\n\s*$/.test(finalMsg)) {
+        finalMsg = finalMsg.replace(/\s*$/, '\n\u200B');
+      }
       // v5.49: deep link diretto a WhatsApp Desktop, senza passare da web/api.whatsapp.com.
       // Il parametro phone usa sempre il numero E.164 senza +, spazi o simboli.
-      const url = `whatsapp://send?phone=${info.digits}&text=${encodeURIComponent(message)}`;
+      const url = `whatsapp://send?phone=${info.digits}&text=${encodeURIComponent(finalMsg)}`;
       window.location.href = url;
       return null;
     }

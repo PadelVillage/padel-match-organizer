@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.535-TEST / Soluzione definitiva a capo su WhatsApp Desktop con ZWSP dinamico
+
+- Risolto il problema del comportamento del parser di WhatsApp Desktop che rimuove i caratteri a capo consecutivi al termine del testo tramite **l'iniezione automatica e dinamica di un carattere invisibile a larghezza zero (Zero-Width Space, `\u200B`)** subito dopo l'a capo finale di qualsiasi messaggio generato o modificato a mano.
+- Rimosso lo spazio forzato a fine riga dal modello "Solo saluto", rendendolo nuovamente pulito e standard (`Ciao {nome},\n`), delegando la correzione interamente all'handler URL.
+
 ## v5.534-TEST / Spaziatura a capo WhatsApp forzata e rimozione pulsante gestito
 
 - Risolto il problema del comportamento del parser di WhatsApp Desktop che rimuove i caratteri a capo consecutivi al termine del testo: inserito uno spazio forzato a fine riga (`Ciao {nome},\n `) nel modello "Solo saluto" per obbligare l'app WhatsApp a posizionare il cursore direttamente sulla seconda riga pronta per la digitazione.
