@@ -1,5 +1,13 @@
 # Versioni
 
+## v5.529-TEST / Modelli personalizzati Email e WhatsApp in Autovalutazione
+
+- Sostituito il pulsante "Ripristina testo base" con un pulsante "Crea nuovo testo" che apre un modal premium per creare nuovi testi personalizzati per entrambi i canali (Email e WhatsApp).
+- Modelli personalizzati visualizzati nella tab "Testi" sotto le rispettive categorie.
+- Aggiunto un pulsante rosso "Elimina modello" per i modelli personalizzati.
+- Modelli WhatsApp personalizzati inseriti dinamicamente nella griglia di scelta del modal messaggi manuali WhatsApp in Kanban.
+- Gestito il salvataggio locale persistente ed il cloud sync con Supabase.
+
 ## v5.528-TEST / WhatsApp manuale personalizzato in Kanban
 
 - Sostituito il link WhatsApp diretto nella card di Gestione Manuale con un bottone che apre il modal di selezione template (`assessmentEmailWhatsappModal`).
