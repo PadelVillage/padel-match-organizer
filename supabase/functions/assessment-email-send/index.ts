@@ -709,7 +709,7 @@ async function sendAssessmentEmailCore(admin: any, actor: StaffActor, params: Js
   const member = params.member && typeof params.member === 'object' ? params.member : {};
   const memberId = clean(params.memberId || member.id || member.memberId || '');
   const memberName = clean(params.memberName || member.name || `${clean(member.firstName)} ${clean(member.surname)}` || 'Socio');
-  const originalRecipient = clean(params.originalRecipient || member.email || '');
+  const originalRecipient = clean(params.originalRecipient || memberEmail(member) || '');
   const token = clean(params.token || '');
   const link = clean(params.link || '');
   const subject = safeHeader(params.subject || '');
@@ -745,7 +745,7 @@ async function sendAssessmentEmailCore(admin: any, actor: StaffActor, params: Js
     memberName,
     originalRecipient,
     mode,
-    level: clean(params.level || member.level || ''),
+    level: clean(params.level || memberLevel(member) || ''),
   });
 
   const accessToken = await getGmailAccessToken();
@@ -829,6 +829,14 @@ function playerName(member: JsonMap) {
   return clean(member.name || `${clean(member.firstName)} ${clean(member.surname)}`) || 'Socio';
 }
 
+function memberEmail(member: JsonMap) {
+  return clean(member.email || member.mail || member.emailAddress || '');
+}
+
+function memberLevel(member: JsonMap) {
+  return clean(member.level || member.livello || member.currentLevel || '');
+}
+
 function firstName(member: JsonMap) {
   const first = clean(member.firstName);
   if (first) return first;
@@ -840,11 +848,11 @@ function phoneLast4(value: unknown) {
 }
 
 function isLevelZeroPointFive(member: JsonMap) {
-  return Math.abs(parseLevel(member.level, -1) - 0.5) < 0.001;
+  return Math.abs(parseLevel(memberLevel(member), -1) - 0.5) < 0.001;
 }
 
 function isObsoleteAssessmentTestMember(member: JsonMap) {
-  const email = clean(member.email || member.mail).toLocaleLowerCase('it-IT');
+  const email = memberEmail(member).toLocaleLowerCase('it-IT');
   if (email !== ASSESSMENT_OFFICIAL_TEST_MEMBER_EMAIL) return false;
   return [
     member.id,
@@ -934,7 +942,7 @@ function assessmentPublicLink(supabaseUrl: string, token: string, member: JsonMa
   return addQueryParams(assessmentPublicBaseUrl(supabaseUrl), {
     t: token,
     nome: playerName(member),
-    email: clean(member.email || ''),
+    email: memberEmail(member),
   });
 }
 
@@ -1225,7 +1233,7 @@ async function buildAssessmentRoutineContext(admin: any, body: JsonMap) {
     .filter((member) => memberMatchesTarget(member, targets))
     .filter((member) => isActiveMember(member))
     .filter((member) => isLevelZeroPointFive(member))
-    .filter((member) => isValidEmail(member.email))
+    .filter((member) => isValidEmail(memberEmail(member)))
     .filter((member) => !sentByMember.has(clean(member.id || member.__localKey)))
     .filter((member) => {
       const memberTokens = tokenByMember.get(clean(member.id || member.__localKey)) || [];
@@ -1257,9 +1265,9 @@ function routineBatchMemberPayload(member: JsonMap, token = '') {
     memberId: routineMemberId(member),
     memberCode: clean(member.memberId || ''),
     memberName: playerName(member),
-    email: clean(member.email || ''),
+    email: memberEmail(member),
     phone: clean(member.phone || ''),
-    level: clean(member.level || ''),
+    level: memberLevel(member),
     token: clean(token || ''),
     selected: true,
   };
@@ -1442,7 +1450,7 @@ async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supab
     const aliases = new Set(routineMemberAliases(member));
     if (!memberId) continue;
     if (!isActiveMember(member)) { skipped.push({ memberId, reason: 'INACTIVE' }); continue; }
-    if (!isValidEmail(member.email)) { skipped.push({ memberId, reason: 'INVALID_EMAIL' }); continue; }
+    if (!isValidEmail(memberEmail(member))) { skipped.push({ memberId, reason: 'INVALID_EMAIL' }); continue; }
     if (!isLevelZeroPointFive(member)) { skipped.push({ memberId, reason: 'LEVEL_NOT_0_5' }); continue; }
 
     const sendLogs = logs
@@ -1543,12 +1551,12 @@ async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supab
           name: playerName(member),
           firstName: clean(member.firstName || ''),
           surname: clean(member.surname || ''),
-          email: clean(member.email || ''),
+          email: memberEmail(member),
           phone: clean(member.phone || ''),
-          level: clean(member.level || ''),
+          level: memberLevel(member),
         },
-        level: clean(member.level || ''),
-        originalRecipient: clean(member.email || ''),
+        level: memberLevel(member),
+        originalRecipient: memberEmail(member),
         token: item.token,
         link,
         subject: rendered.subject,
@@ -1931,12 +1939,12 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
           name: playerName(member),
           firstName: clean(member.firstName || ''),
           surname: clean(member.surname || ''),
-          email: clean(member.email || ''),
+          email: memberEmail(member),
           phone: clean(member.phone || ''),
-          level: clean(member.level || ''),
+          level: memberLevel(member),
         },
-        level: clean(member.level || ''),
-        originalRecipient: clean(member.email || ''),
+        level: memberLevel(member),
+        originalRecipient: memberEmail(member),
         token,
         link,
         subject: rendered.subject,
@@ -2147,12 +2155,12 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
           name: playerName(member),
           firstName: clean(member.firstName || ''),
           surname: clean(member.surname || ''),
-          email: clean(member.email || ''),
+          email: memberEmail(member),
           phone: clean(member.phone || ''),
-          level: clean(member.level || ''),
+          level: memberLevel(member),
         },
-        level: clean(member.level || ''),
-        originalRecipient: clean(member.email || ''),
+        level: memberLevel(member),
+        originalRecipient: memberEmail(member),
         token,
         link,
         subject: rendered.subject,
