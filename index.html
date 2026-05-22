@@ -402,7 +402,7 @@
     .whatsapp-template-panel { border:1px solid #dfe7f1; border-radius:8px; background:#fff; overflow:hidden; }
     .whatsapp-template-panel-head { min-height:46px; padding:11px 13px; border-bottom:1px solid #edf1f6; background:#f8fbff; color:var(--primary); font-weight:900; display:flex; align-items:center; justify-content:space-between; gap:8px; }
     .whatsapp-template-list { display:grid; gap:8px; padding:12px; }
-    .whatsapp-template-row { width:100%; display:grid; grid-template-columns:minmax(0,1fr); gap:10px; align-items:center; border:1px solid #dfe7f1; border-left:5px solid var(--primary); border-radius:8px; background:#fff; padding:12px 13px; text-align:left; cursor:pointer; }
+    .whatsapp-template-row { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid #dfe7f1; border-left:5px solid var(--primary); border-radius:8px; background:#fff; padding:12px 13px; text-align:left; cursor:pointer; font:inherit; }
     .whatsapp-template-row.active { background:#f3f7ff; border-color:#b9cbea; border-left-color:#173b70; }
     .whatsapp-template-name { display:block; color:#1f2937; font-weight:900; line-height:1.22; }
     .whatsapp-template-editor { display:grid; gap:10px; padding:12px; }
@@ -1876,10 +1876,12 @@
     .assessment-email-template-grid { display:grid; grid-template-columns:minmax(260px,.62fr) minmax(420px,1fr); gap:14px; align-items:start; }
     .assessment-email-template-list { display:grid; gap:8px; }
     .assessment-email-template-section { color:var(--primary); font-size:12px; font-weight:900; text-transform:uppercase; margin:5px 0 0; }
-    .assessment-email-template-row { border:1px solid #e7edf6; border-left:5px solid var(--primary); border-radius:8px; background:#fff; padding:11px 12px; cursor:pointer; }
+    .assessment-email-template-row { border:1px solid #e7edf6; border-left:5px solid var(--primary); border-radius:8px; background:#fff; padding:11px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
     .assessment-email-template-row.active { background:#f3f7ff; border-color:#b9cbea; border-left-color:#2563eb; }
     .assessment-email-template-row strong { display:block; color:#101828; }
     .assessment-email-template-row span { display:block; color:#667085; font-size:12px; margin-top:3px; }
+    .assessment-email-row-delete-btn { background:none; border:none; color:#ef4444; cursor:pointer; font-size:16px; padding:4px 8px; border-radius:4px; transition:background 0.2s, color 0.2s; display:flex; align-items:center; justify-content:center; }
+    .assessment-email-row-delete-btn:hover { background:#fee2e2; color:#b91c1c; }
     .assessment-email-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
     .assessment-email-template-body { min-height:190px; overflow:hidden; resize:none; }
     .assessment-email-preview { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:12px; color:#344054; white-space:pre-wrap; line-height:1.45; min-height:130px; margin-top:10px; }
@@ -5581,7 +5583,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <p class="assessment-email-panel-copy">Sottosezione per gestire testi email automatici e messaggi WhatsApp manuali dello stesso flusso.</p>
               </div>
               <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); resetAssessmentCommunicationTemplate()">Ripristina testo base</button>
+                <button class="btn-primary small-btn" onclick="setActionAnchor(this); openAssessmentEmailCreateTemplateModal()">Crea nuovo testo</button>
                 <button class="btn-success small-btn" onclick="setActionAnchor(this); saveAssessmentCommunicationTemplate()">Salva testi</button>
               </div>
             </div>
@@ -5604,23 +5606,12 @@ body.assessment-public-mode .assessment-public-only-card {
                   <span id="assessmentEmailWhatsappPhone">Telefono: -</span><br>
                   <span id="assessmentEmailWhatsappProblem">Problema da verificare</span>
                 </div>
-                <div class="assessment-email-message-grid" aria-label="Messaggi manuali disponibili">
-                  <button type="button" class="assessment-email-message-choice" data-assessment-whatsapp-template="whatsapp-email-missing" onclick="selectAssessmentEmailWhatsappMessage('whatsapp-email-missing')">
-                    <strong>Richiesta email mancante</strong>
-                    <span>Per soci senza email in anagrafica.</span>
-                  </button>
-                  <button type="button" class="assessment-email-message-choice" data-assessment-whatsapp-template="whatsapp-check" onclick="selectAssessmentEmailWhatsappMessage('whatsapp-check')">
-                    <strong>Verifica ricezione email</strong>
-                    <span>Per mancate consegne o dubbi sulla ricezione.</span>
-                  </button>
-                  <button type="button" class="assessment-email-message-choice" data-assessment-whatsapp-template="whatsapp-reminder" onclick="selectAssessmentEmailWhatsappMessage('whatsapp-reminder')">
-                    <strong>Promemoria controllo mail</strong>
-                    <span>Per chi ha ricevuto la mail ma non ha ancora compilato.</span>
-                  </button>
+                <div class="assessment-email-message-grid" id="assessmentEmailWhatsappMessageGrid" aria-label="Messaggi manuali disponibili">
+                  <!-- Generato dinamicamente in JS -->
                 </div>
-                <div class="assessment-email-message-preview">
-                  <div id="assessmentEmailWhatsappSelectedTitle" class="assessment-email-message-preview-title">Richiesta email mancante</div>
-                  <pre id="assessmentEmailWhatsappSelectedText" class="assessment-email-message-preview-text"></pre>
+                <div class="assessment-email-message-preview" style="padding: 8px 12px; background: #fff; border: 1px solid #dfe7f1; border-radius: 8px;">
+                  <div id="assessmentEmailWhatsappSelectedTitle" class="assessment-email-message-preview-title" style="margin-bottom: 6px; font-size: 13px; color: var(--primary); font-weight: bold;">Richiesta email mancante</div>
+                  <textarea id="assessmentEmailWhatsappSelectedText" class="assessment-email-message-preview-text" style="width: 100%; min-height: 150px; border: none; background: transparent; resize: vertical; font: inherit; color: #344054; padding: 0; outline: none; line-height: 1.45; box-sizing: border-box; display: block; margin: 0;" placeholder="Scrivi qui il tuo messaggio..."></textarea>
                 </div>
               </div>
               <div class="assessment-email-modal-actions">
@@ -5628,9 +5619,54 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="assessment-email-actions">
                   <button type="button" class="btn-secondary small-btn" data-assessment-manual-copy onclick="copyAssessmentEmailWhatsappMessage()">Copia WhatsApp</button>
                   <button type="button" class="btn-primary small-btn" data-assessment-manual-whatsapp-action data-assessment-whatsapp-open onclick="openSelectedAssessmentEmailWhatsapp()">Apri WhatsApp</button>
-                  <button type="button" class="btn-success small-btn" data-assessment-manual-managed onclick="markAssessmentEmailManualContactFromModal()">Segna gestito</button>
                   <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailWhatsappModal()">Chiudi</button>
                 </div>
+              </div>
+            </div>
+          </div>
+          <div id="assessmentEmailCreateTemplateModal" class="assessment-email-modal" aria-hidden="true" onclick="if(event.target.id==='assessmentEmailCreateTemplateModal') closeAssessmentEmailCreateTemplateModal();">
+            <div class="assessment-email-modal-card" style="width:min(550px,100%);" role="dialog" aria-modal="true" aria-labelledby="assessmentEmailCreateTemplateModalTitle">
+              <div class="assessment-email-modal-head">
+                <div>
+                  <h3 id="assessmentEmailCreateTemplateModalTitle" class="assessment-email-modal-title">Crea nuovo modello</h3>
+                  <p class="assessment-email-panel-copy">Aggiungi un nuovo testo personalizzato per Email o WhatsApp.</p>
+                </div>
+                <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailCreateTemplateModal()">Chiudi</button>
+              </div>
+              <div class="assessment-email-modal-body">
+                <div class="assessment-email-form-grid" style="grid-template-columns: 1fr;">
+                  <div>
+                    <label>Canale di invio</label>
+                    <select id="createTemplateChannel" onchange="toggleCreateTemplateFields()">
+                      <option value="email">Email automatiche</option>
+                      <option value="whatsapp">WhatsApp manuale</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Chiave univoca (ID tecnico - lettere, numeri e trattini)</label>
+                    <input id="createTemplateKey" placeholder="es. sollecito-weekend, whatsapp-saluto">
+                  </div>
+                  <div>
+                    <label>Titolo / Nome modello</label>
+                    <input id="createTemplateName" placeholder="es. Sollecito del weekend">
+                  </div>
+                  <div>
+                    <label>Descrizione / Nota breve</label>
+                    <input id="createTemplateNote" placeholder="es. Usato per i promemoria del sabato.">
+                  </div>
+                  <div id="createTemplateSubjectWrapper">
+                    <label>Oggetto Email</label>
+                    <input id="createTemplateSubject" placeholder="es. Padel Village - Completa il test">
+                  </div>
+                  <div>
+                    <label>Testo modello</label>
+                    <textarea id="createTemplateBody" class="assessment-email-template-body" style="height: 120px;" placeholder="Inserisci il testo qui. Puoi usare i tag: {nome}, {nome_completo}, {link_autovalutazione}, {livello_validato}"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="assessment-email-modal-actions" style="justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn-secondary small-btn" onclick="closeAssessmentEmailCreateTemplateModal()">Annulla</button>
+                <button type="button" class="btn-primary small-btn" onclick="submitAssessmentEmailCreateTemplate()">Crea modello</button>
               </div>
             </div>
           </div>
@@ -6374,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.527';
+    const APP_VERSION = '5.535';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6618,6 +6654,11 @@ Se hai difficolta, puoi risponderci qui.
 
 Grazie.`
       },
+      'whatsapp-saluto': {
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - solo saluto',
+        body: 'Ciao {nome},\n'
+      },
       'whatsapp-level': {
         subject: 'Non previsto per messaggio manuale',
         type: 'Manuale - livello validato',
@@ -6656,6 +6697,12 @@ Grazie.`
           .replaceAll('Ti scrivo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.', 'Ti scriviamo per verificare se hai ricevuto la mail per compilare la scheda di autovalutazione del livello di gioco.')
           .replaceAll("Se non l'hai ricevuta, mi rimandi qui la tua email corretta e te la rinviamo.", "Se non l'hai ricevuta, puoi risponderci qui con la tua email corretta e te la rinviamo.")
           .replaceAll('Quando riesci, compilala dalla mail ricevuta.\n\nGrazie.', 'Quando riesci, compilala dalla mail ricevuta.\n\nSe hai difficolta, puoi risponderci qui.\n\nGrazie.');
+        if (key === 'whatsapp-saluto') {
+          const cleaned = body.replace(/[\u200B\u200C\uFEFF]/g, '').trim();
+          if (cleaned === 'Ciao {nome},' || cleaned === 'Ciao {nome},\n' || cleaned === 'Ciao {nome},\n\n') {
+            body = 'Ciao {nome},\n';
+          }
+        }
       }
       if (key === 'primary-email' && !/LoZio|ti aiutiamo noi|preferisci non compilare la scheda da solo/i.test(body)) {
         if (/Richiede meno di 1 minuto\./i.test(body)) {
@@ -6691,8 +6738,21 @@ Grazie.`
         out[key] = {
           subject,
           type: String(key || '').startsWith('whatsapp-') ? cleanCell(base.type) : cleanCell(saved.type || base.type),
-          body: normalizeAssessmentCommunicationTemplateBody(key, saved.body || base.body)
+          body: normalizeAssessmentCommunicationTemplateBody(key, saved.body || base.body),
+          note: saved.note || '',
+          isCustom: false
         };
+      });
+      Object.entries(source).forEach(([key, saved]) => {
+        if (!out[key] && saved && typeof saved === 'object') {
+          out[key] = {
+            subject: cleanCell(saved.subject || ''),
+            type: cleanCell(saved.type || (String(key).startsWith('whatsapp-') ? 'Manuale - Custom' : 'Email - Custom')),
+            body: String(saved.body || ''),
+            note: saved.note || '',
+            isCustom: true
+          };
+        }
       });
       return out;
     }
@@ -11190,7 +11250,7 @@ Grazie.`
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
       giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
-      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentExternalRequests = data.assessmentExternalRequests || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || []; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = data.whatsappOpenSettings || whatsappOpenSettings || { mode: 'web' };
+      contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentExternalRequests = data.assessmentExternalRequests || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || []; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = normalizeWhatsAppOpenSettings(data.whatsappOpenSettings || whatsappOpenSettings);
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
@@ -14997,22 +15057,31 @@ Ciao ${firstName}! Ti va di giocare una partita di padel il ${niceDate} ${timeTe
     }
     function buildWhatsAppWebUrl(phoneValue, message) {
       const phone = phoneDigitsForWhatsApp(phoneValue || '');
+      let finalMsg = message || '';
+      if (/\n\s*$/.test(finalMsg)) {
+        finalMsg = finalMsg.replace(/\s*$/, '\n\u200B');
+      }
       // v5.48: link Web diretto standard con numero centralmente normalizzato.
-      return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(finalMsg)}`;
     }
     const WHATSAPP_WEB_TARGET_NAME = 'PadelVillageWhatsAppWeb';
-    let controlledWhatsAppWindow = null;
-    let whatsappOpenSettings = safeLoad('whatsappOpenSettings', { mode: 'desktop' });
-    // v5.49: modalità quotidiana = WhatsApp Desktop. Se in versioni precedenti era rimasta
-    // salvata la modalità Web, la migriamo una sola volta a Desktop per evitare l'apertura
-    // di nuove schede browser durante l'invio guidato.
-    if (!whatsappOpenSettings || !['copy','web','desktop'].includes(whatsappOpenSettings.mode)) {
-      whatsappOpenSettings = { mode: 'desktop', desktopMigrationV549: true };
-      save('whatsappOpenSettings', whatsappOpenSettings);
-    } else if (whatsappOpenSettings.mode === 'web' && !whatsappOpenSettings.desktopMigrationV549) {
-      whatsappOpenSettings = { ...whatsappOpenSettings, mode: 'desktop', desktopMigrationV549: true };
-      save('whatsappOpenSettings', whatsappOpenSettings);
+    function normalizeWhatsAppOpenSettings(settings) {
+      const current = settings || { mode: 'desktop', desktopMigrationV549: true };
+      if (!current.mode || !['copy', 'web', 'desktop'].includes(current.mode)) {
+        current.mode = 'desktop';
+        current.desktopMigrationV549 = true;
+      }
+      // Force 'web' to 'desktop' as requested by the user to ensure the desktop app is always opened
+      if (current.mode === 'web') {
+        current.mode = 'desktop';
+        current.desktopMigrationV549 = true;
+      }
+      return current;
     }
+
+    let controlledWhatsAppWindow = null;
+    let whatsappOpenSettings = normalizeWhatsAppOpenSettings(safeLoad('whatsappOpenSettings', { mode: 'desktop' }));
+    save('whatsappOpenSettings', whatsappOpenSettings);
 
     function getWhatsAppOpenMode() {
       return (whatsappOpenSettings && whatsappOpenSettings.mode) || 'desktop';
@@ -15063,9 +15132,13 @@ Ciao ${firstName}! Ti va di giocare una partita di padel il ${niceDate} ${timeTe
         showAlert('⚠️ ' + info.message, 'warning');
         return null;
       }
+      let finalMsg = message || '';
+      if (/\n\s*$/.test(finalMsg)) {
+        finalMsg = finalMsg.replace(/\s*$/, '\n\u200B');
+      }
       // v5.49: deep link diretto a WhatsApp Desktop, senza passare da web/api.whatsapp.com.
       // Il parametro phone usa sempre il numero E.164 senza +, spazi o simboli.
-      const url = `whatsapp://send?phone=${info.digits}&text=${encodeURIComponent(message)}`;
+      const url = `whatsapp://send?phone=${info.digits}&text=${encodeURIComponent(finalMsg)}`;
       window.location.href = url;
       return null;
     }
@@ -17155,15 +17228,18 @@ Grazie!`
       renderWhatsAppTemplateManager();
     }
 
-    function deleteWhatsAppTemplate() {
+    function deleteWhatsAppTemplate(id) {
       ensureWhatsAppMessageTemplates();
-      const current = whatsappMessageTemplates.find(item => item.id === whatsappTemplateUiState.selectedId);
+      const targetId = id || whatsappTemplateUiState.selectedId;
+      const current = whatsappMessageTemplates.find(item => item.id === targetId);
       if (!current) return showAlert('⚠️ Seleziona un modello da eliminare.', 'warning');
       if (current.default) return showAlert('ℹ️ I modelli base si possono modificare o duplicare, ma non eliminare.', 'info');
       if (!confirm('Eliminare questo modello WhatsApp?')) return;
-      whatsappMessageTemplates = whatsappMessageTemplates.filter(item => item.id !== current.id);
+      whatsappMessageTemplates = whatsappMessageTemplates.filter(item => item.id !== targetId);
       saveWhatsAppMessageTemplates();
-      whatsappTemplateUiState.selectedId = '';
+      if (whatsappTemplateUiState.selectedId === targetId) {
+        whatsappTemplateUiState.selectedId = '';
+      }
       renderWhatsAppTemplateManager();
     }
 
@@ -17242,9 +17318,16 @@ Grazie!`
         return `<button class="whatsapp-template-tab ${item.key === category ? 'active' : ''}" onclick="setActionAnchor(this); setWhatsAppTemplateCategory('${escapeJs(item.key)}')">${escapeHtml(item.shortLabel || item.label)}</button>`;
       }).join('');
       const rowsTitle = categoryConfig.shortLabel || categoryConfig.label;
-      const rows = templates.map(item => `<button class="whatsapp-template-row ${item.id === selected?.id ? 'active' : ''}" onclick="setActionAnchor(this); selectWhatsAppTemplate('${escapeJs(item.id)}')">
-        <span class="whatsapp-template-name">${escapeHtml(item.title)}</span>
-      </button>`).join('');
+      const rows = templates.map(item => {
+        const isDefault = item.default || false;
+        const deleteButton = !isDefault
+          ? `<button type="button" class="assessment-email-row-delete-btn" style="padding: 2px 6px; font-size: 14px;" title="Elimina modello" onclick="event.stopPropagation(); setActionAnchor(this); deleteWhatsAppTemplate('${escapeJs(item.id)}')">🗑️</button>`
+          : '';
+        return `<div class="whatsapp-template-row ${item.id === selected?.id ? 'active' : ''}" style="display:flex; justify-content:space-between; align-items:center;" onclick="setActionAnchor(this); selectWhatsAppTemplate('${escapeJs(item.id)}')">
+          <span class="whatsapp-template-name" style="flex:1;">${escapeHtml(item.title)}</span>
+          ${deleteButton}
+        </div>`;
+      }).join('');
       const categoryOptions = WHATSAPP_TEMPLATE_CATEGORIES.map(item => `<option value="${escapeHtml(item.key)}" ${selected?.category === item.key ? 'selected' : ''}>${escapeHtml(item.scope)} · ${escapeHtml(item.label)}</option>`).join('');
       const tokens = whatsappTemplateTokensForCategory(selected?.category || category).map(token => `<button type="button" class="whatsapp-token-chip" onclick="insertWhatsAppTemplateToken('${escapeJs(token)}')">${escapeHtml(whatsappTemplateTokenLabel(token))}</button>`).join('');
       const selectedPreview = selected ? applyWhatsAppTemplateText(selected.text || '', buildWhatsAppTemplateSampleContext(selected.category)) : '';
@@ -27792,13 +27875,13 @@ Per confermare scrivi ELIMINA.`);
       const member = row.member;
       const rec = row.rec;
       const name = playerFullName(member);
-      const publicLink = getAssessmentLink(rec.token, member);
       const phone = member.phone || rec.phone || '';
       const dateStr = rec.sentAt ? assessmentEmailFormatDateTime(rec.sentAt) : (rec.createdAt ? assessmentEmailFormatDateTime(rec.createdAt) : '-');
-      const text = `Ciao ${name}! Ti ricordiamo di compilare la scheda di autovalutazione del livello Padel per poter organizzare al meglio le tue partite. Puoi compilarla in 1 minuto da qui: ${publicLink} Grazie!`;
-      const encodedText = encodeURIComponent(text);
-      const whatsappUrl = `https://wa.me/${phoneDigitsForWhatsApp(phone)}?text=${encodedText}`;
       
+      const problem = assessmentEmailProblemText(row);
+      const problemLabel = problem.label;
+      const templateKey = problem.templateKey;
+
       return `
         <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid hsl(8, 100%, 54%); box-shadow: 0 4px 14px rgba(220, 38, 38, 0.05);">
           <div class="pmo-kanban-card-header">
@@ -27814,9 +27897,9 @@ Per confermare scrivi ELIMINA.`);
             <span style="font-size: 11px; color: #64748b;">📅 Ultimo tentativo automatico: ${escapeHtml(dateStr)}</span>
           </div>
           <div class="pmo-kanban-card-actions">
-            <a class="pmo-kanban-btn-action btn-whatsapp" href="${whatsappUrl}" target="_blank">
+            <button class="pmo-kanban-btn-action btn-whatsapp" onclick="openAssessmentEmailWhatsAppCheck('${escapeJs(String(member.id))}', '${escapeJs(String(templateKey))}', '${escapeJs(String(problemLabel))}', '${escapeJs(String(phone))}')">
               💬 WhatsApp
-            </a>
+            </button>
             <a class="pmo-kanban-btn-action btn-call" href="tel:${escapeHtml(phone)}">
               📞 Chiama
             </a>
@@ -29056,11 +29139,33 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailTextsPanel() {
       const box = document.getElementById('assessmentEmailTextsContent');
       if (!box) return;
-      const visibleTemplateEntries = Object.entries(DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES).filter(([key]) => key !== 'whatsapp-level');
+      const visibleTemplateEntries = Object.entries(assessmentCommunicationTemplates).filter(([key]) => key !== 'whatsapp-level');
       const visibleTemplateKeys = new Set(visibleTemplateEntries.map(([key]) => key));
       const selected = visibleTemplateKeys.has(assessmentCommunicationTemplateState.selected) ? assessmentCommunicationTemplateState.selected : 'primary-email';
       assessmentCommunicationTemplateState.selected = selected;
-      const row = (key, title, note) => `<div class="assessment-email-template-row ${selected === key ? 'active' : ''}" data-template="${escapeHtml(key)}" onclick="selectAssessmentCommunicationTemplate('${escapeHtml(key)}')"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(note)}</span></div>`;
+      
+      const customEmails = Object.entries(assessmentCommunicationTemplates).filter(([key, t]) => {
+        return !DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] && !key.startsWith('whatsapp-');
+      });
+      const customWhatsapps = Object.entries(assessmentCommunicationTemplates).filter(([key, t]) => {
+        return !DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] && key.startsWith('whatsapp-');
+      });
+      
+      const isCustom = assessmentCommunicationTemplates[selected]?.isCustom || false;
+      const row = (key, title, note) => {
+        const isThisCustom = assessmentCommunicationTemplates[key]?.isCustom || false;
+        const deleteButton = isThisCustom 
+          ? `<button class="assessment-email-row-delete-btn" title="Elimina modello" onclick="event.stopPropagation(); setActionAnchor(this); deleteAssessmentCommunicationTemplate('${escapeJs(key)}')">🗑️</button>` 
+          : '';
+        return `<div class="assessment-email-template-row ${selected === key ? 'active' : ''}" data-template="${escapeHtml(key)}" onclick="selectAssessmentCommunicationTemplate('${escapeHtml(key)}')">
+          <div style="flex:1;">
+            <strong>${escapeHtml(title)}</strong>
+            <span style="display:block; color:#667085; font-size:12px; margin-top:3px;">${escapeHtml(note)}</span>
+          </div>
+          ${deleteButton}
+        </div>`;
+      };
+      
       box.innerHTML = `<div class="assessment-email-template-grid">
         <div class="assessment-email-card">
           <h3>Testi disponibili</h3>
@@ -29071,10 +29176,14 @@ Per confermare scrivi ELIMINA.`);
             ${row('third-email','Terzo invio dopo altri 2 giorni','Ultimo promemoria: segnala eventuali difficolta prima della gestione manuale.')}
             ${row('received-email','Conferma ricezione scheda','Parte subito dopo la compilazione.')}
             ${row('level-email','Livello validato','Parte quando lo staff applica il livello.')}
+            ${customEmails.map(([key, t]) => row(key, t.type.replace(/^Email\s*-\s*/i, ''), t.note || 'Modello personalizzato.')).join('')}
+            
             <div class="assessment-email-template-section">WhatsApp manuale</div>
             ${row('whatsapp-email-missing','Richiesta email mancante',"Chiede al socio l'email corretta per poter inviare la scheda.")}
             ${row('whatsapp-check','Verifica ricezione email',"Chiede se la mail e arrivata; se no, chiede l'email corretta.")}
             ${row('whatsapp-reminder','Promemoria controllo mail','Ricorda di controllare la mail gia inviata.')}
+            ${row('whatsapp-saluto','Solo saluto','Invia solo un saluto iniziale al socio.')}
+            ${customWhatsapps.map(([key, t]) => row(key, t.type.replace(/^(WhatsApp|Manuale)\s*-\s*/i, ''), t.note || 'Modello personalizzato.')).join('')}
           </div>
         </div>
         <div class="assessment-email-card">
@@ -29088,6 +29197,7 @@ Per confermare scrivi ELIMINA.`);
           <label>Testo</label>
           <textarea id="assessmentTemplateBody" class="assessment-email-template-body" oninput="refreshAssessmentCommunicationTemplatePreview()"></textarea>
           <div id="assessmentTemplatePreview" class="assessment-email-preview"></div>
+          ${isCustom ? `<div style="margin-top:12px; display:flex; justify-content:flex-end;"><button class="btn-danger small-btn" onclick="setActionAnchor(this); deleteAssessmentCommunicationTemplate('${escapeJs(selected)}')">Elimina modello</button></div>` : ''}
         </div>
       </div><div class="assessment-email-footer-note">In modalita prova il sistema inviera questi testi solo alla email personale staff. Il messaggio manuale WhatsApp non contiene mai il link diretto alla scheda.</div>`;
       hydrateAssessmentCommunicationTemplateForm();
@@ -29514,6 +29624,31 @@ Per confermare scrivi ELIMINA.`);
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       const key = state.templateKey || 'whatsapp-check';
+      
+      // Popola dinamicamente i messaggi WhatsApp nel grid
+      const grid = document.getElementById('assessmentEmailWhatsappMessageGrid');
+      if (grid) {
+        const whatsappTemplates = Object.entries(assessmentCommunicationTemplates).filter(([k]) => {
+          return k.startsWith('whatsapp-') && k !== 'whatsapp-level';
+        });
+        grid.innerHTML = whatsappTemplates.map(([k, t]) => {
+          const isActive = k === key;
+          const label = cleanCell(t.type || '').replace(/^(WhatsApp|Manuale)\s*-\s*/i, '');
+          const note = cleanCell(t.note || 'Modello WhatsApp.');
+          const isThisCustom = t.isCustom || false;
+          const deleteBtn = isThisCustom
+            ? `<button type="button" class="assessment-email-row-delete-btn" style="margin-left: 8px; padding: 2px 6px; font-size: 14px;" title="Elimina modello" onclick="event.stopPropagation(); setActionAnchor(this); deleteAssessmentCommunicationTemplate('${escapeJs(k)}')">🗑️</button>`
+            : '';
+          return `<div class="assessment-email-message-choice ${isActive ? 'active' : ''}" style="display:flex; justify-content:space-between; align-items:center;" data-assessment-whatsapp-template="${escapeHtml(k)}" onclick="selectAssessmentEmailWhatsappMessage('${escapeJs(k)}')">
+            <div style="flex:1;">
+              <strong>${escapeHtml(label)}</strong>
+              <span>${escapeHtml(note)}</span>
+            </div>
+            ${deleteBtn}
+          </div>`;
+        }).join('');
+      }
+
       const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
       const player = document.getElementById('assessmentEmailWhatsappPlayer');
       const phone = document.getElementById('assessmentEmailWhatsappPhone');
@@ -29525,7 +29660,14 @@ Per confermare scrivi ELIMINA.`);
       if (phone) phone.textContent = phoneCheck.ok ? `Telefono: ${phoneCheck.info?.display || phoneCheck.digits}` : 'Telefono: mancante o non valido';
       if (problem) problem.textContent = state.problemLabel || 'Problema da verificare';
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
-      if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
+      if (text) {
+        const msg = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
+        if (text.tagName === 'TEXTAREA') {
+          text.value = msg;
+        } else {
+          text.textContent = msg;
+        }
+      }
       if (feedback) feedback.textContent = phoneCheck.ok
         ? 'Copia il testo, apri WhatsApp o segna il contatto come gestito.'
         : phoneCheck.message;
@@ -29549,17 +29691,17 @@ Per confermare scrivi ELIMINA.`);
       };
       renderAssessmentEmailWhatsappModal();
     }
-    function openAssessmentEmailWhatsAppCheck(memberId, templateKey='whatsapp-check', problemLabel='Email da verificare') {
+    function openAssessmentEmailWhatsAppCheck(memberId, templateKey='whatsapp-check', problemLabel='Email da verificare', phoneValue='') {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      const phoneCheck = validateWhatsAppPhone(member.phone || '');
+      const phoneCheck = validateWhatsAppPhone(phoneValue || member.phone || member.telefono || '');
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
       window.assessmentEmailWhatsappModalState = {
         memberId: String(member.id),
         templateKey: templateKey || 'whatsapp-check',
         problemLabel: problemLabel || 'Email da verificare',
         source: 'assessment-flow',
-        phoneValue: member.phone || ''
+        phoneValue: phoneValue || member.phone || member.telefono || ''
       };
       const modal = ensureAssessmentEmailWhatsappModalLayer();
       if (modal) {
@@ -29596,7 +29738,8 @@ Per confermare scrivi ELIMINA.`);
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
+      const textareaEl = document.getElementById('assessmentEmailWhatsappSelectedText');
+      const text = textareaEl ? textareaEl.value : assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
       const copiedMessage = state.source === 'member-card'
         ? "Testo WhatsApp copiato. WhatsApp resta manuale."
         : "Testo WhatsApp copiato. La data viene registrata solo con Apri WhatsApp o Segna gestito.";
@@ -29628,7 +29771,8 @@ Per confermare scrivi ELIMINA.`);
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
-      const text = withText ? assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check') : '';
+      const textareaEl = document.getElementById('assessmentEmailWhatsappSelectedText');
+      const text = withText ? (textareaEl ? textareaEl.value : assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check')) : '';
       const returnMemberId = String(member.id);
       if (state.source !== 'member-card') assessmentEmailRegisterWhatsappOpen(member);
       closeAssessmentEmailWhatsappModal();
@@ -29732,7 +29876,18 @@ Per confermare scrivi ELIMINA.`);
       const subject = document.getElementById('assessmentTemplateSubject');
       const type = document.getElementById('assessmentTemplateType');
       const body = document.getElementById('assessmentTemplateBody');
-      if (subject) subject.value = template.subject || '';
+      const isWhatsapp = String(key).startsWith('whatsapp-');
+
+      if (subject) {
+        subject.value = isWhatsapp ? '' : (template.subject || '');
+        subject.disabled = isWhatsapp;
+        subject.style.background = isWhatsapp ? '#f1f5f9' : '';
+        subject.style.cursor = isWhatsapp ? 'not-allowed' : '';
+        const parent = subject.closest('div');
+        if (parent) {
+          parent.style.opacity = isWhatsapp ? '0.4' : '1';
+        }
+      }
       if (type) type.value = key;
       if (body) body.value = template.body || '';
       resizeAssessmentCommunicationTemplateBody();
@@ -29757,22 +29912,175 @@ Per confermare scrivi ELIMINA.`);
     }
     function saveAssessmentCommunicationTemplate() {
       const key = assessmentCommunicationTemplateState.selected || 'primary-email';
-      const base = DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
-      assessmentCommunicationTemplates[key] = {
-        subject: cleanCell(document.getElementById('assessmentTemplateSubject')?.value || base.subject),
-        type: base.type,
-        body: String(document.getElementById('assessmentTemplateBody')?.value || base.body)
-      };
+      const isCustom = assessmentCommunicationTemplates[key]?.isCustom || false;
+      const current = assessmentCommunicationTemplates[key] || {};
+      
+      const subjectInput = document.getElementById('assessmentTemplateSubject');
+      const bodyInput = document.getElementById('assessmentTemplateBody');
+      
+      const newSubject = subjectInput ? cleanCell(subjectInput.value) : '';
+      const newBody = bodyInput ? String(bodyInput.value) : '';
+      
+      if (isCustom) {
+        assessmentCommunicationTemplates[key] = {
+          subject: newSubject,
+          type: current.type || (String(key).startsWith('whatsapp-') ? 'Manuale - Custom' : 'Email - Custom'),
+          body: newBody,
+          note: current.note || 'Modello personalizzato.',
+          isCustom: true
+        };
+      } else {
+        const base = DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
+        assessmentCommunicationTemplates[key] = {
+          subject: newSubject || base.subject,
+          type: base.type,
+          body: newBody || base.body,
+          note: current.note || '',
+          isCustom: false
+        };
+      }
+      
       save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('assessmentCommunicationTemplates', assessmentCommunicationTemplates, 'aggiornare testi autovalutazione');
+      }
       renderAssessmentEmailTextsPanel();
       showAlert('Testo autovalutazione salvato.', 'success');
     }
     function resetAssessmentCommunicationTemplate() {
       const key = assessmentCommunicationTemplateState.selected || 'primary-email';
+      if (assessmentCommunicationTemplates[key]?.isCustom) {
+        return showAlert('I modelli personalizzati non possono essere ripristinati.', 'warning');
+      }
       assessmentCommunicationTemplates[key] = { ...DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] };
       save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('assessmentCommunicationTemplates', assessmentCommunicationTemplates, 'ripristinare testo base autovalutazione');
+      }
       renderAssessmentEmailTextsPanel();
       showAlert('Testo base ripristinato.', 'success');
+    }
+    function ensureAssessmentEmailCreateTemplateModalLayer() {
+      const modal = document.getElementById('assessmentEmailCreateTemplateModal');
+      if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
+      return modal;
+    }
+    function openAssessmentEmailCreateTemplateModal() {
+      const modal = ensureAssessmentEmailCreateTemplateModalLayer();
+      if (!modal) return;
+      
+      const channel = document.getElementById('createTemplateChannel');
+      const key = document.getElementById('createTemplateKey');
+      const name = document.getElementById('createTemplateName');
+      const note = document.getElementById('createTemplateNote');
+      const subject = document.getElementById('createTemplateSubject');
+      const body = document.getElementById('createTemplateBody');
+      
+      if (channel) channel.value = 'email';
+      if (key) { key.value = ''; key.disabled = false; }
+      if (name) name.value = '';
+      if (note) note.value = '';
+      if (subject) subject.value = '';
+      if (body) body.value = '';
+      
+      toggleCreateTemplateFields();
+      
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    function closeAssessmentEmailCreateTemplateModal() {
+      const modal = document.getElementById('assessmentEmailCreateTemplateModal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    }
+    function toggleCreateTemplateFields() {
+      const channel = document.getElementById('createTemplateChannel')?.value || 'email';
+      const wrapper = document.getElementById('createTemplateSubjectWrapper');
+      if (wrapper) {
+        wrapper.style.display = channel === 'whatsapp' ? 'none' : 'block';
+      }
+    }
+    function submitAssessmentEmailCreateTemplate() {
+      const channel = document.getElementById('createTemplateChannel')?.value || 'email';
+      let key = document.getElementById('createTemplateKey')?.value.trim() || '';
+      const name = document.getElementById('createTemplateName')?.value.trim() || '';
+      const note = document.getElementById('createTemplateNote')?.value.trim() || '';
+      const subject = document.getElementById('createTemplateSubject')?.value.trim() || '';
+      const body = document.getElementById('createTemplateBody')?.value.trim() || '';
+      
+      if (!key) {
+        return showAlert('Inserisci una chiave univoca per il modello.', 'warning');
+      }
+      if (!name) {
+        return showAlert('Inserisci un titolo per il modello.', 'warning');
+      }
+      if (!body) {
+        return showAlert('Inserisci il testo del modello.', 'warning');
+      }
+      
+      key = key.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (!key) {
+        return showAlert('La chiave deve contenere lettere, numeri o trattini.', 'warning');
+      }
+      
+      if (channel === 'whatsapp') {
+        if (!key.startsWith('whatsapp-')) {
+          key = 'whatsapp-' + key;
+        }
+      } else {
+        if (key.startsWith('whatsapp-')) {
+          return showAlert('I modelli email non possono avere una chiave che inizia con "whatsapp-".', 'warning');
+        }
+      }
+      
+      if (assessmentCommunicationTemplates[key]) {
+        return showAlert(`Un modello con la chiave "${key}" esiste gia.`, 'warning');
+      }
+      
+      assessmentCommunicationTemplates[key] = {
+        subject: channel === 'whatsapp' ? 'Non previsto per messaggio manuale' : (subject || 'Padel Village - Autovalutazione'),
+        type: channel === 'whatsapp' ? `Manuale - ${name}` : `Email - ${name}`,
+        body: body,
+        note: note || 'Modello personalizzato.',
+        isCustom: true
+      };
+      
+      save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('assessmentCommunicationTemplates', assessmentCommunicationTemplates, 'creare modello autovalutazione');
+      }
+      
+      assessmentCommunicationTemplateState.selected = key;
+      renderAssessmentEmailTextsPanel();
+      closeAssessmentEmailCreateTemplateModal();
+      showAlert('Modello personalizzato creato.', 'success');
+    }
+    function deleteAssessmentCommunicationTemplate(key) {
+      if (!key) return;
+      if (!confirm('Sei sicuro di voler eliminare questo modello personalizzato?')) return;
+      
+      delete assessmentCommunicationTemplates[key];
+      save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('assessmentCommunicationTemplates', assessmentCommunicationTemplates, 'eliminare modello autovalutazione');
+      }
+      
+      if (assessmentCommunicationTemplateState.selected === key) {
+        assessmentCommunicationTemplateState.selected = 'primary-email';
+      }
+      
+      const state = window.assessmentEmailWhatsappModalState || {};
+      if (state.templateKey === key) {
+        state.templateKey = 'whatsapp-check';
+      }
+      
+      renderAssessmentEmailTextsPanel();
+      if (document.getElementById('assessmentEmailWhatsappModal')?.classList.contains('open')) {
+        renderAssessmentEmailWhatsappModal();
+      }
+      showAlert('Modello personalizzato eliminato.', 'info');
     }
     function assessmentPostRows() {
       const search = document.getElementById('assessmentPostSearch')?.value || '';
