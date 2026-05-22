@@ -27305,6 +27305,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentManualBatchCanRegenerate(batch=null) {
       if (!batch || cleanCell(batch.status || '') !== 'pending') return false;
+      if (PMO_IS_TEST_ENV) return true; // Consente sempre l'annullamento per facilitare i test nell'ambiente di TEST
       const rows = assessmentManualBatchRows(batch);
       if (!rows.length) return false;
       return !rows.some(row => row.sent || row.failed);

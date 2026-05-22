@@ -2263,14 +2263,20 @@ async function runAssessmentRoutineCancel(admin: any, actor: StaffActor, body: J
   const batch = await loadAssessmentRoutineBatch(admin, localDate);
   if (!batch) throw new Error('ROUTINE_BATCH_MISSING');
   
-  if (['sent', 'sent_with_errors'].includes(clean(batch.status))) {
-    throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_ALREADY_SENT');
-  }
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const runtimeEnv = assessmentRuntimeEnv(supabaseUrl, body.runtimeEnv);
+  const isTest = runtimeEnv === 'test';
   
-  const sent = Array.isArray(batch.sent) ? batch.sent : [];
-  const failed = Array.isArray(batch.failed) ? batch.failed : [];
-  if (sent.length > 0 || failed.length > 0) {
-    throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_CONTAINS_SENDS');
+  if (!isTest) {
+    if (['sent', 'sent_with_errors'].includes(clean(batch.status))) {
+      throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_ALREADY_SENT');
+    }
+    
+    const sent = Array.isArray(batch.sent) ? batch.sent : [];
+    const failed = Array.isArray(batch.failed) ? batch.failed : [];
+    if (sent.length > 0 || failed.length > 0) {
+      throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_CONTAINS_SENDS');
+    }
   }
   
   const now = new Date().toISOString();
