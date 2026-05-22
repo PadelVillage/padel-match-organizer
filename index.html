@@ -29949,7 +29949,102 @@ Per confermare scrivi ELIMINA.`);
         save('assessmentTokens', assessmentTokens);
       }
     }
+    async function assessmentEmailSyncIncompleteMembersToSupabase() {
+      try {
+        const candidates = assessmentEmailAllOperationalRows().filter(row => {
+          if (!assessmentEmailIsCycleCandidate(row)) return false;
+          if (row.response || assessmentEmailMemberApplied(row.member, row.info) || row.info.paused) return false;
+          const noEmail = !assessmentEmailHasValidEmail(row.member);
+          const noPhone = !row.member.phone;
+          const bounced = cleanCell(row.rec?.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+          const isGestione = row.rec?.status_autovalutazione === 'GESTIONE_MANUALE';
+          return noEmail || noPhone || bounced || isGestione;
+        });
+
+        const newTokensToUpsert = [];
+        const tokensToUpdateStatus = [];
+        const now = new Date().toISOString();
+        let changed = false;
+
+        candidates.forEach(row => {
+          const key = String(row.member.id);
+          const rec = assessmentTokens[key];
+          
+          if (!rec) {
+            const newToken = `GM-${row.member.id}`;
+            assessmentTokens[key] = {
+              memberId: key,
+              token: newToken,
+              memberName: playerFullName(row.member),
+              phone: row.member.phone || '',
+              email: row.member.email || '',
+              status: 'created',
+              status_autovalutazione: 'GESTIONE_MANUALE',
+              createdAt: now,
+              sentAt: null,
+              completedAt: null,
+              registeredToSupabase: false
+            };
+            newTokensToUpsert.push({
+              token: newToken,
+              member_local_id: key,
+              member_name: playerFullName(row.member),
+              phone_last4: String(row.member.phone || '').replace(/\D/g, '').slice(-4)
+            });
+            tokensToUpdateStatus.push(newToken);
+            changed = true;
+          } else if (rec.status_autovalutazione !== 'GESTIONE_MANUALE') {
+            rec.status_autovalutazione = 'GESTIONE_MANUALE';
+            tokensToUpdateStatus.push(rec.token);
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          save('assessmentTokens', assessmentTokens);
+        }
+
+        if (newTokensToUpsert.length > 0) {
+          pmoStaffRpc('upsert_assessment_tokens_admin', { p_tokens: newTokensToUpsert }, 'cloud_sync', 'registrare token incompleti automatici')
+            .then(res => {
+              if (res && res.ok === true) {
+                newTokensToUpsert.forEach(item => {
+                  const rec = Object.values(assessmentTokens || {}).find(r => cleanCell(r.token) === item.token);
+                  if (rec) {
+                    rec.registeredAt = now;
+                    rec.registeredToSupabase = true;
+                  }
+                });
+                save('assessmentTokens', assessmentTokens);
+                
+                tokensToUpdateStatus.forEach(token => {
+                  pmoStaffRpc('update_assessment_token_status_admin', {
+                    p_token: token,
+                    p_status_autovalutazione: 'GESTIONE_MANUALE'
+                  }, 'cloud_sync', 'impostare stato GESTIONE_MANUALE su Supabase');
+                });
+              }
+            })
+            .catch(err => {
+              console.error('Errore nel salvare i token incompleti automatici su Supabase:', err);
+            });
+        } else if (tokensToUpdateStatus.length > 0) {
+          tokensToUpdateStatus.forEach(token => {
+            pmoStaffRpc('update_assessment_token_status_admin', {
+              p_token: token,
+              p_status_autovalutazione: 'GESTIONE_MANUALE'
+            }, 'cloud_sync', 'impostare stato GESTIONE_MANUALE su Supabase').catch(err => {
+              console.error('Errore nel aggiornare lo stato del token su Supabase:', token, err);
+            });
+          });
+        }
+      } catch (err) {
+        console.error('Errore in assessmentEmailSyncIncompleteMembersToSupabase:', err);
+      }
+    }
+
     function displayAssessment() {
+      assessmentEmailSyncIncompleteMembersToSupabase();
       const baseInput = document.getElementById('assessmentBaseUrl');
       if (baseInput) baseInput.value = pmoResolveEnvUrl(assessmentSettings.baseUrl, PMO_DEFAULT_ASSESSMENT_BASE_URL);
       const configInput = document.getElementById('assessmentConfigUrl');
