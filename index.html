@@ -6411,7 +6411,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.531';
+    const APP_VERSION = '5.532';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6654,6 +6654,11 @@ Quando riesci, compilala dalla mail ricevuta.
 Se hai difficolta, puoi risponderci qui.
 
 Grazie.`
+      },
+      'whatsapp-saluto': {
+        subject: 'Non previsto per messaggio manuale',
+        type: 'Manuale - solo saluto',
+        body: 'Ciao {nome},'
       },
       'whatsapp-level': {
         subject: 'Non previsto per messaggio manuale',
@@ -29164,6 +29169,7 @@ Per confermare scrivi ELIMINA.`);
             ${row('whatsapp-email-missing','Richiesta email mancante',"Chiede al socio l'email corretta per poter inviare la scheda.")}
             ${row('whatsapp-check','Verifica ricezione email',"Chiede se la mail e arrivata; se no, chiede l'email corretta.")}
             ${row('whatsapp-reminder','Promemoria controllo mail','Ricorda di controllare la mail gia inviata.')}
+            ${row('whatsapp-saluto','Solo saluto','Invia solo un saluto iniziale al socio.')}
             ${customWhatsapps.map(([key, t]) => row(key, t.type.replace(/^(WhatsApp|Manuale)\s*-\s*/i, ''), t.note || 'Modello personalizzato.')).join('')}
           </div>
         </div>

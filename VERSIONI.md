@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.532-TEST / Modello protetto di solo saluto WhatsApp
+
+- Introdotto il modello di sistema protetto `'whatsapp-saluto'` ("Solo saluto") per WhatsApp.
+- Il modello non contiene testo prefissato eccetto il saluto iniziale dinamico `Ciao {nome},` per permettere l'invio rapido di messaggi a composizione interamente manuale da parte dello staff.
+- Trattandosi di un modello di sistema, è protetto dall'eliminazione accidentale e rimane sempre disponibile tra le scelte predefinite sia in "Testi" che in Kanban.
+
 ## v5.531-TEST / Rimozione testi personalizzati Email e WhatsApp
 
 - Introdotto un bottone di eliminazione diretta (`🗑️`) accanto a ciascun modello personalizzato all'interno della griglia di scelta nel modal WhatsApp di Kanban (`assessmentEmailWhatsappModal`).
