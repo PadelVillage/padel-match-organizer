@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.533-TEST / Messaggi WhatsApp manuali interattivi ed editabili al volo
+
+- Trasformato il box di anteprima del messaggio all'interno del modal WhatsApp manuale di Kanban (`assessmentEmailWhatsappModal`) da elemento statico a un'area di testo dinamica (`<textarea>`) interamente editabile dallo staff.
+- La composizione del messaggio "Solo saluto" (`'whatsapp-saluto'`) ora include due a capo automatici dopo la virgola (`Ciao {nome},\n\n`), posizionando il cursore pronto per la digitazione.
+- Le azioni "Copia WhatsApp" e "Apri WhatsApp" catturano in tempo reale le eventuali modifiche apportate sul momento nel box di testo, inviando esattamente il messaggio personalizzato compilato a schermo.
+
 ## v5.532-TEST / Modello protetto di solo saluto WhatsApp
 
 - Introdotto il modello di sistema protetto `'whatsapp-saluto'` ("Solo saluto") per WhatsApp.

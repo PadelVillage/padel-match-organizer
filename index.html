@@ -5609,9 +5609,9 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div class="assessment-email-message-grid" id="assessmentEmailWhatsappMessageGrid" aria-label="Messaggi manuali disponibili">
                   <!-- Generato dinamicamente in JS -->
                 </div>
-                <div class="assessment-email-message-preview">
-                  <div id="assessmentEmailWhatsappSelectedTitle" class="assessment-email-message-preview-title">Richiesta email mancante</div>
-                  <pre id="assessmentEmailWhatsappSelectedText" class="assessment-email-message-preview-text"></pre>
+                <div class="assessment-email-message-preview" style="padding: 8px 12px; background: #fff; border: 1px solid #dfe7f1; border-radius: 8px;">
+                  <div id="assessmentEmailWhatsappSelectedTitle" class="assessment-email-message-preview-title" style="margin-bottom: 6px; font-size: 13px; color: var(--primary); font-weight: bold;">Richiesta email mancante</div>
+                  <textarea id="assessmentEmailWhatsappSelectedText" class="assessment-email-message-preview-text" style="width: 100%; min-height: 150px; border: none; background: transparent; resize: vertical; font: inherit; color: #344054; padding: 0; outline: none; line-height: 1.45; box-sizing: border-box; display: block; margin: 0;" placeholder="Scrivi qui il tuo messaggio..."></textarea>
                 </div>
               </div>
               <div class="assessment-email-modal-actions">
@@ -6411,7 +6411,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.532';
+    const APP_VERSION = '5.533';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6658,7 +6658,7 @@ Grazie.`
       'whatsapp-saluto': {
         subject: 'Non previsto per messaggio manuale',
         type: 'Manuale - solo saluto',
-        body: 'Ciao {nome},'
+        body: 'Ciao {nome},\n\n'
       },
       'whatsapp-level': {
         subject: 'Non previsto per messaggio manuale',
@@ -29647,7 +29647,14 @@ Per confermare scrivi ELIMINA.`);
       if (phone) phone.textContent = phoneCheck.ok ? `Telefono: ${phoneCheck.info?.display || phoneCheck.digits}` : 'Telefono: mancante o non valido';
       if (problem) problem.textContent = state.problemLabel || 'Problema da verificare';
       if (title) title.textContent = assessmentEmailWhatsappTemplateTitle(key);
-      if (text) text.textContent = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
+      if (text) {
+        const msg = member ? assessmentEmailBuildWhatsappMessage(member, key) : '';
+        if (text.tagName === 'TEXTAREA') {
+          text.value = msg;
+        } else {
+          text.textContent = msg;
+        }
+      }
       if (feedback) feedback.textContent = phoneCheck.ok
         ? 'Copia il testo, apri WhatsApp o segna il contatto come gestito.'
         : phoneCheck.message;
@@ -29718,7 +29725,8 @@ Per confermare scrivi ELIMINA.`);
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      const text = assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
+      const textareaEl = document.getElementById('assessmentEmailWhatsappSelectedText');
+      const text = textareaEl ? textareaEl.value : assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check');
       const copiedMessage = state.source === 'member-card'
         ? "Testo WhatsApp copiato. WhatsApp resta manuale."
         : "Testo WhatsApp copiato. La data viene registrata solo con Apri WhatsApp o Segna gestito.";
@@ -29750,7 +29758,8 @@ Per confermare scrivi ELIMINA.`);
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
-      const text = withText ? assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check') : '';
+      const textareaEl = document.getElementById('assessmentEmailWhatsappSelectedText');
+      const text = withText ? (textareaEl ? textareaEl.value : assessmentEmailBuildWhatsappMessage(member, state.templateKey || 'whatsapp-check')) : '';
       const returnMemberId = String(member.id);
       if (state.source !== 'member-card') assessmentEmailRegisterWhatsappOpen(member);
       closeAssessmentEmailWhatsappModal();
