@@ -21381,7 +21381,7 @@ Padel Village`;
     }
     function isTechnicalMemberRecord(member) {
       const name = String(member && (member.name || `${member.firstName || ''} ${member.surname || ''}`.trim()) || '').toLowerCase().replace(/\s+/g, ' ').trim();
-      return ['padel village', 'tennisup', 'tennis up', 'tennis app'].includes(name);
+      return ['padel village', 'tennisup', 'tennis up'].includes(name);
     }
 
 
@@ -27145,13 +27145,27 @@ Per confermare scrivi ELIMINA.`);
       let countValidare = 0;
       
       searchableRows.forEach(row => {
-        const tokenRec = row.rec;
+        let tokenRec = row.rec;
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const isLvl05 = isLevelZeroPointFive(row.member);
+        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        
+        if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
+          tokenRec = {
+            memberId: String(row.member.id),
+            token: `GM-${row.member.id}`,
+            status_autovalutazione: 'GESTIONE_MANUALE',
+            status: 'created',
+            createdAt: new Date().toISOString()
+          };
+          row.rec = tokenRec;
+        }
+        
         if (!tokenRec?.token) return;
         
         const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
-        const noEmail = !assessmentEmailHasValidEmail(row.member);
-        const noPhone = !row.member.phone;
-        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         
         if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
           countGestione++;
@@ -27182,13 +27196,27 @@ Per confermare scrivi ELIMINA.`);
       const searchableRows = allRows.filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch));
       
       searchableRows.forEach(row => {
-        const tokenRec = row.rec;
+        let tokenRec = row.rec;
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const isLvl05 = isLevelZeroPointFive(row.member);
+        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        
+        if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
+          tokenRec = {
+            memberId: String(row.member.id),
+            token: `GM-${row.member.id}`,
+            status_autovalutazione: 'GESTIONE_MANUALE',
+            status: 'created',
+            createdAt: new Date().toISOString()
+          };
+          row.rec = tokenRec;
+        }
+        
         if (!tokenRec?.token) return;
         
         const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
-        const noEmail = !assessmentEmailHasValidEmail(row.member);
-        const noPhone = !row.member.phone;
-        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         
         if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
           keys.add('gestione');
@@ -27972,13 +28000,27 @@ Per confermare scrivi ELIMINA.`);
         const colValidare = [];
         
         searchableRows.forEach(row => {
-          const tokenRec = row.rec;
+          let tokenRec = row.rec;
+          const noEmail = !assessmentEmailHasValidEmail(row.member);
+          const noPhone = !row.member.phone;
+          const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+          const isLvl05 = isLevelZeroPointFive(row.member);
+          const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+          
+          if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
+            tokenRec = {
+              memberId: String(row.member.id),
+              token: `GM-${row.member.id}`,
+              status_autovalutazione: 'GESTIONE_MANUALE',
+              status: 'created',
+              createdAt: new Date().toISOString()
+            };
+            row.rec = tokenRec;
+          }
+          
           if (!tokenRec?.token) return;
           
           const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
-          const noEmail = !assessmentEmailHasValidEmail(row.member);
-          const noPhone = !row.member.phone;
-          const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
           
           if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
             colGestione.push({ row, status: 'GESTIONE_MANUALE' });
@@ -28663,12 +28705,27 @@ Per confermare scrivi ELIMINA.`);
       const pendingRows = assessmentEmailPendingRows();
       const allRows = assessmentEmailAllOperationalRows();
       const gestioneRows = allRows.filter(row => {
-        const tokenRec = row.rec;
-        if (!tokenRec?.token) return false;
-        const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        let tokenRec = row.rec;
         const noEmail = !assessmentEmailHasValidEmail(row.member);
         const noPhone = !row.member.phone;
-        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const isLvl05 = isLevelZeroPointFive(row.member);
+        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        
+        if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
+          tokenRec = {
+            memberId: String(row.member.id),
+            token: `GM-${row.member.id}`,
+            status_autovalutazione: 'GESTIONE_MANUALE',
+            status: 'created',
+            createdAt: new Date().toISOString()
+          };
+          row.rec = tokenRec;
+        }
+        
+        if (!tokenRec?.token) return false;
+        
+        const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
         return status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced));
       });
       const replyCount = pendingRows.filter(row => assessmentEmailReplyAtForRow(row)).length;
