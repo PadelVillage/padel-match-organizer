@@ -6296,7 +6296,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.522';
+    const APP_VERSION = '5.523';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -24351,11 +24351,22 @@ Per confermare scrivi ELIMINA.`);
           };
           updatedCount++;
         });
-        if (updatedCount > 0) {
+        const cloudMemberIds = new Set(data.map(item => String(item.member_local_id)).filter(Boolean));
+        let prunedCount = 0;
+        Object.keys(assessmentTokens).forEach(key => {
+          const rec = assessmentTokens[key];
+          const sentAt = cleanCell(rec?.sentAt || '');
+          if (sentAt && sentAt.slice(0, 10) === getTodayKey() && !cloudMemberIds.has(String(key))) {
+            delete assessmentTokens[key];
+            prunedCount++;
+          }
+        });
+        if (updatedCount > 0 || prunedCount > 0) {
           save('assessmentTokens', assessmentTokens);
         }
         if (!silent) {
-          showAlert(`✅ Sincronizzazione completata: ${updatedCount} token sincronizzati.`, 'success');
+          const pruneMsg = prunedCount ? ` (rimossi ${prunedCount} locali obsoleti per database resettato)` : '';
+          showAlert(`✅ Sincronizzazione completata: ${updatedCount} token sincronizzati${pruneMsg}.`, 'success');
         }
         return { ok: true, count: updatedCount };
       } catch (err) {
@@ -26075,6 +26086,15 @@ Per confermare scrivi ELIMINA.`);
             if (JSON.stringify(previous || {}) !== JSON.stringify(payload || {})) batchUpdated++;
             assessmentEmailRoutineBatches[key] = payload;
           });
+        const cloudBatchKeys = new Set(payloads
+          .filter(payload => payload?.type === 'assessment_email_batch')
+          .map(payload => cleanCell(payload.localDate || payload.scheduledLocalDate || ''))
+          .filter(Boolean));
+        const todayKey = getTodayKey();
+        if (assessmentEmailRoutineBatches[todayKey] && !cloudBatchKeys.has(todayKey)) {
+          delete assessmentEmailRoutineBatches[todayKey];
+          batchUpdated++;
+        }
         if (batchUpdated) save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches);
         const sends = payloads
           .filter(payload => payload?.type === 'assessment_email_send')
@@ -27307,11 +27327,16 @@ Per confermare scrivi ELIMINA.`);
       if (!batch) return false;
       if (PMO_IS_TEST_ENV) return true; // Consente sempre l'annullamento per facilitare i test nell'ambiente di TEST
       const status = cleanCell(batch.status || '');
-      if (status === 'empty') return true; // Consente l'annullamento/rigenerazione se il lotto è vuoto
-      if (status !== 'pending') return false;
-      const rows = assessmentManualBatchRows(batch);
-      if (!rows.length) return false;
-      return !rows.some(row => row.sent || row.failed);
+      
+      // I lotti con stato 'sent' o 'sent_with_errors' non possono mai essere annullati.
+      if (['sent', 'sent_with_errors'].includes(status)) return false;
+      
+      // Se il lotto non contiene effettivamente invii o fallimenti registrati nel lotto stesso (nel cloud),
+      // allora consentiamo sempre l'annullamento. Questo risolve e corregge i disallineamenti con il browser
+      // locale dovuti a ripristini o reset del database.
+      const hasActualSentOrFailed = (Array.isArray(batch.sent) && batch.sent.length > 0) || 
+                                    (Array.isArray(batch.failed) && batch.failed.length > 0);
+      return !hasActualSentOrFailed;
     }
     function assessmentGmailCheckNormalizeState(value=null) {
       const data = value && typeof value === 'object' ? value : {};
