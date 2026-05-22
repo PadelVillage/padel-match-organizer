@@ -985,16 +985,111 @@
     .assessment-email-tab-count strong { color:var(--primary); font-size:11px; }
     .assessment-email-tab.active .assessment-email-tab-count { color:rgba(255,255,255,.82); }
     .assessment-email-tab.active .assessment-email-tab-count strong { color:#fff; }
-    .assessment-process-sticky-filters { position:sticky; top:0; z-index:30; display:flex; flex-wrap:wrap; align-items:center; gap:3px 15px; margin:0 0 10px; padding:7px 2px 8px; background:rgba(255,255,255,.98); border-bottom:1px solid #e7edf6; box-shadow:0 3px 9px rgba(31,71,136,.06); }
-    .assessment-process-filter { min-width:0; text-align:left; border:0; border-bottom:3px solid transparent; background:transparent; color:#344054; border-radius:0; padding:4px 0 5px; cursor:pointer; box-shadow:none; display:inline-flex; align-items:baseline; gap:5px; font-weight:900; white-space:nowrap; }
-    .assessment-process-filter.active { color:var(--primary); border-bottom-color:var(--primary); background:transparent; }
-    .assessment-process-filter.search-hit { border-bottom-color:#f59e0b; color:#7a4d00; background:transparent; box-shadow:none; }
-    .assessment-process-filter.active.search-hit { color:var(--primary); border-bottom-color:var(--primary); background:transparent; box-shadow:none; }
-    .assessment-process-filter-title { display:inline; font-size:12px; font-weight:950; line-height:1.15; white-space:nowrap; overflow:visible; text-overflow:clip; }
-    .assessment-process-filter-count { display:inline; margin-top:0; font-size:14px; font-weight:950; color:#667085; line-height:1; white-space:nowrap; }
-    .assessment-process-filter.active .assessment-process-filter-count { color:var(--primary); }
-    .assessment-process-filter.search-hit .assessment-process-filter-count { color:#8a5a00; }
-    .assessment-process-filter.active.search-hit .assessment-process-filter-count { color:var(--primary); }
+    .assessment-process-sticky-filters {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 24px;
+      margin: 0 0 16px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+      box-shadow: 0 4px 20px rgba(31, 71, 136, 0.04);
+      border-radius: 12px;
+      position: relative;
+    }
+    .assessment-process-sticky-filters::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 3px;
+      background: #e2e8f0;
+      z-index: 1;
+      border-radius: 99px;
+      pointer-events: none;
+    }
+    @media (max-width: 900px) {
+      .assessment-process-sticky-filters::before {
+        display: none;
+      }
+    }
+    .assessment-process-filter {
+      position: relative;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 99px;
+      color: #475569;
+      font-weight: 850;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+    .assessment-process-filter:hover {
+      border-color: #cbd5e1;
+      color: #0f172a;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+    }
+    .assessment-process-filter.active {
+      background: var(--primary, #2563eb);
+      border-color: var(--primary, #2563eb);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.24);
+      transform: translateY(-1px);
+    }
+    .assessment-process-filter.search-hit {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      color: #d97706;
+    }
+    .assessment-process-filter.active.search-hit {
+      background: var(--primary, #2563eb);
+      border-color: var(--primary, #2563eb);
+      color: #ffffff;
+    }
+    .assessment-process-filter-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+    .assessment-process-filter-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      transition: all 0.25s ease;
+    }
+    .assessment-process-filter.active .assessment-process-filter-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+    .assessment-process-filter.search-hit .assessment-process-filter-count {
+      background: #fef3c7;
+      color: #d97706;
+    }
+    .assessment-process-filter.active.search-hit .assessment-process-filter-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
     .assessment-process-active-filter { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 10px; color:#667085; font-size:12px; font-weight:850; }
     .assessment-process-active-filter strong { color:var(--primary); }
     .assessment-process-search { border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:9px 10px; margin-bottom:10px; }
@@ -1136,6 +1231,500 @@
     .assessment-email-mini.success { border-color:#b8e6ca; background:#eefaf3; color:#168a53; }
     .assessment-email-mini.warn { border-color:#f2d39b; background:#fff7e6; color:#7a4d00; }
     .assessment-email-mini.danger { border-color:#f1b9b3; background:#fff1f0; color:#b42318; }
+
+    /* PMO Kanban Board Styles */
+    .pmo-kanban-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 15px 0;
+      align-items: start;
+    }
+    
+    .pmo-kanban-column {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 480px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    
+    .pmo-kanban-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+      margin-bottom: 4px;
+    }
+    
+    .pmo-kanban-column-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .pmo-kanban-column-count {
+      background: #cbd5e1;
+      color: #334155;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    
+    .pmo-kanban-column-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: 600px;
+      padding: 2px 4px 4px 2px;
+    }
+    
+    .pmo-kanban-column-body::-webkit-scrollbar {
+      width: 4px;
+    }
+    .pmo-kanban-column-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .pmo-kanban-column-body::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    
+    .pmo-kanban-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .pmo-kanban-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08), 0 2px 4px rgba(37, 99, 235, 0.04);
+      border-color: #3b82f6;
+    }
+    
+    .pmo-kanban-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    
+    .pmo-kanban-card-name {
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.3;
+    }
+    
+    .pmo-kanban-card-meta {
+      font-size: 11.5px;
+      color: #64748b;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    
+    .pmo-kanban-card-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .pmo-kanban-card-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .badge-invito-inviato {
+      background: hsl(210, 100%, 96%);
+      color: hsl(210, 100%, 40%);
+      border: 1px solid hsl(210, 100%, 90%);
+    }
+    .badge-primo-sollecito {
+      background: hsl(40, 100%, 96%);
+      color: hsl(35, 100%, 40%);
+      border: 1px solid hsl(40, 100%, 90%);
+    }
+    .badge-ultimo-sollecito {
+      background: hsl(15, 100%, 96%);
+      color: hsl(10, 100%, 45%);
+      border: 1px solid hsl(15, 100%, 90%);
+    }
+    .badge-gestione-manuale {
+      background: hsl(0, 100%, 97%);
+      color: hsl(0, 100%, 42%);
+      border: 1px solid hsl(0, 100%, 92%);
+    }
+    .badge-compilato {
+      background: hsl(142, 70%, 95%);
+      color: hsl(142, 76%, 28%);
+      border: 1px solid hsl(142, 70%, 90%);
+    }
+    .badge-validato {
+      background: hsl(262, 80%, 96%);
+      color: hsl(262, 80%, 40%);
+      border: 1px solid hsl(262, 80%, 90%);
+    }
+    
+    .pmo-kanban-card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    
+    .pmo-kanban-btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      line-height: 1.1;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      flex: 1 1 0%;
+      min-width: 0;
+      text-align: center;
+    }
+    
+    .pmo-kanban-btn-action:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    
+    .pmo-kanban-btn-action.btn-whatsapp {
+      color: #15803d;
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+    .pmo-kanban-btn-action.btn-whatsapp:hover {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    
+    .pmo-kanban-btn-action.btn-call {
+      color: #0369a1;
+      border-color: #bae6fd;
+      background: #f0f9ff;
+    }
+    .pmo-kanban-btn-action.btn-call:hover {
+      background: #e0f2fe;
+      border-color: #7dd3fc;
+    }
+    
+    .pmo-kanban-btn-action.btn-primary {
+      background: var(--primary, #2563eb);
+      color: #ffffff;
+      border-color: var(--primary, #2563eb);
+    }
+    .pmo-kanban-btn-action.btn-primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+    
+    .pmo-kanban-btn-action.btn-success {
+      background: #16a34a;
+      color: #ffffff;
+      border-color: #16a34a;
+    }
+    .pmo-kanban-btn-action.btn-success:hover {
+      background: #15803d;
+      border-color: #15803d;
+    }
+    
+    .pmo-kanban-progress-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .pmo-kanban-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #cbd5e1;
+    }
+    .pmo-kanban-dot.active {
+      background: #3b82f6;
+      box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+    }
+    
+    .pmo-kanban-mobile-tabs {
+      display: none;
+      gap: 6px;
+      margin-bottom: 12px;
+      width: 100%;
+    }
+    
+    .pmo-kanban-mobile-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #475569;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: center;
+      line-height: 1.25;
+    }
+    
+    .pmo-kanban-mobile-tab.active {
+      background: var(--primary, #2563eb);
+      color: #ffffff;
+      border-color: var(--primary, #2563eb);
+    }
+    
+    .pmo-kanban-mobile-tab span.count {
+      font-size: 9.5px;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-weight: 900;
+    }
+    
+    .pmo-kanban-mobile-tab.active span.count {
+      background: rgba(255,255,255,0.25);
+      color: #ffffff;
+    }
+
+    /* Single Phase Grid & Header Styles */
+    .pmo-phase-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0 15px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .pmo-phase-header h4 {
+      font-size: 16px;
+      font-weight: 900;
+      color: #1e293b;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pmo-phase-badge {
+      background: var(--primary, #2563eb);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 3px 10px;
+      border-radius: 999px;
+      line-height: 1;
+    }
+    .pmo-phase-badge.warn {
+      background: #f59e0b;
+    }
+    .pmo-phase-badge.info {
+      background: #10b981;
+    }
+    .pmo-phase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+    .pmo-phase-grid .pmo-kanban-card {
+      min-height: auto;
+      max-height: none;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.25s ease,
+                  border-color 0.25s ease;
+    }
+    @starting-style {
+      .pmo-phase-grid .pmo-kanban-card {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+    }
+
+    /* 3-Segment Stepper for Solleciti */
+    .pmo-stepper-progress {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      width: 100%;
+    }
+    .pmo-stepper-segment {
+      flex: 1;
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      transition: background 0.3s ease;
+    }
+    .pmo-stepper-segment.active-sent {
+      background: hsl(210, 100%, 50%); /* Blue */
+      box-shadow: 0 0 6px rgba(37, 99, 235, 0.3);
+    }
+    .pmo-stepper-segment.active-warn {
+      background: hsl(38, 100%, 50%); /* Amber */
+      box-shadow: 0 0 6px rgba(217, 119, 6, 0.3);
+    }
+    .pmo-stepper-segment.active-danger {
+      background: hsl(8, 100%, 54%); /* Red */
+      box-shadow: 0 0 6px rgba(220, 38, 38, 0.3);
+    }
+
+    /* Mismatch visualizer badge in Validazione */
+    .pmo-mismatch-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 850;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-top: 4px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .pmo-mismatch-badge.consistent {
+      background: hsl(142, 70%, 95%);
+      color: hsl(142, 76%, 28%);
+      border: 1px solid hsl(142, 70%, 88%);
+    }
+    .pmo-mismatch-badge.mismatch {
+      background: hsl(38, 100%, 95%);
+      color: hsl(28, 100%, 36%);
+      border: 1px solid hsl(38, 100%, 88%);
+    }
+    .pmo-mismatch-badge .gap-pill {
+      background: #ffffff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 900;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .pmo-mismatch-badge.mismatch .gap-pill {
+      color: hsl(28, 100%, 36%);
+    }
+    .pmo-mismatch-badge.consistent .gap-pill {
+      color: hsl(142, 76%, 28%);
+    }
+
+    /* Quick Detail Drawer accordion */
+    .pmo-details-drawer {
+      border-top: 1px solid #edf2f7;
+      margin-top: 8px;
+      padding-top: 8px;
+      font-size: 12px;
+      color: #475569;
+      display: block;
+      opacity: 1;
+      max-height: 200px;
+      transition: max-height 0.3s ease-out, opacity 0.3s ease-out, display 0.3s allow-discrete;
+      transition-behavior: allow-discrete;
+      overflow: hidden;
+    }
+    .pmo-details-drawer.hidden {
+      display: none;
+      opacity: 0;
+      max-height: 0;
+    }
+    @starting-style {
+      .pmo-details-drawer {
+        opacity: 0;
+        max-height: 0;
+      }
+    }
+    .pmo-details-qrow {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    .pmo-details-qrow .q-label {
+      color: #64748b;
+      font-weight: 750;
+    }
+    .pmo-details-qrow .q-val {
+      font-weight: 900;
+      color: #1e293b;
+    }
+
+    .pmo-details-toggle {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      color: var(--primary, #2563eb);
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .pmo-details-toggle:hover {
+      color: #1d4ed8;
+    }
+    
+    @media (max-width: 900px) {
+      .pmo-kanban-board {
+        grid-template-columns: 1fr;
+      }
+      .pmo-kanban-column {
+        display: none;
+      }
+      .pmo-kanban-column.mobile-visible {
+        display: flex;
+      }
+      .pmo-kanban-mobile-tabs {
+        display: flex;
+      }
+    }
+
     .assessment-excel-import-layout { display:grid; gap:10px; min-width:0; }
     .assessment-excel-import-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; border:1px solid #e7edf6; border-radius:8px; background:#fbfdff; padding:10px; }
     .assessment-excel-import-file { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); border:0; }
@@ -23732,6 +24321,84 @@ Per confermare scrivi ELIMINA.`);
       return out;
     }
 
+    async function syncAssessmentTokensFromSupabase(options = {}) {
+      const silent = options.silent === true;
+      try {
+        if (!silent) showAlert('⏳ Sincronizzazione dei token autovalutazione da Supabase...', 'info');
+        const res = await pmoStaffRpc('get_assessment_tokens_admin', {}, 'cloud_sync', 'leggere i token autovalutazione');
+        if (!res || res.ok !== true) {
+          throw new Error(res?.error || 'Errore durante la lettura dei token.');
+        }
+        const data = res.data || [];
+        let updatedCount = 0;
+        data.forEach(item => {
+          const key = String(item.member_local_id);
+          if (!key) return;
+          const prev = assessmentTokens[key] || {};
+          assessmentTokens[key] = {
+            ...prev,
+            memberId: key,
+            token: item.token,
+            memberName: item.member_name,
+            phone: prev.phone || item.phone_last4 || '',
+            email: prev.email || '',
+            status: item.status || prev.status || 'created',
+            status_autovalutazione: item.status_autovalutazione || 'INVITO_INVIATO',
+            createdAt: item.created_at || prev.createdAt || new Date().toISOString(),
+            sentAt: item.sent_at || prev.sentAt || null,
+            completedAt: item.completed_at || prev.completedAt || null,
+            registeredToSupabase: !!item.registered_at || item.status !== 'created',
+            registeredAt: item.registered_at || prev.registeredAt || null
+          };
+          updatedCount++;
+        });
+        if (updatedCount > 0) {
+          save('assessmentTokens', assessmentTokens);
+        }
+        if (!silent) {
+          showAlert(`✅ Sincronizzazione completata: ${updatedCount} token sincronizzati.`, 'success');
+        }
+        return { ok: true, count: updatedCount };
+      } catch (err) {
+        console.warn('Errore in syncAssessmentTokensFromSupabase:', err);
+        if (!silent) {
+          showAlert('❌ Impossibile sincronizzare i token autovalutazione: ' + (err.message || err), 'danger');
+        }
+        return { ok: false, error: err.message || err };
+      }
+    }
+
+    async function updateAssessmentTokenStatusFrontend(token, newStatus) {
+      try {
+        showAlert('⏳ Aggiornamento stato su Supabase...', 'info');
+        const res = await pmoStaffRpc('update_assessment_token_status_admin', {
+          p_token: token,
+          p_status_autovalutazione: newStatus
+        }, 'cloud_sync', 'aggiornare lo stato del token autovalutazione');
+        
+        if (!res || res.ok !== true) {
+          throw new Error(res?.error || 'Errore durante l\'aggiornamento dello stato.');
+        }
+
+        // Update local memory
+        const rec = Object.values(assessmentTokens || {}).find(r => cleanCell(r.token) === token);
+        if (rec) {
+          rec.status_autovalutazione = newStatus;
+          if (newStatus === 'COMPILATO' || newStatus === 'VALIDATO') {
+            rec.status = 'completed';
+            rec.completedAt = rec.completedAt || new Date().toISOString();
+          }
+          save('assessmentTokens', assessmentTokens);
+        }
+
+        showAlert('✅ Stato aggiornato con successo!', 'success');
+        renderAssessmentEmailMorningPanel();
+      } catch (err) {
+        console.error('Errore in updateAssessmentTokenStatusFrontend:', err);
+        showAlert('❌ Aggiornamento stato fallito: ' + (err.message || err), 'danger');
+      }
+    }
+
     async function syncAssessmentResponsesFromSupabase(options = {}) {
       const silent = options.silent === true;
       try {
@@ -23827,7 +24494,8 @@ Per confermare scrivi ELIMINA.`);
         const results = await Promise.allSettled([
           assessmentEmailImportCloudLogs({ silent:true }),
           syncAssessmentExternalRequestsFromSupabase({ silent:true }),
-          syncAssessmentResponsesFromSupabase({ silent:true, autoPostProcess:false, skipCloudLogs:true })
+          syncAssessmentResponsesFromSupabase({ silent:true, autoPostProcess:false, skipCloudLogs:true }),
+          syncAssessmentTokensFromSupabase({ silent:true })
         ]);
         results.forEach(result => {
           if (result.status === 'rejected') console.warn('Refresh automatico Autovalutazione non completato:', result.reason);
@@ -25823,12 +26491,10 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentManualBatchErrors = window.assessmentManualBatchErrors || {};
     const ASSESSMENT_PROCESS_FILTER_LABELS = {
       queue:'Da inviare',
-      pending:'In attesa risposta',
-      review:'Da controllare',
-      problems:'Problemi',
-      responses:'Risposte',
-      matchpoint:'Matchpoint',
-      history:'Storico'
+      solleciti:'Solleciti in corso',
+      gestione:'Gestione manuale',
+      validare:'Da validare',
+      storico:'Storico'
     };
     function assessmentProcessNormalizeFilter(filter=ASSESSMENT_PROCESS_DEFAULT_FILTER) {
       const key = cleanCell(filter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
@@ -26298,7 +26964,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentProcessStickyActiveFilter() {
       const panel = window.assessmentEmailActivePanel || 'morning';
-      if (panel === 'history' || panel === 'matchpoint') return panel;
+      if (panel === 'history') return 'storico';
       if (panel === 'morning') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       return '';
     }
@@ -26349,38 +27015,76 @@ Per confermare scrivi ELIMINA.`);
       }, 0);
     }
     function assessmentProcessFilterConfig(rows, search='') {
-      const sourceRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
-      const count = filter => sourceRows.filter(row => row.filter === filter).length;
-      const historyCount = count('history');
-      const batch = assessmentEmailTodayRoutineBatch();
-      const selectedQueueCount = batch ? assessmentManualBatchSelectedRows(batch).length : count('queue');
+      const allRows = assessmentEmailAllOperationalRows();
+      const searchableRows = search ? allRows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : allRows;
+      
+      let countSolleciti = 0;
+      let countGestione = 0;
+      let countValidare = 0;
+      
+      searchableRows.forEach(row => {
+        const tokenRec = row.rec;
+        if (!tokenRec?.token) return;
+        
+        const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        
+        if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+          countSolleciti++;
+        } else if (status === 'GESTIONE_MANUALE') {
+          countGestione++;
+        } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
+          countValidare++;
+        }
+      });
+      
+      const queueRows = assessmentEmailQueueRows().filter(row => !search || assessmentEmailRowMatchesSearch(row, search));
+      const historyRows = assessmentEmailHistoryRows({ search });
+      
       return [
-        ['queue', 'Da inviare', selectedQueueCount, `${selectedQueueCount} selezionate`],
-        ['pending', 'In attesa risposta', count('pending'), `${count('pending')} soci`],
-        ['review', 'Da controllare', count('review'), `${count('review')} livelli`],
-        ['problems', 'Problemi', count('problems'), `${count('problems')} da risolvere`],
-        ['responses', 'Risposte', count('responses'), `${count('responses')} da leggere`],
-        ['matchpoint', 'Matchpoint', count('matchpoint'), `${count('matchpoint')} soci`],
-        ['history', 'Storico', historyCount, historyCount === 1 ? '1 nuova' : `${historyCount} nuove`]
+        ['queue', '📥 1. Da inviare', queueRows.length, `${queueRows.length} soci`],
+        ['solleciti', '📨 2. Solleciti', countSolleciti, `${countSolleciti} attivi`],
+        ['gestione', '⚠️ 3. Gestione', countGestione, `${countGestione} interruzioni`],
+        ['validare', '✓ 4. Da validare', countValidare, `${countValidare} risposte`],
+        ['storico', '📂 5. Storico', historyRows.length, `${historyRows.length} completati`]
       ];
     }
     function assessmentProcessSearchStageKeys(rows, search='') {
       const cleanSearch = cleanCell(search || '');
       const keys = new Set();
       if (!cleanSearch) return keys;
-      rows
-        .filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch))
-        .forEach(row => {
-          if (row.filter) keys.add(row.filter);
-        });
+      
+      const allRows = assessmentEmailAllOperationalRows();
+      const searchableRows = allRows.filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch));
+      
+      searchableRows.forEach(row => {
+        const tokenRec = row.rec;
+        if (!tokenRec?.token) return;
+        
+        const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        
+        if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+          keys.add('solleciti');
+        } else if (status === 'GESTIONE_MANUALE') {
+          keys.add('gestione');
+        } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
+          keys.add('validare');
+        }
+      });
+      
+      const queueRows = assessmentEmailQueueRows().filter(row => assessmentEmailRowMatchesSearch(row, cleanSearch));
+      if (queueRows.length) keys.add('queue');
+      
+      const historyRows = assessmentEmailHistoryRows({ search: cleanSearch });
+      if (historyRows.length) keys.add('storico');
+      
       return keys;
     }
     function setAssessmentProcessFilter(filter=ASSESSMENT_PROCESS_DEFAULT_FILTER) {
       clearAssessmentProcessTestMemberFocus();
       const normalized = assessmentProcessNormalizeFilter(filter);
       window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
-      if (normalized === 'history' || normalized === 'matchpoint') {
-        setAssessmentEmailPanel(normalized);
+      if (normalized === 'storico') {
+        setAssessmentEmailPanel('history');
         return;
       }
       window.assessmentProcessFilter = normalized;
@@ -26859,60 +27563,368 @@ Per confermare scrivi ELIMINA.`);
         ${actionsHtml ? `<div class="assessment-morning-actions">${actionsHtml}</div>` : ''}
       </div>`;
     }
+    function renderCardSolleciti(entry) {
+      const { row, status } = entry;
+      const member = row.member;
+      const rec = row.rec;
+      const name = playerFullName(member);
+      const dateStr = rec.sentAt ? assessmentEmailFormatDateTime(rec.sentAt) : assessmentEmailFormatDateTime(rec.createdAt);
+      
+      let attemptText = 'Tentativo 1 di 3';
+      let badgeClass = 'badge-invito-inviato';
+      let badgeLabel = 'Invito Inviato';
+      
+      let segment1Class = 'active-sent';
+      let segment2Class = '';
+      let segment3Class = '';
+      
+      if (status === 'PRIMO_SOLLECITO') {
+        attemptText = 'Tentativo 2 di 3';
+        badgeClass = 'badge-primo-sollecito';
+        badgeLabel = 'Primo Sollecito';
+        segment2Class = 'active-warn';
+      } else if (status === 'ULTIMO_SOLLECITO') {
+        attemptText = 'Tentativo 3 di 3';
+        badgeClass = 'badge-ultimo-sollecito';
+        badgeLabel = 'Ultimo Sollecito';
+        segment2Class = 'active-warn';
+        segment3Class = 'active-danger';
+      }
+      
+      const presentation = assessmentProcessPresentation(row);
+      const nextWindowLabel = presentation?.nextWindow?.label || '-';
+      
+      return `
+        <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}">
+          <div class="pmo-kanban-card-header">
+            <span class="pmo-kanban-card-name">${escapeHtml(name)}</span>
+            <span class="pmo-kanban-card-status ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+          </div>
+          <div class="pmo-kanban-card-meta">
+            <span>📧 ${escapeHtml(member.email || 'Nessuna email')}</span>
+            <span>📞 ${escapeHtml(member.phone || 'Nessun telefono')}</span>
+            <span>🕒 Ultimo invio: ${escapeHtml(dateStr)}</span>
+            <span>⏱️ Prossima finestra: <strong>${escapeHtml(nextWindowLabel)}</strong></span>
+            
+            <div style="margin-top: 10px;">
+              <span style="font-size: 11px; font-weight: 800; color: #475569;">Progresso invii: ${attemptText}</span>
+              <div class="pmo-stepper-progress" title="${attemptText}">
+                <div class="pmo-stepper-segment ${segment1Class}"></div>
+                <div class="pmo-stepper-segment ${segment2Class}"></div>
+                <div class="pmo-stepper-segment ${segment3Class}"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pmo-kanban-card-actions">
+            <button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')">
+              👤 Scheda Socio
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCardGestioneManuale(entry) {
+      const { row, status } = entry;
+      const member = row.member;
+      const rec = row.rec;
+      const name = playerFullName(member);
+      const publicLink = getAssessmentLink(rec.token, member);
+      const phone = member.phone || rec.phone || '';
+      const dateStr = rec.sentAt ? assessmentEmailFormatDateTime(rec.sentAt) : (rec.createdAt ? assessmentEmailFormatDateTime(rec.createdAt) : '-');
+      const text = `Ciao ${name}! Ti ricordiamo di compilare la scheda di autovalutazione del livello Padel per poter organizzare al meglio le tue partite. Puoi compilarla in 1 minuto da qui: ${publicLink} Grazie!`;
+      const encodedText = encodeURIComponent(text);
+      const whatsappUrl = `https://wa.me/${phoneDigitsForWhatsApp(phone)}?text=${encodedText}`;
+      
+      return `
+        <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid hsl(8, 100%, 54%); box-shadow: 0 4px 14px rgba(220, 38, 38, 0.05);">
+          <div class="pmo-kanban-card-header">
+            <span class="pmo-kanban-card-name">${escapeHtml(name)}</span>
+            <span class="pmo-kanban-card-status badge-gestione-manuale" style="background: hsl(8, 100%, 97%); color: hsl(8, 100%, 42%); border-color: hsl(8, 100%, 92%);">Gestione Manuale</span>
+          </div>
+          <div class="pmo-kanban-card-meta">
+            <span>📧 ${escapeHtml(member.email || 'Nessuna email')}</span>
+            <span>📞 ${escapeHtml(member.phone || 'Nessun telefono')}</span>
+            <span style="color:#b42318; font-weight:850; display:flex; align-items:center; gap:4px;">
+              ⚠️ Inattivo dopo 3 solleciti (> 48h)
+            </span>
+            <span style="font-size: 11px; color: #64748b;">📅 Ultimo tentativo automatico: ${escapeHtml(dateStr)}</span>
+          </div>
+          <div class="pmo-kanban-card-actions">
+            <a class="pmo-kanban-btn-action btn-whatsapp" href="${whatsappUrl}" target="_blank">
+              💬 WhatsApp
+            </a>
+            <a class="pmo-kanban-btn-action btn-call" href="tel:${escapeHtml(phone)}">
+              📞 Chiama
+            </a>
+            <button class="pmo-kanban-btn-action btn-success" onclick="updateAssessmentTokenStatusFrontend('${escapeJs(rec.token)}', 'VALIDATO')" style="border: 1.5px solid #16a34a; font-weight:900;">
+              ✓ Risolvi
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    window.pmoToggleDetails = function(btn) {
+      const card = btn.closest('.pmo-kanban-card');
+      const drawer = card ? card.querySelector('.pmo-details-drawer') : null;
+      if (drawer) {
+        drawer.classList.toggle('hidden');
+        if (drawer.classList.contains('hidden')) {
+          btn.innerHTML = '🔍 Vedi Risposte';
+        } else {
+          btn.innerHTML = '📂 Nascondi Risposte';
+        }
+      }
+    };
+
+    function renderCardDaValidare(entry) {
+      const { row } = entry;
+      const member = row.member;
+      const rec = row.rec;
+      const response = row.response;
+      const name = playerFullName(member);
+      
+      const calcLevel = response?.calculated_level || response?.declared_level || member.level || '-';
+      const declaredLevel = response?.declared_level || '-';
+      const auto = assessmentEmailIsAutoApplicable(response);
+      
+      // Calculate level gap with sign
+      const declaredVal = parseFloat(String(declaredLevel).replace(',', '.'));
+      const calculatedVal = parseFloat(String(calcLevel).replace(',', '.'));
+      let gapText = '0.0';
+      if (Number.isFinite(declaredVal) && Number.isFinite(calculatedVal)) {
+        const diffVal = calculatedVal - declaredVal;
+        const roundedDiff = Math.round(diffVal * 100) / 100;
+        gapText = roundedDiff >= 0 ? `+${roundedDiff}` : `${roundedDiff}`;
+      }
+      
+      const mismatchBadge = auto
+        ? `<div class="pmo-mismatch-badge consistent">✓ Coerente <span class="gap-pill">${escapeHtml(gapText)}</span></div>`
+        : `<div class="pmo-mismatch-badge mismatch">⚡ Mismatch <span class="gap-pill">${escapeHtml(gapText)}</span></div>`;
+      
+      // Extract answers dynamically
+      const raw = response?.raw_response || response?.rawResponse || {};
+      const answers = raw.answers || raw.form || raw.data || response?.answers || {};
+      const rScambio = answers.rally || answers.scambio || '-';
+      const rVetro = answers.glass || answers.vetro || '-';
+      const rRete = answers.net || answers.volee || '-';
+      const rAlti = answers.overhead || answers.smash || '-';
+      
+      const actionButton = auto
+        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>`
+        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">⚡ Valida Livello</button>`;
+      
+      const dateStr = response?.submitted_at ? assessmentEmailFormatDateTime(response.submitted_at) : (rec.completedAt ? assessmentEmailFormatDateTime(rec.completedAt) : '-');
+      
+      return `
+        <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid ${auto ? 'hsl(142, 72%, 40%)' : 'hsl(38, 100%, 50%)'}; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.04);">
+          <div class="pmo-kanban-card-header">
+            <span class="pmo-kanban-card-name">${escapeHtml(name)}</span>
+            <span class="pmo-kanban-card-status badge-compilato" style="background: hsl(142, 72%, 97%); color: hsl(142, 72%, 35%); border-color: hsl(142, 72%, 90%);">Compilato</span>
+          </div>
+          <div class="pmo-kanban-card-meta">
+            <span>🕒 Compilato il: ${escapeHtml(dateStr)}</span>
+            <span style="font-weight: 800; color: #1e293b;">📊 Livello calcolato: <strong style="font-size:13px; color:#2563eb;">${escapeHtml(String(calcLevel))}</strong></span>
+            <span style="color: #64748b;">🎯 Dichiarato: <strong>${escapeHtml(String(declaredLevel))}</strong></span>
+            <div style="margin-top: 4px;">
+              ${mismatchBadge}
+            </div>
+            
+            <button class="pmo-details-toggle" onclick="pmoToggleDetails(this)">
+              🔍 Vedi Risposte
+            </button>
+            
+            <div class="pmo-details-drawer hidden">
+              <div class="pmo-details-qrow">
+                <span class="q-label">Scambio:</span>
+                <span class="q-val" title="${escapeHtml(String(rScambio))}">${escapeHtml(String(rScambio))}</span>
+              </div>
+              <div class="pmo-details-qrow">
+                <span class="q-label">Vetro:</span>
+                <span class="q-val" title="${escapeHtml(String(rVetro))}">${escapeHtml(String(rVetro))}</span>
+              </div>
+              <div class="pmo-details-qrow">
+                <span class="q-label">Rete:</span>
+                <span class="q-val" title="${escapeHtml(String(rRete))}">${escapeHtml(String(rRete))}</span>
+              </div>
+              <div class="pmo-details-qrow">
+                <span class="q-label">Colpi alti:</span>
+                <span class="q-val" title="${escapeHtml(String(rAlti))}">${escapeHtml(String(rAlti))}</span>
+              </div>
+            </div>
+          </div>
+          <div class="pmo-kanban-card-actions">
+            ${actionButton}
+          </div>
+        </div>
+      `;
+    }
+
     function renderAssessmentEmailMorningPanel() {
       const box = document.getElementById('assessmentEmailMorningContent');
       if (!box) return;
       const headerActions = document.getElementById('assessmentEmailMorningHeaderActions');
       if (headerActions) headerActions.innerHTML = assessmentEmailRoutineApprovalControlsHtml();
+      
       const rows = assessmentProcessRows();
       const activeFilter = assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       window.assessmentProcessFilter = activeFilter;
       const search = getAssessmentProcessSearchValue();
       window.assessmentProcessSearchText = search;
-      const searchableRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
-      let filteredRows = searchableRows.filter(row => activeFilter === 'all' || (activeFilter === 'today' ? row.today : row.filter === activeFilter));
+      
+      let filteredRows = search ? rows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : rows;
+      
       if (window.assessmentProcessForceTestMember) {
         const testEntry = assessmentProcessTestMemberEntry(rows);
         filteredRows = testEntry ? [testEntry] : [];
       }
-      const visibleLimit = getAssessmentProcessVisibleLimit();
-      const visibleRows = filteredRows.slice(0, visibleLimit);
-      const remainingRows = Math.max(0, filteredRows.length - visibleRows.length);
-      const searchDraft = getAssessmentProcessSearchDraft();
-      const searchHtml = `<div class="assessment-process-search">
-        <label for="assessmentProcessSearch">Cerca nel processo</label>
-        <div class="assessment-process-search-row">
-          <input id="assessmentProcessSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
-          <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
-        </div>
-      </div>`;
-      const activeSearchHtml = search
-        ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
-        : '';
-      const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
-      const manualBatchHtml = activeFilter === 'queue' ? assessmentManualBatchPanelHtml() : '';
-      const moreHtml = remainingRows
-        ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(filteredRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
-        : (filteredRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(filteredRows.length))} soci filtrati sono visibili.</span></div>` : '');
-      const emptyHtml = search && searchableRows.length && !visibleRows.length
-        ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Scegli un altro filtro dalla barra superiore.</div>`
-        : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questo stato.');
-      const tableHtml = visibleRows.length
-        ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${filteredRows.length !== visibleRows.length ? ` su ${escapeHtml(String(filteredRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
-        : emptyHtml;
-      box.innerHTML = `${assessmentGmailCheckPanelHtml()}
-        ${manualBatchHtml}
-        ${searchHtml}
-        ${activeSearchHtml}
-        ${testNoticeHtml}
-        ${tableHtml}`;
-      box.querySelectorAll('[data-assessment-process-filter]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || 'all');
+      
+      if (activeFilter === 'queue') {
+        const visibleLimit = getAssessmentProcessVisibleLimit();
+        const queueRowsAll = assessmentEmailQueueRows();
+        const queueFilteredRows = search ? queueRowsAll.filter(row => assessmentEmailRowMatchesSearch(row, search)) : queueRowsAll;
+        
+        let targetRows = queueFilteredRows;
+        if (window.assessmentProcessForceTestMember) {
+          const testEntry = assessmentProcessTestMemberEntry(rows);
+          targetRows = testEntry ? [testEntry] : [];
+        }
+        
+        const visibleRows = targetRows.slice(0, visibleLimit);
+        const remainingRows = Math.max(0, targetRows.length - visibleRows.length);
+        const searchDraft = getAssessmentProcessSearchDraft();
+        
+        const searchHtml = `<div class="assessment-process-search">
+          <label for="assessmentProcessSearch">Cerca nel processo</label>
+          <div class="assessment-process-search-row">
+            <input id="assessmentProcessSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
+            <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
+          </div>
+        </div>`;
+        const activeSearchHtml = search
+          ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
+          : '';
+        const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
+        const manualBatchHtml = assessmentManualBatchPanelHtml();
+        const moreHtml = remainingRows
+          ? `<div class="assessment-process-more"><span>Mostrati ${escapeHtml(String(visibleRows.length))} di ${escapeHtml(String(targetRows.length))} soci.</span><button type="button" class="assessment-email-mini" onclick="showMoreAssessmentProcessRows()">Mostra altri ${escapeHtml(String(Math.min(ASSESSMENT_PROCESS_PAGE_SIZE, remainingRows)))}</button></div>`
+          : (targetRows.length > ASSESSMENT_PROCESS_PAGE_SIZE ? `<div class="assessment-process-more"><span>Tutti i ${escapeHtml(String(targetRows.length))} soci filtrati sono visibili.</span></div>` : '');
+        const emptyHtml = search && targetRows.length && !visibleRows.length
+          ? `<div class="assessment-empty">Il socio cercato esiste nel processo, ma non in questo filtro. Scegli un altro filtro dalla barra superiore.</div>`
+          : assessmentEmailEmpty(search ? 'Nessun socio trovato con questa ricerca.' : 'Nessun socio in questo stato.');
+        
+        const tableHtml = visibleRows.length
+          ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${targetRows.length !== visibleRows.length ? ` su ${escapeHtml(String(targetRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
+          : emptyHtml;
+        
+        box.innerHTML = `${assessmentGmailCheckPanelHtml()}
+          ${manualBatchHtml}
+          ${searchHtml}
+          ${activeSearchHtml}
+          ${testNoticeHtml}
+          ${tableHtml}`;
+      } else {
+        const allRows = assessmentEmailAllOperationalRows();
+        let searchableRows = search ? allRows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : allRows;
+        
+        if (window.assessmentProcessForceTestMember) {
+          const testEntry = assessmentProcessTestMemberEntry(rows);
+          searchableRows = testEntry ? [testEntry.row] : [];
+        }
+        
+        const colSolleciti = [];
+        const colGestione = [];
+        const colValidare = [];
+        
+        searchableRows.forEach(row => {
+          const tokenRec = row.rec;
+          if (!tokenRec?.token) return;
+          
+          const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+          
+          if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+            colSolleciti.push({ row, status });
+          } else if (status === 'GESTIONE_MANUALE') {
+            colGestione.push({ row, status });
+          } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
+            colValidare.push({ row, status });
+          }
         });
-      });
+        
+        colSolleciti.sort((a, b) => {
+          const tA = a.row.rec.sentAt || a.row.rec.createdAt || '';
+          const tB = b.row.rec.sentAt || b.row.rec.createdAt || '';
+          return tB.localeCompare(tA);
+        });
+        colGestione.sort((a, b) => {
+          const tA = a.row.rec.sentAt || a.row.rec.createdAt || '';
+          const tB = b.row.rec.sentAt || b.row.rec.createdAt || '';
+          return a.row.member?.surname?.localeCompare(b.row.member?.surname || '', 'it') || tA.localeCompare(tB);
+        });
+        colValidare.sort((a, b) => {
+          const tA = a.row.response?.submitted_at || a.row.rec.completedAt || '';
+          const tB = b.row.response?.submitted_at || b.row.rec.completedAt || '';
+          return tB.localeCompare(tA);
+        });
+        
+        const searchDraft = getAssessmentProcessSearchDraft();
+        
+        const searchHtml = `<div class="assessment-process-search">
+          <label for="assessmentProcessSearch">Cerca nel processo</label>
+          <div class="assessment-process-search-row">
+            <input id="assessmentProcessSearch" value="${escapeHtml(searchDraft)}" placeholder="Nome, cognome, email, telefono o ID socio" oninput="window.assessmentProcessSearchDraft=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault(); setAssessmentProcessSearch(this.value);}">
+            <button class="assessment-email-mini success" type="button" onclick="setAssessmentProcessSearch(document.getElementById('assessmentProcessSearch')?.value || '')">Cerca</button>
+          </div>
+        </div>`;
+        const activeSearchHtml = search
+          ? `<div class="assessment-process-active-filter">Ricerca attiva: <strong>${escapeHtml(search)}</strong><button type="button" class="assessment-email-mini" onclick="clearAssessmentProcessSearch()">Pulisci</button></div>`
+          : '';
+        const testNoticeHtml = assessmentProcessTestNoticeHtml(window.assessmentProcessTestMemberNotice);
+        
+        let contentHtml = '';
+        if (activeFilter === 'solleciti') {
+          contentHtml = `<div class="pmo-phase-header">
+            <h4>📨 Solleciti in corso</h4>
+            <span class="pmo-phase-badge">${colSolleciti.length}</span>
+          </div>`;
+          if (colSolleciti.length) {
+            contentHtml += `<div class="pmo-phase-grid">${colSolleciti.map(renderCardSolleciti).join('')}</div>`;
+          } else {
+            contentHtml += `<div class="assessment-morning-empty">Nessun utente in sollecito attivo.</div>`;
+          }
+        } else if (activeFilter === 'gestione') {
+          contentHtml = `<div class="pmo-phase-header">
+            <h4>⚠️ Gestione Manuale</h4>
+            <span class="pmo-phase-badge warn">${colGestione.length}</span>
+          </div>`;
+          if (colGestione.length) {
+            contentHtml += `<div class="pmo-phase-grid">${colGestione.map(renderCardGestioneManuale).join('')}</div>`;
+          } else {
+            contentHtml += `<div class="assessment-morning-empty">Tutti i flussi automatici sono attivi. Nessuna gestione manuale richiesta.</div>`;
+          }
+        } else if (activeFilter === 'validare') {
+          contentHtml = `<div class="pmo-phase-header">
+            <h4>✓ Da Validare</h4>
+            <span class="pmo-phase-badge info">${colValidare.length}</span>
+          </div>`;
+          if (colValidare.length) {
+            contentHtml += `<div class="pmo-phase-grid">${colValidare.map(renderCardDaValidare).join('')}</div>`;
+          } else {
+            contentHtml += `<div class="assessment-morning-empty">Nessuna scheda completata da validare.</div>`;
+          }
+        } else {
+          contentHtml = `<div class="assessment-empty">Fase non trovata o non supportata. Scegli un'opzione valida dal menu superiore.</div>`;
+        }
+        
+        box.innerHTML = `
+          ${assessmentGmailCheckPanelHtml()}
+          ${searchHtml}
+          ${activeSearchHtml}
+          ${testNoticeHtml}
+          ${contentHtml}
+        `;
+      }
     }
     function assessmentEmailGoToMemberPanel(panel, memberId) {
       setAssessmentEmailPanel(panel || 'queue');
@@ -27415,7 +28427,6 @@ Per confermare scrivi ELIMINA.`);
     function setAssessmentEmailPanel(panel='morning') {
       if (panel === 'excel-import' && !PMO_IS_TEST_ENV) panel = 'morning';
       window.assessmentEmailActivePanel = panel || 'morning';
-      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === window.assessmentEmailActivePanel));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
       renderAssessmentEmailPanels();
       if (window.assessmentEmailActivePanel === 'history') assessmentExternalScheduleHistoryRefresh();
@@ -27913,7 +28924,6 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailMatchpointPanel();
       renderAssessmentExcelImportPanel();
       renderAssessmentEmailTextsPanel();
-      document.querySelectorAll('.assessment-email-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.panel === (window.assessmentEmailActivePanel || 'morning')));
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'morning')));
     }
     function assessmentManualBatchRowsForSend(mode='selected', memberId='') {

@@ -139,16 +139,25 @@ async function assessmentEmailGmailCheck(supabaseUrl: string, body: JsonMap) {
   }
 
   try {
-    await getGmailAccessToken();
+    const accessToken = await getGmailAccessToken();
+    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const profileData = await profileRes.json().catch(() => ({}));
+    const emailAddress = clean(profileData?.emailAddress);
+
     return {
       action: 'gmail-check',
       ok: true,
       gmailConnected: true,
       gmailSecretsConfigured: true,
       errorCode: '',
-      message: 'Gmail collegato. Invii Autovalutazione disponibili.',
+      message: emailAddress 
+        ? `Gmail collegato all'account: ${emailAddress}` 
+        : 'Gmail collegato. Invii Autovalutazione disponibili.',
       checkedAt,
       runtimeEnv,
+      emailAddress
     };
   } catch (err) {
     const code = gmailCheckErrorCode(err);
@@ -1073,7 +1082,7 @@ async function loadCloudMembers(admin: any) {
 async function loadAssessmentTokens(admin: any) {
   const { data, error } = await admin
     .from('assessment_tokens')
-    .select('token,member_local_id,member_name,status,created_at,sent_at,completed_at,registered_at');
+    .select('token,member_local_id,member_name,status,status_autovalutazione,created_at,sent_at,completed_at,registered_at');
   if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
@@ -1426,65 +1435,90 @@ async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supab
   const skipped: JsonMap[] = [];
   const candidates: JsonMap[] = [];
 
-  members
-    .filter((member) => memberMatchesTarget(member, targets))
-    .forEach((member) => {
-      const memberId = routineMemberId(member);
-      const aliases = new Set(routineMemberAliases(member));
-      if (!memberId) return;
-      if (!isActiveMember(member)) { skipped.push({ memberId, reason: 'INACTIVE' }); return; }
-      if (!isValidEmail(member.email)) { skipped.push({ memberId, reason: 'INVALID_EMAIL' }); return; }
-      if (!isLevelZeroPointFive(member)) { skipped.push({ memberId, reason: 'LEVEL_NOT_0_5' }); return; }
+  for (const member of members.filter((member) => memberMatchesTarget(member, targets))) {
+    const memberId = routineMemberId(member);
+    const aliases = new Set(routineMemberAliases(member));
+    if (!memberId) continue;
+    if (!isActiveMember(member)) { skipped.push({ memberId, reason: 'INACTIVE' }); continue; }
+    if (!isValidEmail(member.email)) { skipped.push({ memberId, reason: 'INVALID_EMAIL' }); continue; }
+    if (!isLevelZeroPointFive(member)) { skipped.push({ memberId, reason: 'LEVEL_NOT_0_5' }); continue; }
 
-      const sendLogs = logs
-        .filter((payload) => payload?.type === 'assessment_email_send')
-        .filter((payload) => ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
-        .filter((payload) => followupLogMatches(payload, aliases, ''))
-        .sort((a, b) => followupLogTimeMs(a) - followupLogTimeMs(b));
-      const template = followupTemplateForSends(sendLogs);
-      if (!template.mode || !template.lastLog) { skipped.push({ memberId, reason: template.reason || 'NOT_DUE' }); return; }
+    const sendLogs = logs
+      .filter((payload) => payload?.type === 'assessment_email_send')
+      .filter((payload) => ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
+      .filter((payload) => followupLogMatches(payload, aliases, ''))
+      .sort((a, b) => followupLogTimeMs(a) - followupLogTimeMs(b));
 
-      const tokenRows = followupTokenRowsForMember(tokens, member);
-      const token = clean(template.lastLog.token || tokenRows.find((row) => clean(row.status) !== 'completed')?.token || tokenRows[0]?.token || '');
-      if (!token) { skipped.push({ memberId, reason: 'TOKEN_MISSING' }); return; }
-      if (completedTokens.has(token) || tokenRows.some((row) => clean(row.token) === token && clean(row.status) === 'completed')) {
-        skipped.push({ memberId, reason: 'ASSESSMENT_COMPLETED' });
-        return;
+    const tokenRows = followupTokenRowsForMember(tokens, member);
+    const tokenRow = tokenRows.find((row) => clean(row.status) !== 'completed') || tokenRows[0];
+    const token = clean(tokenRow?.token || '');
+
+    // --- Pull Fallback: automatically transition to GESTIONE_MANUALE if 48h elapsed since 3rd email without response ---
+    if (token) {
+      const isCompleted = completedTokens.has(token) || tokenRows.some((row) => clean(row.token) === token && clean(row.status) === 'completed');
+      if (!isCompleted) {
+        const currentStatusAutovalutazione = clean(tokenRow?.status_autovalutazione);
+        if (!['GESTIONE_MANUALE', 'COMPILATO', 'VALIDATO'].includes(currentStatusAutovalutazione)) {
+          const hasThirdEmail = sendLogs.length >= 3 || sendLogs.some((payload) => clean(payload.mode) === 'third-email');
+          if (hasThirdEmail && sendLogs.length > 0) {
+            const lastLog = sendLogs[sendLogs.length - 1];
+            const lastSentMs = followupLogTimeMs(lastLog);
+            if (lastSentMs && (now.getTime() - lastSentMs >= intervalMs)) {
+              console.log(`[PULL FALLBACK] Member ${playerName(member)} (${memberId}) has not responded to the 3rd email after 48h. Transitioning to GESTIONE_MANUALE.`);
+              try {
+                await upsertRoutineToken(admin, member, token, tokenRow.status || 'sent', '', 'GESTIONE_MANUALE');
+                tokenRow.status_autovalutazione = 'GESTIONE_MANUALE';
+              } catch (upsertErr) {
+                console.error(`[PULL FALLBACK ERROR] Failed to transition member ${memberId} to GESTIONE_MANUALE:`, upsertErr);
+              }
+            }
+          }
+        }
       }
-      if (isFollowupPaused(member, token, pausedTokens)) { skipped.push({ memberId, reason: 'PAUSED' }); return; }
+    }
 
-      const firstSentMs = followupLogTimeMs(sendLogs.find((payload) => clean(payload.mode) === 'primary-email') || sendLogs[0]);
-      if (hasFollowupStopLog(logs, 'assessment_email_reply', aliases, token, firstSentMs)) {
-        skipped.push({ memberId, reason: 'EMAIL_REPLY_RECEIVED' });
-        return;
-      }
-      if (hasFollowupStopLog(logs, 'assessment_email_bounce', aliases, token, firstSentMs)) {
-        skipped.push({ memberId, reason: 'EMAIL_BOUNCED' });
-        return;
-      }
+    const template = followupTemplateForSends(sendLogs);
+    if (!template.mode || !template.lastLog) { skipped.push({ memberId, reason: template.reason || 'NOT_DUE' }); continue; }
 
-      const lastSentMs = followupLogTimeMs(template.lastLog);
-      const dueAtMs = lastSentMs ? lastSentMs + intervalMs : 0;
-      if (!lastSentMs || dueAtMs > now.getTime()) {
-        skipped.push({
-          memberId,
-          reason: 'WAITING_48H_WINDOW',
-          nextMode: template.mode,
-          dueAt: dueAtMs ? new Date(dueAtMs).toISOString() : '',
-        });
-        return;
-      }
+    if (!token) { skipped.push({ memberId, reason: 'TOKEN_MISSING' }); continue; }
+    if (completedTokens.has(token) || tokenRows.some((row) => clean(row.token) === token && clean(row.status) === 'completed')) {
+      skipped.push({ memberId, reason: 'ASSESSMENT_COMPLETED' });
+      continue;
+    }
+    if (isFollowupPaused(member, token, pausedTokens)) { skipped.push({ memberId, reason: 'PAUSED' }); continue; }
 
-      candidates.push({
-        member,
+    const firstSentMs = followupLogTimeMs(sendLogs.find((payload) => clean(payload.mode) === 'primary-email') || sendLogs[0]);
+    if (hasFollowupStopLog(logs, 'assessment_email_reply', aliases, token, firstSentMs)) {
+      skipped.push({ memberId, reason: 'EMAIL_REPLY_RECEIVED' });
+      continue;
+    }
+    if (hasFollowupStopLog(logs, 'assessment_email_bounce', aliases, token, firstSentMs)) {
+      skipped.push({ memberId, reason: 'EMAIL_BOUNCED' });
+      continue;
+    }
+
+    const lastSentMs = followupLogTimeMs(template.lastLog);
+    const dueAtMs = lastSentMs ? lastSentMs + intervalMs : 0;
+    if (!lastSentMs || dueAtMs > now.getTime()) {
+      skipped.push({
         memberId,
-        token,
-        mode: template.mode,
-        sentCount: template.sentCount,
-        lastSentAt: new Date(lastSentMs).toISOString(),
-        dueAt: new Date(dueAtMs).toISOString(),
+        reason: 'WAITING_48H_WINDOW',
+        nextMode: template.mode,
+        dueAt: dueAtMs ? new Date(dueAtMs).toISOString() : '',
       });
+      continue;
+    }
+
+    candidates.push({
+      member,
+      memberId,
+      token,
+      mode: template.mode,
+      sentCount: template.sentCount,
+      lastSentAt: new Date(lastSentMs).toISOString(),
+      dueAt: new Date(dueAtMs).toISOString(),
     });
+  }
 
   candidates.sort((a, b) => clean(a.dueAt).localeCompare(clean(b.dueAt)) || playerName(a.member).localeCompare(playerName(b.member), 'it'));
   const toSend = candidates.slice(0, limit);
@@ -1521,7 +1555,8 @@ async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supab
         appVersion: clean(body.appVersion || ''),
         runtimeEnv,
       });
-      await upsertRoutineToken(admin, member, item.token, 'sent', result.sentAt);
+      const nextStatus = item.mode === 'third-email' ? 'ULTIMO_SOLLECITO' : 'PRIMO_SOLLECITO';
+      await upsertRoutineToken(admin, member, item.token, 'sent', result.sentAt, nextStatus);
       sent.push({
         memberId,
         memberName: playerName(member),
@@ -1714,7 +1749,7 @@ async function runAssessmentRoutineSelection(admin: any, actor: StaffActor, body
   };
 }
 
-async function upsertRoutineToken(admin: any, member: JsonMap, token: string, status = 'created', sentAt = '') {
+async function upsertRoutineToken(admin: any, member: JsonMap, token: string, status = 'created', sentAt = '', statusAutovalutazione = '') {
   const now = new Date().toISOString();
   const row: JsonMap = {
     token,
@@ -1725,6 +1760,17 @@ async function upsertRoutineToken(admin: any, member: JsonMap, token: string, st
     registered_at: now,
   };
   if (sentAt) row.sent_at = sentAt;
+  
+  if (statusAutovalutazione) {
+    row.status_autovalutazione = statusAutovalutazione;
+  } else {
+    if (status === 'completed') {
+      row.status_autovalutazione = 'COMPILATO';
+    } else if (status === 'created' || status === 'sent') {
+      row.status_autovalutazione = 'INVITO_INVIATO';
+    }
+  }
+
   const { error } = await admin
     .from('assessment_tokens')
     .upsert(row, { onConflict: 'token' });
@@ -1871,7 +1917,7 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
     const existing = (context.tokenByMember.get(memberId) || []).find((row) => clean(row.status) !== 'completed');
     const token = clean(existing?.token || makeRoutineAssessmentToken(memberId));
     try {
-      await upsertRoutineToken(admin, member, token, 'created');
+      await upsertRoutineToken(admin, member, token, 'created', '', 'INVITO_INVIATO');
       const link = assessmentPublicLink(supabaseUrl, token, member);
       const rendered = renderRoutinePrimaryEmail(member, link, context.templates);
       const result = await sendAssessmentEmailCore(admin, actor, {
@@ -1897,7 +1943,7 @@ async function runAssessmentRoutineSend(admin: any, actor: StaffActor, supabaseU
         appVersion: clean(body.appVersion || ''),
         runtimeEnv: clean(body.runtimeEnv || ''),
       });
-      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt);
+      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt, 'INVITO_INVIATO');
       sent.push({ memberId, memberName: playerName(member), token, sentAt: result.sentAt, actualRecipient: result.actualRecipient });
       if (context.spacingMs && i < toSend.length - 1) await routineDelay(context.spacingMs);
     } catch (err) {
@@ -2087,7 +2133,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
     const existing = (context.tokenByMember.get(memberId) || []).find((row) => clean(row.status) !== 'completed');
     const token = clean(existing?.token || makeRoutineAssessmentToken(memberId));
     try {
-      await upsertRoutineToken(admin, member, token, 'created');
+      await upsertRoutineToken(admin, member, token, 'created', '', 'INVITO_INVIATO');
       const link = assessmentPublicLink(supabaseUrl, token, member);
       const rendered = renderRoutinePrimaryEmail(member, link, context.templates);
       const result = await sendAssessmentEmailCore(admin, actor, {
@@ -2113,7 +2159,7 @@ async function runAssessmentRoutineAutoSendSelected(admin: any, actor: StaffActo
         appVersion: clean(body.appVersion || ''),
         runtimeEnv,
       });
-      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt);
+      await upsertRoutineToken(admin, member, token, 'sent', result.sentAt, 'INVITO_INVIATO');
       sent.push({ memberId, memberName: playerName(member), token, sentAt: result.sentAt, actualRecipient: result.actualRecipient });
       if (context.spacingMs && i < toSend.length - 1) await routineDelay(context.spacingMs);
     } catch (err) {

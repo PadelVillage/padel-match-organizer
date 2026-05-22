@@ -26,11 +26,15 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 ## Versione corrente
 
-| Ambiente | Versione | Branch | Commit app pubblicata |
-|---|---:|---|---|
+| Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
+|---|---|---|---|
 | PROD | v5.518 | `main` | `7a077a7` |
 | TEST | v5.521 | `test-preview` | `f9a985c` |
 | TEST sviluppo | v5.521 | `test/accessi-staff-guidati` | `f9a985c` |
+| Assistente TEST | Fase 1 | `test/accessi-assistente` | Mockup unificato / DB TEST Popolato (`aylykijfirtegyxzdwgu`) |
+| Assistente LAVORO | Fase 1 | `test/accessi-assistente` | Locale (`padel-assistant-soci-mockup.html`) |
+
+Nota Assistente TEST / Fase 1 - 2026-05-21: Completata l'unificazione del mockup in un'unica vista conversazionale (Chat AI) eliminando le vecchie viste separate (Bacheca, dock bottom, menu principale), rimuovendo i loghi e la splash screen di benvenuto, e risolvendo i crash di login. Configurato e popolato Supabase TEST Assistente (`aylykijfirtegyxzdwgu`) con 25 player fittizi tramite migrazione SQL ed esecuzione script di seed.
 
 Nota TEST v5.521 - 2026-05-21 23:25: Esteso l'avviso di data e orario di invio automatico programmato per comparire anche quando il lotto è in stato `sent` o `sent_with_errors` (ovvero quando è parzialmente o interamente inviato, mantenendo comunque l'indicazione della prossima esecuzione automatica). Nessuna modifica a SQL, Edge Function o scheduler.
 
