@@ -1,52 +1,14 @@
 # Versioni
 
-## v5.535-TEST / Soluzione definitiva a capo su WhatsApp Desktop con ZWSP dinamico
+## v5.535 / Messaggi manuali editabili ed eliminazione testi
 
-- Risolto il problema del comportamento del parser di WhatsApp Desktop che rimuove i caratteri a capo consecutivi al termine del testo tramite **l'iniezione automatica e dinamica di un carattere invisibile a larghezza zero (Zero-Width Space, `\u200B`)** subito dopo l'a capo finale di qualsiasi messaggio generato o modificato a mano.
-- Rimosso lo spazio forzato a fine riga dal modello "Solo saluto", rendendolo nuovamente pulito e standard (`Ciao {nome},\n`), delegando la correzione interamente all'handler URL.
-
-## v5.534-TEST / Spaziatura a capo WhatsApp forzata e rimozione pulsante gestito
-
-- Risolto il problema del comportamento del parser di WhatsApp Desktop che rimuove i caratteri a capo consecutivi al termine del testo: inserito uno spazio forzato a fine riga (`Ciao {nome},\n `) nel modello "Solo saluto" per obbligare l'app WhatsApp a posizionare il cursore direttamente sulla seconda riga pronta per la digitazione.
-- Rimossa la logica e il bottone verde "Segna gestito" dal modal WhatsApp manuale di Kanban per rendere l'interfaccia più pulita, essenziale ed evitare duplicazioni o confusioni sullo stato dei contatti.
-
-## v5.533-TEST / Messaggi WhatsApp manuali interattivi ed editabili al volo
-
-- Trasformato il box di anteprima del messaggio all'interno del modal WhatsApp manuale di Kanban (`assessmentEmailWhatsappModal`) da elemento statico a un'area di testo dinamica (`<textarea>`) interamente editabile dallo staff.
-- La composizione del messaggio "Solo saluto" (`'whatsapp-saluto'`) ora include due a capo automatici dopo la virgola (`Ciao {nome},\n\n`), posizionando il cursore pronto per la digitazione.
-- Le azioni "Copia WhatsApp" e "Apri WhatsApp" catturano in tempo reale le eventuali modifiche apportate sul momento nel box di testo, inviando esattamente il messaggio personalizzato compilato a schermo.
-
-## v5.532-TEST / Modello protetto di solo saluto WhatsApp
-
-- Introdotto il modello di sistema protetto `'whatsapp-saluto'` ("Solo saluto") per WhatsApp.
-- Il modello non contiene testo prefissato eccetto il saluto iniziale dinamico `Ciao {nome},` per permettere l'invio rapido di messaggi a composizione interamente manuale da parte dello staff.
-- Trattandosi di un modello di sistema, è protetto dall'eliminazione accidentale e rimane sempre disponibile tra le scelte predefinite sia in "Testi" che in Kanban.
-
-## v5.531-TEST / Rimozione testi personalizzati Email e WhatsApp
-
-- Introdotto un bottone di eliminazione diretta (`🗑️`) accanto a ciascun modello personalizzato all'interno della griglia di scelta nel modal WhatsApp di Kanban (`assessmentEmailWhatsappModal`).
-- Aggiunta la possibilità di eliminare i modelli WhatsApp personalizzati direttamente dalla lista di selezione sinistra in "Amministrazione" > "Impostazioni" > "Modelli WhatsApp" tramite icona `🗑️` inline.
-- Aggiornata la logica di `deleteAssessmentCommunicationTemplate` e `deleteWhatsAppTemplate` per resettare in tempo reale le selezioni attive della UI e propagare i cambiamenti al cloud sync di Supabase senza lasciare chiavi orfane.
-
-## v5.530-TEST / Integrazione WhatsApp Desktop App forzata
-
-- Creata la funzione globale `normalizeWhatsAppOpenSettings` che normalizza le impostazioni di WhatsApp convertendo e forzando la modalità `'web'` a `'desktop'`.
-- Aggiornata la routine di ripristino backup `restoreBackupPayload` per applicare la normalizzazione ed evitare che il ripristino di vecchi backup o cloud sync blocchi l'applicazione su WhatsApp Web.
-- Integrata la normalizzazione all'avvio su `safeLoad('whatsappOpenSettings')` per garantire che l'app del computer (`whatsapp://`) venga aperta di default da qualsiasi pulsante WhatsApp.
-
-## v5.529-TEST / Modelli personalizzati Email e WhatsApp in Autovalutazione
-
-- Sostituito il pulsante "Ripristina testo base" con un pulsante "Crea nuovo testo" che apre un modal premium per creare nuovi testi personalizzati per entrambi i canali (Email e WhatsApp).
-- Modelli personalizzati visualizzati nella tab "Testi" sotto le rispettive categorie.
-- Aggiunto un pulsante rosso "Elimina modello" per i modelli personalizzati.
-- Modelli WhatsApp personalizzati inseriti dinamicamente nella griglia di scelta del modal messaggi manuali WhatsApp in Kanban.
-- Gestito il salvataggio locale persistente ed il cloud sync con Supabase.
-
-## v5.528-TEST / WhatsApp manuale personalizzato in Kanban
-
-- Sostituito il link WhatsApp diretto nella card di Gestione Manuale con un bottone che apre il modal di selezione template (`assessmentEmailWhatsappModal`).
-- Iniettato dinamicamente il tipo di problema (email mancante, bounce, sollecito) per preselezionare il template ottimale.
-- Estesa la funzione `openAssessmentEmailWhatsAppCheck` per accettare un numero di telefono di fallback (es. da Matchpoint o telefono socio) se il telefono principale manca.
+- **Integrazione WhatsApp Desktop Forzata**: Corretta l'idratazione e salvataggio dei dati per impostare di default la modalità Desktop (`whatsapp://`) anziché Web.
+- **Eliminazione Modelli Personalizzati**: Introdotta la possibilità per lo staff di eliminare i modelli email e whatsapp creati su misura sia dalla scheda "Testi" che direttamente dalle liste di invio.
+- **Modello di Sistema "Solo saluto"**: Creato il modello protetto `'whatsapp-saluto'` per inviare messaggi liberi ai soci mantenendo l'intestazione iniziale automatica.
+- **Messaggi Editabili al Volo**: Sostituita l'anteprima statica del modal WhatsApp manuale di Kanban con una `<textarea>` interattiva, che permette allo staff di personalizzare o completare il messaggio prima dell'invio.
+- **Copia e Apri Dinamici**: I pulsanti "Copia" e "Apri WhatsApp" acquisiscono in tempo reale le modifiche scritte a mano dallo staff nella textarea.
+- **Iniezione ZWSP per WhatsApp**: Risolto il problema del comportamento del parser di WhatsApp Desktop su macOS ( Catalyst app) tramite l'iniezione automatica e dinamica di un carattere invisibile a larghezza zero (Zero-Width Space, `\u200B`) subito dopo l'a capo finale di qualsiasi messaggio generato o modificato a mano.
+- **Pulizia Interfaccia**: Rimosso il pulsante verde "Segna gestito" dal modal WhatsApp per rendere l'azione immediata e intuitiva.
 
 ## v5.526 / Compattazione filtri Autovalutazione su riga unica
 
