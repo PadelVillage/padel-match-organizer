@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-21 23:25
+Ultimo aggiornamento: 2026-05-22 13:35
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | v5.518 | `main` | `7a077a7` |
-| TEST | v5.521 | `test-preview` | `f9a985c` |
+| PROD | v5.521 | `main` | `f9b9ad6` |
+| TEST | v5.521 | `test-preview` | `f9b9ad6` |
 | TEST sviluppo | v5.521 | `test/accessi-staff-guidati` | `f9a985c` |
 | Assistente TEST | Fase 1 | `test/accessi-assistente` | Mockup unificato / DB TEST Popolato (`aylykijfirtegyxzdwgu`) |
 | Assistente LAVORO | Fase 1 | `test/accessi-assistente` | Locale (`padel-assistant-soci-mockup.html`) |
+
+Nota promozione PROD v5.521 - 2026-05-22 13:35: Completato con successo il rilascio in produzione del redesign dell'Autovalutazione dello Staff. Eseguito lo script SQL `20260522120000_pmo_assessment_flow_redesign.sql` su Supabase PROD per l'aggiunta di `status_autovalutazione` e delle RPC di gestione. Effettuato il deploy della Edge Function `assessment-email-send` con `verify_jwt=true` (versione 28) ed eseguito il push delle modifiche sul branch `main` (`f9b9ad6`) per aggiornare la web-app su GitHub Pages. Schedulers PROD verificati e mantenuti attivi (`active=true`).
 
 Nota Assistente TEST / Fase 1 - 2026-05-21: Completata l'unificazione del mockup in un'unica vista conversazionale (Chat AI) eliminando le vecchie viste separate (Bacheca, dock bottom, menu principale), rimuovendo i loghi e la splash screen di benvenuto, e risolvendo i crash di login. Configurato e popolato Supabase TEST Assistente (`aylykijfirtegyxzdwgu`) con 25 player fittizi tramite migrazione SQL ed esecuzione script di seed.
 
