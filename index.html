@@ -1061,6 +1061,92 @@
       border-color: var(--primary, #2563eb);
       color: #ffffff;
     }
+    .assessment-process-filter.has-prepared-batch {
+      border-color: #86efac;
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .assessment-process-filter.active.has-prepared-batch {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(34, 197, 94, 0.24);
+    }
+    .assessment-process-filter.has-prepared-batch:hover {
+      border-color: #4ade80;
+      color: #14532d;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+    }
+    .assessment-process-filter.has-prepared-batch .assessment-process-filter-count {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .assessment-process-filter.active.has-prepared-batch .assessment-process-filter-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+    .pulsing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulse-green 1.8s infinite;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .assessment-process-filter.active.has-prepared-batch .pulsing-dot {
+      background-color: #ffffff;
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+      animation: pulse-white 1.8s infinite;
+    }
+    @keyframes pulse-green {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+      }
+    }
+    @keyframes pulse-white {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+      }
+    }
+    .assessment-process-filter-badge-lotto {
+      font-size: 9.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      background: #22c55e;
+      color: #ffffff;
+      margin-left: 6px;
+      vertical-align: middle;
+      letter-spacing: 0.3px;
+      box-shadow: 0 1px 3px rgba(34, 197, 94, 0.2);
+    }
+    .assessment-process-filter.active.has-prepared-batch .assessment-process-filter-badge-lotto {
+      background: #ffffff;
+      color: #16a34a;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
     .assessment-process-filter-title {
       font-size: 12.5px;
       font-weight: 800;
@@ -6296,7 +6382,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.524';
+    const APP_VERSION = '5.525';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26995,10 +27081,24 @@ Per confermare scrivi ELIMINA.`);
       const filters = assessmentProcessFilterConfig(rows, search);
       const activeFilter = assessmentProcessStickyActiveFilter();
       const searchStageKeys = assessmentProcessSearchStageKeys(rows, search);
-      box.innerHTML = filters.map(([key, title, count, detail]) => `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}">
-        <span class="assessment-process-filter-title">${escapeHtml(title)}</span>
-        <span class="assessment-process-filter-count">${escapeHtml(String(count))}</span>
-      </button>`).join('');
+      box.innerHTML = filters.map(([key, title, count, detail]) => {
+        let isPrepared = false;
+        let badgeHtml = '';
+        let extraClass = '';
+        if (key === 'queue') {
+          const batch = assessmentEmailTodayRoutineBatch();
+          const batchStatus = cleanCell(batch?.status || '');
+          if (batch && (batchStatus === 'pending' || batchStatus === 'approved' || batchStatus === 'sending' || (batchStatus === 'sent_with_errors' && assessmentManualBatchRows(batch).some(row => !row.sent)))) {
+            isPrepared = true;
+            extraClass = ' has-prepared-batch';
+            badgeHtml = `<span class="pulsing-dot" title="Lotto preparato"></span><span class="assessment-process-filter-badge-lotto">Lotto pronto</span>`;
+          }
+        }
+        return `<button type="button" class="assessment-process-filter ${activeFilter === key ? 'active' : ''} ${searchStageKeys.has(key) ? 'search-hit' : ''}${extraClass}" data-assessment-process-filter="${escapeHtml(key)}" aria-pressed="${activeFilter === key ? 'true' : 'false'}" aria-label="${escapeHtml(`${title}: ${detail || count}`)}">
+          <span class="assessment-process-filter-title">${escapeHtml(title)}${badgeHtml}</span>
+          <span class="assessment-process-filter-count">${escapeHtml(String(count))}</span>
+        </button>`;
+      }).join('');
       box.onclick = event => {
         const button = event.target?.closest?.('[data-assessment-process-filter]');
         if (!button || !box.contains(button)) return;

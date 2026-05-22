@@ -1,5 +1,10 @@
 # Versioni
 
+## v5.525 / Evidenziato lotto pronto in Da inviare
+
+- Inserito un indicatore visivo "Lotto pronto" ed un dot verde pulsante sul tab "1. Da inviare" quando il lotto manuale di email quotidiano è preparato.
+- Disegnato uno stile coordinato con sfondo verde tenue e bordi definiti per guidare visivamente lo staff verso l'invio.
+
 ## v5.341 / Permesso solo consultazione
 
 - Rinominata la dicitura del permesso `read_all` da "Lettura completa" a "Solo consultazione".
