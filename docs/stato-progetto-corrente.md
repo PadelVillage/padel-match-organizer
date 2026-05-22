@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-22 14:31
+Ultimo aggiornamento: 2026-05-22 21:40
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -28,11 +28,13 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | v5.522 | `main` | `fcba91e` |
-| TEST | v5.522 | `test-preview` | `fcba91e` |
-| TEST sviluppo | v5.522 | `test/accessi-staff-guidati` | `fcba91e` |
+| PROD | v5.527 | `main` | `b98fbcf` |
+| TEST | v5.527 | `test-preview` | `b98fbcf` |
+| TEST sviluppo | v5.527 | `test/accessi-staff-guidati` | `b98fbcf` |
 | Assistente TEST | Fase 1 | `test/accessi-assistente` | Mockup unificato / DB TEST Popolato (`aylykijfirtegyxzdwgu`) |
 | Assistente LAVORO | Fase 1 | `test/accessi-assistente` | Locale (`padel-assistant-soci-mockup.html`) |
+
+Nota promozione PROD v5.527 - 2026-05-22 21:40: Completata con successo la promozione in produzione (PROD) della versione v5.527. Aggiornata la costante `APP_VERSION` a `5.527` in `index.html` ed eseguito il deploy della Edge Function `assessment-email-send` in PROD con `verify_jwt=true` (versione 35). Questa release integra l'autovalutazione 0.5 con: rimozione della sezione "Problemi" e integrazione in Gestione Manuale, iniezione di token virtuali temporanei ('GM-id') nel frontend e nel backend, rimozione di 'tennis app' dalle esclusioni, sostituzione del pulsante "✓ Risolvi" con "👤 Scheda Socio" ed apertura in-place della scheda socio. Branch `main`, `test-preview` e `test/accessi-staff-guidati` allineati al commit `b98fbcf`. Schedulers PROD verificati e mantenuti attivi.
 
 Nota promozione PROD v5.522 - 2026-05-22 14:31: Completata la promozione in produzione (PROD) della versione v5.522. Aggiornata la costante `APP_VERSION` a `5.522` in `index.html` ed effettuato il deploy con successo della Edge Function `assessment-email-send` in PROD con JWT abilitato (`verify_jwt=true`). Integrata la routine di annullamento del lotto dell'autovalutazione (annullamento sicuro e protetto in PROD, totale in TEST). Allineati e pubblicati i branch Git `main` e `test-preview` al commit `fcba91e`. Gli scheduler automatici PROD rimangono attivi ed invariati.
 

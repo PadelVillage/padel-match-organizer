@@ -1,6 +1,6 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-22 14:31
+Ultimo aggiornamento: 2026-05-22 21:40
 
 Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
 
@@ -15,6 +15,7 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Aggiornamenti rapidi
 
+- Promozione PROD v5.527 - 2026-05-22: Completata con successo la promozione in produzione (PROD) della versione v5.527. Aggiornata la costante `APP_VERSION` a `5.527` in `index.html` ed eseguito il deploy della Edge Function `assessment-email-send` in PROD con `verify_jwt=true` (versione 35). Questa release integra l'autovalutazione 0.5 con: rimozione della sezione "Problemi" e integrazione in Gestione Manuale, iniezione di token virtuali temporanei ('GM-id') nel frontend e nel backend, rimozione di 'tennis app' dalle esclusioni, sostituzione del pulsante "✓ Risolvi" con "👤 Scheda Socio" ed apertura in-place della scheda socio. Branch `main`, `test-preview` e `test/accessi-staff-guidati` allineati al commit `b98fbcf`. Schedulers PROD verificati e mantenuti attivi.
 - Promozione PROD v5.522 - 2026-05-22: Completata la promozione in produzione (PROD) della versione v5.522. Aggiornata la costante `APP_VERSION` a `5.522` in `index.html` ed effettuato il deploy con successo della Edge Function `assessment-email-send` in PROD con JWT abilitato (`verify_jwt=true`). Integrati i controlli per l'annullamento del lotto dell'autovalutazione (annullamento sicuro e protetto in PROD, totale in TEST). Allineati e pubblicati i branch Git `main` e `test-preview` al commit `fcba91e`. Gli scheduler automatici PROD rimangono attivi ed invariati.
 - Promozione PROD v5.521 - 2026-05-22: Completato con successo il rilascio in produzione del redesign dell'Autovalutazione dello Staff. Applicata migrazione SQL `20260522120000_pmo_assessment_flow_redesign.sql` su Supabase PROD per l'aggiunta di `status_autovalutazione` e delle RPC (`get_assessment_tokens_admin` e `update_assessment_token_status_admin`). Deployato `assessment-email-send` Edge Function in PROD (versione 28) con `verify_jwt=true`. Allineato e pushato branch `main` (`f9b9ad6`) su GitHub Pages. Gli scheduler PROD `pmo-assessment-followup-dispatcher-prod` e `pmo-data-routines-dispatcher-prod` rimangono attivi ed invariati.
 - Assistente Giocatori / Fase 1 TEST - 2026-05-21: completata l'unificazione del mockup in un'unica vista conversazionale (Chat AI) eliminando le vecchie viste separate (Bacheca, dock bottom, menu principale), rimuovendo i loghi e la splash screen di benvenuto, e risolvendo i crash di login. Supabase TEST Assistente (`aylykijfirtegyxzdwgu`) configurato e popolato con 25 player fittizi tramite migrazione SQL ed esecuzione script di seed.
