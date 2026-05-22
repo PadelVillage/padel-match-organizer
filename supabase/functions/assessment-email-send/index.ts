@@ -1092,7 +1092,7 @@ async function loadAssessmentEmailRecords(admin: any) {
   for (let from = 0, page = 0; page < 20; page += 1, from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await admin
       .from('pmo_cloud_records')
-      .select('payload,deleted,created_at')
+      .select('local_key,payload,deleted,created_at')
       .eq('record_type', EMAIL_RECORD_TYPE)
       .eq('deleted', false)
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
@@ -1101,7 +1101,9 @@ async function loadAssessmentEmailRecords(admin: any) {
     rows.push(...batch);
     if (batch.length < SUPABASE_PAGE_SIZE) break;
   }
-  return rows.map((row) => row.payload || {});
+  return rows
+    .filter((row) => !String(row.local_key || '').startsWith('assessment_email_latest'))
+    .map((row) => row.payload || {});
 }
 
 async function loadCompletedAssessmentTokens(admin: any) {
