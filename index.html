@@ -26101,6 +26101,8 @@ Per confermare scrivi ELIMINA.`);
         if (!assessmentEmailIsCycleCandidate(row)) return false;
         if (row.response || assessmentEmailMemberApplied(row.member, row.info) || row.info.paused) return false;
         if (!assessmentEmailHasValidEmail(row.member)) return false;
+        if (!row.member.phone) return false;
+        if (row.rec?.emailStatus === 'bounced' || row.rec?.status_autovalutazione === 'GESTIONE_MANUALE') return false;
         if (row.rec?.status === 'sent') return false;
         return true;
       }).sort((a,b) => {
@@ -26138,7 +26140,13 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailPendingRows() {
       return assessmentEmailAllOperationalRows().filter(row => {
         if (row.response || row.info.paused || assessmentEmailMemberApplied(row.member, row.info)) return false;
-        return row.rec?.status === 'sent' && row.rec?.emailStatus !== 'bounced';
+        if (row.rec?.status !== 'sent') return false;
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = cleanCell(row.rec?.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const isGestione = row.rec?.status_autovalutazione === 'GESTIONE_MANUALE';
+        if (noEmail || noPhone || bounced || isGestione) return false;
+        return true;
       }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
     }
     function assessmentEmailModeIsRequest(mode) {
@@ -26857,32 +26865,39 @@ Per confermare scrivi ELIMINA.`);
     function assessmentProcessRows() {
       const rowsByMember = new Map();
       const todaySlots = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - getAssessmentRequestsSentTodayCount());
-      assessmentEmailProblemRows().forEach(row => {
-        const problem = assessmentEmailProblemText(row);
-        const isBounced = row.rec?.emailStatus === 'bounced';
+      assessmentEmailAllOperationalRows().forEach(row => {
+        if (!assessmentEmailIsCycleCandidate(row)) return;
+        if (row.response || assessmentEmailMemberApplied(row.member, row.info) || row.info.paused) return;
+        
         const noEmail = !assessmentEmailHasValidEmail(row.member);
-        const routineLabel = row.info.paused ? 'Uscito' : (isBounced ? 'Errore' : 'Bloccata');
-        const routineDetail = row.info.paused ? 'Passo manuale' : (isBounced ? 'Mancata consegna' : (noEmail ? 'Email mancante' : problem.label));
-        const primaryAction = noEmail
-          ? assessmentProcessButton('Correggi email', 'warn', `assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')`)
-          : assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')`);
-        assessmentProcessPut(rowsByMember, {
-          member: row.member,
-          row,
-          priority: 10,
-          filter: 'problems',
-          today: assessmentProcessDateIsToday(row.rec?.emailBouncedAt || row.member.selfAssessmentEmailBouncedAt || row.rec?.sentAt || row.rec?.createdAt),
-          routine: { label:routineLabel, cls:isBounced || noEmail ? 'err' : 'warn', detail:routineDetail },
-          phase: { label:'Problema', cls:'err', detail:problem.label },
-          nextStep: noEmail ? 'Correggi email' : 'Apri scheda',
-          contact: assessmentEmailMemberEmail(row.member) || 'Email mancante',
-          lastEvent: assessmentProcessLastEvent(row),
-          sends: String(assessmentProcessSentCount(row) || '-'),
-          response: { label:'Nessuna risposta', cls:'muted', detail:'' },
-          level: row.member.level || '-',
-          matchpoint: { label:'-', cls:'muted', detail:'' },
-          actions: primaryAction
-        });
+        const noPhone = !row.member.phone;
+        const bounced = cleanCell(row.rec?.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        const isGestioneManuale = row.rec?.status_autovalutazione === 'GESTIONE_MANUALE';
+        
+        if (noEmail || noPhone || bounced || isGestioneManuale) {
+          const problemLabel = bounced ? 'Mancata consegna' : (noEmail ? 'Email mancante' : 'Telefono mancante');
+          const primaryAction = noEmail
+            ? assessmentProcessButton('Correggi email', 'warn', `assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')`)
+            : assessmentProcessButton('Dettaglio', '', `assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')`);
+            
+          assessmentProcessPut(rowsByMember, {
+            member: row.member,
+            row,
+            priority: 15,
+            filter: 'gestione',
+            today: assessmentProcessDateIsToday(row.rec?.emailBouncedAt || row.member.selfAssessmentEmailBouncedAt || row.rec?.sentAt || row.rec?.createdAt),
+            routine: { label: bounced ? 'Errore' : 'Incompleto', cls: 'err', detail: problemLabel },
+            phase: { label: 'Gestione manuale', cls: 'warn', detail: problemLabel },
+            nextStep: noEmail ? 'Correggi email' : 'Apri scheda',
+            contact: assessmentEmailMemberEmail(row.member) || row.member.phone || 'Dati mancanti',
+            lastEvent: assessmentProcessLastEvent(row),
+            sends: String(assessmentProcessSentCount(row) || '-'),
+            response: { label: 'Nessuna risposta', cls: 'muted', detail: '' },
+            level: row.member.level || '-',
+            matchpoint: { label: '-', cls: 'muted', detail: '' },
+            actions: primaryAction
+          });
+        }
       });
       assessmentEmailPendingRows().forEach(row => {
         const replyAt = assessmentEmailReplyAtForRow(row);
