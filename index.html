@@ -6296,7 +6296,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.523';
+    const APP_VERSION = '5.524';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27331,12 +27331,9 @@ Per confermare scrivi ELIMINA.`);
       // I lotti con stato 'sent' o 'sent_with_errors' non possono mai essere annullati.
       if (['sent', 'sent_with_errors'].includes(status)) return false;
       
-      // Se il lotto non contiene effettivamente invii o fallimenti registrati nel lotto stesso (nel cloud),
-      // allora consentiamo sempre l'annullamento. Questo risolve e corregge i disallineamenti con il browser
-      // locale dovuti a ripristini o reset del database.
-      const hasActualSentOrFailed = (Array.isArray(batch.sent) && batch.sent.length > 0) || 
-                                    (Array.isArray(batch.failed) && batch.failed.length > 0);
-      return !hasActualSentOrFailed;
+      // Consentiamo sempre l'annullamento se lo stato non è definitivo, anche se contiene invii o errori parziali.
+      // Questo permette allo staff di interrompere l'invio automatico pianificato per il giorno dopo.
+      return true;
     }
     function assessmentGmailCheckNormalizeState(value=null) {
       const data = value && typeof value === 'object' ? value : {};
