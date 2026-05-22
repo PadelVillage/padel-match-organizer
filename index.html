@@ -5527,15 +5527,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
           </section>
 
-          <section id="assessmentEmailProblemsPanel" class="assessment-email-panel" data-assessment-email-panel="problems">
-            <div class="assessment-email-panel-head">
-              <div>
-                <h3 class="assessment-email-panel-title">Problemi</h3>
-                <p class="assessment-email-panel-copy">Email mancanti, link da preparare, richieste senza risposta e controlli da gestire dalla scheda socio.</p>
-              </div>
-            </div>
-            <div id="assessmentEmailProblemsContent" class="assessment-email-content"></div>
-          </section>
 
           <section id="assessmentEmailPostPanel" class="assessment-email-panel" data-assessment-email-panel="post">
             <div class="assessment-email-panel-head">
@@ -26311,6 +26302,18 @@ Per confermare scrivi ELIMINA.`);
         rec.emailBounceGmailMessageId = item.bounceGmailMessageId || '';
         member.selfAssessmentEmailBouncedAt = rec.emailBouncedAt;
         member.selfAssessmentEmailBounceReason = rec.emailBounceReason;
+        
+        // Impostiamo lo stato locale e su Supabase a GESTIONE_MANUALE
+        rec.status_autovalutazione = 'GESTIONE_MANUALE';
+        if (rec.token) {
+          pmoStaffRpc('update_assessment_token_status_admin', {
+            p_token: rec.token,
+            p_status_autovalutazione: 'GESTIONE_MANUALE'
+          }, 'cloud_sync', 'aggiornare lo stato del token bounced').catch(err => {
+            console.error('Errore nel salvare il bounce su Supabase per token:', rec.token, err);
+          });
+        }
+        
         updated++;
       });
       if (updated) {
@@ -26370,7 +26373,6 @@ Per confermare scrivi ELIMINA.`);
     function assessmentEmailPanelForMember(memberId) {
       const sources = [
         { panel:'pending', rows:assessmentEmailPendingRows() },
-        { panel:'problems', rows:assessmentEmailProblemRows() },
         { panel:'post', rows:assessmentEmailPostRows() },
         { panel:'matchpoint', rows:assessmentMatchpointPendingRows() },
         { panel:'history', rows:assessmentEmailHistoryBaseRows() },
@@ -26391,8 +26393,8 @@ Per confermare scrivi ELIMINA.`);
         const updated = assessmentEmailApplyBounceMatches(result.matches || []);
         displayAssessment();
         if (updated) {
-          setAssessmentEmailPanel('problems');
-          showAlert(`Mancate consegne trovate: ${updated}. I soci sono stati spostati in Problemi.`, 'warning');
+          setAssessmentProcessFilter('gestione');
+          showAlert(`Mancate consegne trovate: ${updated}. I soci sono stati spostati in Gestione manuale.`, 'warning');
         } else {
           showAlert(`Controllo completato: nessuna mancata consegna trovata su ${result.scanned || 0} email Gmail analizzate.`, 'success');
         }
@@ -26429,20 +26431,7 @@ Per confermare scrivi ELIMINA.`);
       }
     }
     function assessmentEmailProblemRows() {
-      const now = Date.now();
-      return assessmentEmailAllOperationalRows().filter(row => {
-        if (!assessmentEmailIsCycleCandidate(row)) return false;
-        if (row.response || assessmentEmailMemberApplied(row.member, row.info)) return false;
-        if (assessmentEmailReplyAtForRow(row)) return false;
-        if (row.rec?.emailStatus === 'bounced') return true;
-        if (!assessmentEmailHasValidEmail(row.member)) return true;
-        if (!row.member.phone) return true;
-        if (row.info.paused) return true;
-        const sentCount = parseInt(row.rec?.emailSentCount, 10) || (row.rec?.sentAt ? 1 : 0);
-        const lastSentMs = assessmentEmailDateMs(row.rec?.sentAt);
-        if (row.rec?.status === 'sent' && sentCount >= 3 && lastSentMs && now - lastSentMs >= ASSESSMENT_EMAIL_FOLLOWUP_INTERVAL_MS) return true;
-        return false;
-      }).sort((a,b) => assessmentEmailCycleDate(a.member, a.info) - assessmentEmailCycleDate(b.member, b.info));
+      return [];
     }
     function assessmentEmailPostRows() {
       return assessmentEmailAllOperationalRows().filter(row => {
@@ -26516,7 +26505,6 @@ Per confermare scrivi ELIMINA.`);
         { panel:'post', label:'Post-invio', reason:'Scheda ricevuta, da gestire prima dello storico.', rows:assessmentEmailPostRows() },
         { panel:'matchpoint', label:'Matchpoint', reason:'Livello validato da riportare manualmente su Matchpoint.', rows:assessmentMatchpointPendingRows() },
         { panel:'history', label:'Storico', reason:'Giro chiuso o socio messo in pausa.', rows:assessmentEmailHistoryBaseRows() },
-        { panel:'problems', label:'Problemi', reason:'Serve sistemare email, telefono o recupero manuale.', rows:assessmentEmailProblemRows() },
         { panel:'pending', label:'Contattati / in attesa', reason:'Email gia inviata, scheda non ancora compilata.', rows:assessmentEmailPendingRows() },
         { panel:'queue', label:'Da inviare 0.5', reason:'Ancora pronto per il primo invio.', rows:assessmentEmailQueueRows() }
       ];
@@ -26815,10 +26803,10 @@ Per confermare scrivi ELIMINA.`);
         stopAlert = 'Scheda compilata';
         actions = `${assessmentProcessButton('Valida livello', 'warn', `assessmentOpenMemberValidation('${escapeJs(String(member.id || ''))}')`)}`;
       } else if (bounced || noEmail) {
-        routine = { label:'Problema', cls:'err', detail:bounced ? 'Mancata consegna' : 'Email mancante' };
-        phase = { label:'Problema email', cls:'err', detail:'' };
+        routine = { label:'Gestione', cls:'warn', detail:bounced ? 'Mancata consegna' : 'Email mancante' };
+        phase = { label:'Gestione manuale', cls:'warn', detail:'' };
         nextStep = 'Correggi email';
-        nextWindow = { label:'Bloccata', detail:'' };
+        nextWindow = { label:'-', detail:'' };
         stopAlert = bounced ? 'Mancata consegna' : 'Email mancante';
         actions = `${assessmentProcessButton('Correggi email', 'warn', `assessmentOpenMemberCard('${escapeJs(String(member.id || ''))}')`)}${detailAction}`;
       } else if (paused) {
@@ -26829,8 +26817,8 @@ Per confermare scrivi ELIMINA.`);
         stopAlert = 'Socio in pausa';
         actions = `${detailAction}${assessmentProcessButton('Storico', '', `assessmentEmailGoToMemberPanel('history','${escapeJs(String(member.id || ''))}')`)}`;
       } else if (sentCount >= 3 && rec?.status === 'sent' && !response) {
-        routine = { label:'Manuale', cls:'warn', detail:'Tre invii completati' };
-        phase = { label:'Recupero manuale', cls:'warn', detail:'' };
+        routine = { label:'Gestione', cls:'warn', detail:'Tre invii completati' };
+        phase = { label:'Gestione manuale', cls:'warn', detail:'' };
         nextStep = 'Apri scheda socio';
         nextWindow = { label:'Nessun altro richiamo', detail:'' };
         stopAlert = 'Tre email senza esito';
@@ -26853,10 +26841,10 @@ Per confermare scrivi ELIMINA.`);
           ? entry.actions
           : assessmentProcessButton('Storico', '', `assessmentEmailGoToMemberPanel('history','${escapeJs(String(member.id || ''))}')`);
       } else if (noPhone) {
-        routine = { label:'Problema', cls:'err', detail:'Telefono mancante' };
-        phase = { label:'Problema operativo', cls:'err', detail:'' };
-        nextStep = 'Scheda socio';
-        nextWindow = { label:'Bloccata', detail:'' };
+        routine = { label:'Gestione', cls:'warn', detail:'Telefono mancante' };
+        phase = { label:'Gestione manuale', cls:'warn', detail:'' };
+        nextStep = 'Dettaglio';
+        nextWindow = { label:'-', detail:'' };
         stopAlert = 'Telefono mancante';
         actions = detailAction;
       }
@@ -27146,11 +27134,14 @@ Per confermare scrivi ELIMINA.`);
         if (!tokenRec?.token) return;
         
         const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         
-        if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
-          countSolleciti++;
-        } else if (status === 'GESTIONE_MANUALE') {
+        if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
           countGestione++;
+        } else if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+          countSolleciti++;
         } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
           countValidare++;
         }
@@ -27180,11 +27171,14 @@ Per confermare scrivi ELIMINA.`);
         if (!tokenRec?.token) return;
         
         const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         
-        if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
-          keys.add('solleciti');
-        } else if (status === 'GESTIONE_MANUALE') {
+        if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
           keys.add('gestione');
+        } else if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+          keys.add('solleciti');
         } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
           keys.add('validare');
         }
@@ -27967,11 +27961,14 @@ Per confermare scrivi ELIMINA.`);
           if (!tokenRec?.token) return;
           
           const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+          const noEmail = !assessmentEmailHasValidEmail(row.member);
+          const noPhone = !row.member.phone;
+          const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
           
-          if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
+          if (status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced))) {
+            colGestione.push({ row, status: 'GESTIONE_MANUALE' });
+          } else if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
             colSolleciti.push({ row, status });
-          } else if (status === 'GESTIONE_MANUALE') {
-            colGestione.push({ row, status });
           } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
             colValidare.push({ row, status });
           }
@@ -28560,7 +28557,7 @@ Per confermare scrivi ELIMINA.`);
       if (key.includes('cruscotto') || key.includes('mattutino')) return 'morning';
       if (key.includes('da inviare')) return 'queue';
       if (key.includes('attesa') || key.includes('contattati')) return 'pending';
-      if (key.includes('problemi')) return 'problems';
+      if (key.includes('problemi')) return 'morning';
       if (key.includes('post')) return 'post';
       if (key.includes('storico')) return 'history';
       if (key.includes('matchpoint')) return 'matchpoint';
@@ -28573,7 +28570,6 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailKpis() {
       const queue = assessmentEmailQueueRows();
       const pending = assessmentEmailPendingRows();
-      const problems = assessmentEmailProblemRows();
       const post = assessmentEmailPostRows();
       const history = assessmentEmailHistoryBaseRows();
       const matchpoint = assessmentMatchpointPendingRows();
@@ -28587,7 +28583,6 @@ Per confermare scrivi ELIMINA.`);
       setCount('assessmentEmailMorningTabCount', `<strong>${escapeHtml(String(morning.totalActions))}</strong> azioni`);
       setCount('assessmentEmailQueueTabCount', `<strong>${escapeHtml(String(sentToday))}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</strong> oggi · ${escapeHtml(String(queue.length))} rimasti`);
       setCount('assessmentEmailPendingTabCount', `<strong>${escapeHtml(String(pending.length))}</strong> in attesa`);
-      setCount('assessmentEmailProblemsTabCount', `<strong>${escapeHtml(String(problems.length))}</strong> da risolvere`);
       setCount('assessmentEmailPostTabCount', `<strong>${escapeHtml(String(post.length))}</strong> risposte`);
       setCount('assessmentEmailHistoryTabCount', externalRequests.length
         ? `<strong>${escapeHtml(String(externalRequests.length))}</strong> link · ${escapeHtml(String(history.length))} chiusi`
@@ -28651,13 +28646,21 @@ Per confermare scrivi ELIMINA.`);
       const postRows = assessmentEmailPostRows();
       const queueRows = assessmentEmailQueueRows();
       const pendingRows = assessmentEmailPendingRows();
-      const problemRows = assessmentEmailProblemRows();
       const allRows = assessmentEmailAllOperationalRows();
+      const gestioneRows = allRows.filter(row => {
+        const tokenRec = row.rec;
+        if (!tokenRec?.token) return false;
+        const status = tokenRec.status_autovalutazione || (tokenRec.status === 'completed' ? 'COMPILATO' : (tokenRec.status === 'sent' ? 'INVITO_INVIATO' : ''));
+        const noEmail = !assessmentEmailHasValidEmail(row.member);
+        const noPhone = !row.member.phone;
+        const bounced = cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
+        return status === 'GESTIONE_MANUALE' || ((status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') && (noEmail || noPhone || bounced));
+      });
       const replyCount = pendingRows.filter(row => assessmentEmailReplyAtForRow(row)).length;
       const manualPostCount = postRows.filter(row => !assessmentEmailIsAutoApplicable(row.response)).length;
-      const bouncedCount = problemRows.filter(row => row.rec?.emailStatus === 'bounced').length;
+      const bouncedCount = gestioneRows.filter(row => row.rec?.emailStatus === 'bounced').length;
       const followups = assessmentEmailFollowupReadyCounts(pendingRows);
-      const attentionCount = problemRows.length + replyCount + manualPostCount;
+      const attentionCount = gestioneRows.length + replyCount + manualPostCount;
       const lastLabel = assessmentEmailRoutineLastLabel(allRows);
       const morningBatch = assessmentEmailTodayRoutineBatch();
       const approvalInfo = assessmentEmailRoutineApprovalStatus(morningBatch);
@@ -28681,11 +28684,11 @@ Per confermare scrivi ELIMINA.`);
         ['Invio mattutino', 'Lotto manuale', assessmentEmailBadge(approvalInfo.label, approvalInfo.cls === 'err' ? 'err' : (approvalInfo.cls === 'warn' ? 'warn' : 'info')), `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} invii oggi`, `Il Cruscotto mattutino prepara il lotto e lo staff decide se inviare tutti, selezionati o singole righe.`],
         ['Soci ancora da invitare', 'Coda livello 0.5', assessmentEmailBadge(`${queueRows.length} rimasti`,'info'), lastLabel, 'La routine prende solo soci attivi con email valida e link personale pronto.'],
         ['Secondo invio', 'Dopo 2 giorni', assessmentEmailBadge(`${followups.second} pronti`, followups.second ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia la seconda email ai soci che non hanno compilato e non hanno risposto.'],
-        ['Terzo invio', 'Dopo altri 2 giorni', assessmentEmailBadge(`${followups.third} pronti`, followups.third ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia l ultimo promemoria e segnala il caso per gestione dalla scheda socio.'],
+        ['Terzo invio', 'Dopo altri 2 giorni', assessmentEmailBadge(`${followups.third} pronti`, followups.third ? 'warn' : 'muted'), 'Ultimo giro 05:45', 'Invia l ultimo promemoria e segnala il caso per gestione manuale.'],
         ['Risposte email', 'Reply dei soci', assessmentEmailBadge(`${replyCount} da leggere`, replyCount ? 'warn' : 'muted'), lastLabel, 'Vai alla riga del socio e usa Leggi risposta; i solleciti restano sospesi.'],
-        ['Mancate consegne', 'Email tornate indietro', assessmentEmailBadge(`${bouncedCount} trovate`, bouncedCount ? 'warn' : 'ok'), lastLabel, 'Se ne trova una, il socio passa in Problemi per recupero dalla scheda socio.'],
+        ['Mancate consegne', 'Email tornate indietro', assessmentEmailBadge(`${bouncedCount} trovate`, bouncedCount ? 'warn' : 'ok'), lastLabel, 'Se ne trova una, il socio passa in Gestione manuale per recupero.'],
         ['Schede ricevute', 'Post-invio', assessmentEmailBadge(`${postRows.length} risposte`,'info'), latestPostMs ? assessmentEmailFormatDateTime(latestPostMs) : lastLabel, manualPostCount ? `${manualPostCount} scheda/e restano da validare; le semplici vengono chiuse automaticamente.` : 'Le schede semplici vengono chiuse automaticamente; le altre restano da validare.'],
-        ['Recupero manuale', 'Scheda socio', assessmentEmailBadge('Manuale','muted'), lastLabel, 'Serve per email mancanti, dubbi o soci che non rispondono dopo i tre invii.']
+        ['Gestione manuale', 'Senza email/telefono o bounce', assessmentEmailBadge(`${gestioneRows.length} soci`, gestioneRows.length ? 'warn' : 'ok'), lastLabel, 'Serve per email o telefoni mancanti, mancate consegne o interventi manuali.']
       ];
       box.innerHTML = `<div class="assessment-email-table-wrap">
         <table class="assessment-email-table assessment-email-status-table">
@@ -28825,26 +28828,7 @@ Per confermare scrivi ELIMINA.`);
         ? `Ultimo recupero manuale: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
         : 'Recupero manuale non ancora segnato';
     }
-    function renderAssessmentEmailProblemsPanel() {
-      const box = document.getElementById('assessmentEmailProblemsContent');
-      if (!box) return;
-      const rows = assessmentEmailProblemRows();
-      if (!rows.length) return void (box.innerHTML = assessmentEmailEmpty('Nessun problema operativo rilevato.'));
-      box.innerHTML = `<div class="assessment-email-table-wrap"><table class="assessment-email-table"><thead><tr><th>Socio</th><th>Problema</th><th>Email</th><th>Ultimo controllo</th><th>Soluzione proposta</th><th style="text-align:right;">Azioni</th></tr></thead><tbody>${rows.map(row => {
-        const problem = assessmentEmailProblemText(row);
-        return `<tr data-assessment-email-member="${escapeHtml(String(row.member.id))}" data-assessment-problem-member="${escapeHtml(String(row.member.id))}">
-          <td data-label="Socio">${assessmentEmailMemberCell(row.member, `liv. ${row.member.level ?? '-'}`)}</td>
-          <td data-label="Problema">${problem.badge}</td>
-          <td data-label="Email">${escapeHtml(assessmentEmailMemberEmail(row.member) || '-')}</td>
-          <td data-label="Ultimo controllo">${escapeHtml(assessmentEmailFormatDateTime(row.rec?.emailBouncedAt || row.member.selfAssessmentEmailBouncedAt || row.member.selfAssessmentWhatsappCheckAt || row.rec?.sentAt || row.rec?.createdAt))}</td>
-          <td data-label="Soluzione proposta">${escapeHtml(problem.solution)}</td>
-          <td data-label="Azioni"><div class="assessment-email-mini-actions">
-            <button class="assessment-email-mini" onclick="setActionAnchor(this); assessmentOpenMemberCard('${escapeJs(String(row.member.id))}')">Scheda</button>
-            <button class="assessment-email-mini warn" onclick="setActionAnchor(this); assessmentEmailPauseMember('${escapeJs(String(row.member.id))}')">Metti in pausa</button>
-          </div></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`;
-    }
+
     function renderAssessmentEmailPostPanel() {
       const box = document.getElementById('assessmentEmailPostContent');
       if (!box) return;
@@ -29043,7 +29027,6 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailRoutinePanel();
       renderAssessmentEmailQueuePanel();
       renderAssessmentEmailPendingPanel();
-      renderAssessmentEmailProblemsPanel();
       renderAssessmentEmailPostPanel();
       renderAssessmentEmailHistoryPanel();
       renderAssessmentEmailMatchpointPanel();
@@ -29520,10 +29503,10 @@ Per confermare scrivi ELIMINA.`);
       }
     }
     function assessmentEmailReturnToProblemMember(memberId) {
-      setAssessmentEmailPanel('problems');
+      setAssessmentProcessFilter('gestione');
       setTimeout(() => {
-        const row = Array.from(document.querySelectorAll('[data-assessment-problem-member]'))
-          .find(el => String(el.dataset.assessmentProblemMember || '') === String(memberId || ''));
+        const row = Array.from(document.querySelectorAll('[data-assessment-email-member]'))
+          .find(el => String(el.dataset.assessmentEmailMember || '') === String(memberId || ''));
         if (!row) return;
         row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
         row.classList.add('assessment-email-row-focus');

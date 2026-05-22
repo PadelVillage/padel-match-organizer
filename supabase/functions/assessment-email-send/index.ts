@@ -1625,6 +1625,43 @@ async function runAssessmentRoutineFollowup(admin: any, actor: StaffActor, supab
 async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: JsonMap) {
   const startedAt = new Date().toISOString();
   const context = await buildAssessmentRoutineContext(admin, body);
+
+  // --- Auto-transition active 0.5 members without email or phone directly to GESTIONE_MANUALE ---
+  const incompleteMembers = context.members
+    .filter((member) => memberMatchesTarget(member, context.targets))
+    .filter((member) => isActiveMember(member))
+    .filter((member) => isLevelZeroPointFive(member))
+    .filter((member) => {
+      const hasEmail = isValidEmail(memberEmail(member));
+      const hasPhone = member.phone && clean(member.phone).length > 0;
+      return !hasEmail || !hasPhone;
+    });
+
+  for (const member of incompleteMembers) {
+    const memberId = clean(member.id || member.__localKey);
+    const memberTokens = context.tokenByMember.get(memberId) || [];
+    const hasActiveToken = memberTokens.some((row) => !context.completedTokens.has(clean(row.token)) && clean(row.status) !== 'completed');
+    if (!hasActiveToken) {
+      const token = `GM-${memberId}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      console.log(`[ROUTINE PLAN] Transitioning incomplete member ${playerName(member)} (${memberId}) directly to GESTIONE_MANUALE.`);
+      try {
+        await upsertRoutineToken(admin, member, token, 'created', '', 'GESTIONE_MANUALE');
+        const newTokenRow = {
+          token,
+          member_local_id: memberId,
+          member_name: playerName(member),
+          status: 'created',
+          status_autovalutazione: 'GESTIONE_MANUALE',
+          created_at: new Date().toISOString()
+        };
+        if (!context.tokenByMember.has(memberId)) context.tokenByMember.set(memberId, []);
+        context.tokenByMember.get(memberId)?.push(newTokenRow);
+      } catch (err) {
+        console.error(`[ROUTINE PLAN ERROR] Failed to create GESTIONE_MANUALE token for ${memberId}:`, err);
+      }
+    }
+  }
+
   const existing = await loadAssessmentRoutineBatch(admin, context.localDate);
   const regenerate = truthyFlag(body.regenerate);
   if (regenerate && existing && !routineBatchCanRegenerate(existing)) {
