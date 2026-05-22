@@ -27819,8 +27819,8 @@ Per confermare scrivi ELIMINA.`);
             <a class="pmo-kanban-btn-action btn-call" href="tel:${escapeHtml(phone)}">
               📞 Chiama
             </a>
-            <button class="pmo-kanban-btn-action btn-success" onclick="updateAssessmentTokenStatusFrontend('${escapeJs(rec.token)}', 'VALIDATO')" style="border: 1.5px solid #16a34a; font-weight:900;">
-              ✓ Risolvi
+            <button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')" style="font-weight:900;">
+              👤 Scheda Socio
             </button>
           </div>
         </div>
