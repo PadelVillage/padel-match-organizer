@@ -27439,7 +27439,7 @@ Per confermare scrivi ELIMINA.`);
         buttons.push(`<button class="assessment-email-mini success" type="button" ${selected && !sendBlock.blocked ? '' : 'disabled'} ${sendBlock.blocked ? `title="${escapeHtml(sendBlock.message)}"` : ''} onclick="setActionAnchor(this); assessmentEmailSendManualBatchSelected()">Invia selezionati</button>`);
         buttons.push(`<button class="assessment-email-mini success" type="button" ${sendDisabled} onclick="setActionAnchor(this); assessmentEmailSendManualBatchAll()">Invia tutti</button>`);
         if (assessmentManualBatchCanRegenerate(batch)) {
-          buttons.push(`<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); assessmentEmailRegenerateMorningBatch()">Rigenera lotto</button>`);
+          buttons.push(`<button class="assessment-email-mini danger" type="button" onclick="setActionAnchor(this); assessmentEmailCancelMorningBatch()">Annulla lotto</button>`);
         }
       }
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
@@ -29018,29 +29018,33 @@ Per confermare scrivi ELIMINA.`);
         showAlert('Preparazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'preparare il lotto email mattutino'), 'danger');
       }
     }
-    async function assessmentEmailRegenerateMorningBatch() {
+    async function assessmentEmailCancelMorningBatch() {
       const batch = assessmentEmailTodayRoutineBatch();
       if (!assessmentManualBatchCanRegenerate(batch)) {
-        return showAlert('Il lotto puo essere rigenerato solo se e pronto e non contiene invii o errori.', 'warning');
+        return showAlert('Il lotto puo essere annullato solo se e pronto e non contiene invii o errori.', 'warning');
       }
-      if (!confirm('Rigenerare il lotto? Il lotto attuale non inviato verra sostituito.')) return;
+      if (!confirm("Sei sicuro di voler annullare il lotto email di oggi?\n\nIl lotto verra rimosso e potrai prepararne uno nuovo.")) return;
       try {
-        showAlert('Rigenero il lotto email mattutino...', 'info');
-        const result = await pmoInvokeAssessmentEmail({
-          action: 'routine-plan',
-          scheduledLocalDate: assessmentManualBatchKey(batch),
-          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
-          regenerate: true,
-          source: 'pmo_assessment_email_manual_regenerate'
+        showAlert('Annullamento lotto email mattutino in corso...', 'info');
+        const key = assessmentManualBatchKey(batch);
+        await pmoInvokeAssessmentEmail({
+          action: 'routine-cancel',
+          scheduledLocalDate: key,
+          source: 'pmo_assessment_email_manual_cancel'
         });
-        assessmentEmailStoreRoutineBatch(result.batch);
+        if (key && assessmentEmailRoutineBatches[key]) {
+          delete assessmentEmailRoutineBatches[key];
+          save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches);
+        }
+        if (key && window.assessmentManualBatchSelections) {
+          delete window.assessmentManualBatchSelections[key];
+        }
         await assessmentEmailImportCloudLogs({ silent:true });
         displayAssessment();
         setAssessmentEmailPanel('morning');
-        const selected = Array.isArray(result.selected) ? result.selected.length : assessmentEmailRoutineBatchSelectedCount(result.batch);
-        showAlert(selected ? `Lotto rigenerato: ${selected} email pronte.` : 'Lotto rigenerato: nessun socio pronto da inserire oggi.', selected ? 'success' : 'info');
+        showAlert('Lotto annullato con successo.', 'success');
       } catch (err) {
-        showAlert('Rigenerazione lotto non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'rigenerare il lotto email mattutino'), 'danger');
+        showAlert('Annullamento lotto non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'annullare il lotto email mattutino'), 'danger');
       }
     }
     async function assessmentEmailApproveMorningBatch() {

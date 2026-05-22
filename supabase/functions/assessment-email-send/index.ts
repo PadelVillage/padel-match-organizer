@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
@@ -2257,6 +2257,50 @@ async function runAssessmentRoutineApprove(admin: any, actor: StaffActor, supaba
   return { ...result, action: 'routine-approve', approvedAt: approved.approvedAt, approvedBy: approved.approvedBy };
 }
 
+async function runAssessmentRoutineCancel(admin: any, actor: StaffActor, body: JsonMap) {
+  assertStaffApprovalActor(actor);
+  const localDate = clean(body.scheduledLocalDate || localDateIso(new Date()));
+  const batch = await loadAssessmentRoutineBatch(admin, localDate);
+  if (!batch) throw new Error('ROUTINE_BATCH_MISSING');
+  
+  if (['sent', 'sent_with_errors'].includes(clean(batch.status))) {
+    throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_ALREADY_SENT');
+  }
+  
+  const sent = Array.isArray(batch.sent) ? batch.sent : [];
+  const failed = Array.isArray(batch.failed) ? batch.failed : [];
+  if (sent.length > 0 || failed.length > 0) {
+    throw new Error('ROUTINE_BATCH_CANCEL_NOT_ALLOWED_CONTAINS_SENDS');
+  }
+  
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from('pmo_cloud_records')
+    .update({
+      deleted: true,
+      synced_at: now,
+    })
+    .eq('record_type', EMAIL_RECORD_TYPE)
+    .eq('local_key', routineBatchLocalKey(localDate));
+  
+  if (error) throw error;
+  
+  await logAudit(admin, actor, 'assessment_email_routine_cancel', {
+    source: clean(body.source || 'pmo_assessment_email_manual_cancel'),
+    localDate,
+    selected: Array.isArray(batch.selected) ? batch.selected.length : 0,
+    appVersion: clean(body.appVersion || ''),
+    runtimeEnv: clean(body.runtimeEnv || ''),
+  });
+  
+  return {
+    action: 'routine-cancel',
+    localDate,
+    success: true,
+    message: 'Lotto annullato con successo.',
+  };
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -2301,6 +2345,11 @@ Deno.serve(async (req) => {
 
     if (action === 'routine-approve') {
       const result = await runAssessmentRoutineApprove(admin, actor, supabaseUrl, body);
+      return okResponse(result);
+    }
+
+    if (action === 'routine-cancel') {
+      const result = await runAssessmentRoutineCancel(admin, actor, body);
       return okResponse(result);
     }
 
