@@ -6374,7 +6374,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.527';
+    const APP_VERSION = '5.528';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27792,13 +27792,13 @@ Per confermare scrivi ELIMINA.`);
       const member = row.member;
       const rec = row.rec;
       const name = playerFullName(member);
-      const publicLink = getAssessmentLink(rec.token, member);
       const phone = member.phone || rec.phone || '';
       const dateStr = rec.sentAt ? assessmentEmailFormatDateTime(rec.sentAt) : (rec.createdAt ? assessmentEmailFormatDateTime(rec.createdAt) : '-');
-      const text = `Ciao ${name}! Ti ricordiamo di compilare la scheda di autovalutazione del livello Padel per poter organizzare al meglio le tue partite. Puoi compilarla in 1 minuto da qui: ${publicLink} Grazie!`;
-      const encodedText = encodeURIComponent(text);
-      const whatsappUrl = `https://wa.me/${phoneDigitsForWhatsApp(phone)}?text=${encodedText}`;
       
+      const problem = assessmentEmailProblemText(row);
+      const problemLabel = problem.label;
+      const templateKey = problem.templateKey;
+
       return `
         <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid hsl(8, 100%, 54%); box-shadow: 0 4px 14px rgba(220, 38, 38, 0.05);">
           <div class="pmo-kanban-card-header">
@@ -27814,9 +27814,9 @@ Per confermare scrivi ELIMINA.`);
             <span style="font-size: 11px; color: #64748b;">📅 Ultimo tentativo automatico: ${escapeHtml(dateStr)}</span>
           </div>
           <div class="pmo-kanban-card-actions">
-            <a class="pmo-kanban-btn-action btn-whatsapp" href="${whatsappUrl}" target="_blank">
+            <button class="pmo-kanban-btn-action btn-whatsapp" onclick="openAssessmentEmailWhatsAppCheck('${escapeJs(String(member.id))}', '${escapeJs(String(templateKey))}', '${escapeJs(String(problemLabel))}', '${escapeJs(String(phone))}')">
               💬 WhatsApp
-            </a>
+            </button>
             <a class="pmo-kanban-btn-action btn-call" href="tel:${escapeHtml(phone)}">
               📞 Chiama
             </a>
@@ -29549,17 +29549,17 @@ Per confermare scrivi ELIMINA.`);
       };
       renderAssessmentEmailWhatsappModal();
     }
-    function openAssessmentEmailWhatsAppCheck(memberId, templateKey='whatsapp-check', problemLabel='Email da verificare') {
+    function openAssessmentEmailWhatsAppCheck(memberId, templateKey='whatsapp-check', problemLabel='Email da verificare', phoneValue='') {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
-      const phoneCheck = validateWhatsAppPhone(member.phone || '');
+      const phoneCheck = validateWhatsAppPhone(phoneValue || member.phone || member.telefono || '');
       if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
       window.assessmentEmailWhatsappModalState = {
         memberId: String(member.id),
         templateKey: templateKey || 'whatsapp-check',
         problemLabel: problemLabel || 'Email da verificare',
         source: 'assessment-flow',
-        phoneValue: member.phone || ''
+        phoneValue: phoneValue || member.phone || member.telefono || ''
       };
       const modal = ensureAssessmentEmailWhatsappModalLayer();
       if (modal) {

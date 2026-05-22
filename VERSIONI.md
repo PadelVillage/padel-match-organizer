@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.528-TEST / WhatsApp manuale personalizzato in Kanban
+
+- Sostituito il link WhatsApp diretto nella card di Gestione Manuale con un bottone che apre il modal di selezione template (`assessmentEmailWhatsappModal`).
+- Iniettato dinamicamente il tipo di problema (email mancante, bounce, sollecito) per preselezionare il template ottimale.
+- Estesa la funzione `openAssessmentEmailWhatsAppCheck` per accettare un numero di telefono di fallback (es. da Matchpoint o telefono socio) se il telefono principale manca.
+
 ## v5.526 / Compattazione filtri Autovalutazione su riga unica
 
 - Compattata la barra dei filtri della sezione Autovalutazione riducendo il gap orizzontale (da 24px a 12px) e il padding interno dei bottoni (da 16px a 12px) per assicurare che tutti i 5 tab stiano su una riga singola su desktop.
