@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.530-TEST / Integrazione WhatsApp Desktop App forzata
+
+- Creata la funzione globale `normalizeWhatsAppOpenSettings` che normalizza le impostazioni di WhatsApp convertendo e forzando la modalità `'web'` a `'desktop'`.
+- Aggiornata la routine di ripristino backup `restoreBackupPayload` per applicare la normalizzazione ed evitare che il ripristino di vecchi backup o cloud sync blocchi l'applicazione su WhatsApp Web.
+- Integrata la normalizzazione all'avvio su `safeLoad('whatsappOpenSettings')` per garantire che l'app del computer (`whatsapp://`) venga aperta di default da qualsiasi pulsante WhatsApp.
+
 ## v5.529-TEST / Modelli personalizzati Email e WhatsApp in Autovalutazione
 
 - Sostituito il pulsante "Ripristina testo base" con un pulsante "Crea nuovo testo" che apre un modal premium per creare nuovi testi personalizzati per entrambi i canali (Email e WhatsApp).
