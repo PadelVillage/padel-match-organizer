@@ -5180,10 +5180,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-status-bar { font-size:11px; color:#9e9e9e; margin-top:8px; padding-top:7px; border-top:1px solid #f0f0f0; }
 
     /* Toolbar */
-    .wa-toolbar { display:flex; gap:7px; flex-wrap:nowrap; margin-bottom:10px; }
-    .wa-toolbar input, .wa-toolbar select { padding:6px 9px; border:1px solid var(--border); border-radius:5px; font-size:12px; background:#fff; }
-    .wa-toolbar input { flex:1; min-width:0; }
-    .wa-toolbar select { flex:0 0 auto; }
+    .wa-toolbar { display:grid; grid-template-columns:1fr auto; gap:7px; margin-bottom:10px; }
+    .wa-toolbar input, .wa-toolbar select { padding:6px 9px; border:1px solid var(--border); border-radius:5px; font-size:12px; background:#fff; box-sizing:border-box; width:100%; }
 
     /* Reply modal reuses existing .whatsapp-composer-overlay classes */
     #waReplyModal textarea { width:100%; min-height:140px; padding:10px; border:1px solid var(--border); border-radius:5px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }
@@ -6234,18 +6232,18 @@ body.assessment-public-mode .assessment-public-only-card {
                 </div>
                 <div class="wa-shadow-actions" id="waDetShadowActions" style="display:none;">
                   <div class="wa-tip">
-                    <button class="btn-secondary small-btn wa-val-btn wa-val-approve" onclick="waApproveRevision()">👍 Approva</button>
+                    <button class="wa-val-btn approva" onclick="waApproveRevision()">👍 Approva</button>
                     <div class="wa-tip-bubble">Conferma che la risposta suggerita è corretta e salva il voto positivo nel DB (nessun invio al cliente).</div>
                   </div>
                   <div class="wa-tip">
-                    <button class="btn-secondary small-btn wa-val-btn wa-val-edit" onclick="waEditRevision()">✏️ Modifica testo</button>
+                    <button class="wa-val-btn modifica" onclick="waEditRevision()">✏️ Modifica testo</button>
                     <div class="wa-tip-bubble">Abilita la modifica del testo per correggere dettagli prima di salvare.</div>
                   </div>
                   <div class="wa-tip">
-                    <button class="btn-secondary small-btn wa-val-btn wa-val-reject" onclick="waRejectRevision()">👎 Rifiuta</button>
+                    <button class="wa-val-btn rifiuta" onclick="waRejectRevision()">👎 Rifiuta</button>
                     <div class="wa-tip-bubble">Scarta la proposta dell'IA se ha sbagliato intento o dettagli e traccia l'errore nel DB.</div>
                   </div>
-                  <button class="btn-secondary small-btn" onclick="waCopyShadow()" style="margin-left:auto;">📋 Copia</button>
+                  <button class="wa-val-btn modifica" onclick="waCopyShadow()" style="margin-left:auto;">📋 Copia</button>
                 </div>
               </div>
 
