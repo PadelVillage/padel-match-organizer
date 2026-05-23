@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.537 / Fix errata formattazione righe in Da Inviare
+
+- **Correzione Errata Formattazione Righe**: Risolto il problema per cui i soci pronti al primo invio (senza risposta) venivano erroneamente formattati come "Scheda compilata / Da validare". Questo accadeva a causa di un fallback scorretto nella funzione `assessmentProcessEntryResponse` che confondeva l'oggetto di presentazione del rendering con la risposta Supabase reale. Ora gli stati e i bottoni vengono renderizzati in modo impeccabile per ciascun socio.
+
 ## v5.536 / Fix visualizzazione tabella Da inviare autovalutazione
 
 - **Correzione visualizzazione tabella Da inviare**: Risolto il problema del caricamento vuoto (con soli trattini `-` sotto le colonne *Routine*, *Fase*, *Prossimo step*, ecc.) per i soci pronti al primo invio nel pannello Autovalutazione. Ora le righe vengono visualizzate con tutti i relativi stati operativi e pulsanti d'azione completi.

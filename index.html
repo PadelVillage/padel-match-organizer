@@ -6410,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.536';
+    const APP_VERSION = '5.537';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -26743,8 +26743,8 @@ Per confermare scrivi ELIMINA.`);
       return row?.rec || row?.info?.rec || entry?.info?.rec || {};
     }
     function assessmentProcessEntryResponse(entry={}) {
-      const row = entry?.row || entry || {};
-      return row?.response || row?.info?.response || entry?.response || entry?.info?.response || null;
+      const raw = entry?.row || entry || {};
+      return raw?.response || raw?.info?.response || null;
     }
     function assessmentProcessEntryInfo(entry={}) {
       const row = entry?.row || entry || {};
