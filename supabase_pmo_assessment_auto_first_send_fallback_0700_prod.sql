@@ -1,10 +1,10 @@
--- Padel Match Organizer - PROD assessment email scheduler with 07:00 selected-batch fallback.
+-- Padel Match Organizer - PROD assessment email scheduler.
 -- Apply only to the PROD Supabase project after explicit PROMUOVI PROD authorization.
 --
 -- Scope:
--- - 07:00 Europe/Rome: send only a pre-existing manual batch, only rows still selected;
--- - no automatic batch preparation;
--- - no send if staff already sent the batch manually;
+-- - 06:00 Europe/Rome: send automatically the pending batch prepared the day before;
+-- - 07:00 Europe/Rome: prepare the batch for TOMORROW (scheduledLocalDate = today+1);
+--   no send if staff already prepared a batch for tomorrow manually;
 -- - 09:00 Europe/Rome: scan replies and bounces;
 -- - 09:30 Europe/Rome: send only due second/third follow-up emails;
 -- - TEST must remain without persistent cron jobs.
@@ -29,6 +29,7 @@ as $$
 declare
   v_local_ts timestamp := p_now at time zone 'Europe/Rome';
   v_local_date text := to_char(p_now at time zone 'Europe/Rome', 'YYYY-MM-DD');
+  v_tomorrow_date text := to_char((p_now at time zone 'Europe/Rome') + interval '1 day', 'YYYY-MM-DD');
   v_local_time text := to_char(p_now at time zone 'Europe/Rome', 'HH24:MI');
   v_routine_key text := '';
   v_routine_label text := '';
@@ -45,14 +46,14 @@ declare
   v_member_count integer;
 begin
   case v_local_time
-    when '06:30' then
-      v_routine_key := 'daily_plan_0630';
-      v_routine_label := 'Pre-pianificazione lotto Autovalutazione';
-      v_action := 'routine-plan';
-    when '07:00' then
-      v_routine_key := 'first_send_selected_batch_0700';
+    when '06:00' then
+      v_routine_key := 'first_send_selected_batch_0600';
       v_routine_label := 'Invio automatico lotto selezionato Autovalutazione';
       v_action := 'routine-autosend-selected';
+    when '07:00' then
+      v_routine_key := 'daily_plan_0700';
+      v_routine_label := 'Pre-pianificazione lotto Autovalutazione per domani';
+      v_action := 'routine-plan';
     when '09:00' then
       v_routine_key := 'followup_check_0900';
       v_routine_label := 'Controllo stop follow-up Autovalutazione';
@@ -82,12 +83,12 @@ begin
     'routineLabel', v_routine_label,
     'functionSlug', 'assessment-email-send',
     'action', v_action,
-    'scheduledLocalDate', v_local_date,
+    'scheduledLocalDate', case when v_action = 'routine-plan' then v_tomorrow_date else v_local_date end,
     'scheduledLocalTime', v_local_time,
     'scheduledLocalTimestamp', v_local_ts,
     'status', 'dispatching',
     'runtimeEnv', 'prod',
-    'appVersion', '5.539',
+    'appVersion', '5.540',
     'firstSendAutomaticFallback', v_action = 'routine-autosend-selected',
     'requiresPreparedBatch', v_action = 'routine-autosend-selected',
     'allowLatestPendingBatch', v_action = 'routine-autosend-selected',
@@ -206,10 +207,10 @@ begin
     'action', v_action,
     'source', 'pmo_assessment_scheduler_prod',
     'routine', v_routine_key,
-    'scheduledLocalDate', v_local_date,
+    'scheduledLocalDate', case when v_action = 'routine-plan' then v_tomorrow_date else v_local_date end,
     'scheduledLocalTime', v_local_time,
     'runtimeEnv', 'prod',
-    'appVersion', '5.539',
+    'appVersion', '5.540',
     'limit', case when v_action = 'routine-followup' then 20 else 10 end
   );
 
@@ -225,6 +226,10 @@ begin
       'sendOnlySelected', true,
       'allowLatestPendingBatch', true,
       'batchLookupMode', 'latest_pending_selected'
+    );
+  elsif v_action = 'routine-plan' then
+    v_body := v_body || jsonb_build_object(
+      'preparedForNextDay', true
     );
   end if;
 
