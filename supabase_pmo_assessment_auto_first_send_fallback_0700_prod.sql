@@ -87,7 +87,7 @@ begin
     'scheduledLocalTimestamp', v_local_ts,
     'status', 'dispatching',
     'runtimeEnv', 'prod',
-    'appVersion', '5.503',
+    'appVersion', '5.539',
     'firstSendAutomaticFallback', v_action = 'routine-autosend-selected',
     'requiresPreparedBatch', v_action = 'routine-autosend-selected',
     'allowLatestPendingBatch', v_action = 'routine-autosend-selected',
@@ -209,7 +209,7 @@ begin
     'scheduledLocalDate', v_local_date,
     'scheduledLocalTime', v_local_time,
     'runtimeEnv', 'prod',
-    'appVersion', '5.503',
+    'appVersion', '5.539',
     'limit', case when v_action = 'routine-followup' then 20 else 10 end
   );
 
