@@ -6410,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.537';
+    const APP_VERSION = '5.538';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27754,7 +27754,17 @@ Per confermare scrivi ELIMINA.`);
         createdNoticeHtml = `<div class="assessment-manual-batch-created-notice">🕐 ${escapeHtml(noticeText)}</div>`;
       }
       if (!rows.length) {
-        return `<div class="assessment-email-table-wrap assessment-manual-batch"><div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div>${createdNoticeHtml}<div class="assessment-empty">Nessun socio pronto nel lotto preparato. Nessuna email parte senza conferma dello staff.</div></div>`;
+        return `<div class="assessment-email-table-wrap assessment-manual-batch">
+          <div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div>
+          ${createdNoticeHtml}
+          <div class="assessment-empty" style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px; text-align:center;">
+            <div style="font-weight:600;">Nessun socio pronto nel lotto preparato. Nessuna email parte senza conferma dello staff.</div>
+            <div style="font-size:13px; color:#667085; max-width:500px; line-height:1.4;">Se hai appena aggiornato i soci nel browser, ricordati di sincronizzare i dati locali con il cloud di Supabase per renderli disponibili alla routine di preparazione.</div>
+            <button class="btn-primary small-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:8px 16px;" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()">
+              <span>🔄</span> Sincronizza dati locali ora
+            </button>
+          </div>
+        </div>`;
       }
       const tableRows = rows.map(assessmentManualBatchRowHtml).join('');
       const statusClass = status === 'sent_with_errors' ? ' warn' : '';

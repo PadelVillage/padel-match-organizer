@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.538 / Scorciatoia di sincronizzazione nel lotto vuoto dell'Autovalutazione
+
+- **Pulsante Sincronizza Ora nel Flusso**: Aggiunto un pulsante di sincronizzazione rapida ("Sincronizza dati locali ora") direttamente nel riquadro dell'Autovalutazione quando il lotto risulta vuoto. Questo evita allo staff di dover cercare il pannello "Amministrazione > Supabase", guidandoli visivamente all'azione corretta e gestendo in tempo reale la notifica di eventuali errori di permessi.
+
 ## v5.537 / Fix errata formattazione righe in Da Inviare
 
 - **Correzione Errata Formattazione Righe**: Risolto il problema per cui i soci pronti al primo invio (senza risposta) venivano erroneamente formattati come "Scheda compilata / Da validare". Questo accadeva a causa di un fallback scorretto nella funzione `assessmentProcessEntryResponse` che confondeva l'oggetto di presentazione del rendering con la risposta Supabase reale. Ora gli stati e i bottoni vengono renderizzati in modo impeccabile per ciascun socio.
