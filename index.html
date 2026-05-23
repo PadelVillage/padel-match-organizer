@@ -6410,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.535';
+    const APP_VERSION = '5.536';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -28028,8 +28028,8 @@ Per confermare scrivi ELIMINA.`);
       
       if (activeFilter === 'queue') {
         const visibleLimit = getAssessmentProcessVisibleLimit();
-        const queueRowsAll = assessmentEmailQueueRows();
-        const queueFilteredRows = search ? queueRowsAll.filter(row => assessmentEmailRowMatchesSearch(row, search)) : queueRowsAll;
+        const queueRowsAll = rows.filter(entry => entry.filter === 'queue');
+        const queueFilteredRows = search ? queueRowsAll.filter(row => assessmentEmailRowMatchesSearch(row.row || row, search)) : queueRowsAll;
         
         let targetRows = queueFilteredRows;
         if (window.assessmentProcessForceTestMember) {

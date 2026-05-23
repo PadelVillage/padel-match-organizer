@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.536 / Fix visualizzazione tabella Da inviare autovalutazione
+
+- **Correzione visualizzazione tabella Da inviare**: Risolto il problema del caricamento vuoto (con soli trattini `-` sotto le colonne *Routine*, *Fase*, *Prossimo step*, ecc.) per i soci pronti al primo invio nel pannello Autovalutazione. Ora le righe vengono visualizzate con tutti i relativi stati operativi e pulsanti d'azione completi.
+
 ## v5.535 / Messaggi manuali editabili ed eliminazione testi
 
 - **Integrazione WhatsApp Desktop Forzata**: Corretta l'idratazione e salvataggio dei dati per impostare di default la modalità Desktop (`whatsapp://`) anziché Web.
