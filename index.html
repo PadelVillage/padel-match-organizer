@@ -6410,7 +6410,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.538';
+    const APP_VERSION = '5.539';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -11105,6 +11105,7 @@ Grazie.`
       if (raw.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return 'Il lotto non e in uno stato approvabile.';
       if (raw.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.';
       if (raw.includes('ROUTINE_BATCH_SELECTION_LOCKED')) return 'La selezione del lotto non puo essere modificata in questo stato.';
+      if (raw.includes('MEMBERS_SYNC_REQUIRED')) return 'I dati dei soci non sono ancora sincronizzati sul cloud. Usa "Sincronizza dati locali ora" nel pannello Autovalutazione prima di preparare il lotto.';
       if (raw.includes('AUTO_FIRST_SEND_ONLY_PROD')) return 'Invio automatico lotto consentito solo in PROD.';
       if (raw.includes('PROD_TEST_EMAIL_MODE_BLOCKED')) return 'Invio bloccato: PROD risulta in modalità test email. Controllare configurazione Supabase.';
       return raw || 'Invio email autovalutazione non riuscito.';

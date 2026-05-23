@@ -1627,7 +1627,30 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
   const context = await buildAssessmentRoutineContext(admin, body);
 
   if (context.members.length === 0) {
-    throw new Error('MEMBERS_SYNC_REQUIRED');
+    console.log(JSON.stringify({
+      event: 'assessment_routine_plan_blocked',
+      reason: 'MEMBERS_SYNC_REQUIRED',
+      membersCount: 0,
+      localDate: context.localDate,
+      function: 'runAssessmentRoutinePlan',
+    }));
+    return {
+      action: 'routine-plan',
+      localDate: context.localDate,
+      status: 'pending',
+      blocked: true,
+      blockedReason: 'MEMBERS_SYNC_REQUIRED',
+      membersCount: 0,
+      selected: [],
+      batch: {
+        type: 'assessment_email_batch',
+        localDate: context.localDate,
+        status: 'pending',
+        selected: [],
+        blocked: true,
+        blockedReason: 'MEMBERS_SYNC_REQUIRED',
+      },
+    };
   }
 
   // --- Auto-transition active 0.5 members without email or phone directly to GESTIONE_MANUALE ---
