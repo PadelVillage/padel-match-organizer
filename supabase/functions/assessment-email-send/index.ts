@@ -1626,6 +1626,10 @@ async function runAssessmentRoutinePlan(admin: any, actor: StaffActor, body: Jso
   const startedAt = new Date().toISOString();
   const context = await buildAssessmentRoutineContext(admin, body);
 
+  if (context.members.length === 0) {
+    throw new Error('MEMBERS_SYNC_REQUIRED');
+  }
+
   // --- Auto-transition active 0.5 members without email or phone directly to GESTIONE_MANUALE ---
   const incompleteMembers = context.members
     .filter((member) => memberMatchesTarget(member, context.targets))
@@ -2465,6 +2469,7 @@ Deno.serve(async (req) => {
     if (message.includes('GMAIL_SEND_FAILED')) return errorResponse(502, 'GMAIL_SEND_FAILED', message);
     if (message.includes('GMAIL_READ_FAILED')) return errorResponse(502, 'GMAIL_READ_FAILED', message);
     if (message.includes('STAFF_APPROVAL_REQUIRED')) return errorResponse(403, 'STAFF_APPROVAL_REQUIRED', 'Serve approvazione manuale da un operatore staff.');
+    if (message.includes('MEMBERS_SYNC_REQUIRED')) return errorResponse(400, 'MEMBERS_SYNC_REQUIRED', 'Nessun socio trovato nel database cloud. Eseguire la sincronizzazione dati dal browser prima di procedere.');
     if (message.includes('ROUTINE_BATCH_MISSING')) return errorResponse(409, 'ROUTINE_BATCH_MISSING', 'Prima prepara il lotto di invio mattutino.');
     if (message.includes('ROUTINE_BATCH_NOT_APPROVABLE')) return errorResponse(409, 'ROUTINE_BATCH_NOT_APPROVABLE', 'Il lotto non e in uno stato approvabile.');
     if (message.includes('ROUTINE_BATCH_REGENERATE_NOT_ALLOWED')) return errorResponse(409, 'ROUTINE_BATCH_REGENERATE_NOT_ALLOWED', 'Il lotto non puo essere rigenerato perche contiene invii, errori o non e piu in stato pronto.');

@@ -42,8 +42,13 @@ declare
   v_request_id bigint;
   v_payload jsonb;
   v_body jsonb;
+  v_member_count integer;
 begin
   case v_local_time
+    when '06:30' then
+      v_routine_key := 'daily_plan_0630';
+      v_routine_label := 'Pre-pianificazione lotto Autovalutazione';
+      v_action := 'routine-plan';
     when '07:00' then
       v_routine_key := 'first_send_selected_batch_0700';
       v_routine_label := 'Invio automatico lotto selezionato Autovalutazione';
@@ -163,6 +168,38 @@ begin
       'routine', v_routine_key,
       'action', v_action
     );
+  end if;
+
+  if v_action = 'routine-plan' then
+    select count(*) into v_member_count
+    from public.pmo_cloud_records
+    where record_type = 'member'
+      and deleted = false;
+
+    if v_member_count = 0 then
+      update public.pmo_cloud_records
+      set payload = v_payload || jsonb_build_object(
+          'status', 'blocked',
+          'error', 'MEMBERS_SYNC_REQUIRED',
+          'memberCount', 0,
+          'updatedAt', now()
+        ),
+        synced_at = now()
+      where record_type = 'assessment_email'
+        and local_key = v_dispatch_key;
+
+      return jsonb_build_object(
+        'ok', false,
+        'dispatched', false,
+        'error', 'MEMBERS_SYNC_REQUIRED',
+        'message', 'Nessun socio trovato in pmo_cloud_records. Sincronizzazione richiesta prima di routine-plan.',
+        'routine', v_routine_key,
+        'action', v_action,
+        'localDate', v_local_date,
+        'localTime', v_local_time,
+        'memberCount', 0
+      );
+    end if;
   end if;
 
   v_body := jsonb_build_object(
