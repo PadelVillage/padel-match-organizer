@@ -5180,9 +5180,10 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-status-bar { font-size:11px; color:#9e9e9e; margin-top:8px; padding-top:7px; border-top:1px solid #f0f0f0; }
 
     /* Toolbar */
-    .wa-toolbar { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; }
-    .wa-toolbar input, .wa-toolbar select { padding:7px 10px; border:1px solid var(--border); border-radius:5px; font-size:12px; background:#fff; }
-    .wa-toolbar input { flex:1; min-width:140px; }
+    .wa-toolbar { display:flex; gap:7px; flex-wrap:nowrap; margin-bottom:10px; }
+    .wa-toolbar input, .wa-toolbar select { padding:6px 9px; border:1px solid var(--border); border-radius:5px; font-size:12px; background:#fff; }
+    .wa-toolbar input { flex:1; min-width:0; }
+    .wa-toolbar select { flex:0 0 auto; }
 
     /* Reply modal reuses existing .whatsapp-composer-overlay classes */
     #waReplyModal textarea { width:100%; min-height:140px; padding:10px; border:1px solid var(--border); border-radius:5px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }
@@ -5194,8 +5195,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-wait-crit { color:#c62828; font-size:11px; font-weight:900; }
 
     /* ── Pill filter ── */
-    .wa-pill-row  { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-    .wa-pill      { border:1px solid #dfe8f3; background:#fff; color:#344054; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; transition:background .12s, border-color .12s; }
+    .wa-pill-row  { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+    .wa-pill      { border:1px solid #dfe8f3; background:#fff; color:#344054; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; transition:background .12s, border-color .12s; white-space:nowrap; }
     .wa-pill:hover { background:#f3f7ff; border-color:#b9cbea; }
     .wa-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
     .wa-pill.spam-pill.active { background:#555; border-color:#555; }
@@ -6165,7 +6166,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <!-- Pill filters -->
             <div class="wa-pill-row" id="waPillRow">
               <button class="wa-pill active" data-pill="tutti" onclick="waPillFilter('tutti')">Tutti</button>
-              <button class="wa-pill" data-pill="PRENOTAZIONE" onclick="waPillFilter('PRENOTAZIONE')">Prenotazioni <span class="wa-pill-count" id="waPillCountPRENOTAZIONE"></span></button>
+              <button class="wa-pill" data-pill="PRENOTAZIONE" onclick="waPillFilter('PRENOTAZIONE')">Prenot. <span class="wa-pill-count" id="waPillCountPRENOTAZIONE"></span></button>
               <button class="wa-pill" data-pill="DISDETTA" onclick="waPillFilter('DISDETTA')">Disdette <span class="wa-pill-count" id="waPillCountDISDETTA"></span></button>
               <button class="wa-pill" data-pill="INFO" onclick="waPillFilter('INFO')">Info <span class="wa-pill-count" id="waPillCountINFO"></span></button>
               <button class="wa-pill spam-pill" data-pill="SPAM_NOT_RELEVANT" onclick="waPillFilter('SPAM_NOT_RELEVANT')">Spam <span class="wa-pill-count" id="waPillCountSPAM"></span></button>
