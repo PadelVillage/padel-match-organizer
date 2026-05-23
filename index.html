@@ -5187,6 +5187,45 @@ body.assessment-public-mode .assessment-public-only-card {
     /* Reply modal reuses existing .whatsapp-composer-overlay classes */
     #waReplyModal textarea { width:100%; min-height:140px; padding:10px; border:1px solid var(--border); border-radius:5px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }
     #waReplyModal .modal-ctx { background:#f8fbff; border:1px solid #dfe8f3; border-radius:6px; padding:9px 11px; font-size:13px; color:#667085; line-height:1.45; max-height:72px; overflow-y:auto; }
+
+    /* ── Timer attesa ── */
+    .wa-wait-ok   { color:#9e9e9e; font-size:11px; }
+    .wa-wait-warn { color:#e65100; font-size:11px; font-weight:700; }
+    .wa-wait-crit { color:#c62828; font-size:11px; font-weight:900; }
+
+    /* ── Pill filter ── */
+    .wa-pill-row  { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+    .wa-pill      { border:1px solid #dfe8f3; background:#fff; color:#344054; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; transition:background .12s, border-color .12s; }
+    .wa-pill:hover { background:#f3f7ff; border-color:#b9cbea; }
+    .wa-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .wa-pill.spam-pill.active { background:#555; border-color:#555; }
+    .wa-pill-count { background:rgba(0,0,0,.08); border-radius:999px; padding:1px 6px; font-size:10px; font-weight:900; margin-left:3px; }
+    .wa-pill.active .wa-pill-count { background:rgba(255,255,255,.25); color:#fff; }
+
+    /* ── Tooltip ── */
+    .wa-tip { position:relative; display:inline-block; }
+    .wa-tip-bubble { visibility:hidden; opacity:0; position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:#1e293b; color:#fff; font-size:11px; padding:7px 11px; border-radius:7px; line-height:1.45; white-space:normal; width:230px; text-align:center; pointer-events:none; z-index:200; transition:opacity .15s ease; box-shadow:0 4px 16px rgba(0,0,0,.22); }
+    .wa-tip-bubble::after { content:''; position:absolute; top:100%; left:50%; margin-left:-5px; border:5px solid transparent; border-top-color:#1e293b; }
+    .wa-tip:hover .wa-tip-bubble { visibility:visible; opacity:1; }
+
+    /* ── Bottoni validazione IA ── */
+    .wa-val-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .wa-val-btn { border:1px solid transparent; border-radius:6px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px; transition:background .12s, border-color .12s; font-family:inherit; }
+    .wa-val-btn.approva { background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7; }
+    .wa-val-btn.approva:hover { background:#c8e6c9; }
+    .wa-val-btn.approva.voted { background:#2e7d32; color:#fff; border-color:#1b5e20; }
+    .wa-val-btn.modifica { background:#f8fbff; color:#344054; border-color:#dfe8f3; }
+    .wa-val-btn.modifica:hover { background:#f3f7ff; border-color:#b9cbea; }
+    .wa-val-btn.rifiuta { background:#fff5f5; color:#c62828; border-color:#ffcdd2; }
+    .wa-val-btn.rifiuta:hover { background:#ffcdd2; }
+    .wa-val-btn.rifiuta.voted { background:#c62828; color:#fff; border-color:#b71c1c; }
+    .wa-val-btn:disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
+    #waShadowEditArea { display:none; margin-top:8px; }
+    #waShadowEditArea textarea { width:100%; min-height:110px; padding:8px 10px; border:1px solid #ce93d8; border-radius:6px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; background:#fdf8ff; color:#4a148c; box-sizing:border-box; }
+    .wa-revision-badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.3px; }
+    .wa-revision-badge.da_revisionare { background:#fff8e1; color:#f57f17; border:1px solid #ffe082; }
+    .wa-revision-badge.approvato { background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; }
+    .wa-revision-badge.rifiutato  { background:#ffebee; color:#c62828; border:1px solid #ffcdd2; }
   </style>
 </head>
 <body class="pmo-auth-locked">
@@ -6123,17 +6162,16 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <!-- LEFT: list -->
           <div>
+            <!-- Pill filters -->
+            <div class="wa-pill-row" id="waPillRow">
+              <button class="wa-pill active" data-pill="tutti" onclick="waPillFilter('tutti')">Tutti</button>
+              <button class="wa-pill" data-pill="PRENOTAZIONE" onclick="waPillFilter('PRENOTAZIONE')">Prenotazioni <span class="wa-pill-count" id="waPillCountPRENOTAZIONE"></span></button>
+              <button class="wa-pill" data-pill="DISDETTA" onclick="waPillFilter('DISDETTA')">Disdette <span class="wa-pill-count" id="waPillCountDISDETTA"></span></button>
+              <button class="wa-pill" data-pill="INFO" onclick="waPillFilter('INFO')">Info <span class="wa-pill-count" id="waPillCountINFO"></span></button>
+              <button class="wa-pill spam-pill" data-pill="SPAM_NOT_RELEVANT" onclick="waPillFilter('SPAM_NOT_RELEVANT')">Spam <span class="wa-pill-count" id="waPillCountSPAM"></span></button>
+            </div>
             <div class="wa-toolbar">
               <input type="text" id="waFilterSearch" placeholder="Cerca mittente o testo…" oninput="waApplyFilters()" />
-              <select id="waFilterCat" onchange="waApplyFilters()">
-                <option value="">Tutte le categorie</option>
-                <option value="PRENOTAZIONE">Prenotazione</option>
-                <option value="INFO">Info</option>
-                <option value="RECLAMO">Reclamo</option>
-                <option value="URGENTE">Urgente</option>
-                <option value="DISDETTA">Disdetta</option>
-                <option value="ALTRO">Altro</option>
-              </select>
               <select id="waFilterStatus" onchange="waApplyFilters()">
                 <option value="">Tutti gli stati</option>
                 <option value="Da elaborare">Da elaborare</option>
@@ -6186,9 +6224,27 @@ body.assessment-public-mode .assessment-public-only-card {
                   <span class="badge badge-muted" style="font-size:10px;text-transform:none;letter-spacing:0;">non inviato</span>
                 </div>
                 <div id="waDetShadow"><span class="wa-shadow-empty">Nessun suggerimento disponibile.</span></div>
+                <div id="waShadowEditArea" style="display:none;margin-top:8px;">
+                  <textarea id="waShadowEditText" style="width:100%;min-height:80px;font-size:13px;padding:8px;border:1px solid #dfe8f3;border-radius:6px;resize:vertical;box-sizing:border-box;"></textarea>
+                  <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button class="btn-success small-btn" onclick="waSaveEditedRevision()">💾 Salva modifica</button>
+                    <button class="btn-secondary small-btn" onclick="waCancelEditRevision()">✕ Annulla</button>
+                  </div>
+                </div>
                 <div class="wa-shadow-actions" id="waDetShadowActions" style="display:none;">
-                  <button class="btn-secondary small-btn" onclick="waCopyShadow()">📋 Copia</button>
-                  <button class="btn-success small-btn" onclick="waUseShadow()">✅ Usa come risposta</button>
+                  <div class="wa-tip">
+                    <button class="btn-secondary small-btn wa-val-btn wa-val-approve" onclick="waApproveRevision()">👍 Approva</button>
+                    <div class="wa-tip-bubble">Conferma che la risposta suggerita è corretta e salva il voto positivo nel DB (nessun invio al cliente).</div>
+                  </div>
+                  <div class="wa-tip">
+                    <button class="btn-secondary small-btn wa-val-btn wa-val-edit" onclick="waEditRevision()">✏️ Modifica testo</button>
+                    <div class="wa-tip-bubble">Abilita la modifica del testo per correggere dettagli prima di salvare.</div>
+                  </div>
+                  <div class="wa-tip">
+                    <button class="btn-secondary small-btn wa-val-btn wa-val-reject" onclick="waRejectRevision()">👎 Rifiuta</button>
+                    <div class="wa-tip-bubble">Scarta la proposta dell'IA se ha sbagliato intento o dettagli e traccia l'errore nel DB.</div>
+                  </div>
+                  <button class="btn-secondary small-btn" onclick="waCopyShadow()" style="margin-left:auto;">📋 Copia</button>
                 </div>
               </div>
 
@@ -31924,6 +31980,8 @@ Per confermare scrivi ELIMINA.`);
     let waActiveId = null;
     let waActiveMsg = null;
     let waInited   = false;
+    let waActivePill    = 'tutti';
+    let waTimerInterval = null;
 
     /* ── Metadata ── */
     const WA_CAT_META = {
@@ -31932,7 +31990,8 @@ Per confermare scrivi ELIMINA.`);
       RECLAMO:      { cls:'badge-danger',  lbl:'⚠️ Reclamo' },
       URGENTE:      { cls:'badge-warning', lbl:'🔴 Urgente' },
       DISDETTA:     { cls:'badge-warning', lbl:'❌ Disdetta' },
-      ALTRO:        { cls:'badge-muted',   lbl:'💬 Altro' },
+      ALTRO:             { cls:'badge-muted',   lbl:'💬 Altro' },
+      SPAM_NOT_RELEVANT: { cls:'badge-muted',   lbl:'🚫 Spam' },
     };
     const WA_STATUS_META = {
       'Da elaborare': { cls:'badge-info',    lbl:'Da elaborare' },
@@ -31960,6 +32019,13 @@ Per confermare scrivi ELIMINA.`);
           ? d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' })
           : d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
       } catch { return ts; }
+    }
+    function waGetWaitInfo(ts) {
+      if (!ts) return { cls:'wa-wait-ok', txt:'' };
+      const mins = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+      if (mins >= 20) return { cls:'wa-wait-crit', txt:`⏱ In attesa da ${mins} min` };
+      if (mins >= 10) return { cls:'wa-wait-warn', txt:`⏱ In attesa da ${mins} min` };
+      return { cls:'wa-wait-ok', txt:`In attesa da ${mins} min` };
     }
     function waEsc(s) {
       return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -32012,6 +32078,7 @@ Per confermare scrivi ELIMINA.`);
         waMsgs = data || [];
         waApplyFilters();
         waUpdateStats();
+        waUpdatePillCounts();
         waSetStatus(`${waMsgs.length} messaggi · ${new Date().toLocaleTimeString('it-IT')}`);
       } catch (err) {
         document.getElementById('waMsgList').innerHTML = `<div class="wa-detail-placeholder" style="color:#c62828;">❌ ${waEsc(err.message||err)}</div>`;
@@ -32022,11 +32089,15 @@ Per confermare scrivi ELIMINA.`);
     /* ── Filters & render list ── */
     window.waApplyFilters = function() {
       const search = (document.getElementById('waFilterSearch')?.value || '').toLowerCase();
-      const cat    = document.getElementById('waFilterCat')?.value    || '';
       const status = document.getElementById('waFilterStatus')?.value || '';
       waFiltered = waMsgs.filter(m => {
+        const cats = m.categories || [];
+        /* Spam hidden by default unless spam pill active */
+        if (waActivePill !== 'SPAM_NOT_RELEVANT' && cats.includes('SPAM_NOT_RELEVANT')) return false;
         const ok1 = !search || (m.sender_name||'').toLowerCase().includes(search) || (m.sender_number||'').toLowerCase().includes(search) || (m.message_text||'').toLowerCase().includes(search);
-        const ok2 = !cat    || (m.categories||[]).includes(cat);
+        const ok2 = waActivePill === 'tutti' || waActivePill === 'SPAM_NOT_RELEVANT'
+          ? true
+          : cats.includes(waActivePill) || (waActivePill === 'INFO' && cats.some(c => ['INFO','RECLAMO','URGENTE','ALTRO'].includes(c)));
         const ok3 = !status || m.status === status;
         return ok1 && ok2 && ok3;
       });
@@ -32043,6 +32114,7 @@ Per confermare scrivi ELIMINA.`);
         const phone  = waEsc(m.sender_number || '');
         const body   = waEsc((m.message_text || '').substring(0, 80));
         const time   = waFmtTime(m.created_at);
+        const wait   = waGetWaitInfo(m.created_at);
         return `<div class="wa-msg-row${active}" data-id="${waEsc(m.id)}" onclick="waSelect('${waEsc(m.id)}')">
           <div class="wa-msg-row-top">
             <div><span class="wa-msg-sender">${name}</span>${phone ? `<span class="wa-msg-phone"> · ${phone}</span>` : ''}</div>
@@ -32050,8 +32122,32 @@ Per confermare scrivi ELIMINA.`);
           </div>
           <div class="wa-msg-preview">${body || '<em>messaggio vuoto</em>'}</div>
           <div class="wa-msg-badges">${waCatBadges(m.categories)} ${waStatusBadge(m.status||'Da elaborare')}</div>
+          ${wait.txt ? `<div class="${wait.cls}" style="margin-top:3px;">${wait.txt}</div>` : ''}
         </div>`;
       }).join('');
+    }
+
+    /* ── Pill filter ── */
+    window.waPillFilter = function(pill) {
+      waActivePill = pill;
+      document.querySelectorAll('#waPillRow .wa-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.pill === pill);
+      });
+      waApplyFilters();
+    };
+    function waUpdatePillCounts() {
+      const counts = {};
+      waMsgs.forEach(m => {
+        (m.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; });
+      });
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val > 0 ? val : ''; };
+      set('waPillCountPRENOTAZIONE', counts['PRENOTAZIONE'] || 0);
+      set('waPillCountDISDETTA',     counts['DISDETTA']     || 0);
+      set('waPillCountINFO',         (counts['INFO']||0) + (counts['RECLAMO']||0) + (counts['URGENTE']||0) + (counts['ALTRO']||0));
+      set('waPillCountSPAM',         counts['SPAM_NOT_RELEVANT'] || 0);
+    }
+    function waTickTimer() {
+      waRenderList();
     }
 
     /* ── Select message ── */
@@ -32145,6 +32241,59 @@ Per confermare scrivi ELIMINA.`);
       waOpenReply();
     };
 
+    /* ── Revision (Shadow Mode validation) ── */
+    window.waApproveRevision = async function() {
+      if (!waActiveMsg || !waSb) return;
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ stato_revisione: 'approvato' }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.stato_revisione = 'approvato';
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) waMsgs[i].stato_revisione = 'approvato';
+        waToast('👍 Risposta approvata', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+    };
+    window.waRejectRevision = async function() {
+      if (!waActiveMsg || !waSb) return;
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ stato_revisione: 'rifiutato' }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.stato_revisione = 'rifiutato';
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) waMsgs[i].stato_revisione = 'rifiutato';
+        waToast('👎 Proposta rifiutata', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+    };
+    window.waEditRevision = function() {
+      const current = waActiveMsg?.risposta_suggerita_ia || '';
+      const area = document.getElementById('waShadowEditArea');
+      const ta   = document.getElementById('waShadowEditText');
+      if (!area || !ta) return;
+      ta.value = current;
+      area.style.display = 'block';
+      ta.focus();
+    };
+    window.waSaveEditedRevision = async function() {
+      if (!waActiveMsg || !waSb) return;
+      const txt = (document.getElementById('waShadowEditText')?.value || '').trim();
+      if (!txt) { waToast('Testo vuoto', 'err'); return; }
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ risposta_suggerita_ia: txt, stato_revisione: 'modificato' }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.risposta_suggerita_ia = txt;
+        waActiveMsg.stato_revisione = 'modificato';
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) { waMsgs[i].risposta_suggerita_ia = txt; waMsgs[i].stato_revisione = 'modificato'; }
+        document.getElementById('waDetShadow').innerHTML = `<div class="wa-shadow-text">${waEsc(txt)}</div>`;
+        document.getElementById('waShadowEditArea').style.display = 'none';
+        waToast('✅ Testo salvato', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+    };
+    window.waCancelEditRevision = function() {
+      const area = document.getElementById('waShadowEditArea');
+      if (area) area.style.display = 'none';
+    };
+
     /* ── Reply modal ── */
     window.waOpenReply = function() {
       if (!waActiveMsg) return;
@@ -32184,7 +32333,7 @@ Per confermare scrivi ELIMINA.`);
       waChannel = waSb.channel('wa-inbound')
         .on('postgres_changes', { event:'INSERT', schema:'public', table:WA_TABLE }, payload => {
           waMsgs.unshift(payload.new);
-          waApplyFilters(); waUpdateStats();
+          waApplyFilters(); waUpdateStats(); waUpdatePillCounts();
           waToast('📲 Nuovo messaggio da ' + (payload.new.sender_name || payload.new.sender_number || '–'));
           waSetStatus('Nuovo messaggio · ' + new Date().toLocaleTimeString('it-IT'));
         })
@@ -32193,7 +32342,7 @@ Per confermare scrivi ELIMINA.`);
           const i = waMsgs.findIndex(m => m.id === upd.id);
           if (i !== -1) waMsgs[i] = { ...waMsgs[i], ...upd };
           if (waActiveMsg?.id === upd.id) { waActiveMsg = { ...waActiveMsg, ...upd }; waRenderDetail(waActiveMsg); }
-          waApplyFilters(); waUpdateStats();
+          waApplyFilters(); waUpdateStats(); waUpdatePillCounts();
         })
         .subscribe(status => {
           if (status === 'SUBSCRIBED')    waSetRt('connected', 'Realtime attivo');
@@ -32213,6 +32362,7 @@ Per confermare scrivi ELIMINA.`);
         waSb = supabase.createClient(WA_URL, WA_KEY);
         waLoadMessages();
         waStartRt();
+        waTimerInterval = setInterval(waTickTimer, 60000);
       } catch (err) {
         console.error('[WA Dashboard] init error:', err);
         waSetRt('error', 'Errore init');
