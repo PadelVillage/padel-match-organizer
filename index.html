@@ -26,6 +26,7 @@
     })();
   </script>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -5109,6 +5110,84 @@ body.assessment-public-mode .assessment-public-only-card {
     }
 
   </style>
+
+  <!-- ── WA Inbound Dashboard styles ── -->
+  <style>
+    /* Layout */
+    .wa-inbound-grid { display:grid; grid-template-columns:minmax(260px,.9fr) minmax(320px,1.1fr); gap:14px; align-items:start; }
+    @media (max-width:900px) { .wa-inbound-grid { grid-template-columns:1fr; } }
+
+    /* Section head */
+    .wa-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+    .wa-section-head h3 { color:var(--primary); font-size:16px; margin:0; }
+
+    /* Realtime dot */
+    .wa-rt-dot { width:8px; height:8px; border-radius:50%; background:#aaa; display:inline-block; margin-right:4px; transition:background .3s; }
+    .wa-rt-dot.connected { background:#4caf50; box-shadow:0 0 0 3px rgba(76,175,80,.22); }
+    .wa-rt-dot.error     { background:#f44336; }
+
+    /* Stats bar */
+    .wa-stats-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .wa-stat-card { background:#f8fbff; border:1px solid var(--border); border-radius:8px; padding:8px 14px; flex:1; min-width:90px; }
+    .wa-stat-card .wa-stat-val { font-size:22px; font-weight:900; color:var(--primary); line-height:1; }
+    .wa-stat-card .wa-stat-lbl { font-size:11px; color:#667085; margin-top:2px; }
+
+    /* Message list */
+    .wa-msg-list { display:grid; gap:7px; }
+    .wa-msg-row { background:#fff; border:1px solid #dfe8f3; border-left:4px solid var(--primary); border-radius:8px; padding:11px 13px; cursor:pointer; transition:background .12s, box-shadow .12s; }
+    .wa-msg-row:hover, .wa-msg-row.active { background:#f3f7ff; border-color:#b9cbea; box-shadow:0 2px 8px rgba(31,71,136,.09); }
+    .wa-msg-row-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:4px; }
+    .wa-msg-sender { font-weight:900; font-size:13px; }
+    .wa-msg-phone  { font-size:12px; color:#667085; }
+    .wa-msg-time   { font-size:11px; color:#9e9e9e; white-space:nowrap; }
+    .wa-msg-preview { font-size:12px; color:#667085; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .wa-msg-badges { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+
+    /* Detail panel */
+    .wa-detail-placeholder { text-align:center; padding:36px 16px; color:#9e9e9e; font-size:13px; }
+    .wa-detail-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+    .wa-detail-head h4 { color:var(--primary); font-size:15px; margin:0 0 2px; }
+    .wa-detail-meta { font-size:12px; color:#667085; }
+    .wa-body-box { background:#f8fbff; border:1px solid #dfe8f3; border-radius:7px; padding:12px; font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word; margin-bottom:12px; }
+    .wa-analysis { font-size:12px; color:#667085; background:#f8fbff; border:1px solid #dfe8f3; border-radius:6px; padding:7px 10px; margin-bottom:12px; line-height:1.45; }
+    .wa-triage-bar { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+    .wa-triage-chip { border:1px solid transparent; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:900; cursor:pointer; background:#f5f5f5; color:#555; transition:box-shadow .12s; }
+    .wa-triage-chip.active-PRENOTAZIONE { background:#c8e6c9; color:#2e7d32; border-color:#66bb6a; }
+    .wa-triage-chip.active-INFO         { background:#ede7f6; color:#5e35b1; border-color:#9c66e0; }
+    .wa-triage-chip.active-RECLAMO      { background:#ffcdd2; color:#c62828; border-color:#ef9a9a; }
+    .wa-triage-chip.active-URGENTE      { background:#ffe0b2; color:#e65100; border-color:#ffb74d; }
+    .wa-triage-chip.active-DISDETTA     { background:#ffe0b2; color:#e65100; border-color:#ffb74d; }
+    .wa-triage-chip.active-ALTRO        { background:#eee;    color:#555;    border-color:#bdbdbd; }
+
+    /* Shadow mode box */
+    .wa-shadow-box { background:#f3edf9; border:1px solid #ce93d8; border-left:4px solid #7b1fa2; border-radius:8px; padding:12px; margin-bottom:12px; }
+    .wa-shadow-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; font-size:12px; font-weight:900; color:#7b1fa2; text-transform:uppercase; letter-spacing:.4px; flex-wrap:wrap; }
+    .wa-shadow-text { font-size:13px; color:#4a148c; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+    .wa-shadow-empty { font-size:13px; color:#9e9e9e; font-style:italic; }
+    .wa-shadow-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+
+    /* Detail actions */
+    .wa-detail-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* Toast */
+    .wa-toast-area { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:7px; pointer-events:none; }
+    .wa-toast { background:var(--primary); color:#fff; padding:11px 15px; border-radius:8px; font-size:13px; box-shadow:0 4px 16px rgba(0,0,0,.18); animation:wa-toast-in .2s ease; max-width:300px; pointer-events:auto; }
+    .wa-toast.ok  { background:#2e7d32; }
+    .wa-toast.err { background:#c62828; }
+    @keyframes wa-toast-in { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+    /* Status bar */
+    .wa-status-bar { font-size:11px; color:#9e9e9e; margin-top:8px; padding-top:7px; border-top:1px solid #f0f0f0; }
+
+    /* Toolbar */
+    .wa-toolbar { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; }
+    .wa-toolbar input, .wa-toolbar select { padding:7px 10px; border:1px solid var(--border); border-radius:5px; font-size:12px; background:#fff; }
+    .wa-toolbar input { flex:1; min-width:140px; }
+
+    /* Reply modal reuses existing .whatsapp-composer-overlay classes */
+    #waReplyModal textarea { width:100%; min-height:140px; padding:10px; border:1px solid var(--border); border-radius:5px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; }
+    #waReplyModal .modal-ctx { background:#f8fbff; border:1px solid #dfe8f3; border-radius:6px; padding:9px 11px; font-size:13px; color:#667085; line-height:1.45; max-height:72px; overflow-y:auto; }
+  </style>
 </head>
 <body class="pmo-auth-locked">
   <div id="pmoMobileGateOverlay" class="pmo-mobile-gate-overlay" style="display: none;">
@@ -6013,9 +6092,149 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <div id="contact" class="tab-content">
+
+      <!-- ════ WA Inbound Dashboard (solo env TEST) ════ -->
+      <div id="waInboundDashboard" class="section" style="display:none;">
+
+        <div class="wa-section-head">
+          <div>
+            <h3>📲 Messaggi in entrata</h3>
+            <span style="font-size:12px;color:#667085;">Messaggi WhatsApp ricevuti · aggiornamento in tempo reale</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#667085;">
+              <span class="wa-rt-dot" id="waRtDot"></span>
+              <span id="waRtLabel">Connessione…</span>
+            </span>
+            <button class="btn-secondary small-btn" onclick="waLoadMessages()">↻ Aggiorna</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="wa-stats-bar">
+          <div class="wa-stat-card"><div class="wa-stat-val" id="waStatTotal">–</div><div class="wa-stat-lbl">Totale</div></div>
+          <div class="wa-stat-card"><div class="wa-stat-val" id="waStatNew" style="color:#1565c0;">–</div><div class="wa-stat-lbl">Da elaborare</div></div>
+          <div class="wa-stat-card"><div class="wa-stat-val" id="waStatReplied" style="color:#2e7d32;">–</div><div class="wa-stat-lbl">Risposti</div></div>
+          <div class="wa-stat-card"><div class="wa-stat-val" id="waStatUrgent" style="color:#e65100;">–</div><div class="wa-stat-lbl">Urgenti</div></div>
+        </div>
+
+        <!-- Grid: list + detail -->
+        <div class="wa-inbound-grid">
+
+          <!-- LEFT: list -->
+          <div>
+            <div class="wa-toolbar">
+              <input type="text" id="waFilterSearch" placeholder="Cerca mittente o testo…" oninput="waApplyFilters()" />
+              <select id="waFilterCat" onchange="waApplyFilters()">
+                <option value="">Tutte le categorie</option>
+                <option value="PRENOTAZIONE">Prenotazione</option>
+                <option value="INFO">Info</option>
+                <option value="RECLAMO">Reclamo</option>
+                <option value="URGENTE">Urgente</option>
+                <option value="DISDETTA">Disdetta</option>
+                <option value="ALTRO">Altro</option>
+              </select>
+              <select id="waFilterStatus" onchange="waApplyFilters()">
+                <option value="">Tutti gli stati</option>
+                <option value="Da elaborare">Da elaborare</option>
+                <option value="In revisione">In revisione</option>
+                <option value="Completato">Completato</option>
+                <option value="Risposto">Risposto</option>
+              </select>
+            </div>
+            <div id="waMsgList" class="wa-msg-list">
+              <div class="wa-detail-placeholder">Caricamento…</div>
+            </div>
+            <div class="wa-status-bar" id="waStatusBar">Inizializzazione…</div>
+          </div>
+
+          <!-- RIGHT: detail -->
+          <div id="waDetailPanel">
+            <div class="wa-detail-placeholder" id="waDetailPlaceholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" style="opacity:.3;display:block;margin:0 auto 10px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Seleziona un messaggio per vedere i dettagli
+            </div>
+            <div id="waDetailContent" style="display:none;">
+
+              <div class="wa-detail-head">
+                <div>
+                  <h4 id="waDetName">–</h4>
+                  <div class="wa-detail-meta" id="waDetPhone">–</div>
+                  <div class="wa-detail-meta" id="waDetTime" style="color:#bbb;font-size:11px;"></div>
+                </div>
+                <div id="waDetStatusBadge"></div>
+              </div>
+
+              <div style="font-size:11px;font-weight:900;color:#9e9e9e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;">Messaggio</div>
+              <div class="wa-body-box" id="waDetBody">–</div>
+              <div class="wa-analysis" id="waDetAnalysis" style="display:none;"></div>
+
+              <div style="font-size:11px;font-weight:900;color:#9e9e9e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Triage</div>
+              <div class="wa-triage-bar">
+                <button class="wa-triage-chip" data-cat="PRENOTAZIONE" onclick="waToggleCat('PRENOTAZIONE')">🎾 Prenotazione</button>
+                <button class="wa-triage-chip" data-cat="INFO"         onclick="waToggleCat('INFO')">ℹ️ Info</button>
+                <button class="wa-triage-chip" data-cat="RECLAMO"      onclick="waToggleCat('RECLAMO')">⚠️ Reclamo</button>
+                <button class="wa-triage-chip" data-cat="URGENTE"      onclick="waToggleCat('URGENTE')">🔴 Urgente</button>
+                <button class="wa-triage-chip" data-cat="DISDETTA"     onclick="waToggleCat('DISDETTA')">❌ Disdetta</button>
+                <button class="wa-triage-chip" data-cat="ALTRO"        onclick="waToggleCat('ALTRO')">💬 Altro</button>
+              </div>
+
+              <!-- Shadow Mode -->
+              <div class="wa-shadow-box">
+                <div class="wa-shadow-head">
+                  🤖 Suggerimento IA – Shadow Mode
+                  <span class="badge badge-muted" style="font-size:10px;text-transform:none;letter-spacing:0;">non inviato</span>
+                </div>
+                <div id="waDetShadow"><span class="wa-shadow-empty">Nessun suggerimento disponibile.</span></div>
+                <div class="wa-shadow-actions" id="waDetShadowActions" style="display:none;">
+                  <button class="btn-secondary small-btn" onclick="waCopyShadow()">📋 Copia</button>
+                  <button class="btn-success small-btn" onclick="waUseShadow()">✅ Usa come risposta</button>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="wa-detail-actions">
+                <button class="btn-primary small-btn" id="waBtnReply" onclick="waOpenReply()">📤 Rispondi</button>
+                <button class="btn-secondary small-btn" onclick="waMarkDone()">✓ Segna completato</button>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- /wa-inbound-grid -->
+      </div>
+      <!-- ════ end WA Inbound Dashboard ════ -->
+
       <div class="section">
         <div id="anchor-whatsapp-top" class="whatsapp-template-board"></div>
         <div id="contactForm" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- WA reply modal -->
+    <div id="waReplyModal" class="whatsapp-composer-overlay">
+      <div class="whatsapp-composer-dialog" style="max-width:580px;">
+        <div class="whatsapp-composer-head">
+          <div>
+            <div class="whatsapp-composer-title">📤 Risposta WhatsApp</div>
+            <div class="whatsapp-composer-context" id="waModalRecipient">–</div>
+          </div>
+          <button class="btn-secondary small-btn" onclick="waCloseReply()">✕ Chiudi</button>
+        </div>
+        <div style="padding:14px;display:grid;gap:10px;">
+          <div>
+            <label style="font-size:11px;font-weight:900;color:#9e9e9e;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;">Messaggio originale</label>
+            <div class="modal-ctx" id="waModalOriginal">–</div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:900;color:#9e9e9e;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px;">Risposta</label>
+            <textarea id="waReplyText" placeholder="Scrivi la risposta…"></textarea>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid #e6ebf2;background:#f8fbff;flex-wrap:wrap;">
+          <button class="btn-secondary small-btn" onclick="waCloseReply()">Annulla</button>
+          <button class="btn-success small-btn" id="waBtnSend" onclick="waSendReply()">📤 Invia risposta</button>
+        </div>
       </div>
     </div>
 
@@ -31675,5 +31894,338 @@ Per confermare scrivi ELIMINA.`);
     }
 
   </script>
+
+  <!-- ════ WA Inbound Dashboard ════ -->
+  <script>
+  (function () {
+    /* ── Config ── */
+    const WA_URL  = 'https://aylykijfirtegyxzdwgu.supabase.co';
+    const WA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5bHlraWpmaXJ0ZWd5eHpkd2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDA4OTcsImV4cCI6MjA5NDg3Njg5N30._wJ9l8-yHbDtcjSe5rNT2qRKK6bfdyERQKI_D2EljEg';
+    const WA_TABLE = 'whatsapp_inbound_messages';
+
+    /* Detect test env using the same logic as the main app */
+    function isTestEnv() {
+      try {
+        const p = new URLSearchParams(window.location.search || '');
+        const r = String(p.get('env') || p.get('ambiente') || window.PMO_FORCE_ENV || '').trim().toLowerCase();
+        if (['test','staging','collaudo'].includes(r)) return true;
+        if (/\/(?:test|staging|collaudo)(?:\/|\.html?$)/i.test(window.location.pathname || '')) return true;
+      } catch {}
+      return false;
+    }
+
+    if (!isTestEnv()) return; /* not in test env — do nothing */
+
+    /* ── State ── */
+    let waSb       = null;
+    let waChannel  = null;
+    let waMsgs     = [];
+    let waFiltered = [];
+    let waActiveId = null;
+    let waActiveMsg = null;
+    let waInited   = false;
+
+    /* ── Metadata ── */
+    const WA_CAT_META = {
+      PRENOTAZIONE: { cls:'badge-success', lbl:'🎾 Prenotazione' },
+      INFO:         { cls:'badge-info',    lbl:'ℹ️ Info' },
+      RECLAMO:      { cls:'badge-danger',  lbl:'⚠️ Reclamo' },
+      URGENTE:      { cls:'badge-warning', lbl:'🔴 Urgente' },
+      DISDETTA:     { cls:'badge-warning', lbl:'❌ Disdetta' },
+      ALTRO:        { cls:'badge-muted',   lbl:'💬 Altro' },
+    };
+    const WA_STATUS_META = {
+      'Da elaborare': { cls:'badge-info',    lbl:'Da elaborare' },
+      'In revisione': { cls:'badge-warning', lbl:'In revisione' },
+      'Completato':   { cls:'badge-muted',   lbl:'Completato' },
+      'Risposto':     { cls:'badge-success', lbl:'Risposto' },
+    };
+    function waCatBadges(cats) {
+      if (!cats || !cats.length) return '<span class="badge badge-muted">—</span>';
+      return cats.map(c => {
+        const m = WA_CAT_META[c] || { cls:'badge-muted', lbl:c };
+        return `<span class="badge ${m.cls}">${m.lbl}</span>`;
+      }).join(' ');
+    }
+    function waStatusBadge(s) {
+      const m = WA_STATUS_META[s] || { cls:'badge-muted', lbl: s || '?' };
+      return `<span class="badge ${m.cls}">${m.lbl}</span>`;
+    }
+    function waFmtTime(ts) {
+      if (!ts) return '–';
+      try {
+        const d = new Date(ts), t = new Date();
+        const same = d.toDateString() === t.toDateString();
+        return same
+          ? d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' })
+          : d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+      } catch { return ts; }
+    }
+    function waEsc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── Toast ── */
+    function waToast(txt, type='') {
+      let area = document.getElementById('waToastArea');
+      if (!area) {
+        area = document.createElement('div');
+        area.id = 'waToastArea';
+        area.className = 'wa-toast-area';
+        document.body.appendChild(area);
+      }
+      const t = document.createElement('div');
+      t.className = 'wa-toast' + (type ? ' '+type : '');
+      t.textContent = txt;
+      area.appendChild(t);
+      setTimeout(() => t.remove(), 3200);
+    }
+
+    /* ── Realtime status ── */
+    function waSetRt(state, lbl) {
+      const dot = document.getElementById('waRtDot');
+      const lab = document.getElementById('waRtLabel');
+      if (dot) dot.className = 'wa-rt-dot' + (state ? ' '+state : '');
+      if (lab) lab.textContent = lbl;
+    }
+    function waSetStatus(txt) {
+      const el = document.getElementById('waStatusBar');
+      if (el) el.textContent = txt;
+    }
+
+    /* ── Stats ── */
+    function waUpdateStats() {
+      const g = id => document.getElementById(id);
+      if (g('waStatTotal'))   g('waStatTotal').textContent   = waMsgs.length;
+      if (g('waStatNew'))     g('waStatNew').textContent     = waMsgs.filter(m => m.status === 'Da elaborare' || !m.status).length;
+      if (g('waStatReplied')) g('waStatReplied').textContent = waMsgs.filter(m => m.status === 'Risposto').length;
+      if (g('waStatUrgent'))  g('waStatUrgent').textContent  = waMsgs.filter(m => (m.categories||[]).includes('URGENTE')).length;
+    }
+
+    /* ── Load messages ── */
+    window.waLoadMessages = async function() {
+      if (!waSb) return;
+      document.getElementById('waMsgList').innerHTML = '<div class="wa-detail-placeholder">Caricamento…</div>';
+      try {
+        const { data, error } = await waSb.from(WA_TABLE).select('*').order('created_at', { ascending:false }).limit(100);
+        if (error) throw error;
+        waMsgs = data || [];
+        waApplyFilters();
+        waUpdateStats();
+        waSetStatus(`${waMsgs.length} messaggi · ${new Date().toLocaleTimeString('it-IT')}`);
+      } catch (err) {
+        document.getElementById('waMsgList').innerHTML = `<div class="wa-detail-placeholder" style="color:#c62828;">❌ ${waEsc(err.message||err)}</div>`;
+        waSetStatus('Errore caricamento');
+      }
+    };
+
+    /* ── Filters & render list ── */
+    window.waApplyFilters = function() {
+      const search = (document.getElementById('waFilterSearch')?.value || '').toLowerCase();
+      const cat    = document.getElementById('waFilterCat')?.value    || '';
+      const status = document.getElementById('waFilterStatus')?.value || '';
+      waFiltered = waMsgs.filter(m => {
+        const ok1 = !search || (m.sender_name||'').toLowerCase().includes(search) || (m.sender_number||'').toLowerCase().includes(search) || (m.message_text||'').toLowerCase().includes(search);
+        const ok2 = !cat    || (m.categories||[]).includes(cat);
+        const ok3 = !status || m.status === status;
+        return ok1 && ok2 && ok3;
+      });
+      waRenderList();
+    };
+
+    function waRenderList() {
+      const el = document.getElementById('waMsgList');
+      if (!el) return;
+      if (!waFiltered.length) { el.innerHTML = '<div class="wa-detail-placeholder">Nessun messaggio trovato.</div>'; return; }
+      el.innerHTML = waFiltered.map(m => {
+        const active = m.id === waActiveId ? ' active' : '';
+        const name   = waEsc(m.sender_name   || 'Sconosciuto');
+        const phone  = waEsc(m.sender_number || '');
+        const body   = waEsc((m.message_text || '').substring(0, 80));
+        const time   = waFmtTime(m.created_at);
+        return `<div class="wa-msg-row${active}" data-id="${waEsc(m.id)}" onclick="waSelect('${waEsc(m.id)}')">
+          <div class="wa-msg-row-top">
+            <div><span class="wa-msg-sender">${name}</span>${phone ? `<span class="wa-msg-phone"> · ${phone}</span>` : ''}</div>
+            <span class="wa-msg-time">${time}</span>
+          </div>
+          <div class="wa-msg-preview">${body || '<em>messaggio vuoto</em>'}</div>
+          <div class="wa-msg-badges">${waCatBadges(m.categories)} ${waStatusBadge(m.status||'Da elaborare')}</div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ── Select message ── */
+    window.waSelect = function(id) {
+      waActiveId  = id;
+      waActiveMsg = waMsgs.find(m => String(m.id) === String(id)) || null;
+      document.querySelectorAll('.wa-msg-row').forEach(r => r.classList.toggle('active', r.dataset.id === String(id)));
+      if (!waActiveMsg) return;
+      waRenderDetail(waActiveMsg);
+    };
+
+    function waRenderDetail(m) {
+      document.getElementById('waDetailPlaceholder').style.display = 'none';
+      document.getElementById('waDetailContent').style.display     = 'block';
+      document.getElementById('waDetName').textContent    = m.sender_name   || 'Sconosciuto';
+      document.getElementById('waDetPhone').textContent   = m.sender_number || 'Numero non disponibile';
+      document.getElementById('waDetTime').textContent    = m.created_at ? 'Ricevuto ' + new Date(m.created_at).toLocaleString('it-IT') : '';
+      document.getElementById('waDetBody').textContent    = m.message_text  || '(messaggio vuoto)';
+      document.getElementById('waDetStatusBadge').innerHTML = waStatusBadge(m.status||'Da elaborare');
+      const anaEl = document.getElementById('waDetAnalysis');
+      if (m.triage_analysis) { anaEl.style.display='block'; anaEl.textContent='🔍 ' + m.triage_analysis; }
+      else anaEl.style.display='none';
+
+      /* Triage chips */
+      const active = m.categories || [];
+      document.querySelectorAll('.wa-triage-chip').forEach(chip => {
+        const c = chip.dataset.cat;
+        chip.className = 'wa-triage-chip';
+        if (active.includes(c)) chip.classList.add('active-' + c);
+      });
+
+      /* Shadow mode */
+      const shadowEl  = document.getElementById('waDetShadow');
+      const shadowAct = document.getElementById('waDetShadowActions');
+      if (m.risposta_suggerita_ia) {
+        shadowEl.innerHTML = `<div class="wa-shadow-text">${waEsc(m.risposta_suggerita_ia)}</div>`;
+        shadowAct.style.display = 'flex';
+      } else {
+        shadowEl.innerHTML = '<span class="wa-shadow-empty">Nessun suggerimento disponibile.</span>';
+        shadowAct.style.display = 'none';
+      }
+
+      document.getElementById('waBtnReply').disabled = m.status === 'Risposto';
+    }
+
+    /* ── Toggle category ── */
+    window.waToggleCat = async function(cat) {
+      if (!waActiveMsg || !waSb) return;
+      const cur = waActiveMsg.categories || [];
+      const upd = cur.includes(cat) ? cur.filter(c => c !== cat) : [...cur, cat];
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ categories: upd }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.categories = upd;
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) waMsgs[i].categories = upd;
+        document.querySelectorAll('.wa-triage-chip').forEach(chip => {
+          chip.className = 'wa-triage-chip';
+          if (upd.includes(chip.dataset.cat)) chip.classList.add('active-' + chip.dataset.cat);
+        });
+        waApplyFilters();
+        waToast('Categoria aggiornata', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+    };
+
+    /* ── Mark done ── */
+    window.waMarkDone = async function() {
+      if (!waActiveMsg || !waSb) return;
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ status:'Completato' }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.status = 'Completato';
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) waMsgs[i].status = 'Completato';
+        document.getElementById('waDetStatusBadge').innerHTML = waStatusBadge('Completato');
+        waApplyFilters(); waUpdateStats();
+        waToast('Segnato come completato', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+    };
+
+    /* ── Shadow actions ── */
+    window.waCopyShadow = function() {
+      const t = waActiveMsg?.risposta_suggerita_ia;
+      if (!t) return;
+      navigator.clipboard.writeText(t).then(() => waToast('Copiato negli appunti', 'ok')).catch(() => waToast('Copia non riuscita', 'err'));
+    };
+    window.waUseShadow = function() {
+      const t = waActiveMsg?.risposta_suggerita_ia;
+      if (!t) return;
+      document.getElementById('waReplyText').value = t;
+      waOpenReply();
+    };
+
+    /* ── Reply modal ── */
+    window.waOpenReply = function() {
+      if (!waActiveMsg) return;
+      document.getElementById('waModalRecipient').textContent = (waActiveMsg.sender_name||'Sconosciuto') + (waActiveMsg.sender_number ? ' · '+waActiveMsg.sender_number : '');
+      document.getElementById('waModalOriginal').textContent  = waActiveMsg.message_text || '(messaggio vuoto)';
+      if (!document.getElementById('waReplyText').value && waActiveMsg.risposta_suggerita_ia) {
+        document.getElementById('waReplyText').value = waActiveMsg.risposta_suggerita_ia;
+      }
+      document.getElementById('waReplyModal').classList.add('active');
+      document.getElementById('waReplyText').focus();
+    };
+    window.waCloseReply = function() {
+      document.getElementById('waReplyModal').classList.remove('active');
+      document.getElementById('waReplyText').value = '';
+    };
+    window.waSendReply = async function() {
+      const txt = document.getElementById('waReplyText').value.trim();
+      if (!txt) { waToast('Scrivi un testo prima di inviare', 'err'); return; }
+      if (!waActiveMsg || !waSb) return;
+      const btn = document.getElementById('waBtnSend');
+      btn.disabled = true; btn.textContent = '⏳ Invio…';
+      try {
+        const { error } = await waSb.from(WA_TABLE).update({ status:'Risposto', replied_at: new Date().toISOString() }).eq('id', waActiveMsg.id);
+        if (error) throw error;
+        waActiveMsg.status = 'Risposto';
+        const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+        if (i !== -1) waMsgs[i].status = 'Risposto';
+        waCloseReply(); waRenderDetail(waActiveMsg); waApplyFilters(); waUpdateStats();
+        waToast('✅ Risposta registrata', 'ok');
+      } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
+      finally { btn.disabled = false; btn.textContent = '📤 Invia risposta'; }
+    };
+
+    /* ── Realtime ── */
+    function waStartRt() {
+      if (!waSb) return;
+      waChannel = waSb.channel('wa-inbound')
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:WA_TABLE }, payload => {
+          waMsgs.unshift(payload.new);
+          waApplyFilters(); waUpdateStats();
+          waToast('📲 Nuovo messaggio da ' + (payload.new.sender_name || payload.new.sender_number || '–'));
+          waSetStatus('Nuovo messaggio · ' + new Date().toLocaleTimeString('it-IT'));
+        })
+        .on('postgres_changes', { event:'UPDATE', schema:'public', table:WA_TABLE }, payload => {
+          const upd = payload.new;
+          const i = waMsgs.findIndex(m => m.id === upd.id);
+          if (i !== -1) waMsgs[i] = { ...waMsgs[i], ...upd };
+          if (waActiveMsg?.id === upd.id) { waActiveMsg = { ...waActiveMsg, ...upd }; waRenderDetail(waActiveMsg); }
+          waApplyFilters(); waUpdateStats();
+        })
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED')    waSetRt('connected', 'Realtime attivo');
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') waSetRt('error', 'Errore Realtime');
+          else if (status === 'CLOSED')   waSetRt('', 'Disconnesso');
+          else                            waSetRt('', 'Connessione…');
+        });
+    }
+
+    /* ── Init ── */
+    function waInit() {
+      if (waInited) return;
+      waInited = true;
+      const dashboard = document.getElementById('waInboundDashboard');
+      if (dashboard) dashboard.style.display = 'block';
+      try {
+        waSb = supabase.createClient(WA_URL, WA_KEY);
+        waLoadMessages();
+        waStartRt();
+      } catch (err) {
+        console.error('[WA Dashboard] init error:', err);
+        waSetRt('error', 'Errore init');
+      }
+    }
+
+    /* Init quando la pagina è pronta */
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waInit);
+    else waInit();
+
+  })();
+  </script>
+  <!-- ════ end WA Inbound Dashboard ════ -->
+
 </body>
 </html>
