@@ -23044,6 +23044,9 @@ Per confermare scrivi ELIMINA.`);
 	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
 	    }
 	    function pmoMemberCloudLocalKey(member, fallbackKey='') {
+	      const rawPhone = cleanCell(member?.phone || member?.telefono || '');
+	      const phoneDigits = rawPhone.replace(/\D/g, '');
+	      if (phoneDigits.length >= 8) return `phone:${phoneDigits}`;
 	      const key = cleanCell(member?.id || member?.memberId || fallbackKey);
 	      if (key) return key;
 	      return member ? `member|${pmoShortHash(member)}` : '';
@@ -27755,15 +27758,31 @@ Per confermare scrivi ELIMINA.`);
         createdNoticeHtml = `<div class="assessment-manual-batch-created-notice">🕐 ${escapeHtml(noticeText)}</div>`;
       }
       if (!rows.length) {
+        const dailyLimitReached = batch.remainingBeforePlan === 0
+          || (Number(batch.alreadySentToday) > 0 && Number(batch.limit) > 0 && Number(batch.alreadySentToday) >= Number(batch.limit));
+        const membersNotSynced = batch.blocked && cleanCell(batch.blockedReason) === 'MEMBERS_SYNC_REQUIRED';
+        let emptyTitle, emptyDetail, emptyAction = '';
+        if (membersNotSynced) {
+          emptyTitle = 'Nessun socio trovato nel database cloud.';
+          emptyDetail = 'I dati dei soci non sono ancora sincronizzati. Usa il bottone qui sotto per caricare i soci dal browser al cloud di Supabase.';
+          emptyAction = `<button class="btn-primary small-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:8px 16px;" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()"><span>🔄</span> Sincronizza dati locali ora</button>`;
+        } else if (dailyLimitReached) {
+          const sent = Number(batch.alreadySentToday || 0);
+          const lim = Number(batch.limit || 10);
+          emptyTitle = `Limite giornaliero raggiunto: ${sent} di ${lim} email inviate oggi.`;
+          emptyDetail = 'Non ci sono altri invii disponibili per oggi. Il prossimo lotto sarà preparato automaticamente domani mattina alle 06:30.';
+        } else {
+          emptyTitle = 'Nessun socio pronto nel lotto. Nessuna email parte senza conferma dello staff.';
+          emptyDetail = 'Se hai appena aggiornato i soci nel browser, sincronizza i dati locali con il cloud per renderli disponibili alla routine.';
+          emptyAction = `<button class="btn-primary small-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:8px 16px;" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()"><span>🔄</span> Sincronizza dati locali ora</button>`;
+        }
         return `<div class="assessment-email-table-wrap assessment-manual-batch">
           <div class="assessment-manual-batch-title"><h4>${escapeHtml(title)}</h4><span>${escapeHtml(titleCount)}</span></div>
           ${createdNoticeHtml}
           <div class="assessment-empty" style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px; text-align:center;">
-            <div style="font-weight:600;">Nessun socio pronto nel lotto preparato. Nessuna email parte senza conferma dello staff.</div>
-            <div style="font-size:13px; color:#667085; max-width:500px; line-height:1.4;">Se hai appena aggiornato i soci nel browser, ricordati di sincronizzare i dati locali con il cloud di Supabase per renderli disponibili alla routine di preparazione.</div>
-            <button class="btn-primary small-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:8px 16px;" onclick="setActionAnchor(this); pmoUploadLocalDataToCloud()">
-              <span>🔄</span> Sincronizza dati locali ora
-            </button>
+            <div style="font-weight:600;">${escapeHtml(emptyTitle)}</div>
+            <div style="font-size:13px; color:#667085; max-width:500px; line-height:1.4;">${escapeHtml(emptyDetail)}</div>
+            ${emptyAction}
           </div>
         </div>`;
       }
