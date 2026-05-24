@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.333</title>
+  <title>Padel Match Organizer v5.551</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -5388,22 +5388,8 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Tabellone Matchpoint</span></span>
         </button>
 
-        <button class="tab-button side-nav-main-item" onclick="switchTab('fillSlots', this)">
-          <span class="nav-order">1</span>
-          <span class="nav-copy"><span class="nav-main">Apri Partite</span><span class="nav-sub">Slot liberi e proposte</span></span>
-        </button>
-
-        <button class="side-nav-parent side-nav-main-item" data-submenu-target="subMatches" aria-expanded="false" onclick="switchSidebarParent('inviteResponses','subMatches')">
-          <span class="nav-order">2</span>
-          <span class="nav-copy"><span class="nav-main">Chiudi Partite</span><span class="nav-sub">Inviti, risposte e chiusura</span></span>
-          <span class="nav-caret">▾</span>
-        </button>
-        <div id="subMatches" class="side-submenu">
-          <button class="tab-button side-sub-link" onclick="switchTab('matchHistory', this)">Storico partite</button>
-        </div>
-
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
-          <span class="nav-order">3</span>
+          <span class="nav-order">1</span>
           <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
           <span class="nav-caret">▾</span>
         </button>
@@ -5416,17 +5402,17 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <button class="tab-button side-nav-main-item" onclick="switchTab('members', this)">
-          <span class="nav-order">4</span>
+          <span class="nav-order">2</span>
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
         <button class="tab-button side-nav-main-item" onclick="switchTab('contact', this)">
-          <span class="nav-order">5</span>
+          <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
         </button>
 
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
-          <span class="nav-order">6</span>
+          <span class="nav-order">4</span>
           <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti, dati e controlli</span></span>
           <span class="nav-caret">▾</span>
         </button>
@@ -6784,7 +6770,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.550';
+    const APP_VERSION = '5.551';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
