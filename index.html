@@ -5190,8 +5190,6 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-toast.ok  { background:#2e7d32; }
     .wa-toast.err { background:#c62828; }
     @keyframes wa-toast-in { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-    /* TEST env desktop: nasconde Apri/Chiudi Partite nella sidebar */
-    body.pmo-test-ai-desktop [data-test-desktop-hide] { display: none !important; }
     /* Sezione Assistente AI: stile header interno */
     #assistanteAI .wa-section-head h3::before { content: '✨ '; }
 
@@ -5390,17 +5388,17 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Tabellone Matchpoint</span></span>
         </button>
 
-        <button class="tab-button side-nav-main-item" data-test-desktop-hide onclick="switchTab('fillSlots', this)">
+        <button class="tab-button side-nav-main-item" onclick="switchTab('fillSlots', this)">
           <span class="nav-order">1</span>
           <span class="nav-copy"><span class="nav-main">Apri Partite</span><span class="nav-sub">Slot liberi e proposte</span></span>
         </button>
 
-        <button class="side-nav-parent side-nav-main-item" data-test-desktop-hide data-submenu-target="subMatches" aria-expanded="false" onclick="switchSidebarParent('inviteResponses','subMatches')">
+        <button class="side-nav-parent side-nav-main-item" data-submenu-target="subMatches" aria-expanded="false" onclick="switchSidebarParent('inviteResponses','subMatches')">
           <span class="nav-order">2</span>
           <span class="nav-copy"><span class="nav-main">Chiudi Partite</span><span class="nav-sub">Inviti, risposte e chiusura</span></span>
           <span class="nav-caret">▾</span>
         </button>
-        <div id="subMatches" class="side-submenu" data-test-desktop-hide>
+        <div id="subMatches" class="side-submenu">
           <button class="tab-button side-sub-link" onclick="switchTab('matchHistory', this)">Storico partite</button>
         </div>
 
@@ -6786,7 +6784,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.540';
+    const APP_VERSION = '5.550';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -32627,10 +32625,9 @@ Per confermare scrivi ELIMINA.`);
     // Solo in ambiente test + schermo ≥ 900px:
     //   1. Riordina sidebar 0-5: Dashboard / Assistente AI / WA / Anagrafica / Autoval / Ammin
     //   2. Sposta il WA dashboard nel nuovo tab #assistanteAI
-    //   3. Nasconde Apri/Chiudi Partite via classe body (CSS data-test-desktop-hide)
+    // Apri/Chiudi Partite restano visibili in ogni ambiente.
     // Mobile e produzione non vengono toccati.
     if (isTestEnv() && window.innerWidth >= 900) {
-      document.body.classList.add('pmo-test-ai-desktop');
 
       const navContent = document.querySelector('.side-nav-content');
       if (navContent) {
