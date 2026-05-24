@@ -32546,32 +32546,49 @@ Per confermare scrivi ELIMINA.`);
 
     // ── TEST ENV — Assistente AI Desktop Layout ───────────────────────
     // Solo in ambiente test + schermo ≥ 900px:
-    //   1. Aggiunge voce "Assistente AI" nella sidebar
+    //   1. Riordina sidebar 0-5: Dashboard / Assistente AI / WA / Anagrafica / Autoval / Ammin
     //   2. Sposta il WA dashboard nel nuovo tab #assistanteAI
     //   3. Nasconde Apri/Chiudi Partite via classe body (CSS data-test-desktop-hide)
     // Mobile e produzione non vengono toccati.
     if (isTestEnv() && window.innerWidth >= 900) {
-      // Aggiunge la classe prima del primo paint → nessun flash sidebar
       document.body.classList.add('pmo-test-ai-desktop');
 
-      // Inserisce il pulsante "Assistente AI" nella sidebar, prima di Amministrazione
       const navContent = document.querySelector('.side-nav-content');
       if (navContent) {
-        const admBtn = navContent.querySelector('[data-submenu-target="subAdministration"]');
-        const btn = document.createElement('button');
-        btn.className = 'tab-button side-nav-main-item';
-        btn.setAttribute('onclick', "switchTab('assistanteAI', this)");
-        btn.innerHTML =
-          '<span class="nav-order" style="font-style:normal;font-size:15px;">✨</span>' +
+        const sLabel  = navContent.querySelector('.side-nav-section-label');
+        const allBtns = Array.from(navContent.querySelectorAll('.side-nav-main-item'));
+        const byLabel = txt => allBtns.find(b => b.querySelector('.nav-main')?.textContent === txt);
+
+        const dash       = byLabel('Dashboard');
+        const contactBtn = byLabel('Messaggi WhatsApp');
+        const membersBtn = byLabel('Anagrafica soci');
+        const assessP    = byLabel('Autovalutazione');
+        const admP       = byLabel('Amministrazione');
+        const assessSub  = document.getElementById('subAssessment');
+        const admSub     = document.getElementById('subAdministration');
+
+        const btnAI = document.createElement('button');
+        btnAI.className = 'tab-button side-nav-main-item';
+        btnAI.setAttribute('onclick', "switchTab('assistanteAI', this)");
+        btnAI.innerHTML =
+          '<span class="nav-order">1</span>' +
           '<span class="nav-copy">' +
             '<span class="nav-main">Assistente AI</span>' +
             '<span class="nav-sub">Messaggi, varianti e bot</span>' +
           '</span>';
-        if (admBtn) navContent.insertBefore(btn, admBtn);
-        else navContent.appendChild(btn);
+
+        const setNum = (el, n) => { if (el) { const o = el.querySelector('.nav-order'); if (o) o.textContent = n; } };
+        setNum(dash,       0);
+        setNum(contactBtn, 2);
+        setNum(membersBtn, 3);
+        setNum(assessP,    4);
+        setNum(admP,       5);
+
+        [sLabel, dash, btnAI, contactBtn, membersBtn, assessP, assessSub, admP, admSub]
+          .filter(Boolean)
+          .forEach(el => navContent.appendChild(el));
       }
 
-      // Sposta il WA Inbound Dashboard nel tab dedicato #assistanteAI
       const waDashboard = document.getElementById('waInboundDashboard');
       const aiTab       = document.getElementById('assistanteAI');
       if (waDashboard && aiTab) aiTab.appendChild(waDashboard);
