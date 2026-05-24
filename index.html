@@ -32809,9 +32809,13 @@ Per confermare scrivi ELIMINA.`);
           if (startMin < 0 || endMin <= startMin) return '';
           const y = minToY(startMin);
           const h = Math.max((endMin - startMin) * PX_PER_MIN - 1, 10);
-          const kind = eventColor(slot.colore, slot.tipo);
+          const testo   = slot.testoCompleto || '';
+          const kind = eventColor(slot.colore, slot.tipo || testo);
           const players = (slot.giocatori || []).join(', ');
-          const label   = slot.tipo || (kind === 'partita' ? 'Partita' : kind === 'lezione' ? 'Lezione' : 'Manutenzione');
+          const label   = slot.tipo
+            || (testo.toLowerCase().includes('lezione') ? 'Lezione'
+              : testo.toLowerCase().includes('manut')   ? 'Manutenzione'
+              : 'Partita');
           return `<div class="cal-event cal-event-${kind}" style="top:${y}px;height:${h}px" title="${label}${players ? ' — ' + players : ''}">
             <div class="cal-event-time">${slot.ora}–${slot.oraFine}</div>
             <div class="cal-event-tipo">${label}</div>
