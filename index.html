@@ -5168,6 +5168,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-generate-btn { display:flex; align-items:center; gap:6px; margin:4px auto 2px; padding:9px 18px; background:#7b1fa2; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; transition:background .15s; width:100%; justify-content:center; }
     .wa-generate-btn:hover:not(:disabled) { background:#6a1b9a; }
     .wa-generate-btn:disabled { background:#bbb; cursor:not-allowed; }
+    .wa-fallback-alert { background:#fff3e0; border:1.5px solid #ff9800; border-left:4px solid #e65100; border-radius:8px; padding:10px 13px; font-size:13px; color:#4e2600; line-height:1.5; }
+    .wa-fallback-alert strong { display:block; font-size:13px; color:#bf360c; margin-bottom:3px; }
     .wa-variant-cards { display:flex; flex-direction:column; gap:8px; }
     .wa-variant-card { border:1.5px solid #e1d0f0; border-radius:8px; padding:9px 11px; background:#fff; display:flex; flex-direction:column; gap:5px; transition:border-color .12s; }
     .wa-variant-card:hover { border-color:#7b1fa2; }
@@ -32224,6 +32226,14 @@ Per confermare scrivi ELIMINA.`);
             ${v.motivazione ? `<div class="wa-variant-motiv">💡 ${waEsc(v.motivazione)}</div>` : ''}
           </div>`).join('');
         shadowEl.innerHTML = `<div class="wa-variant-cards">${cards}</div>`;
+      } else if (m._fallback_ia || (m.richiede_operatore && !haiVarianteScelta && !haiVarianti)) {
+        /* Stato 0 — fallback IA o handover senza varianti: operatore deve intervenire */
+        const motivo = m._fallback_motivo || '';
+        shadowEl.innerHTML = `<div class="wa-fallback-alert">
+          <strong>L'IA ha passato la mano su questa chat per mancanza di dati.</strong>
+          ${motivo ? `<div style="margin-top:3px;font-size:12px;">${waEsc(motivo)}</div>` : ''}
+          <div style="margin-top:6px;">Rispondi manualmente.</div>
+        </div>`;
       } else {
         /* Stato 1 — nessuna variante: pulsante Genera */
         shadowEl.innerHTML = `<button class="wa-generate-btn" id="waBtnGenera" onclick="waGeneraVarianti()">🤖 Genera varianti IA</button>`;
@@ -32358,6 +32368,18 @@ Per confermare scrivi ELIMINA.`);
         const data = await resp.json();
         if (resp.status === 429) throw new Error(data.errore || '⏱ Limite IA: riprova tra un minuto.');
         if (!resp.ok || !data.success) throw new Error(data.errore || `HTTP ${resp.status}`);
+        /* Fallback IA: dati insufficienti, l'operatore deve rispondere manualmente */
+        if (data.fallback) {
+          waActiveMsg._fallback_ia    = true;
+          waActiveMsg._fallback_motivo = data.motivo || '';
+          waActiveMsg.varianti_ia     = null;
+          waActiveMsg.contact_id      = data.contatto?.id || waActiveMsg.contact_id;
+          const fi = waMsgs.findIndex(m => m.id === waActiveMsg.id);
+          if (fi !== -1) { waMsgs[fi]._fallback_ia = true; waMsgs[fi]._fallback_motivo = waActiveMsg._fallback_motivo; waMsgs[fi].contact_id = waActiveMsg.contact_id; }
+          waRenderDetail(waActiveMsg);
+          waToast('L\'IA ha passato la mano — rispondere manualmente', 'err');
+          return;
+        }
         /* Aggiorna stato locale */
         waActiveMsg.varianti_ia  = data.varianti;
         waActiveMsg.contact_id   = data.contatto?.id || waActiveMsg.contact_id;
@@ -32446,6 +32468,7 @@ Per confermare scrivi ELIMINA.`);
             message_id: waActiveMsg.id,
             testo:      txt,
             numero:     waActiveMsg.sender_number || '',
+            contact_id: waActiveMsg.contact_id   || undefined,
           }),
         });
         const data = await resp.json();
