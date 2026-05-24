@@ -32724,11 +32724,19 @@ Per confermare scrivi ELIMINA.`);
       return (totalMin - START_HOUR * 60) * PX_PER_MIN;
     }
 
+    // Token noti che identificano una lezione (maestri / scuola)
+    const CAL_TEACHER_TOKENS = ['santiago carabajal', 'lozio', 'lo zio', 'spinazze', 'spinazzè'];
+
     function eventColor(colore, tipo) {
+      const t = (tipo || '').toLowerCase();
+      // 1. Manutenzione — priorità assoluta (controlla il testo prima del colore)
+      if (t.includes('manutenzione')) return 'manutenzione';
       const c = (colore || '').toLowerCase();
-      const t = (tipo   || '').toLowerCase();
-      if (c === 'verde'  || t.includes('lezione') || t.includes('lesson')) return 'lezione';
-      if (c === 'grigio' || c === 'gray' || t.includes('manut'))           return 'manutenzione';
+      if (c === 'manutenzione' || c === 'grigio' || c === 'gray') return 'manutenzione';
+      // 2. Lezione — parola chiave esplicita o nome maestro noto (non "Partita")
+      if (c === 'verde' || t.includes('lezione') || t.includes('lesson')) return 'lezione';
+      if (!t.includes('partita') && CAL_TEACHER_TOKENS.some(tk => t.includes(tk))) return 'lezione';
+      // 3. Default: Partita
       return 'partita';
     }
 
@@ -32812,10 +32820,14 @@ Per confermare scrivi ELIMINA.`);
           const testo   = slot.testoCompleto || '';
           const kind = eventColor(slot.colore, slot.tipo || testo);
           const players = (slot.giocatori || []).join(', ');
-          const label   = slot.tipo
-            || (testo.toLowerCase().includes('lezione') ? 'Lezione'
-              : testo.toLowerCase().includes('manut')   ? 'Manutenzione'
-              : 'Partita');
+          const label = slot.tipo || (() => {
+            if (kind === 'manutenzione') return 'Manutenzione';
+            if (kind === 'lezione') {
+              const m = testo.match(/Lezione\.\s*(.+?)\s*\./);
+              return m ? m[1].trim() : 'Lezione';
+            }
+            return 'Partita';
+          })();
           return `<div class="cal-event cal-event-${kind}" style="top:${y}px;height:${h}px" title="${label}${players ? ' — ' + players : ''}">
             <div class="cal-event-time">${slot.ora}–${slot.oraFine}</div>
             <div class="cal-event-tipo">${label}</div>
