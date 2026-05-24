@@ -1,0 +1,29 @@
+{
+  "name": "PMO Frontend",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "postCreateCommand": "git config --global push.default current && git config --global core.editor nano",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "formulahendry.auto-close-tag",
+        "vincaslt.highlight-matching-tag"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": false,
+        "editor.wordWrap": "on",
+        "editor.tabSize": 2,
+        "editor.rulers": [120],
+        "files.associations": {
+          "*.html": "html"
+        },
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/.git": true
+        }
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}
