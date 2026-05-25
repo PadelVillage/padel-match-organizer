@@ -28244,6 +28244,7 @@ Per confermare scrivi ELIMINA.`);
           <div class="pmo-kanban-card-meta">
             <span>📧 ${escapeHtml(member.email || 'Nessuna email')}</span>
             <span>📞 ${escapeHtml(member.phone || 'Nessun telefono')}</span>
+            <span>🎾 Livello: <strong>${escapeHtml(String(member.level ?? '-'))}</strong></span>
             <span>🕒 Ultimo invio: ${escapeHtml(dateStr)}</span>
             <span>⏱️ Prossima finestra: <strong>${escapeHtml(nextWindowLabel)}</strong></span>
             
