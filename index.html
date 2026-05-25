@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.559</title>
+  <title>Padel Match Organizer v5.560</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -5728,6 +5728,9 @@ body.assessment-public-mode .assessment-public-only-card {
               <div>
                 <h3 class="assessment-email-panel-title">Contattati / in attesa</h3>
                 <p class="assessment-email-panel-copy">Soci con richiesta gia inviata e scheda non ancora compilata.</p>
+              </div>
+              <div class="assessment-email-actions">
+                <button class="assessment-email-btn secondary" onclick="setActionAnchor(this); assessmentEmailImportCloudLogs().then(r => { renderAssessmentEmailPanels(); showAlert(r.ok ? ('Sync: ' + ((r.tokenSyncUpdated||0) + (r.imported||0)) + ' aggiornati') : ('Sync fallito: ' + (r.error||'errore')), r.ok ? 'success' : 'danger'); })">🔄 Sincronizza da server</button>
               </div>
             </div>
             <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
@@ -26676,7 +26679,16 @@ Per confermare scrivi ELIMINA.`);
             if (!row?.member_local_id) return;
             const rowStatus = cleanCell(row.status || '');
             if (rowStatus !== 'sent' && rowStatus !== 'completed') return;
-            const member = findAssessmentMemberByAnyId(cleanCell(row.member_local_id));
+            // Ricerca primaria per ID; fallback per phone_last4 se UUID non matcha localmente.
+            let member = findAssessmentMemberByAnyId(cleanCell(row.member_local_id));
+            if (!member && row.phone_last4 && String(row.phone_last4).length === 4) {
+              const _last4 = String(row.phone_last4);
+              member = (giocatori || []).find(m => {
+                if (!m || isTechnicalMemberRecord(m) || !isLevelZeroPointFive(m)) return false;
+                const _p = String(m.phone || '').replace(/\D/g, '');
+                return _p.length >= 4 && _p.slice(-4) === _last4;
+              }) || null;
+            }
             if (!member) return;
             const key = String(member.id);
             const existing = assessmentTokens[key];
