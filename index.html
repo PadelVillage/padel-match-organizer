@@ -26504,7 +26504,7 @@ Per confermare scrivi ELIMINA.`);
       return !!(row?.member && isLevelZeroPointFive(row.member));
     }
     function assessmentEmailAllOperationalRows() {
-      return assessmentAllActiveMembers().filter(member => !isTechnicalMemberRecord(member)).map(member => {
+      return assessmentAllActiveMembers().filter(member => !isTechnicalMemberRecord(member) && isLevelZeroPointFive(member)).map(member => {
         const info = assessmentRecordFor(member);
         return { member, info, rec:info.rec, response:info.response };
       });
@@ -26730,7 +26730,7 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentEmailCloudLogAutoImportLastAt = now;
       try {
         const result = await assessmentEmailImportCloudLogs({ silent:true });
-        if (result?.ok && result.imported > 0) renderAssessmentEmailPanels();
+        if (result?.ok && (result.imported > 0 || (result.tokenSyncUpdated || 0) > 0 || (result.batches || 0) > 0)) renderAssessmentEmailPanels();
       } catch (err) {
         console.warn('Aggiornamento automatico log autovalutazione non riuscito:', err);
       } finally {
