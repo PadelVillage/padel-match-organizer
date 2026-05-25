@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.555</title>
+  <title>Padel Match Organizer v5.556</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6463,20 +6463,6 @@ body.assessment-public-mode .assessment-public-only-card {
                   <div id="pmoStaffNotificationsTable"></div>
                 </div>
               </div>
-              <div class="admin-box">
-                <div class="admin-box-head">
-                  <div>
-                    <div class="admin-box-title">Anteprima notifica</div>
-                    <div class="admin-box-subtitle">Contenuto informativo della futura notifica.</div>
-                  </div>
-                </div>
-                <div class="admin-box-body">
-                  <div class="admin-notification-preview-line">
-                    <span><strong>Oggetto:</strong> Livello validato - Giulia Rossi</span>
-                    <span><strong>Dati:</strong> Giulia Rossi · Livello 1.5 · Femmina · +39 333 000 0000 · giulia.rossi@example.com</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -6654,20 +6640,7 @@ body.assessment-public-mode .assessment-public-only-card {
           </div>
         </div>
 
-        <div id="pmoAdminSessionSection" class="admin-section-panel" data-pmo-admin-section="session" hidden>
-          <div class="admin-panel" id="pmoAdminSessionPanel" data-admin-anchor="sessione">
-            <div class="admin-panel-head">
-              <div>
-                <h3>Sessione</h3>
-                <p>Account corrente, stato e permessi attivi.</p>
-              </div>
-            </div>
-            <div class="admin-session-panel">
-              <div id="pmoAdminAccountStrip"></div>
-              <div id="pmoAdminSessionPermissions" class="admin-session-permissions"></div>
-            </div>
-          </div>
-        </div>
+
 
         <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
           <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
@@ -6778,7 +6751,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.555';
+    const APP_VERSION = '5.556';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23922,9 +23895,7 @@ Per confermare scrivi ELIMINA.`);
 	        const status = active
 	          ? '<span class="admin-status-pill active">Attivo</span>'
 	          : '<span class="admin-status-pill paused">Disattivo</span>';
-	        const testButton = isTest
-	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoSendStaffNotificationTest('${escapeJs(row.id)}')">Invia email di test</button>`
-	          : '';
+	        const testButton = '';
 	        const removeButton = isTest
 	          ? ''
 	          : `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoRemoveStaffNotificationRecipient('${escapeJs(row.id)}')">Rimuovi</button>`;
@@ -23977,15 +23948,6 @@ Per confermare scrivi ELIMINA.`);
 	      pmoSaveStaffNotificationRecipients();
 	      pmoRenderStaffNotificationsPanel();
 	      pmoSetStaffNotificationsStatus(pmoStaffNotificationRecipients.length < before ? 'Destinatario rimosso.' : 'Destinatario test non rimovibile.', 'info');
-	    }
-	    function pmoSendStaffNotificationTest(rowId) {
-	      const row = pmoStaffNotificationRecipients.find(item => cleanCell(item.id || '') === cleanCell(rowId || ''));
-	      if (!pmoStaffNotificationIsTestRecipient(row)) {
-	        pmoSetStaffNotificationsStatus('Email socio test non verificata.', 'warning');
-	        return;
-	      }
-	      pmoSetStaffNotificationsStatus('Email di test simulata: nessun invio reale eseguito.', 'info');
-	      showAlert('Email di test simulata: nessun invio reale eseguito.', 'info');
 	    }
 	    function pmoActiveStaffNotificationRecipients() {
 	      pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(pmoStaffNotificationRecipients);
@@ -24095,7 +24057,6 @@ Per confermare scrivi ELIMINA.`);
 	      pmoApplyAdminSectionVisibility();
 	      pmoRenderStaffAccessPanel();
 	      pmoRenderAdminAccountStrip();
-	      pmoRenderAdminKpis();
 	      pmoRenderAdminSessionPanel();
 	      pmoRenderStaffNotificationsPanel();
 	      pmoRenderAssessmentEmailSchedulerPanel();
@@ -24129,11 +24090,6 @@ Per confermare scrivi ELIMINA.`);
 	          </div>
 	        </div>
 	      `;
-	    }
-	    function pmoRenderAdminKpis() {
-	      const target = document.getElementById('pmoAdminKpis');
-	      if (!target) return;
-	      target.innerHTML = '';
 	    }
 	    function pmoSetAdminStatus(message, type='info') {
 	      const box = document.getElementById('pmoAdminStatus');
