@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.560</title>
+  <title>Padel Match Organizer v5.561</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -26724,7 +26724,8 @@ Per confermare scrivi ELIMINA.`);
             tokenSyncUpdated++;
           });
         } catch (tokenSyncErr) {
-          console.warn('PMO_ASSESSMENT_TOKEN_SYNC_FAILED', tokenSyncErr?.message || tokenSyncErr);
+          console.error('PMO_ASSESSMENT_TOKEN_SYNC_FAILED', tokenSyncErr?.message || tokenSyncErr);
+          if (PMO_IS_TEST_ENV) showAlert('TokenSync fallito: ' + (tokenSyncErr?.message || tokenSyncErr), 'danger');
         }
         if (sends.length || batchUpdated || tokenSyncUpdated) {
           save('assessmentTokens', assessmentTokens);
