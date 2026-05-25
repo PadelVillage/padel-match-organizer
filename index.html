@@ -25923,7 +25923,7 @@ Per confermare scrivi ELIMINA.`);
       return { ready:'badge-warning', review:'badge-warning', notResponded:'badge-warning', sentNoResponse:'badge-warning', paused:'badge-info', levelApplied:'badge-success' }[status] || 'badge-info';
     }
     function getAssessmentCandidates() {
-      return assessmentAllActiveMembers();
+      return assessmentAllActiveMembers().filter(isLevelZeroPointFive);
     }
     window.assessmentPreQuickFilter = window.assessmentPreQuickFilter || '';
     function assessmentSetPreQuickFilter(status) {
@@ -26545,7 +26545,7 @@ Per confermare scrivi ELIMINA.`);
       return !!(member && rec && rec.restartReason === 'nuova_autovalutazione');
     }
     function assessmentEmailIsCycleCandidate(row) {
-      return !!(row?.member && (isLevelZeroPointFive(row.member) || assessmentEmailIsExplicitNewCycle(row.member, row.info)));
+      return !!(row?.member && isLevelZeroPointFive(row.member));
     }
     function assessmentEmailAllOperationalRows() {
       return assessmentAllActiveMembers().filter(member => !isTechnicalMemberRecord(member)).map(member => {
@@ -26706,17 +26706,61 @@ Per confermare scrivi ELIMINA.`);
           if (rec.sentAt && rec.sentAt.slice(0, 10) === getTodayKey()) recordAssessmentRequestSent(member.id);
           if (previousSent !== rec.sentAt) updated++;
         });
-        if (sends.length || batchUpdated) {
+        // Sync directly from assessment_tokens table — the authoritative server-side state.
+        // Catches members sent by the server routine while the app was closed:
+        // the routine calls upsertRoutineToken (status='sent') on Supabase directly,
+        // but localStorage only learns about it via pmo_cloud_records logs.
+        // If those logs were never imported, the member stays stuck in "Da inviare" forever.
+        let tokenSyncUpdated = 0;
+        try {
+          const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+          const staffForSync = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare stato autovalutazione');
+          const tokenSyncResp = await fetch(
+            `${supabaseUrl}/rest/v1/assessment_tokens?select=member_local_id,status,sent_at,token,status_autovalutazione&status=in.(sent,completed)`,
+            { headers: { apikey: supabaseKey, Authorization: `Bearer ${staffForSync.accessToken}`, Accept: 'application/json' } }
+          );
+          if (tokenSyncResp.ok) {
+            const tokenSyncRows = await tokenSyncResp.json().catch(() => []);
+            (Array.isArray(tokenSyncRows) ? tokenSyncRows : []).forEach(row => {
+              if (!row?.member_local_id) return;
+              const member = findAssessmentMemberByAnyId(cleanCell(row.member_local_id || ''));
+              if (!member) return;
+              const key = String(member.id);
+              const existing = assessmentTokens[key];
+              if (existing?.status === 'sent' || existing?.status === 'completed') return;
+              const rec = existing || {
+                memberId: key,
+                token: cleanCell(row.token || ''),
+                memberName: playerFullName(member),
+                phone: member.phone || '',
+                email: assessmentEmailMemberEmail(member),
+                createdAt: new Date().toISOString(),
+                completedAt: null
+              };
+              rec.status = cleanCell(row.status || 'sent');
+              rec.sentAt = rec.sentAt || cleanCell(row.sent_at || '') || new Date().toISOString();
+              rec.registeredToSupabase = true;
+              rec.registeredAt = rec.registeredAt || cleanCell(row.sent_at || '');
+              if (row.status_autovalutazione) rec.status_autovalutazione = cleanCell(row.status_autovalutazione);
+              if (row.token && !rec.token) rec.token = cleanCell(row.token);
+              assessmentTokens[key] = rec;
+              tokenSyncUpdated++;
+            });
+          }
+        } catch (tokenSyncErr) {
+          console.warn('PMO_ASSESSMENT_TOKEN_SYNC_FAILED', tokenSyncErr?.message || tokenSyncErr);
+        }
+        if (sends.length || batchUpdated || tokenSyncUpdated) {
           save('assessmentTokens', assessmentTokens);
           save('assessmentDailySendLog', assessmentDailySendLog);
           if (!options.silent) {
             displayAssessment();
-            showAlert(`Stato invii automatici aggiornato: ${updated + batchUpdated} novita su ${sends.length} log cloud.`, (updated || batchUpdated) ? 'success' : 'info');
+            showAlert(`Stato invii automatici aggiornato: ${updated + batchUpdated + tokenSyncUpdated} novita su ${sends.length} log cloud.`, (updated || batchUpdated || tokenSyncUpdated) ? 'success' : 'info');
           }
         } else if (!options.silent) {
           showAlert('Nessun invio automatico cloud da importare.', 'info');
         }
-        return { ok:true, imported:updated, batches:batchUpdated, seen:sends.length };
+        return { ok:true, imported:updated, batches:batchUpdated, tokenSyncUpdated, seen:sends.length };
       } catch (err) {
         if (!options.silent) showAlert('Aggiornamento stato invii automatici non riuscito: ' + (err.message || err), 'danger');
         return { ok:false, error:err?.message || err };

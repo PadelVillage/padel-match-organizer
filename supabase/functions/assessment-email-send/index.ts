@@ -783,6 +783,22 @@ async function sendAssessmentEmailCore(admin: any, actor: StaffActor, params: Js
     source: clean(params.source || 'pmo_assessment_email'),
   };
 
+  // Direct server-side state update so the DB is authoritative regardless of
+  // whether the client browser has been opened since the send.
+  if (token) {
+    try {
+      await admin.from('assessment_tokens').upsert({
+        token,
+        member_local_id: memberId,
+        member_name: memberName,
+        status: 'sent',
+        sent_at: sentAt,
+      }, { onConflict: 'token' });
+    } catch (tokenErr) {
+      console.error('ASSESSMENT_TOKEN_STATUS_UPDATE_FAILED', errorText(tokenErr));
+    }
+  }
+
   let logKeys: JsonMap | null = null;
   let logWarning = '';
   try {
@@ -1216,10 +1232,20 @@ async function buildAssessmentRoutineContext(admin: any, body: JsonMap) {
       && clean(payload.sentAt).slice(0, 10) === localDate;
   });
   const remaining = ignoreDailyLimit ? limit : Math.max(0, limit - todaySent.length);
-  const sentByMember = new Set(logs
+  // Primary source: pmo_cloud_records send logs
+  const sentByMemberFromLogs = new Set(logs
     .filter((payload) => payload?.type === 'assessment_email_send' && ['primary-email', 'recall-email', 'third-email'].includes(clean(payload.mode)))
     .map((payload) => clean(payload.memberId))
     .filter(Boolean));
+  // Fallback source: assessment_tokens table — catches cases where saveEmailLog failed silently
+  // (prevents duplicate primary-email sends even when pmo_cloud_records log is missing)
+  const sentByMemberFromTokens = new Set(
+    tokens
+      .filter((row) => ['sent', 'completed'].includes(clean(row.status)))
+      .map((row) => clean(row.member_local_id))
+      .filter(Boolean)
+  );
+  const sentByMember = new Set([...sentByMemberFromLogs, ...sentByMemberFromTokens]);
   const tokenByMember = new Map<string, JsonMap[]>();
   tokens.forEach((token) => {
     const key = clean(token.member_local_id);
