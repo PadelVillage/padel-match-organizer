@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.556</title>
+  <title>Padel Match Organizer v5.557</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6751,7 +6751,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.556';
+    const APP_VERSION = '5.557';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -12920,6 +12920,7 @@ Grazie.`
       if (synced.length) {
         refreshAfterDataImport();
         renderMatchpointRoutinePanel();
+        pmoSaveCloudBackupAfterDataUpdate(synced.join(', ')).catch(err => console.warn('PMO_AUTO_BACKUP_AFTER_CLOUD_SYNC_FAILED', err));
       }
       return synced;
     }
