@@ -88,7 +88,7 @@ begin
     'scheduledLocalTimestamp', v_local_ts,
     'status', 'dispatching',
     'runtimeEnv', 'prod',
-    'appVersion', '5.540',
+    'appVersion', '5.555',
     'firstSendAutomaticFallback', v_action = 'routine-autosend-selected',
     'requiresPreparedBatch', v_action = 'routine-autosend-selected',
     'allowLatestPendingBatch', v_action = 'routine-autosend-selected',
@@ -210,7 +210,7 @@ begin
     'scheduledLocalDate', case when v_action = 'routine-plan' then v_tomorrow_date else v_local_date end,
     'scheduledLocalTime', v_local_time,
     'runtimeEnv', 'prod',
-    'appVersion', '5.540',
+    'appVersion', '5.555',
     'limit', case when v_action = 'routine-followup' then 20 else 10 end
   );
 
@@ -299,11 +299,14 @@ grant execute on function public.pmo_dispatch_assessment_followup_email_prod(tim
 
 do $$
 begin
-  if not exists (select 1 from cron.job where jobname = 'pmo-assessment-followup-dispatcher-prod') then
-    perform cron.schedule(
-      'pmo-assessment-followup-dispatcher-prod',
-      '*/5 * * * *',
-      'select public.pmo_dispatch_assessment_followup_email_prod();'
-    );
+  -- Ri-schedula sempre per garantire che il job usi la versione aggiornata della funzione.
+  if exists (select 1 from cron.job where jobname = 'pmo-assessment-followup-dispatcher-prod') then
+    perform cron.unschedule('pmo-assessment-followup-dispatcher-prod');
   end if;
+
+  perform cron.schedule(
+    'pmo-assessment-followup-dispatcher-prod',
+    '*/5 * * * *',
+    'select public.pmo_dispatch_assessment_followup_email_prod();'
+  );
 end $$;
