@@ -102,6 +102,10 @@ begin
       v_routine_key := 'bookings_2130';
       v_routine_label := 'Prenotazioni future Matchpoint';
       v_function_slug := 'matchpoint-bookings-sync';
+    when '05:45' then
+      v_routine_key := 'cloud_backup';
+      v_routine_label := 'Backup cloud automatico';
+      v_function_slug := 'pmo-cloud-backup-auto';
     else
       return jsonb_build_object(
         'ok', true,
