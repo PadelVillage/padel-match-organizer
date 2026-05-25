@@ -26680,7 +26680,19 @@ Per confermare scrivi ELIMINA.`);
             if (!member) return;
             const key = String(member.id);
             const existing = assessmentTokens[key];
-            if (existing?.status === 'sent' || existing?.status === 'completed') return;
+            if (existing?.status === 'sent' || existing?.status === 'completed') {
+              // Già marcato come inviato in locale — aggiorna status_autovalutazione
+              // se il server ha uno stato più avanzato (es. PRIMO_SOLLECITO dopo follow-up).
+              const _saOrder = ['INVITO_INVIATO','PRIMO_SOLLECITO','ULTIMO_SOLLECITO','GESTIONE_MANUALE','COMPILATO','VALIDATO'];
+              const _serverSa = cleanCell(row.status_autovalutazione || '');
+              const _localSa  = cleanCell(existing.status_autovalutazione || '');
+              if (_serverSa && _serverSa !== _localSa && _saOrder.indexOf(_serverSa) > _saOrder.indexOf(_localSa)) {
+                existing.status_autovalutazione = _serverSa;
+                assessmentTokens[key] = existing;
+                tokenSyncUpdated++;
+              }
+              return;
+            }
             const rec = existing ? { ...existing } : {
               memberId: key,
               token: cleanCell(row.token || ''),
