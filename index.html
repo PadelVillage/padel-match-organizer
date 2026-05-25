@@ -6217,6 +6217,11 @@ body.assessment-public-mode .assessment-public-only-card {
       <!-- ════ WA Inbound Dashboard (solo env TEST) ════ -->
       <div id="waInboundDashboard" class="section" style="display:none;">
 
+        <!-- Banner modalità TEST — iniettato via JS se env=test -->
+        <div id="waTestModeBanner" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fff3cd;border:1px solid #f0a500;border-left:5px solid #e65100;border-radius:8px;font-size:13px;font-weight:800;color:#7a3a00;">
+          ⚠️ MODALITÀ TEST ATTIVA — Tutti i messaggi WhatsApp vengono reindirizzati a <span style="font-family:monospace;">+39 335 7615 855</span> (Maurizio). Nessun cliente reale verrà contattato.
+        </div>
+
         <div class="wa-section-head">
           <div>
             <h3>📲 Messaggi in entrata</h3>
@@ -11509,7 +11514,7 @@ Grazie.`
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`
         },
-        body: JSON.stringify({ action, ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV })
+        body: JSON.stringify({ action, ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV, ...(PMO_IS_TEST_ENV && { test_override_recipient: 'aprea.maurizio@gmail.com' }) })
       });
       const text = await response.text();
       let data = null;
@@ -32058,7 +32063,11 @@ Per confermare scrivi ELIMINA.`);
       return false;
     }
 
-    /* sezione visibile in tutti gli ambienti */
+    /* ── Test-env safety overrides (HARDCODED — non sovrascrivibili) ── */
+    const WA_TEST_OVERRIDE_NUMBER = '+393357615855'; // Maurizio — solo env=test
+    function waTestOverrideNumero(realNumber) {
+      return isTestEnv() ? WA_TEST_OVERRIDE_NUMBER : realNumber;
+    }
 
     /* ── State ── */
     let waSb       = null;
@@ -32496,7 +32505,7 @@ Per confermare scrivi ELIMINA.`);
           body:    JSON.stringify({
             message_id: waActiveMsg.id,
             testo,
-            numero:     waActiveMsg.sender_number || '',
+            numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
             contact_id: waActiveMsg.contact_id   || undefined,
           }),
         });
@@ -32571,7 +32580,7 @@ Per confermare scrivi ELIMINA.`);
           body:    JSON.stringify({
             message_id: waActiveMsg.id,
             testo:      txt,
-            numero:     waActiveMsg.sender_number || '',
+            numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
             contact_id: waActiveMsg.contact_id   || undefined,
           }),
         });
@@ -32625,6 +32634,9 @@ Per confermare scrivi ELIMINA.`);
       waInited = true;
       const dashboard = document.getElementById('waInboundDashboard');
       if (dashboard) dashboard.style.display = 'block';
+      /* Mostra banner di sicurezza se siamo in env=test */
+      const testBanner = document.getElementById('waTestModeBanner');
+      if (testBanner) testBanner.style.display = isTestEnv() ? 'block' : 'none';
       try {
         waSb = supabase.createClient(WA_URL, WA_KEY);
         waLoadMessages();
