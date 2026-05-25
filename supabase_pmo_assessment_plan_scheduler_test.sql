@@ -85,16 +85,13 @@ declare
 begin
 
   -- ── Tabella orari dispatcher TEST ──────────────────────────────────────────
-  -- Ordine corretto: plan (05:45) crea batch pending → autosend (06:30) invia senza approvazione.
+  -- In TEST: solo routine-plan (crea batch pending) — invio automatico disabilitato.
+  -- L'invio va eseguito manualmente dall'UI per evitare invii massivi in ambiente di test.
   case v_local_time
     when '05:45' then
       v_routine_key   := 'daily_plan_0545';
       v_routine_label := 'Pre-pianificazione lotto Autovalutazione';
       v_action        := 'routine-plan';
-    when '06:30' then
-      v_routine_key   := 'daily_autosend_0630';
-      v_routine_label := 'Invio automatico lotto Autovalutazione';
-      v_action        := 'routine-autosend-selected';
     when '06:10' then
       v_routine_key   := 'check_0610';
       v_routine_label := 'Controllo risposte autovalutazione';
