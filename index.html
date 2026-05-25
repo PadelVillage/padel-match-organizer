@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.551</title>
+  <title>Padel Match Organizer v5.552</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6770,7 +6770,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.551';
+    const APP_VERSION = '5.552';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -32464,10 +32464,17 @@ Per confermare scrivi ELIMINA.`);
       }
     };
 
-    /** Chiama POST /webhook/approve-suggestion → salva variante scelta + avvia apprendimento profilo */
+    /** Chiama POST /webhook/approve-suggestion → salva variante scelta + avvia apprendimento profilo,
+     *  poi POST /webhook/send → invia il testo al numero WhatsApp del contatto (invio MANUALE staff). */
     window.waScelgiVariante = async function(indice, contactId) {
       if (!waActiveMsg) return;
+
+      /* Blocca tutti i pulsanti Scegli per prevenire doppio click */
+      const scegliButtons = document.querySelectorAll('.wa-variant-scegli');
+      scegliButtons.forEach(b => { b.disabled = true; b.textContent = '⏳ Invio…'; });
+
       try {
+        /* Step 1 — approva variante sul backend (aggiorna profilo IA) */
         const body = { message_id: waActiveMsg.id, variante_indice: indice };
         if (contactId) body.contact_id = contactId;
         const resp = await fetch(`${SHADOW_URL}/webhook/approve-suggestion`, {
@@ -32477,21 +32484,47 @@ Per confermare scrivi ELIMINA.`);
         });
         const data = await resp.json();
         if (!resp.ok || !data.success) throw new Error(data.errore || `HTTP ${resp.status}`);
-        /* Aggiorna stato locale */
-        waActiveMsg.variante_scelta  = indice;
-        waActiveMsg.stato_revisione  = 'approvato';
+
+        /* Step 2 — recupera testo variante e invia via WhatsApp */
         const chosenV = (waActiveMsg.varianti_ia || []).find(v => v.indice === indice);
+        const testo = chosenV?.testo || '';
+        if (!testo) throw new Error('Testo variante vuoto, impossibile inviare.');
+
+        const sendResp = await fetch(`${SHADOW_URL}/webhook/send`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SHADOW_KEY}` },
+          body:    JSON.stringify({
+            message_id: waActiveMsg.id,
+            testo,
+            numero:     waActiveMsg.sender_number || '',
+            contact_id: waActiveMsg.contact_id   || undefined,
+          }),
+        });
+        const sendData = await sendResp.json();
+        if (!sendResp.ok || !sendData.success) throw new Error(sendData.errore || `HTTP ${sendResp.status}`);
+
+        /* Step 3 — aggiorna stato locale */
+        waActiveMsg.variante_scelta        = indice;
+        waActiveMsg.stato_revisione        = 'approvato';
+        waActiveMsg.status                 = 'Risposto';
+        waActiveMsg.risposta_suggerita_ia  = testo;
         if (chosenV) waActiveMsg.risposta_suggerita_ia = chosenV.testo;
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
         if (i !== -1) {
-          waMsgs[i].variante_scelta = indice;
-          waMsgs[i].stato_revisione = 'approvato';
+          waMsgs[i].variante_scelta       = indice;
+          waMsgs[i].stato_revisione       = 'approvato';
+          waMsgs[i].status                = 'Risposto';
           if (chosenV) waMsgs[i].risposta_suggerita_ia = chosenV.testo;
         }
         waRenderDetail(waActiveMsg);
-        waToast('✅ Variante scelta · profilo in aggiornamento…', 'ok');
+        waApplyFilters();
+        waUpdateStats();
+        const etichetta = sendData.inviato_meta ? '📤 Inviato via WhatsApp' : '✅ Risposta registrata';
+        waToast(`${etichetta} · variante ${indice} selezionata`, 'ok');
       } catch (err) {
-        waToast('Errore selezione: ' + (err.message || err), 'err');
+        waToast('Errore invio: ' + (err.message || err), 'err');
+        /* Ripristina pulsanti in caso di errore */
+        scegliButtons.forEach((b, idx) => { b.disabled = false; b.textContent = '✓ Scegli'; });
       }
     };
 
