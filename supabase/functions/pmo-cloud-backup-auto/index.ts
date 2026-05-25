@@ -15,6 +15,17 @@ const META_RECORD_TYPE = 'app_setting';
 const META_LOCAL_KEY = 'cloud_backup_latest';
 const PAGE_SIZE = 1000;
 
+// App settings stored as app_setting records in pmo_cloud_records
+const APP_SETTING_KEYS = [
+  'potentialSlotSchedule',
+  'dailyAssistantState',
+  'assessmentSettings',
+  'assessmentPausedTokens',
+  'assessmentCommunicationTemplates',
+  'whatsappOpenSettings',
+  'postMatchFeedbackSettings',
+];
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
     status,
@@ -52,7 +63,8 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function readAllRecords(admin: any, recordType: string): Promise<any[]> {
+// Read all records of a given type from pmo_cloud_records (with pagination)
+async function readCloudRecords(admin: any, recordType: string): Promise<any[]> {
   const records: any[] = [];
   for (let from = 0, page = 0; page < 100; page++, from += PAGE_SIZE) {
     const { data, error } = await admin
@@ -68,6 +80,70 @@ async function readAllRecords(admin: any, recordType: string): Promise<any[]> {
     if (page_data.length < PAGE_SIZE) break;
   }
   return records;
+}
+
+// Read app_setting records and return as {key: value} map
+async function readAppSettings(admin: any): Promise<JsonMap> {
+  const result: JsonMap = {};
+  const { data, error } = await admin
+    .from('pmo_cloud_records')
+    .select('local_key,payload')
+    .eq('record_type', 'app_setting')
+    .eq('deleted', false)
+    .in('local_key', APP_SETTING_KEYS);
+  if (error) throw new Error(`READ_FAILED_APP_SETTINGS: ${errorText(error)}`);
+  const rows = Array.isArray(data) ? data : [];
+  for (const row of rows) {
+    const key = clean(row.local_key);
+    if (key && row.payload?.value !== undefined) {
+      result[key] = row.payload.value;
+    }
+  }
+  return result;
+}
+
+// Read assessment_tokens table
+async function readAssessmentTokens(admin: any): Promise<JsonMap> {
+  const tokens: JsonMap = {};
+  const { data, error } = await admin
+    .from('assessment_tokens')
+    .select('token,member_local_id,member_name,phone_last4,status,status_autovalutazione,created_at,sent_at,completed_at,registered_at');
+  if (error) {
+    console.warn('READ_FAILED_ASSESSMENT_TOKENS:', errorText(error));
+    return tokens;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  for (const item of rows) {
+    const key = clean(item.member_local_id);
+    if (!key) continue;
+    tokens[key] = {
+      memberId: key,
+      token: item.token,
+      memberName: item.member_name,
+      phone: item.phone_last4 || '',
+      email: '',
+      status: item.status || 'created',
+      status_autovalutazione: item.status_autovalutazione || 'INVITO_INVIATO',
+      createdAt: item.created_at || null,
+      sentAt: item.sent_at || null,
+      completedAt: item.completed_at || null,
+      registeredToSupabase: true,
+      registeredAt: item.registered_at || null,
+    };
+  }
+  return tokens;
+}
+
+// Read self_assessments table
+async function readAssessmentResponses(admin: any): Promise<any[]> {
+  const { data, error } = await admin
+    .from('self_assessments')
+    .select('*');
+  if (error) {
+    console.warn('READ_FAILED_SELF_ASSESSMENTS:', errorText(error));
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
 }
 
 async function ensureBucket(admin: any) {
@@ -102,18 +178,62 @@ Deno.serve(async (req) => {
     const savedAt = new Date().toISOString();
     const environment = supabaseUrl.includes('qqbfphyslczzkxoncgex') ? 'prod' : 'test';
 
-    // Read all Matchpoint data stored in pmo_cloud_records
-    const [memberRecords, bookingRecords, occupancyRecords, historyRecords] = await Promise.all([
-      readAllRecords(admin, 'member'),
-      readAllRecords(admin, 'booking'),
-      readAllRecords(admin, 'booking_occupancy'),
-      readAllRecords(admin, 'booking_history'),
+    // Read all data in parallel
+    const [
+      memberRecords,
+      bookingRecords,
+      occupancyRecords,
+      historyRecords,
+      fillSlotRequestRecords,
+      guidedInviteRecords,
+      whatsappHistoryRecords,
+      whatsappTemplateRecords,
+      matchpointDataRecords,
+      appSettings,
+      assessmentTokens,
+      assessmentResponses,
+    ] = await Promise.all([
+      readCloudRecords(admin, 'member'),
+      readCloudRecords(admin, 'booking'),
+      readCloudRecords(admin, 'booking_occupancy'),
+      readCloudRecords(admin, 'booking_history'),
+      readCloudRecords(admin, 'fill_slot_player_request'),
+      readCloudRecords(admin, 'guided_invite_session'),
+      readCloudRecords(admin, 'whatsapp_message_history'),
+      readCloudRecords(admin, 'whatsapp_message_template'),
+      readCloudRecords(admin, 'matchpoint_data'),
+      readAppSettings(admin),
+      readAssessmentTokens(admin),
+      readAssessmentResponses(admin),
     ]);
 
+    // Reconstruct arrays / objects matching the browser backup format
     const giocatori = memberRecords.map((r) => r.payload).filter(Boolean);
     const prenotazioni = bookingRecords.map((r) => r.payload).filter(Boolean);
     const prenotazioniOccupazione = occupancyRecords.map((r) => r.payload).filter(Boolean);
     const storicoPrenotazioni = historyRecords.map((r) => r.payload).filter(Boolean);
+    const fillSlotPlayerRequests = fillSlotRequestRecords.map((r) => r.payload).filter(Boolean);
+
+    // guidedInviteSessions: object {key: payload}
+    const guidedInviteSessions: JsonMap = {};
+    for (const r of guidedInviteRecords) {
+      if (r.local_key && r.payload) guidedInviteSessions[r.local_key] = r.payload;
+    }
+
+    // whatsappMessageHistory: object {key: items}
+    const whatsappMessageHistory: JsonMap = {};
+    for (const r of whatsappHistoryRecords) {
+      if (r.local_key && r.payload) {
+        whatsappMessageHistory[r.local_key] = r.payload.items ?? r.payload;
+      }
+    }
+
+    // whatsappMessageTemplates: array
+    const whatsappMessageTemplates = whatsappTemplateRecords.map((r) => r.payload).filter(Boolean);
+
+    // matchpointData: single record with local_key='main'
+    const matchpointDataRecord = matchpointDataRecords.find((r) => r.local_key === 'main');
+    const matchpointData = matchpointDataRecord?.payload ?? null;
 
     const payload: JsonMap = {
       app: 'Padel Match Organizer',
@@ -121,11 +241,31 @@ Deno.serve(async (req) => {
       environment,
       createdAt: savedAt,
       source: 'pmo_cloud_backup_auto',
+      // Matchpoint data
       giocatori,
       memberIdCounter: giocatori.length,
       prenotazioni,
       prenotazioniOccupazione,
       storicoPrenotazioni,
+      matchpointData,
+      // Assessment
+      assessmentTokens,
+      assessmentResponses,
+      assessmentSettings: appSettings['assessmentSettings'] ?? null,
+      assessmentPausedTokens: appSettings['assessmentPausedTokens'] ?? null,
+      assessmentCommunicationTemplates: appSettings['assessmentCommunicationTemplates'] ?? null,
+      // WhatsApp
+      whatsappMessageHistory,
+      whatsappMessageTemplates,
+      whatsappOpenSettings: appSettings['whatsappOpenSettings'] ?? null,
+      // Fill slots
+      fillSlotPlayerRequests,
+      // Guided invite sessions
+      guidedInviteSessions,
+      // Other settings
+      potentialSlotSchedule: appSettings['potentialSlotSchedule'] ?? null,
+      dailyAssistantState: appSettings['dailyAssistantState'] ?? null,
+      postMatchFeedbackSettings: appSettings['postMatchFeedbackSettings'] ?? null,
     };
 
     const text = JSON.stringify(payload, null, 2);
@@ -140,6 +280,19 @@ Deno.serve(async (req) => {
       .upload(BACKUP_PATH, file, { upsert: true, contentType: 'application/json', cacheControl: '0' });
     if (uploadError) throw uploadError;
 
+    const counts = {
+      giocatori: giocatori.length,
+      prenotazioni: prenotazioni.length,
+      occupazione: prenotazioniOccupazione.length,
+      storico: storicoPrenotazioni.length,
+      assessmentTokens: Object.keys(assessmentTokens).length,
+      assessmentResponses: assessmentResponses.length,
+      whatsappHistory: Object.keys(whatsappMessageHistory).length,
+      whatsappTemplates: whatsappMessageTemplates.length,
+      fillSlotRequests: fillSlotPlayerRequests.length,
+      guidedInviteSessions: Object.keys(guidedInviteSessions).length,
+    };
+
     const metadata: JsonMap = {
       id: META_LOCAL_KEY,
       key: META_LOCAL_KEY,
@@ -153,12 +306,7 @@ Deno.serve(async (req) => {
       environment,
       size: bytes.byteLength,
       sha256,
-      counts: {
-        giocatori: giocatori.length,
-        prenotazioni: prenotazioni.length,
-        occupazione: prenotazioniOccupazione.length,
-        storico: storicoPrenotazioni.length,
-      },
+      counts,
       actorEmail: `system@auto.${environment}.padel-match-organizer`,
     };
 
@@ -178,17 +326,12 @@ Deno.serve(async (req) => {
       event: 'pmo_cloud_backup_auto_ok',
       environment,
       savedAt,
-      counts: metadata.counts,
+      counts,
       sizeBytes: bytes.byteLength,
     }));
 
-    return json({
-      ok: true,
-      savedAt,
-      environment,
-      counts: metadata.counts,
-      sizeBytes: bytes.byteLength,
-    });
+    return json({ ok: true, savedAt, environment, counts, sizeBytes: bytes.byteLength });
+
   } catch (err) {
     const message = errorText(err);
     console.error(JSON.stringify({ event: 'pmo_cloud_backup_auto_error', message }));
