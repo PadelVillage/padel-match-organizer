@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.553</title>
+  <title>Padel Match Organizer v5.554</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -5113,9 +5113,10 @@ body.assessment-public-mode .assessment-public-only-card {
 
   <!-- ── WA Inbound Dashboard styles ── -->
   <style>
-    /* Layout */
-    .wa-inbound-grid { display:grid; grid-template-columns:minmax(260px,.9fr) minmax(320px,1.1fr); gap:14px; align-items:start; }
-    @media (max-width:900px) { .wa-inbound-grid { grid-template-columns:1fr; } }
+    /* Layout — colonne senza minimi rigidi per evitare overflow sul contenitore */
+    .wa-inbound-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:16px; align-items:start; }
+    .wa-inbound-grid > * { min-width:0; }                /* previene overflow delle celle */
+    @media (max-width:960px) { .wa-inbound-grid { grid-template-columns:1fr; } }
 
     /* Section head */
     .wa-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
@@ -5132,8 +5133,8 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-stat-card .wa-stat-val { font-size:22px; font-weight:900; color:var(--primary); line-height:1; }
     .wa-stat-card .wa-stat-lbl { font-size:11px; color:#667085; margin-top:2px; }
 
-    /* Message list */
-    .wa-msg-list { display:grid; gap:7px; }
+    /* Message list — altezza max con scroll interno */
+    .wa-msg-list { display:grid; gap:7px; max-height:62vh; min-height:120px; overflow-y:auto; padding-right:3px; scrollbar-width:thin; }
     .wa-msg-row { background:#fff; border:1px solid #dfe8f3; border-left:4px solid var(--primary); border-radius:8px; padding:11px 13px; cursor:pointer; transition:background .12s, box-shadow .12s; }
     .wa-msg-row:hover, .wa-msg-row.active { background:#f3f7ff; border-color:#b9cbea; box-shadow:0 2px 8px rgba(31,71,136,.09); }
     .wa-msg-row-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:4px; overflow:hidden; }
@@ -5144,7 +5145,9 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-msg-preview { font-size:12px; color:#667085; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .wa-msg-badges { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
 
-    /* Detail panel */
+    /* Detail panel — scroll interno, sticky, separatore visivo */
+    #waDetailPanel { max-height:calc(100vh - 220px); overflow-y:auto; padding-right:3px; scrollbar-width:thin; border-left:1px solid #e8ecf3; padding-left:14px; }
+    @media (max-width:960px) { #waDetailPanel { border-left:none; padding-left:0; max-height:none; overflow-y:visible; } }
     .wa-detail-placeholder { text-align:center; padding:36px 16px; color:#9e9e9e; font-size:13px; }
     .wa-detail-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
     .wa-detail-head h4 { color:var(--primary); font-size:15px; margin:0 0 2px; }
@@ -6775,7 +6778,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.553';
+    const APP_VERSION = '5.554';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
