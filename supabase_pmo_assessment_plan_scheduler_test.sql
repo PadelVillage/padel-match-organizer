@@ -85,15 +85,16 @@ declare
 begin
 
   -- ── Tabella orari dispatcher TEST ──────────────────────────────────────────
+  -- Ordine corretto: plan (05:45) crea batch pending → autosend (06:30) invia senza approvazione.
   case v_local_time
-    when '06:30' then
-      v_routine_key   := 'daily_plan_0630';
+    when '05:45' then
+      v_routine_key   := 'daily_plan_0545';
       v_routine_label := 'Pre-pianificazione lotto Autovalutazione';
       v_action        := 'routine-plan';
-    when '05:45' then
-      v_routine_key   := 'daily_send_0545';
-      v_routine_label := 'Invio autovalutazione mattutino';
-      v_action        := 'routine-send';
+    when '06:30' then
+      v_routine_key   := 'daily_autosend_0630';
+      v_routine_label := 'Invio automatico lotto Autovalutazione';
+      v_action        := 'routine-autosend-selected';
     when '06:10' then
       v_routine_key   := 'check_0610';
       v_routine_label := 'Controllo risposte autovalutazione';
@@ -140,7 +141,7 @@ begin
     'dailyLimit',           10,
     'status',               'dispatching',
     'runtimeEnv',           'test',
-    'appVersion',           '5.516',
+    'appVersion',           '5.555',
     'createdAt',            now()
   );
 
