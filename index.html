@@ -27651,7 +27651,7 @@ Per confermare scrivi ELIMINA.`);
         const noPhone = !row.member.phone;
         const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         const isLvl05 = isLevelZeroPointFive(row.member);
-        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        const isCandidate = isLvl05;
         
         if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
           tokenRec = {
@@ -27702,7 +27702,7 @@ Per confermare scrivi ELIMINA.`);
         const noPhone = !row.member.phone;
         const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         const isLvl05 = isLevelZeroPointFive(row.member);
-        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        const isCandidate = isLvl05;
         
         if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
           tokenRec = {
@@ -28532,7 +28532,7 @@ Per confermare scrivi ELIMINA.`);
           const noPhone = !row.member.phone;
           const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
           const isLvl05 = isLevelZeroPointFive(row.member);
-          const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+          const isCandidate = isLvl05;
           
           if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
             tokenRec = {
@@ -29237,7 +29237,7 @@ Per confermare scrivi ELIMINA.`);
         const noPhone = !row.member.phone;
         const bounced = tokenRec ? (cleanCell(tokenRec.emailStatus || '') === 'bounced' || !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '')) : !!cleanCell(row.member.selfAssessmentEmailBouncedAt || '');
         const isLvl05 = isLevelZeroPointFive(row.member);
-        const isCandidate = isLvl05 || assessmentEmailIsExplicitNewCycle(row.member, row.info);
+        const isCandidate = isLvl05;
         
         if (!tokenRec?.token && isCandidate && (noEmail || noPhone || bounced)) {
           tokenRec = {
@@ -29834,7 +29834,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       const cycleInfo = assessmentRecordFor(member);
-      if (!isLevelZeroPointFive(member) && !assessmentEmailIsExplicitNewCycle(member, cycleInfo)) return showAlert('Il socio non ha livello 0.5. Per inviare una nuova valutazione, avviala prima dalla scheda socio.', 'warning');
+      if (!isLevelZeroPointFive(member)) return showAlert('Il socio non ha livello 0.5. Invio email autovalutazione consentito solo a soci con livello 0.5.', 'warning');
       if (!assessmentEmailHasValidEmail(member)) return showAlert('Email del socio mancante o non valida. Apri prima la scheda socio e correggi i dati.', 'warning');
       const currentRec = getAssessmentTokenRecord(member.id);
       if ((templateKey === 'recall-email' || templateKey === 'third-email') && cleanCell(currentRec?.emailReplyAt || member.selfAssessmentEmailReplyAt || '')) {
