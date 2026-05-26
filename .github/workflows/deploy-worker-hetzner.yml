@@ -1,0 +1,83 @@
+name: Deploy Worker su Hetzner
+
+on:
+  push:
+    branches: [test-preview, main]
+    paths:
+      - 'tools/matchpoint-browser-worker/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Override via repo Settings → Variables, se i default non corrispondono.
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/padel-match-organizer' }}
+      DEPLOY_SERVICE: ${{ vars.HETZNER_WORKER_SERVICE || 'matchpoint-worker' }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+    steps:
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Diagnosi preliminare (path/service)
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
+            set -e
+            echo "=== uname ==="
+            uname -a
+            echo "=== ls $DEPLOY_PATH ==="
+            ls -la "${DEPLOY_PATH:-/opt/padel-match-organizer}" 2>/dev/null || echo "PATH NON ESISTE: ${DEPLOY_PATH}"
+            echo "=== ricerca worker fra /opt /home /srv /root ==="
+            find /opt /home /srv /root -maxdepth 4 -type d -name "matchpoint-browser-worker" 2>/dev/null | head -5
+            echo "=== systemd unit per matchpoint ==="
+            systemctl list-units --type=service --all | grep -i matchpoint || echo "Nessuna unit matchpoint trovata"
+          EOF
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+
+      - name: Pull + restart worker
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            DEPLOY_PATH="$DEPLOY_PATH" \
+            DEPLOY_BRANCH="$DEPLOY_BRANCH" \
+            DEPLOY_SERVICE="$DEPLOY_SERVICE" \
+            bash -s <<'EOF'
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            echo "→ git fetch + reset su origin/$DEPLOY_BRANCH"
+            git fetch --depth=1 origin "$DEPLOY_BRANCH"
+            git reset --hard "origin/$DEPLOY_BRANCH"
+            git log -1 --oneline
+            cd tools/matchpoint-browser-worker
+            echo "→ npm ci (production)"
+            npm ci --omit=dev
+            echo "→ systemctl restart $DEPLOY_SERVICE"
+            sudo systemctl restart "$DEPLOY_SERVICE" || systemctl restart "$DEPLOY_SERVICE"
+            echo "→ status servizio"
+            systemctl is-active "$DEPLOY_SERVICE"
+          EOF
+
+      - name: Health check
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            if curl -sf --max-time 5 "http://$DEPLOY_HOST:8787/health" > /tmp/health.json; then
+              echo "Worker risponde:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Attempt $i fallito, retry in 3s..."
+            sleep 3
+          done
+          echo "::error::Worker non risponde su /health dopo 5 tentativi"
+          exit 1
