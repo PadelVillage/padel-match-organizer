@@ -1,0 +1,70 @@
+name: Deploy Edge Functions (PROD)
+
+# Deploy automatico delle Edge Function su Supabase PROD al push su main.
+# Speculare al workflow TEST (deploy-edge-functions-test.yml) ma punta al
+# project ref di produzione. Promozione esplicita = il merge in main.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Nome funzione da deployare (vuoto = tutte quelle toccate)'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: qqbfphyslczzkxoncgex
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Determina funzioni da deployare
+        id: changed
+        run: |
+          set -euo pipefail
+          MANUAL_FN="${{ github.event.inputs.function }}"
+          if [ -n "$MANUAL_FN" ]; then
+            echo "Lista forzata da workflow_dispatch: $MANUAL_FN"
+            echo "functions=$MANUAL_FN" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'supabase/functions/**' \
+            | awk -F/ '$1=="supabase" && $2=="functions" && $3 !~ /^_/ {print $3}' \
+            | sort -u | tr '\n' ' ')
+          echo "Funzioni modificate: $CHANGED"
+          echo "functions=$CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        if: steps.changed.outputs.functions != ''
+        run: |
+          set -euo pipefail
+          for fn in ${{ steps.changed.outputs.functions }}; do
+            if [ ! -d "supabase/functions/$fn" ]; then
+              echo "::warning::Cartella supabase/functions/$fn non trovata, salto"
+              continue
+            fi
+            echo "::group::Deploy $fn → PROD ($SUPABASE_PROJECT_REF)"
+            npx supabase@latest functions deploy "$fn" \
+              --project-ref "$SUPABASE_PROJECT_REF" \
+              --no-verify-jwt \
+              --use-api
+            echo "::endgroup::"
+          done
+
+      - name: Nessuna funzione da deployare
+        if: steps.changed.outputs.functions == ''
+        run: echo "Nessuna funzione Edge modificata in questo push."
