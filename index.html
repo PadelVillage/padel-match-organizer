@@ -27056,6 +27056,33 @@ Per confermare scrivi ELIMINA.`);
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000948';
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
+
+    function assessmentInjectTestValidareEntry() {
+      if (!PMO_IS_TEST_ENV) return;
+      const memberId = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
+      const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, memberId));
+      if (!member) { showAlert('❌ Membro test PMO-000948 non trovato', 'danger'); return; }
+      const testToken = 'PMO-TEST-VALIDARE-FAKE';
+      const existingIdx = assessmentResponses.findIndex(r => r.token === testToken);
+      if (existingIdx >= 0) assessmentResponses.splice(existingIdx, 1);
+      if (assessmentTokens[memberId]?.token === testToken) delete assessmentTokens[memberId];
+      assessmentTokens[memberId] = {
+        memberId, token: testToken,
+        memberName: playerFullName(member),
+        phone: member.phone || '', email: member.email || '',
+        status: 'completed', source: 'test-fake',
+        createdAt: new Date().toISOString(),
+        sentAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      };
+      importAssessmentResponses([{
+        token: testToken,
+        declared_level: '2.5', calculated_level: '3.0',
+        consistency_status: 'low', staff_status: 'review',
+        submitted_at: new Date().toISOString()
+      }], { silent: true });
+    }
+
     const ASSESSMENT_PROCESS_DEFAULT_FILTER = 'queue';
     window.assessmentProcessFilter = window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER;
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
@@ -32676,6 +32703,14 @@ Per confermare scrivi ELIMINA.`);
     /* Init quando la pagina è pronta */
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waInit);
     else waInit();
+
+    /* TEST: ?testValidare=1 → inietta risposta fake per PMO-000948 in Da validare */
+    if (PMO_IS_TEST_ENV && new URLSearchParams(window.location.search).get('testValidare') === '1') {
+      setTimeout(() => {
+        assessmentInjectTestValidareEntry();
+        setAssessmentProcessFilter('validare');
+      }, 1500);
+    }
 
     // ── TEST ENV — Assistente AI Desktop Layout ───────────────────────
     // Solo in ambiente test + schermo ≥ 900px:
