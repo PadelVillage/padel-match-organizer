@@ -28420,7 +28420,10 @@ Per confermare scrivi ELIMINA.`);
       
       const calcLevel = response?.calculated_level || response?.declared_level || member.level || '-';
       const declaredLevel = response?.declared_level || '-';
-      const auto = assessmentEmailIsAutoApplicable(response);
+      const isTestReview = PMO_IS_TEST_ENV &&
+        new URLSearchParams(window.location.search).get('testValidare') === '1' &&
+        assessmentMemberMatchesAnyId(member, ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID);
+      const auto = !isTestReview && assessmentEmailIsAutoApplicable(response);
       
       // Calculate level gap with sign
       const declaredVal = parseFloat(String(declaredLevel).replace(',', '.'));
