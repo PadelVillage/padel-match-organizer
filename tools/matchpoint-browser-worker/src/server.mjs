@@ -2288,10 +2288,56 @@ async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
     diagnostic.navigationAttempts.push({ action: 'schedule_row_not_opened' });
     // Comunque torna true: il parser può tentare di leggere la lista nuda
     // (alcuni layout potrebbero mostrare gli orari inline).
+  } else {
+    // L'editor della scheda si carica in un iframe del modal. `networkidle`
+    // sulla pagina principale può tornare verde prima che l'iframe popoli,
+    // lasciando il parser su un about:blank.
+    await waitForSlotScheduleReady(page, diagnostic);
   }
   diagnostic.slotScheduleUrl = page.url();
   diagnostic.slotScheduleTitle = await page.title().catch(() => '');
   return true;
+}
+
+async function waitForSlotScheduleReady(page, diagnostic) {
+  diagnostic.steps.push('slot_schedule_wait_iframe');
+  const startedAt = Date.now();
+  const deadlineMs = 30000;
+  const pollIntervalMs = 500;
+  const dayHintRe = /lune[dt]i|martedì|mercoledì|giovedì|venerdì|sabato|domenica/i;
+  const slotHintRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+  let lastSummary = null;
+
+  while (Date.now() - startedAt < deadlineMs) {
+    // Check every frame for day names + at least one slot range
+    for (const frame of page.frames()) {
+      const url = frame.url();
+      if (!url || url === 'about:blank') continue;
+      const summary = await frame.evaluate(() => ({
+        url: location.href,
+        readyState: document.readyState,
+        bodyLen: document.body?.innerText?.length || 0,
+        bodyText: (document.body?.innerText || '').slice(0, 4000),
+      })).catch(() => null);
+      if (!summary) continue;
+      const hasDay = dayHintRe.test(summary.bodyText);
+      const hasSlot = slotHintRe.test(summary.bodyText);
+      lastSummary = { url: summary.url, readyState: summary.readyState, bodyLen: summary.bodyLen, hasDay, hasSlot };
+      if (hasDay && hasSlot && summary.readyState === 'complete') {
+        // Stable: also wait for networkidle within the frame
+        await frame.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        diagnostic.slotScheduleFrameUrl = summary.url;
+        diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+        diagnostic.slotScheduleWaitOutcome = 'frame_ready';
+        return true;
+      }
+    }
+    await page.waitForTimeout(pollIntervalMs);
+  }
+  diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+  diagnostic.slotScheduleWaitOutcome = 'timeout';
+  diagnostic.slotScheduleLastFrameSummary = lastSummary;
+  return false;
 }
 
 
