@@ -2465,7 +2465,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
     const result = await (async () => {
       const target = source.kind === 'page' ? page : page.frames()[source.index];
       if (!target) return null;
-      return target.evaluate((dayVariants, canonicalOrder) => {
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
         const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
         const normalizeDay = (raw) => {
           const key = String(raw)
@@ -2578,7 +2578,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
           slotElementCount,
           unmatched,
         };
-      }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch((err) => ({ reason: 'evaluate_error', error: String(err?.message || err) }));
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch((err) => ({ reason: 'evaluate_error', error: String(err?.message || err) }));
     })();
 
     if (result?.sched) {
@@ -2616,7 +2616,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
     const result = await (async () => {
       const target = source.kind === 'page' ? page : page.frames()[source.index];
       if (!target) return null;
-      return target.evaluate((dayVariants, canonicalOrder) => {
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
         const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
         const normalizeDay = (raw) => {
           const key = String(raw)
@@ -2728,7 +2728,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
           if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers', trace };
         }
         return { trace };
-      }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch(() => null);
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch(() => null);
     })();
 
     if (result?.trace) {
