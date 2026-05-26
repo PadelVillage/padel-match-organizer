@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.574</title>
+  <title>Padel Match Organizer v5.578</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6621,17 +6621,6 @@ body.assessment-public-mode .assessment-public-only-card {
                         <div class="potential-slot-panel">
                           <button class="btn-primary" onclick="syncSlotScheduleFromMatchpoint(this)" id="syncSlotScheduleBtn">Sincronizza da Matchpoint</button>
                           <div id="syncSlotScheduleStatus" class="potential-slot-import-status" hidden></div>
-                          <div class="matchpoint-data-hint">Legge la griglia direttamente da Matchpoint (Sistema → Campi → Orari). Richiede worker browser attivo e credenziali configurate.</div>
-                          <label for="potentialSlotScheduleImportFile" style="margin-top:10px">Importa griglia da file</label>
-                          <input type="file" id="potentialSlotScheduleImportFile" accept=".csv,.tsv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.gif,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*" onchange="importPotentialSlotScheduleFile(this.files && this.files[0]); this.value=''" />
-                          <div id="potentialSlotImportStatus" class="potential-slot-import-status" hidden></div>
-                          <div class="matchpoint-data-hint">
-                            Accetta CSV, TSV, TXT, XLSX e immagini (PNG/JPG/screenshot). Tre formati riconosciuti automaticamente:<br>
-                            • <strong>Immagine</strong>: screenshot della griglia Matchpoint. L'app la invia a Claude (vision OCR) e ti mostra il diff.<br>
-                            • <strong>Tabella wide</strong>: prima riga con i giorni (Lunedì…Domenica) e ogni cella contiene gli slot in formato <code>HH:MM-HH:MM</code>.<br>
-                            • <strong>Una riga per giorno</strong>: <code>Lunedì, 10:30-12:00, 12:00-13:30, 18:00-19:30</code><br>
-                            Prima di applicare ti mostro sempre il diff con la griglia attuale.
-                          </div>
                         </div>
                         <div class="potential-slot-panel">
                           <div class="potential-slot-editor">
