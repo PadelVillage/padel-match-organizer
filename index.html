@@ -6754,7 +6754,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.559';
+    const APP_VERSION = '5.566';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -27059,24 +27059,52 @@ Per confermare scrivi ELIMINA.`);
 
     function assessmentInjectTestValidareEntry() {
       if (!PMO_IS_TEST_ENV) return;
-      const memberId = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
-      const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, memberId));
+      const pmoCode = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
+      const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, pmoCode));
       if (!member) { showAlert('❌ Membro test PMO-000948 non trovato', 'danger'); return; }
+      const memberKey = String(member.id);
       const testToken = 'PMO-TEST-VALIDARE-FAKE';
-      const existingIdx = assessmentResponses.findIndex(r => r.token === testToken);
+      // assessmentEmailAllOperationalRows filtra per level 0.5: forziamo il livello
+      member.level = '0.5';
+      // Resettiamo lo stato applied del socio così la risposta test non viene marcata come già applicata
+      member.selfAssessmentToken = '';
+      member.selfAssessmentDate = '';
+      member.selfAssessmentStaffStatus = '';
+      member.selfAssessmentMatchpointToken = '';
+      member.selfAssessmentMatchpointPendingAt = '';
+      member.selfAssessmentMatchpointDoneAt = '';
+      member.selfAssessmentMatchpointDoneBy = '';
+      save('giocatori', giocatori);
+      // Pulizia eventuali entry residue (anche sotto la chiave sbagliata usata da versioni precedenti)
+      if (assessmentTokens[pmoCode]) delete assessmentTokens[pmoCode];
+      if (assessmentTokens[memberKey]) delete assessmentTokens[memberKey];
+      const existingIdx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(testToken));
       if (existingIdx >= 0) assessmentResponses.splice(existingIdx, 1);
-      if (assessmentTokens[memberId]?.token === testToken) delete assessmentTokens[memberId];
-      assessmentTokens[memberId] = {
-        memberId, token: testToken,
+      // Token deve essere salvato sotto String(member.id) per essere letto da getAssessmentTokenRecord
+      assessmentTokens[memberKey] = {
+        memberId: memberKey,
+        token: testToken,
         memberName: playerFullName(member),
-        phone: member.phone || '', email: member.email || '',
-        status: 'completed', source: 'test-fake',
+        phone: member.phone || '',
+        email: member.email || '',
+        status: 'completed',
+        source: 'test-fake',
+        registeredToSupabase: true,
         createdAt: new Date().toISOString(),
         sentAt: new Date().toISOString(),
         completedAt: new Date().toISOString()
       };
+      // Rimuovi eventuale pausa che escluderebbe il socio
+      if (assessmentPausedTokens && assessmentPausedTokens[memberKey]) {
+        delete assessmentPausedTokens[memberKey];
+        save('assessmentPausedTokens', assessmentPausedTokens);
+      }
+      save('assessmentTokens', assessmentTokens);
       importAssessmentResponses([{
         token: testToken,
+        first_name: member.firstName || member.name || '',
+        last_name: member.surname || '',
+        phone: member.phone || '',
         declared_level: '2.5', calculated_level: '3.0',
         consistency_status: 'low', staff_status: 'review',
         submitted_at: new Date().toISOString()
