@@ -2931,6 +2931,112 @@ async function handleGetSlots(req, res) {
   json(res, 200, result);
 }
 
+async function handleCreateBooking(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await createBookingWithBrowser(body);
+  json(res, 200, result);
+}
+
+// createBookingWithBrowser: naviga Matchpoint, apre il form di nuova prenotazione e compila i campi.
+// NOTA: la navigazione esatta del form (URL, selettori, CSRF) va validata manualmente su Matchpoint
+// prima di completare questa funzione. La struttura del login e del browser è identica agli altri handler.
+async function createBookingWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const booking = options.booking || {};
+  const campo = parseInt(booking.campo || 0);
+  const data = clean(booking.data);
+  const ora = clean(booking.ora);
+  const nome = clean(booking.nome);
+  const durata = parseInt(booking.durata || 90);
+
+  if (!campo || campo < 1 || campo > 4) throw fail('INVALID_CAMPO', 'Campo deve essere 1-4.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw fail('INVALID_DATA', 'Data deve essere YYYY-MM-DD.');
+  if (!/^\d{2}:\d{2}$/.test(ora)) throw fail('INVALID_ORA', 'Ora deve essere HH:MM.');
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'create_booking',
+    campo,
+    data,
+    ora,
+    nome,
+    durata,
+    baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    // Login (stesso pattern degli altri handler)
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+
+    await maybeClickCashEnter(page, diagnostic);
+
+    // TODO: navigare al form di creazione prenotazione su Matchpoint.
+    // Per completare questa sezione serve analizzare manualmente il sito Matchpoint con DevTools:
+    //   1. Aprire la pagina di nuova prenotazione (Reservas → Nueva reserva o simile)
+    //   2. Ispezionare il form: campi ID, select campo, datepicker, timepicker, input nome
+    //   3. Verificare se c'è un CSRF token (ViewState ASP.NET o token custom)
+    //   4. Identificare il submit button e la conferma post-submit
+    //
+    // Struttura ipotetica (da verificare su Matchpoint):
+    //   - URL: /Reservas/NuevaReserva.aspx oppure /Reservas/ReservasHora.aspx
+    //   - Select campo: select[name*="Campo"] o simile
+    //   - Input data: input[name*="Fecha"] formato dd/mm/yyyy
+    //   - Input ora: select[name*="Hora"] o input[name*="Hora"]
+    //   - Input nome: input[name*="Nombre"] o input[name*="Jugador"]
+    //   - Submit: button[name*="Guardar"] o input[value*="Guardar"]
+
+    diagnostic.steps.push('create_booking_not_implemented');
+    throw fail(
+      'CREATE_BOOKING_NOT_IMPLEMENTED',
+      'La navigazione del form di prenotazione Matchpoint non è ancora implementata. ' +
+      'Analizza il sito Matchpoint con DevTools per identificare URL e selettori del form, ' +
+      'poi completa la funzione createBookingWithBrowser in server.mjs.',
+      { ...diagnostic, hint: 'See TODO comments in handleCreateBooking / createBookingWithBrowser' },
+    );
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BACKGROUND POLLER — controllo automatico disponibilità Matchpoint
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3269,6 +3375,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
+          '/create-booking',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -3296,6 +3403,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/export-slot-schedule') {
       return await handleSlotScheduleExport(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/create-booking') {
+      return await handleCreateBooking(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);

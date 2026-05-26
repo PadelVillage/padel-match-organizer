@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.579</title>
+  <title>Padel Match Organizer v5.580</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -2542,6 +2542,55 @@
     .matchpoint-data-last-row { display:flex; justify-content:space-between; gap:12px; padding:5px 0; border-top:1px solid #eef2f7; color:#475467; }
     .matchpoint-data-last-row:first-of-type { border-top:0; }
     .matchpoint-data-last-row strong { color:#111827; text-align:right; }
+
+    /* === Staff Calendar (v5.580) === */
+    .staff-cal-date-nav { display:flex; align-items:center; gap:6px; }
+    .staff-cal-date-nav button { min-width:34px; height:34px; border-radius:8px; border:1px solid #d1d5db; background:#f8fbff; color:#374151; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+    .staff-cal-date-nav button:hover { background:#e5edff; }
+    .staff-cal-date-nav input[type="date"] { border:1.5px solid #d1d5db; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:700; color:#111827; background:#fff; height:34px; }
+    .staff-cal-today-btn { border:1.5px solid var(--primary) !important; color:var(--primary) !important; background:#fff !important; font-size:12px !important; font-weight:700 !important; padding:0 10px !important; min-width:auto !important; }
+    .staff-cal-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--border); border-radius:10px; }
+    .staff-cal-table { width:100%; border-collapse:collapse; font-size:13px; min-width:480px; }
+    .staff-cal-table thead th { background:#f1f5f9; color:#374151; font-weight:800; font-size:12px; padding:10px 8px; text-align:center; border-bottom:2px solid #cbd5e1; }
+    .staff-cal-table thead th:first-child { width:56px; min-width:56px; text-align:right; border-right:1px solid #e2e8f0; background:#e8edf4; color:#64748b; }
+    .staff-cal-time { color:#64748b; font-size:12px; font-weight:700; text-align:right; padding:0 8px 0 4px; border-right:1px solid #e2e8f0; white-space:nowrap; vertical-align:middle; background:#f8fafc; }
+    .staff-cal-cell { height:36px; border:1px solid #e2e8f0; vertical-align:top; padding:2px 4px; transition:background .15s; position:relative; }
+    .staff-cal-cell.libero { background:#fff; border:1px dashed #d1d5db; cursor:pointer; }
+    .staff-cal-cell.libero:hover { background:#f0f9ff; }
+    .staff-cal-cell.partita { background:#dbeafe; border-left:3px solid #2563eb; }
+    .staff-cal-cell.lezione { background:#dcfce7; border-left:3px solid #16a34a; }
+    .staff-cal-cell.staff-booking { background:#ffedd5; border-left:3px solid #ea580c; cursor:default; }
+    .staff-cal-slot-name { font-size:11px; font-weight:700; color:#1e3a5f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .staff-cal-slot-label { display:inline-block; font-size:9px; font-weight:900; color:#fff; background:#ea580c; border-radius:3px; padding:1px 4px; margin-top:1px; }
+    .staff-cal-cell.partita .staff-cal-slot-name { color:#1e40af; }
+    .staff-cal-cell.lezione .staff-cal-slot-name { color:#14532d; }
+    .staff-cal-legend { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .staff-cal-legend-dot { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#374151; font-weight:600; }
+    .staff-cal-legend-dot::before { content:''; width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+    .staff-cal-legend-dot.partita::before { background:#2563eb; }
+    .staff-cal-legend-dot.lezione::before { background:#16a34a; }
+    .staff-cal-legend-dot.staff-booking::before { background:#ea580c; }
+    .staff-cal-legend-dot.libero::before { background:#fff; border:1.5px dashed #9ca3af; }
+    .staff-cal-hint { font-size:12px; color:#9ca3af; }
+    .staff-cal-hint kbd { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px; padding:1px 5px; font-size:11px; }
+    .staff-cal-input-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:2px solid #e5e7eb; padding:10px 16px 12px; z-index:300; box-shadow:0 -4px 16px rgba(0,0,0,.09); }
+    body:not(.sidebar-collapsed) .staff-cal-input-bar { left:304px; }
+    @media(max-width:800px) { body:not(.sidebar-collapsed) .staff-cal-input-bar { left:0; } }
+    .staff-cal-input-wrap { display:flex; align-items:flex-end; gap:8px; max-width:760px; margin:0 auto; }
+    .staff-cal-input-wrap textarea { flex:1; border:1.5px solid #d1d5db; border-radius:14px; padding:10px 14px; font-size:14px; resize:none; line-height:1.45; min-height:44px; max-height:140px; font-family:inherit; color:#111827; outline:none; transition:border-color .2s; }
+    .staff-cal-input-wrap textarea:focus { border-color:var(--primary); }
+    .staff-cal-mic-btn { width:44px; height:44px; flex-shrink:0; border-radius:50%; border:1.5px solid #d1d5db; background:#f8fbff; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s; }
+    .staff-cal-mic-btn:hover { background:#e5edff; border-color:var(--primary); }
+    .staff-cal-mic-btn.recording { background:#fee2e2; border-color:#dc2626; animation:pulse-mic .9s infinite; }
+    @keyframes pulse-mic { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)} 50%{box-shadow:0 0 0 6px rgba(220,38,38,0)} }
+    .staff-cal-send-btn { height:44px; padding:0 18px; border-radius:14px; border:0; background:var(--primary); color:#fff; font-size:14px; font-weight:800; cursor:pointer; white-space:nowrap; transition:background .15s; flex-shrink:0; }
+    .staff-cal-send-btn:hover { background:#1a3e7a; }
+    .staff-cal-send-btn:disabled { background:#9ca3af; cursor:not-allowed; }
+    .staff-cal-input-status { max-width:760px; margin:4px auto 0; font-size:12px; color:#667085; min-height:16px; text-align:center; }
+    .staff-cal-input-status.pending { color:#b7791f; }
+    .staff-cal-input-status.done { color:#168a53; font-weight:800; }
+    .staff-cal-input-status.error { color:#dc2626; }
+
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .matchpoint-routine-head { grid-template-columns:1fr; }
@@ -5426,6 +5475,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button class="side-sub-link" onclick="goToTabSection('administration','Calendario staff')">📅 Calendario staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
@@ -6646,6 +6696,64 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
 
+        <!-- ===== CALENDARIO STAFF (v5.580) ===== -->
+        <div id="pmoAdminCalendarioStaffSection" class="admin-section-panel" data-pmo-admin-section="calendario-staff" hidden>
+          <div class="admin-panel" id="pmoCalendarioStaffPanel" data-admin-anchor="calendario-staff" style="padding-bottom:140px">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Calendario campi staff</h3>
+                <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
+              </div>
+              <div class="staff-cal-date-nav" style="margin-left:auto">
+                <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
+                <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
+                <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
+                <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
+              </div>
+            </div>
+
+            <div class="staff-cal-table-wrap" style="margin-top:16px">
+              <table class="staff-cal-table" aria-label="Griglia campi">
+                <thead>
+                  <tr>
+                    <th>Ora</th>
+                    <th>Campo 1</th>
+                    <th>Campo 2</th>
+                    <th>Campo 3</th>
+                    <th>Campo 4</th>
+                  </tr>
+                </thead>
+                <tbody id="staffCalBody"></tbody>
+              </table>
+            </div>
+
+            <div class="staff-cal-legend" style="margin-top:14px">
+              <span class="staff-cal-legend-dot partita">Partita</span>
+              <span class="staff-cal-legend-dot lezione">Lezione [STAFF]</span>
+              <span class="staff-cal-legend-dot staff-booking">Prenotazione staff</span>
+              <span class="staff-cal-legend-dot libero">Libero</span>
+            </div>
+
+            <p class="staff-cal-hint" style="margin-top:8px">Clicca su uno slot libero per pre-compilare l'input · <kbd>Enter</kbd> per prenotare</p>
+          </div>
+        </div>
+
+        <!-- Sticky input bar calendario staff -->
+        <div class="staff-cal-input-bar" id="staffCalInputBar" style="display:none">
+          <div class="staff-cal-input-wrap">
+            <textarea
+              id="staffCalInput"
+              placeholder='Es: "Campo 2 oggi 18-19:30 Mario Rossi" oppure ditta 🎤'
+              rows="1"
+              oninput="staffCalAutoResize(this)"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffCalSubmitBooking()}"
+            ></textarea>
+            <button class="staff-cal-mic-btn" id="staffCalMicBtn" onclick="staffCalToggleDictation()" title="Ditta prenotazione">🎤</button>
+            <button class="staff-cal-send-btn" id="staffCalSendBtn" onclick="staffCalSubmitBooking()">Prenota</button>
+          </div>
+          <div id="staffCalInputStatus" class="staff-cal-input-status"></div>
+        </div>
+
         <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
           <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
             <div class="admin-panel-head">
@@ -6755,7 +6863,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.579';
+    const APP_VERSION = '5.580';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8585,6 +8693,7 @@ Grazie.`
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
+        else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff', { silent:true });
         else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
         else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
@@ -23877,6 +23986,12 @@ Per confermare scrivi ELIMINA.`);
 	          try { scheduleMatchpointRoutineCloudRefresh({ force:true }); } catch (err) { console.warn('Stato routine Matchpoint cloud non aggiornato:', err); }
 	        });
 	      }
+	      if (pmoAdminState.activeSection === 'calendario-staff') {
+	        requestAnimationFrame(() => { try { staffCalInit(); } catch (err) { console.warn('Calendario staff non inizializzato:', err); } });
+	      } else {
+	        const bar = document.getElementById('staffCalInputBar');
+	        if (bar) bar.style.display = 'none';
+	      }
 	    }
 	    function pmoApplyAdminSectionVisibility() {
 	      const active = pmoAdminSectionKey(pmoAdminState.activeSection || 'users');
@@ -33172,6 +33287,273 @@ Per confermare scrivi ELIMINA.`);
   })();
   </script>
   <!-- ════ end Calendario Matchpoint ════ -->
+
+  <!-- ════ Staff Calendar v5.580 ════ -->
+  <script>
+  // ============================================================
+  // STAFF CALENDAR (v5.580) — Prenotazioni staff su Matchpoint
+  // ============================================================
+
+  const STAFF_CAL_START_H = 8;
+  const STAFF_CAL_END_H = 22;
+  const STAFF_CAL_SLOT_MIN = 30;
+
+  function staffCalSlots() {
+    const slots = [];
+    for (let h = STAFF_CAL_START_H; h <= STAFF_CAL_END_H; h++) {
+      slots.push(`${String(h).padStart(2,'0')}:00`);
+      if (h < STAFF_CAL_END_H) slots.push(`${String(h).padStart(2,'0')}:30`);
+    }
+    return slots;
+  }
+
+  function staffCalTodayIso() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date());
+  }
+
+  function staffCalInit() {
+    const input = document.getElementById('staffCalDate');
+    if (input && !input.value) input.value = staffCalTodayIso();
+    renderStaffCalendar();
+    const bar = document.getElementById('staffCalInputBar');
+    if (bar) bar.style.display = '';
+  }
+
+  function staffCalGoToday() {
+    const input = document.getElementById('staffCalDate');
+    if (input) { input.value = staffCalTodayIso(); renderStaffCalendar(); }
+  }
+
+  function staffCalPrevDay() {
+    const input = document.getElementById('staffCalDate');
+    if (!input) return;
+    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    input.value = d.toISOString().slice(0, 10);
+    renderStaffCalendar();
+  }
+
+  function staffCalNextDay() {
+    const input = document.getElementById('staffCalDate');
+    if (!input) return;
+    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    input.value = d.toISOString().slice(0, 10);
+    renderStaffCalendar();
+  }
+
+  function staffCalGetSlots(isoDate) {
+    const result = [];
+    // Read occupancy from local data
+    const occupancy = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione))
+      ? prenotazioniOccupazione : [];
+    const bookings = (typeof prenotazioni !== 'undefined' && Array.isArray(prenotazioni))
+      ? prenotazioni : [];
+
+    for (const p of occupancy) {
+      if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
+      const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
+      if (campoNum < 1 || campoNum > 4) continue;
+      const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo, durata: parseInt(p.durata) || 90 });
+    }
+    for (const p of bookings) {
+      if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
+      const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
+      if (campoNum < 1 || campoNum > 4) continue;
+      if (result.some(r => r.ora === p.ora && r.campo === campoNum)) continue;
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo: 'partita', durata: parseInt(p.durata) || 90 });
+    }
+    const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    for (const b of staffBookings) {
+      if (b.data !== isoDate) continue;
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', durata: b.durata || 90 });
+    }
+    return result;
+  }
+
+  function staffCalBuildOccupancyMap(isoDate) {
+    const map = {};
+    const slots = staffCalSlots();
+    for (const s of staffCalGetSlots(isoDate)) {
+      const durSlots = Math.max(1, Math.round((s.durata || 90) / STAFF_CAL_SLOT_MIN));
+      const startIdx = slots.indexOf(s.ora);
+      if (startIdx < 0) continue;
+      for (let i = 0; i < durSlots && startIdx + i < slots.length; i++) {
+        const key = `${slots[startIdx + i]}|${s.campo}`;
+        if (!map[key]) map[key] = s;
+      }
+    }
+    return map;
+  }
+
+  function renderStaffCalendar() {
+    const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    const tbody = document.getElementById('staffCalBody');
+    if (!tbody) return;
+    const slots = staffCalSlots();
+    const occupied = staffCalBuildOccupancyMap(isoDate);
+    tbody.innerHTML = '';
+    for (const hour of slots) {
+      const tr = document.createElement('tr');
+      const tdTime = document.createElement('td');
+      tdTime.className = 'staff-cal-time';
+      tdTime.textContent = hour;
+      tr.appendChild(tdTime);
+      for (let campo = 1; campo <= 4; campo++) {
+        const slot = occupied[`${hour}|${campo}`] || null;
+        const td = document.createElement('td');
+        if (slot) {
+          td.className = `staff-cal-cell ${slot.tipo}`;
+          const nameEl = document.createElement('div');
+          nameEl.className = 'staff-cal-slot-name';
+          nameEl.textContent = slot.nome || '';
+          td.appendChild(nameEl);
+          if (slot.tipo === 'lezione' || slot.tipo === 'staff-booking') {
+            const lbl = document.createElement('span');
+            lbl.className = 'staff-cal-slot-label';
+            lbl.textContent = 'STAFF';
+            td.appendChild(lbl);
+          }
+        } else {
+          td.className = 'staff-cal-cell libero';
+          td.onclick = () => staffCalClickFree(isoDate, campo, hour);
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+  }
+
+  function staffCalClickFree(isoDate, campo, ora) {
+    const input = document.getElementById('staffCalInput');
+    if (!input) return;
+    input.value = `Campo ${campo} ${isoDate} ${ora} - `;
+    input.focus();
+    staffCalAutoResize(input);
+    input.selectionStart = input.selectionEnd = input.value.length;
+  }
+
+  function staffCalAutoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  let _staffCalRecognition = null;
+  let _staffCalDictating = false;
+
+  function staffCalToggleDictation() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { staffCalSetStatus('Dittatura vocale non supportata da questo browser.', 'error'); return; }
+    const btn = document.getElementById('staffCalMicBtn');
+    if (_staffCalDictating) {
+      _staffCalRecognition && _staffCalRecognition.stop();
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+      return;
+    }
+    _staffCalRecognition = new SR();
+    _staffCalRecognition.lang = 'it-IT';
+    _staffCalRecognition.continuous = true;
+    _staffCalRecognition.interimResults = true;
+    _staffCalRecognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      const input = document.getElementById('staffCalInput');
+      if (input) { input.value = transcript; staffCalAutoResize(input); }
+    };
+    _staffCalRecognition.onerror = () => {
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+    };
+    _staffCalRecognition.onend = () => {
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+    };
+    _staffCalRecognition.start();
+    _staffCalDictating = true;
+    if (btn) btn.classList.add('recording');
+    staffCalSetStatus('Sto ascoltando...', 'pending');
+  }
+
+  function staffCalParseBookingText(text, currentDate) {
+    const t = String(text || '').trim();
+    const campoMatch = t.match(/\bcampo\s*([1-4])\b/i);
+    if (!campoMatch) return null;
+    const campoNum = parseInt(campoMatch[1]);
+    const timeMatch = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+    if (!timeMatch) return null;
+    const oraInizio = `${String(timeMatch[1]).padStart(2,'0')}:${(timeMatch[2] || '00').padStart(2,'0')}`;
+    const oraFine   = `${String(timeMatch[3]).padStart(2,'0')}:${(timeMatch[4] || '00').padStart(2,'0')}`;
+    let isoDate = currentDate || staffCalTodayIso();
+    if (/\bdomani\b/i.test(t)) {
+      const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 1); isoDate = d.toISOString().slice(0,10);
+    } else if (/\bdopodomani\b/i.test(t)) {
+      const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 2); isoDate = d.toISOString().slice(0,10);
+    } else {
+      const dateMatch = t.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      if (dateMatch) isoDate = dateMatch[1];
+    }
+    const [sh, sm] = oraInizio.split(':').map(Number);
+    const [eh, em] = oraFine.split(':').map(Number);
+    const durata = (eh * 60 + em) - (sh * 60 + sm);
+    if (durata <= 0 || durata > 360) return null;
+    const timePos = t.search(timeMatch[0]);
+    const afterTime = timePos >= 0 ? t.slice(timePos + timeMatch[0].length).replace(/^[\s\-–]+/, '').trim() : '';
+    const nome = afterTime || 'Staff';
+    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome };
+  }
+
+  async function staffCalSubmitBooking() {
+    const input = document.getElementById('staffCalInput');
+    const text = (input || {}).value ? input.value.trim() : '';
+    if (!text) { if (input) input.focus(); return; }
+    const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    const parsed = staffCalParseBookingText(text, isoDate);
+    if (!parsed) {
+      staffCalSetStatus('Formato non riconosciuto. Usa: "Campo 2 oggi 18-19:30 Mario Rossi"', 'error');
+      return;
+    }
+    const sendBtn = document.getElementById('staffCalSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
+    staffCalSetStatus(`Prenotando ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine}...`, 'pending');
+    try {
+      const saved = staffCalSaveLocal(parsed);
+      if (saved) {
+        staffCalSetStatus(`✓ Prenotazione staff: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+        if (input) { input.value = ''; staffCalAutoResize(input); }
+        if (parsed.data === isoDate) renderStaffCalendar();
+      } else {
+        staffCalSetStatus('Slot già occupato o dati non validi.', 'error');
+      }
+    } catch (err) {
+      staffCalSetStatus('Errore: ' + (err.message || err), 'error');
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
+  }
+
+  function staffCalSaveLocal(parsed) {
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const conflict = existing.some(b => b.data === parsed.data && b.campo === parsed.campoNum && b.ora === parsed.ora);
+    if (conflict) return false;
+    existing.push({
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`,
+      data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
+      campo: parsed.campoNum, nome: parsed.nome, durata: parsed.durata,
+      createdAt: new Date().toISOString(),
+    });
+    if (typeof save === 'function') save('staffBookings', existing);
+    return true;
+  }
+
+  function staffCalSetStatus(msg, type) {
+    const el = document.getElementById('staffCalInputStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'staff-cal-input-status' + (type ? ' ' + type : '');
+  }
+  </script>
+  <!-- ════ end Staff Calendar ════ -->
 
 </body>
 </html>
