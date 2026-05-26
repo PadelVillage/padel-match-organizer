@@ -2129,7 +2129,81 @@ function emptySchedule() {
   return s;
 }
 
-async function navigateToSlotSchedule(page, baseUrl, diagnostic) {
+async function openScheduleByName(page, diagnostic, preferredName) {
+  // La pagina elenco mostra una tabella con righe nominate (es. "Orari fissi",
+  // "Orari settimana + venerdì") + icone matita/cestino. Per leggere la griglia
+  // bisogna cliccare la matita della riga giusta. Strategia:
+  //   1. Cerca riga che contiene esattamente preferredName (case-insensitive)
+  //   2. Se non trovata, prova chiavi parziali (venerdi, settimana, ...)
+  //   3. Se ancora niente, prende la PRIMA riga editabile della tabella
+  diagnostic.steps.push('schedule_list_open_row');
+  const wanted = String(preferredName || 'Orari settimana + venerdi').toLowerCase();
+
+  for (const entry of pageContentContexts(page)) {
+    const found = await entry.target.evaluate((wantedName) => {
+      const normalize = (v) => String(v || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const w = normalize(wantedName);
+      const partialKeywords = ['venerdi', 'settimana', 'fissi'];
+
+      const rows = [...document.querySelectorAll('tr')];
+      // Tenta match esatto
+      let target = rows.find((tr) => normalize(tr.innerText).includes(w));
+      // Tenta match parziale con parole-chiave note (in ordine di preferenza)
+      if (!target) {
+        for (const kw of partialKeywords) {
+          target = rows.find((tr) => normalize(tr.innerText).includes(kw));
+          if (target) break;
+        }
+      }
+      // Fallback: prima riga con un'icona/link cliccabile
+      if (!target) {
+        target = rows.find((tr) => tr.querySelector('a[href], img[onclick], [onclick]'));
+      }
+      if (!target) return { clicked: false, reason: 'no_editable_row' };
+
+      // Cerca l'azione di modifica nella riga: matita verde, edit, modifica
+      const candidates = [
+        ...target.querySelectorAll('a[href]:not([href="#"]), img[onclick], [onclick]'),
+      ];
+      // Preferisci link con title/alt/class che indicano "modifica/edit"
+      const scoreOf = (el) => {
+        const hay = [
+          el.getAttribute?.('title') || '',
+          el.getAttribute?.('alt') || '',
+          el.getAttribute?.('href') || '',
+          el.getAttribute?.('onclick') || '',
+          el.className || '',
+        ].join(' ').toLowerCase();
+        if (/edit|modif|matita|pencil|verde|green/i.test(hay)) return 3;
+        if (/delete|cancel|elimin|rosso|red/i.test(hay)) return -1;
+        return 1;
+      };
+      candidates.sort((a, b) => scoreOf(b) - scoreOf(a));
+      const editEl = candidates[0];
+      if (!editEl) return { clicked: false, reason: 'no_action_link', rowText: target.innerText.slice(0, 120) };
+      const action = editEl.closest('a[href], [onclick]') || editEl;
+      action.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      return { clicked: true, rowText: target.innerText.slice(0, 120) };
+    }, wanted).catch(() => null);
+
+    if (found?.clicked) {
+      diagnostic.navigationAttempts.push({ action: 'edit_row_click', rowText: found.rowText, contextKind: entry.kind });
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      return true;
+    } else if (found) {
+      diagnostic.navigationAttempts.push({ action: 'edit_row_miss', reason: found.reason, contextKind: entry.kind });
+    }
+  }
+  return false;
+}
+
+async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
   diagnostic.steps.push('slot_schedule_navigate');
   diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
 
@@ -2169,40 +2243,57 @@ async function navigateToSlotSchedule(page, baseUrl, diagnostic) {
     orariClicked = await clickMenuEntryEverywhere(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
     if (orariClicked) break;
   }
+  let reachedList = false;
   if (orariClicked) {
     await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(1500);
-    diagnostic.slotScheduleUrl = page.url();
-    diagnostic.slotScheduleTitle = await page.title().catch(() => '');
-    return true;
+    diagnostic.slotScheduleListUrl = page.url();
+    diagnostic.slotScheduleListTitle = await page.title().catch(() => '');
+    reachedList = true;
   }
 
-  // Fallback: direct URL candidates
-  diagnostic.steps.push('slot_schedule_direct_url_fallback');
-  const urlCandidates = [
-    '/Sistema/HorariosInstalacion.aspx',
-    '/Sistema/OrarioInstalaciones.aspx',
-    '/Configuracion/HorariosInstalacion.aspx',
-  ];
-  for (const path of urlCandidates) {
-    try {
-      await page.goto(absoluteUrl(baseUrl, path), { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
-      await page.waitForTimeout(1000);
-      const url = page.url();
-      const title = await page.title().catch(() => '');
-      diagnostic.navigationAttempts.push({ action: 'direct_url', path, resultUrl: url });
-      if (!/Login\.aspx/i.test(url) && !/Error\.aspx|aspxerrorpath=/i.test(url)) {
-        diagnostic.slotScheduleUrl = url;
-        diagnostic.slotScheduleTitle = title;
-        return true;
+  // Fallback: direct URL candidates per arrivare alla lista
+  if (!reachedList) {
+    diagnostic.steps.push('slot_schedule_direct_url_fallback');
+    const urlCandidates = [
+      '/Sistema/HorariosInstalacion.aspx',
+      '/Sistema/OrarioInstalaciones.aspx',
+      '/Configuracion/HorariosInstalacion.aspx',
+    ];
+    for (const path of urlCandidates) {
+      try {
+        await page.goto(absoluteUrl(baseUrl, path), { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
+        await page.waitForTimeout(1000);
+        const url = page.url();
+        diagnostic.navigationAttempts.push({ action: 'direct_url', path, resultUrl: url });
+        if (!/Login\.aspx/i.test(url) && !/Error\.aspx|aspxerrorpath=/i.test(url)) {
+          diagnostic.slotScheduleListUrl = url;
+          diagnostic.slotScheduleListTitle = await page.title().catch(() => '');
+          reachedList = true;
+          break;
+        }
+      } catch (err) {
+        diagnostic.navigationAttempts.push({ action: 'direct_url_err', path, error: err.message });
       }
-    } catch (err) {
-      diagnostic.navigationAttempts.push({ action: 'direct_url_err', path, error: err.message });
     }
   }
-  return false;
+
+  if (!reachedList) return false;
+
+  // Step 4: la pagina mostra una lista di schede (es. "Orari fissi",
+  // "Orari settimana + venerdì"). Cliccare la matita per aprire quella attiva.
+  const opened = await openScheduleByName(page, diagnostic, options.preferredScheduleName);
+  if (!opened) {
+    diagnostic.navigationAttempts.push({ action: 'schedule_row_not_opened' });
+    // Comunque torna true: il parser può tentare di leggere la lista nuda
+    // (alcuni layout potrebbero mostrare gli orari inline).
+  }
+  diagnostic.slotScheduleUrl = page.url();
+  diagnostic.slotScheduleTitle = await page.title().catch(() => '');
+  return true;
 }
+
 
 async function parseSlotSchedulePage(page, diagnostic) {
   diagnostic.steps.push('slot_schedule_parse');
@@ -2425,8 +2516,10 @@ async function exportSlotScheduleWithBrowser(options = {}) {
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
-    // Navigate to "Orari di utilizzo delle installazioni"
-    const navigated = await navigateToSlotSchedule(page, baseUrl, diagnostic);
+    // Navigate to "Orari di utilizzo delle installazioni" e apri la scheda attiva
+    const preferredScheduleName = clean(options.scheduleName) || env('MATCHPOINT_SLOT_SCHEDULE_NAME', 'Orari settimana + venerdi');
+    diagnostic.preferredScheduleName = preferredScheduleName;
+    const navigated = await navigateToSlotSchedule(page, baseUrl, diagnostic, { preferredScheduleName });
     if (!navigated) {
       throw fail('MATCHPOINT_SLOT_SCHEDULE_NOT_FOUND', 'Impossibile navigare alla pagina orari slot Matchpoint.', {
         url: page.url(),
