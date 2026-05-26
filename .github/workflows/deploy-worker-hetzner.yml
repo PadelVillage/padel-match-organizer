@@ -1,8 +1,13 @@
-name: Deploy Worker su Hetzner
+name: Deploy Worker su Hetzner (PROD)
+
+# La VM Hetzner è UNA sola, condivisa fra TEST e PROD.
+# Deploy worker = tocca PROD → trigger solo al push su main,
+# coerente con la policy "PROD richiede autorizzazione esplicita".
+# Il merge test-preview → main è il momento di promozione esplicita.
 
 on:
   push:
-    branches: [test-preview, main]
+    branches: [main]
     paths:
       - 'tools/matchpoint-browser-worker/**'
   workflow_dispatch:
