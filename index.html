@@ -2523,6 +2523,7 @@
     .potential-slot-horizontal { display:grid; grid-template-columns:minmax(240px,.85fr) minmax(360px,1.15fr); gap:14px; padding:12px; align-items:start; }
     .potential-slot-panel { display:grid; gap:8px; min-width:0; }
     .potential-slot-panel .matchpoint-data-actions { margin-top:0; }
+    .potential-slot-import-status { font-size:12px; line-height:1.4; padding:6px 8px; border-radius:6px; background:#f0f4ff; border:1px solid #c8d8f5; color:#344054; word-break:break-word; }
     .matchpoint-data-actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:10px; }
     .matchpoint-data-actions button { width:100%; min-height:38px; border-radius:7px; padding:9px 11px; font-size:13px; }
     .matchpoint-cloud-separator { height:1px; background:#e5e7eb; margin:2px 0; }
@@ -6618,7 +6619,10 @@ body.assessment-public-mode .assessment-public-only-card {
                     <div class="potential-slot-details">
                       <div class="potential-slot-horizontal">
                         <div class="potential-slot-panel">
-                          <label for="potentialSlotScheduleImportFile">Importa griglia da file</label>
+                          <button class="btn-primary" onclick="syncSlotScheduleFromMatchpoint(this)" id="syncSlotScheduleBtn">Sincronizza da Matchpoint</button>
+                          <div id="syncSlotScheduleStatus" class="potential-slot-import-status" hidden></div>
+                          <div class="matchpoint-data-hint">Legge la griglia direttamente da Matchpoint (Sistema → Campi → Orari). Richiede worker browser attivo e credenziali configurate.</div>
+                          <label for="potentialSlotScheduleImportFile" style="margin-top:10px">Importa griglia da file</label>
                           <input type="file" id="potentialSlotScheduleImportFile" accept=".csv,.tsv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.gif,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*" onchange="importPotentialSlotScheduleFile(this.files && this.files[0]); this.value=''" />
                           <div id="potentialSlotImportStatus" class="potential-slot-import-status" hidden></div>
                           <div class="matchpoint-data-hint">
@@ -6762,7 +6766,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.574';
+    const APP_VERSION = '5.575';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -13209,6 +13213,96 @@ Grazie.`
         const rest = trimmed.slice(m[0].length).replace(/[;\t]+/g, ',');
         return m[1].trim() + ': ' + rest;
       }).filter(Boolean).join('\n');
+    }
+
+    function scheduleFromMatchpointResponse(apiSchedule) {
+      const dayMap = {
+        'Lunedì': 1, 'Martedì': 2, 'Mercoledì': 3,
+        'Giovedì': 4, 'Venerdì': 5, 'Sabato': 6, 'Domenica': 0
+      };
+      const result = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      for (const [dayLabel, slots] of Object.entries(apiSchedule || {})) {
+        const dayKey = dayMap[dayLabel];
+        if (dayKey === undefined) continue;
+        result[dayKey] = (slots || []).map(slotStr => {
+          const [start, end] = String(slotStr).split('-');
+          if (!start || !end) return null;
+          return { start: start.trim(), end: end.trim(), name: slotStr };
+        }).filter(Boolean);
+      }
+      return result;
+    }
+
+    async function syncSlotScheduleFromMatchpoint(btn) {
+      const statusEl = document.getElementById('syncSlotScheduleStatus');
+      const showStatus = (msg, err=false) => {
+        if (!statusEl) return;
+        statusEl.hidden = false;
+        statusEl.style.background = err ? '#fff2f2' : '#f0f4ff';
+        statusEl.style.borderColor = err ? '#f5c6c6' : '#c8d8f5';
+        statusEl.style.color = err ? '#b42318' : '#344054';
+        statusEl.textContent = msg;
+      };
+      const clearStatus = () => { if (statusEl) statusEl.hidden = true; };
+
+      if (btn) btn.disabled = true;
+      showStatus('Connessione a Matchpoint in corso...');
+
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare griglia slot da Matchpoint');
+        if (!staff) { if (btn) btn.disabled = false; clearStatus(); return; }
+
+        showStatus('Navigazione Matchpoint: Sistema → Campi → Orari (30-60 secondi)...');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-slot-schedule-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${staff.accessToken}`
+          },
+          body: JSON.stringify({ source: 'pmo_dati_slot_sync' })
+        });
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+
+        if (!response.ok || data?.ok === false) {
+          const errMsg = data?.message || data?.error || `Errore HTTP ${response.status}`;
+          showStatus('Errore: ' + errMsg, true);
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        const parsed = scheduleFromMatchpointResponse(data.schedule);
+        const diff = diffPotentialSlotSchedule(potentialSlotSchedule, parsed);
+
+        let confirmMsg = `Matchpoint restituisce ${data.totalSlots} slot totali (${data.durationMs ? Math.round(data.durationMs / 1000) + 's' : ''}).`;
+        if (diff.totalChanges === 0) {
+          confirmMsg += '\n\nLa griglia e\' identica a quella attuale. Nessuna modifica necessaria.';
+          showStatus('✅ Griglia Matchpoint identica alla corrente (' + data.totalSlots + ' slot). Nessuna modifica.');
+          if (btn) btn.disabled = false;
+          return;
+        }
+        confirmMsg += `\n\nDifferenze rispetto alla griglia corrente (${diff.totalChanges} modifiche):\n${diff.text}`;
+        confirmMsg += '\n\nApplicare la griglia di Matchpoint?';
+
+        if (!confirm(confirmMsg)) {
+          showStatus('Sincronizzazione annullata.');
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        applyPotentialSlotSchedule(parsed, '✅ Griglia slot sincronizzata da Matchpoint. Dashboard e Apri Partite usano i nuovi slot.');
+        if (typeof pmoQueueAppSettingCloudSync === 'function') {
+          pmoQueueAppSettingCloudSync('potentialSlotSchedule', potentialSlotSchedule, 'sincronizzare griglia slot');
+        }
+        clearStatus();
+      } catch (err) {
+        showStatus('Errore: ' + (err?.message || String(err)), true);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     function diffPotentialSlotSchedule(current, next) {
