@@ -27063,10 +27063,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, pmoCode));
       if (!member) { showAlert('❌ Membro test PMO-000948 non trovato', 'danger'); return; }
       const memberKey = String(member.id);
-      const testToken = 'PMO-TEST-VALIDARE-FAKE';
-      // assessmentEmailAllOperationalRows filtra per level 0.5: forziamo il livello
       member.level = '0.5';
-      // Resettiamo lo stato applied del socio così la risposta test non viene marcata come già applicata
       member.selfAssessmentToken = '';
       member.selfAssessmentDate = '';
       member.selfAssessmentStaffStatus = '';
@@ -27075,37 +27072,51 @@ Per confermare scrivi ELIMINA.`);
       member.selfAssessmentMatchpointDoneAt = '';
       member.selfAssessmentMatchpointDoneBy = '';
       save('giocatori', giocatori);
-      // Pulizia eventuali entry residue (anche sotto la chiave sbagliata usata da versioni precedenti)
+      if (assessmentPausedTokens && assessmentPausedTokens[memberKey]) {
+        delete assessmentPausedTokens[memberKey];
+        save('assessmentPausedTokens', assessmentPausedTokens);
+      }
+      // Strategia: se esiste già una risposta reale (sincronizzata da Supabase),
+      // modifichiamo quella per forzare mismatch invece di creare un token fake
+      // che viene sovrascirtto dal prossimo sync.
+      const existingRecord = assessmentTokens[memberKey] || assessmentTokens[pmoCode];
+      const existingToken = existingRecord?.token;
+      if (existingToken) {
+        const respIdx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(existingToken));
+        if (respIdx >= 0) {
+          assessmentResponses[respIdx].consistency_status = 'low';
+          assessmentResponses[respIdx].staff_status = 'review';
+          save('assessmentResponses', assessmentResponses);
+          existingRecord.status = 'completed';
+          delete existingRecord.appliedAt;
+          save('assessmentTokens', assessmentTokens);
+          displayAssessment();
+          return;
+        }
+      }
+      // Nessuna risposta reale trovata: crea token e risposta fake
+      const testToken = 'PMO-TEST-VALIDARE-FAKE';
       if (assessmentTokens[pmoCode]) delete assessmentTokens[pmoCode];
       if (assessmentTokens[memberKey]) delete assessmentTokens[memberKey];
       const existingIdx = assessmentResponses.findIndex(r => normalizeText(r.token) === normalizeText(testToken));
       if (existingIdx >= 0) assessmentResponses.splice(existingIdx, 1);
-      // Token deve essere salvato sotto String(member.id) per essere letto da getAssessmentTokenRecord
       assessmentTokens[memberKey] = {
-        memberId: memberKey,
-        token: testToken,
+        memberId: memberKey, token: testToken,
         memberName: playerFullName(member),
-        phone: member.phone || '',
-        email: member.email || '',
-        status: 'completed',
-        source: 'test-fake',
+        phone: member.phone || '', email: member.email || '',
+        status: 'completed', source: 'test-fake',
         registeredToSupabase: true,
         createdAt: new Date().toISOString(),
         sentAt: new Date().toISOString(),
         completedAt: new Date().toISOString()
       };
-      // Rimuovi eventuale pausa che escluderebbe il socio
-      if (assessmentPausedTokens && assessmentPausedTokens[memberKey]) {
-        delete assessmentPausedTokens[memberKey];
-        save('assessmentPausedTokens', assessmentPausedTokens);
-      }
       save('assessmentTokens', assessmentTokens);
       importAssessmentResponses([{
         token: testToken,
         first_name: member.firstName || member.name || '',
         last_name: member.surname || '',
         phone: member.phone || '',
-        declared_level: '2.5', calculated_level: '3.0',
+        declared_level: '2.0', calculated_level: '4.5',
         consistency_status: 'low', staff_status: 'review',
         submitted_at: new Date().toISOString()
       }], { silent: true });
