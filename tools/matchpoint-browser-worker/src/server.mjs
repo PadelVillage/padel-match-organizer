@@ -2288,12 +2288,157 @@ async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
     diagnostic.navigationAttempts.push({ action: 'schedule_row_not_opened' });
     // Comunque torna true: il parser può tentare di leggere la lista nuda
     // (alcuni layout potrebbero mostrare gli orari inline).
+  } else {
+    // L'editor della scheda si carica in un iframe del modal. `networkidle`
+    // sulla pagina principale può tornare verde prima che l'iframe popoli,
+    // lasciando il parser su un about:blank.
+    await waitForSlotScheduleReady(page, diagnostic);
   }
   diagnostic.slotScheduleUrl = page.url();
   diagnostic.slotScheduleTitle = await page.title().catch(() => '');
   return true;
 }
 
+async function waitForSlotScheduleReady(page, diagnostic) {
+  diagnostic.steps.push('slot_schedule_wait_iframe');
+  const startedAt = Date.now();
+  const deadlineMs = 30000;
+  const pollIntervalMs = 500;
+  const dayHintRe = /lune[dt]i|martedì|mercoledì|giovedì|venerdì|sabato|domenica/i;
+  const slotHintRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+  let lastSummary = null;
+
+  while (Date.now() - startedAt < deadlineMs) {
+    // Check every frame for day names + at least one slot range
+    for (const frame of page.frames()) {
+      const url = frame.url();
+      if (!url || url === 'about:blank') continue;
+      const summary = await frame.evaluate(() => ({
+        url: location.href,
+        readyState: document.readyState,
+        bodyLen: document.body?.innerText?.length || 0,
+        bodyText: (document.body?.innerText || '').slice(0, 4000),
+      })).catch(() => null);
+      if (!summary) continue;
+      const hasDay = dayHintRe.test(summary.bodyText);
+      const hasSlot = slotHintRe.test(summary.bodyText);
+      lastSummary = { url: summary.url, readyState: summary.readyState, bodyLen: summary.bodyLen, hasDay, hasSlot };
+      if (hasDay && hasSlot && summary.readyState === 'complete') {
+        // Stable: also wait for networkidle within the frame
+        await frame.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        diagnostic.slotScheduleFrameUrl = summary.url;
+        diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+        diagnostic.slotScheduleWaitOutcome = 'frame_ready';
+        return true;
+      }
+    }
+    await page.waitForTimeout(pollIntervalMs);
+  }
+  diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+  diagnostic.slotScheduleWaitOutcome = 'timeout';
+  diagnostic.slotScheduleLastFrameSummary = lastSummary;
+  return false;
+}
+
+
+async function collectSlotScheduleStructureDump(page) {
+  const contexts = pageContentContexts(page);
+  const dump = { contextCount: contexts.length, contexts: [] };
+
+  for (const entry of contexts) {
+    const target = entry.kind === 'page' ? page : page.frames()[entry.index];
+    if (!target) continue;
+    const ctxInfo = await target.evaluate((dayVariants) => {
+      const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+      const normalizeDay = (raw) => {
+        const key = String(raw)
+          .toLocaleLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/\s+/g, '')
+          .trim();
+        return dayVariants[key] || null;
+      };
+      const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+      const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
+
+      // 1. Element counts of structural candidates
+      const tagCounts = {};
+      ['table', 'thead', 'tbody', 'tr', 'td', 'th', 'iframe', 'svg', 'canvas'].forEach((tag) => {
+        tagCounts[tag] = document.querySelectorAll(tag).length;
+      });
+      const roleCounts = {};
+      ['table', 'grid', 'row', 'cell', 'columnheader', 'rowheader'].forEach((role) => {
+        roleCounts[role] = document.querySelectorAll(`[role="${role}"]`).length;
+      });
+      // grid-like divs
+      const gridLikeDivs = [...document.querySelectorAll('div, ul')]
+        .filter((el) => {
+          const cs = getComputedStyle(el);
+          return cs.display === 'grid' || cs.display === 'inline-grid' || cs.display === 'flex';
+        }).length;
+
+      // 2. Locate elements whose text is exactly (or contains) a day name
+      const dayElements = [];
+      const allEls = [...document.querySelectorAll('body *')];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue; // leaf-ish only
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || txt.length > 40) continue;
+        const day = normalizeDay(txt);
+        if (!day) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        dayElements.push({
+          day,
+          text: txt,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (dayElements.length >= 50) break;
+      }
+
+      // 3. Locate elements containing time-range patterns (slots)
+      const slotElements = [];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue;
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || !timeRangeRe.test(txt)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const matches = txt.match(timeRangeReG) || [];
+        slotElements.push({
+          slots: matches,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (slotElements.length >= 200) break;
+      }
+
+      // 4. HTML sample (truncated) for visual inspection
+      const htmlSample = (document.body?.innerHTML || '').slice(0, 4000);
+
+      return {
+        url: location.href,
+        title: document.title,
+        tagCounts,
+        roleCounts,
+        gridLikeDivs,
+        dayElementCount: dayElements.length,
+        dayElements: dayElements.slice(0, 20),
+        slotElementCount: slotElements.length,
+        slotElementsSample: slotElements.slice(0, 30),
+        htmlSampleLength: (document.body?.innerHTML || '').length,
+        htmlSample,
+      };
+    }, ALL_DAY_VARIANTS).catch((err) => ({ error: String(err?.message || err) }));
+
+    dump.contexts.push({ kind: entry.kind, index: entry.index, url: entry.url, ...ctxInfo });
+  }
+  return dump;
+}
 
 async function parseSlotSchedulePage(page, diagnostic) {
   diagnostic.steps.push('slot_schedule_parse');
@@ -2309,16 +2454,18 @@ async function parseSlotSchedulePage(page, diagnostic) {
   }
   diagnostic.slotScheduleContextCount = htmlSources.length;
 
-  // ── Strategy 1: Table with day-name headers ──────────────────────────────
-  // Find tables where the header row contains day names; rows with HH:MM-HH:MM
-  // in the first cell indicate a slot; non-empty or checked cells in day columns
-  // mean that slot is active for that day.
+  // ── Strategy 0: Coordinate-based (layout-agnostic) ───────────────────────
+  // Works whether the grid is built with <table>, <div> + CSS grid, ARIA
+  // roles, or any other layout. Locate day-name labels and slot labels by
+  // text, then attribute each slot to the day whose column its center X is
+  // closest to.
+  const strategy0Trace = { dayColumns: null, slotElementCount: 0, unmatched: 0, contextChosen: null };
   for (const source of htmlSources) {
     if (parsedBy) break;
     const result = await (async () => {
       const target = source.kind === 'page' ? page : page.frames()[source.index];
       if (!target) return null;
-      return target.evaluate((dayVariants, canonicalOrder) => {
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
         const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
         const normalizeDay = (raw) => {
           const key = String(raw)
@@ -2330,55 +2477,108 @@ async function parseSlotSchedulePage(page, diagnostic) {
           return dayVariants[key] || null;
         };
         const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+        const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
 
-        for (const table of document.querySelectorAll('table')) {
-          const rows = [...table.querySelectorAll('tr')];
-          if (rows.length < 2) continue;
-
-          // Find header row with day names
-          let dayColMap = null; // { canonicalDay: colIndex }
-          let headerRowIdx = -1;
-          for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
-            const cells = [...rows[ri].querySelectorAll('td, th')];
-            const found = {};
-            cells.forEach((cell, ci) => {
-              const day = normalizeDay(compact(cell.innerText));
-              if (day) found[day] = ci;
-            });
-            if (Object.keys(found).length >= 2) {
-              dayColMap = found;
-              headerRowIdx = ri;
-              break;
-            }
-          }
-          if (!dayColMap || headerRowIdx < 0) continue;
-
-          const sched = {};
-          for (const d of canonicalOrder) sched[d] = [];
-
-          for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
-            const cells = [...rows[ri].querySelectorAll('td, th')];
-            if (cells.length === 0) continue;
-            const firstText = compact(cells[0]?.innerText || '');
-            if (!timeRangeRe.test(firstText)) continue;
-            const slotRaw = firstText.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/)?.[0];
-            if (!slotRaw) continue;
-
-            for (const [day, ci] of Object.entries(dayColMap)) {
-              if (ci >= cells.length) continue;
-              const cell = cells[ci];
-              const cellText = compact(cell.innerText);
-              const hasCheck = cell.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked') !== null;
-              const isNonEmpty = cellText.length > 0 || hasCheck || cell.querySelector('img, .active, .checked') !== null;
-              if (isNonEmpty) sched[day].push(slotRaw);
-            }
-          }
-
-          const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
-          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers' };
+        // Collect candidate day-name labels: leaf-ish elements whose
+        // (trimmed) text matches a known day variant. Skip hidden boxes.
+        const dayCandidates = [];
+        for (const el of document.querySelectorAll('body *')) {
+          if (el.children.length > 0) continue;
+          const txt = compact(el.innerText || el.textContent || '');
+          if (!txt || txt.length > 20) continue;
+          const day = normalizeDay(txt);
+          if (!day) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          dayCandidates.push({
+            day,
+            x: r.x, y: r.y, w: r.width, h: r.height,
+            cx: r.x + r.width / 2,
+          });
         }
-        return null;
-      }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch(() => null);
+        if (dayCandidates.length < 2) return { reason: 'few_day_candidates', dayCandidateCount: dayCandidates.length };
+
+        // Cluster day candidates by Y to find the header row (the cluster
+        // containing the most DISTINCT days, then prefer the one closer to
+        // the top of the page).
+        const yTolerance = 30; // px
+        const clusters = [];
+        const sorted = [...dayCandidates].sort((a, b) => a.y - b.y);
+        for (const c of sorted) {
+          const last = clusters[clusters.length - 1];
+          if (last && Math.abs(c.y - last.yMean) <= yTolerance) {
+            last.items.push(c);
+            last.yMean = last.items.reduce((s, it) => s + it.y, 0) / last.items.length;
+          } else {
+            clusters.push({ items: [c], yMean: c.y });
+          }
+        }
+        clusters.sort((a, b) => {
+          const distA = new Set(a.items.map((it) => it.day)).size;
+          const distB = new Set(b.items.map((it) => it.day)).size;
+          if (distB !== distA) return distB - distA;
+          return a.yMean - b.yMean;
+        });
+        const headerCluster = clusters[0];
+        const distinctDays = new Set(headerCluster.items.map((it) => it.day));
+        if (distinctDays.size < 2) return { reason: 'header_cluster_too_small', dayCandidateCount: dayCandidates.length };
+
+        // Within the header cluster, keep one entry per day (the leftmost
+        // occurrence — labels rendered twice would skew column assignment).
+        const dayCenters = {};
+        for (const it of headerCluster.items) {
+          if (dayCenters[it.day] === undefined || it.cx < dayCenters[it.day]) {
+            dayCenters[it.day] = it.cx;
+          }
+        }
+        // Sort days by ascending X center, derive column-range midpoints.
+        const dayOrder = Object.entries(dayCenters)
+          .map(([day, cx]) => ({ day, cx }))
+          .sort((a, b) => a.cx - b.cx);
+        const ranges = dayOrder.map((d, i) => {
+          const prev = dayOrder[i - 1];
+          const next = dayOrder[i + 1];
+          const lo = prev ? (prev.cx + d.cx) / 2 : -Infinity;
+          const hi = next ? (d.cx + next.cx) / 2 : Infinity;
+          return { day: d.day, lo, hi, cx: d.cx };
+        });
+
+        // Only consider slots strictly BELOW the header row.
+        const headerBottom = Math.max(...headerCluster.items.map((it) => it.y + it.h));
+
+        // Collect slot elements: leaf-ish, visible, text contains time range.
+        const sched = {};
+        for (const d of canonicalOrder) sched[d] = [];
+        let slotElementCount = 0;
+        let unmatched = 0;
+        for (const el of document.querySelectorAll('body *')) {
+          if (el.children.length > 0) continue;
+          const txt = compact(el.innerText || el.textContent || '');
+          if (!txt || !timeRangeRe.test(txt)) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.y + r.height <= headerBottom) continue; // skip anything in/above the header
+          const cx = r.x + r.width / 2;
+          const range = ranges.find((rg) => cx >= rg.lo && cx < rg.hi);
+          if (!range) { unmatched += 1; continue; }
+          const matches = txt.match(timeRangeReG) || [];
+          slotElementCount += 1;
+          for (const raw of matches) sched[range.day].push(raw);
+        }
+
+        // Deduplicate.
+        for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
+        const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
+        if (totalSlots === 0) return { reason: 'no_slot_elements', dayColumns: dayCenters, slotElementCount, unmatched };
+
+        return {
+          sched,
+          parsedBy: 'coordinate_based',
+          dayColumns: dayCenters,
+          slotElementCount,
+          unmatched,
+        };
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch((err) => ({ reason: 'evaluate_error', error: String(err?.message || err) }));
     })();
 
     if (result?.sched) {
@@ -2386,8 +2586,166 @@ async function parseSlotSchedulePage(page, diagnostic) {
         schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
       }
       parsedBy = result.parsedBy;
+      strategy0Trace.dayColumns = result.dayColumns;
+      strategy0Trace.slotElementCount = result.slotElementCount;
+      strategy0Trace.unmatched = result.unmatched;
+      strategy0Trace.contextChosen = { kind: source.kind, index: source.index, url: source.url };
+    } else if (result && !strategy0Trace.contextChosen) {
+      // Keep the most informative failure reason (first non-empty context).
+      strategy0Trace.contextChosen = { kind: source.kind, index: source.index, url: source.url };
+      strategy0Trace.reason = result.reason;
+      strategy0Trace.dayCandidateCount = result.dayCandidateCount;
+      strategy0Trace.slotElementCount = result.slotElementCount;
+      strategy0Trace.unmatched = result.unmatched;
+      strategy0Trace.dayColumns = result.dayColumns;
+      strategy0Trace.error = result.error;
     }
   }
+  diagnostic.slotScheduleStrategy0 = strategy0Trace;
+
+  // ── Strategy 1: Table with day-name headers (rowspan-aware) ──────────────
+  // Find tables whose header row contains day names. For each body row, build
+  // a virtual column→cell map that respects rowspan from prior rows, then for
+  // each day column extract every HH:MM-HH:MM range found in the cell text.
+  // Empty cells (only the hour label like "09:00") and rowspan-covered slots
+  // are handled correctly: the slot text "09:00-10:30" appears once in the
+  // source cell and is attributed to its day column.
+  const strategy1Trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
+  for (const source of htmlSources) {
+    if (parsedBy) break;
+    const result = await (async () => {
+      const target = source.kind === 'page' ? page : page.frames()[source.index];
+      if (!target) return null;
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
+        const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+        const normalizeDay = (raw) => {
+          const key = String(raw)
+            .toLocaleLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+          return dayVariants[key] || null;
+        };
+        const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
+
+        const trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
+
+        for (const table of document.querySelectorAll('table')) {
+          trace.tablesScanned += 1;
+          const rows = [...table.querySelectorAll('tr')];
+          if (rows.length < 2) continue;
+
+          // Find header row with day names. Header column maps the LOGICAL
+          // column index (accounting for colspan) to a canonical day.
+          let dayColMap = null; // { canonicalDay: logicalColIndex }
+          let headerRowIdx = -1;
+          for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            const found = {};
+            let col = 0;
+            for (const cell of cells) {
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+              const day = normalizeDay(compact(cell.innerText));
+              if (day && found[day] === undefined) found[day] = col;
+              col += colspan;
+            }
+            if (Object.keys(found).length >= 2) {
+              dayColMap = found;
+              headerRowIdx = ri;
+              break;
+            }
+          }
+          if (!dayColMap || headerRowIdx < 0) continue;
+          trace.tablesWithHeader += 1;
+          if (!trace.bestTable) {
+            trace.bestTable = {
+              rowCount: rows.length,
+              headerRowIdx,
+              dayColMap,
+              firstBodyRowSample: rows[headerRowIdx + 1]
+                ? [...rows[headerRowIdx + 1].querySelectorAll('td, th')]
+                    .slice(0, 10)
+                    .map((c) => compact(c.innerText).slice(0, 30))
+                : null,
+            };
+          }
+
+          const sched = {};
+          for (const d of canonicalOrder) sched[d] = [];
+
+          // pendingRowspan[col] = { cell, rowsLeft } for cells that span
+          // multiple rows starting in a previous iteration.
+          const pendingRowspan = new Map();
+
+          for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            // Build colIdx -> cell map for THIS row, advancing past columns
+            // already occupied by rowspans from earlier rows.
+            const rowCellByCol = new Map();
+            let colCursor = 0;
+            for (const cell of cells) {
+              while (pendingRowspan.has(colCursor)) colCursor++;
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+              const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10) || 1;
+              for (let cs = 0; cs < colspan; cs++) {
+                rowCellByCol.set(colCursor + cs, cell);
+                if (rowspan > 1) {
+                  pendingRowspan.set(colCursor + cs, { cell, rowsLeft: rowspan - 1 });
+                }
+              }
+              colCursor += colspan;
+            }
+            // Merge in cells still active from earlier rowspans.
+            for (const [col, info] of pendingRowspan.entries()) {
+              if (!rowCellByCol.has(col)) rowCellByCol.set(col, info.cell);
+            }
+
+            // Extract time ranges per day column.
+            for (const [day, ci] of Object.entries(dayColMap)) {
+              const cell = rowCellByCol.get(ci);
+              if (!cell) continue;
+              const text = compact(cell.innerText);
+              if (!text) continue;
+              const matches = text.match(timeRangeReG);
+              if (!matches) continue;
+              for (const raw of matches) sched[day].push(raw);
+            }
+
+            // Decrement rowspan counters; drop entries that are exhausted.
+            for (const [col, info] of [...pendingRowspan.entries()]) {
+              info.rowsLeft -= 1;
+              if (info.rowsLeft <= 0) pendingRowspan.delete(col);
+            }
+          }
+
+          // Deduplicate slot ranges per day (rowspan cells repeat the same
+          // text on every row they cover).
+          for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
+
+          const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
+          if (trace.bestTable) trace.bestTable.slotsFound = totalSlots;
+          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers', trace };
+        }
+        return { trace };
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch(() => null);
+    })();
+
+    if (result?.trace) {
+      strategy1Trace.tablesScanned += result.trace.tablesScanned;
+      strategy1Trace.tablesWithHeader += result.trace.tablesWithHeader;
+      if (!strategy1Trace.bestTable && result.trace.bestTable) {
+        strategy1Trace.bestTable = result.trace.bestTable;
+      }
+    }
+    if (result?.sched) {
+      for (const [day, slots] of Object.entries(result.sched)) {
+        schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
+      }
+      parsedBy = result.parsedBy;
+    }
+  }
+  diagnostic.slotScheduleStrategy1 = strategy1Trace;
 
   // ── Strategy 2: Day-section scan (list layout) ────────────────────────────
   // Walk page text line by line; when a line is a day name start collecting
@@ -2529,6 +2887,20 @@ async function exportSlotScheduleWithBrowser(options = {}) {
       });
     }
 
+    // Optional structural dump for off-line analysis. Triggered with
+    // { debug: true } in request body. Returns DOM structure samples
+    // (no parsing attempt) so we can reverse-engineer non-<table> layouts.
+    if (options.debug === true) {
+      const dump = await collectSlotScheduleStructureDump(page);
+      diagnostic.finishedAt = new Date().toISOString();
+      return {
+        ok: true,
+        debug: true,
+        structureDump: dump,
+        diagnostic,
+      };
+    }
+
     // Parse the schedule
     const { schedule, parsedBy, totalSlots } = await parseSlotSchedulePage(page, diagnostic);
     diagnostic.finishedAt = new Date().toISOString();
@@ -2537,6 +2909,7 @@ async function exportSlotScheduleWithBrowser(options = {}) {
       ok: true,
       schedule,
       totalSlots,
+      parsedBy: parsedBy || 'none',
       diagnostic,
     };
   } finally {

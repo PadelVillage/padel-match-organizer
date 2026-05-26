@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.561</title>
+  <title>Padel Match Organizer v5.574</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -2513,6 +2513,8 @@
     .potential-slot-reference img { width:100%; max-height:96px; object-fit:cover; border:1px solid #e4d4b4; border-radius:6px; background:#fff; }
     .potential-slot-reference strong { color:#344054; }
     .potential-slot-reference .mini-btn { min-height:28px; padding:5px 8px; font-size:11px; border-radius:6px; }
+    .potential-slot-import-status { font-size:12px; padding:8px 10px; border-radius:6px; background:#eef4ff; color:#1f4788; border:1px solid #c8d8ef; }
+    .potential-slot-import-status.error { background:#fef0f0; color:#b42318; border-color:#f5c2c0; }
     .potential-slot-editor { display:grid; gap:7px; }
     .potential-slot-editor label { margin-top:2px; }
     .potential-slot-editor textarea { width:100%; min-height:142px; resize:vertical; border:1px solid #cfd9e7; border-radius:7px; background:#fbfdff; padding:8px; color:#344054; font-size:11px; line-height:1.35; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
@@ -2521,6 +2523,7 @@
     .potential-slot-horizontal { display:grid; grid-template-columns:minmax(240px,.85fr) minmax(360px,1.15fr); gap:14px; padding:12px; align-items:start; }
     .potential-slot-panel { display:grid; gap:8px; min-width:0; }
     .potential-slot-panel .matchpoint-data-actions { margin-top:0; }
+    .potential-slot-import-status { font-size:12px; line-height:1.4; padding:6px 8px; border-radius:6px; background:#f0f4ff; border:1px solid #c8d8f5; color:#344054; word-break:break-word; }
     .matchpoint-data-actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:10px; }
     .matchpoint-data-actions button { width:100%; min-height:38px; border-radius:7px; padding:9px 11px; font-size:13px; }
     .matchpoint-cloud-separator { height:1px; background:#e5e7eb; margin:2px 0; }
@@ -6616,10 +6619,19 @@ body.assessment-public-mode .assessment-public-only-card {
                     <div class="potential-slot-details">
                       <div class="potential-slot-horizontal">
                         <div class="potential-slot-panel">
-                          <label for="potentialSlotImageFile">Immagine griglia slot</label>
-                          <input type="file" id="potentialSlotImageFile" accept="image/*" onchange="importPotentialSlotImageFile(this.files && this.files[0])" />
-                          <div id="potentialSlotImagePreview" class="potential-slot-reference"></div>
-                          <div class="matchpoint-data-hint">Riferimento visivo locale: non viene letto automaticamente.</div>
+                          <button class="btn-primary" onclick="syncSlotScheduleFromMatchpoint(this)" id="syncSlotScheduleBtn">Sincronizza da Matchpoint</button>
+                          <div id="syncSlotScheduleStatus" class="potential-slot-import-status" hidden></div>
+                          <div class="matchpoint-data-hint">Legge la griglia direttamente da Matchpoint (Sistema → Campi → Orari). Richiede worker browser attivo e credenziali configurate.</div>
+                          <label for="potentialSlotScheduleImportFile" style="margin-top:10px">Importa griglia da file</label>
+                          <input type="file" id="potentialSlotScheduleImportFile" accept=".csv,.tsv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.gif,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*" onchange="importPotentialSlotScheduleFile(this.files && this.files[0]); this.value=''" />
+                          <div id="potentialSlotImportStatus" class="potential-slot-import-status" hidden></div>
+                          <div class="matchpoint-data-hint">
+                            Accetta CSV, TSV, TXT, XLSX e immagini (PNG/JPG/screenshot). Tre formati riconosciuti automaticamente:<br>
+                            • <strong>Immagine</strong>: screenshot della griglia Matchpoint. L'app la invia a Claude (vision OCR) e ti mostra il diff.<br>
+                            • <strong>Tabella wide</strong>: prima riga con i giorni (Lunedì…Domenica) e ogni cella contiene gli slot in formato <code>HH:MM-HH:MM</code>.<br>
+                            • <strong>Una riga per giorno</strong>: <code>Lunedì, 10:30-12:00, 12:00-13:30, 18:00-19:30</code><br>
+                            Prima di applicare ti mostro sempre il diff con la griglia attuale.
+                          </div>
                         </div>
                         <div class="potential-slot-panel">
                           <div class="potential-slot-editor">
@@ -6754,7 +6766,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.566';
+    const APP_VERSION = '5.576';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6826,7 +6838,7 @@ body.assessment-public-mode .assessment-public-only-card {
     let prenotazioni = safeLoad('prenotazioni', []);
     let prenotazioniOccupazione = safeLoad('prenotazioniOccupazione', []);
     let potentialSlotSchedule = normalizePotentialSlotSchedule(safeLoad('potentialSlotSchedule', DEFAULT_POTENTIAL_SLOT_SCHEDULE));
-    let potentialSlotImage = safeLoad('potentialSlotImage', null);
+    try { pmoLocalRemoveItem('potentialSlotImage'); } catch {}
     let potentialSlotEditorDirty = false;
     let storicoPrenotazioni = safeLoad('storicoPrenotazioni', []);
     pmoMigrateCompactStorageKey('prenotazioni', prenotazioni);
@@ -7795,7 +7807,6 @@ Grazie.`
       'prenotazioni',
       'prenotazioniOccupazione',
       'potentialSlotSchedule',
-      'potentialSlotImage',
       'storicoPrenotazioni',
       'matchpointData',
       'memberContactsExportState',
@@ -7822,7 +7833,6 @@ Grazie.`
         prenotazioni,
         prenotazioniOccupazione,
         potentialSlotSchedule,
-        potentialSlotImage,
         storicoPrenotazioni,
         dailyPlayerGroups,
         lunchMatchInvitations,
@@ -11265,10 +11275,9 @@ Grazie.`
       const typed = prompt('⚠️ Cancellare i dati locali principali collegati alla sincronizzazione Matchpoint?\n\nQuesta azione svuota soci, prenotazioni, storico, riepiloghi import, gruppi, partite salvate, sessioni invito guidato e storico messaggi WhatsApp collegato alle partite.\n\nÈ stato creato uno snapshot automatico locale prima della cancellazione.\n\nPer confermare scrivi ELIMINA.');
       if (typed === null) return showAlert('Operazione annullata. I dati locali sono rimasti invariati.', 'info');
       if (String(typed).trim().toUpperCase() !== 'ELIMINA') return showAlert('⚠️ Conferma non valida: dati locali non cancellati.', 'warning');
-      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = null; storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; assessmentEmailRoutineBatches = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0}; memberContactsExportState = normalizeMemberContactsExportState(null);
+      giocatori = []; memberIdCounter = 0; prenotazioni = []; prenotazioniOccupazione = []; potentialSlotSchedule = normalizePotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE); storicoPrenotazioni = []; contactHistory = {}; weeklyContactLog = {}; dailyDiffHistory = []; lastMatchpointImportSummary = null; assessmentDailySendLog = {}; assessmentEmailRoutineBatches = {}; dailyAssistantState = {}; dailyPlayerGroups = []; lunchMatchInvitations = {}; fillSlotCreatedMatches = {}; fillSlotPlayerRequests = []; guidedInviteSessions = {}; whatsappMessageHistory = {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(null); matchpointData = {lastSync:null, clientCount:0}; memberContactsExportState = normalizeMemberContactsExportState(null);
       save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); save('dailyDiffHistory', dailyDiffHistory); save('lastMatchpointImportSummary', lastMatchpointImportSummary); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('matchpointData', matchpointData); saveMemberContactsExportState();
       renderLastMatchpointImportSummary();
-      renderPotentialSlotImage();
       memberInlineOpenId = ''; closeMemberCard(); displayMembers(); updateStats();
       showAlert('✅ Dati locali Matchpoint principali, partite e riferimenti inviti collegati cancellati', 'success');
     }
@@ -11290,7 +11299,6 @@ Grazie.`
         prenotazioni,
         prenotazioniOccupazione,
         potentialSlotSchedule,
-        potentialSlotImage,
         storicoPrenotazioni,
         matchpointData,
         memberContactsExportState,
@@ -11595,15 +11603,15 @@ Grazie.`
       } else if (options.confirm !== false) {
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
-      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
+      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
       contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentExternalRequests = data.assessmentExternalRequests || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || []; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = normalizeWhatsAppOpenSettings(data.whatsappOpenSettings || whatsappOpenSettings);
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentExternalRequests', assessmentExternalRequests); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
-      renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentExternalRequests', assessmentExternalRequests); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
       return { removedOld12Months };
@@ -12636,6 +12644,9 @@ Grazie.`
       if (button) {
         button.className = isPending ? 'btn-warning' : (isDone ? (cfg.doneClass || 'btn-success') : cfg.defaultClass);
         button.textContent = isPending ? cfg.pendingText : (isDone ? cfg.doneText : cfg.defaultText);
+        if (key === 'potential') {
+          button.style.display = isDone ? 'none' : '';
+        }
       }
       if (state) {
         const isImportDateStatus = isDone && !!DATA_IMPORT_ACTION_TYPES[key];
@@ -13169,6 +13180,9 @@ Grazie.`
     function applyPotentialSlotSchedule(schedule, message='✅ Griglia slot salvata. Dashboard e Apri Partite useranno i nuovi slot.') {
       potentialSlotSchedule = normalizePotentialSlotSchedule(schedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE);
       save('potentialSlotSchedule', potentialSlotSchedule);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('potentialSlotSchedule', potentialSlotSchedule, 'sincronizzare griglia slot');
+      }
       fillSlotsFastAnalysisCache = null;
       save('fillSlotsFastAnalysisCache', fillSlotsFastAnalysisCache);
       renderPotentialSlotScheduleEditor();
@@ -13192,63 +13206,324 @@ Grazie.`
       applyPotentialSlotSchedule(DEFAULT_POTENTIAL_SLOT_SCHEDULE, '✅ Griglia standard ripristinata. Dashboard e Apri Partite useranno questa fonte comune.');
     }
 
-    function formatPotentialSlotImageSize(bytes) {
-      const n = Number(bytes || 0);
-      if (!Number.isFinite(n) || n <= 0) return 'dimensione non disponibile';
-      if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
-      return `${Math.max(1, Math.round(n / 1024))} KB`;
+    function normalizeImportedScheduleText(rawText) {
+      const dayPattern = /^(\s*(?:lun|mar|mer|gio|ven|sab|dom)[a-zàèéìòù]*)\s*[:,;\t]\s*/i;
+      return String(rawText || '').replace(/﻿/g, '').split(/\r?\n+/).map(line => {
+        const trimmed = line.replace(/^[\s"']+|[\s"']+$/g, '');
+        if (!trimmed) return '';
+        const m = trimmed.match(dayPattern);
+        if (!m) return trimmed;
+        const rest = trimmed.slice(m[0].length).replace(/[;\t]+/g, ',');
+        return m[1].trim() + ': ' + rest;
+      }).filter(Boolean).join('\n');
     }
 
-    function renderPotentialSlotImage() {
-      const panel = document.getElementById('potentialSlotImagePreview');
-      if (!panel) return;
-      if (!potentialSlotImage || !potentialSlotImage.dataUrl) {
-        panel.innerHTML = '<span>Nessuna immagine caricata.</span>';
+    function scheduleFromMatchpointResponse(apiSchedule) {
+      const dayMap = {
+        'Lunedì': 1, 'Martedì': 2, 'Mercoledì': 3,
+        'Giovedì': 4, 'Venerdì': 5, 'Sabato': 6, 'Domenica': 0
+      };
+      const result = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      for (const [dayLabel, slots] of Object.entries(apiSchedule || {})) {
+        const dayKey = dayMap[dayLabel];
+        if (dayKey === undefined) continue;
+        result[dayKey] = (slots || []).map(slotStr => {
+          const [start, end] = String(slotStr).split('-');
+          if (!start || !end) return null;
+          return { start: start.trim(), end: end.trim(), name: slotStr };
+        }).filter(Boolean);
+      }
+      return result;
+    }
+
+    async function syncSlotScheduleFromMatchpoint(btn) {
+      const statusEl = document.getElementById('syncSlotScheduleStatus');
+      const showStatus = (msg, err=false) => {
+        if (!statusEl) return;
+        statusEl.hidden = false;
+        statusEl.style.background = err ? '#fff2f2' : '#f0f4ff';
+        statusEl.style.borderColor = err ? '#f5c6c6' : '#c8d8f5';
+        statusEl.style.color = err ? '#b42318' : '#344054';
+        statusEl.textContent = msg;
+      };
+      const clearStatus = () => { if (statusEl) statusEl.hidden = true; };
+
+      if (btn) btn.disabled = true;
+      showStatus('Connessione a Matchpoint in corso...');
+
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare griglia slot da Matchpoint');
+        if (!staff) { if (btn) btn.disabled = false; clearStatus(); return; }
+
+        showStatus('Navigazione Matchpoint: Sistema → Campi → Orari (30-60 secondi)...');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-slot-schedule-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${staff.accessToken}`
+          },
+          body: JSON.stringify({ source: 'pmo_dati_slot_sync', scheduleName: 'Orari settimana + venerdì' })
+        });
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+
+        if (!response.ok || data?.ok === false) {
+          const errMsg = data?.message || data?.error || `Errore HTTP ${response.status}`;
+          showStatus('Errore: ' + errMsg, true);
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        const parsed = scheduleFromMatchpointResponse(data.schedule);
+        const diff = diffPotentialSlotSchedule(potentialSlotSchedule, parsed);
+
+        let confirmMsg = `Matchpoint restituisce ${data.totalSlots} slot totali (${data.durationMs ? Math.round(data.durationMs / 1000) + 's' : ''}).`;
+        if (diff.totalChanges === 0) {
+          confirmMsg += '\n\nLa griglia e\' identica a quella attuale. Nessuna modifica necessaria.';
+          showStatus('✅ Griglia Matchpoint identica alla corrente (' + data.totalSlots + ' slot). Nessuna modifica.');
+          if (btn) btn.disabled = false;
+          return;
+        }
+        confirmMsg += `\n\nDifferenze rispetto alla griglia corrente (${diff.totalChanges} modifiche):\n${diff.text}`;
+        confirmMsg += '\n\nApplicare la griglia di Matchpoint?';
+
+        if (!confirm(confirmMsg)) {
+          showStatus('Sincronizzazione annullata.');
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        applyPotentialSlotSchedule(parsed, '✅ Griglia slot sincronizzata da Matchpoint. Dashboard e Apri Partite usano i nuovi slot.');
+        if (typeof pmoQueueAppSettingCloudSync === 'function') {
+          pmoQueueAppSettingCloudSync('potentialSlotSchedule', potentialSlotSchedule, 'sincronizzare griglia slot');
+        }
+        clearStatus();
+      } catch (err) {
+        showStatus('Errore: ' + (err?.message || String(err)), true);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function diffPotentialSlotSchedule(current, next) {
+      const labels = potentialSlotDayLabels();
+      const lines = [];
+      let totalChanges = 0;
+      labels.forEach(day => {
+        const cur = (current?.[day.key] || []).map(s => `${s.start}-${s.end}`);
+        const nxt = (next?.[day.key] || []).map(s => `${s.start}-${s.end}`);
+        const curSet = new Set(cur);
+        const nxtSet = new Set(nxt);
+        const added = nxt.filter(s => !curSet.has(s));
+        const removed = cur.filter(s => !nxtSet.has(s));
+        if (!added.length && !removed.length) {
+          lines.push(`- ${day.label}: invariato (${cur.length} slot)`);
+          return;
+        }
+        const parts = [];
+        if (added.length) parts.push(`+${added.length} (${added.join(', ')})`);
+        if (removed.length) parts.push(`-${removed.length} (${removed.join(', ')})`);
+        lines.push(`- ${day.label}: ${parts.join(' / ')}`);
+        totalChanges += added.length + removed.length;
+      });
+      return { text: lines.join('\n'), totalChanges };
+    }
+
+    function detectCSVSeparator(text) {
+      const firstLine = (String(text || '').split(/\r?\n/).find(l => l.trim()) || '');
+      const counts = {
+        '\t': (firstLine.match(/\t/g) || []).length,
+        ';': (firstLine.match(/;/g) || []).length,
+        ',': (firstLine.match(/,/g) || []).length,
+      };
+      let best = ',', bestCount = counts[','];
+      for (const sep of ['\t', ';']) {
+        if (counts[sep] > bestCount) { best = sep; bestCount = counts[sep]; }
+      }
+      return bestCount > 0 ? best : ',';
+    }
+
+    function parseCSVRows(text) {
+      const sep = detectCSVSeparator(text);
+      return String(text || '').replace(/﻿/g, '').split(/\r?\n/).filter(l => l.trim()).map(line => {
+        return line.split(sep).map(cell => cell.trim().replace(/^"|"$/g, ''));
+      });
+    }
+
+    function parseWideTableSchedule(rows) {
+      if (!Array.isArray(rows) || rows.length < 2) return null;
+      const header = rows[0] || [];
+      const dayColMap = [];
+      header.forEach((cell, idx) => {
+        const day = potentialSlotDayFromLabel(cell);
+        if (day !== null) dayColMap.push({ day, colIndex: idx });
+      });
+      if (dayColMap.length < 2) return null;
+      const next = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      const seen = {0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
+      const slotPattern = /\d{1,2}[:.]\d{2}\s*-\s*\d{1,2}[:.]\d{2}/g;
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        dayColMap.forEach(({day, colIndex}) => {
+          const cell = String(row[colIndex] || '');
+          const matches = cell.match(slotPattern);
+          if (!matches) return;
+          matches.forEach(match => {
+            const [startRaw, endRaw] = match.split('-');
+            const start = parseTimeValue(startRaw);
+            const end = parseTimeValue(endRaw);
+            if (!start || !end || toMinutes(end) <= toMinutes(start)) return;
+            const key = `${start}-${end}`;
+            if (seen[day].has(key)) return;
+            seen[day].add(key);
+            next[day].push({ start, end, name: key });
+          });
+        });
+      }
+      const totalSlots = Object.values(next).reduce((a, list) => a + list.length, 0);
+      if (totalSlots === 0) return null;
+      return normalizePotentialSlotSchedule(next);
+    }
+
+    function setPotentialSlotImportStatus(message, level='info') {
+      const el = document.getElementById('potentialSlotImportStatus');
+      if (!el) return;
+      if (!message) { el.hidden = true; el.textContent = ''; el.classList.remove('error'); return; }
+      el.hidden = false;
+      el.textContent = message;
+      el.classList.toggle('error', level === 'error');
+    }
+
+    function scheduleFromClaudeResponse(claudeSchedule) {
+      const labels = potentialSlotDayLabels();
+      const next = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      let totalSlots = 0;
+      labels.forEach(day => {
+        const list = Array.isArray(claudeSchedule?.[day.label]) ? claudeSchedule[day.label] : [];
+        const seen = new Set();
+        list.forEach(raw => {
+          const match = String(raw || '').match(/^(\d{1,2})[:.](\d{2})-(\d{1,2})[:.](\d{2})$/);
+          if (!match) return;
+          const start = parseTimeValue(`${match[1]}:${match[2]}`);
+          const end = parseTimeValue(`${match[3]}:${match[4]}`);
+          if (!start || !end || toMinutes(end) <= toMinutes(start)) return;
+          const key = `${start}-${end}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          next[day.key].push({ start, end, name: key });
+          totalSlots++;
+        });
+      });
+      if (totalSlots === 0) return null;
+      return normalizePotentialSlotSchedule(next);
+    }
+
+    async function importPotentialSlotScheduleFromImage(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
+      const mimeType = (file.type || '').toLowerCase() || 'image/png';
+      let staff;
+      try {
+        staff = await pmoRequireStaffPermission('cloud_sync', 'leggere la griglia dall’immagine');
+      } catch (err) {
+        throw new Error(err?.message || 'Servono permessi staff per usare l’OCR.');
+      }
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/pmo-schedule-from-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`,
+        },
+        body: JSON.stringify({ image: base64, mimeType }),
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+      if (!response.ok || !data || data.ok === false) {
+        const msg = data?.message || data?.error || text || `Errore HTTP ${response.status}`;
+        throw new Error(msg);
+      }
+      const parsed = scheduleFromClaudeResponse(data.schedule);
+      if (!parsed) throw new Error('Il modello non ha riconosciuto slot validi nell’immagine.');
+      return { parsed, durationMs: data.durationMs, totalSlots: data.totalSlots };
+    }
+
+    function importPotentialSlotScheduleFromTextOrSpreadsheet(file) {
+      return new Promise((resolve, reject) => {
+        const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Non sono riuscito a leggere il file.'));
+        reader.onload = e => {
+          try {
+            let rows;
+            if (isExcel) {
+              if (typeof XLSX === 'undefined') throw new Error('libreria Excel non caricata. Controlla la connessione e ricarica la pagina.');
+              const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+              const sheet = wb.Sheets[wb.SheetNames[0]];
+              rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }).map(r => (Array.isArray(r) ? r : [r]).map(c => String(c == null ? '' : c)));
+            } else {
+              rows = parseCSVRows(String(e.target?.result || ''));
+            }
+            let parsed = parseWideTableSchedule(rows);
+            if (!parsed) {
+              const longText = rows.map(r => r.join(',')).join('\n');
+              const normalized = normalizeImportedScheduleText(longText);
+              if (!normalized.trim()) throw new Error('nessun giorno riconosciuto nel file.');
+              parsed = parsePotentialSlotScheduleEditor(normalized);
+            }
+            resolve(parsed);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        if (isExcel) reader.readAsArrayBuffer(file);
+        else reader.readAsText(file);
+      });
+    }
+
+    async function importPotentialSlotScheduleFile(file) {
+      if (!file) return;
+      const isImage = /^image\//i.test(file.type || '') || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+      const maxBytes = isImage ? 6 * 1024 * 1024 : 2 * 1024 * 1024;
+      if (file.size > maxBytes) return showAlert(`⚠️ File troppo grande. Massimo ${Math.round(maxBytes / 1024 / 1024)} MB.`, 'warning');
+      let parsed;
+      let sourceLabel = file.name;
+      try {
+        if (isImage) {
+          setPotentialSlotImportStatus(`⏳ Lettura "${file.name}" con OCR Claude…`, 'info');
+          const result = await importPotentialSlotScheduleFromImage(file);
+          parsed = result.parsed;
+          sourceLabel = `${file.name} (OCR · ${(result.durationMs / 1000).toFixed(1)}s · ${result.totalSlots} slot)`;
+        } else {
+          setPotentialSlotImportStatus(`⏳ Lettura "${file.name}"…`, 'info');
+          parsed = await importPotentialSlotScheduleFromTextOrSpreadsheet(file);
+        }
+      } catch (err) {
+        setPotentialSlotImportStatus(`❌ ${err?.message || err}`, 'error');
+        showAlert('❌ Import non riuscito: ' + (err?.message || err), 'danger');
         return;
       }
-      const name = escapeHtml(potentialSlotImage.name || 'immagine griglia');
-      const size = escapeHtml(formatPotentialSlotImageSize(potentialSlotImage.size));
-      panel.innerHTML = `
-        <img src="${potentialSlotImage.dataUrl}" alt="Griglia slot potenziali caricata" />
-        <div><strong>${name}</strong><br>${size} · riferimento locale</div>
-        <button class="btn-secondary mini-btn" onclick="setActionAnchor(this); removePotentialSlotImage()">Rimuovi immagine</button>
-      `;
-    }
-
-    function importPotentialSlotImageFile(file) {
-      if (!file) return;
-      if (!/^image\//.test(file.type || '')) return showAlert('❌ Seleziona un file immagine.', 'danger');
-      const maxBytes = 2 * 1024 * 1024;
-      if (file.size > maxBytes) return showAlert('⚠️ Immagine troppo grande. Usa uno screenshot piu leggero sotto 2 MB.', 'warning');
-      const reader = new FileReader();
-      reader.onload = e => {
-        try {
-          potentialSlotImage = {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified || null,
-            savedAt: new Date().toISOString(),
-            dataUrl: e.target.result
-          };
-          save('potentialSlotImage', potentialSlotImage);
-          renderPotentialSlotImage();
-          markDataActionPending('potentialImage');
-          showAlert('✅ Immagine griglia salvata come riferimento. Controlla la griglia operativa e clicca Salva griglia slot.', 'success');
-        } catch (err) {
-          showAlert('❌ Non sono riuscito a salvare l’immagine: ' + err.message, 'danger');
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function removePotentialSlotImage() {
-      potentialSlotImage = null;
-      pmoLocalRemoveItem('potentialSlotImage');
-      const input = document.getElementById('potentialSlotImageFile');
-      if (input) input.value = '';
-      renderPotentialSlotImage();
-      showAlert('✅ Immagine griglia rimossa.', 'success');
+      setPotentialSlotImportStatus('');
+      const diff = diffPotentialSlotSchedule(getPotentialSlotSchedule(), parsed);
+      if (diff.totalChanges === 0) {
+        showAlert(`ℹ️ La griglia letta da "${sourceLabel}" è identica a quella attuale.`, 'info');
+        return;
+      }
+      const ok = confirm(`Importare griglia da "${sourceLabel}"?\n\nDifferenze rispetto alla griglia operativa attuale:\n\n${diff.text}\n\nConferma per applicare e salvare.`);
+      if (!ok) return;
+      applyPotentialSlotSchedule(parsed, `✅ Griglia importata da ${sourceLabel}.`);
+      renderPotentialSlotScheduleEditor();
     }
 
     function clonePotentialSlotSchedule(source=DEFAULT_POTENTIAL_SLOT_SCHEDULE) {
@@ -25581,7 +25856,6 @@ Per confermare scrivi ELIMINA.`);
       pruneHistoricalBookings(false);
       potentialSlotSchedule = normalizePotentialSlotSchedule(potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE);
       save('potentialSlotSchedule', potentialSlotSchedule);
-      renderPotentialSlotImage();
       renderPotentialSlotScheduleEditor();
       updateStats();
       renderLastMatchpointImportSummary();
