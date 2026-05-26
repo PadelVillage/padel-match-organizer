@@ -13261,7 +13261,7 @@ Grazie.`
             'apikey': supabaseKey,
             'Authorization': `Bearer ${staff.accessToken}`
           },
-          body: JSON.stringify({ source: 'pmo_dati_slot_sync' })
+          body: JSON.stringify({ source: 'pmo_dati_slot_sync', scheduleName: 'Orari settimana + venerdì' })
         });
         const text = await response.text();
         let data = null;

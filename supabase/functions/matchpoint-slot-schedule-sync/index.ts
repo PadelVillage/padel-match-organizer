@@ -112,13 +112,14 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function callWorker(workerUrl: string, workerApiKey: string, username: string, password: string, baseUrl: string): Promise<JsonMap> {
+async function callWorker(workerUrl: string, workerApiKey: string, username: string, password: string, baseUrl: string, scheduleName: string): Promise<JsonMap> {
   const endpoint = `${workerUrl.replace(/\/+$/, '')}/export-slot-schedule`;
   const healthEndpoint = `${workerUrl.replace(/\/+$/, '')}/health`;
   const requestBody = JSON.stringify({
     username,
     password,
     baseUrl,
+    scheduleName,
     credentialSource: 'supabase_secret',
   });
 
@@ -205,9 +206,11 @@ Deno.serve(async (req) => {
     }
 
     const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL);
+    const body = await req.json().catch(() => ({}));
+    const scheduleName = clean(body?.scheduleName) || clean(Deno.env.get('MATCHPOINT_SLOT_SCHEDULE_NAME') || 'Orari settimana + venerdi');
     const startedAt = Date.now();
 
-    const workerResult = await callWorker(workerUrl, workerApiKey, username, password, baseUrl);
+    const workerResult = await callWorker(workerUrl, workerApiKey, username, password, baseUrl, scheduleName);
     const durationMs = Date.now() - startedAt;
 
     const { schedule, totalSlots } = normaliseSchedule(workerResult.schedule);
