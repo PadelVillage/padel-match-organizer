@@ -27056,41 +27056,6 @@ Per confermare scrivi ELIMINA.`);
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000948';
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
-
-    function assessmentInjectTestValidareEntry() {
-      if (!PMO_IS_TEST_ENV) return;
-      const memberId = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
-      const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, memberId));
-      if (!member) { showAlert('❌ Membro test PMO-000948 non trovato', 'danger'); return; }
-      const testToken = 'PMO-TEST-VALIDARE-FAKE';
-      const existingIdx = assessmentResponses.findIndex(r => r.token === testToken);
-      if (existingIdx >= 0) {
-        assessmentResponses.splice(existingIdx, 1);
-        if (assessmentTokens[memberId]?.token === testToken) delete assessmentTokens[memberId];
-        save('assessmentResponses', assessmentResponses);
-        save('assessmentTokens', assessmentTokens);
-        displayAssessment();
-        showAlert('🧪 Risposta test rimossa', 'info');
-        return;
-      }
-      assessmentTokens[memberId] = {
-        memberId, token: testToken,
-        memberName: playerFullName(member),
-        phone: member.phone || '', email: member.email || '',
-        status: 'completed', source: 'test-fake',
-        createdAt: new Date().toISOString(),
-        sentAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      };
-      importAssessmentResponses([{
-        token: testToken,
-        declared_level: '2.5', calculated_level: '3.0',
-        consistency_status: 'low', staff_status: 'review',
-        submitted_at: new Date().toISOString()
-      }], { silent: true });
-      showAlert('🧪 Risposta test inserita in "Da validare"', 'success');
-    }
-
     const ASSESSMENT_PROCESS_DEFAULT_FILTER = 'queue';
     window.assessmentProcessFilter = window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER;
     window.assessmentProcessVisibleRowsLimit = window.assessmentProcessVisibleRowsLimit || ASSESSMENT_PROCESS_PAGE_SIZE;
@@ -28414,10 +28379,8 @@ Per confermare scrivi ELIMINA.`);
       const rAlti = answers.overhead || answers.smash || '-';
       
       const actionButton = auto
-        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>
-           <button class="pmo-kanban-btn-action" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')">👤 Scheda socio</button>`
-        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">⚡ Valida Livello</button>
-           <button class="pmo-kanban-btn-action" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')">👤 Scheda socio</button>`;
+        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>`
+        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">Apri scheda socio</button>`;
       
       const dateStr = response?.submitted_at ? assessmentEmailFormatDateTime(response.submitted_at) : (rec.completedAt ? assessmentEmailFormatDateTime(rec.completedAt) : '-');
       
@@ -28625,13 +28588,9 @@ Per confermare scrivi ELIMINA.`);
             contentHtml += `<div class="assessment-morning-empty">Tutti i flussi automatici sono attivi. Nessuna gestione manuale richiesta.</div>`;
           }
         } else if (activeFilter === 'validare') {
-          const testInjectBtn = PMO_IS_TEST_ENV
-            ? `<button class="pmo-kanban-btn-action" style="margin-left:auto;background:#fef3c7;border-color:#f59e0b;color:#92400e;flex:0 0 auto;" onclick="assessmentInjectTestValidareEntry()">🧪 Test risposta</button>`
-            : '';
-          contentHtml = `<div class="pmo-phase-header" style="display:flex;align-items:center;gap:8px;">
+          contentHtml = `<div class="pmo-phase-header">
             <h4>✓ Da Validare</h4>
             <span class="pmo-phase-badge info">${colValidare.length}</span>
-            ${testInjectBtn}
           </div>`;
           if (colValidare.length) {
             contentHtml += `<div class="pmo-phase-grid">${colValidare.map(renderCardDaValidare).join('')}</div>`;
