@@ -2295,6 +2295,105 @@ async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
 }
 
 
+async function collectSlotScheduleStructureDump(page) {
+  const contexts = pageContentContexts(page);
+  const dump = { contextCount: contexts.length, contexts: [] };
+
+  for (const entry of contexts) {
+    const target = entry.kind === 'page' ? page : page.frames()[entry.index];
+    if (!target) continue;
+    const ctxInfo = await target.evaluate((dayVariants) => {
+      const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+      const normalizeDay = (raw) => {
+        const key = String(raw)
+          .toLocaleLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/\s+/g, '')
+          .trim();
+        return dayVariants[key] || null;
+      };
+      const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+      const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
+
+      // 1. Element counts of structural candidates
+      const tagCounts = {};
+      ['table', 'thead', 'tbody', 'tr', 'td', 'th', 'iframe', 'svg', 'canvas'].forEach((tag) => {
+        tagCounts[tag] = document.querySelectorAll(tag).length;
+      });
+      const roleCounts = {};
+      ['table', 'grid', 'row', 'cell', 'columnheader', 'rowheader'].forEach((role) => {
+        roleCounts[role] = document.querySelectorAll(`[role="${role}"]`).length;
+      });
+      // grid-like divs
+      const gridLikeDivs = [...document.querySelectorAll('div, ul')]
+        .filter((el) => {
+          const cs = getComputedStyle(el);
+          return cs.display === 'grid' || cs.display === 'inline-grid' || cs.display === 'flex';
+        }).length;
+
+      // 2. Locate elements whose text is exactly (or contains) a day name
+      const dayElements = [];
+      const allEls = [...document.querySelectorAll('body *')];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue; // leaf-ish only
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || txt.length > 40) continue;
+        const day = normalizeDay(txt);
+        if (!day) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        dayElements.push({
+          day,
+          text: txt,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (dayElements.length >= 50) break;
+      }
+
+      // 3. Locate elements containing time-range patterns (slots)
+      const slotElements = [];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue;
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || !timeRangeRe.test(txt)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const matches = txt.match(timeRangeReG) || [];
+        slotElements.push({
+          slots: matches,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (slotElements.length >= 200) break;
+      }
+
+      // 4. HTML sample (truncated) for visual inspection
+      const htmlSample = (document.body?.innerHTML || '').slice(0, 4000);
+
+      return {
+        url: location.href,
+        title: document.title,
+        tagCounts,
+        roleCounts,
+        gridLikeDivs,
+        dayElementCount: dayElements.length,
+        dayElements: dayElements.slice(0, 20),
+        slotElementCount: slotElements.length,
+        slotElementsSample: slotElements.slice(0, 30),
+        htmlSampleLength: (document.body?.innerHTML || '').length,
+        htmlSample,
+      };
+    }, ALL_DAY_VARIANTS).catch((err) => ({ error: String(err?.message || err) }));
+
+    dump.contexts.push({ kind: entry.kind, index: entry.index, url: entry.url, ...ctxInfo });
+  }
+  return dump;
+}
+
 async function parseSlotSchedulePage(page, diagnostic) {
   diagnostic.steps.push('slot_schedule_parse');
   const schedule = emptySchedule();
@@ -2591,6 +2690,20 @@ async function exportSlotScheduleWithBrowser(options = {}) {
         navigationAttempts: diagnostic.navigationAttempts || [],
         contextSamples: await contextSamples(page),
       });
+    }
+
+    // Optional structural dump for off-line analysis. Triggered with
+    // { debug: true } in request body. Returns DOM structure samples
+    // (no parsing attempt) so we can reverse-engineer non-<table> layouts.
+    if (options.debug === true) {
+      const dump = await collectSlotScheduleStructureDump(page);
+      diagnostic.finishedAt = new Date().toISOString();
+      return {
+        ok: true,
+        debug: true,
+        structureDump: dump,
+        diagnostic,
+      };
     }
 
     // Parse the schedule
