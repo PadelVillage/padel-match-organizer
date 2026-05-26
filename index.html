@@ -29524,6 +29524,7 @@ Per confermare scrivi ELIMINA.`);
     function renderAssessmentEmailHistoryPanel(options={}) {
       const box = document.getElementById('assessmentEmailHistoryContent');
       if (!box) return;
+      const page = typeof options.page === 'number' ? options.page : 0;
       const activeEl = document.activeElement;
       const preserveSearchFocus = !!(options.preserveFocus && activeEl?.id === 'assessmentHistorySearch');
       const selectionStart = preserveSearchFocus ? activeEl.selectionStart : null;
@@ -29557,7 +29558,16 @@ Per confermare scrivi ELIMINA.`);
         }
         return;
       }
-      box.innerHTML = `${externalHtml}${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${rows.map(row => {
+      const HISTORY_PAGE_SIZE = 10;
+      const totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PAGE_SIZE));
+      const safePage = Math.min(page, totalPages - 1);
+      const pagedRows = rows.slice(safePage * HISTORY_PAGE_SIZE, (safePage + 1) * HISTORY_PAGE_SIZE);
+      const paginationHtml = totalPages > 1 ? `<div class="assessment-history-pagination" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 0;font-size:13px;color:#475569;">
+        <button class="assessment-email-mini" onclick="renderAssessmentEmailHistoryPanel({page:${safePage - 1}})" ${safePage === 0 ? 'disabled' : ''}>← Precedente</button>
+        <span>Pagina <strong>${safePage + 1}</strong> di <strong>${totalPages}</strong> &nbsp;·&nbsp; ${rows.length} totali</span>
+        <button class="assessment-email-mini" onclick="renderAssessmentEmailHistoryPanel({page:${safePage + 1}})" ${safePage >= totalPages - 1 ? 'disabled' : ''}>Successiva →</button>
+      </div>` : '';
+      box.innerHTML = `${externalHtml}${filterHtml}<div class="assessment-email-table-wrap"><table class="assessment-email-table assessment-email-history-table"><thead><tr><th>Socio</th><th>Chiuso il</th><th>Stato</th><th>Livello finale</th><th>Invio scheda</th><th>Risposta socio</th><th>Conferma livello</th></tr></thead><tbody>${pagedRows.map(row => {
         const applied = assessmentEmailMemberApplied(row.member, row.info);
         const paused = row.info.paused;
         const auto = applied && assessmentEmailIsAutoApplicable(row.response);
@@ -29590,7 +29600,7 @@ Per confermare scrivi ELIMINA.`);
           <td data-label="Risposta socio">${assessmentEmailReplySummaryHtml(row, true)}</td>
           <td data-label="Conferma livello">${confirmationHtml}</td>
         </tr>`;
-      }).join('')}</tbody></table></div><div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
+      }).join('')}</tbody></table></div>${paginationHtml}<div class="assessment-email-footer-note">Lo storico parte dai piu recenti. I soci in pausa restano attivi in anagrafica e non rientrano negli invii automatici finche non vengono riattivati.</div>`;
       if (preserveSearchFocus) {
         setTimeout(() => {
           const input = document.getElementById('assessmentHistorySearch');
