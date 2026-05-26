@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.561</title>
+  <title>Padel Match Organizer v5.571</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6754,7 +6754,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.566';
+    const APP_VERSION = '5.571';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -6826,7 +6826,8 @@ body.assessment-public-mode .assessment-public-only-card {
     let prenotazioni = safeLoad('prenotazioni', []);
     let prenotazioniOccupazione = safeLoad('prenotazioniOccupazione', []);
     let potentialSlotSchedule = normalizePotentialSlotSchedule(safeLoad('potentialSlotSchedule', DEFAULT_POTENTIAL_SLOT_SCHEDULE));
-    let potentialSlotImage = safeLoad('potentialSlotImage', null);
+    let potentialSlotImage = null;
+    try { pmoLocalRemoveItem('potentialSlotImage'); } catch {}
     let potentialSlotEditorDirty = false;
     let storicoPrenotazioni = safeLoad('storicoPrenotazioni', []);
     pmoMigrateCompactStorageKey('prenotazioni', prenotazioni);
@@ -7795,7 +7796,6 @@ Grazie.`
       'prenotazioni',
       'prenotazioniOccupazione',
       'potentialSlotSchedule',
-      'potentialSlotImage',
       'storicoPrenotazioni',
       'matchpointData',
       'memberContactsExportState',
@@ -7822,7 +7822,6 @@ Grazie.`
         prenotazioni,
         prenotazioniOccupazione,
         potentialSlotSchedule,
-        potentialSlotImage,
         storicoPrenotazioni,
         dailyPlayerGroups,
         lunchMatchInvitations,
@@ -11290,7 +11289,6 @@ Grazie.`
         prenotazioni,
         prenotazioniOccupazione,
         potentialSlotSchedule,
-        potentialSlotImage,
         storicoPrenotazioni,
         matchpointData,
         memberContactsExportState,
@@ -11595,14 +11593,14 @@ Grazie.`
       } else if (options.confirm !== false) {
         if (!confirm('Ripristinare il backup e sostituire i dati attuali?')) return null;
       }
-      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); potentialSlotImage = data.potentialSlotImage || null; storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
+      giocatori = data.giocatori || []; memberIdCounter = data.memberIdCounter || 0; prenotazioni = data.prenotazioni || []; prenotazioniOccupazione = data.prenotazioniOccupazione || data.prenotazioni || []; potentialSlotSchedule = normalizePotentialSlotSchedule(data.potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE); storicoPrenotazioni = data.storicoPrenotazioni || []; matchpointData = data.matchpointData || {lastSync:null, clientCount:giocatori.length}; memberContactsExportState = normalizeMemberContactsExportState(data.memberContactsExportState || null);
       contactHistory = data.contactHistory || {}; weeklyContactLog = data.weeklyContactLog || {}; dailyDiffHistory = normalizeDailyDiffHistory(data.dailyDiffHistory || []); assessmentTokens = data.assessmentTokens || {}; assessmentResponses = data.assessmentResponses || []; assessmentExternalRequests = data.assessmentExternalRequests || []; postMatchFeedbackTokens = data.postMatchFeedbackTokens || {}; postMatchFeedbackResponses = data.postMatchFeedbackResponses || []; postMatchFeedbackSettings = data.postMatchFeedbackSettings || postMatchFeedbackSettings; assessmentSettings = data.assessmentSettings || assessmentSettings; assessmentDailySendLog = data.assessmentDailySendLog || {}; assessmentEmailRoutineBatches = data.assessmentEmailRoutineBatches || {}; assessmentPausedTokens = data.assessmentPausedTokens || {}; assessmentCommunicationTemplates = normalizeAssessmentCommunicationTemplates(data.assessmentCommunicationTemplates || null); dailyAssistantState = data.dailyAssistantState || {}; dailyPlayerGroups = data.dailyPlayerGroups || []; lunchMatchInvitations = data.lunchMatchInvitations || {}; fillSlotCreatedMatches = data.fillSlotCreatedMatches || []; fillSlotPlayerRequests = data.fillSlotPlayerRequests || []; guidedInviteSessions = data.guidedInviteSessions || {}; whatsappMessageHistory = data.whatsappMessageHistory || {}; whatsappMessageTemplates = normalizeWhatsAppMessageTemplates(data.whatsappMessageTemplates || null); whatsappOpenSettings = normalizeWhatsAppOpenSettings(data.whatsappOpenSettings || whatsappOpenSettings);
       if (Object.prototype.hasOwnProperty.call(data, 'pmoSidebarCollapsed')) {
         if (data.pmoSidebarCollapsed === null || data.pmoSidebarCollapsed === undefined) localStorage.removeItem('pmoSidebarCollapsed');
         else localStorage.setItem('pmoSidebarCollapsed', String(data.pmoSidebarCollapsed));
       }
       const removedOld12Months = pruneHistoricalBookings(false);
-      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); if (potentialSlotImage) save('potentialSlotImage', potentialSlotImage); else pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentExternalRequests', assessmentExternalRequests); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
+      save('giocatori', giocatori); save('memberIdCounter', memberIdCounter); save('prenotazioni', prenotazioni); save('prenotazioniOccupazione', prenotazioniOccupazione); save('potentialSlotSchedule', potentialSlotSchedule); pmoLocalRemoveItem('potentialSlotImage'); save('storicoPrenotazioni', storicoPrenotazioni); save('matchpointData', matchpointData); saveMemberContactsExportState(); save('contactHistory', contactHistory); save('weeklyContactLog', weeklyContactLog); saveDailyDiffHistory(); save('assessmentTokens', assessmentTokens); save('assessmentResponses', assessmentResponses); save('assessmentExternalRequests', assessmentExternalRequests); save('postMatchFeedbackTokens', postMatchFeedbackTokens); save('postMatchFeedbackResponses', postMatchFeedbackResponses); save('postMatchFeedbackSettings', postMatchFeedbackSettings); save('assessmentSettings', assessmentSettings); save('assessmentDailySendLog', assessmentDailySendLog); save('assessmentEmailRoutineBatches', assessmentEmailRoutineBatches); save('assessmentPausedTokens', assessmentPausedTokens); save('assessmentCommunicationTemplates', assessmentCommunicationTemplates); save('dailyAssistantState', dailyAssistantState); save('dailyPlayerGroups', dailyPlayerGroups); save('lunchMatchInvitations', lunchMatchInvitations); save('fillSlotCreatedMatches', fillSlotCreatedMatches); save('fillSlotPlayerRequests', fillSlotPlayerRequests); save('guidedInviteSessions', guidedInviteSessions); save('whatsappMessageHistory', whatsappMessageHistory); save('whatsappMessageTemplates', whatsappMessageTemplates); save('whatsappOpenSettings', whatsappOpenSettings);
       renderPotentialSlotImage(); renderPotentialSlotScheduleEditor(); displayMembers(); updateStats(); markDataActionDone(options.actionKey || 'restore', options.doneMessage || 'Backup ripristinato'); saveLocalDataSnapshot(options.afterSnapshotReason || 'restore-backup');
       const sourceName = options.sourceName || 'Backup';
       showAlert(`✅ ${sourceName} ripristinato: ${giocatori.length} soci, ${prenotazioni.length} prenotazioni future, ${storicoPrenotazioni.length} storico. Eliminati oltre 12 mesi: ${removedOld12Months}`, 'success');
@@ -13169,6 +13167,9 @@ Grazie.`
     function applyPotentialSlotSchedule(schedule, message='✅ Griglia slot salvata. Dashboard e Apri Partite useranno i nuovi slot.') {
       potentialSlotSchedule = normalizePotentialSlotSchedule(schedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE);
       save('potentialSlotSchedule', potentialSlotSchedule);
+      if (typeof pmoQueueAppSettingCloudSync === 'function') {
+        pmoQueueAppSettingCloudSync('potentialSlotSchedule', potentialSlotSchedule, 'sincronizzare griglia slot');
+      }
       fillSlotsFastAnalysisCache = null;
       save('fillSlotsFastAnalysisCache', fillSlotsFastAnalysisCache);
       renderPotentialSlotScheduleEditor();
@@ -13218,27 +13219,22 @@ Grazie.`
     function importPotentialSlotImageFile(file) {
       if (!file) return;
       if (!/^image\//.test(file.type || '')) return showAlert('❌ Seleziona un file immagine.', 'danger');
-      const maxBytes = 2 * 1024 * 1024;
-      if (file.size > maxBytes) return showAlert('⚠️ Immagine troppo grande. Usa uno screenshot piu leggero sotto 2 MB.', 'warning');
+      const maxBytes = 5 * 1024 * 1024;
+      if (file.size > maxBytes) return showAlert('⚠️ Immagine troppo grande. Massimo 5 MB.', 'warning');
       const reader = new FileReader();
       reader.onload = e => {
-        try {
-          potentialSlotImage = {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified || null,
-            savedAt: new Date().toISOString(),
-            dataUrl: e.target.result
-          };
-          save('potentialSlotImage', potentialSlotImage);
-          renderPotentialSlotImage();
-          markDataActionPending('potentialImage');
-          showAlert('✅ Immagine griglia salvata come riferimento. Controlla la griglia operativa e clicca Salva griglia slot.', 'success');
-        } catch (err) {
-          showAlert('❌ Non sono riuscito a salvare l’immagine: ' + err.message, 'danger');
-        }
+        potentialSlotImage = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: e.target.result
+        };
+        renderPotentialSlotImage();
+        const input = document.getElementById('potentialSlotImageFile');
+        if (input) input.value = '';
+        showAlert('✅ Immagine caricata. Riferimento visibile solo in questa sessione (non viene salvato).', 'success');
       };
+      reader.onerror = () => showAlert('❌ Non sono riuscito a leggere il file immagine.', 'danger');
       reader.readAsDataURL(file);
     }
 
