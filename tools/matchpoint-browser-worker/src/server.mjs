@@ -2081,6 +2081,476 @@ async function getSlotsWithBrowser(options = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SLOT SCHEDULE — lettura configurazione orari slot settimanale
+// ---------------------------------------------------------------------------
+
+// Nomi giorno in italiano e spagnolo → chiave canonica italiana
+const DAY_NAMES_IT = {
+  lunedi: 'Lunedì', martedi: 'Martedì', mercoledi: 'Mercoledì',
+  giovedi: 'Giovedì', venerdi: 'Venerdì', sabato: 'Sabato', domenica: 'Domenica',
+};
+const DAY_NAMES_ES = {
+  lunes: 'Lunedì', martes: 'Martedì', miercoles: 'Mercoledì',
+  jueves: 'Giovedì', viernes: 'Venerdì', sabado: 'Sabato', domingo: 'Domenica',
+};
+const ALL_DAY_VARIANTS = { ...DAY_NAMES_IT, ...DAY_NAMES_ES };
+
+// Ordine canonico dei giorni nel risultato (domenica come giorno 0 in JS)
+const CANONICAL_DAY_ORDER = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+
+function normalizeSlot(raw) {
+  // Normalizza a HH:MM-HH:MM (zero-padded, solo se end > start)
+  const m = String(raw).match(/(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [, h1, m1, h2, m2] = m;
+  const start = `${h1.padStart(2, '0')}:${m1}`;
+  const end = `${h2.padStart(2, '0')}:${m2}`;
+  const startMin = parseInt(h1, 10) * 60 + parseInt(m1, 10);
+  const endMin = parseInt(h2, 10) * 60 + parseInt(m2, 10);
+  if (endMin <= startMin) return null;
+  return `${start}-${end}`;
+}
+
+function normalizeDayKey(raw) {
+  // Normalizza accenti e spazi, cerca in tutte le varianti
+  const key = String(raw)
+    .toLocaleLowerCase('it-IT')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+  return ALL_DAY_VARIANTS[key] || null;
+}
+
+function emptySchedule() {
+  const s = {};
+  for (const d of CANONICAL_DAY_ORDER) s[d] = [];
+  return s;
+}
+
+async function openScheduleByName(page, diagnostic, preferredName) {
+  // La pagina elenco mostra una tabella con righe nominate (es. "Orari fissi",
+  // "Orari settimana + venerdì") + icone matita/cestino. Per leggere la griglia
+  // bisogna cliccare la matita della riga giusta. Strategia:
+  //   1. Cerca riga che contiene esattamente preferredName (case-insensitive)
+  //   2. Se non trovata, prova chiavi parziali (venerdi, settimana, ...)
+  //   3. Se ancora niente, prende la PRIMA riga editabile della tabella
+  diagnostic.steps.push('schedule_list_open_row');
+  const wanted = String(preferredName || 'Orari settimana + venerdi').toLowerCase();
+
+  for (const entry of pageContentContexts(page)) {
+    const found = await entry.target.evaluate((wantedName) => {
+      const normalize = (v) => String(v || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const w = normalize(wantedName);
+      const partialKeywords = ['venerdi', 'settimana', 'fissi'];
+
+      const rows = [...document.querySelectorAll('tr')];
+      // Tenta match esatto
+      let target = rows.find((tr) => normalize(tr.innerText).includes(w));
+      // Tenta match parziale con parole-chiave note (in ordine di preferenza)
+      if (!target) {
+        for (const kw of partialKeywords) {
+          target = rows.find((tr) => normalize(tr.innerText).includes(kw));
+          if (target) break;
+        }
+      }
+      // Fallback: prima riga con un'icona/link cliccabile
+      if (!target) {
+        target = rows.find((tr) => tr.querySelector('a[href], img[onclick], [onclick]'));
+      }
+      if (!target) return { clicked: false, reason: 'no_editable_row' };
+
+      // Cerca l'azione di modifica nella riga: matita verde, edit, modifica
+      const candidates = [
+        ...target.querySelectorAll('a[href]:not([href="#"]), img[onclick], [onclick]'),
+      ];
+      // Preferisci link con title/alt/class che indicano "modifica/edit"
+      const scoreOf = (el) => {
+        const hay = [
+          el.getAttribute?.('title') || '',
+          el.getAttribute?.('alt') || '',
+          el.getAttribute?.('href') || '',
+          el.getAttribute?.('onclick') || '',
+          el.className || '',
+        ].join(' ').toLowerCase();
+        if (/edit|modif|matita|pencil|verde|green/i.test(hay)) return 3;
+        if (/delete|cancel|elimin|rosso|red/i.test(hay)) return -1;
+        return 1;
+      };
+      candidates.sort((a, b) => scoreOf(b) - scoreOf(a));
+      const editEl = candidates[0];
+      if (!editEl) return { clicked: false, reason: 'no_action_link', rowText: target.innerText.slice(0, 120) };
+      const action = editEl.closest('a[href], [onclick]') || editEl;
+      action.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      return { clicked: true, rowText: target.innerText.slice(0, 120) };
+    }, wanted).catch(() => null);
+
+    if (found?.clicked) {
+      diagnostic.navigationAttempts.push({ action: 'edit_row_click', rowText: found.rowText, contextKind: entry.kind });
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      return true;
+    } else if (found) {
+      diagnostic.navigationAttempts.push({ action: 'edit_row_miss', reason: found.reason, contextKind: entry.kind });
+    }
+  }
+  return false;
+}
+
+async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
+  diagnostic.steps.push('slot_schedule_navigate');
+  diagnostic.navigationAttempts = diagnostic.navigationAttempts || [];
+
+  // Step 1: click "Sistema" in top menu
+  const sistemaClicked = await clickMenuEntryEverywhere(page, 'Sistema', 'click_sistema_menu', diagnostic);
+  if (!sistemaClicked) {
+    diagnostic.navigationAttempts.push({ action: 'sistema_menu_miss', url: page.url() });
+  } else {
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+  }
+
+  // Step 2: click "Campi" / "Installazioni" / "Instalaciones" sub-menu
+  const campiLabels = ['Campi', 'Installazioni', 'Instalaciones', 'Pistas'];
+  let campiClicked = false;
+  for (const label of campiLabels) {
+    campiClicked = await clickMenuEntryEverywhere(page, label, `click_${label.toLowerCase()}`, diagnostic);
+    if (campiClicked) break;
+  }
+  if (campiClicked) {
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+  } else {
+    diagnostic.navigationAttempts.push({ action: 'campi_submenu_miss', url: page.url() });
+  }
+
+  // Step 3: click "Orari di utilizzo delle installazioni" / "Horarios de uso"
+  const orariLabels = [
+    'Orari di utilizzo delle installazioni',
+    'Orari di utilizzo',
+    'Horarios de uso de las instalaciones',
+    'Horarios de uso',
+    'Orari slot',
+  ];
+  let orariClicked = false;
+  for (const label of orariLabels) {
+    orariClicked = await clickMenuEntryEverywhere(page, label, `click_${label.toLowerCase().replace(/\s+/g, '_')}`, diagnostic);
+    if (orariClicked) break;
+  }
+  let reachedList = false;
+  if (orariClicked) {
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    diagnostic.slotScheduleListUrl = page.url();
+    diagnostic.slotScheduleListTitle = await page.title().catch(() => '');
+    reachedList = true;
+  }
+
+  // Fallback: direct URL candidates per arrivare alla lista
+  if (!reachedList) {
+    diagnostic.steps.push('slot_schedule_direct_url_fallback');
+    const urlCandidates = [
+      '/Sistema/HorariosInstalacion.aspx',
+      '/Sistema/OrarioInstalaciones.aspx',
+      '/Configuracion/HorariosInstalacion.aspx',
+    ];
+    for (const path of urlCandidates) {
+      try {
+        await page.goto(absoluteUrl(baseUrl, path), { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
+        await page.waitForTimeout(1000);
+        const url = page.url();
+        diagnostic.navigationAttempts.push({ action: 'direct_url', path, resultUrl: url });
+        if (!/Login\.aspx/i.test(url) && !/Error\.aspx|aspxerrorpath=/i.test(url)) {
+          diagnostic.slotScheduleListUrl = url;
+          diagnostic.slotScheduleListTitle = await page.title().catch(() => '');
+          reachedList = true;
+          break;
+        }
+      } catch (err) {
+        diagnostic.navigationAttempts.push({ action: 'direct_url_err', path, error: err.message });
+      }
+    }
+  }
+
+  if (!reachedList) return false;
+
+  // Step 4: la pagina mostra una lista di schede (es. "Orari fissi",
+  // "Orari settimana + venerdì"). Cliccare la matita per aprire quella attiva.
+  const opened = await openScheduleByName(page, diagnostic, options.preferredScheduleName);
+  if (!opened) {
+    diagnostic.navigationAttempts.push({ action: 'schedule_row_not_opened' });
+    // Comunque torna true: il parser può tentare di leggere la lista nuda
+    // (alcuni layout potrebbero mostrare gli orari inline).
+  }
+  diagnostic.slotScheduleUrl = page.url();
+  diagnostic.slotScheduleTitle = await page.title().catch(() => '');
+  return true;
+}
+
+
+async function parseSlotSchedulePage(page, diagnostic) {
+  diagnostic.steps.push('slot_schedule_parse');
+  const schedule = emptySchedule();
+  let parsedBy = null;
+
+  // Collect HTML from page + all frames
+  const htmlSources = [];
+  for (const entry of pageContentContexts(page)) {
+    const html = await entry.target.evaluate(() => document.body?.innerHTML || '').catch(() => '');
+    const text = await readContextBody(entry.target).catch(() => '');
+    htmlSources.push({ kind: entry.kind, index: entry.index, url: entry.url, html, text });
+  }
+  diagnostic.slotScheduleContextCount = htmlSources.length;
+
+  // ── Strategy 1: Table with day-name headers ──────────────────────────────
+  // Find tables where the header row contains day names; rows with HH:MM-HH:MM
+  // in the first cell indicate a slot; non-empty or checked cells in day columns
+  // mean that slot is active for that day.
+  for (const source of htmlSources) {
+    if (parsedBy) break;
+    const result = await (async () => {
+      const target = source.kind === 'page' ? page : page.frames()[source.index];
+      if (!target) return null;
+      return target.evaluate((dayVariants, canonicalOrder) => {
+        const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+        const normalizeDay = (raw) => {
+          const key = String(raw)
+            .toLocaleLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+          return dayVariants[key] || null;
+        };
+        const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+
+        for (const table of document.querySelectorAll('table')) {
+          const rows = [...table.querySelectorAll('tr')];
+          if (rows.length < 2) continue;
+
+          // Find header row with day names
+          let dayColMap = null; // { canonicalDay: colIndex }
+          let headerRowIdx = -1;
+          for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            const found = {};
+            cells.forEach((cell, ci) => {
+              const day = normalizeDay(compact(cell.innerText));
+              if (day) found[day] = ci;
+            });
+            if (Object.keys(found).length >= 2) {
+              dayColMap = found;
+              headerRowIdx = ri;
+              break;
+            }
+          }
+          if (!dayColMap || headerRowIdx < 0) continue;
+
+          const sched = {};
+          for (const d of canonicalOrder) sched[d] = [];
+
+          for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            if (cells.length === 0) continue;
+            const firstText = compact(cells[0]?.innerText || '');
+            if (!timeRangeRe.test(firstText)) continue;
+            const slotRaw = firstText.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/)?.[0];
+            if (!slotRaw) continue;
+
+            for (const [day, ci] of Object.entries(dayColMap)) {
+              if (ci >= cells.length) continue;
+              const cell = cells[ci];
+              const cellText = compact(cell.innerText);
+              const hasCheck = cell.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked') !== null;
+              const isNonEmpty = cellText.length > 0 || hasCheck || cell.querySelector('img, .active, .checked') !== null;
+              if (isNonEmpty) sched[day].push(slotRaw);
+            }
+          }
+
+          const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
+          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers' };
+        }
+        return null;
+      }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch(() => null);
+    })();
+
+    if (result?.sched) {
+      for (const [day, slots] of Object.entries(result.sched)) {
+        schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
+      }
+      parsedBy = result.parsedBy;
+    }
+  }
+
+  // ── Strategy 2: Day-section scan (list layout) ────────────────────────────
+  // Walk page text line by line; when a line is a day name start collecting
+  // time ranges for that day until the next day name.
+  if (!parsedBy) {
+    for (const source of htmlSources) {
+      if (parsedBy) break;
+      const lines = source.text.split(/[\n\r]+/).map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      let currentDay = null;
+      let found = false;
+      for (const line of lines) {
+        const day = normalizeDayKey(line);
+        if (day) {
+          currentDay = day;
+          found = true;
+          continue;
+        }
+        if (!currentDay) continue;
+        const slotMatch = line.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g);
+        if (slotMatch) {
+          for (const raw of slotMatch) {
+            const normalized = normalizeSlot(raw);
+            if (normalized) schedule[currentDay].push(normalized);
+          }
+        }
+      }
+      if (found) {
+        // Deduplicate
+        for (const d of CANONICAL_DAY_ORDER) {
+          schedule[d] = [...new Set(schedule[d])];
+        }
+        const total = CANONICAL_DAY_ORDER.reduce((n, d) => n + schedule[d].length, 0);
+        if (total > 0) parsedBy = 'day_section_scan';
+      }
+    }
+  }
+
+  // ── Strategy 3: Generic extraction — all time ranges grouped by proximity ─
+  if (!parsedBy) {
+    for (const source of htmlSources) {
+      if (parsedBy) break;
+      // Extract all (dayName, timeRange) pairs from the text by proximity
+      const text = source.text;
+      const tokenRe = /(\b(?:lune[ds]í?|martedì|martes|mercoledì|mi[eé]rcoles|giovedì|jueves|venerdì|viernes|sabato|s[aá]bado|domenica|domingo)\b)|(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2})/gi;
+      let match;
+      let lastDay = null;
+      while ((match = tokenRe.exec(text)) !== null) {
+        if (match[1]) {
+          lastDay = normalizeDayKey(match[1]);
+        } else if (match[2] && lastDay) {
+          const normalized = normalizeSlot(match[2]);
+          if (normalized) schedule[lastDay].push(normalized);
+        }
+      }
+      for (const d of CANONICAL_DAY_ORDER) {
+        schedule[d] = [...new Set(schedule[d])];
+      }
+      const total = CANONICAL_DAY_ORDER.reduce((n, d) => n + schedule[d].length, 0);
+      if (total > 0) parsedBy = 'generic_proximity';
+    }
+  }
+
+  const totalSlots = CANONICAL_DAY_ORDER.reduce((n, d) => n + schedule[d].length, 0);
+  diagnostic.slotScheduleParsedBy = parsedBy || 'none';
+  diagnostic.slotScheduleTotalSlots = totalSlots;
+
+  return { schedule, parsedBy, totalSlots };
+}
+
+async function exportSlotScheduleWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker o nella richiesta server-to-server.');
+  }
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'browser_worker_headless',
+    flow: 'slot_schedule',
+    baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const context = await browser.newContext({
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    diagnostic.steps.push('login_page');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+
+    diagnostic.steps.push('login_submit');
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    diagnostic.loginTitle = await page.title().catch(() => '');
+
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito nel worker browser.', {
+        url: page.url(),
+        title: diagnostic.loginTitle,
+        hasPasswordField: true,
+      });
+    }
+
+    await maybeClickCashEnter(page, diagnostic);
+    diagnostic.afterCashUrl = page.url();
+
+    // Navigate to "Orari di utilizzo delle installazioni" e apri la scheda attiva
+    const preferredScheduleName = clean(options.scheduleName) || env('MATCHPOINT_SLOT_SCHEDULE_NAME', 'Orari settimana + venerdi');
+    diagnostic.preferredScheduleName = preferredScheduleName;
+    const navigated = await navigateToSlotSchedule(page, baseUrl, diagnostic, { preferredScheduleName });
+    if (!navigated) {
+      throw fail('MATCHPOINT_SLOT_SCHEDULE_NOT_FOUND', 'Impossibile navigare alla pagina orari slot Matchpoint.', {
+        url: page.url(),
+        title: await page.title().catch(() => ''),
+        navigationAttempts: diagnostic.navigationAttempts || [],
+        contextSamples: await contextSamples(page),
+      });
+    }
+
+    // Parse the schedule
+    const { schedule, parsedBy, totalSlots } = await parseSlotSchedulePage(page, diagnostic);
+    diagnostic.finishedAt = new Date().toISOString();
+
+    return {
+      ok: true,
+      schedule,
+      totalSlots,
+      diagnostic,
+    };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleSlotScheduleExport(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await exportSlotScheduleWithBrowser(body);
+  json(res, 200, result);
+}
+
 async function handleGetSlots(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
@@ -2425,7 +2895,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
         routes: [
-          '/export-clients', '/export-booking-history', '/get-slots',
+          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -2438,6 +2908,7 @@ const server = http.createServer(async (req, res) => {
         clientsNavigationFallback: 'click-timeout-direct-players',
         getSlotsNavigation: 'default-then-programmazione-then-toolbar',
         getSlotsDateFormat: 'dd/mm/yyyy italian input',
+        slotScheduleNavigation: 'sistema-campi-orari',
         time: new Date().toISOString(),
       });
     }
@@ -2449,6 +2920,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/get-slots') {
       return await handleGetSlots(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/export-slot-schedule') {
+      return await handleSlotScheduleExport(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
