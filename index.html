@@ -6766,7 +6766,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.575';
+    const APP_VERSION = '5.576';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -12644,6 +12644,9 @@ Grazie.`
       if (button) {
         button.className = isPending ? 'btn-warning' : (isDone ? (cfg.doneClass || 'btn-success') : cfg.defaultClass);
         button.textContent = isPending ? cfg.pendingText : (isDone ? cfg.doneText : cfg.defaultText);
+        if (key === 'potential') {
+          button.style.display = isDone ? 'none' : '';
+        }
       }
       if (state) {
         const isImportDateStatus = isDone && !!DATA_IMPORT_ACTION_TYPES[key];
