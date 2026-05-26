@@ -2316,6 +2316,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
   // Empty cells (only the hour label like "09:00") and rowspan-covered slots
   // are handled correctly: the slot text "09:00-10:30" appears once in the
   // source cell and is attributed to its day column.
+  const strategy1Trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
   for (const source of htmlSources) {
     if (parsedBy) break;
     const result = await (async () => {
@@ -2334,7 +2335,10 @@ async function parseSlotSchedulePage(page, diagnostic) {
         };
         const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
 
+        const trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
+
         for (const table of document.querySelectorAll('table')) {
+          trace.tablesScanned += 1;
           const rows = [...table.querySelectorAll('tr')];
           if (rows.length < 2) continue;
 
@@ -2359,6 +2363,19 @@ async function parseSlotSchedulePage(page, diagnostic) {
             }
           }
           if (!dayColMap || headerRowIdx < 0) continue;
+          trace.tablesWithHeader += 1;
+          if (!trace.bestTable) {
+            trace.bestTable = {
+              rowCount: rows.length,
+              headerRowIdx,
+              dayColMap,
+              firstBodyRowSample: rows[headerRowIdx + 1]
+                ? [...rows[headerRowIdx + 1].querySelectorAll('td, th')]
+                    .slice(0, 10)
+                    .map((c) => compact(c.innerText).slice(0, 30))
+                : null,
+            };
+          }
 
           const sched = {};
           for (const d of canonicalOrder) sched[d] = [];
@@ -2413,12 +2430,20 @@ async function parseSlotSchedulePage(page, diagnostic) {
           for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
 
           const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
-          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers' };
+          if (trace.bestTable) trace.bestTable.slotsFound = totalSlots;
+          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers', trace };
         }
-        return null;
+        return { trace };
       }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch(() => null);
     })();
 
+    if (result?.trace) {
+      strategy1Trace.tablesScanned += result.trace.tablesScanned;
+      strategy1Trace.tablesWithHeader += result.trace.tablesWithHeader;
+      if (!strategy1Trace.bestTable && result.trace.bestTable) {
+        strategy1Trace.bestTable = result.trace.bestTable;
+      }
+    }
     if (result?.sched) {
       for (const [day, slots] of Object.entries(result.sched)) {
         schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
@@ -2426,6 +2451,7 @@ async function parseSlotSchedulePage(page, diagnostic) {
       parsedBy = result.parsedBy;
     }
   }
+  diagnostic.slotScheduleStrategy1 = strategy1Trace;
 
   // ── Strategy 2: Day-section scan (list layout) ────────────────────────────
   // Walk page text line by line; when a line is a day name start collecting
@@ -2575,6 +2601,7 @@ async function exportSlotScheduleWithBrowser(options = {}) {
       ok: true,
       schedule,
       totalSlots,
+      parsedBy: parsedBy || 'none',
       diagnostic,
     };
   } finally {
