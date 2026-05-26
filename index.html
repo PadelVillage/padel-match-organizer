@@ -28379,8 +28379,10 @@ Per confermare scrivi ELIMINA.`);
       const rAlti = answers.overhead || answers.smash || '-';
       
       const actionButton = auto
-        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>`
-        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">⚡ Valida Livello</button>`;
+        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>
+           <button class="pmo-kanban-btn-action" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')">👤 Scheda socio</button>`
+        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">⚡ Valida Livello</button>
+           <button class="pmo-kanban-btn-action" onclick="assessmentOpenMemberCard('${escapeJs(String(member.id))}')">👤 Scheda socio</button>`;
       
       const dateStr = response?.submitted_at ? assessmentEmailFormatDateTime(response.submitted_at) : (rec.completedAt ? assessmentEmailFormatDateTime(rec.completedAt) : '-');
       
