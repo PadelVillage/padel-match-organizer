@@ -27715,7 +27715,7 @@ Per confermare scrivi ELIMINA.`);
           countGestione++;
         } else if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
           countSolleciti++;
-        } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
+        } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info) && !assessmentEmailIsAutoApplicable(row.response)) {
           countValidare++;
         }
       });
@@ -28420,11 +28420,7 @@ Per confermare scrivi ELIMINA.`);
       
       const calcLevel = response?.calculated_level || response?.declared_level || member.level || '-';
       const declaredLevel = response?.declared_level || '-';
-      const isTestReview = PMO_IS_TEST_ENV &&
-        new URLSearchParams(window.location.search).get('testValidare') === '1' &&
-        assessmentMemberMatchesAnyId(member, ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID);
-      const auto = !isTestReview && assessmentEmailIsAutoApplicable(response);
-      
+
       // Calculate level gap with sign
       const declaredVal = parseFloat(String(declaredLevel).replace(',', '.'));
       const calculatedVal = parseFloat(String(calcLevel).replace(',', '.'));
@@ -28434,11 +28430,9 @@ Per confermare scrivi ELIMINA.`);
         const roundedDiff = Math.round(diffVal * 100) / 100;
         gapText = roundedDiff >= 0 ? `+${roundedDiff}` : `${roundedDiff}`;
       }
-      
-      const mismatchBadge = auto
-        ? `<div class="pmo-mismatch-badge consistent">✓ Coerente <span class="gap-pill">${escapeHtml(gapText)}</span></div>`
-        : `<div class="pmo-mismatch-badge mismatch">⚡ Mismatch <span class="gap-pill">${escapeHtml(gapText)}</span></div>`;
-      
+
+      const mismatchBadge = `<div class="pmo-mismatch-badge mismatch">⚡ Mismatch <span class="gap-pill">${escapeHtml(gapText)}</span></div>`;
+
       // Extract answers dynamically
       const raw = response?.raw_response || response?.rawResponse || {};
       const answers = raw.answers || raw.form || raw.data || response?.answers || {};
@@ -28446,15 +28440,13 @@ Per confermare scrivi ELIMINA.`);
       const rVetro = answers.glass || answers.vetro || '-';
       const rRete = answers.net || answers.volee || '-';
       const rAlti = answers.overhead || answers.smash || '-';
-      
-      const actionButton = auto
-        ? `<button class="pmo-kanban-btn-action btn-success" onclick="applyAssessmentLevel('${escapeJs(String(member.id))}')">✓ Chiudi Ora</button>`
-        : `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">Apri scheda socio</button>`;
-      
+
+      const actionButton = `<button class="pmo-kanban-btn-action btn-primary" onclick="assessmentOpenMemberValidation('${escapeJs(String(member.id))}')">Apri scheda socio</button>`;
+
       const dateStr = response?.submitted_at ? assessmentEmailFormatDateTime(response.submitted_at) : (rec.completedAt ? assessmentEmailFormatDateTime(rec.completedAt) : '-');
-      
+
       return `
-        <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid ${auto ? 'hsl(142, 72%, 40%)' : 'hsl(38, 100%, 50%)'}; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.04);">
+        <div class="pmo-kanban-card" data-assessment-email-member="${escapeHtml(String(member.id))}" style="border-left: 5px solid hsl(38, 100%, 50%); box-shadow: 0 4px 14px rgba(22, 163, 74, 0.04);">
           <div class="pmo-kanban-card-header">
             <span class="pmo-kanban-card-name">${escapeHtml(name)}</span>
             <span class="pmo-kanban-card-status badge-compilato" style="background: hsl(142, 72%, 97%); color: hsl(142, 72%, 35%); border-color: hsl(142, 72%, 90%);">Compilato</span>
@@ -28600,7 +28592,7 @@ Per confermare scrivi ELIMINA.`);
             colGestione.push({ row, status: 'GESTIONE_MANUALE' });
           } else if (status === 'INVITO_INVIATO' || status === 'PRIMO_SOLLECITO' || status === 'ULTIMO_SOLLECITO') {
             colSolleciti.push({ row, status });
-          } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info)) {
+          } else if (status === 'COMPILATO' && !assessmentEmailMemberApplied(row.member, row.info) && !assessmentEmailIsAutoApplicable(row.response)) {
             colValidare.push({ row, status });
           }
         });
