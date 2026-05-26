@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.572</title>
+  <title>Padel Match Organizer v5.573</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6617,8 +6617,13 @@ body.assessment-public-mode .assessment-public-only-card {
                       <div class="potential-slot-horizontal">
                         <div class="potential-slot-panel">
                           <label for="potentialSlotScheduleImportFile">Importa griglia da file</label>
-                          <input type="file" id="potentialSlotScheduleImportFile" accept=".csv,.tsv,.txt,text/plain,text/csv" onchange="importPotentialSlotScheduleFile(this.files && this.files[0]); this.value=''" />
-                          <div class="matchpoint-data-hint">CSV o testo. Una riga per giorno, slot in formato <code>HH:MM-HH:MM</code> separati da virgola, punto e virgola o tab.<br>Esempio: <code>Lunedì, 10:30-12:00, 12:00-13:30, 18:00-19:30</code><br>Prima di applicare ti mostro il diff con la griglia attuale.</div>
+                          <input type="file" id="potentialSlotScheduleImportFile" accept=".csv,.tsv,.txt,.xlsx,.xls,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="importPotentialSlotScheduleFile(this.files && this.files[0]); this.value=''" />
+                          <div class="matchpoint-data-hint">
+                            Accetta CSV, TSV, TXT, XLSX. Due formati riconosciuti automaticamente:<br>
+                            • <strong>Tabella wide</strong>: prima riga con i giorni (Lunedì…Domenica) e ogni cella contiene gli slot in formato <code>HH:MM-HH:MM</code>. Tipico export Matchpoint.<br>
+                            • <strong>Una riga per giorno</strong>: <code>Lunedì, 10:30-12:00, 12:00-13:30, 18:00-19:30</code><br>
+                            Prima di applicare ti mostro il diff con la griglia attuale.
+                          </div>
                         </div>
                         <div class="potential-slot-panel">
                           <div class="potential-slot-editor">
@@ -6753,7 +6758,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.572';
+    const APP_VERSION = '5.573';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -13226,19 +13231,93 @@ Grazie.`
       return { text: lines.join('\n'), totalChanges };
     }
 
+    function detectCSVSeparator(text) {
+      const firstLine = (String(text || '').split(/\r?\n/).find(l => l.trim()) || '');
+      const counts = {
+        '\t': (firstLine.match(/\t/g) || []).length,
+        ';': (firstLine.match(/;/g) || []).length,
+        ',': (firstLine.match(/,/g) || []).length,
+      };
+      let best = ',', bestCount = counts[','];
+      for (const sep of ['\t', ';']) {
+        if (counts[sep] > bestCount) { best = sep; bestCount = counts[sep]; }
+      }
+      return bestCount > 0 ? best : ',';
+    }
+
+    function parseCSVRows(text) {
+      const sep = detectCSVSeparator(text);
+      return String(text || '').replace(/﻿/g, '').split(/\r?\n/).filter(l => l.trim()).map(line => {
+        return line.split(sep).map(cell => cell.trim().replace(/^"|"$/g, ''));
+      });
+    }
+
+    function parseWideTableSchedule(rows) {
+      if (!Array.isArray(rows) || rows.length < 2) return null;
+      const header = rows[0] || [];
+      const dayColMap = [];
+      header.forEach((cell, idx) => {
+        const day = potentialSlotDayFromLabel(cell);
+        if (day !== null) dayColMap.push({ day, colIndex: idx });
+      });
+      if (dayColMap.length < 2) return null;
+      const next = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      const seen = {0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
+      const slotPattern = /\d{1,2}[:.]\d{2}\s*-\s*\d{1,2}[:.]\d{2}/g;
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        dayColMap.forEach(({day, colIndex}) => {
+          const cell = String(row[colIndex] || '');
+          const matches = cell.match(slotPattern);
+          if (!matches) return;
+          matches.forEach(match => {
+            const [startRaw, endRaw] = match.split('-');
+            const start = parseTimeValue(startRaw);
+            const end = parseTimeValue(endRaw);
+            if (!start || !end || toMinutes(end) <= toMinutes(start)) return;
+            const key = `${start}-${end}`;
+            if (seen[day].has(key)) return;
+            seen[day].add(key);
+            next[day].push({ start, end, name: key });
+          });
+        });
+      }
+      const totalSlots = Object.values(next).reduce((a, list) => a + list.length, 0);
+      if (totalSlots === 0) return null;
+      return normalizePotentialSlotSchedule(next);
+    }
+
     function importPotentialSlotScheduleFile(file) {
       if (!file) return;
-      const maxBytes = 256 * 1024;
-      if (file.size > maxBytes) return showAlert('⚠️ File troppo grande. Massimo 256 KB.', 'warning');
+      const maxBytes = 2 * 1024 * 1024;
+      if (file.size > maxBytes) return showAlert('⚠️ File troppo grande. Massimo 2 MB.', 'warning');
+      const isExcel = /\.(xlsx|xls)$/i.test(file.name);
       const reader = new FileReader();
       reader.onerror = () => showAlert('❌ Non sono riuscito a leggere il file.', 'danger');
       reader.onload = e => {
-        const text = String(e.target?.result || '');
+        let rows;
+        try {
+          if (isExcel) {
+            if (typeof XLSX === 'undefined') throw new Error('libreria Excel non caricata. Controlla la connessione e ricarica la pagina.');
+            const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }).map(r => (Array.isArray(r) ? r : [r]).map(c => String(c == null ? '' : c)));
+          } else {
+            rows = parseCSVRows(String(e.target?.result || ''));
+          }
+        } catch (err) {
+          showAlert('❌ Errore lettura file: ' + (err.message || err), 'danger');
+          return;
+        }
         let parsed;
         try {
-          const normalized = normalizeImportedScheduleText(text);
-          if (!normalized.trim()) throw new Error('File vuoto o nessun giorno riconosciuto.');
-          parsed = parsePotentialSlotScheduleEditor(normalized);
+          parsed = parseWideTableSchedule(rows);
+          if (!parsed) {
+            const longText = rows.map(r => r.join(',')).join('\n');
+            const normalized = normalizeImportedScheduleText(longText);
+            if (!normalized.trim()) throw new Error('nessun giorno riconosciuto nel file.');
+            parsed = parsePotentialSlotScheduleEditor(normalized);
+          }
         } catch (err) {
           showAlert('❌ File non valido: ' + (err.message || err), 'danger');
           return;
@@ -13253,7 +13332,8 @@ Grazie.`
         applyPotentialSlotSchedule(parsed, `✅ Griglia importata da ${file.name}.`);
         renderPotentialSlotScheduleEditor();
       };
-      reader.readAsText(file);
+      if (isExcel) reader.readAsArrayBuffer(file);
+      else reader.readAsText(file);
     }
 
     function clonePotentialSlotSchedule(source=DEFAULT_POTENTIAL_SLOT_SCHEDULE) {
