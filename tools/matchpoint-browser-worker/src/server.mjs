@@ -2309,10 +2309,13 @@ async function parseSlotSchedulePage(page, diagnostic) {
   }
   diagnostic.slotScheduleContextCount = htmlSources.length;
 
-  // ── Strategy 1: Table with day-name headers ──────────────────────────────
-  // Find tables where the header row contains day names; rows with HH:MM-HH:MM
-  // in the first cell indicate a slot; non-empty or checked cells in day columns
-  // mean that slot is active for that day.
+  // ── Strategy 1: Table with day-name headers (rowspan-aware) ──────────────
+  // Find tables whose header row contains day names. For each body row, build
+  // a virtual column→cell map that respects rowspan from prior rows, then for
+  // each day column extract every HH:MM-HH:MM range found in the cell text.
+  // Empty cells (only the hour label like "09:00") and rowspan-covered slots
+  // are handled correctly: the slot text "09:00-10:30" appears once in the
+  // source cell and is attributed to its day column.
   for (const source of htmlSources) {
     if (parsedBy) break;
     const result = await (async () => {
@@ -2329,22 +2332,26 @@ async function parseSlotSchedulePage(page, diagnostic) {
             .trim();
           return dayVariants[key] || null;
         };
-        const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+        const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
 
         for (const table of document.querySelectorAll('table')) {
           const rows = [...table.querySelectorAll('tr')];
           if (rows.length < 2) continue;
 
-          // Find header row with day names
-          let dayColMap = null; // { canonicalDay: colIndex }
+          // Find header row with day names. Header column maps the LOGICAL
+          // column index (accounting for colspan) to a canonical day.
+          let dayColMap = null; // { canonicalDay: logicalColIndex }
           let headerRowIdx = -1;
           for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
             const cells = [...rows[ri].querySelectorAll('td, th')];
             const found = {};
-            cells.forEach((cell, ci) => {
+            let col = 0;
+            for (const cell of cells) {
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
               const day = normalizeDay(compact(cell.innerText));
-              if (day) found[day] = ci;
-            });
+              if (day && found[day] === undefined) found[day] = col;
+              col += colspan;
+            }
             if (Object.keys(found).length >= 2) {
               dayColMap = found;
               headerRowIdx = ri;
@@ -2356,23 +2363,54 @@ async function parseSlotSchedulePage(page, diagnostic) {
           const sched = {};
           for (const d of canonicalOrder) sched[d] = [];
 
+          // pendingRowspan[col] = { cell, rowsLeft } for cells that span
+          // multiple rows starting in a previous iteration.
+          const pendingRowspan = new Map();
+
           for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
             const cells = [...rows[ri].querySelectorAll('td, th')];
-            if (cells.length === 0) continue;
-            const firstText = compact(cells[0]?.innerText || '');
-            if (!timeRangeRe.test(firstText)) continue;
-            const slotRaw = firstText.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/)?.[0];
-            if (!slotRaw) continue;
+            // Build colIdx -> cell map for THIS row, advancing past columns
+            // already occupied by rowspans from earlier rows.
+            const rowCellByCol = new Map();
+            let colCursor = 0;
+            for (const cell of cells) {
+              while (pendingRowspan.has(colCursor)) colCursor++;
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+              const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10) || 1;
+              for (let cs = 0; cs < colspan; cs++) {
+                rowCellByCol.set(colCursor + cs, cell);
+                if (rowspan > 1) {
+                  pendingRowspan.set(colCursor + cs, { cell, rowsLeft: rowspan - 1 });
+                }
+              }
+              colCursor += colspan;
+            }
+            // Merge in cells still active from earlier rowspans.
+            for (const [col, info] of pendingRowspan.entries()) {
+              if (!rowCellByCol.has(col)) rowCellByCol.set(col, info.cell);
+            }
 
+            // Extract time ranges per day column.
             for (const [day, ci] of Object.entries(dayColMap)) {
-              if (ci >= cells.length) continue;
-              const cell = cells[ci];
-              const cellText = compact(cell.innerText);
-              const hasCheck = cell.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked') !== null;
-              const isNonEmpty = cellText.length > 0 || hasCheck || cell.querySelector('img, .active, .checked') !== null;
-              if (isNonEmpty) sched[day].push(slotRaw);
+              const cell = rowCellByCol.get(ci);
+              if (!cell) continue;
+              const text = compact(cell.innerText);
+              if (!text) continue;
+              const matches = text.match(timeRangeReG);
+              if (!matches) continue;
+              for (const raw of matches) sched[day].push(raw);
+            }
+
+            // Decrement rowspan counters; drop entries that are exhausted.
+            for (const [col, info] of [...pendingRowspan.entries()]) {
+              info.rowsLeft -= 1;
+              if (info.rowsLeft <= 0) pendingRowspan.delete(col);
             }
           }
+
+          // Deduplicate slot ranges per day (rowspan cells repeat the same
+          // text on every row they cover).
+          for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
 
           const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
           if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers' };
