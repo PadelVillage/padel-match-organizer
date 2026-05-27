@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.584</title>
+  <title>Padel Match Organizer v5.585</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -2533,6 +2533,25 @@
     .matchpoint-action-state.pending { color:#b7791f; }
     .matchpoint-action-state.done { color:#168a53; }
     .matchpoint-action-state.error { color:#b42318; }
+    /* === Parser Config Admin Panel (v1.1) === */
+    .matchpoint-data-box.parser-config { border-top-color:#0891b2; }
+    .matchpoint-data-box.parser-config .matchpoint-data-step { background:#0891b2; }
+    .matchpoint-data-box.parser-config.wide { grid-column:1 / -1; }
+    .parser-config-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+    .parser-config-tab { padding:8px 14px; border:0; background:none; color:#667085; font-size:13px; font-weight:700; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+    .parser-config-tab.active { color:#0891b2; border-bottom-color:#0891b2; }
+    .parser-config-tab-panel { display:none; }
+    .parser-config-tab-panel.active { display:block; }
+    .parser-config-errors-table,.parser-config-log-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .parser-config-errors-table th,.parser-config-log-table th { background:#f0f4fa; color:var(--primary); font-size:11px; font-weight:900; text-transform:uppercase; padding:7px 10px; text-align:left; }
+    .parser-config-errors-table td,.parser-config-log-table td { padding:7px 10px; border-bottom:1px solid #edf2f9; vertical-align:middle; }
+    .parser-config-errors-table tr:last-child td,.parser-config-log-table tr:last-child td { border-bottom:0; }
+    .parser-config-errors-table input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#0891b2; }
+    .parser-config-confidence { display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
+    .parser-config-confidence.ok { background:#d1fae5; color:#065f46; }
+    .parser-config-preview { background:#f8fbff; border:1px solid #dfe8f3; border-radius:6px; padding:12px; font-size:12px; font-family:monospace; white-space:pre-wrap; max-height:260px; overflow:auto; color:#1e293b; }
+    .parser-config-approve-bar { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+    .parser-config-empty { color:#667085; font-size:13px; padding:12px 0; }
     .matchpoint-action-state.import-date { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     #matchpointBackupActionState.done { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     .matchpoint-data-info { display:grid; grid-template-columns:1.3fr .7fr; gap:14px; }
@@ -6689,6 +6708,47 @@ body.assessment-public-mode .assessment-public-only-card {
                   </article>
                 </div>
               </div>
+              <div class="matchpoint-data-accordion" id="matchpointParserAccordion">
+                <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointParserAccordionPanel"
+                  onclick="toggleMatchpointDataAccordion('matchpointParserAccordion'); if(document.getElementById('matchpointParserAccordion').classList.contains('open')) pmoParserLoadErrors()">
+                  <span>
+                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step" style="background:#0891b2">7</span> Parser Config</span>
+                    <span class="matchpoint-data-accordion-subtitle">Evoluzione automatica del parser prenotazioni staff.</span>
+                  </span>
+                  <span class="matchpoint-data-chevron">›</span>
+                </button>
+                <div class="matchpoint-data-accordion-panel" id="matchpointParserAccordionPanel">
+                  <article class="matchpoint-data-box parser-config wide" id="anchor-parser-config">
+                    <p class="matchpoint-data-copy">Seleziona gli errori frequenti dello staff, genera l'aggiornamento e approva per aggiornare automaticamente il parser.</p>
+                    <div class="parser-config-tabs" role="tablist">
+                      <button class="parser-config-tab active" role="tab" onclick="pmoParserSwitchTab('errors',this)">Errori Riconosciuti</button>
+                      <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('preview',this)">Genera Aggiornamento</button>
+                      <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('log',this); pmoParserLoadLog()">Log Evoluzione</button>
+                    </div>
+                    <!-- Tab 1: Errori -->
+                    <div id="parserConfigTabErrors" class="parser-config-tab-panel active" role="tabpanel">
+                      <div id="parserConfigErrorsStatus" class="matchpoint-action-state"></div>
+                      <div id="parserConfigErrorsTable"></div>
+                      <button class="btn-secondary" style="margin-top:12px" onclick="pmoParserGeneratePreview()">Genera Aggiornamento →</button>
+                    </div>
+                    <!-- Tab 2: Genera Aggiornamento -->
+                    <div id="parserConfigTabPreview" class="parser-config-tab-panel" role="tabpanel">
+                      <div id="parserConfigPreviewStatus" class="matchpoint-action-state"></div>
+                      <pre id="parserConfigPreviewJson" class="parser-config-preview">Nessuna modifica selezionata.</pre>
+                      <div class="parser-config-approve-bar">
+                        <button class="btn-warning" id="parserConfigApproveBtn" onclick="pmoParserApproveAndUpdate()">Approva e Aggiorna File</button>
+                        <div id="parserConfigApproveStatus" class="matchpoint-action-state"></div>
+                      </div>
+                    </div>
+                    <!-- Tab 3: Log Evoluzione -->
+                    <div id="parserConfigTabLog" class="parser-config-tab-panel" role="tabpanel">
+                      <div id="parserConfigLogStatus" class="matchpoint-action-state"></div>
+                      <div id="parserConfigLogTable"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
               <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
             </div>
           </div>
@@ -33290,6 +33350,206 @@ Per confermare scrivi ELIMINA.`);
   })();
   </script>
   <!-- ════ end Calendario Matchpoint ════ -->
+
+  <!-- ════ Parser Config Admin Panel (v1.1) ════ -->
+  <script>
+  // ── Parser Config — Admin Panel ─────────────────────────────────────────────
+
+  let _pmoParserSelectedErrors = []; // Array di { id, input_originale, tipo }
+
+  function pmoParserSwitchTab(tab, btn) {
+    ['errors','preview','log'].forEach(t => {
+      const panel = document.getElementById('parserConfigTab' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (panel) panel.classList.toggle('active', t === tab);
+    });
+    document.querySelectorAll('.parser-config-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  async function pmoParserLoadErrors() {
+    const statusEl = document.getElementById('parserConfigErrorsStatus');
+    const tableEl  = document.getElementById('parserConfigErrorsTable');
+    if (!statusEl || !tableEl) return;
+    statusEl.textContent = 'Caricamento errori...';
+    statusEl.className = 'matchpoint-action-state pending';
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare gli errori del parser');
+      const res = await fetch(
+        cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?admin_selected=eq.false&timestamp=gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}&order=timestamp.desc&select=id,input_originale,intent_riconosciuto,confidence,timestamp,versione_parser`,
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+
+      // Raggruppa per input_originale
+      const grouped = {};
+      for (const r of rows) {
+        const key = r.input_originale;
+        if (!grouped[key]) grouped[key] = { ids:[], confidence_sum:0, count:0, ultimo:r.timestamp, versione:r.versione_parser, intent:r.intent_riconosciuto };
+        grouped[key].ids.push(r.id);
+        grouped[key].confidence_sum += r.confidence ?? 0;
+        grouped[key].count++;
+        if (r.timestamp > grouped[key].ultimo) grouped[key].ultimo = r.timestamp;
+      }
+
+      if (!Object.keys(grouped).length) {
+        statusEl.textContent = 'Nessun errore negli ultimi 7 giorni.';
+        statusEl.className = 'matchpoint-action-state done';
+        tableEl.innerHTML = '';
+        return;
+      }
+
+      statusEl.textContent = Object.keys(grouped).length + ' pattern distinti negli ultimi 7 giorni.';
+      statusEl.className = 'matchpoint-action-state';
+
+      let html = '<table class="parser-config-errors-table"><thead><tr><th></th><th>Pattern</th><th>Freq.</th><th>Confidence</th><th>Ultimo</th></tr></thead><tbody>';
+      for (const [pattern, g] of Object.entries(grouped).sort((a,b) => b[1].count - a[1].count)) {
+        const conf = (g.confidence_sum / g.count).toFixed(2);
+        const confClass = parseFloat(conf) >= 0.7 ? 'ok' : '';
+        const data = new Date(g.ultimo).toLocaleDateString('it-IT');
+        const idsJson = JSON.stringify(g.ids).replace(/"/g,'&quot;');
+        html += `<tr>
+          <td><input type="checkbox" data-ids="${idsJson}" data-pattern="${pattern.replace(/"/g,'&quot;')}" data-intent="${(g.intent||'').replace(/"/g,'&quot;')}" onchange="pmoParserToggleError(this)"></td>
+          <td style="font-family:monospace;font-size:12px">${pattern.replace(/</g,'&lt;')}</td>
+          <td>${g.count}</td>
+          <td><span class="parser-config-confidence ${confClass}">${conf}</span></td>
+          <td>${data}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      tableEl.innerHTML = html;
+      _pmoParserSelectedErrors = [];
+    } catch (err) {
+      statusEl.textContent = 'Errore: ' + (err.message || err);
+      statusEl.className = 'matchpoint-action-state error';
+    }
+  }
+
+  function pmoParserToggleError(checkbox) {
+    const ids = JSON.parse(checkbox.getAttribute('data-ids') || '[]');
+    const pattern = checkbox.getAttribute('data-pattern') || '';
+    const intent  = checkbox.getAttribute('data-intent') || '';
+    if (checkbox.checked) {
+      _pmoParserSelectedErrors.push({ ids, pattern, intent });
+    } else {
+      _pmoParserSelectedErrors = _pmoParserSelectedErrors.filter(e => e.pattern !== pattern);
+    }
+  }
+
+  function pmoParserInferModifica(entry) {
+    const t = (entry.pattern || '').toLowerCase();
+    // Se sembra un sinonimo di PRENOTA
+    if (/prenot|reserv|book/.test(t)) {
+      return { tipo: 'sinonimo_aggiunto', intent: 'PRENOTA', sinonimo_nuovo: entry.pattern };
+    }
+    // Se sembra un nome istruttore (parola sola, iniziale maiuscola)
+    if (/^[A-Z][a-zÀ-ÿ]{2,15}$/.test(entry.pattern.trim())) {
+      const target = (PARSER_RULES?.campi_opzionali?.istruttore?.valori_validi || [])[0] || 'Santiago';
+      return { tipo: 'fuzzy_match_aggiunto', campo: 'istruttore', mapping: { [entry.pattern]: target } };
+    }
+    // Default: sinonimo PRENOTA
+    return { tipo: 'sinonimo_aggiunto', intent: 'PRENOTA', sinonimo_nuovo: entry.pattern };
+  }
+
+  function pmoParserGeneratePreview() {
+    const previewEl = document.getElementById('parserConfigPreviewJson');
+    const statusEl  = document.getElementById('parserConfigPreviewStatus');
+    pmoParserSwitchTab('preview', document.querySelectorAll('.parser-config-tab')[1]);
+    if (!_pmoParserSelectedErrors.length) {
+      if (previewEl) previewEl.textContent = 'Nessun errore selezionato nel tab "Errori Riconosciuti".';
+      if (statusEl) { statusEl.textContent = 'Seleziona prima gli errori da correggere.'; statusEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    const versione_attuale = PARSER_RULES?.versione || 'v1.0';
+    const match = versione_attuale.match(/^v(\d+)\.(\d+)/);
+    const versione_nuova = match ? `v${match[1]}.${parseInt(match[2]) + 1}` : versione_attuale + '.1';
+    const modifiche = _pmoParserSelectedErrors.map(e => pmoParserInferModifica(e));
+    const preview = {
+      versione_nuova,
+      timestamp: new Date().toISOString(),
+      errori_selezionati: _pmoParserSelectedErrors.length,
+      modifiche
+    };
+    if (previewEl) previewEl.textContent = JSON.stringify(preview, null, 2);
+    if (statusEl) { statusEl.textContent = modifiche.length + ' modifiche pronte. Controlla il preview e poi approva.'; statusEl.className = 'matchpoint-action-state'; }
+  }
+
+  async function pmoParserApproveAndUpdate() {
+    const approveBtn = document.getElementById('parserConfigApproveBtn');
+    const statusEl   = document.getElementById('parserConfigApproveStatus');
+    if (!_pmoParserSelectedErrors.length) {
+      if (statusEl) { statusEl.textContent = 'Nessun errore selezionato.'; statusEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    const modifiche = _pmoParserSelectedErrors.map(e => pmoParserInferModifica(e));
+    const allErrorIds = _pmoParserSelectedErrors.flatMap(e => e.ids);
+    if (approveBtn) approveBtn.disabled = true;
+    if (statusEl) { statusEl.textContent = 'Aggiornamento in corso...'; statusEl.className = 'matchpoint-action-state pending'; }
+    try {
+      const cfg   = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'aggiornare il parser');
+      const branch = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test-preview' : 'main';
+      const res = await fetch(cfg.supabaseUrl + '/functions/v1/parser-rules-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({ modifiche, error_ids: allErrorIds, branch })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Errore sconosciuto');
+      if (statusEl) { statusEl.textContent = '✓ Parser aggiornato a ' + data.versione_nuova + '!'; statusEl.className = 'matchpoint-action-state done'; }
+      _pmoParserSelectedErrors = [];
+      // Ricarica regole nel frontend
+      if (typeof loadParserRules === 'function') loadParserRules();
+      setTimeout(() => pmoParserLoadErrors(), 1000);
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = 'Errore: ' + (err.message || err); statusEl.className = 'matchpoint-action-state error'; }
+    } finally {
+      if (approveBtn) approveBtn.disabled = false;
+    }
+  }
+
+  async function pmoParserLoadLog() {
+    const statusEl = document.getElementById('parserConfigLogStatus');
+    const tableEl  = document.getElementById('parserConfigLogTable');
+    if (!statusEl || !tableEl) return;
+    statusEl.textContent = 'Caricamento storico...';
+    statusEl.className = 'matchpoint-action-state pending';
+    try {
+      const cfg   = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare il log del parser');
+      const res = await fetch(
+        cfg.supabaseUrl + '/rest/v1/pmo_parser_config?order=versione.desc&select=versione,data_aggiornamento,aggiornato_da,note',
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+      if (!rows.length) {
+        statusEl.textContent = 'Nessuna versione ancora salvata.';
+        statusEl.className = 'matchpoint-action-state';
+        tableEl.innerHTML = '';
+        return;
+      }
+      statusEl.textContent = rows.length + ' versioni nel log.';
+      statusEl.className = 'matchpoint-action-state done';
+      let html = '<table class="parser-config-log-table"><thead><tr><th>Versione</th><th>Data</th><th>Aggiornato da</th><th>Note</th></tr></thead><tbody>';
+      for (const r of rows) {
+        const data = r.data_aggiornamento ? new Date(r.data_aggiornamento).toLocaleString('it-IT') : '-';
+        html += `<tr>
+          <td><strong>${r.versione}</strong></td>
+          <td>${data}</td>
+          <td>${r.aggiornato_da || '-'}</td>
+          <td style="color:#667085;font-size:12px">${r.note || '-'}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      tableEl.innerHTML = html;
+    } catch (err) {
+      statusEl.textContent = 'Errore: ' + (err.message || err);
+      statusEl.className = 'matchpoint-action-state error';
+    }
+  }
+  </script>
 
   <!-- ════ Staff Calendar v5.580 ════ -->
   <script>
