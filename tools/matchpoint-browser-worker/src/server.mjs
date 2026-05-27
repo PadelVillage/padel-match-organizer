@@ -2938,9 +2938,10 @@ async function handleCreateBooking(req, res) {
   json(res, 200, result);
 }
 
-// createBookingWithBrowser: naviga Matchpoint, apre il form di nuova prenotazione e compila i campi.
-// NOTA: la navigazione esatta del form (URL, selettori, CSRF) va validata manualmente su Matchpoint
-// prima di completare questa funzione. La struttura del login e del browser è identica agli altri handler.
+// createBookingWithBrowser: naviga al tabellone Matchpoint, imposta la data, trova la cella
+// libera per il campo e l'ora target, clicca per aprire il form di prenotazione e lo compila.
+// Strategia: usa le stesse primitive confermate in produzione (navigateToTabellone,
+// impostaDataTabellone) poi esegue il click sulla cella libera nel grid via DOM evaluate.
 async function createBookingWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -2952,12 +2953,14 @@ async function createBookingWithBrowser(options = {}) {
   const campo = parseInt(booking.campo || 0);
   const data = clean(booking.data);
   const ora = clean(booking.ora);
+  const oraFine = clean(booking.oraFine || '');
   const nome = clean(booking.nome);
   const durata = parseInt(booking.durata || 90);
 
   if (!campo || campo < 1 || campo > 4) throw fail('INVALID_CAMPO', 'Campo deve essere 1-4.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw fail('INVALID_DATA', 'Data deve essere YYYY-MM-DD.');
   if (!/^\d{2}:\d{2}$/.test(ora)) throw fail('INVALID_ORA', 'Ora deve essere HH:MM.');
+  if (!nome) throw fail('INVALID_NOME', 'Nome giocatore/lezione richiesto.');
 
   const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
   const diagnostic = {
@@ -2965,11 +2968,13 @@ async function createBookingWithBrowser(options = {}) {
     campo,
     data,
     ora,
+    oraFine,
     nome,
     durata,
     baseUrl,
     startedAt: new Date().toISOString(),
     steps: [],
+    navigationAttempts: [],
   };
 
   const browser = await chromium.launch({
@@ -2987,7 +2992,7 @@ async function createBookingWithBrowser(options = {}) {
     });
     const page = await context.newPage();
 
-    // Login (stesso pattern degli altri handler)
+    // ── Login ─────────────────────────────────────────────────────────────────
     diagnostic.steps.push('login');
     await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
@@ -3008,30 +3013,329 @@ async function createBookingWithBrowser(options = {}) {
     }
 
     await maybeClickCashEnter(page, diagnostic);
+    diagnostic.afterCashUrl = page.url();
 
-    // TODO: navigare al form di creazione prenotazione su Matchpoint.
-    // Per completare questa sezione serve analizzare manualmente il sito Matchpoint con DevTools:
-    //   1. Aprire la pagina di nuova prenotazione (Reservas → Nueva reserva o simile)
-    //   2. Ispezionare il form: campi ID, select campo, datepicker, timepicker, input nome
-    //   3. Verificare se c'è un CSRF token (ViewState ASP.NET o token custom)
-    //   4. Identificare il submit button e la conferma post-submit
-    //
-    // Struttura ipotetica (da verificare su Matchpoint):
-    //   - URL: /Reservas/NuevaReserva.aspx oppure /Reservas/ReservasHora.aspx
-    //   - Select campo: select[name*="Campo"] o simile
-    //   - Input data: input[name*="Fecha"] formato dd/mm/yyyy
-    //   - Input ora: select[name*="Hora"] o input[name*="Hora"]
-    //   - Input nome: input[name*="Nombre"] o input[name*="Jugador"]
-    //   - Submit: button[name*="Guardar"] o input[value*="Guardar"]
+    // ── Naviga al tabellone ───────────────────────────────────────────────────
+    diagnostic.steps.push('navigate_tabellone');
+    const tabCtx = await navigateToTabellone(page, baseUrl, diagnostic);
+    diagnostic.tabelloneUrl = page.url();
 
-    diagnostic.steps.push('create_booking_not_implemented');
-    throw fail(
-      'CREATE_BOOKING_NOT_IMPLEMENTED',
-      'La navigazione del form di prenotazione Matchpoint non è ancora implementata. ' +
-      'Analizza il sito Matchpoint con DevTools per identificare URL e selettori del form, ' +
-      'poi completa la funzione createBookingWithBrowser in server.mjs.',
-      { ...diagnostic, hint: 'See TODO comments in handleCreateBooking / createBookingWithBrowser' },
-    );
+    // ── Imposta data ──────────────────────────────────────────────────────────
+    diagnostic.steps.push('set_date');
+    await impostaDataTabellone(tabCtx, page, data, diagnostic);
+
+    // ── Trova e clicca la cella libera (campo × ora) ─────────────────────────
+    // Usa lo stesso algoritmo di lettura del tabellone (matrix con rowspan/colspan)
+    // per localizzare la cella target e restituire un xpath univoco.
+    diagnostic.steps.push('find_free_cell');
+    const campoTarget = campo;
+    const oraTarget = ora;
+
+    const cellXPath = await tabCtx.evaluate(({ campoNum, oraStr }) => {
+      const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const timePattern = /^\d{1,2}:\d{2}$/;
+      const campoRe = /campo\s*(\d+)/i;
+
+      // Trova elementi "Campo N" nell'header
+      const allEls = [...document.querySelectorAll('td, th, div, span, img')];
+      const campoEls = allEls.filter((el) => {
+        const texts = [
+          compact(el.innerText || ''),
+          compact(el.getAttribute('alt') || ''),
+          compact(el.getAttribute('title') || ''),
+        ];
+        return texts.some((t) => campoRe.test(t) && t.length <= 100);
+      });
+
+      // Trova la tabella griglia
+      let gridTable = null;
+      if (campoEls.length > 0) {
+        const hdr = campoEls[0].closest('tr') || campoEls[0].parentElement;
+        gridTable = hdr?.closest('table') || hdr?.parentElement;
+      }
+      if (!gridTable) {
+        let best = 0;
+        for (const t of document.querySelectorAll('table')) {
+          const cnt = [...t.querySelectorAll('tr')].filter((row) => {
+            const first = row.querySelector('td,th');
+            return first && timePattern.test(compact(first.innerText));
+          }).length;
+          if (cnt > best) { best = cnt; gridTable = t; }
+        }
+        if (best < 4) gridTable = null;
+      }
+      if (!gridTable) return null;
+
+      // Costruisce matrice 2D (rowspan/colspan)
+      const allRows = [...gridTable.querySelectorAll('tr')];
+      const matrix = [];
+      for (let ri = 0; ri < allRows.length; ri++) {
+        if (!matrix[ri]) matrix[ri] = [];
+        let ci = 0;
+        for (const cell of allRows[ri].querySelectorAll('td, th')) {
+          while (matrix[ri][ci] !== undefined) ci++;
+          const rs = Math.max(1, parseInt(cell.getAttribute('rowspan') || '1', 10));
+          const cs = Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
+          for (let r = 0; r < rs; r++) {
+            if (!matrix[ri + r]) matrix[ri + r] = [];
+            for (let c = 0; c < cs; c++) {
+              matrix[ri + r][ci + c] = { cell, isPrimary: r === 0 && c === 0 };
+            }
+          }
+          ci += cs;
+        }
+      }
+
+      // Trova indice colonna del campo target
+      let campoColIdx = -1;
+      for (let ri = 0; ri < matrix.length; ri++) {
+        for (let ci = 0; ci < (matrix[ri] || []).length; ci++) {
+          const entry = matrix[ri][ci];
+          if (!entry?.isPrimary) continue;
+          const texts = [
+            compact(entry.cell.innerText || ''),
+            compact(entry.cell.getAttribute('alt') || ''),
+            compact(entry.cell.getAttribute('title') || ''),
+          ];
+          for (const t of texts) {
+            const m = t.match(campoRe);
+            if (m && parseInt(m[1], 10) === campoNum) {
+              campoColIdx = ci;
+              break;
+            }
+          }
+          if (campoColIdx >= 0) break;
+        }
+        if (campoColIdx >= 0) break;
+      }
+      if (campoColIdx < 0) return null;
+
+      // Trova indice riga dell'ora target (HH:MM)
+      let timeRowIdx = -1;
+      for (let ri = 0; ri < matrix.length; ri++) {
+        const first = matrix[ri]?.[0];
+        if (!first?.isPrimary) continue;
+        const t = compact(first.cell.innerText);
+        if (t === oraStr || t.startsWith(oraStr)) {
+          timeRowIdx = ri;
+          break;
+        }
+      }
+      if (timeRowIdx < 0) return null;
+
+      const entry = matrix[timeRowIdx]?.[campoColIdx];
+      if (!entry) return null;
+
+      // Restituisce xpath univoco per la cella
+      const cell = entry.isPrimary ? entry.cell : entry.cell;
+      const getXPath = (el) => {
+        if (el.id) return `//*[@id="${el.id}"]`;
+        const parts = [];
+        let cur = el;
+        while (cur && cur.nodeType === 1) {
+          const tag = cur.tagName.toLowerCase();
+          const siblings = [...(cur.parentElement?.children || [])].filter((c) => c.tagName === cur.tagName);
+          const idx = siblings.indexOf(cur) + 1;
+          parts.unshift(siblings.length > 1 ? `${tag}[${idx}]` : tag);
+          cur = cur.parentElement;
+        }
+        return '/' + parts.join('/');
+      };
+
+      // Verifica che la cella sia libera (background bianco/trasparente)
+      const bg = window.getComputedStyle(cell).backgroundColor;
+      const isWhite = !bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent' || bg === 'rgb(255, 255, 255)';
+      const text = compact(cell.innerText);
+      // Una cella libera ha poco testo o solo spazi
+      const seemsFree = text.length < 15;
+
+      return { xpath: getXPath(cell), bg, seemsFree, text };
+    }, { campoNum: campoTarget, oraStr: oraTarget }).catch(() => null);
+
+    diagnostic.cellInfo = cellXPath;
+
+    if (!cellXPath) {
+      throw fail(
+        'TABELLONE_CELL_NOT_FOUND',
+        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. ` +
+        'Verifica che la data sia corretta e che il campo esista.',
+        diagnostic,
+      );
+    }
+
+    if (!cellXPath.seemsFree) {
+      throw fail(
+        'SLOT_NOT_FREE',
+        `Lo slot Campo ${campo} · ${data} · ${ora} risulta già occupato nel tabellone.`,
+        { ...diagnostic, cellText: cellXPath.text },
+      );
+    }
+
+    // Clicca la cella — usa xpath per localizzarla in Playwright
+    diagnostic.steps.push('click_free_cell');
+    const cellLocator = tabCtx.locator(`xpath=${cellXPath.xpath}`).first();
+    await cellLocator.click({ timeout: 15000, force: false });
+    await page.waitForTimeout(1500);
+
+    // ── Rileva il form di prenotazione (modal o nuova pagina) ─────────────────
+    // Dopo il click, Matchpoint mostra il form come:
+    //   (A) Finestra modale / dialog nel DOM corrente
+    //   (B) Nuovo iframe nel tabellone
+    //   (C) Navigazione a /Reservas/NuevaReserva.aspx o simile
+    diagnostic.steps.push('detect_booking_form');
+    await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+
+    // Raccoglie tutti i contesti dove potrebbe essere apparso il form
+    const formContexts = pageContentContexts(page);
+
+    let formCtx = null;
+    let nomeInputFound = false;
+
+    // Selettori per il campo nome nei form Matchpoint ASP.NET
+    const NOME_SELECTORS = [
+      'input[id*="Jugador"][type="text"], input[id*="jugador"][type="text"]',
+      'input[name*="Jugador"], input[name*="jugador"]',
+      'input[id*="Nombre"][type="text"], input[id*="nombre"][type="text"]',
+      'input[name*="Nombre"], input[name*="nombre"]',
+      'input[id*="Player"], input[name*="Player"]',
+      'input[id*="txtNombre"], input[id*="txtJugador"]',
+      'input[id*="nombre"], input[id*="jugador"]',
+    ];
+
+    for (const ctx of formContexts) {
+      for (const sel of NOME_SELECTORS) {
+        const loc = ctx.target.locator(sel).first();
+        if (await loc.isVisible({ timeout: 3000 }).catch(() => false)) {
+          formCtx = ctx.target;
+          nomeInputFound = true;
+          diagnostic.formFoundAt = ctx.kind;
+          diagnostic.formNomeSel = sel;
+          break;
+        }
+      }
+      if (nomeInputFound) break;
+    }
+
+    // Se il form non è apparso subito, aspetta un po' e riprova
+    if (!nomeInputFound) {
+      await page.waitForTimeout(2500);
+      for (const ctx of pageContentContexts(page)) {
+        for (const sel of NOME_SELECTORS) {
+          const loc = ctx.target.locator(sel).first();
+          if (await loc.isVisible({ timeout: 2000 }).catch(() => false)) {
+            formCtx = ctx.target;
+            nomeInputFound = true;
+            diagnostic.formFoundAt = ctx.kind + '_retry';
+            diagnostic.formNomeSel = sel;
+            break;
+          }
+        }
+        if (nomeInputFound) break;
+      }
+    }
+
+    if (!nomeInputFound || !formCtx) {
+      // Snapshot del DOM post-click per diagnostica
+      diagnostic.postClickUrl = page.url();
+      diagnostic.postClickTitle = await page.title().catch(() => '');
+      diagnostic.postClickBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 500));
+      throw fail(
+        'BOOKING_FORM_NOT_FOUND',
+        `Il form di prenotazione non è apparso dopo il click su Campo ${campo} · ${ora}. ` +
+        'Il tabellone potrebbe usare un meccanismo di form non ancora gestito (es. ASP.NET modal separato). ' +
+        'Controlla il campo diagnostic.postClickBodySample per ispezionare il DOM post-click.',
+        diagnostic,
+      );
+    }
+
+    // ── Compila il form ───────────────────────────────────────────────────────
+    diagnostic.steps.push('fill_booking_form');
+
+    // Campo nome giocatore / lezione
+    const nomeInput = formCtx.locator(diagnostic.formNomeSel).first();
+    await nomeInput.click({ clickCount: 3, timeout: 8000 });
+    await nomeInput.fill(nome, { timeout: 8000 });
+    diagnostic.steps.push('filled_nome');
+
+    // Durata / ora fine (alcuni form la richiedono)
+    if (oraFine) {
+      const ORA_FINE_SELECTORS = [
+        'select[id*="HoraFin"], select[name*="HoraFin"]',
+        'select[id*="horafin"], select[name*="horafin"]',
+        'input[id*="HoraFin"], input[name*="HoraFin"]',
+        'select[id*="Duracion"], select[name*="Duracion"]',
+        'select[id*="duracion"], select[name*="duracion"]',
+      ];
+      for (const sel of ORA_FINE_SELECTORS) {
+        const loc = formCtx.locator(sel).first();
+        if (!await loc.isVisible({ timeout: 1500 }).catch(() => false)) continue;
+        const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
+        if (tag === 'select') {
+          await loc.selectOption(oraFine, { timeout: 5000 }).catch(() =>
+            loc.selectOption({ label: oraFine }, { timeout: 5000 }).catch(() => {})
+          );
+        } else {
+          await loc.click({ clickCount: 3, timeout: 5000 });
+          await loc.fill(oraFine, { timeout: 5000 });
+        }
+        diagnostic.steps.push('filled_ora_fine');
+        break;
+      }
+    }
+
+    // ── Invia il form ─────────────────────────────────────────────────────────
+    diagnostic.steps.push('submit_booking_form');
+    const SUBMIT_SELECTORS = [
+      '#btnGuardar, input[id*="btnGuardar"], button[id*="btnGuardar"]',
+      'input[value*="Guardar"], input[value*="Salva"], input[value*="Prenota"], input[value*="Confirmar"]',
+      'button:has-text("Salva"), button:has-text("Guardar"), button:has-text("Conferma"), button:has-text("OK")',
+      'input[type="submit"], button[type="submit"]',
+    ];
+    let submitted = false;
+    for (const sel of SUBMIT_SELECTORS) {
+      const btn = formCtx.locator(sel).first();
+      if (!await btn.isVisible({ timeout: 2000 }).catch(() => false)) continue;
+      try {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+          btn.click({ timeout: 10000 }),
+        ]);
+        submitted = true;
+        diagnostic.submitSelector = sel;
+        break;
+      } catch (submitErr) {
+        diagnostic.navigationAttempts.push({ action: 'submit_attempt', sel, error: submitErr.message.slice(0, 80) });
+      }
+    }
+
+    if (!submitted) {
+      throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Nessun pulsante di submit trovato nel form di prenotazione.', diagnostic);
+    }
+
+    await page.waitForTimeout(2000);
+    diagnostic.postSubmitUrl = page.url();
+    diagnostic.postSubmitTitle = await page.title().catch(() => '');
+
+    // Verifica errori post-submit (Matchpoint mostra messaggi inline)
+    const postSubmitText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
+    const ERROR_KEYWORDS = ['error', 'errore', 'ocupad', 'occupat', 'no disponib', 'non disponib', 'alert', 'avviso'];
+    const hasError = ERROR_KEYWORDS.some((kw) => postSubmitText.toLowerCase().includes(kw));
+    if (hasError) {
+      diagnostic.postSubmitBodySample = postSubmitText.slice(0, 500);
+    }
+
+    diagnostic.steps.push('done');
+    return {
+      ok: true,
+      campo,
+      data,
+      ora,
+      oraFine,
+      nome,
+      durata,
+      diagnostic,
+      warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
+    };
   } finally {
     await browser.close().catch(() => {});
   }

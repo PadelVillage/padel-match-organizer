@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.580</title>
+  <title>Padel Match Organizer v5.581</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6863,7 +6863,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.580';
+    const APP_VERSION = '5.581';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33515,16 +33515,40 @@ Per confermare scrivi ELIMINA.`);
     }
     const sendBtn = document.getElementById('staffCalSendBtn');
     if (sendBtn) sendBtn.disabled = true;
-    staffCalSetStatus(`Prenotando ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine}...`, 'pending');
+    staffCalSetStatus(`Prenotando ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine} su Matchpoint...`, 'pending');
     try {
-      const saved = staffCalSaveLocal(parsed);
-      if (saved) {
-        staffCalSetStatus(`✓ Prenotazione staff: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
-        if (input) { input.value = ''; staffCalAutoResize(input); }
-        if (parsed.data === isoDate) renderStaffCalendar();
-      } else {
-        staffCalSetStatus('Slot già occupato o dati non validi.', 'error');
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`,
+        },
+        body: JSON.stringify({
+          campo: parsed.campoNum,
+          data: parsed.data,
+          ora: parsed.ora,
+          oraFine: parsed.oraFine,
+          durata: parsed.durata,
+          nome: parsed.nome,
+        }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      if (!response.ok || data?.ok === false) {
+        const errMsg = data?.message || data?.error || `Errore HTTP ${response.status}`;
+        staffCalSetStatus('Errore prenotazione: ' + errMsg, 'error');
+        return;
       }
+      // Salva anche in locale per visualizzazione immediata nel calendario
+      staffCalSaveLocal(parsed);
+      staffCalSetStatus(`✓ Prenotazione inviata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+      if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+      if (input) { input.value = ''; staffCalAutoResize(input); }
+      if (parsed.data === isoDate) renderStaffCalendar();
     } catch (err) {
       staffCalSetStatus('Errore: ' + (err.message || err), 'error');
     } finally {
