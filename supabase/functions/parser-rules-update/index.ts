@@ -14,6 +14,23 @@ const GITHUB_PATH  = 'supabase/functions/parser-rules/parser_rules.json';
 type StaffActor = { userId: string; email: string; role: string; permissions: Record<string, unknown> };
 type Modifica   = { tipo: string; [key: string]: unknown };
 
+type SaveBookingParsePayload = {
+  action: 'save_booking_parse';
+  booking_id: string;
+  parsed_by_staff_id: string;
+  parse_version?: string;
+  original_booking_text: string;
+  confidence_original?: number;
+  confidence_new?: number;
+  istruttore_original?: string;
+  istruttore_new?: string;
+  campo_original?: string;
+  campo_new?: string;
+  orario_original?: string;
+  orario_new?: string;
+  snapshot_parser_rules?: Record<string, unknown>;
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -128,6 +145,34 @@ function applyModifiche(rules: Record<string, unknown>, modifiche: Modifica[], a
   return updated;
 }
 
+// ── FASE 4: salva un singolo booking riparsificato in booking_parses ──────────
+
+async function saveBookingParse(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  payload: SaveBookingParsePayload
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+  const { data, error } = await admin.from('booking_parses').insert({
+    booking_id:            payload.booking_id,
+    parsed_by_staff_id:    payload.parsed_by_staff_id,
+    parse_version:         payload.parse_version ?? null,
+    original_booking_text: payload.original_booking_text,
+    confidence_original:   payload.confidence_original ?? null,
+    confidence_new:        payload.confidence_new ?? null,
+    istruttore_original:   payload.istruttore_original ?? null,
+    istruttore_new:        payload.istruttore_new ?? null,
+    campo_original:        payload.campo_original ?? null,
+    campo_new:             payload.campo_new ?? null,
+    orario_original:       payload.orario_original ?? null,
+    orario_new:            payload.orario_new ?? null,
+    snapshot_parser_rules: payload.snapshot_parser_rules ?? null,
+  }).select('id').single();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, id: (data as { id: string }).id };
+}
+
 // ── Handler principale ────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -139,8 +184,6 @@ Deno.serve(async (req) => {
   const serviceRoleKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
   const githubToken     = Deno.env.get('GITHUB_PERSONAL_TOKEN') || '';
 
-  if (!githubToken) return json({ ok: false, error: 'GITHUB_TOKEN_NOT_CONFIGURED' }, 500);
-
   let actor: StaffActor;
   try {
     actor = await authenticateStaff(req, supabaseUrl, anonKey);
@@ -150,21 +193,40 @@ Deno.serve(async (req) => {
 
   if (!isAdmin(actor)) return json({ ok: false, error: 'PERMISSION_DENIED' }, 403);
 
-  let body: { modifiche: Modifica[]; error_ids: string[]; branch?: string };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return json({ ok: false, error: 'INVALID_JSON' }, 400);
   }
 
-  const { modifiche, error_ids, branch = 'main' } = body;
+  // ── Dispatch: FASE 4 action ───────────────────────────────────────────────
+  if (body.action === 'save_booking_parse') {
+    const payload = body as unknown as SaveBookingParsePayload;
+    if (!payload.booking_id || !payload.original_booking_text) {
+      return json({ ok: false, error: 'MISSING_FIELDS' }, 400);
+    }
+    try {
+      const result = await saveBookingParse(supabaseUrl, serviceRoleKey, payload);
+      return json(result, result.ok ? 200 : 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[parser-rules-update/save_booking_parse]', message);
+      return json({ ok: false, error: message }, 500);
+    }
+  }
+
+  // ── Dispatch: aggiornamento regole (azione originale) ─────────────────────
+  if (!githubToken) return json({ ok: false, error: 'GITHUB_TOKEN_NOT_CONFIGURED' }, 500);
+
+  const { modifiche, error_ids, branch = 'main' } = body as { modifiche: Modifica[]; error_ids: string[]; branch?: string };
   if (!Array.isArray(modifiche) || modifiche.length === 0) {
     return json({ ok: false, error: 'NO_MODIFICHE' }, 400);
   }
 
   try {
     // 1. Leggi file attuale da GitHub
-    const { sha, json: currentRules } = await githubGetFile(githubToken, branch);
+    const { sha, json: currentRules } = await githubGetFile(githubToken, branch as string);
 
     // 2. Applica modifiche
     const newRules = applyModifiche(currentRules as Record<string, unknown>, modifiche, 'admin_panel');
@@ -173,7 +235,7 @@ Deno.serve(async (req) => {
     const commitMsg = `Auto-fix ${versione_nuova}: ${nPatterns} pattern${nPatterns === 1 ? '' : 's'} corretto`;
 
     // 3. Commit su GitHub
-    await githubPutFile(githubToken, branch, sha, newRules, commitMsg);
+    await githubPutFile(githubToken, branch as string, sha, newRules, commitMsg);
 
     // 4. Salva snapshot in pmo_parser_config
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });

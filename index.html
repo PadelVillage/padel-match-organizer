@@ -2543,9 +2543,15 @@
     .parser-config-tab-panel { display:none; }
     .parser-config-tab-panel.active { display:block; }
     .parser-config-errors-table,.parser-config-log-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .parser-config-errors-table th,.parser-config-log-table th { background:#f0f4fa; color:var(--primary); font-size:11px; font-weight:900; text-transform:uppercase; padding:7px 10px; text-align:left; }
+    .parser-config-errors-table th,.parser-config-log-table th,.parser-config-history-table th { background:#f0f4fa; color:var(--primary); font-size:11px; font-weight:900; text-transform:uppercase; padding:7px 10px; text-align:left; }
     .parser-config-errors-table td,.parser-config-log-table td { padding:7px 10px; border-bottom:1px solid #edf2f9; vertical-align:middle; }
     .parser-config-errors-table tr:last-child td,.parser-config-log-table tr:last-child td { border-bottom:0; }
+    .parser-config-history-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .parser-config-history-table td { padding:7px 10px; border-top:1px solid #eef2f7; vertical-align:middle; color:#344054; overflow-wrap:anywhere; }
+    .parser-config-history-table tbody tr:hover td { background:#f8fbff; }
+    .conf-high { display:inline-block; padding:2px 7px; border-radius:999px; background:#d1fae5; color:#065f46; font-weight:700; font-size:11px; }
+    .conf-mid  { display:inline-block; padding:2px 7px; border-radius:999px; background:#fef3c7; color:#92400e; font-weight:700; font-size:11px; }
+    .conf-low  { display:inline-block; padding:2px 7px; border-radius:999px; background:#fee2e2; color:#991b1b; font-weight:700; font-size:11px; }
     .parser-config-errors-table input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#0891b2; }
     .parser-config-confidence { display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
     .parser-config-confidence.ok { background:#d1fae5; color:#065f46; }
@@ -6725,6 +6731,7 @@ body.assessment-public-mode .assessment-public-only-card {
                       <button class="parser-config-tab active" role="tab" onclick="pmoParserSwitchTab('errors',this)">Errori Riconosciuti</button>
                       <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('preview',this)">Genera Aggiornamento</button>
                       <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('log',this); pmoParserLoadLog()">Log Evoluzione</button>
+                      <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('history',this); pmoLoadParseHistory()">Storico Parses</button>
                     </div>
                     <!-- Tab 1: Errori -->
                     <div id="parserConfigTabErrors" class="parser-config-tab-panel active" role="tabpanel">
@@ -6747,6 +6754,11 @@ body.assessment-public-mode .assessment-public-only-card {
                     <div id="parserConfigTabLog" class="parser-config-tab-panel" role="tabpanel">
                       <div id="parserConfigLogStatus" class="matchpoint-action-state"></div>
                       <div id="parserConfigLogTable"></div>
+                    </div>
+                    <!-- Tab 4: Storico Parses (FASE 4) -->
+                    <div id="parserConfigTabHistory" class="parser-config-tab-panel" role="tabpanel">
+                      <div id="parserConfigHistoryStatus" class="matchpoint-action-state"></div>
+                      <div id="parserConfigHistoryTable"></div>
                     </div>
                   </article>
                 </div>
@@ -33370,7 +33382,7 @@ Per confermare scrivi ELIMINA.`);
   let _pmoParserRulesSnapshot  = null; // Snapshot regole quando Tab 2 viene popolato
 
   function pmoParserSwitchTab(tab, btn) {
-    ['errors','preview','log'].forEach(t => {
+    ['errors','preview','log','history'].forEach(t => {
       const panel = document.getElementById('parserConfigTab' + t.charAt(0).toUpperCase() + t.slice(1));
       if (panel) panel.classList.toggle('active', t === tab);
     });
@@ -33590,25 +33602,57 @@ Per confermare scrivi ELIMINA.`);
   // Tieni pmoParserGeneratePreview per retrocompatibilità (non più nel tab button)
   function pmoParserGeneratePreview() { pmoSendSelectedErrorsToTab2(); }
 
+  // ── FASE 4: salva un singolo parse in booking_parses via Edge Function ────
+  async function pmoSaveBookingParse(cfg, staff, row, result) {
+    try {
+      const rules = PARSER_RULES || STAFF_CAL_FALLBACK_RULES;
+      const payload = {
+        action:               'save_booking_parse',
+        booking_id:           row.id || row.input_originale || '',
+        parsed_by_staff_id:   staff.userId || staff.id || '',
+        parse_version:        rules.versione || null,
+        original_booking_text: row.input_originale || '',
+        confidence_original:  row.confidence ?? null,
+        confidence_new:       result?.confidence ?? null,
+        istruttore_new:       result?.istruttore ?? null,
+        campo_new:            result?.campo != null ? String(result.campo) : null,
+        orario_new:           (result?.ora_inizio && result?.ora_fine) ? `${result.ora_inizio}–${result.ora_fine}` : null,
+        snapshot_parser_rules: rules,
+      };
+      const res = await fetch(cfg.supabaseUrl + '/functions/v1/parser-rules-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) { console.warn('[pmoSaveBookingParse] save failed:', data.error); return false; }
+      return true;
+    } catch (err) {
+      console.warn('[pmoSaveBookingParse] exception:', err);
+      return false;
+    }
+  }
+
   // ── FASE 3 Step 4: riparsifica i booking selezionati con le nuove regole ──
   async function pmoReparsifyBookings(selectedErrors) {
     const statusEl = document.getElementById('parserConfigReparsifyStatus');
     if (!selectedErrors || !selectedErrors.length) return;
     if (statusEl) { statusEl.textContent = 'Riparsificazione in corso...'; statusEl.className = 'matchpoint-action-state pending'; }
-    // Attende che loadParserRules abbia completato l'aggiornamento
     if (typeof loadParserRules === 'function') {
       try { await loadParserRules(); } catch {}
     }
     const today = (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0,10);
     const threshold = (PARSER_RULES || STAFF_CAL_FALLBACK_RULES)?.intents?.PRENOTA?.confidence_threshold ?? 0.7;
     let fixed = 0;
+    let saved = 0;
 
-    // Carica i testi originali dalla tabella pmo_parser_errors per gli ID selezionati
     const allIds = selectedErrors.flatMap(e => e.ids || []);
     let textsToReparsify = [];
+    let cfg = null;
+    let staff = null;
     try {
-      const cfg = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('manage_users', 'riparsificare i booking');
+      cfg = await loadAssessmentSupabaseConfig();
+      staff = await pmoRequireStaffPermission('manage_users', 'riparsificare i booking');
       const idsParam = allIds.map(id => `"${id}"`).join(',');
       const res = await fetch(
         cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?id=in.(${idsParam})&select=id,input_originale,confidence`,
@@ -33621,30 +33665,97 @@ Per confermare scrivi ELIMINA.`);
     } catch {}
 
     if (textsToReparsify.length > 0) {
-      // Riparsifica i testi originali con le nuove PARSER_RULES
       for (const row of textsToReparsify) {
         if (!row.input_originale || typeof staffCalParseBookingText !== 'function') continue;
         const result = staffCalParseBookingText(row.input_originale, today);
-        if (result && result.confidence >= threshold) fixed++;
+        if (result && result.confidence >= threshold) {
+          fixed++;
+          // FASE 4: salva su booking_parses (graceful — non blocca UI se fallisce)
+          if (cfg && staff) {
+            const ok = await pmoSaveBookingParse(cfg, staff, row, result);
+            if (ok) saved++;
+          }
+        }
       }
     } else {
-      // Fallback: usa i pattern raggruppati (input_originale è il pattern)
       for (const entry of selectedErrors) {
         if (!entry.pattern || typeof staffCalParseBookingText !== 'function') continue;
         const result = staffCalParseBookingText(entry.pattern, today);
-        if (result && result.confidence >= threshold) fixed++;
+        if (result && result.confidence >= threshold) {
+          fixed++;
+          if (cfg && staff) {
+            const fakeRow = { id: entry.ids?.[0] || entry.pattern, input_originale: entry.pattern, confidence: null };
+            const ok = await pmoSaveBookingParse(cfg, staff, fakeRow, result);
+            if (ok) saved++;
+          }
+        }
       }
     }
 
     if (statusEl) {
       if (fixed > 0) {
-        statusEl.textContent = `✅ ${fixed} booking riparsificat${fixed === 1 ? 'o' : 'i'} correttamente!`;
+        const savedLabel = saved > 0 ? ` (${saved} salvat${saved === 1 ? 'o' : 'i'} su DB)` : '';
+        statusEl.textContent = `✅ ${fixed} booking riparsificat${fixed === 1 ? 'o' : 'i'} correttamente!${savedLabel}`;
         statusEl.className = 'matchpoint-action-state done';
       } else {
         statusEl.textContent = 'Nessun booking riparsificato con le nuove regole.';
         statusEl.className = 'matchpoint-action-state';
       }
       setTimeout(() => { if (statusEl) { statusEl.textContent = ''; statusEl.className = 'matchpoint-action-state'; } }, 8000);
+    }
+  }
+
+  // ── FASE 4: carica storico parses da booking_parses ────────────────────────
+  async function pmoLoadParseHistory() {
+    const statusEl = document.getElementById('parserConfigHistoryStatus');
+    const tableEl  = document.getElementById('parserConfigHistoryTable');
+    if (!statusEl || !tableEl) return;
+    statusEl.textContent = 'Caricamento storico parses...';
+    statusEl.className = 'matchpoint-action-state pending';
+    try {
+      const cfg   = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare lo storico parses');
+      const res = await fetch(
+        cfg.supabaseUrl + '/rest/v1/booking_parses?order=created_at.desc&limit=100&select=id,booking_id,original_booking_text,istruttore_new,campo_new,orario_new,confidence_new,parsed_by_staff_id,created_at',
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+      if (!rows.length) {
+        statusEl.textContent = 'Nessun parse salvato ancora.';
+        statusEl.className = 'matchpoint-action-state';
+        tableEl.innerHTML = '';
+        return;
+      }
+      statusEl.textContent = rows.length + ' parse nel storico.';
+      statusEl.className = 'matchpoint-action-state done';
+      let html = '<div style="overflow-x:auto"><table class="parser-config-history-table"><thead><tr><th>Booking</th><th>Testo Originale</th><th>Istruttore</th><th>Campo</th><th>Confidence</th><th>Admin</th><th>Data</th></tr></thead><tbody>';
+      for (const r of rows) {
+        const conf = r.confidence_new != null ? parseFloat(r.confidence_new) : null;
+        let confHtml = '-';
+        if (conf != null) {
+          const pct = Math.round(conf * 100) + '%';
+          const cls = conf >= 0.9 ? 'conf-high' : conf >= 0.7 ? 'conf-mid' : 'conf-low';
+          confHtml = `<span class="${cls}">${pct}</span>`;
+        }
+        const data = r.created_at ? new Date(r.created_at).toLocaleString('it-IT') : '-';
+        const bkId = (r.booking_id || '').slice(0, 12);
+        const adminId = (r.parsed_by_staff_id || '').slice(0, 8);
+        html += `<tr>
+          <td style="font-family:monospace;font-size:11px" title="${r.booking_id||''}">${bkId}…</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(r.original_booking_text||'').replace(/"/g,'&quot;')}">${(r.original_booking_text||'-').replace(/</g,'&lt;')}</td>
+          <td>${r.istruttore_new || '-'}</td>
+          <td>${r.campo_new || '-'}</td>
+          <td>${confHtml}</td>
+          <td style="font-family:monospace;font-size:11px" title="${r.parsed_by_staff_id||''}">${adminId}…</td>
+          <td style="white-space:nowrap;font-size:11px">${data}</td>
+        </tr>`;
+      }
+      html += '</tbody></table></div>';
+      tableEl.innerHTML = html;
+    } catch (err) {
+      statusEl.textContent = 'Errore: ' + (err.message || err);
+      statusEl.className = 'matchpoint-action-state error';
     }
   }
 
