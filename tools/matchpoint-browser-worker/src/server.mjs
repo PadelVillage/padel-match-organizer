@@ -2288,12 +2288,157 @@ async function navigateToSlotSchedule(page, baseUrl, diagnostic, options = {}) {
     diagnostic.navigationAttempts.push({ action: 'schedule_row_not_opened' });
     // Comunque torna true: il parser può tentare di leggere la lista nuda
     // (alcuni layout potrebbero mostrare gli orari inline).
+  } else {
+    // L'editor della scheda si carica in un iframe del modal. `networkidle`
+    // sulla pagina principale può tornare verde prima che l'iframe popoli,
+    // lasciando il parser su un about:blank.
+    await waitForSlotScheduleReady(page, diagnostic);
   }
   diagnostic.slotScheduleUrl = page.url();
   diagnostic.slotScheduleTitle = await page.title().catch(() => '');
   return true;
 }
 
+async function waitForSlotScheduleReady(page, diagnostic) {
+  diagnostic.steps.push('slot_schedule_wait_iframe');
+  const startedAt = Date.now();
+  const deadlineMs = 30000;
+  const pollIntervalMs = 500;
+  const dayHintRe = /lune[dt]i|martedì|mercoledì|giovedì|venerdì|sabato|domenica/i;
+  const slotHintRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+  let lastSummary = null;
+
+  while (Date.now() - startedAt < deadlineMs) {
+    // Check every frame for day names + at least one slot range
+    for (const frame of page.frames()) {
+      const url = frame.url();
+      if (!url || url === 'about:blank') continue;
+      const summary = await frame.evaluate(() => ({
+        url: location.href,
+        readyState: document.readyState,
+        bodyLen: document.body?.innerText?.length || 0,
+        bodyText: (document.body?.innerText || '').slice(0, 4000),
+      })).catch(() => null);
+      if (!summary) continue;
+      const hasDay = dayHintRe.test(summary.bodyText);
+      const hasSlot = slotHintRe.test(summary.bodyText);
+      lastSummary = { url: summary.url, readyState: summary.readyState, bodyLen: summary.bodyLen, hasDay, hasSlot };
+      if (hasDay && hasSlot && summary.readyState === 'complete') {
+        // Stable: also wait for networkidle within the frame
+        await frame.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        diagnostic.slotScheduleFrameUrl = summary.url;
+        diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+        diagnostic.slotScheduleWaitOutcome = 'frame_ready';
+        return true;
+      }
+    }
+    await page.waitForTimeout(pollIntervalMs);
+  }
+  diagnostic.slotScheduleWaitMs = Date.now() - startedAt;
+  diagnostic.slotScheduleWaitOutcome = 'timeout';
+  diagnostic.slotScheduleLastFrameSummary = lastSummary;
+  return false;
+}
+
+
+async function collectSlotScheduleStructureDump(page) {
+  const contexts = pageContentContexts(page);
+  const dump = { contextCount: contexts.length, contexts: [] };
+
+  for (const entry of contexts) {
+    const target = entry.kind === 'page' ? page : page.frames()[entry.index];
+    if (!target) continue;
+    const ctxInfo = await target.evaluate((dayVariants) => {
+      const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+      const normalizeDay = (raw) => {
+        const key = String(raw)
+          .toLocaleLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/\s+/g, '')
+          .trim();
+        return dayVariants[key] || null;
+      };
+      const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+      const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
+
+      // 1. Element counts of structural candidates
+      const tagCounts = {};
+      ['table', 'thead', 'tbody', 'tr', 'td', 'th', 'iframe', 'svg', 'canvas'].forEach((tag) => {
+        tagCounts[tag] = document.querySelectorAll(tag).length;
+      });
+      const roleCounts = {};
+      ['table', 'grid', 'row', 'cell', 'columnheader', 'rowheader'].forEach((role) => {
+        roleCounts[role] = document.querySelectorAll(`[role="${role}"]`).length;
+      });
+      // grid-like divs
+      const gridLikeDivs = [...document.querySelectorAll('div, ul')]
+        .filter((el) => {
+          const cs = getComputedStyle(el);
+          return cs.display === 'grid' || cs.display === 'inline-grid' || cs.display === 'flex';
+        }).length;
+
+      // 2. Locate elements whose text is exactly (or contains) a day name
+      const dayElements = [];
+      const allEls = [...document.querySelectorAll('body *')];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue; // leaf-ish only
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || txt.length > 40) continue;
+        const day = normalizeDay(txt);
+        if (!day) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        dayElements.push({
+          day,
+          text: txt,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (dayElements.length >= 50) break;
+      }
+
+      // 3. Locate elements containing time-range patterns (slots)
+      const slotElements = [];
+      for (const el of allEls) {
+        if (el.children.length > 0) continue;
+        const txt = compact(el.innerText || el.textContent || '');
+        if (!txt || !timeRangeRe.test(txt)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const matches = txt.match(timeRangeReG) || [];
+        slotElements.push({
+          slots: matches,
+          tag: el.tagName.toLowerCase(),
+          x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height),
+        });
+        if (slotElements.length >= 200) break;
+      }
+
+      // 4. HTML sample (truncated) for visual inspection
+      const htmlSample = (document.body?.innerHTML || '').slice(0, 4000);
+
+      return {
+        url: location.href,
+        title: document.title,
+        tagCounts,
+        roleCounts,
+        gridLikeDivs,
+        dayElementCount: dayElements.length,
+        dayElements: dayElements.slice(0, 20),
+        slotElementCount: slotElements.length,
+        slotElementsSample: slotElements.slice(0, 30),
+        htmlSampleLength: (document.body?.innerHTML || '').length,
+        htmlSample,
+      };
+    }, ALL_DAY_VARIANTS).catch((err) => ({ error: String(err?.message || err) }));
+
+    dump.contexts.push({ kind: entry.kind, index: entry.index, url: entry.url, ...ctxInfo });
+  }
+  return dump;
+}
 
 async function parseSlotSchedulePage(page, diagnostic) {
   diagnostic.steps.push('slot_schedule_parse');
@@ -2309,16 +2454,18 @@ async function parseSlotSchedulePage(page, diagnostic) {
   }
   diagnostic.slotScheduleContextCount = htmlSources.length;
 
-  // ── Strategy 1: Table with day-name headers ──────────────────────────────
-  // Find tables where the header row contains day names; rows with HH:MM-HH:MM
-  // in the first cell indicate a slot; non-empty or checked cells in day columns
-  // mean that slot is active for that day.
+  // ── Strategy 0: Coordinate-based (layout-agnostic) ───────────────────────
+  // Works whether the grid is built with <table>, <div> + CSS grid, ARIA
+  // roles, or any other layout. Locate day-name labels and slot labels by
+  // text, then attribute each slot to the day whose column its center X is
+  // closest to.
+  const strategy0Trace = { dayColumns: null, slotElementCount: 0, unmatched: 0, contextChosen: null };
   for (const source of htmlSources) {
     if (parsedBy) break;
     const result = await (async () => {
       const target = source.kind === 'page' ? page : page.frames()[source.index];
       if (!target) return null;
-      return target.evaluate((dayVariants, canonicalOrder) => {
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
         const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
         const normalizeDay = (raw) => {
           const key = String(raw)
@@ -2330,55 +2477,108 @@ async function parseSlotSchedulePage(page, diagnostic) {
           return dayVariants[key] || null;
         };
         const timeRangeRe = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/;
+        const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
 
-        for (const table of document.querySelectorAll('table')) {
-          const rows = [...table.querySelectorAll('tr')];
-          if (rows.length < 2) continue;
-
-          // Find header row with day names
-          let dayColMap = null; // { canonicalDay: colIndex }
-          let headerRowIdx = -1;
-          for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
-            const cells = [...rows[ri].querySelectorAll('td, th')];
-            const found = {};
-            cells.forEach((cell, ci) => {
-              const day = normalizeDay(compact(cell.innerText));
-              if (day) found[day] = ci;
-            });
-            if (Object.keys(found).length >= 2) {
-              dayColMap = found;
-              headerRowIdx = ri;
-              break;
-            }
-          }
-          if (!dayColMap || headerRowIdx < 0) continue;
-
-          const sched = {};
-          for (const d of canonicalOrder) sched[d] = [];
-
-          for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
-            const cells = [...rows[ri].querySelectorAll('td, th')];
-            if (cells.length === 0) continue;
-            const firstText = compact(cells[0]?.innerText || '');
-            if (!timeRangeRe.test(firstText)) continue;
-            const slotRaw = firstText.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/)?.[0];
-            if (!slotRaw) continue;
-
-            for (const [day, ci] of Object.entries(dayColMap)) {
-              if (ci >= cells.length) continue;
-              const cell = cells[ci];
-              const cellText = compact(cell.innerText);
-              const hasCheck = cell.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked') !== null;
-              const isNonEmpty = cellText.length > 0 || hasCheck || cell.querySelector('img, .active, .checked') !== null;
-              if (isNonEmpty) sched[day].push(slotRaw);
-            }
-          }
-
-          const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
-          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers' };
+        // Collect candidate day-name labels: leaf-ish elements whose
+        // (trimmed) text matches a known day variant. Skip hidden boxes.
+        const dayCandidates = [];
+        for (const el of document.querySelectorAll('body *')) {
+          if (el.children.length > 0) continue;
+          const txt = compact(el.innerText || el.textContent || '');
+          if (!txt || txt.length > 20) continue;
+          const day = normalizeDay(txt);
+          if (!day) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          dayCandidates.push({
+            day,
+            x: r.x, y: r.y, w: r.width, h: r.height,
+            cx: r.x + r.width / 2,
+          });
         }
-        return null;
-      }, ALL_DAY_VARIANTS, CANONICAL_DAY_ORDER).catch(() => null);
+        if (dayCandidates.length < 2) return { reason: 'few_day_candidates', dayCandidateCount: dayCandidates.length };
+
+        // Cluster day candidates by Y to find the header row (the cluster
+        // containing the most DISTINCT days, then prefer the one closer to
+        // the top of the page).
+        const yTolerance = 30; // px
+        const clusters = [];
+        const sorted = [...dayCandidates].sort((a, b) => a.y - b.y);
+        for (const c of sorted) {
+          const last = clusters[clusters.length - 1];
+          if (last && Math.abs(c.y - last.yMean) <= yTolerance) {
+            last.items.push(c);
+            last.yMean = last.items.reduce((s, it) => s + it.y, 0) / last.items.length;
+          } else {
+            clusters.push({ items: [c], yMean: c.y });
+          }
+        }
+        clusters.sort((a, b) => {
+          const distA = new Set(a.items.map((it) => it.day)).size;
+          const distB = new Set(b.items.map((it) => it.day)).size;
+          if (distB !== distA) return distB - distA;
+          return a.yMean - b.yMean;
+        });
+        const headerCluster = clusters[0];
+        const distinctDays = new Set(headerCluster.items.map((it) => it.day));
+        if (distinctDays.size < 2) return { reason: 'header_cluster_too_small', dayCandidateCount: dayCandidates.length };
+
+        // Within the header cluster, keep one entry per day (the leftmost
+        // occurrence — labels rendered twice would skew column assignment).
+        const dayCenters = {};
+        for (const it of headerCluster.items) {
+          if (dayCenters[it.day] === undefined || it.cx < dayCenters[it.day]) {
+            dayCenters[it.day] = it.cx;
+          }
+        }
+        // Sort days by ascending X center, derive column-range midpoints.
+        const dayOrder = Object.entries(dayCenters)
+          .map(([day, cx]) => ({ day, cx }))
+          .sort((a, b) => a.cx - b.cx);
+        const ranges = dayOrder.map((d, i) => {
+          const prev = dayOrder[i - 1];
+          const next = dayOrder[i + 1];
+          const lo = prev ? (prev.cx + d.cx) / 2 : -Infinity;
+          const hi = next ? (d.cx + next.cx) / 2 : Infinity;
+          return { day: d.day, lo, hi, cx: d.cx };
+        });
+
+        // Only consider slots strictly BELOW the header row.
+        const headerBottom = Math.max(...headerCluster.items.map((it) => it.y + it.h));
+
+        // Collect slot elements: leaf-ish, visible, text contains time range.
+        const sched = {};
+        for (const d of canonicalOrder) sched[d] = [];
+        let slotElementCount = 0;
+        let unmatched = 0;
+        for (const el of document.querySelectorAll('body *')) {
+          if (el.children.length > 0) continue;
+          const txt = compact(el.innerText || el.textContent || '');
+          if (!txt || !timeRangeRe.test(txt)) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.y + r.height <= headerBottom) continue; // skip anything in/above the header
+          const cx = r.x + r.width / 2;
+          const range = ranges.find((rg) => cx >= rg.lo && cx < rg.hi);
+          if (!range) { unmatched += 1; continue; }
+          const matches = txt.match(timeRangeReG) || [];
+          slotElementCount += 1;
+          for (const raw of matches) sched[range.day].push(raw);
+        }
+
+        // Deduplicate.
+        for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
+        const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
+        if (totalSlots === 0) return { reason: 'no_slot_elements', dayColumns: dayCenters, slotElementCount, unmatched };
+
+        return {
+          sched,
+          parsedBy: 'coordinate_based',
+          dayColumns: dayCenters,
+          slotElementCount,
+          unmatched,
+        };
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch((err) => ({ reason: 'evaluate_error', error: String(err?.message || err) }));
     })();
 
     if (result?.sched) {
@@ -2386,8 +2586,166 @@ async function parseSlotSchedulePage(page, diagnostic) {
         schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
       }
       parsedBy = result.parsedBy;
+      strategy0Trace.dayColumns = result.dayColumns;
+      strategy0Trace.slotElementCount = result.slotElementCount;
+      strategy0Trace.unmatched = result.unmatched;
+      strategy0Trace.contextChosen = { kind: source.kind, index: source.index, url: source.url };
+    } else if (result && !strategy0Trace.contextChosen) {
+      // Keep the most informative failure reason (first non-empty context).
+      strategy0Trace.contextChosen = { kind: source.kind, index: source.index, url: source.url };
+      strategy0Trace.reason = result.reason;
+      strategy0Trace.dayCandidateCount = result.dayCandidateCount;
+      strategy0Trace.slotElementCount = result.slotElementCount;
+      strategy0Trace.unmatched = result.unmatched;
+      strategy0Trace.dayColumns = result.dayColumns;
+      strategy0Trace.error = result.error;
     }
   }
+  diagnostic.slotScheduleStrategy0 = strategy0Trace;
+
+  // ── Strategy 1: Table with day-name headers (rowspan-aware) ──────────────
+  // Find tables whose header row contains day names. For each body row, build
+  // a virtual column→cell map that respects rowspan from prior rows, then for
+  // each day column extract every HH:MM-HH:MM range found in the cell text.
+  // Empty cells (only the hour label like "09:00") and rowspan-covered slots
+  // are handled correctly: the slot text "09:00-10:30" appears once in the
+  // source cell and is attributed to its day column.
+  const strategy1Trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
+  for (const source of htmlSources) {
+    if (parsedBy) break;
+    const result = await (async () => {
+      const target = source.kind === 'page' ? page : page.frames()[source.index];
+      if (!target) return null;
+      return target.evaluate(({ dayVariants, canonicalOrder }) => {
+        const compact = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+        const normalizeDay = (raw) => {
+          const key = String(raw)
+            .toLocaleLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+          return dayVariants[key] || null;
+        };
+        const timeRangeReG = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/g;
+
+        const trace = { tablesScanned: 0, tablesWithHeader: 0, bestTable: null };
+
+        for (const table of document.querySelectorAll('table')) {
+          trace.tablesScanned += 1;
+          const rows = [...table.querySelectorAll('tr')];
+          if (rows.length < 2) continue;
+
+          // Find header row with day names. Header column maps the LOGICAL
+          // column index (accounting for colspan) to a canonical day.
+          let dayColMap = null; // { canonicalDay: logicalColIndex }
+          let headerRowIdx = -1;
+          for (let ri = 0; ri < Math.min(rows.length, 5); ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            const found = {};
+            let col = 0;
+            for (const cell of cells) {
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+              const day = normalizeDay(compact(cell.innerText));
+              if (day && found[day] === undefined) found[day] = col;
+              col += colspan;
+            }
+            if (Object.keys(found).length >= 2) {
+              dayColMap = found;
+              headerRowIdx = ri;
+              break;
+            }
+          }
+          if (!dayColMap || headerRowIdx < 0) continue;
+          trace.tablesWithHeader += 1;
+          if (!trace.bestTable) {
+            trace.bestTable = {
+              rowCount: rows.length,
+              headerRowIdx,
+              dayColMap,
+              firstBodyRowSample: rows[headerRowIdx + 1]
+                ? [...rows[headerRowIdx + 1].querySelectorAll('td, th')]
+                    .slice(0, 10)
+                    .map((c) => compact(c.innerText).slice(0, 30))
+                : null,
+            };
+          }
+
+          const sched = {};
+          for (const d of canonicalOrder) sched[d] = [];
+
+          // pendingRowspan[col] = { cell, rowsLeft } for cells that span
+          // multiple rows starting in a previous iteration.
+          const pendingRowspan = new Map();
+
+          for (let ri = headerRowIdx + 1; ri < rows.length; ri++) {
+            const cells = [...rows[ri].querySelectorAll('td, th')];
+            // Build colIdx -> cell map for THIS row, advancing past columns
+            // already occupied by rowspans from earlier rows.
+            const rowCellByCol = new Map();
+            let colCursor = 0;
+            for (const cell of cells) {
+              while (pendingRowspan.has(colCursor)) colCursor++;
+              const colspan = parseInt(cell.getAttribute('colspan') || '1', 10) || 1;
+              const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10) || 1;
+              for (let cs = 0; cs < colspan; cs++) {
+                rowCellByCol.set(colCursor + cs, cell);
+                if (rowspan > 1) {
+                  pendingRowspan.set(colCursor + cs, { cell, rowsLeft: rowspan - 1 });
+                }
+              }
+              colCursor += colspan;
+            }
+            // Merge in cells still active from earlier rowspans.
+            for (const [col, info] of pendingRowspan.entries()) {
+              if (!rowCellByCol.has(col)) rowCellByCol.set(col, info.cell);
+            }
+
+            // Extract time ranges per day column.
+            for (const [day, ci] of Object.entries(dayColMap)) {
+              const cell = rowCellByCol.get(ci);
+              if (!cell) continue;
+              const text = compact(cell.innerText);
+              if (!text) continue;
+              const matches = text.match(timeRangeReG);
+              if (!matches) continue;
+              for (const raw of matches) sched[day].push(raw);
+            }
+
+            // Decrement rowspan counters; drop entries that are exhausted.
+            for (const [col, info] of [...pendingRowspan.entries()]) {
+              info.rowsLeft -= 1;
+              if (info.rowsLeft <= 0) pendingRowspan.delete(col);
+            }
+          }
+
+          // Deduplicate slot ranges per day (rowspan cells repeat the same
+          // text on every row they cover).
+          for (const d of canonicalOrder) sched[d] = [...new Set(sched[d])];
+
+          const totalSlots = Object.values(sched).reduce((n, arr) => n + arr.length, 0);
+          if (trace.bestTable) trace.bestTable.slotsFound = totalSlots;
+          if (totalSlots > 0) return { sched, parsedBy: 'table_day_headers', trace };
+        }
+        return { trace };
+      }, { dayVariants: ALL_DAY_VARIANTS, canonicalOrder: CANONICAL_DAY_ORDER }).catch(() => null);
+    })();
+
+    if (result?.trace) {
+      strategy1Trace.tablesScanned += result.trace.tablesScanned;
+      strategy1Trace.tablesWithHeader += result.trace.tablesWithHeader;
+      if (!strategy1Trace.bestTable && result.trace.bestTable) {
+        strategy1Trace.bestTable = result.trace.bestTable;
+      }
+    }
+    if (result?.sched) {
+      for (const [day, slots] of Object.entries(result.sched)) {
+        schedule[day] = [...new Set(slots.map(normalizeSlot).filter(Boolean))];
+      }
+      parsedBy = result.parsedBy;
+    }
+  }
+  diagnostic.slotScheduleStrategy1 = strategy1Trace;
 
   // ── Strategy 2: Day-section scan (list layout) ────────────────────────────
   // Walk page text line by line; when a line is a day name start collecting
@@ -2529,6 +2887,20 @@ async function exportSlotScheduleWithBrowser(options = {}) {
       });
     }
 
+    // Optional structural dump for off-line analysis. Triggered with
+    // { debug: true } in request body. Returns DOM structure samples
+    // (no parsing attempt) so we can reverse-engineer non-<table> layouts.
+    if (options.debug === true) {
+      const dump = await collectSlotScheduleStructureDump(page);
+      diagnostic.finishedAt = new Date().toISOString();
+      return {
+        ok: true,
+        debug: true,
+        structureDump: dump,
+        diagnostic,
+      };
+    }
+
     // Parse the schedule
     const { schedule, parsedBy, totalSlots } = await parseSlotSchedulePage(page, diagnostic);
     diagnostic.finishedAt = new Date().toISOString();
@@ -2537,6 +2909,7 @@ async function exportSlotScheduleWithBrowser(options = {}) {
       ok: true,
       schedule,
       totalSlots,
+      parsedBy: parsedBy || 'none',
       diagnostic,
     };
   } finally {
@@ -2556,6 +2929,453 @@ async function handleGetSlots(req, res) {
   const body = await readBody(req);
   const result = await getSlotsWithBrowser(body);
   json(res, 200, result);
+}
+
+async function handleCreateBooking(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await createBookingWithBrowser(body);
+  json(res, 200, result);
+}
+
+// ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
+// Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
+async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
+  const title = tipo === 'lezione' ? 'Nuova lezione' : 'Nuova partita';
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const ctx of pageContentContexts(page)) {
+      const body = await readContextBody(ctx.target, 2000);
+      if (body.includes(title)) {
+        diagnostic.formFoundAt = ctx.kind;
+        diagnostic.formTitle = title;
+        return ctx.target;
+      }
+    }
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
+// ── Helper: seleziona istruttore nel dropdown del form Lezione ────────────────
+async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
+  if (!istruttore) return;
+  // Trova il select vicino al label "Istruttore" per somiglianza di id/nome
+  const result = await formCtx.evaluate((name) => {
+    const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+    // Cerca label "Istruttore" → trova il select associato
+    const labels = [...document.querySelectorAll('label, td, th, span, div')];
+    let targetSelect = null;
+    for (const lbl of labels) {
+      if (!/istruttore/i.test(compact(lbl.innerText || ''))) continue;
+      // Cerca il select nel prossimo fratello o nella stessa cella
+      let candidate = lbl.nextElementSibling;
+      while (candidate && candidate.tagName !== 'SELECT') {
+        const inner = candidate.querySelector('select');
+        if (inner) { candidate = inner; break; }
+        candidate = candidate.nextElementSibling;
+      }
+      if (!candidate || candidate.tagName !== 'SELECT') {
+        candidate = lbl.closest('td, tr')?.querySelector('select') || null;
+      }
+      if (candidate?.tagName === 'SELECT') { targetSelect = candidate; break; }
+    }
+    // Fallback: qualsiasi select con id/name che contiene "struttore"
+    if (!targetSelect) {
+      targetSelect = document.querySelector('select[id*="struttore" i], select[name*="struttore" i], select[id*="nstructor" i]');
+    }
+    if (!targetSelect) return { found: false };
+    const opts = [...targetSelect.options];
+    const match = opts.find((o) => o.text.toLowerCase().includes(name.toLowerCase()));
+    if (!match) return { found: true, matched: false, opts: opts.map((o) => o.text) };
+    targetSelect.value = match.value;
+    targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    return { found: true, matched: true, value: match.value, text: match.text };
+  }, istruttore).catch(() => ({ found: false }));
+
+  diagnostic.istruttoreResult = result;
+  if (result.matched) {
+    diagnostic.steps.push(`istruttore_selected:${result.text}`);
+  } else if (!result.found) {
+    diagnostic.steps.push('istruttore_select_not_found');
+  } else {
+    diagnostic.steps.push(`istruttore_not_matched:${istruttore}`);
+    diagnostic.istruttoreOpts = result.opts;
+  }
+}
+
+// ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
+  if (!nome) return false;
+
+  // Selettori per l'input di ricerca autocomplete (valore testuale del giocatore)
+  const SEARCH_SELECTORS = [
+    'input[placeholder*="valore cercato"]',
+    'input[placeholder*="selezioni"]',
+    'input[placeholder*="Scriva il valore"]',
+    'input[placeholder*="cerca"]',
+    'input[placeholder*="Cerca"]',
+  ];
+
+  let searchInput = null;
+  for (const sel of SEARCH_SELECTORS) {
+    const loc = formCtx.locator(sel).last(); // .last() per evitare campo numero
+    if (await loc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      searchInput = loc;
+      diagnostic.playerSearchSel = sel;
+      break;
+    }
+  }
+  if (!searchInput) {
+    diagnostic.steps.push('player_search_input_not_found');
+    return false;
+  }
+
+  await searchInput.click({ timeout: 5000 });
+  await searchInput.fill(nome, { timeout: 8000 });
+  await page.waitForTimeout(1800); // jQuery UI autocomplete debounce
+
+  // Aspetta e clicca il primo risultato dell'autocomplete
+  const AUTOCOMPLETE_SELECTORS = [
+    '.ui-autocomplete li:first-child',
+    '.ui-menu-item:first-child',
+    '[role="listbox"] [role="option"]:first-child',
+    '.autocomplete-results li:first-child',
+    '.dropdown-menu li:first-child',
+    '.ui-autocomplete-loading + .ui-autocomplete li:first-child',
+  ];
+  let playerSelected = false;
+  for (const sel of AUTOCOMPLETE_SELECTORS) {
+    const acLoc = page.locator(sel).first(); // autocomplete appare nella pagina principale
+    if (await acLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await acLoc.click({ timeout: 5000 });
+      playerSelected = true;
+      diagnostic.steps.push('player_autocomplete_selected');
+      break;
+    }
+  }
+
+  if (!playerSelected) {
+    // Fallback: premi Enter sull'input e spera che venga accettato
+    await searchInput.press('Enter');
+    await page.waitForTimeout(600);
+    diagnostic.steps.push('player_autocomplete_enter_fallback');
+  }
+
+  // Clicca "+ Aggiungere all'elenco"
+  const ADD_SELECTORS = [
+    'button:has-text("Aggiungere")',
+    'a:has-text("Aggiungere")',
+    'input[value*="Aggiungere"]',
+    ':text-is("+ Aggiungere all\'elenco")',
+    'button:has-text("Aggiunge")',
+  ];
+  let added = false;
+  for (const sel of ADD_SELECTORS) {
+    const addLoc = formCtx.locator(sel).first();
+    if (await addLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addLoc.click({ timeout: 8000 });
+      added = true;
+      diagnostic.steps.push('player_added_to_list');
+      break;
+    }
+  }
+  if (!added) diagnostic.steps.push('player_add_btn_not_found');
+  return added;
+}
+
+// ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
+async function clickFormSave(formCtx, page, labels, diagnostic) {
+  const selectors = [
+    ...labels.map((l) => `button:has-text("${l}")`),
+    ...labels.map((l) => `a:has-text("${l}")`),
+    ...labels.map((l) => `input[value*="${l.split(' ')[0]}"]`),
+    'input[type="submit"]',
+    'button[type="submit"]',
+  ];
+  for (const sel of selectors) {
+    const btn = formCtx.locator(sel).first();
+    if (!await btn.isVisible({ timeout: 2000 }).catch(() => false)) continue;
+    try {
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+        btn.click({ timeout: 10000 }),
+      ]);
+      diagnostic.submitSelector = sel;
+      diagnostic.steps.push('form_saved');
+      return true;
+    } catch (e) {
+      diagnostic.navigationAttempts.push({ action: 'save_attempt', sel, error: e.message.slice(0, 80) });
+    }
+  }
+  return false;
+}
+
+// createBookingWithBrowser: naviga al tabellone Matchpoint, imposta la data, trova la cella
+// libera per il campo e l'ora target, clicca per aprire il menu contestuale, seleziona
+// "Partita" o "Lezione", compila il form e salva.
+// Flusso confermato dagli screenshot reali Matchpoint (27/05/2026):
+//   cella libera → menu contestuale (Partita/Lezione/Manutenzione) → form modale → salva
+async function createBookingWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const booking = options.booking || {};
+  const campo = parseInt(booking.campo || 0);
+  const data = clean(booking.data);
+  const ora = clean(booking.ora);
+  const oraFine = clean(booking.oraFine || '');
+  const nome = clean(booking.nome);
+  const durata = parseInt(booking.durata || 90);
+  const tipo = clean(booking.tipo || 'partita').toLowerCase(); // 'partita' | 'lezione' | 'manutenzione'
+  const istruttore = clean(booking.istruttore || '');
+
+  if (!campo || campo < 1 || campo > 4) throw fail('INVALID_CAMPO', 'Campo deve essere 1-4.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw fail('INVALID_DATA', 'Data deve essere YYYY-MM-DD.');
+  if (!/^\d{2}:\d{2}$/.test(ora)) throw fail('INVALID_ORA', 'Ora deve essere HH:MM.');
+  if (!nome) throw fail('INVALID_NOME', 'Nome giocatore/istruttore/lezione richiesto.');
+  if (!['partita', 'lezione', 'manutenzione', 'stagionale'].includes(tipo)) {
+    throw fail('INVALID_TIPO', 'tipo deve essere partita | lezione | manutenzione | stagionale.');
+  }
+
+  // Label italiana nel menu contestuale Matchpoint
+  const TIPO_LABEL = { partita: 'Partita', lezione: 'Lezione', manutenzione: 'Manutenzione', stagionale: 'Prenotazione stagionale' };
+  const tipoLabel = TIPO_LABEL[tipo];
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'create_booking',
+    campo, data, ora, oraFine, nome, durata, tipo, istruttore, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+    navigationAttempts: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    // ── Login ─────────────────────────────────────────────────────────────────
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+
+    await maybeClickCashEnter(page, diagnostic);
+    diagnostic.afterCashUrl = page.url();
+
+    // ── Naviga al tabellone ───────────────────────────────────────────────────
+    diagnostic.steps.push('navigate_tabellone');
+    const tabCtx = await navigateToTabellone(page, baseUrl, diagnostic);
+    diagnostic.tabelloneUrl = page.url();
+
+    // ── Imposta data ──────────────────────────────────────────────────────────
+    diagnostic.steps.push('set_date');
+    await impostaDataTabellone(tabCtx, page, data, diagnostic);
+
+    // ── Trova la cella libera (campo × ora) tramite matrice 2D ───────────────
+    diagnostic.steps.push('find_free_cell');
+
+    const cellXPath = await tabCtx.evaluate(({ campoNum, oraStr }) => {
+      const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const timePattern = /^\d{1,2}:\d{2}$/;
+      const campoRe = /campo\s*(\d+)/i;
+
+      const allEls = [...document.querySelectorAll('td, th, div, span, img')];
+      const campoEls = allEls.filter((el) => {
+        const texts = [compact(el.innerText || ''), compact(el.getAttribute('alt') || ''), compact(el.getAttribute('title') || '')];
+        return texts.some((t) => campoRe.test(t) && t.length <= 100);
+      });
+
+      let gridTable = null;
+      if (campoEls.length > 0) {
+        const hdr = campoEls[0].closest('tr') || campoEls[0].parentElement;
+        gridTable = hdr?.closest('table') || hdr?.parentElement;
+      }
+      if (!gridTable) {
+        let best = 0;
+        for (const t of document.querySelectorAll('table')) {
+          const cnt = [...t.querySelectorAll('tr')].filter((row) => {
+            const first = row.querySelector('td,th');
+            return first && timePattern.test(compact(first.innerText));
+          }).length;
+          if (cnt > best) { best = cnt; gridTable = t; }
+        }
+        if (best < 4) gridTable = null;
+      }
+      if (!gridTable) return null;
+
+      const allRows = [...gridTable.querySelectorAll('tr')];
+      const matrix = [];
+      for (let ri = 0; ri < allRows.length; ri++) {
+        if (!matrix[ri]) matrix[ri] = [];
+        let ci = 0;
+        for (const cell of allRows[ri].querySelectorAll('td, th')) {
+          while (matrix[ri][ci] !== undefined) ci++;
+          const rs = Math.max(1, parseInt(cell.getAttribute('rowspan') || '1', 10));
+          const cs = Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
+          for (let r = 0; r < rs; r++) {
+            if (!matrix[ri + r]) matrix[ri + r] = [];
+            for (let c = 0; c < cs; c++) {
+              matrix[ri + r][ci + c] = { cell, isPrimary: r === 0 && c === 0 };
+            }
+          }
+          ci += cs;
+        }
+      }
+
+      let campoColIdx = -1;
+      for (let ri = 0; ri < matrix.length && campoColIdx < 0; ri++) {
+        for (let ci = 0; ci < (matrix[ri] || []).length; ci++) {
+          const entry = matrix[ri][ci];
+          if (!entry?.isPrimary) continue;
+          const texts = [compact(entry.cell.innerText || ''), compact(entry.cell.getAttribute('alt') || ''), compact(entry.cell.getAttribute('title') || '')];
+          if (texts.some((t) => { const m = t.match(campoRe); return m && parseInt(m[1], 10) === campoNum; })) {
+            campoColIdx = ci; break;
+          }
+        }
+      }
+      if (campoColIdx < 0) return null;
+
+      let timeRowIdx = -1;
+      for (let ri = 0; ri < matrix.length; ri++) {
+        const first = matrix[ri]?.[0];
+        if (!first?.isPrimary) continue;
+        const t = compact(first.cell.innerText);
+        if (t === oraStr || t.startsWith(oraStr)) { timeRowIdx = ri; break; }
+      }
+      if (timeRowIdx < 0) return null;
+
+      const entry = matrix[timeRowIdx]?.[campoColIdx];
+      if (!entry) return null;
+
+      const cell = entry.cell;
+      const getXPath = (el) => {
+        if (el.id) return `//*[@id="${el.id}"]`;
+        const parts = [];
+        let cur = el;
+        while (cur && cur.nodeType === 1) {
+          const tag = cur.tagName.toLowerCase();
+          const siblings = [...(cur.parentElement?.children || [])].filter((c) => c.tagName === cur.tagName);
+          const idx = siblings.indexOf(cur) + 1;
+          parts.unshift(siblings.length > 1 ? `${tag}[${idx}]` : tag);
+          cur = cur.parentElement;
+        }
+        return '/' + parts.join('/');
+      };
+
+      const bg = window.getComputedStyle(cell).backgroundColor;
+      const text = compact(cell.innerText);
+      const seemsFree = text.length < 15;
+      return { xpath: getXPath(cell), bg, seemsFree, text };
+    }, { campoNum: campo, oraStr: ora }).catch(() => null);
+
+    diagnostic.cellInfo = cellXPath;
+    if (!cellXPath) {
+      throw fail('TABELLONE_CELL_NOT_FOUND',
+        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone.`, diagnostic);
+    }
+    if (!cellXPath.seemsFree) {
+      throw fail('SLOT_NOT_FREE',
+        `Lo slot Campo ${campo} · ${data} · ${ora} risulta già occupato.`,
+        { ...diagnostic, cellText: cellXPath.text });
+    }
+
+    // ── Clicca la cella libera ────────────────────────────────────────────────
+    diagnostic.steps.push('click_free_cell');
+    await tabCtx.locator(`xpath=${cellXPath.xpath}`).first().click({ timeout: 15000, force: false });
+    await page.waitForTimeout(800);
+
+    // ── Seleziona tipo dal menu contestuale ───────────────────────────────────
+    // Dopo il click appare un dropdown: Partita / Lezione / Manutenzione / Prenotazione stagionale
+    diagnostic.steps.push('click_context_menu');
+    const menuClicked = await clickMenuEntryEverywhere(page, tipoLabel, `context_menu_${tipo}`, diagnostic);
+    if (!menuClicked) {
+      diagnostic.postClickUrl = page.url();
+      diagnostic.postClickBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 600));
+      throw fail('CONTEXT_MENU_NOT_FOUND',
+        `Menu contestuale "${tipoLabel}" non trovato dopo click sulla cella. ` +
+        'Verifica che la cella sia davvero libera e che il menu appaia correttamente.',
+        diagnostic);
+    }
+
+    await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+
+    // ── Aspetta il form modale ────────────────────────────────────────────────
+    diagnostic.steps.push('wait_form_modal');
+    const formCtx = await waitForBookingForm(page, tipo, diagnostic, 18000);
+    if (!formCtx) {
+      diagnostic.postMenuUrl = page.url();
+      diagnostic.postMenuBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 600));
+      throw fail('BOOKING_FORM_NOT_FOUND',
+        `Il form "${tipo === 'lezione' ? 'Nuova lezione' : 'Nuova partita'}" non è apparso. ` +
+        'Il menu contestuale potrebbe aver aperto una pagina diversa.',
+        diagnostic);
+    }
+
+    // ── Compila il form ───────────────────────────────────────────────────────
+    diagnostic.steps.push(`fill_form_${tipo}`);
+
+    if (tipo === 'lezione') {
+      // Imposta istruttore (nome usato come istruttore nelle lezioni)
+      await selectIstruttore(formCtx, page, nome || istruttore, diagnostic);
+      const saved = await clickFormSave(formCtx, page, ['Salvare e uscire', 'Salvare e chiudere', 'Salva'], diagnostic);
+      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Lezione.', diagnostic);
+
+    } else {
+      // Partita: cerca il giocatore via autocomplete e aggiungilo
+      await searchAndAddPlayer(formCtx, page, nome, diagnostic);
+      const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare e uscire', 'Salva'], diagnostic);
+      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Partita.', diagnostic);
+    }
+
+    await page.waitForTimeout(2000);
+    diagnostic.postSubmitUrl = page.url();
+    diagnostic.postSubmitTitle = await page.title().catch(() => '');
+
+    // Rileva errori post-submit (messaggi inline di Matchpoint)
+    const postSubmitText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
+    const hasError = /error|errore|ocupad|occupat|no disponib|non disponib/i.test(postSubmitText);
+    if (hasError) diagnostic.postSubmitBodySample = postSubmitText.slice(0, 500);
+
+    diagnostic.steps.push('done');
+    return {
+      ok: true,
+      campo, data, ora, oraFine, nome, durata, tipo, istruttore,
+      diagnostic,
+      warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
+    };
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2896,6 +3716,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
+          '/create-booking',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -2923,6 +3744,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/export-slot-schedule') {
       return await handleSlotScheduleExport(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/create-booking') {
+      return await handleCreateBooking(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);

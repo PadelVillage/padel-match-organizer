@@ -1,0 +1,94 @@
+name: Delete Edge Function (manuale)
+
+# Workflow ad-hoc per rimuovere una Edge Function deployata su Supabase
+# TEST e/o PROD. Trigger solo manuale (workflow_dispatch). Usa il secret
+# SUPABASE_ACCESS_TOKEN (lo stesso dei workflow di deploy) per chiamare
+# l'API Management.
+#
+# Uso tipico: dopo aver rimosso una function dal repo, questo workflow la
+# rimuove anche dal runtime. I workflow di deploy esistenti deployano ma
+# NON cancellano automaticamente — qui chiudiamo il gap quando serve.
+
+on:
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Nome della Edge Function da cancellare (slug, es. pmo-schedule-from-image)'
+        required: true
+      environment:
+        description: 'Su quale ambiente cancellare'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+          - both
+        default: test
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      FUNCTION_SLUG: ${{ github.event.inputs.function }}
+      TARGET: ${{ github.event.inputs.environment }}
+      TEST_REF: cudiqnrrlbyqryrtaprd
+      PROD_REF: qqbfphyslczzkxoncgex
+    steps:
+      - name: Verifica input
+        run: |
+          set -euo pipefail
+          if [ -z "$FUNCTION_SLUG" ]; then
+            echo "::error::Nome funzione obbligatorio"
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::Secret SUPABASE_ACCESS_TOKEN non configurato nel repo"
+            exit 1
+          fi
+          echo "Function: $FUNCTION_SLUG"
+          echo "Target: $TARGET"
+
+      - name: Delete su TEST
+        if: env.TARGET == 'test' || env.TARGET == 'both'
+        run: |
+          set -euo pipefail
+          echo "::group::DELETE $FUNCTION_SLUG su TEST ($TEST_REF)"
+          status=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
+            -X DELETE \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$TEST_REF/functions/$FUNCTION_SLUG")
+          echo "HTTP $status"
+          cat /tmp/resp.json || true
+          echo
+          if [ "$status" = "200" ] || [ "$status" = "204" ]; then
+            echo "✅ TEST: function rimossa"
+          elif [ "$status" = "404" ]; then
+            echo "::warning::TEST: function già assente (404)"
+          else
+            echo "::error::TEST: delete fallito (HTTP $status)"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Delete su PROD
+        if: env.TARGET == 'prod' || env.TARGET == 'both'
+        run: |
+          set -euo pipefail
+          echo "::group::DELETE $FUNCTION_SLUG su PROD ($PROD_REF)"
+          status=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
+            -X DELETE \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$PROD_REF/functions/$FUNCTION_SLUG")
+          echo "HTTP $status"
+          cat /tmp/resp.json || true
+          echo
+          if [ "$status" = "200" ] || [ "$status" = "204" ]; then
+            echo "✅ PROD: function rimossa"
+          elif [ "$status" = "404" ]; then
+            echo "::warning::PROD: function già assente (404)"
+          else
+            echo "::error::PROD: delete fallito (HTTP $status)"
+            exit 1
+          fi
+          echo "::endgroup::"
