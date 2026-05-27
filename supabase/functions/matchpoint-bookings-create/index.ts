@@ -64,26 +64,33 @@ function isValidTime(time: string) {
 }
 
 function hasPermission(actor: StaffActor, perm: string) {
-  return !!actor.permissions?.[perm];
+  if (['owner', 'admin'].includes(actor.role)) return true;
+  return actor.permissions?.[perm] === true;
 }
 
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   const token = clean(req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-  if (!token || !supabaseUrl || !supabaseKey) return null;
+  if (!token || !supabaseUrl || !anonKey) return null;
 
-  const authClient = createClient(supabaseUrl, supabaseKey);
-  const { data: { user }, error } = await authClient.auth.getUser(token);
-  if (error || !user) return null;
+  // Use anon key + user JWT in Authorization so PostgREST exposes auth.uid()/auth.jwt()
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  const { data: userData, error } = await authClient.auth.getUser(token);
+  if (error || !userData?.user) return null;
 
-  const { data: profile } = await authClient.rpc('pmo_get_my_staff_profile').single();
-  if (!profile) return null;
+  const { data: profileData, error: profileError } = await authClient.rpc('pmo_get_my_staff_profile');
+  if (profileError || !profileData) return null;
+  const profile = Array.isArray(profileData) ? profileData[0] : profileData;
+  if (!profile || profile.status !== 'active') return null;
 
   return {
-    userId: user.id,
-    email: user.email ?? '',
-    role: String(profile.role ?? ''),
+    userId: userData.user.id,
+    email: clean(profile.email || userData.user.email || ''),
+    role: String(profile.role ?? 'staff'),
     permissions: (profile.permissions as JsonMap) ?? {},
   };
 }
