@@ -169,7 +169,8 @@ Deno.serve(async (req) => {
     // 2. Applica modifiche
     const newRules = applyModifiche(currentRules as Record<string, unknown>, modifiche, 'admin_panel');
     const versione_nuova = clean(newRules.versione as string);
-    const commitMsg = `Admin: Updated parser rules (${versione_nuova})`;
+    const nPatterns = modifiche.length;
+    const commitMsg = `Auto-fix ${versione_nuova}: ${nPatterns} pattern${nPatterns === 1 ? '' : 's'} corretto`;
 
     // 3. Commit su GitHub
     await githubPutFile(githubToken, branch, sha, newRules, commitMsg);

@@ -33422,7 +33422,7 @@ Per confermare scrivi ELIMINA.`);
         const data = new Date(g.ultimo).toLocaleDateString('it-IT');
         const idsJson = JSON.stringify(g.ids).replace(/"/g,'&quot;');
         html += `<tr>
-          <td><input type="checkbox" data-ids="${idsJson}" data-pattern="${pattern.replace(/"/g,'&quot;')}" data-intent="${(g.intent||'').replace(/"/g,'&quot;')}" onchange="pmoParserToggleError(this)"></td>
+          <td><input type="checkbox" class="pmoErrorCheckbox" data-error-id="${g.ids[0]}" data-ids="${idsJson}" data-pattern="${pattern.replace(/"/g,'&quot;')}" data-intent="${(g.intent||'').replace(/"/g,'&quot;')}" onchange="pmoParserToggleError(this)"></td>
           <td style="font-family:monospace;font-size:12px">${pattern.replace(/</g,'&lt;')}</td>
           <td>${g.count}</td>
           <td><span class="parser-config-confidence ${confClass}">${conf}</span></td>
@@ -33521,6 +33521,7 @@ Per confermare scrivi ELIMINA.`);
 
     // Snapshot per il diff al momento dell'approvazione
     _pmoParserRulesSnapshot = JSON.parse(JSON.stringify(relevantRules));
+    window.pmoParserRulesSnapshot = _pmoParserRulesSnapshot;
     if (previewEl) previewEl.value = JSON.stringify(relevantRules, null, 2);
 
     const n = _pmoParserSelectedErrors.length;
@@ -33571,7 +33572,13 @@ Per confermare scrivi ELIMINA.`);
         }
       }
     }
-    if (previewEl) previewEl.value = JSON.stringify(currentJson, null, 2);
+    if (previewEl) {
+      let jsonStr = JSON.stringify(currentJson, null, 2);
+      if (added > 0) {
+        jsonStr = `// ⚠️ AUTO-SUGGERITI (${added} nuovi) — controlla e modifica prima di approvare\n` + jsonStr;
+      }
+      previewEl.value = jsonStr;
+    }
     if (statusEl) {
       statusEl.textContent = added > 0
         ? `${added} suggeriment${added === 1 ? 'o aggiunto' : 'i aggiunti'}. Controlla e poi approva.`
@@ -33593,14 +33600,42 @@ Per confermare scrivi ELIMINA.`);
       try { await loadParserRules(); } catch {}
     }
     const today = (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0,10);
+    const threshold = (PARSER_RULES || STAFF_CAL_FALLBACK_RULES)?.intents?.PRENOTA?.confidence_threshold ?? 0.7;
     let fixed = 0;
-    for (const entry of selectedErrors) {
-      const pattern = entry.pattern;
-      if (!pattern || typeof staffCalParseBookingText !== 'function') continue;
-      const result = staffCalParseBookingText(pattern, today);
-      const threshold = (PARSER_RULES || STAFF_CAL_FALLBACK_RULES)?.intents?.PRENOTA?.confidence_threshold ?? 0.7;
-      if (result && result.confidence >= threshold) fixed++;
+
+    // Carica i testi originali dalla tabella pmo_parser_errors per gli ID selezionati
+    const allIds = selectedErrors.flatMap(e => e.ids || []);
+    let textsToReparsify = [];
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'riparsificare i booking');
+      const idsParam = allIds.map(id => `"${id}"`).join(',');
+      const res = await fetch(
+        cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?id=in.(${idsParam})&select=id,input_originale,confidence`,
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows)) textsToReparsify = rows;
+      }
+    } catch {}
+
+    if (textsToReparsify.length > 0) {
+      // Riparsifica i testi originali con le nuove PARSER_RULES
+      for (const row of textsToReparsify) {
+        if (!row.input_originale || typeof staffCalParseBookingText !== 'function') continue;
+        const result = staffCalParseBookingText(row.input_originale, today);
+        if (result && result.confidence >= threshold) fixed++;
+      }
+    } else {
+      // Fallback: usa i pattern raggruppati (input_originale è il pattern)
+      for (const entry of selectedErrors) {
+        if (!entry.pattern || typeof staffCalParseBookingText !== 'function') continue;
+        const result = staffCalParseBookingText(entry.pattern, today);
+        if (result && result.confidence >= threshold) fixed++;
+      }
     }
+
     if (statusEl) {
       if (fixed > 0) {
         statusEl.textContent = `✅ ${fixed} booking riparsificat${fixed === 1 ? 'o' : 'i'} correttamente!`;
@@ -33626,7 +33661,9 @@ Per confermare scrivi ELIMINA.`);
     const previewEl = document.getElementById('parserConfigPreviewJson');
     if (_pmoParserRulesSnapshot && previewEl?.value) {
       try {
-        const editedRules = JSON.parse(previewEl.value);
+        // Strip comment lines (added by pmoAutoSuggestPatterns) before parsing
+        const cleanJson = previewEl.value.split('\n').filter(l => !l.trimStart().startsWith('//')).join('\n');
+        const editedRules = JSON.parse(cleanJson);
         modifiche = pmoParserDiffRules(_pmoParserRulesSnapshot, editedRules);
       } catch {}
     }
