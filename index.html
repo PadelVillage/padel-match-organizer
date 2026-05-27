@@ -6863,7 +6863,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.584';
+    const APP_VERSION = '5.585';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33294,12 +33294,97 @@ Per confermare scrivi ELIMINA.`);
   <!-- ════ Staff Calendar v5.580 ════ -->
   <script>
   // ============================================================
-  // STAFF CALENDAR (v5.580) — Prenotazioni staff su Matchpoint
+  // STAFF CALENDAR (v5.585) — Prenotazioni staff su Matchpoint
   // ============================================================
 
   const STAFF_CAL_START_H = 8;
   const STAFF_CAL_END_H = 22;
   const STAFF_CAL_SLOT_MIN = 30;
+
+  // ── Parser Rules — regole di fallback hardcoded (usate se GitHub non è raggiungibile) ──
+  const STAFF_CAL_FALLBACK_RULES = {
+    versione: 'v1.0-fallback',
+    intents: {
+      PRENOTA: { keywords: ['prenota','prenotati','voglio prenotare'], sinonimi: ['prenotami','mi prenota','prenota mi'], regex_pattern: '(prenota|prenotami|mi\\s+prenota)', confidence_threshold: 0.7 },
+      CANCELLA: { keywords: ['cancella','annulla','rimuovi'], sinonimi: ['cancellami','annullami','toglimi'], regex_pattern: '(cancella|cancellami|annulla)', confidence_threshold: 0.7 },
+      TROVA: { keywords: ['trova','cerca','mostrami'], sinonimi: ['visualizza','elenca','dimmi'], regex_pattern: '(trova|cerca|mostrami)', confidence_threshold: 0.6 },
+      CORREGGI: { keywords: ['cambia','modifica','correggi','sposta'], sinonimi: ['spostami','cambiami','modificami'], regex_pattern: '(cambia|modifica|sposta)', confidence_threshold: 0.7 },
+      RICORRENZA: { keywords: ['ogni','ricorrente','settimanale'], sinonimi: ['ripeti','periodico','ogni volta'], regex_pattern: '(ogni|ricorrente|settimanale)', confidence_threshold: 0.8 }
+    },
+    campi_obbligatori: {
+      data: {
+        tipo: 'YYYY-MM-DD',
+        sinonimi_date: { 'oggi':'today','domani':'tomorrow','dopodomani':'day_after_tomorrow','lunedì':'next_monday','lunedi':'next_monday','martedì':'next_tuesday','martedi':'next_tuesday','mercoledì':'next_wednesday','mercoledi':'next_wednesday','giovedì':'next_thursday','giovedi':'next_thursday','venerdì':'next_friday','venerdi':'next_friday','sabato':'next_saturday','domenica':'next_sunday' }
+      },
+      ora_inizio: { tipo: 'HH:MM', format: '24h' },
+      ora_fine:   { tipo: 'HH:MM', format: '24h' }
+    },
+    campi_opzionali: {
+      campo: { tipo: 'numero 1-4', domanda_se_manca: 'Quale campo? (1, 2, 3 o 4)', default: null },
+      tipo:  { tipo: 'partita|lezione', keywords_lezione: ['lezione','lesson'], default: 'partita' },
+      istruttore: {
+        valori_validi: ['Santiago','LoZio','Spinazze'],
+        fuzzy_match: { 'Santi':'Santiago','santi':'Santiago','Lo Zio':'LoZio','lo zio':'LoZio','Spinazzi':'Spinazze','spinazzi':'Spinazze' },
+        domanda_se_manca: 'Quale istruttore? (Santiago, LoZio, Spinazze)',
+        attivata_quando: "tipo === 'lezione'"
+      },
+      ricorrenza: { valori_validi: ['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'], settimane_default: 4, default: null }
+    },
+    log_evoluzione: [{ versione: 'v1.0', data: '2026-05-27', modifiche: 'Release iniziale', aggiornato_da: 'sonnet_initial' }]
+  };
+
+  // Inizializzato subito con fallback — sovrascritto da loadParserRules() quando disponibile
+  let PARSER_RULES = Object.assign({}, STAFF_CAL_FALLBACK_RULES);
+
+  // ── Carica parser_rules.json da GitHub (branch dinamico per env) ───────────
+  (function _staffCalInitParserRules() {
+    const branch = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test-preview' : 'main';
+    const url = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/supabase/functions/parser-rules/parser_rules.json`;
+    async function loadParserRules() {
+      try {
+        const res = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        PARSER_RULES = json;
+        console.log('[StaffCal] Parser rules ' + json.versione + ' loaded from GitHub');
+      } catch (err) {
+        console.warn('[StaffCal] Parser rules fetch failed, using fallback:', err.message);
+      }
+    }
+    loadParserRules();
+    setInterval(loadParserRules, 60 * 60 * 1000);
+  })();
+
+  // ── Log errori parser su Supabase (fire-and-forget) ───────────────────────
+  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser }) {
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let accessToken = cfg.supabaseKey;
+      try {
+        const raw = typeof safeLoad === 'function' ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null;
+        if (raw?.access_token) accessToken = raw.access_token;
+      } catch {}
+      await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': cfg.supabaseKey,
+          'Authorization': 'Bearer ' + accessToken,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          input_originale,
+          intent_riconosciuto: intent_riconosciuto || null,
+          confidence: typeof confidence === 'number' ? confidence : null,
+          error_message: error_message || null,
+          versione_parser: versione_parser || PARSER_RULES?.versione || 'unknown',
+          admin_selected: false
+        })
+      });
+    } catch (e) {
+      console.warn('[StaffCal] logParserError failed:', e.message);
+    }
+  }
 
   function staffCalSlots() {
     const slots = [];
@@ -33484,39 +33569,58 @@ Per confermare scrivi ELIMINA.`);
   //   "lezione Santiago campo 1 18-19:30"           → lezione, nome=Santiago
   //   "lezione LoZio campo 3 ogni martedì 18-19:30" → lezione ricorrente
   //   "campo 2 ogni venerdì 20-21:30 Spinazze"      → partita ricorrente
+  // Usa PARSER_RULES (caricato da GitHub) con fallback alle regole hardcoded.
   function staffCalParseBookingText(text, currentDate) {
+    const rules = PARSER_RULES || STAFF_CAL_FALLBACK_RULES;
     const t = String(text || '').trim();
 
-    // Tipo: "lezione" all'inizio → lezione, altrimenti partita
-    const tipoMatch = /^\s*(lezione|lesson)\b/i.test(t);
+    // Tipo: parole chiave lezione dal JSON → lezione, altrimenti partita
+    const lezioneKw = rules.campi_opzionali?.tipo?.keywords_lezione || ['lezione', 'lesson'];
+    const lezioneRx = new RegExp('^\\s*(' + lezioneKw.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'i');
+    const tipoMatch = lezioneRx.test(t);
     const tipo = tipoMatch ? 'lezione' : 'partita';
 
-    // Per le lezioni, il nome istruttore viene subito dopo "lezione"
+    // Per le lezioni, il nome istruttore viene subito dopo la keyword
     let istruttore = '';
     let restText = t;
     if (tipoMatch) {
-      const afterTipo = t.replace(/^\s*lezione\s*/i, '').replace(/^\s*lesson\s*/i, '');
-      // Primo "token" prima di "campo" è l'istruttore
+      const afterTipo = t.replace(lezioneRx, '').trim();
       const istrMatch = afterTipo.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{0,30}?)\s+(?=campo\b|ogni\b|\d)/i);
-      if (istrMatch) istruttore = istrMatch[1].trim();
+      if (istrMatch) {
+        const rawIstr = istrMatch[1].trim();
+        const fuzzy = rules.campi_opzionali?.istruttore?.fuzzy_match || {};
+        const validi = rules.campi_opzionali?.istruttore?.valori_validi || [];
+        istruttore = fuzzy[rawIstr]
+          || validi.find(v => v.toLowerCase() === rawIstr.toLowerCase())
+          || rawIstr;
+      }
       restText = afterTipo;
     }
 
     const campoMatch = restText.match(/\bcampo\s*([1-4])\b/i) || t.match(/\bcampo\s*([1-4])\b/i);
-    if (!campoMatch) return null;
+    if (!campoMatch) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.2, error_message: 'campo non riconosciuto', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
     const campoNum = parseInt(campoMatch[1]);
 
     const timeMatch = restText.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/)
                   || t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
-    if (!timeMatch) return null;
+    if (!timeMatch) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.3, error_message: 'orario non riconosciuto', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
     const oraInizio = `${String(timeMatch[1]).padStart(2,'0')}:${(timeMatch[2] || '00').padStart(2,'0')}`;
     const oraFine   = `${String(timeMatch[3]).padStart(2,'0')}:${(timeMatch[4] || '00').padStart(2,'0')}`;
     const [sh, sm] = oraInizio.split(':').map(Number);
     const [eh, em] = oraFine.split(':').map(Number);
     const durata = (eh * 60 + em) - (sh * 60 + sm);
-    if (durata <= 0 || durata > 360) return null;
+    if (durata <= 0 || durata > 360) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.4, error_message: 'durata non valida', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
 
-    // Ricorrenza: "ogni [giorno della settimana]"
+    // Ricorrenza: usa mappa giorni dal JSON (normalizzata per accenti)
     const GIORNI = { lunedi:1, lunedì:1, martedi:2, martedì:2, mercoledi:3, mercoledì:3,
                      giovedi:4, giovedì:4, venerdi:5, venerdì:5, sabato:6, domenica:0 };
     let ricorrenza = null;
@@ -33527,8 +33631,7 @@ Per confermare scrivi ELIMINA.`);
         k.normalize('NFD').replace(/[̀-ͯ]/g, '') === giorno
       );
       if (normalized !== undefined) {
-        const weekdayNum = GIORNI[normalized] ?? GIORNI[giorno];
-        ricorrenza = { giorno: ogniMatch[1], weekdayNum };
+        ricorrenza = { giorno: ogniMatch[1], weekdayNum: GIORNI[normalized] };
       }
     }
 
@@ -33545,6 +33648,13 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
+    // Confidence: campo e ora estratti → 0.9, altrimenti più basso
+    const confidence = 0.5 + (campoMatch ? 0.2 : 0) + (timeMatch ? 0.2 : 0) + (tipo === 'lezione' && istruttore ? 0.1 : 0);
+    const threshold = rules.intents?.PRENOTA?.confidence_threshold ?? 0.7;
+    if (confidence < threshold) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence, error_message: 'confidence bassa', versione_parser: rules.versione }).catch(() => {});
+    }
+
     // Nome: per lezioni = istruttore già estratto; per partite = testo dopo l'orario
     let nome = istruttore || 'Staff';
     if (!istruttore) {
@@ -33554,7 +33664,7 @@ Per confermare scrivi ELIMINA.`);
       if (nameRaw) nome = nameRaw;
     }
 
-    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, ricorrenza };
+    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, ricorrenza, confidence };
   }
 
   // Espande ricorrenza nelle prossime N settimane (default 4), partendo da oggi

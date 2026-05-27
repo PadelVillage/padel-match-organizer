@@ -1,0 +1,103 @@
+{
+  "versione": "v1.0",
+  "data_ultimo_aggiornamento": "2026-05-27T16:00:00Z",
+  "aggiornato_da": "sonnet_initial",
+
+  "intents": {
+    "PRENOTA": {
+      "keywords": ["prenota", "prenotati", "voglio prenotare"],
+      "sinonimi": ["prenotami", "mi prenota", "prenota mi"],
+      "regex_pattern": "(prenota|prenotami|mi\\s+prenota)",
+      "confidence_threshold": 0.7
+    },
+    "CANCELLA": {
+      "keywords": ["cancella", "annulla", "rimuovi"],
+      "sinonimi": ["cancellami", "annullami", "toglimi"],
+      "regex_pattern": "(cancella|cancellami|annulla)",
+      "confidence_threshold": 0.7
+    },
+    "TROVA": {
+      "keywords": ["trova", "cerca", "mostrami"],
+      "sinonimi": ["visualizza", "elenca", "dimmi"],
+      "regex_pattern": "(trova|cerca|mostrami)",
+      "confidence_threshold": 0.6
+    },
+    "CORREGGI": {
+      "keywords": ["cambia", "modifica", "correggi", "sposta"],
+      "sinonimi": ["spostami", "cambiami", "modificami"],
+      "regex_pattern": "(cambia|modifica|sposta)",
+      "confidence_threshold": 0.7
+    },
+    "RICORRENZA": {
+      "keywords": ["ogni", "ricorrente", "settimanale"],
+      "sinonimi": ["ripeti", "periodico", "ogni volta"],
+      "regex_pattern": "(ogni|ricorrente|settimanale)",
+      "confidence_threshold": 0.8
+    }
+  },
+
+  "campi_obbligatori": {
+    "data": {
+      "tipo": "YYYY-MM-DD",
+      "sinonimi_date": {
+        "oggi": "today",
+        "domani": "tomorrow",
+        "dopodomani": "day_after_tomorrow",
+        "lunedì": "next_monday",
+        "lunedi": "next_monday",
+        "martedì": "next_tuesday",
+        "martedi": "next_tuesday",
+        "mercoledì": "next_wednesday",
+        "mercoledi": "next_wednesday",
+        "giovedì": "next_thursday",
+        "giovedi": "next_thursday",
+        "venerdì": "next_friday",
+        "venerdi": "next_friday",
+        "sabato": "next_saturday",
+        "domenica": "next_sunday"
+      }
+    },
+    "ora_inizio": { "tipo": "HH:MM", "format": "24h" },
+    "ora_fine": { "tipo": "HH:MM", "format": "24h" }
+  },
+
+  "campi_opzionali": {
+    "campo": {
+      "tipo": "numero 1-4",
+      "domanda_se_manca": "Quale campo? (1, 2, 3 o 4)",
+      "default": null
+    },
+    "tipo": {
+      "tipo": "partita|lezione",
+      "keywords_lezione": ["lezione", "lesson"],
+      "default": "partita"
+    },
+    "istruttore": {
+      "valori_validi": ["Santiago", "LoZio", "Spinazze"],
+      "fuzzy_match": {
+        "Santi": "Santiago",
+        "santi": "Santiago",
+        "Lo Zio": "LoZio",
+        "lo zio": "LoZio",
+        "Spinazzi": "Spinazze",
+        "spinazzi": "Spinazze"
+      },
+      "domanda_se_manca": "Quale istruttore? (Santiago, LoZio, Spinazze)",
+      "attivata_quando": "tipo === 'lezione'"
+    },
+    "ricorrenza": {
+      "valori_validi": ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"],
+      "settimane_default": 4,
+      "default": null
+    }
+  },
+
+  "log_evoluzione": [
+    {
+      "versione": "v1.0",
+      "data": "2026-05-27",
+      "modifiche": "Release iniziale — parser dinamico con regole da JSON",
+      "aggiornato_da": "sonnet_initial"
+    }
+  ]
+}
