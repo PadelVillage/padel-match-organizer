@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.582</title>
+  <title>Padel Match Organizer v5.584</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6863,7 +6863,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.582';
+    const APP_VERSION = '5.584';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8663,7 +8663,9 @@ Grazie.`
         'supabase': '#pmoSupabaseDiagnosticsPanel',
         'controlli tecnici': '#pmoSupabaseDiagnosticsPanel',
         'verifica test prod': '#pmoSupabaseDiagnosticsPanel',
-        'verifica test/prod': '#pmoSupabaseDiagnosticsPanel'
+        'verifica test/prod': '#pmoSupabaseDiagnosticsPanel',
+        'calendario staff': '#pmoAdminCalendarioStaffSection',
+        'calendario': '#pmoAdminCalendarioStaffSection'
       },
     };
 
@@ -8693,7 +8695,7 @@ Grazie.`
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
-        else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff', { silent:true });
+        else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff');
         else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
         else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
@@ -23969,11 +23971,12 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'matchpoint-data', 'supabase'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'supabase', 'calendario-staff'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'users';
 	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
+	      if (key.includes('calendario')) return 'calendario-staff';
 	      return 'users';
 	    }
 	    function pmoSetAdminSection(section='users', options={}) {
