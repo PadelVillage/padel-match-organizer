@@ -16,7 +16,9 @@ type BookingRequest = {
   ora: string;         // HH:MM
   oraFine: string;     // HH:MM
   durata: number;      // minutes
-  nome: string;        // player / lesson name
+  nome: string;        // player name (Partita) or istruttore name (Lezione)
+  tipo?: string;       // 'partita' | 'lezione' | 'manutenzione' (default: 'partita')
+  istruttore?: string; // istruttore name override (Lezione) — defaults to nome
   note?: string;
 };
 
@@ -196,14 +198,19 @@ Deno.serve(async (req: Request) => {
   const durata = parseInt(String(body.durata ?? '0'));
   const nome = clean(body.nome);
 
+  const tipo = clean(body.tipo || 'partita').toLowerCase();
+  const istruttore = clean(body.istruttore);
+  const VALID_TIPOS = ['partita', 'lezione', 'manutenzione', 'stagionale'];
+
   if (!campo || campo < 1 || campo > 4) return err(400, 'INVALID_CAMPO', 'Campo deve essere un numero da 1 a 4.');
   if (!isValidIso(data)) return err(400, 'INVALID_DATA', 'Data deve essere nel formato YYYY-MM-DD.');
   if (!isValidTime(ora)) return err(400, 'INVALID_ORA', 'Ora inizio deve essere nel formato HH:MM.');
   if (!isValidTime(oraFine)) return err(400, 'INVALID_ORA_FINE', 'Ora fine deve essere nel formato HH:MM.');
   if (durata <= 0 || durata > 360) return err(400, 'INVALID_DURATA', 'Durata deve essere tra 1 e 360 minuti.');
-  if (!nome) return err(400, 'INVALID_NOME', 'Nome giocatore/lezione richiesto.');
+  if (!nome) return err(400, 'INVALID_NOME', 'Nome giocatore/istruttore richiesto.');
+  if (!VALID_TIPOS.includes(tipo)) return err(400, 'INVALID_TIPO', `tipo deve essere uno di: ${VALID_TIPOS.join(', ')}.`);
 
-  const booking: BookingRequest = { campo, data, ora, oraFine, durata, nome, note: clean(body.note) };
+  const booking: BookingRequest = { campo, data, ora, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, note: clean(body.note) };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -237,8 +244,9 @@ Deno.serve(async (req: Request) => {
     console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
   }
 
+  const tipoLabel = tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
   return ok({
-    message: `Prenotazione creata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
+    message: `${tipoLabel} creata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
     booking,
     worker: workerResult,
   });

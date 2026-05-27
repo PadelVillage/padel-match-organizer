@@ -2938,10 +2938,184 @@ async function handleCreateBooking(req, res) {
   json(res, 200, result);
 }
 
+// ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
+// Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
+async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
+  const title = tipo === 'lezione' ? 'Nuova lezione' : 'Nuova partita';
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const ctx of pageContentContexts(page)) {
+      const body = await readContextBody(ctx.target, 2000);
+      if (body.includes(title)) {
+        diagnostic.formFoundAt = ctx.kind;
+        diagnostic.formTitle = title;
+        return ctx.target;
+      }
+    }
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
+// ── Helper: seleziona istruttore nel dropdown del form Lezione ────────────────
+async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
+  if (!istruttore) return;
+  // Trova il select vicino al label "Istruttore" per somiglianza di id/nome
+  const result = await formCtx.evaluate((name) => {
+    const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+    // Cerca label "Istruttore" → trova il select associato
+    const labels = [...document.querySelectorAll('label, td, th, span, div')];
+    let targetSelect = null;
+    for (const lbl of labels) {
+      if (!/istruttore/i.test(compact(lbl.innerText || ''))) continue;
+      // Cerca il select nel prossimo fratello o nella stessa cella
+      let candidate = lbl.nextElementSibling;
+      while (candidate && candidate.tagName !== 'SELECT') {
+        const inner = candidate.querySelector('select');
+        if (inner) { candidate = inner; break; }
+        candidate = candidate.nextElementSibling;
+      }
+      if (!candidate || candidate.tagName !== 'SELECT') {
+        candidate = lbl.closest('td, tr')?.querySelector('select') || null;
+      }
+      if (candidate?.tagName === 'SELECT') { targetSelect = candidate; break; }
+    }
+    // Fallback: qualsiasi select con id/name che contiene "struttore"
+    if (!targetSelect) {
+      targetSelect = document.querySelector('select[id*="struttore" i], select[name*="struttore" i], select[id*="nstructor" i]');
+    }
+    if (!targetSelect) return { found: false };
+    const opts = [...targetSelect.options];
+    const match = opts.find((o) => o.text.toLowerCase().includes(name.toLowerCase()));
+    if (!match) return { found: true, matched: false, opts: opts.map((o) => o.text) };
+    targetSelect.value = match.value;
+    targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    return { found: true, matched: true, value: match.value, text: match.text };
+  }, istruttore).catch(() => ({ found: false }));
+
+  diagnostic.istruttoreResult = result;
+  if (result.matched) {
+    diagnostic.steps.push(`istruttore_selected:${result.text}`);
+  } else if (!result.found) {
+    diagnostic.steps.push('istruttore_select_not_found');
+  } else {
+    diagnostic.steps.push(`istruttore_not_matched:${istruttore}`);
+    diagnostic.istruttoreOpts = result.opts;
+  }
+}
+
+// ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
+  if (!nome) return false;
+
+  // Selettori per l'input di ricerca autocomplete (valore testuale del giocatore)
+  const SEARCH_SELECTORS = [
+    'input[placeholder*="valore cercato"]',
+    'input[placeholder*="selezioni"]',
+    'input[placeholder*="Scriva il valore"]',
+    'input[placeholder*="cerca"]',
+    'input[placeholder*="Cerca"]',
+  ];
+
+  let searchInput = null;
+  for (const sel of SEARCH_SELECTORS) {
+    const loc = formCtx.locator(sel).last(); // .last() per evitare campo numero
+    if (await loc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      searchInput = loc;
+      diagnostic.playerSearchSel = sel;
+      break;
+    }
+  }
+  if (!searchInput) {
+    diagnostic.steps.push('player_search_input_not_found');
+    return false;
+  }
+
+  await searchInput.click({ timeout: 5000 });
+  await searchInput.fill(nome, { timeout: 8000 });
+  await page.waitForTimeout(1800); // jQuery UI autocomplete debounce
+
+  // Aspetta e clicca il primo risultato dell'autocomplete
+  const AUTOCOMPLETE_SELECTORS = [
+    '.ui-autocomplete li:first-child',
+    '.ui-menu-item:first-child',
+    '[role="listbox"] [role="option"]:first-child',
+    '.autocomplete-results li:first-child',
+    '.dropdown-menu li:first-child',
+    '.ui-autocomplete-loading + .ui-autocomplete li:first-child',
+  ];
+  let playerSelected = false;
+  for (const sel of AUTOCOMPLETE_SELECTORS) {
+    const acLoc = page.locator(sel).first(); // autocomplete appare nella pagina principale
+    if (await acLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await acLoc.click({ timeout: 5000 });
+      playerSelected = true;
+      diagnostic.steps.push('player_autocomplete_selected');
+      break;
+    }
+  }
+
+  if (!playerSelected) {
+    // Fallback: premi Enter sull'input e spera che venga accettato
+    await searchInput.press('Enter');
+    await page.waitForTimeout(600);
+    diagnostic.steps.push('player_autocomplete_enter_fallback');
+  }
+
+  // Clicca "+ Aggiungere all'elenco"
+  const ADD_SELECTORS = [
+    'button:has-text("Aggiungere")',
+    'a:has-text("Aggiungere")',
+    'input[value*="Aggiungere"]',
+    ':text-is("+ Aggiungere all\'elenco")',
+    'button:has-text("Aggiunge")',
+  ];
+  let added = false;
+  for (const sel of ADD_SELECTORS) {
+    const addLoc = formCtx.locator(sel).first();
+    if (await addLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addLoc.click({ timeout: 8000 });
+      added = true;
+      diagnostic.steps.push('player_added_to_list');
+      break;
+    }
+  }
+  if (!added) diagnostic.steps.push('player_add_btn_not_found');
+  return added;
+}
+
+// ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
+async function clickFormSave(formCtx, page, labels, diagnostic) {
+  const selectors = [
+    ...labels.map((l) => `button:has-text("${l}")`),
+    ...labels.map((l) => `a:has-text("${l}")`),
+    ...labels.map((l) => `input[value*="${l.split(' ')[0]}"]`),
+    'input[type="submit"]',
+    'button[type="submit"]',
+  ];
+  for (const sel of selectors) {
+    const btn = formCtx.locator(sel).first();
+    if (!await btn.isVisible({ timeout: 2000 }).catch(() => false)) continue;
+    try {
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+        btn.click({ timeout: 10000 }),
+      ]);
+      diagnostic.submitSelector = sel;
+      diagnostic.steps.push('form_saved');
+      return true;
+    } catch (e) {
+      diagnostic.navigationAttempts.push({ action: 'save_attempt', sel, error: e.message.slice(0, 80) });
+    }
+  }
+  return false;
+}
+
 // createBookingWithBrowser: naviga al tabellone Matchpoint, imposta la data, trova la cella
-// libera per il campo e l'ora target, clicca per aprire il form di prenotazione e lo compila.
-// Strategia: usa le stesse primitive confermate in produzione (navigateToTabellone,
-// impostaDataTabellone) poi esegue il click sulla cella libera nel grid via DOM evaluate.
+// libera per il campo e l'ora target, clicca per aprire il menu contestuale, seleziona
+// "Partita" o "Lezione", compila il form e salva.
+// Flusso confermato dagli screenshot reali Matchpoint (27/05/2026):
+//   cella libera → menu contestuale (Partita/Lezione/Manutenzione) → form modale → salva
 async function createBookingWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -2956,22 +3130,25 @@ async function createBookingWithBrowser(options = {}) {
   const oraFine = clean(booking.oraFine || '');
   const nome = clean(booking.nome);
   const durata = parseInt(booking.durata || 90);
+  const tipo = clean(booking.tipo || 'partita').toLowerCase(); // 'partita' | 'lezione' | 'manutenzione'
+  const istruttore = clean(booking.istruttore || '');
 
   if (!campo || campo < 1 || campo > 4) throw fail('INVALID_CAMPO', 'Campo deve essere 1-4.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw fail('INVALID_DATA', 'Data deve essere YYYY-MM-DD.');
   if (!/^\d{2}:\d{2}$/.test(ora)) throw fail('INVALID_ORA', 'Ora deve essere HH:MM.');
-  if (!nome) throw fail('INVALID_NOME', 'Nome giocatore/lezione richiesto.');
+  if (!nome) throw fail('INVALID_NOME', 'Nome giocatore/istruttore/lezione richiesto.');
+  if (!['partita', 'lezione', 'manutenzione', 'stagionale'].includes(tipo)) {
+    throw fail('INVALID_TIPO', 'tipo deve essere partita | lezione | manutenzione | stagionale.');
+  }
+
+  // Label italiana nel menu contestuale Matchpoint
+  const TIPO_LABEL = { partita: 'Partita', lezione: 'Lezione', manutenzione: 'Manutenzione', stagionale: 'Prenotazione stagionale' };
+  const tipoLabel = TIPO_LABEL[tipo];
 
   const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
   const diagnostic = {
     mode: 'create_booking',
-    campo,
-    data,
-    ora,
-    oraFine,
-    nome,
-    durata,
-    baseUrl,
+    campo, data, ora, oraFine, nome, durata, tipo, istruttore, baseUrl,
     startedAt: new Date().toISOString(),
     steps: [],
     navigationAttempts: [],
@@ -3007,7 +3184,6 @@ async function createBookingWithBrowser(options = {}) {
     ]);
     await page.waitForTimeout(2500);
     diagnostic.loginUrl = page.url();
-
     if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
       throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
     }
@@ -3024,30 +3200,20 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.steps.push('set_date');
     await impostaDataTabellone(tabCtx, page, data, diagnostic);
 
-    // ── Trova e clicca la cella libera (campo × ora) ─────────────────────────
-    // Usa lo stesso algoritmo di lettura del tabellone (matrix con rowspan/colspan)
-    // per localizzare la cella target e restituire un xpath univoco.
+    // ── Trova la cella libera (campo × ora) tramite matrice 2D ───────────────
     diagnostic.steps.push('find_free_cell');
-    const campoTarget = campo;
-    const oraTarget = ora;
 
     const cellXPath = await tabCtx.evaluate(({ campoNum, oraStr }) => {
       const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
       const timePattern = /^\d{1,2}:\d{2}$/;
       const campoRe = /campo\s*(\d+)/i;
 
-      // Trova elementi "Campo N" nell'header
       const allEls = [...document.querySelectorAll('td, th, div, span, img')];
       const campoEls = allEls.filter((el) => {
-        const texts = [
-          compact(el.innerText || ''),
-          compact(el.getAttribute('alt') || ''),
-          compact(el.getAttribute('title') || ''),
-        ];
+        const texts = [compact(el.innerText || ''), compact(el.getAttribute('alt') || ''), compact(el.getAttribute('title') || '')];
         return texts.some((t) => campoRe.test(t) && t.length <= 100);
       });
 
-      // Trova la tabella griglia
       let gridTable = null;
       if (campoEls.length > 0) {
         const hdr = campoEls[0].closest('tr') || campoEls[0].parentElement;
@@ -3066,7 +3232,6 @@ async function createBookingWithBrowser(options = {}) {
       }
       if (!gridTable) return null;
 
-      // Costruisce matrice 2D (rowspan/colspan)
       const allRows = [...gridTable.querySelectorAll('tr')];
       const matrix = [];
       for (let ri = 0; ri < allRows.length; ri++) {
@@ -3086,48 +3251,32 @@ async function createBookingWithBrowser(options = {}) {
         }
       }
 
-      // Trova indice colonna del campo target
       let campoColIdx = -1;
-      for (let ri = 0; ri < matrix.length; ri++) {
+      for (let ri = 0; ri < matrix.length && campoColIdx < 0; ri++) {
         for (let ci = 0; ci < (matrix[ri] || []).length; ci++) {
           const entry = matrix[ri][ci];
           if (!entry?.isPrimary) continue;
-          const texts = [
-            compact(entry.cell.innerText || ''),
-            compact(entry.cell.getAttribute('alt') || ''),
-            compact(entry.cell.getAttribute('title') || ''),
-          ];
-          for (const t of texts) {
-            const m = t.match(campoRe);
-            if (m && parseInt(m[1], 10) === campoNum) {
-              campoColIdx = ci;
-              break;
-            }
+          const texts = [compact(entry.cell.innerText || ''), compact(entry.cell.getAttribute('alt') || ''), compact(entry.cell.getAttribute('title') || '')];
+          if (texts.some((t) => { const m = t.match(campoRe); return m && parseInt(m[1], 10) === campoNum; })) {
+            campoColIdx = ci; break;
           }
-          if (campoColIdx >= 0) break;
         }
-        if (campoColIdx >= 0) break;
       }
       if (campoColIdx < 0) return null;
 
-      // Trova indice riga dell'ora target (HH:MM)
       let timeRowIdx = -1;
       for (let ri = 0; ri < matrix.length; ri++) {
         const first = matrix[ri]?.[0];
         if (!first?.isPrimary) continue;
         const t = compact(first.cell.innerText);
-        if (t === oraStr || t.startsWith(oraStr)) {
-          timeRowIdx = ri;
-          break;
-        }
+        if (t === oraStr || t.startsWith(oraStr)) { timeRowIdx = ri; break; }
       }
       if (timeRowIdx < 0) return null;
 
       const entry = matrix[timeRowIdx]?.[campoColIdx];
       if (!entry) return null;
 
-      // Restituisce xpath univoco per la cella
-      const cell = entry.isPrimary ? entry.cell : entry.cell;
+      const cell = entry.cell;
       const getXPath = (el) => {
         if (el.id) return `//*[@id="${el.id}"]`;
         const parts = [];
@@ -3142,197 +3291,85 @@ async function createBookingWithBrowser(options = {}) {
         return '/' + parts.join('/');
       };
 
-      // Verifica che la cella sia libera (background bianco/trasparente)
       const bg = window.getComputedStyle(cell).backgroundColor;
-      const isWhite = !bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent' || bg === 'rgb(255, 255, 255)';
       const text = compact(cell.innerText);
-      // Una cella libera ha poco testo o solo spazi
       const seemsFree = text.length < 15;
-
       return { xpath: getXPath(cell), bg, seemsFree, text };
-    }, { campoNum: campoTarget, oraStr: oraTarget }).catch(() => null);
+    }, { campoNum: campo, oraStr: ora }).catch(() => null);
 
     diagnostic.cellInfo = cellXPath;
-
     if (!cellXPath) {
-      throw fail(
-        'TABELLONE_CELL_NOT_FOUND',
-        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. ` +
-        'Verifica che la data sia corretta e che il campo esista.',
-        diagnostic,
-      );
+      throw fail('TABELLONE_CELL_NOT_FOUND',
+        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone.`, diagnostic);
     }
-
     if (!cellXPath.seemsFree) {
-      throw fail(
-        'SLOT_NOT_FREE',
-        `Lo slot Campo ${campo} · ${data} · ${ora} risulta già occupato nel tabellone.`,
-        { ...diagnostic, cellText: cellXPath.text },
-      );
+      throw fail('SLOT_NOT_FREE',
+        `Lo slot Campo ${campo} · ${data} · ${ora} risulta già occupato.`,
+        { ...diagnostic, cellText: cellXPath.text });
     }
 
-    // Clicca la cella — usa xpath per localizzarla in Playwright
+    // ── Clicca la cella libera ────────────────────────────────────────────────
     diagnostic.steps.push('click_free_cell');
-    const cellLocator = tabCtx.locator(`xpath=${cellXPath.xpath}`).first();
-    await cellLocator.click({ timeout: 15000, force: false });
-    await page.waitForTimeout(1500);
+    await tabCtx.locator(`xpath=${cellXPath.xpath}`).first().click({ timeout: 15000, force: false });
+    await page.waitForTimeout(800);
 
-    // ── Rileva il form di prenotazione (modal o nuova pagina) ─────────────────
-    // Dopo il click, Matchpoint mostra il form come:
-    //   (A) Finestra modale / dialog nel DOM corrente
-    //   (B) Nuovo iframe nel tabellone
-    //   (C) Navigazione a /Reservas/NuevaReserva.aspx o simile
-    diagnostic.steps.push('detect_booking_form');
-    await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
-
-    // Raccoglie tutti i contesti dove potrebbe essere apparso il form
-    const formContexts = pageContentContexts(page);
-
-    let formCtx = null;
-    let nomeInputFound = false;
-
-    // Selettori per il campo nome nei form Matchpoint ASP.NET
-    const NOME_SELECTORS = [
-      'input[id*="Jugador"][type="text"], input[id*="jugador"][type="text"]',
-      'input[name*="Jugador"], input[name*="jugador"]',
-      'input[id*="Nombre"][type="text"], input[id*="nombre"][type="text"]',
-      'input[name*="Nombre"], input[name*="nombre"]',
-      'input[id*="Player"], input[name*="Player"]',
-      'input[id*="txtNombre"], input[id*="txtJugador"]',
-      'input[id*="nombre"], input[id*="jugador"]',
-    ];
-
-    for (const ctx of formContexts) {
-      for (const sel of NOME_SELECTORS) {
-        const loc = ctx.target.locator(sel).first();
-        if (await loc.isVisible({ timeout: 3000 }).catch(() => false)) {
-          formCtx = ctx.target;
-          nomeInputFound = true;
-          diagnostic.formFoundAt = ctx.kind;
-          diagnostic.formNomeSel = sel;
-          break;
-        }
-      }
-      if (nomeInputFound) break;
-    }
-
-    // Se il form non è apparso subito, aspetta un po' e riprova
-    if (!nomeInputFound) {
-      await page.waitForTimeout(2500);
-      for (const ctx of pageContentContexts(page)) {
-        for (const sel of NOME_SELECTORS) {
-          const loc = ctx.target.locator(sel).first();
-          if (await loc.isVisible({ timeout: 2000 }).catch(() => false)) {
-            formCtx = ctx.target;
-            nomeInputFound = true;
-            diagnostic.formFoundAt = ctx.kind + '_retry';
-            diagnostic.formNomeSel = sel;
-            break;
-          }
-        }
-        if (nomeInputFound) break;
-      }
-    }
-
-    if (!nomeInputFound || !formCtx) {
-      // Snapshot del DOM post-click per diagnostica
+    // ── Seleziona tipo dal menu contestuale ───────────────────────────────────
+    // Dopo il click appare un dropdown: Partita / Lezione / Manutenzione / Prenotazione stagionale
+    diagnostic.steps.push('click_context_menu');
+    const menuClicked = await clickMenuEntryEverywhere(page, tipoLabel, `context_menu_${tipo}`, diagnostic);
+    if (!menuClicked) {
       diagnostic.postClickUrl = page.url();
-      diagnostic.postClickTitle = await page.title().catch(() => '');
-      diagnostic.postClickBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 500));
-      throw fail(
-        'BOOKING_FORM_NOT_FOUND',
-        `Il form di prenotazione non è apparso dopo il click su Campo ${campo} · ${ora}. ` +
-        'Il tabellone potrebbe usare un meccanismo di form non ancora gestito (es. ASP.NET modal separato). ' +
-        'Controlla il campo diagnostic.postClickBodySample per ispezionare il DOM post-click.',
-        diagnostic,
-      );
+      diagnostic.postClickBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 600));
+      throw fail('CONTEXT_MENU_NOT_FOUND',
+        `Menu contestuale "${tipoLabel}" non trovato dopo click sulla cella. ` +
+        'Verifica che la cella sia davvero libera e che il menu appaia correttamente.',
+        diagnostic);
+    }
+
+    await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+
+    // ── Aspetta il form modale ────────────────────────────────────────────────
+    diagnostic.steps.push('wait_form_modal');
+    const formCtx = await waitForBookingForm(page, tipo, diagnostic, 18000);
+    if (!formCtx) {
+      diagnostic.postMenuUrl = page.url();
+      diagnostic.postMenuBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 600));
+      throw fail('BOOKING_FORM_NOT_FOUND',
+        `Il form "${tipo === 'lezione' ? 'Nuova lezione' : 'Nuova partita'}" non è apparso. ` +
+        'Il menu contestuale potrebbe aver aperto una pagina diversa.',
+        diagnostic);
     }
 
     // ── Compila il form ───────────────────────────────────────────────────────
-    diagnostic.steps.push('fill_booking_form');
+    diagnostic.steps.push(`fill_form_${tipo}`);
 
-    // Campo nome giocatore / lezione
-    const nomeInput = formCtx.locator(diagnostic.formNomeSel).first();
-    await nomeInput.click({ clickCount: 3, timeout: 8000 });
-    await nomeInput.fill(nome, { timeout: 8000 });
-    diagnostic.steps.push('filled_nome');
+    if (tipo === 'lezione') {
+      // Imposta istruttore (nome usato come istruttore nelle lezioni)
+      await selectIstruttore(formCtx, page, nome || istruttore, diagnostic);
+      const saved = await clickFormSave(formCtx, page, ['Salvare e uscire', 'Salvare e chiudere', 'Salva'], diagnostic);
+      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Lezione.', diagnostic);
 
-    // Durata / ora fine (alcuni form la richiedono)
-    if (oraFine) {
-      const ORA_FINE_SELECTORS = [
-        'select[id*="HoraFin"], select[name*="HoraFin"]',
-        'select[id*="horafin"], select[name*="horafin"]',
-        'input[id*="HoraFin"], input[name*="HoraFin"]',
-        'select[id*="Duracion"], select[name*="Duracion"]',
-        'select[id*="duracion"], select[name*="duracion"]',
-      ];
-      for (const sel of ORA_FINE_SELECTORS) {
-        const loc = formCtx.locator(sel).first();
-        if (!await loc.isVisible({ timeout: 1500 }).catch(() => false)) continue;
-        const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
-        if (tag === 'select') {
-          await loc.selectOption(oraFine, { timeout: 5000 }).catch(() =>
-            loc.selectOption({ label: oraFine }, { timeout: 5000 }).catch(() => {})
-          );
-        } else {
-          await loc.click({ clickCount: 3, timeout: 5000 });
-          await loc.fill(oraFine, { timeout: 5000 });
-        }
-        diagnostic.steps.push('filled_ora_fine');
-        break;
-      }
-    }
-
-    // ── Invia il form ─────────────────────────────────────────────────────────
-    diagnostic.steps.push('submit_booking_form');
-    const SUBMIT_SELECTORS = [
-      '#btnGuardar, input[id*="btnGuardar"], button[id*="btnGuardar"]',
-      'input[value*="Guardar"], input[value*="Salva"], input[value*="Prenota"], input[value*="Confirmar"]',
-      'button:has-text("Salva"), button:has-text("Guardar"), button:has-text("Conferma"), button:has-text("OK")',
-      'input[type="submit"], button[type="submit"]',
-    ];
-    let submitted = false;
-    for (const sel of SUBMIT_SELECTORS) {
-      const btn = formCtx.locator(sel).first();
-      if (!await btn.isVisible({ timeout: 2000 }).catch(() => false)) continue;
-      try {
-        await Promise.all([
-          page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
-          btn.click({ timeout: 10000 }),
-        ]);
-        submitted = true;
-        diagnostic.submitSelector = sel;
-        break;
-      } catch (submitErr) {
-        diagnostic.navigationAttempts.push({ action: 'submit_attempt', sel, error: submitErr.message.slice(0, 80) });
-      }
-    }
-
-    if (!submitted) {
-      throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Nessun pulsante di submit trovato nel form di prenotazione.', diagnostic);
+    } else {
+      // Partita: cerca il giocatore via autocomplete e aggiungilo
+      await searchAndAddPlayer(formCtx, page, nome, diagnostic);
+      const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare e uscire', 'Salva'], diagnostic);
+      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Partita.', diagnostic);
     }
 
     await page.waitForTimeout(2000);
     diagnostic.postSubmitUrl = page.url();
     diagnostic.postSubmitTitle = await page.title().catch(() => '');
 
-    // Verifica errori post-submit (Matchpoint mostra messaggi inline)
+    // Rileva errori post-submit (messaggi inline di Matchpoint)
     const postSubmitText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
-    const ERROR_KEYWORDS = ['error', 'errore', 'ocupad', 'occupat', 'no disponib', 'non disponib', 'alert', 'avviso'];
-    const hasError = ERROR_KEYWORDS.some((kw) => postSubmitText.toLowerCase().includes(kw));
-    if (hasError) {
-      diagnostic.postSubmitBodySample = postSubmitText.slice(0, 500);
-    }
+    const hasError = /error|errore|ocupad|occupat|no disponib|non disponib/i.test(postSubmitText);
+    if (hasError) diagnostic.postSubmitBodySample = postSubmitText.slice(0, 500);
 
     diagnostic.steps.push('done');
     return {
       ok: true,
-      campo,
-      data,
-      ora,
-      oraFine,
-      nome,
-      durata,
+      campo, data, ora, oraFine, nome, durata, tipo, istruttore,
       diagnostic,
       warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
     };

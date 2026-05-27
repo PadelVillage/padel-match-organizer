@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.581</title>
+  <title>Padel Match Organizer v5.582</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6743,7 +6743,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="staff-cal-input-wrap">
             <textarea
               id="staffCalInput"
-              placeholder='Es: "Campo 2 oggi 18-19:30 Mario Rossi" oppure ditta 🎤'
+              placeholder='Es: "lezione Santiago campo 1 18-19:30" · "campo 2 ogni martedì 20-21" · 🎤'
               rows="1"
               oninput="staffCalAutoResize(this)"
               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffCalSubmitBooking()}"
@@ -6863,7 +6863,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.581';
+    const APP_VERSION = '5.582';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33475,34 +33475,126 @@ Per confermare scrivi ELIMINA.`);
     staffCalSetStatus('Sto ascoltando...', 'pending');
   }
 
+  // ── Parser principale ──────────────────────────────────────────────────────
+  // Formati supportati:
+  //   "campo 2 18-19:30 Mario Rossi"               → partita
+  //   "lezione Santiago campo 1 18-19:30"           → lezione, nome=Santiago
+  //   "lezione LoZio campo 3 ogni martedì 18-19:30" → lezione ricorrente
+  //   "campo 2 ogni venerdì 20-21:30 Spinazze"      → partita ricorrente
   function staffCalParseBookingText(text, currentDate) {
     const t = String(text || '').trim();
-    const campoMatch = t.match(/\bcampo\s*([1-4])\b/i);
+
+    // Tipo: "lezione" all'inizio → lezione, altrimenti partita
+    const tipoMatch = /^\s*(lezione|lesson)\b/i.test(t);
+    const tipo = tipoMatch ? 'lezione' : 'partita';
+
+    // Per le lezioni, il nome istruttore viene subito dopo "lezione"
+    let istruttore = '';
+    let restText = t;
+    if (tipoMatch) {
+      const afterTipo = t.replace(/^\s*lezione\s*/i, '').replace(/^\s*lesson\s*/i, '');
+      // Primo "token" prima di "campo" è l'istruttore
+      const istrMatch = afterTipo.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{0,30}?)\s+(?=campo\b|ogni\b|\d)/i);
+      if (istrMatch) istruttore = istrMatch[1].trim();
+      restText = afterTipo;
+    }
+
+    const campoMatch = restText.match(/\bcampo\s*([1-4])\b/i) || t.match(/\bcampo\s*([1-4])\b/i);
     if (!campoMatch) return null;
     const campoNum = parseInt(campoMatch[1]);
-    const timeMatch = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+
+    const timeMatch = restText.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/)
+                  || t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
     if (!timeMatch) return null;
     const oraInizio = `${String(timeMatch[1]).padStart(2,'0')}:${(timeMatch[2] || '00').padStart(2,'0')}`;
     const oraFine   = `${String(timeMatch[3]).padStart(2,'0')}:${(timeMatch[4] || '00').padStart(2,'0')}`;
-    let isoDate = currentDate || staffCalTodayIso();
-    if (/\bdomani\b/i.test(t)) {
-      const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 1); isoDate = d.toISOString().slice(0,10);
-    } else if (/\bdopodomani\b/i.test(t)) {
-      const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 2); isoDate = d.toISOString().slice(0,10);
-    } else {
-      const dateMatch = t.match(/\b(\d{4}-\d{2}-\d{2})\b/);
-      if (dateMatch) isoDate = dateMatch[1];
-    }
     const [sh, sm] = oraInizio.split(':').map(Number);
     const [eh, em] = oraFine.split(':').map(Number);
     const durata = (eh * 60 + em) - (sh * 60 + sm);
     if (durata <= 0 || durata > 360) return null;
-    const timePos = t.search(timeMatch[0]);
-    const afterTime = timePos >= 0 ? t.slice(timePos + timeMatch[0].length).replace(/^[\s\-–]+/, '').trim() : '';
-    const nome = afterTime || 'Staff';
-    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome };
+
+    // Ricorrenza: "ogni [giorno della settimana]"
+    const GIORNI = { lunedi:1, lunedì:1, martedi:2, martedì:2, mercoledi:3, mercoledì:3,
+                     giovedi:4, giovedì:4, venerdi:5, venerdì:5, sabato:6, domenica:0 };
+    let ricorrenza = null;
+    const ogniMatch = t.match(/\bogni\s+([a-zàáèéìíòóùú]+)/i);
+    if (ogniMatch) {
+      const giorno = ogniMatch[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const normalized = Object.keys(GIORNI).find(k =>
+        k.normalize('NFD').replace(/[̀-ͯ]/g, '') === giorno
+      );
+      if (normalized !== undefined) {
+        const weekdayNum = GIORNI[normalized] ?? GIORNI[giorno];
+        ricorrenza = { giorno: ogniMatch[1], weekdayNum };
+      }
+    }
+
+    // Data singola (usata solo se non ricorrente)
+    let isoDate = currentDate || staffCalTodayIso();
+    if (!ricorrenza) {
+      if (/\bdomani\b/i.test(t)) {
+        const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 1); isoDate = d.toISOString().slice(0,10);
+      } else if (/\bdopodomani\b/i.test(t)) {
+        const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 2); isoDate = d.toISOString().slice(0,10);
+      } else {
+        const dm = t.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+        if (dm) isoDate = dm[1];
+      }
+    }
+
+    // Nome: per lezioni = istruttore già estratto; per partite = testo dopo l'orario
+    let nome = istruttore || 'Staff';
+    if (!istruttore) {
+      const timePos = t.search(timeMatch[0]);
+      const afterTime = timePos >= 0 ? t.slice(timePos + timeMatch[0].length).replace(/^[\s\-–]+/, '').trim() : '';
+      const nameRaw = afterTime.replace(/\bogni\s+\S+/i, '').trim();
+      if (nameRaw) nome = nameRaw;
+    }
+
+    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, ricorrenza };
   }
 
+  // Espande ricorrenza nelle prossime N settimane (default 4), partendo da oggi
+  function staffCalExpandRicorrenza(weekdayNum, settimane = 4) {
+    const dates = [];
+    const today = new Date(staffCalTodayIso() + 'T00:00:00');
+    let cursor = new Date(today);
+    // Avanza al primo giorno target (almeno domani)
+    cursor.setDate(cursor.getDate() + 1);
+    while (cursor.getDay() !== weekdayNum) cursor.setDate(cursor.getDate() + 1);
+    for (let i = 0; i < settimane; i++) {
+      dates.push(cursor.toISOString().slice(0, 10));
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return dates;
+  }
+
+  // Stato pending per conferma ricorrenza (double-click pattern)
+  let _staffCalPendingRicorrenza = null;
+
+  // ── Submit singola prenotazione via edge function ──────────────────────────
+  async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey) {
+    const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+      body: JSON.stringify({
+        campo: parsed.campoNum, data: parsed.data, ora: parsed.ora,
+        oraFine: parsed.oraFine, durata: parsed.durata,
+        nome: parsed.nome, tipo: parsed.tipo || 'partita',
+        istruttore: parsed.istruttore || undefined,
+      }),
+    });
+    const respText = await response.text();
+    let data = null;
+    try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+    if (!response.ok || data?.ok === false) {
+      throw new Error(data?.message || data?.error || `Errore HTTP ${response.status}`);
+    }
+    if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+    return data;
+  }
+
+  // ── Submit principale con gestione ricorrenza ──────────────────────────────
   async function staffCalSubmitBooking() {
     const input = document.getElementById('staffCalInput');
     const text = (input || {}).value ? input.value.trim() : '';
@@ -33510,43 +33602,76 @@ Per confermare scrivi ELIMINA.`);
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
     const parsed = staffCalParseBookingText(text, isoDate);
     if (!parsed) {
-      staffCalSetStatus('Formato non riconosciuto. Usa: "Campo 2 oggi 18-19:30 Mario Rossi"', 'error');
+      staffCalSetStatus('Formato non riconosciuto. Usa: "lezione Santiago campo 1 18-19:30" oppure "campo 2 ogni martedì 20-21"', 'error');
       return;
     }
+
+    // ── Ricorrenza: mostra conferma al primo clic, esegue al secondo ──────────
+    if (parsed.ricorrenza) {
+      const dates = staffCalExpandRicorrenza(parsed.ricorrenza.weekdayNum, 4);
+      if (!_staffCalPendingRicorrenza || _staffCalPendingRicorrenza.text !== text) {
+        // Primo clic: mostra anteprima e chiedi conferma
+        _staffCalPendingRicorrenza = { text, parsed, dates };
+        const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
+        const preview = dates.map(d => {
+          const [y,m,g] = d.split('-'); return `${g}/${m}`;
+        }).join(', ');
+        staffCalSetStatus(
+          `📅 Ricorrenza ${parsed.ricorrenza.giorno} ×${dates.length}: ${preview} · ${parsed.ora}–${parsed.oraFine} · ${tipoLabel} ${parsed.nome} · Clicca 'Prenota' di nuovo per confermare`,
+          'pending'
+        );
+        return;
+      }
+      // Secondo clic: esegue
+      _staffCalPendingRicorrenza = null;
+      const sendBtn = document.getElementById('staffCalSendBtn');
+      if (sendBtn) sendBtn.disabled = true;
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        let ok = 0, fail = 0;
+        for (let i = 0; i < dates.length; i++) {
+          const singleParsed = { ...parsed, data: dates[i] };
+          staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
+          try {
+            await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey);
+            staffCalSaveLocal(singleParsed);
+            ok++;
+          } catch (e) {
+            fail++;
+            console.warn('STAFF_CAL_RICORRENZA_FAIL', dates[i], e.message);
+          }
+          // Pausa tra prenotazioni (il worker richiede ~45s ciascuna)
+          if (i < dates.length - 1) await new Promise(r => setTimeout(r, 2000));
+        }
+        if (input) { input.value = ''; staffCalAutoResize(input); }
+        renderStaffCalendar();
+        staffCalSetStatus(
+          fail === 0
+            ? `✓ ${ok} prenotazioni ricorrenti create (${parsed.ricorrenza.giorno})`
+            : `⚠ ${ok} create, ${fail} fallite — vedi console`,
+          fail === 0 ? 'done' : 'error'
+        );
+      } catch (err) {
+        staffCalSetStatus('Errore: ' + (err.message || err), 'error');
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+      }
+      return;
+    }
+
+    // ── Prenotazione singola ───────────────────────────────────────────────────
+    _staffCalPendingRicorrenza = null;
     const sendBtn = document.getElementById('staffCalSendBtn');
     if (sendBtn) sendBtn.disabled = true;
-    staffCalSetStatus(`Prenotando ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine} su Matchpoint...`, 'pending');
+    const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
+    staffCalSetStatus(`Prenotando ${tipoLabel} ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine} su Matchpoint (~45s)...`, 'pending');
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${staff.accessToken}`,
-        },
-        body: JSON.stringify({
-          campo: parsed.campoNum,
-          data: parsed.data,
-          ora: parsed.ora,
-          oraFine: parsed.oraFine,
-          durata: parsed.durata,
-          nome: parsed.nome,
-        }),
-      });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
-      if (!response.ok || data?.ok === false) {
-        const errMsg = data?.message || data?.error || `Errore HTTP ${response.status}`;
-        staffCalSetStatus('Errore prenotazione: ' + errMsg, 'error');
-        return;
-      }
-      // Salva anche in locale per visualizzazione immediata nel calendario
+      await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey);
       staffCalSaveLocal(parsed);
-      staffCalSetStatus(`✓ Prenotazione inviata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
-      if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+      staffCalSetStatus(`✓ ${tipoLabel} inviata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
       if (input) { input.value = ''; staffCalAutoResize(input); }
       if (parsed.data === isoDate) renderStaffCalendar();
     } catch (err) {
@@ -33564,6 +33689,7 @@ Per confermare scrivi ELIMINA.`);
       id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`,
       data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
       campo: parsed.campoNum, nome: parsed.nome, durata: parsed.durata,
+      tipo: parsed.tipo || 'partita',
       createdAt: new Date().toISOString(),
     });
     if (typeof save === 'function') save('staffBookings', existing);
