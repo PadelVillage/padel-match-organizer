@@ -33611,6 +33611,7 @@ Per confermare scrivi ELIMINA.`);
         console.warn('[StaffCal] Parser rules fetch failed, using fallback:', err.message);
       }
     }
+    window.loadParserRules = loadParserRules;
     loadParserRules();
     setInterval(loadParserRules, 60 * 60 * 1000);
   })();
