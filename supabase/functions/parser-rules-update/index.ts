@@ -184,12 +184,18 @@ Deno.serve(async (req) => {
       note: `Updated via admin panel by ${actor.email}`,
     });
 
-    // 5. Marca errori come processati
+    // 5. Marca errori come processati (FASE 3)
+    let error_ids_updated = 0;
     if (Array.isArray(error_ids) && error_ids.length > 0) {
-      await admin.from('pmo_parser_errors').update({ admin_selected: true }).in('id', error_ids);
+      const { data: updated } = await admin
+        .from('pmo_parser_errors')
+        .update({ admin_selected: true })
+        .in('id', error_ids)
+        .select('id');
+      error_ids_updated = updated?.length ?? error_ids.length;
     }
 
-    return json({ ok: true, versione_nuova, commit_message: commitMsg });
+    return json({ ok: true, versione_nuova, commit_message: commitMsg, error_ids_updated, regole_nuove: newRules });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[parser-rules-update]', message);
