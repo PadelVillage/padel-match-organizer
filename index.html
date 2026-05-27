@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.579</title>
+  <title>Padel Match Organizer v5.585</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -2533,6 +2533,25 @@
     .matchpoint-action-state.pending { color:#b7791f; }
     .matchpoint-action-state.done { color:#168a53; }
     .matchpoint-action-state.error { color:#b42318; }
+    /* === Parser Config Admin Panel (v1.1) === */
+    .matchpoint-data-box.parser-config { border-top-color:#0891b2; }
+    .matchpoint-data-box.parser-config .matchpoint-data-step { background:#0891b2; }
+    .matchpoint-data-box.parser-config.wide { grid-column:1 / -1; }
+    .parser-config-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+    .parser-config-tab { padding:8px 14px; border:0; background:none; color:#667085; font-size:13px; font-weight:700; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+    .parser-config-tab.active { color:#0891b2; border-bottom-color:#0891b2; }
+    .parser-config-tab-panel { display:none; }
+    .parser-config-tab-panel.active { display:block; }
+    .parser-config-errors-table,.parser-config-log-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .parser-config-errors-table th,.parser-config-log-table th { background:#f0f4fa; color:var(--primary); font-size:11px; font-weight:900; text-transform:uppercase; padding:7px 10px; text-align:left; }
+    .parser-config-errors-table td,.parser-config-log-table td { padding:7px 10px; border-bottom:1px solid #edf2f9; vertical-align:middle; }
+    .parser-config-errors-table tr:last-child td,.parser-config-log-table tr:last-child td { border-bottom:0; }
+    .parser-config-errors-table input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#0891b2; }
+    .parser-config-confidence { display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e; }
+    .parser-config-confidence.ok { background:#d1fae5; color:#065f46; }
+    .parser-config-preview { background:#f8fbff; border:1px solid #dfe8f3; border-radius:6px; padding:12px; font-size:12px; font-family:monospace; white-space:pre-wrap; max-height:260px; overflow:auto; color:#1e293b; }
+    .parser-config-approve-bar { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+    .parser-config-empty { color:#667085; font-size:13px; padding:12px 0; }
     .matchpoint-action-state.import-date { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     #matchpointBackupActionState.done { display:flex; align-items:center; justify-content:center; min-height:42px; border:1px solid #b7e4c7; border-radius:8px; background:#eefaf2; color:#168a53; font-size:13px; font-weight:900; line-height:1.2; text-align:center; padding:8px 10px; }
     .matchpoint-data-info { display:grid; grid-template-columns:1.3fr .7fr; gap:14px; }
@@ -2542,6 +2561,55 @@
     .matchpoint-data-last-row { display:flex; justify-content:space-between; gap:12px; padding:5px 0; border-top:1px solid #eef2f7; color:#475467; }
     .matchpoint-data-last-row:first-of-type { border-top:0; }
     .matchpoint-data-last-row strong { color:#111827; text-align:right; }
+
+    /* === Staff Calendar (v5.580) === */
+    .staff-cal-date-nav { display:flex; align-items:center; gap:6px; }
+    .staff-cal-date-nav button { min-width:34px; height:34px; border-radius:8px; border:1px solid #d1d5db; background:#f8fbff; color:#374151; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+    .staff-cal-date-nav button:hover { background:#e5edff; }
+    .staff-cal-date-nav input[type="date"] { border:1.5px solid #d1d5db; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:700; color:#111827; background:#fff; height:34px; }
+    .staff-cal-today-btn { border:1.5px solid var(--primary) !important; color:var(--primary) !important; background:#fff !important; font-size:12px !important; font-weight:700 !important; padding:0 10px !important; min-width:auto !important; }
+    .staff-cal-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--border); border-radius:10px; }
+    .staff-cal-table { width:100%; border-collapse:collapse; font-size:13px; min-width:480px; }
+    .staff-cal-table thead th { background:#f1f5f9; color:#374151; font-weight:800; font-size:12px; padding:10px 8px; text-align:center; border-bottom:2px solid #cbd5e1; }
+    .staff-cal-table thead th:first-child { width:56px; min-width:56px; text-align:right; border-right:1px solid #e2e8f0; background:#e8edf4; color:#64748b; }
+    .staff-cal-time { color:#64748b; font-size:12px; font-weight:700; text-align:right; padding:0 8px 0 4px; border-right:1px solid #e2e8f0; white-space:nowrap; vertical-align:middle; background:#f8fafc; }
+    .staff-cal-cell { height:36px; border:1px solid #e2e8f0; vertical-align:top; padding:2px 4px; transition:background .15s; position:relative; }
+    .staff-cal-cell.libero { background:#fff; border:1px dashed #d1d5db; cursor:pointer; }
+    .staff-cal-cell.libero:hover { background:#f0f9ff; }
+    .staff-cal-cell.partita { background:#dbeafe; border-left:3px solid #2563eb; }
+    .staff-cal-cell.lezione { background:#dcfce7; border-left:3px solid #16a34a; }
+    .staff-cal-cell.staff-booking { background:#ffedd5; border-left:3px solid #ea580c; cursor:default; }
+    .staff-cal-slot-name { font-size:11px; font-weight:700; color:#1e3a5f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .staff-cal-slot-label { display:inline-block; font-size:9px; font-weight:900; color:#fff; background:#ea580c; border-radius:3px; padding:1px 4px; margin-top:1px; }
+    .staff-cal-cell.partita .staff-cal-slot-name { color:#1e40af; }
+    .staff-cal-cell.lezione .staff-cal-slot-name { color:#14532d; }
+    .staff-cal-legend { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .staff-cal-legend-dot { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#374151; font-weight:600; }
+    .staff-cal-legend-dot::before { content:''; width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+    .staff-cal-legend-dot.partita::before { background:#2563eb; }
+    .staff-cal-legend-dot.lezione::before { background:#16a34a; }
+    .staff-cal-legend-dot.staff-booking::before { background:#ea580c; }
+    .staff-cal-legend-dot.libero::before { background:#fff; border:1.5px dashed #9ca3af; }
+    .staff-cal-hint { font-size:12px; color:#9ca3af; }
+    .staff-cal-hint kbd { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px; padding:1px 5px; font-size:11px; }
+    .staff-cal-input-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:2px solid #e5e7eb; padding:10px 16px 12px; z-index:300; box-shadow:0 -4px 16px rgba(0,0,0,.09); }
+    body:not(.sidebar-collapsed) .staff-cal-input-bar { left:304px; }
+    @media(max-width:800px) { body:not(.sidebar-collapsed) .staff-cal-input-bar { left:0; } }
+    .staff-cal-input-wrap { display:flex; align-items:flex-end; gap:8px; max-width:760px; margin:0 auto; }
+    .staff-cal-input-wrap textarea { flex:1; border:1.5px solid #d1d5db; border-radius:14px; padding:10px 14px; font-size:14px; resize:none; line-height:1.45; min-height:44px; max-height:140px; font-family:inherit; color:#111827; outline:none; transition:border-color .2s; }
+    .staff-cal-input-wrap textarea:focus { border-color:var(--primary); }
+    .staff-cal-mic-btn { width:44px; height:44px; flex-shrink:0; border-radius:50%; border:1.5px solid #d1d5db; background:#f8fbff; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s; }
+    .staff-cal-mic-btn:hover { background:#e5edff; border-color:var(--primary); }
+    .staff-cal-mic-btn.recording { background:#fee2e2; border-color:#dc2626; animation:pulse-mic .9s infinite; }
+    @keyframes pulse-mic { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)} 50%{box-shadow:0 0 0 6px rgba(220,38,38,0)} }
+    .staff-cal-send-btn { height:44px; padding:0 18px; border-radius:14px; border:0; background:var(--primary); color:#fff; font-size:14px; font-weight:800; cursor:pointer; white-space:nowrap; transition:background .15s; flex-shrink:0; }
+    .staff-cal-send-btn:hover { background:#1a3e7a; }
+    .staff-cal-send-btn:disabled { background:#9ca3af; cursor:not-allowed; }
+    .staff-cal-input-status { max-width:760px; margin:4px auto 0; font-size:12px; color:#667085; min-height:16px; text-align:center; }
+    .staff-cal-input-status.pending { color:#b7791f; }
+    .staff-cal-input-status.done { color:#168a53; font-weight:800; }
+    .staff-cal-input-status.error { color:#dc2626; }
+
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .matchpoint-routine-head { grid-template-columns:1fr; }
@@ -5426,6 +5494,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button class="side-sub-link" onclick="goToTabSection('administration','Calendario staff')">📅 Calendario staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
@@ -6639,12 +6708,111 @@ body.assessment-public-mode .assessment-public-only-card {
                   </article>
                 </div>
               </div>
+              <div class="matchpoint-data-accordion" id="matchpointParserAccordion" hidden>
+                <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointParserAccordionPanel"
+                  onclick="toggleMatchpointDataAccordion('matchpointParserAccordion'); if(document.getElementById('matchpointParserAccordion').classList.contains('open')) pmoParserLoadErrors()">
+                  <span>
+                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step" style="background:#0891b2">7</span> Parser Config</span>
+                    <span class="matchpoint-data-accordion-subtitle">Evoluzione automatica del parser prenotazioni staff.</span>
+                  </span>
+                  <span class="matchpoint-data-chevron">›</span>
+                </button>
+                <div class="matchpoint-data-accordion-panel" id="matchpointParserAccordionPanel">
+                  <article class="matchpoint-data-box parser-config wide" id="anchor-parser-config">
+                    <p class="matchpoint-data-copy">Seleziona gli errori frequenti dello staff, genera l'aggiornamento e approva per aggiornare automaticamente il parser.</p>
+                    <div class="parser-config-tabs" role="tablist">
+                      <button class="parser-config-tab active" role="tab" onclick="pmoParserSwitchTab('errors',this)">Errori Riconosciuti</button>
+                      <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('preview',this)">Genera Aggiornamento</button>
+                      <button class="parser-config-tab" role="tab" onclick="pmoParserSwitchTab('log',this); pmoParserLoadLog()">Log Evoluzione</button>
+                    </div>
+                    <!-- Tab 1: Errori -->
+                    <div id="parserConfigTabErrors" class="parser-config-tab-panel active" role="tabpanel">
+                      <div id="parserConfigErrorsStatus" class="matchpoint-action-state"></div>
+                      <div id="parserConfigErrorsTable"></div>
+                      <button class="btn-secondary" style="margin-top:12px" onclick="pmoParserGeneratePreview()">Genera Aggiornamento →</button>
+                    </div>
+                    <!-- Tab 2: Genera Aggiornamento -->
+                    <div id="parserConfigTabPreview" class="parser-config-tab-panel" role="tabpanel">
+                      <div id="parserConfigPreviewStatus" class="matchpoint-action-state"></div>
+                      <pre id="parserConfigPreviewJson" class="parser-config-preview">Nessuna modifica selezionata.</pre>
+                      <div class="parser-config-approve-bar">
+                        <button class="btn-warning" id="parserConfigApproveBtn" onclick="pmoParserApproveAndUpdate()">Approva e Aggiorna File</button>
+                        <div id="parserConfigApproveStatus" class="matchpoint-action-state"></div>
+                      </div>
+                    </div>
+                    <!-- Tab 3: Log Evoluzione -->
+                    <div id="parserConfigTabLog" class="parser-config-tab-panel" role="tabpanel">
+                      <div id="parserConfigLogStatus" class="matchpoint-action-state"></div>
+                      <div id="parserConfigLogTable"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
               <input type="file" id="backupFile" accept=".json" style="display:none" onchange="importBackupFile(this.files[0])" />
             </div>
           </div>
         </div>
 
 
+
+        <!-- ===== CALENDARIO STAFF (v5.580) ===== -->
+        <div id="pmoAdminCalendarioStaffSection" class="admin-section-panel" data-pmo-admin-section="calendario-staff" hidden>
+          <div class="admin-panel" id="pmoCalendarioStaffPanel" data-admin-anchor="calendario-staff" style="padding-bottom:140px">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Calendario campi staff</h3>
+                <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
+              </div>
+              <div class="staff-cal-date-nav" style="margin-left:auto">
+                <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
+                <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
+                <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
+                <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
+              </div>
+            </div>
+
+            <div class="staff-cal-table-wrap" style="margin-top:16px">
+              <table class="staff-cal-table" aria-label="Griglia campi">
+                <thead>
+                  <tr>
+                    <th>Ora</th>
+                    <th>Campo 1</th>
+                    <th>Campo 2</th>
+                    <th>Campo 3</th>
+                    <th>Campo 4</th>
+                  </tr>
+                </thead>
+                <tbody id="staffCalBody"></tbody>
+              </table>
+            </div>
+
+            <div class="staff-cal-legend" style="margin-top:14px">
+              <span class="staff-cal-legend-dot partita">Partita</span>
+              <span class="staff-cal-legend-dot lezione">Lezione [STAFF]</span>
+              <span class="staff-cal-legend-dot staff-booking">Prenotazione staff</span>
+              <span class="staff-cal-legend-dot libero">Libero</span>
+            </div>
+
+            <p class="staff-cal-hint" style="margin-top:8px">Clicca su uno slot libero per pre-compilare l'input · <kbd>Enter</kbd> per prenotare</p>
+          </div>
+        </div>
+
+        <!-- Sticky input bar calendario staff -->
+        <div class="staff-cal-input-bar" id="staffCalInputBar" style="display:none">
+          <div class="staff-cal-input-wrap">
+            <textarea
+              id="staffCalInput"
+              placeholder='Es: "lezione Santiago campo 1 18-19:30" · "campo 2 ogni martedì 20-21" · 🎤'
+              rows="1"
+              oninput="staffCalAutoResize(this)"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffCalSubmitBooking()}"
+            ></textarea>
+            <button class="staff-cal-mic-btn" id="staffCalMicBtn" onclick="staffCalToggleDictation()" title="Ditta prenotazione">🎤</button>
+            <button class="staff-cal-send-btn" id="staffCalSendBtn" onclick="staffCalSubmitBooking()">Prenota</button>
+          </div>
+          <div id="staffCalInputStatus" class="staff-cal-input-status"></div>
+        </div>
 
         <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
           <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
@@ -6755,7 +6923,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.579';
+    const APP_VERSION = '5.585';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8555,7 +8723,9 @@ Grazie.`
         'supabase': '#pmoSupabaseDiagnosticsPanel',
         'controlli tecnici': '#pmoSupabaseDiagnosticsPanel',
         'verifica test prod': '#pmoSupabaseDiagnosticsPanel',
-        'verifica test/prod': '#pmoSupabaseDiagnosticsPanel'
+        'verifica test/prod': '#pmoSupabaseDiagnosticsPanel',
+        'calendario staff': '#pmoAdminCalendarioStaffSection',
+        'calendario': '#pmoAdminCalendarioStaffSection'
       },
     };
 
@@ -8585,6 +8755,7 @@ Grazie.`
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
+        else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff');
         else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
         else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
@@ -12692,6 +12863,7 @@ Grazie.`
         dataActionStatusRefreshInProgress = false;
       }
       try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+      try { if (typeof pmoApplyParserConfigVisibility === 'function') pmoApplyParserConfigVisibility(); } catch {}
     }
 
     function isMatchpointDataTabActive() {
@@ -23860,11 +24032,12 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'matchpoint-data', 'supabase'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'supabase', 'calendario-staff'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'users';
 	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
+	      if (key.includes('calendario')) return 'calendario-staff';
 	      return 'users';
 	    }
 	    function pmoSetAdminSection(section='users', options={}) {
@@ -23876,6 +24049,12 @@ Per confermare scrivi ELIMINA.`);
 	          try { refreshDataActionStatuses(); } catch (err) { console.warn('Dati Matchpoint non aggiornati:', err); }
 	          try { scheduleMatchpointRoutineCloudRefresh({ force:true }); } catch (err) { console.warn('Stato routine Matchpoint cloud non aggiornato:', err); }
 	        });
+	      }
+	      if (pmoAdminState.activeSection === 'calendario-staff') {
+	        requestAnimationFrame(() => { try { staffCalInit(); } catch (err) { console.warn('Calendario staff non inizializzato:', err); } });
+	      } else {
+	        const bar = document.getElementById('staffCalInputBar');
+	        if (bar) bar.style.display = 'none';
 	      }
 	    }
 	    function pmoApplyAdminSectionVisibility() {
@@ -33172,6 +33351,741 @@ Per confermare scrivi ELIMINA.`);
   })();
   </script>
   <!-- ════ end Calendario Matchpoint ════ -->
+
+  <!-- ════ Parser Config Admin Panel (v1.1) ════ -->
+  <script>
+  // ── Parser Config — Admin Panel ─────────────────────────────────────────────
+
+  function pmoApplyParserConfigVisibility() {
+    const accordion = document.getElementById('matchpointParserAccordion');
+    if (!accordion) return;
+    const profile = pmoIsStaffProfileActive(pmoStaffProfile) ? pmoStaffProfile : null;
+    accordion.hidden = !profile || !['owner', 'admin'].includes(profile.role);
+  }
+
+  let _pmoParserSelectedErrors = []; // Array di { id, input_originale, tipo }
+
+  function pmoParserSwitchTab(tab, btn) {
+    ['errors','preview','log'].forEach(t => {
+      const panel = document.getElementById('parserConfigTab' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (panel) panel.classList.toggle('active', t === tab);
+    });
+    document.querySelectorAll('.parser-config-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  async function pmoParserLoadErrors() {
+    const statusEl = document.getElementById('parserConfigErrorsStatus');
+    const tableEl  = document.getElementById('parserConfigErrorsTable');
+    if (!statusEl || !tableEl) return;
+    statusEl.textContent = 'Caricamento errori...';
+    statusEl.className = 'matchpoint-action-state pending';
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare gli errori del parser');
+      const res = await fetch(
+        cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?admin_selected=eq.false&timestamp=gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}&order=timestamp.desc&select=id,input_originale,intent_riconosciuto,confidence,timestamp,versione_parser`,
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+
+      // Raggruppa per input_originale
+      const grouped = {};
+      for (const r of rows) {
+        const key = r.input_originale;
+        if (!grouped[key]) grouped[key] = { ids:[], confidence_sum:0, count:0, ultimo:r.timestamp, versione:r.versione_parser, intent:r.intent_riconosciuto };
+        grouped[key].ids.push(r.id);
+        grouped[key].confidence_sum += r.confidence ?? 0;
+        grouped[key].count++;
+        if (r.timestamp > grouped[key].ultimo) grouped[key].ultimo = r.timestamp;
+      }
+
+      if (!Object.keys(grouped).length) {
+        statusEl.textContent = 'Nessun errore negli ultimi 7 giorni.';
+        statusEl.className = 'matchpoint-action-state done';
+        tableEl.innerHTML = '';
+        return;
+      }
+
+      statusEl.textContent = Object.keys(grouped).length + ' pattern distinti negli ultimi 7 giorni.';
+      statusEl.className = 'matchpoint-action-state';
+
+      let html = '<table class="parser-config-errors-table"><thead><tr><th></th><th>Pattern</th><th>Freq.</th><th>Confidence</th><th>Ultimo</th></tr></thead><tbody>';
+      for (const [pattern, g] of Object.entries(grouped).sort((a,b) => b[1].count - a[1].count)) {
+        const conf = (g.confidence_sum / g.count).toFixed(2);
+        const confClass = parseFloat(conf) >= 0.7 ? 'ok' : '';
+        const data = new Date(g.ultimo).toLocaleDateString('it-IT');
+        const idsJson = JSON.stringify(g.ids).replace(/"/g,'&quot;');
+        html += `<tr>
+          <td><input type="checkbox" data-ids="${idsJson}" data-pattern="${pattern.replace(/"/g,'&quot;')}" data-intent="${(g.intent||'').replace(/"/g,'&quot;')}" onchange="pmoParserToggleError(this)"></td>
+          <td style="font-family:monospace;font-size:12px">${pattern.replace(/</g,'&lt;')}</td>
+          <td>${g.count}</td>
+          <td><span class="parser-config-confidence ${confClass}">${conf}</span></td>
+          <td>${data}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      tableEl.innerHTML = html;
+      _pmoParserSelectedErrors = [];
+    } catch (err) {
+      statusEl.textContent = 'Errore: ' + (err.message || err);
+      statusEl.className = 'matchpoint-action-state error';
+    }
+  }
+
+  function pmoParserToggleError(checkbox) {
+    const ids = JSON.parse(checkbox.getAttribute('data-ids') || '[]');
+    const pattern = checkbox.getAttribute('data-pattern') || '';
+    const intent  = checkbox.getAttribute('data-intent') || '';
+    if (checkbox.checked) {
+      _pmoParserSelectedErrors.push({ ids, pattern, intent });
+    } else {
+      _pmoParserSelectedErrors = _pmoParserSelectedErrors.filter(e => e.pattern !== pattern);
+    }
+  }
+
+  function pmoParserInferModifica(entry) {
+    const t = (entry.pattern || '').toLowerCase();
+    // Se sembra un sinonimo di PRENOTA
+    if (/prenot|reserv|book/.test(t)) {
+      return { tipo: 'sinonimo_aggiunto', intent: 'PRENOTA', sinonimo_nuovo: entry.pattern };
+    }
+    // Se sembra un nome istruttore (parola sola, iniziale maiuscola)
+    if (/^[A-Z][a-zÀ-ÿ]{2,15}$/.test(entry.pattern.trim())) {
+      const target = (PARSER_RULES?.campi_opzionali?.istruttore?.valori_validi || [])[0] || 'Santiago';
+      return { tipo: 'fuzzy_match_aggiunto', campo: 'istruttore', mapping: { [entry.pattern]: target } };
+    }
+    // Default: sinonimo PRENOTA
+    return { tipo: 'sinonimo_aggiunto', intent: 'PRENOTA', sinonimo_nuovo: entry.pattern };
+  }
+
+  function pmoParserGeneratePreview() {
+    const previewEl = document.getElementById('parserConfigPreviewJson');
+    const statusEl  = document.getElementById('parserConfigPreviewStatus');
+    pmoParserSwitchTab('preview', document.querySelectorAll('.parser-config-tab')[1]);
+    if (!_pmoParserSelectedErrors.length) {
+      if (previewEl) previewEl.textContent = 'Nessun errore selezionato nel tab "Errori Riconosciuti".';
+      if (statusEl) { statusEl.textContent = 'Seleziona prima gli errori da correggere.'; statusEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    const versione_attuale = PARSER_RULES?.versione || 'v1.0';
+    const match = versione_attuale.match(/^v(\d+)\.(\d+)/);
+    const versione_nuova = match ? `v${match[1]}.${parseInt(match[2]) + 1}` : versione_attuale + '.1';
+    const modifiche = _pmoParserSelectedErrors.map(e => pmoParserInferModifica(e));
+    const preview = {
+      versione_nuova,
+      timestamp: new Date().toISOString(),
+      errori_selezionati: _pmoParserSelectedErrors.length,
+      modifiche
+    };
+    if (previewEl) previewEl.textContent = JSON.stringify(preview, null, 2);
+    if (statusEl) { statusEl.textContent = modifiche.length + ' modifiche pronte. Controlla il preview e poi approva.'; statusEl.className = 'matchpoint-action-state'; }
+  }
+
+  async function pmoParserApproveAndUpdate() {
+    const approveBtn = document.getElementById('parserConfigApproveBtn');
+    const statusEl   = document.getElementById('parserConfigApproveStatus');
+    if (!_pmoParserSelectedErrors.length) {
+      if (statusEl) { statusEl.textContent = 'Nessun errore selezionato.'; statusEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    const modifiche = _pmoParserSelectedErrors.map(e => pmoParserInferModifica(e));
+    const allErrorIds = _pmoParserSelectedErrors.flatMap(e => e.ids);
+    if (approveBtn) approveBtn.disabled = true;
+    if (statusEl) { statusEl.textContent = 'Aggiornamento in corso...'; statusEl.className = 'matchpoint-action-state pending'; }
+    try {
+      const cfg   = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'aggiornare il parser');
+      const branch = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test-preview' : 'main';
+      const res = await fetch(cfg.supabaseUrl + '/functions/v1/parser-rules-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({ modifiche, error_ids: allErrorIds, branch })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Errore sconosciuto');
+      if (statusEl) { statusEl.textContent = '✓ Parser aggiornato a ' + data.versione_nuova + '!'; statusEl.className = 'matchpoint-action-state done'; }
+      _pmoParserSelectedErrors = [];
+      // Ricarica regole nel frontend
+      if (typeof loadParserRules === 'function') loadParserRules();
+      setTimeout(() => pmoParserLoadErrors(), 1000);
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = 'Errore: ' + (err.message || err); statusEl.className = 'matchpoint-action-state error'; }
+    } finally {
+      if (approveBtn) approveBtn.disabled = false;
+    }
+  }
+
+  async function pmoParserLoadLog() {
+    const statusEl = document.getElementById('parserConfigLogStatus');
+    const tableEl  = document.getElementById('parserConfigLogTable');
+    if (!statusEl || !tableEl) return;
+    statusEl.textContent = 'Caricamento storico...';
+    statusEl.className = 'matchpoint-action-state pending';
+    try {
+      const cfg   = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare il log del parser');
+      const res = await fetch(
+        cfg.supabaseUrl + '/rest/v1/pmo_parser_config?order=versione.desc&select=versione,data_aggiornamento,aggiornato_da,note',
+        { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+      if (!rows.length) {
+        statusEl.textContent = 'Nessuna versione ancora salvata.';
+        statusEl.className = 'matchpoint-action-state';
+        tableEl.innerHTML = '';
+        return;
+      }
+      statusEl.textContent = rows.length + ' versioni nel log.';
+      statusEl.className = 'matchpoint-action-state done';
+      let html = '<table class="parser-config-log-table"><thead><tr><th>Versione</th><th>Data</th><th>Aggiornato da</th><th>Note</th></tr></thead><tbody>';
+      for (const r of rows) {
+        const data = r.data_aggiornamento ? new Date(r.data_aggiornamento).toLocaleString('it-IT') : '-';
+        html += `<tr>
+          <td><strong>${r.versione}</strong></td>
+          <td>${data}</td>
+          <td>${r.aggiornato_da || '-'}</td>
+          <td style="color:#667085;font-size:12px">${r.note || '-'}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      tableEl.innerHTML = html;
+    } catch (err) {
+      statusEl.textContent = 'Errore: ' + (err.message || err);
+      statusEl.className = 'matchpoint-action-state error';
+    }
+  }
+  </script>
+
+  <!-- ════ Staff Calendar v5.580 ════ -->
+  <script>
+  // ============================================================
+  // STAFF CALENDAR (v5.585) — Prenotazioni staff su Matchpoint
+  // ============================================================
+
+  const STAFF_CAL_START_H = 8;
+  const STAFF_CAL_END_H = 22;
+  const STAFF_CAL_SLOT_MIN = 30;
+
+  // ── Parser Rules — regole di fallback hardcoded (usate se GitHub non è raggiungibile) ──
+  const STAFF_CAL_FALLBACK_RULES = {
+    versione: 'v1.0-fallback',
+    intents: {
+      PRENOTA: { keywords: ['prenota','prenotati','voglio prenotare'], sinonimi: ['prenotami','mi prenota','prenota mi'], regex_pattern: '(prenota|prenotami|mi\\s+prenota)', confidence_threshold: 0.7 },
+      CANCELLA: { keywords: ['cancella','annulla','rimuovi'], sinonimi: ['cancellami','annullami','toglimi'], regex_pattern: '(cancella|cancellami|annulla)', confidence_threshold: 0.7 },
+      TROVA: { keywords: ['trova','cerca','mostrami'], sinonimi: ['visualizza','elenca','dimmi'], regex_pattern: '(trova|cerca|mostrami)', confidence_threshold: 0.6 },
+      CORREGGI: { keywords: ['cambia','modifica','correggi','sposta'], sinonimi: ['spostami','cambiami','modificami'], regex_pattern: '(cambia|modifica|sposta)', confidence_threshold: 0.7 },
+      RICORRENZA: { keywords: ['ogni','ricorrente','settimanale'], sinonimi: ['ripeti','periodico','ogni volta'], regex_pattern: '(ogni|ricorrente|settimanale)', confidence_threshold: 0.8 }
+    },
+    campi_obbligatori: {
+      data: {
+        tipo: 'YYYY-MM-DD',
+        sinonimi_date: { 'oggi':'today','domani':'tomorrow','dopodomani':'day_after_tomorrow','lunedì':'next_monday','lunedi':'next_monday','martedì':'next_tuesday','martedi':'next_tuesday','mercoledì':'next_wednesday','mercoledi':'next_wednesday','giovedì':'next_thursday','giovedi':'next_thursday','venerdì':'next_friday','venerdi':'next_friday','sabato':'next_saturday','domenica':'next_sunday' }
+      },
+      ora_inizio: { tipo: 'HH:MM', format: '24h' },
+      ora_fine:   { tipo: 'HH:MM', format: '24h' }
+    },
+    campi_opzionali: {
+      campo: { tipo: 'numero 1-4', domanda_se_manca: 'Quale campo? (1, 2, 3 o 4)', default: null },
+      tipo:  { tipo: 'partita|lezione', keywords_lezione: ['lezione','lesson'], default: 'partita' },
+      istruttore: {
+        valori_validi: ['Santiago','LoZio','Spinazze'],
+        fuzzy_match: { 'Santi':'Santiago','santi':'Santiago','Lo Zio':'LoZio','lo zio':'LoZio','Spinazzi':'Spinazze','spinazzi':'Spinazze' },
+        domanda_se_manca: 'Quale istruttore? (Santiago, LoZio, Spinazze)',
+        attivata_quando: "tipo === 'lezione'"
+      },
+      ricorrenza: { valori_validi: ['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'], settimane_default: 4, default: null }
+    },
+    log_evoluzione: [{ versione: 'v1.0', data: '2026-05-27', modifiche: 'Release iniziale', aggiornato_da: 'sonnet_initial' }]
+  };
+
+  // Inizializzato subito con fallback — sovrascritto da loadParserRules() quando disponibile
+  let PARSER_RULES = Object.assign({}, STAFF_CAL_FALLBACK_RULES);
+
+  // ── Carica parser_rules.json da GitHub (branch dinamico per env) ───────────
+  (function _staffCalInitParserRules() {
+    const branch = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test-preview' : 'main';
+    const url = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/supabase/functions/parser-rules/parser_rules.json`;
+    async function loadParserRules() {
+      try {
+        const res = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        PARSER_RULES = json;
+        console.log('[StaffCal] Parser rules ' + json.versione + ' loaded from GitHub');
+      } catch (err) {
+        console.warn('[StaffCal] Parser rules fetch failed, using fallback:', err.message);
+      }
+    }
+    window.loadParserRules = loadParserRules;
+    loadParserRules();
+    setInterval(loadParserRules, 60 * 60 * 1000);
+  })();
+
+  // ── Log errori parser su Supabase (fire-and-forget) ───────────────────────
+  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser }) {
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let accessToken = cfg.supabaseKey;
+      try {
+        const raw = typeof safeLoad === 'function' ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null;
+        if (raw?.access_token) accessToken = raw.access_token;
+      } catch {}
+      await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': cfg.supabaseKey,
+          'Authorization': 'Bearer ' + accessToken,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          input_originale,
+          intent_riconosciuto: intent_riconosciuto || null,
+          confidence: typeof confidence === 'number' ? confidence : null,
+          error_message: error_message || null,
+          versione_parser: versione_parser || PARSER_RULES?.versione || 'unknown',
+          admin_selected: false
+        })
+      });
+    } catch (e) {
+      console.warn('[StaffCal] logParserError failed:', e.message);
+    }
+  }
+
+  function staffCalSlots() {
+    const slots = [];
+    for (let h = STAFF_CAL_START_H; h <= STAFF_CAL_END_H; h++) {
+      slots.push(`${String(h).padStart(2,'0')}:00`);
+      if (h < STAFF_CAL_END_H) slots.push(`${String(h).padStart(2,'0')}:30`);
+    }
+    return slots;
+  }
+
+  function staffCalTodayIso() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date());
+  }
+
+  function staffCalInit() {
+    const input = document.getElementById('staffCalDate');
+    if (input && !input.value) input.value = staffCalTodayIso();
+    renderStaffCalendar();
+    const bar = document.getElementById('staffCalInputBar');
+    if (bar) bar.style.display = '';
+  }
+
+  function staffCalGoToday() {
+    const input = document.getElementById('staffCalDate');
+    if (input) { input.value = staffCalTodayIso(); renderStaffCalendar(); }
+  }
+
+  function staffCalPrevDay() {
+    const input = document.getElementById('staffCalDate');
+    if (!input) return;
+    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    input.value = d.toISOString().slice(0, 10);
+    renderStaffCalendar();
+  }
+
+  function staffCalNextDay() {
+    const input = document.getElementById('staffCalDate');
+    if (!input) return;
+    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    input.value = d.toISOString().slice(0, 10);
+    renderStaffCalendar();
+  }
+
+  function staffCalGetSlots(isoDate) {
+    const result = [];
+    // Read occupancy from local data
+    const occupancy = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione))
+      ? prenotazioniOccupazione : [];
+    const bookings = (typeof prenotazioni !== 'undefined' && Array.isArray(prenotazioni))
+      ? prenotazioni : [];
+
+    for (const p of occupancy) {
+      if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
+      const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
+      if (campoNum < 1 || campoNum > 4) continue;
+      const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo, durata: parseInt(p.durata) || 90 });
+    }
+    for (const p of bookings) {
+      if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
+      const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
+      if (campoNum < 1 || campoNum > 4) continue;
+      if (result.some(r => r.ora === p.ora && r.campo === campoNum)) continue;
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo: 'partita', durata: parseInt(p.durata) || 90 });
+    }
+    const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    for (const b of staffBookings) {
+      if (b.data !== isoDate) continue;
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', durata: b.durata || 90 });
+    }
+    return result;
+  }
+
+  function staffCalBuildOccupancyMap(isoDate) {
+    const map = {};
+    const slots = staffCalSlots();
+    for (const s of staffCalGetSlots(isoDate)) {
+      const durSlots = Math.max(1, Math.round((s.durata || 90) / STAFF_CAL_SLOT_MIN));
+      const startIdx = slots.indexOf(s.ora);
+      if (startIdx < 0) continue;
+      for (let i = 0; i < durSlots && startIdx + i < slots.length; i++) {
+        const key = `${slots[startIdx + i]}|${s.campo}`;
+        if (!map[key]) map[key] = s;
+      }
+    }
+    return map;
+  }
+
+  function renderStaffCalendar() {
+    const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    const tbody = document.getElementById('staffCalBody');
+    if (!tbody) return;
+    const slots = staffCalSlots();
+    const occupied = staffCalBuildOccupancyMap(isoDate);
+    tbody.innerHTML = '';
+    for (const hour of slots) {
+      const tr = document.createElement('tr');
+      const tdTime = document.createElement('td');
+      tdTime.className = 'staff-cal-time';
+      tdTime.textContent = hour;
+      tr.appendChild(tdTime);
+      for (let campo = 1; campo <= 4; campo++) {
+        const slot = occupied[`${hour}|${campo}`] || null;
+        const td = document.createElement('td');
+        if (slot) {
+          td.className = `staff-cal-cell ${slot.tipo}`;
+          const nameEl = document.createElement('div');
+          nameEl.className = 'staff-cal-slot-name';
+          nameEl.textContent = slot.nome || '';
+          td.appendChild(nameEl);
+          if (slot.tipo === 'lezione' || slot.tipo === 'staff-booking') {
+            const lbl = document.createElement('span');
+            lbl.className = 'staff-cal-slot-label';
+            lbl.textContent = 'STAFF';
+            td.appendChild(lbl);
+          }
+        } else {
+          td.className = 'staff-cal-cell libero';
+          td.onclick = () => staffCalClickFree(isoDate, campo, hour);
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+  }
+
+  function staffCalClickFree(isoDate, campo, ora) {
+    const input = document.getElementById('staffCalInput');
+    if (!input) return;
+    input.value = `Campo ${campo} ${isoDate} ${ora} - `;
+    input.focus();
+    staffCalAutoResize(input);
+    input.selectionStart = input.selectionEnd = input.value.length;
+  }
+
+  function staffCalAutoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  let _staffCalRecognition = null;
+  let _staffCalDictating = false;
+
+  function staffCalToggleDictation() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { staffCalSetStatus('Dittatura vocale non supportata da questo browser.', 'error'); return; }
+    const btn = document.getElementById('staffCalMicBtn');
+    if (_staffCalDictating) {
+      _staffCalRecognition && _staffCalRecognition.stop();
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+      return;
+    }
+    _staffCalRecognition = new SR();
+    _staffCalRecognition.lang = 'it-IT';
+    _staffCalRecognition.continuous = true;
+    _staffCalRecognition.interimResults = true;
+    _staffCalRecognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      const input = document.getElementById('staffCalInput');
+      if (input) { input.value = transcript; staffCalAutoResize(input); }
+    };
+    _staffCalRecognition.onerror = () => {
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+    };
+    _staffCalRecognition.onend = () => {
+      _staffCalDictating = false;
+      if (btn) btn.classList.remove('recording');
+    };
+    _staffCalRecognition.start();
+    _staffCalDictating = true;
+    if (btn) btn.classList.add('recording');
+    staffCalSetStatus('Sto ascoltando...', 'pending');
+  }
+
+  // ── Parser principale ──────────────────────────────────────────────────────
+  // Formati supportati:
+  //   "campo 2 18-19:30 Mario Rossi"               → partita
+  //   "lezione Santiago campo 1 18-19:30"           → lezione, nome=Santiago
+  //   "lezione LoZio campo 3 ogni martedì 18-19:30" → lezione ricorrente
+  //   "campo 2 ogni venerdì 20-21:30 Spinazze"      → partita ricorrente
+  // Usa PARSER_RULES (caricato da GitHub) con fallback alle regole hardcoded.
+  function staffCalParseBookingText(text, currentDate) {
+    const rules = PARSER_RULES || STAFF_CAL_FALLBACK_RULES;
+    const t = String(text || '').trim();
+
+    // Tipo: parole chiave lezione dal JSON → lezione, altrimenti partita
+    const lezioneKw = rules.campi_opzionali?.tipo?.keywords_lezione || ['lezione', 'lesson'];
+    const lezioneRx = new RegExp('^\\s*(' + lezioneKw.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b', 'i');
+    const tipoMatch = lezioneRx.test(t);
+    const tipo = tipoMatch ? 'lezione' : 'partita';
+
+    // Per le lezioni, il nome istruttore viene subito dopo la keyword
+    let istruttore = '';
+    let restText = t;
+    if (tipoMatch) {
+      const afterTipo = t.replace(lezioneRx, '').trim();
+      const istrMatch = afterTipo.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{0,30}?)\s+(?=campo\b|ogni\b|\d)/i);
+      if (istrMatch) {
+        const rawIstr = istrMatch[1].trim();
+        const fuzzy = rules.campi_opzionali?.istruttore?.fuzzy_match || {};
+        const validi = rules.campi_opzionali?.istruttore?.valori_validi || [];
+        istruttore = fuzzy[rawIstr]
+          || validi.find(v => v.toLowerCase() === rawIstr.toLowerCase())
+          || rawIstr;
+      }
+      restText = afterTipo;
+    }
+
+    const campoMatch = restText.match(/\bcampo\s*([1-4])\b/i) || t.match(/\bcampo\s*([1-4])\b/i);
+    if (!campoMatch) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.2, error_message: 'campo non riconosciuto', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
+    const campoNum = parseInt(campoMatch[1]);
+
+    const timeMatch = restText.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/)
+                  || t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+    if (!timeMatch) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.3, error_message: 'orario non riconosciuto', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
+    const oraInizio = `${String(timeMatch[1]).padStart(2,'0')}:${(timeMatch[2] || '00').padStart(2,'0')}`;
+    const oraFine   = `${String(timeMatch[3]).padStart(2,'0')}:${(timeMatch[4] || '00').padStart(2,'0')}`;
+    const [sh, sm] = oraInizio.split(':').map(Number);
+    const [eh, em] = oraFine.split(':').map(Number);
+    const durata = (eh * 60 + em) - (sh * 60 + sm);
+    if (durata <= 0 || durata > 360) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence: 0.4, error_message: 'durata non valida', versione_parser: rules.versione }).catch(() => {});
+      return null;
+    }
+
+    // Ricorrenza: usa mappa giorni dal JSON (normalizzata per accenti)
+    const GIORNI = { lunedi:1, lunedì:1, martedi:2, martedì:2, mercoledi:3, mercoledì:3,
+                     giovedi:4, giovedì:4, venerdi:5, venerdì:5, sabato:6, domenica:0 };
+    let ricorrenza = null;
+    const ogniMatch = t.match(/\bogni\s+([a-zàáèéìíòóùú]+)/i);
+    if (ogniMatch) {
+      const giorno = ogniMatch[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const normalized = Object.keys(GIORNI).find(k =>
+        k.normalize('NFD').replace(/[̀-ͯ]/g, '') === giorno
+      );
+      if (normalized !== undefined) {
+        ricorrenza = { giorno: ogniMatch[1], weekdayNum: GIORNI[normalized] };
+      }
+    }
+
+    // Data singola (usata solo se non ricorrente)
+    let isoDate = currentDate || staffCalTodayIso();
+    if (!ricorrenza) {
+      if (/\bdomani\b/i.test(t)) {
+        const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 1); isoDate = d.toISOString().slice(0,10);
+      } else if (/\bdopodomani\b/i.test(t)) {
+        const d = new Date(isoDate + 'T00:00:00'); d.setDate(d.getDate() + 2); isoDate = d.toISOString().slice(0,10);
+      } else {
+        const dm = t.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+        if (dm) isoDate = dm[1];
+      }
+    }
+
+    // Confidence: campo e ora estratti → 0.9, altrimenti più basso
+    const confidence = 0.5 + (campoMatch ? 0.2 : 0) + (timeMatch ? 0.2 : 0) + (tipo === 'lezione' && istruttore ? 0.1 : 0);
+    const threshold = rules.intents?.PRENOTA?.confidence_threshold ?? 0.7;
+    if (confidence < threshold) {
+      logParserError({ input_originale: t, intent_riconosciuto: tipo, confidence, error_message: 'confidence bassa', versione_parser: rules.versione }).catch(() => {});
+    }
+
+    // Nome: per lezioni = istruttore già estratto; per partite = testo dopo l'orario
+    let nome = istruttore || 'Staff';
+    if (!istruttore) {
+      const timePos = t.search(timeMatch[0]);
+      const afterTime = timePos >= 0 ? t.slice(timePos + timeMatch[0].length).replace(/^[\s\-–]+/, '').trim() : '';
+      const nameRaw = afterTime.replace(/\bogni\s+\S+/i, '').trim();
+      if (nameRaw) nome = nameRaw;
+    }
+
+    return { campo: `Campo ${campoNum}`, campoNum, data: isoDate, ora: oraInizio, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, ricorrenza, confidence };
+  }
+
+  // Espande ricorrenza nelle prossime N settimane (default 4), partendo da oggi
+  function staffCalExpandRicorrenza(weekdayNum, settimane = 4) {
+    const dates = [];
+    const today = new Date(staffCalTodayIso() + 'T00:00:00');
+    let cursor = new Date(today);
+    // Avanza al primo giorno target (almeno domani)
+    cursor.setDate(cursor.getDate() + 1);
+    while (cursor.getDay() !== weekdayNum) cursor.setDate(cursor.getDate() + 1);
+    for (let i = 0; i < settimane; i++) {
+      dates.push(cursor.toISOString().slice(0, 10));
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return dates;
+  }
+
+  // Stato pending per conferma ricorrenza (double-click pattern)
+  let _staffCalPendingRicorrenza = null;
+
+  // ── Submit singola prenotazione via edge function ──────────────────────────
+  async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey) {
+    const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+      body: JSON.stringify({
+        campo: parsed.campoNum, data: parsed.data, ora: parsed.ora,
+        oraFine: parsed.oraFine, durata: parsed.durata,
+        nome: parsed.nome, tipo: parsed.tipo || 'partita',
+        istruttore: parsed.istruttore || undefined,
+      }),
+    });
+    const respText = await response.text();
+    let data = null;
+    try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+    if (!response.ok || data?.ok === false) {
+      throw new Error(data?.message || data?.error || `Errore HTTP ${response.status}`);
+    }
+    if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+    return data;
+  }
+
+  // ── Submit principale con gestione ricorrenza ──────────────────────────────
+  async function staffCalSubmitBooking() {
+    const input = document.getElementById('staffCalInput');
+    const text = (input || {}).value ? input.value.trim() : '';
+    if (!text) { if (input) input.focus(); return; }
+    const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    const parsed = staffCalParseBookingText(text, isoDate);
+    if (!parsed) {
+      staffCalSetStatus('Formato non riconosciuto. Usa: "lezione Santiago campo 1 18-19:30" oppure "campo 2 ogni martedì 20-21"', 'error');
+      return;
+    }
+
+    // ── Ricorrenza: mostra conferma al primo clic, esegue al secondo ──────────
+    if (parsed.ricorrenza) {
+      const dates = staffCalExpandRicorrenza(parsed.ricorrenza.weekdayNum, 4);
+      if (!_staffCalPendingRicorrenza || _staffCalPendingRicorrenza.text !== text) {
+        // Primo clic: mostra anteprima e chiedi conferma
+        _staffCalPendingRicorrenza = { text, parsed, dates };
+        const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
+        const preview = dates.map(d => {
+          const [y,m,g] = d.split('-'); return `${g}/${m}`;
+        }).join(', ');
+        staffCalSetStatus(
+          `📅 Ricorrenza ${parsed.ricorrenza.giorno} ×${dates.length}: ${preview} · ${parsed.ora}–${parsed.oraFine} · ${tipoLabel} ${parsed.nome} · Clicca 'Prenota' di nuovo per confermare`,
+          'pending'
+        );
+        return;
+      }
+      // Secondo clic: esegue
+      _staffCalPendingRicorrenza = null;
+      const sendBtn = document.getElementById('staffCalSendBtn');
+      if (sendBtn) sendBtn.disabled = true;
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        let ok = 0, fail = 0;
+        for (let i = 0; i < dates.length; i++) {
+          const singleParsed = { ...parsed, data: dates[i] };
+          staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
+          try {
+            await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey);
+            staffCalSaveLocal(singleParsed);
+            ok++;
+          } catch (e) {
+            fail++;
+            console.warn('STAFF_CAL_RICORRENZA_FAIL', dates[i], e.message);
+          }
+          // Pausa tra prenotazioni (il worker richiede ~45s ciascuna)
+          if (i < dates.length - 1) await new Promise(r => setTimeout(r, 2000));
+        }
+        if (input) { input.value = ''; staffCalAutoResize(input); }
+        renderStaffCalendar();
+        staffCalSetStatus(
+          fail === 0
+            ? `✓ ${ok} prenotazioni ricorrenti create (${parsed.ricorrenza.giorno})`
+            : `⚠ ${ok} create, ${fail} fallite — vedi console`,
+          fail === 0 ? 'done' : 'error'
+        );
+      } catch (err) {
+        staffCalSetStatus('Errore: ' + (err.message || err), 'error');
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+      }
+      return;
+    }
+
+    // ── Prenotazione singola ───────────────────────────────────────────────────
+    _staffCalPendingRicorrenza = null;
+    const sendBtn = document.getElementById('staffCalSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
+    const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
+    staffCalSetStatus(`Prenotando ${tipoLabel} ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine} su Matchpoint (~45s)...`, 'pending');
+    try {
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey);
+      staffCalSaveLocal(parsed);
+      staffCalSetStatus(`✓ ${tipoLabel} inviata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+      if (input) { input.value = ''; staffCalAutoResize(input); }
+      if (parsed.data === isoDate) renderStaffCalendar();
+    } catch (err) {
+      staffCalSetStatus('Errore: ' + (err.message || err), 'error');
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
+  }
+
+  function staffCalSaveLocal(parsed) {
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const conflict = existing.some(b => b.data === parsed.data && b.campo === parsed.campoNum && b.ora === parsed.ora);
+    if (conflict) return false;
+    existing.push({
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`,
+      data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
+      campo: parsed.campoNum, nome: parsed.nome, durata: parsed.durata,
+      tipo: parsed.tipo || 'partita',
+      createdAt: new Date().toISOString(),
+    });
+    if (typeof save === 'function') save('staffBookings', existing);
+    return true;
+  }
+
+  function staffCalSetStatus(msg, type) {
+    const el = document.getElementById('staffCalInputStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'staff-cal-input-status' + (type ? ' ' + type : '');
+  }
+  </script>
+  <!-- ════ end Staff Calendar ════ -->
 
 </body>
 </html>
