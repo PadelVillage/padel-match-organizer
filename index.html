@@ -6708,7 +6708,7 @@ body.assessment-public-mode .assessment-public-only-card {
                   </article>
                 </div>
               </div>
-              <div class="matchpoint-data-accordion" id="matchpointParserAccordion">
+              <div class="matchpoint-data-accordion" id="matchpointParserAccordion" hidden>
                 <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointParserAccordionPanel"
                   onclick="toggleMatchpointDataAccordion('matchpointParserAccordion'); if(document.getElementById('matchpointParserAccordion').classList.contains('open')) pmoParserLoadErrors()">
                   <span>
@@ -12863,6 +12863,7 @@ Grazie.`
         dataActionStatusRefreshInProgress = false;
       }
       try { renderMatchpointRoutinePanel(); } catch (err) { console.warn('Routine DATI non aggiornata:', err); }
+      try { if (typeof pmoApplyParserConfigVisibility === 'function') pmoApplyParserConfigVisibility(); } catch {}
     }
 
     function isMatchpointDataTabActive() {
@@ -33354,6 +33355,13 @@ Per confermare scrivi ELIMINA.`);
   <!-- ════ Parser Config Admin Panel (v1.1) ════ -->
   <script>
   // ── Parser Config — Admin Panel ─────────────────────────────────────────────
+
+  function pmoApplyParserConfigVisibility() {
+    const accordion = document.getElementById('matchpointParserAccordion');
+    if (!accordion) return;
+    const profile = pmoIsStaffProfileActive(pmoStaffProfile) ? pmoStaffProfile : null;
+    accordion.hidden = !profile || !['owner', 'admin'].includes(profile.role);
+  }
 
   let _pmoParserSelectedErrors = []; // Array di { id, input_originale, tipo }
 
