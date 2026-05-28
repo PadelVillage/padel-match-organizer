@@ -1,41 +1,81 @@
 {
-  "versione": "v1.0",
-  "data_ultimo_aggiornamento": "2026-05-27T16:00:00Z",
-  "aggiornato_da": "sonnet_initial",
-
+  "versione": "v1.1",
+  "data_ultimo_aggiornamento": "2026-05-28T21:35:07.093Z",
+  "aggiornato_da": "admin_panel",
   "intents": {
     "PRENOTA": {
-      "keywords": ["prenota", "prenotati", "voglio prenotare"],
-      "sinonimi": ["prenotami", "mi prenota", "prenota mi"],
+      "keywords": [
+        "prenota",
+        "prenotati",
+        "voglio prenotare"
+      ],
+      "sinonimi": [
+        "prenotami",
+        "mi prenota",
+        "prenota mi",
+        "Domani campo 3 ore 18 io e Marco"
+      ],
       "regex_pattern": "(prenota|prenotami|mi\\s+prenota)",
       "confidence_threshold": 0.7
     },
     "CANCELLA": {
-      "keywords": ["cancella", "annulla", "rimuovi"],
-      "sinonimi": ["cancellami", "annullami", "toglimi"],
+      "keywords": [
+        "cancella",
+        "annulla",
+        "rimuovi"
+      ],
+      "sinonimi": [
+        "cancellami",
+        "annullami",
+        "toglimi"
+      ],
       "regex_pattern": "(cancella|cancellami|annulla)",
       "confidence_threshold": 0.7
     },
     "TROVA": {
-      "keywords": ["trova", "cerca", "mostrami"],
-      "sinonimi": ["visualizza", "elenca", "dimmi"],
+      "keywords": [
+        "trova",
+        "cerca",
+        "mostrami"
+      ],
+      "sinonimi": [
+        "visualizza",
+        "elenca",
+        "dimmi"
+      ],
       "regex_pattern": "(trova|cerca|mostrami)",
       "confidence_threshold": 0.6
     },
     "CORREGGI": {
-      "keywords": ["cambia", "modifica", "correggi", "sposta"],
-      "sinonimi": ["spostami", "cambiami", "modificami"],
+      "keywords": [
+        "cambia",
+        "modifica",
+        "correggi",
+        "sposta"
+      ],
+      "sinonimi": [
+        "spostami",
+        "cambiami",
+        "modificami"
+      ],
       "regex_pattern": "(cambia|modifica|sposta)",
       "confidence_threshold": 0.7
     },
     "RICORRENZA": {
-      "keywords": ["ogni", "ricorrente", "settimanale"],
-      "sinonimi": ["ripeti", "periodico", "ogni volta"],
+      "keywords": [
+        "ogni",
+        "ricorrente",
+        "settimanale"
+      ],
+      "sinonimi": [
+        "ripeti",
+        "periodico",
+        "ogni volta"
+      ],
       "regex_pattern": "(ogni|ricorrente|settimanale)",
       "confidence_threshold": 0.8
     }
   },
-
   "campi_obbligatori": {
     "data": {
       "tipo": "YYYY-MM-DD",
@@ -57,10 +97,15 @@
         "domenica": "next_sunday"
       }
     },
-    "ora_inizio": { "tipo": "HH:MM", "format": "24h" },
-    "ora_fine": { "tipo": "HH:MM", "format": "24h" }
+    "ora_inizio": {
+      "tipo": "HH:MM",
+      "format": "24h"
+    },
+    "ora_fine": {
+      "tipo": "HH:MM",
+      "format": "24h"
+    }
   },
-
   "campi_opzionali": {
     "campo": {
       "tipo": "numero 1-4",
@@ -69,11 +114,18 @@
     },
     "tipo": {
       "tipo": "partita|lezione",
-      "keywords_lezione": ["lezione", "lesson"],
+      "keywords_lezione": [
+        "lezione",
+        "lesson"
+      ],
       "default": "partita"
     },
     "istruttore": {
-      "valori_validi": ["Santiago", "LoZio", "Spinazze"],
+      "valori_validi": [
+        "Santiago",
+        "LoZio",
+        "Spinazze"
+      ],
       "fuzzy_match": {
         "Santi": "Santiago",
         "santi": "Santiago",
@@ -86,18 +138,31 @@
       "attivata_quando": "tipo === 'lezione'"
     },
     "ricorrenza": {
-      "valori_validi": ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"],
+      "valori_validi": [
+        "lunedì",
+        "martedì",
+        "mercoledì",
+        "giovedì",
+        "venerdì",
+        "sabato",
+        "domenica"
+      ],
       "settimane_default": 4,
       "default": null
     }
   },
-
   "log_evoluzione": [
     {
       "versione": "v1.0",
       "data": "2026-05-27",
-      "modifiche": "Release iniziale — parser dinamico con regole da JSON",
+      "modifiche": "Release iniziale â parser dinamico con regole da JSON",
       "aggiornato_da": "sonnet_initial"
+    },
+    {
+      "versione": "v1.1",
+      "data": "2026-05-28",
+      "modifiche": "sinonimo_aggiunto",
+      "aggiornato_da": "admin_panel"
     }
   ]
 }
