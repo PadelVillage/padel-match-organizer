@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.585</title>
+  <title>Padel Match Organizer v5.588</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6938,7 +6938,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.585';
+    const APP_VERSION = '5.588';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33494,6 +33494,28 @@ Per confermare scrivi ELIMINA.`);
     return modifiche;
   }
 
+  // ── v5.588: applica le modifiche al SET COMPLETO di regole (mirror della Edge Function) ──
+  // La Edge Function valida lo schema completo: deve ricevere l'intero oggetto regole, non il
+  // sottoinsieme filtrato mostrato in Tab 2. Altrimenti ritorna INVALID_RULES.
+  function pmoParserApplyModificheFull(base, modifiche) {
+    const updated = JSON.parse(JSON.stringify(base || {}));
+    if (!updated.intents) updated.intents = {};
+    for (const mod of (modifiche || [])) {
+      if (mod.tipo === 'sinonimo_aggiunto' && mod.intent && mod.sinonimo_nuovo) {
+        const intent = updated.intents[mod.intent];
+        if (intent) {
+          const sin = intent.sinonimi || [];
+          if (!sin.includes(mod.sinonimo_nuovo)) sin.push(mod.sinonimo_nuovo);
+          intent.sinonimi = sin;
+        }
+      } else if (mod.tipo === 'fuzzy_match_aggiunto' && mod.campo === 'istruttore' && mod.mapping) {
+        const istr = updated.campi_opzionali?.istruttore;
+        if (istr) istr.fuzzy_match = { ...(istr.fuzzy_match || {}), ...mod.mapping };
+      }
+    }
+    return updated;
+  }
+
   // ── FASE 3 Step 1: Invia errori selezionati → Tab 2 con regole rilevanti ──
   function pmoSendSelectedErrorsToTab2() {
     const previewEl = document.getElementById('parserConfigPreviewJson');
@@ -33785,6 +33807,12 @@ Per confermare scrivi ELIMINA.`);
     const allErrorIds = window.pmoSelectedErrorIds || _pmoParserSelectedErrors.flatMap(e => e.ids);
     const errorsForReparsify = _pmoParserSelectedErrors.slice(); // copia prima del clear
 
+    // v5.588: costruisci il SET COMPLETO di regole applicando le modifiche all'intero
+    // PARSER_RULES (non al sottoinsieme filtrato). La Edge Function valida lo schema
+    // completo e ritorna INVALID_RULES se riceve solo il frammento mostrato in Tab 2.
+    const baseRules = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES : STAFF_CAL_FALLBACK_RULES;
+    const regoleComplete = pmoParserApplyModificheFull(baseRules, modifiche);
+
     if (approveBtn) approveBtn.disabled = true;
     if (statusEl) { statusEl.textContent = 'Aggiornamento in corso...'; statusEl.className = 'matchpoint-action-state pending'; }
     try {
@@ -33794,7 +33822,7 @@ Per confermare scrivi ELIMINA.`);
       const res = await fetch(cfg.supabaseUrl + '/functions/v1/parser-rules-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken },
-        body: JSON.stringify({ modifiche, error_ids: allErrorIds, branch })
+        body: JSON.stringify({ modifiche, regole: regoleComplete, error_ids: allErrorIds, branch })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Errore sconosciuto');

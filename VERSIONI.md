@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.588 / Fix: Tab 2 INVALID_RULES
+
+- **Correzione INVALID_RULES nel Parser Config (Tab 2 "Genera Aggiornamento")**: Il pulsante "Approva e Aggiorna File" ritornava `INVALID_RULES`. Causa: il front-end inviava alla Edge Function `parser-rules-update` solo le `modifiche` e il frammento filtrato di regole mostrato in Tab 2, mentre la funzione valida lo schema completo delle regole. Ora il client costruisce il SET COMPLETO di regole applicando le modifiche all'intero `PARSER_RULES` e lo invia nel campo `regole` del payload. La Edge Function è stata irrobustita per accettare e validare l'oggetto `regole` completo (con fallback su `modifiche`), restituendo `INVALID_RULES` solo se mancano `intents` o `campi_obbligatori`.
+
 ## v5.538 / Scorciatoia di sincronizzazione nel lotto vuoto dell'Autovalutazione
 
 - **Pulsante Sincronizza Ora nel Flusso**: Aggiunto un pulsante di sincronizzazione rapida ("Sincronizza dati locali ora") direttamente nel riquadro dell'Autovalutazione quando il lotto risulta vuoto. Questo evita allo staff di dover cercare il pannello "Amministrazione > Supabase", guidandoli visivamente all'azione corretta e gestendo in tempo reale la notifica di eventuali errori di permessi.

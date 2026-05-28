@@ -219,8 +219,15 @@ Deno.serve(async (req) => {
   // ── Dispatch: aggiornamento regole (azione originale) ─────────────────────
   if (!githubToken) return json({ ok: false, error: 'GITHUB_TOKEN_NOT_CONFIGURED' }, 500);
 
-  const { modifiche, error_ids, branch = 'main' } = body as { modifiche: Modifica[]; error_ids: string[]; branch?: string };
-  if (!Array.isArray(modifiche) || modifiche.length === 0) {
+  const { modifiche, regole, error_ids, branch = 'main' } = body as {
+    modifiche?: Modifica[];
+    regole?: Record<string, unknown>;
+    error_ids: string[];
+    branch?: string;
+  };
+  const hasModifiche = Array.isArray(modifiche) && modifiche.length > 0;
+  const hasRegole = !!regole && typeof regole === 'object' && !Array.isArray(regole);
+  if (!hasModifiche && !hasRegole) {
     return json({ ok: false, error: 'NO_MODIFICHE' }, 400);
   }
 
@@ -228,10 +235,35 @@ Deno.serve(async (req) => {
     // 1. Leggi file attuale da GitHub
     const { sha, json: currentRules } = await githubGetFile(githubToken, branch as string);
 
-    // 2. Applica modifiche
-    const newRules = applyModifiche(currentRules as Record<string, unknown>, modifiche, 'admin_panel');
+    // 2. Calcola le nuove regole
+    let newRules: Record<string, unknown>;
+    if (hasRegole) {
+      // v5.588: il client invia il SET COMPLETO di regole già mergiato — valida lo schema.
+      const r = regole as Record<string, unknown>;
+      const intentsOk = !!r.intents && typeof r.intents === 'object' && !Array.isArray(r.intents);
+      const campiOk   = !!r.campi_obbligatori && typeof r.campi_obbligatori === 'object' && !Array.isArray(r.campi_obbligatori);
+      if (!intentsOk || !campiOk) {
+        return json({ ok: false, error: 'INVALID_RULES' }, 400);
+      }
+      newRules = JSON.parse(JSON.stringify(r));
+      // Preserva e accoda il log dal file corrente, poi incrementa la versione.
+      const versione_nuova = incrementVersion(clean((currentRules as Record<string, unknown>).versione));
+      const log = ((currentRules as Record<string, unknown>).log_evoluzione as unknown[]) || [];
+      log.push({
+        versione: versione_nuova,
+        data: new Date().toISOString().slice(0, 10),
+        modifiche: hasModifiche ? (modifiche as Modifica[]).map(m => m.tipo).join(', ') : 'aggiornamento manuale regole',
+        aggiornato_da: 'admin_panel',
+      });
+      newRules.log_evoluzione = log;
+      newRules.versione = versione_nuova;
+      newRules.data_ultimo_aggiornamento = new Date().toISOString();
+      newRules.aggiornato_da = 'admin_panel';
+    } else {
+      newRules = applyModifiche(currentRules as Record<string, unknown>, modifiche as Modifica[], 'admin_panel');
+    }
     const versione_nuova = clean(newRules.versione as string);
-    const nPatterns = modifiche.length;
+    const nPatterns = hasModifiche ? (modifiche as Modifica[]).length : 1;
     const commitMsg = `Auto-fix ${versione_nuova}: ${nPatterns} pattern${nPatterns === 1 ? '' : 's'} corretto`;
 
     // 3. Commit su GitHub
