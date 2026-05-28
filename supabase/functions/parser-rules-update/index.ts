@@ -1,3 +1,4 @@
+// Deploy marker: redeploy TEST (cudiqnrrlbyqryrtaprd) — fix Tab 2 INVALID_RULES (v5.588)
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 
