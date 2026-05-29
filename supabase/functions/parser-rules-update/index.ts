@@ -1,4 +1,5 @@
 // Deploy marker: redeploy TEST (cudiqnrrlbyqryrtaprd) — fix snapshot_json column (col drift) + CI entrypoint check — 2026-05-29
+// redeploy trigger 2026-05-29: forza redeploy parser-rules-update su TEST per portare il fix snapshot_json al runtime
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 
