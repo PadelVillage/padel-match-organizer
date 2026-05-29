@@ -38,10 +38,18 @@ jobs:
             exit 0
           fi
 
-          # Su push: confronta HEAD~1..HEAD e tira fuori le funzioni toccate
+          # Su push: confronta HEAD~1..HEAD e tira fuori le funzioni toccate.
+          # Considera solo le cartelle con un entrypoint index.ts: una cartella
+          # senza index.ts (es. parser-rules/, che contiene solo parser_rules.json)
+          # non è una Edge Function deployabile e va ignorata, altrimenti
+          # `supabase functions deploy` fallisce con "Entrypoint path does not exist".
           CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'supabase/functions/**' \
             | awk -F/ '$1=="supabase" && $2=="functions" && $3 !~ /^_/ {print $3}' \
-            | sort -u | tr '\n' ' ')
+            | sort -u \
+            | while read -r fn; do
+                [ -n "$fn" ] && [ -f "supabase/functions/$fn/index.ts" ] && echo "$fn"
+              done \
+            | tr '\n' ' ')
           echo "Funzioni modificate: $CHANGED"
           echo "functions=$CHANGED" >> "$GITHUB_OUTPUT"
 
@@ -50,8 +58,8 @@ jobs:
         run: |
           set -euo pipefail
           for fn in ${{ steps.changed.outputs.functions }}; do
-            if [ ! -d "supabase/functions/$fn" ]; then
-              echo "::warning::Cartella supabase/functions/$fn non trovata, salto"
+            if [ ! -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::warning::supabase/functions/$fn/index.ts non trovato — non è una Edge Function deployabile (es. cartella di soli dati), salto"
               continue
             fi
             echo "::group::Deploy $fn"
