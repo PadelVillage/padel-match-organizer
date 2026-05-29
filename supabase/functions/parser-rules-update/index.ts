@@ -220,6 +220,9 @@ Deno.serve(async (req) => {
 
   // ── Dispatch: aggiornamento regole (azione originale) ─────────────────────
   if (!githubToken) return json({ ok: false, error: 'GITHUB_TOKEN_NOT_CONFIGURED' }, 500);
+  // Senza service_role key il client scrive con privilegi insufficienti (RLS blocca l'INSERT
+  // su pmo_parser_config) → fail silenzioso storico. Meglio fermarsi subito ed essere espliciti.
+  if (!serviceRoleKey) return json({ ok: false, error: 'SERVICE_ROLE_KEY_NOT_CONFIGURED' }, 500);
 
   const { modifiche, regole, error_ids, branch = 'main' } = body as {
     modifiche?: Modifica[];
@@ -271,25 +274,48 @@ Deno.serve(async (req) => {
     // 3. Commit su GitHub
     await githubPutFile(githubToken, branch as string, sha, newRules, commitMsg);
 
-    // 4. Salva snapshot in pmo_parser_config
+    // 4. Salva snapshot in pmo_parser_config.
+    // NB: il commit su GitHub (passo 3) è già avvenuto. Se l'INSERT DB fallisce NON rispondiamo
+    // più 200 "verde fasullo": propaghiamo l'errore reale (es. RLS, duplicate key) così il
+    // problema è visibile lato client e nei log invece di sparire silenziosamente.
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-    await admin.from('pmo_parser_config').insert({
+    const { error: configError } = await admin.from('pmo_parser_config').insert({
       versione: versione_nuova,
       snapshot_json: newRules,
       aggiornato_da: 'admin_panel',
       data_aggiornamento: new Date().toISOString(),
       note: `Updated via admin panel by ${actor.email}`,
     });
+    if (configError) {
+      console.error('[parser-rules-update] pmo_parser_config insert failed:', configError.message);
+      return json({
+        ok: false,
+        error: `DB_INSERT_FAILED: ${configError.message}`,
+        stage: 'pmo_parser_config',
+        versione_nuova,        // GitHub è già stato committato a questa versione
+        commit_message: commitMsg,
+      }, 500);
+    }
 
     // 5. Marca errori come processati (FASE 3)
     let error_ids_updated = 0;
     if (Array.isArray(error_ids) && error_ids.length > 0) {
-      const { data: updated } = await admin
+      const { data: updated, error: errorsUpdateError } = await admin
         .from('pmo_parser_errors')
         .update({ admin_selected: true })
         .in('id', error_ids)
         .select('id');
-      error_ids_updated = updated?.length ?? error_ids.length;
+      if (errorsUpdateError) {
+        console.error('[parser-rules-update] pmo_parser_errors update failed:', errorsUpdateError.message);
+        return json({
+          ok: false,
+          error: `ERRORS_UPDATE_FAILED: ${errorsUpdateError.message}`,
+          stage: 'pmo_parser_errors',
+          versione_nuova,
+          commit_message: commitMsg,
+        }, 500);
+      }
+      error_ids_updated = updated?.length ?? 0;
     }
 
     return json({ ok: true, versione_nuova, commit_message: commitMsg, error_ids_updated, regole_nuove: newRules });
