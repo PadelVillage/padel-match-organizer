@@ -1,6 +1,6 @@
 {
-  "versione": "v1.2",
-  "data_ultimo_aggiornamento": "2026-05-29T11:43:29.360Z",
+  "versione": "v1.3",
+  "data_ultimo_aggiornamento": "2026-05-29T12:41:44.857Z",
   "aggiornato_da": "admin_panel",
   "intents": {
     "PRENOTA": {
@@ -156,7 +156,7 @@
     {
       "versione": "v1.0",
       "data": "2026-05-27",
-      "modifiche": "Release iniziale Ã¢ÂÂ parser dinamico con regole da JSON",
+      "modifiche": "Release iniziale ÃÂ¢ÃÂÃÂ parser dinamico con regole da JSON",
       "aggiornato_da": "sonnet_initial"
     },
     {
@@ -167,6 +167,12 @@
     },
     {
       "versione": "v1.2",
+      "data": "2026-05-29",
+      "modifiche": "sinonimo_aggiunto",
+      "aggiornato_da": "admin_panel"
+    },
+    {
+      "versione": "v1.3",
       "data": "2026-05-29",
       "modifiche": "sinonimo_aggiunto",
       "aggiornato_da": "admin_panel"
