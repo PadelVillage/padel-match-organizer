@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer v5.588</title>
+  <title>Padel Match Organizer v5.589</title>
   <link rel="canonical" href="https://padelvillage.github.io/padel-match-organizer/" />
   <meta property="og:title" content="Padel Match Organizer" />
   <meta property="og:description" content="Padel Village" />
@@ -6938,7 +6938,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.588';
+    const APP_VERSION = '5.589';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33400,7 +33400,7 @@ Per confermare scrivi ELIMINA.`);
       const cfg = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('manage_users', 'visualizzare gli errori del parser');
       const res = await fetch(
-        cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?admin_selected=eq.false&timestamp=gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}&order=timestamp.desc&select=id,input_originale,intent_riconosciuto,confidence,timestamp,versione_parser`,
+        cfg.supabaseUrl + `/rest/v1/pmo_parser_errors?status=eq.pending&admin_selected=eq.false&timestamp=gte.${new Date(Date.now() - 7*24*60*60*1000).toISOString()}&order=timestamp.desc&select=id,input_originale,intent_riconosciuto,confidence,timestamp,versione_parser`,
         { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + staff.accessToken, Accept: 'application/json' } }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
