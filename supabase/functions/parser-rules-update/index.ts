@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
     await admin.from('pmo_parser_config').insert({
       versione: versione_nuova,
-      regole_json: newRules,
+      snapshot_json: newRules,
       aggiornato_da: 'admin_panel',
       data_aggiornamento: new Date().toISOString(),
       note: `Updated via admin panel by ${actor.email}`,
