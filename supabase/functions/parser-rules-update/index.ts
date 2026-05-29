@@ -1,4 +1,4 @@
-// Deploy marker: redeploy TEST (cudiqnrrlbyqryrtaprd) — fix Tab 2 INVALID_RULES (v5.588)
+// Deploy marker: redeploy TEST (cudiqnrrlbyqryrtaprd) — fix snapshot_json column (col drift) + CI entrypoint check — 2026-05-29
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 
