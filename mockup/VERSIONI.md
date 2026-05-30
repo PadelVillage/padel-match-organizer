@@ -2,6 +2,7 @@
 
 | Versione | Data       | Changelog                                                                                                                  |
 |----------|------------|----------------------------------------------------------------------------------------------------------------------------|
+| v3.3     | 2026-05-30 | v3.2 → v3.3: ingranditi i testi del pannello chat e della scheda di modifica su mobile (coerenti con l'agenda a 20px); desktop invariato; nessuna modifica di logica. |
 | v3.2     | 2026-05-30 | v3.1 → v3.2: testi mobile portati a 20px base (agenda più leggibile a bordo campo); desktop invariato; nessuna modifica di logica. |
 | v3.1     | —          | Tipografia mobile 16px (era 15px); rimossa legenda icone su mobile; desktop invariato.                                     |
 | v3.0     | —          | Impianto responsive (griglia ≥900px / agenda <900px); tab C1–C4; navigatore data; fasce libere unite; font 15px; --text-muted più scuro. |
