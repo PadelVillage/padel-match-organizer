@@ -10,6 +10,7 @@ const DEFAULT_CLIENTS_PATH = '/clientes/Listadoclientes.aspx?pagesize=15';
 const DEFAULT_PLAYERS_PATH = '/Reservas/ListadoJugadores.aspx';
 const DEFAULT_EXPORT_TARGET = 'ctl01$ctl00$CC$ContentPlaceHolderAcciones$LinkButtonExportar';
 const DEFAULT_HISTORY_DAYS = 30;
+const RECURSO_BY_CAMPO = { 1: 13, 2: 14, 3: 15, 4: 16 }; // padel: Campo N → id_recurso Matchpoint
 const MAX_BODY_BYTES = 64 * 1024;
 
 function clean(value) {
@@ -3433,12 +3434,81 @@ async function createBookingWithBrowser(options = {}) {
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
-    // ── Naviga al tabellone ───────────────────────────────────────────────────
+    // ── Ora fine: usata da entrambi i percorsi ────────────────────────────────
+    const oraFineCalc = oraFine || computeEndTime(ora, durata);
+    diagnostic.oraFineCalc = oraFineCalc;
+
+    if (tipo === 'partita') {
+      // ── Percorso diretto Ficha (salta tabellone e lettura cella) ─────────────
+      const recurso = RECURSO_BY_CAMPO[Number(campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${campo} senza id_recurso noto.`, diagnostic);
+
+      const [yyyy, mm, dd] = data.split('-');
+      const fecha = `${dd}/${mm}/${yyyy}`;
+      const fichaUrl = `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx`
+        + `?modo=fancy&id_recurso=${recurso}`
+        + `&fecha=${encodeURIComponent(fecha)}`
+        + `&hora_inicio=${encodeURIComponent(ora)}`
+        + `&hora_fin=${encodeURIComponent(oraFineCalc)}`;
+
+      diagnostic.steps.push('goto_ficha');
+      diagnostic.fichaUrl = fichaUrl;
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+      diagnostic.steps.push('wait_form');
+      const formOk = await page.getByText('Nuova partita', { exact: false })
+        .first().isVisible({ timeout: 8000 }).catch(() => false);
+      if (!formOk) {
+        const afterUrl = page.url();
+        const bodySample = await page.evaluate(() =>
+          (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+        ).catch(() => '');
+        let inputs = [];
+        try { inputs = await dumpFormInputs(page); } catch {}
+        diagnostic.afterGotoUrl = afterUrl;
+        diagnostic.bodySample = bodySample;
+        diagnostic.formInputsDump = inputs;
+        throw fail('FICHA_FORM_NOT_VISIBLE',
+          `Form non visibile. afterUrl=${afterUrl} body="${bodySample}" inputs=${JSON.stringify(inputs).slice(0, 400)}`,
+          diagnostic);
+      }
+
+      // Il form è sulla pagina principale (non in un iframe): usare `page`
+      const formCtx = page;
+      diagnostic.formInputsDump = await dumpFormInputs(formCtx);
+      diagnostic.steps.push(`fill_form_${tipo}`);
+
+      // 1. Spunta "Privato" (obbligatorio)
+      await checkPrivatoCheckbox(formCtx, page, diagnostic);
+
+      // 2. Aggiungi giocatore via autocomplete
+      await searchAndAddPlayer(formCtx, page, nome, diagnostic);
+
+      // 3. Salva
+      const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare'], diagnostic);
+      if (!saved) {
+        let inputs2 = [];
+        try { inputs2 = await dumpFormInputs(formCtx); } catch {}
+        diagnostic.formInputsDump = inputs2;
+        throw fail('SAVE_BUTTON_NOT_FOUND', 'Bottone di salvataggio non trovato nel form Partita.', diagnostic);
+      }
+
+      // 4. Breve attesa — NON ricaricare il tabellone pesante
+      await page.waitForTimeout(2000);
+      diagnostic.postSubmitUrl = page.url();
+      diagnostic.steps.push('done');
+      return {
+        ok: true,
+        campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        diagnostic,
+      };
+    }
+
+    // ── Percorso tabellone (lezione / manutenzione / stagionale) ─────────────
     diagnostic.steps.push('navigate_tabellone');
     const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
     diagnostic.tabelloneUrl = page.url();
 
-    // ── Imposta data ──────────────────────────────────────────────────────────
     diagnostic.steps.push('set_date');
     await impostaDataTabellone(tabCtx, page, data, diagnostic);
 
@@ -3450,7 +3520,6 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.cellCount = cellCount;
 
     if (cellCount === 0) {
-      // Diagnostica: elenca le celle disponibili per quel campo (per capire formato time)
       const avail = await tabCtx.evaluate((col) => {
         return [...document.querySelectorAll(`div.division[columna="${col}"]`)]
           .slice(0, 30)
@@ -3467,7 +3536,6 @@ async function createBookingWithBrowser(options = {}) {
         diagnostic);
     }
 
-    // Verifica (best-effort) che lo slot non sia bloccato e legge idrecurso
     const cellMeta = await tabCtx.locator(cellSel).first().evaluate((el) => ({
       bloqueado: el.getAttribute('bloqueado'),
       idrecurso: el.getAttribute('idrecurso'),
@@ -3479,71 +3547,29 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.cellIdRecurso = cellMeta.idrecurso;
     diagnostic.cellIdCentro = cellMeta.idcentro;
 
-    // Ora fine: usa quella passata o la calcola da ora + durata
-    const oraFineCalc = oraFine || computeEndTime(ora, durata);
-    diagnostic.oraFineCalc = oraFineCalc;
+    // ── Ottieni il form via clic cella + menu contestuale ─────────────────────
+    const formCtxNonPartita = await openFormViaCellClick(page, tabCtx, cellSel, data, tipoLabel, tipo, baseUrl, diagnostic);
 
-    // ── Ottieni il form ────────────────────────────────────────────────────────────────────────────
-    let formCtx = null;
-
-    if (tipo === 'partita' && cellMeta.idrecurso) {
-      // Strategia principale: apri la Ficha Partita via URL diretto (§2 del piano)
-      const [yyyy, mm, dd] = data.split('-');
-      const fecha = `${dd}/${mm}/${yyyy}`;
-      formCtx = await openFichaPartita(page, baseUrl, cellMeta.idrecurso, fecha, ora, oraFineCalc, diagnostic);
-    }
-
-    if (!formCtx) {
-      // Fallback (o tipi non-partita): clic mouse reale sulla cella + menu contestuale (§4)
-      formCtx = await openFormViaCellClick(page, tabCtx, cellSel, data, tipoLabel, tipo, baseUrl, diagnostic);
-    }
-
-    if (!formCtx) {
+    if (!formCtxNonPartita) {
       diagnostic.postAttemptUrl = page.url();
       diagnostic.postAttemptBodySample = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '').then((t) => t.slice(0, 600));
       throw fail('BOOKING_FORM_NOT_FOUND',
         `Il form di prenotazione non è apparso (tipo=${tipo}). ` +
-        'Verificare che la cella sia libera e che il form Ficha o il menu contestuale siano accessibili.',
+        'Verificare che la cella sia libera e che il menu contestuale sia accessibile.',
         diagnostic);
     }
 
-    // ── Discovery: dump degli input del form (per calibrazione selettori) ────────────────────
-    diagnostic.formInputsDump = await dumpFormInputs(formCtx);
-
-    // ── Compila il form ────────────────────────────────────────────────────────────────────────────
+    diagnostic.formInputsDump = await dumpFormInputs(formCtxNonPartita);
     diagnostic.steps.push(`fill_form_${tipo}`);
 
     if (tipo === 'lezione') {
-      await selectIstruttore(formCtx, page, nome || istruttore, diagnostic);
-      const saved = await clickFormSave(formCtx, page, ['Salvare e uscire', 'Salvare e chiudere', 'Salva'], diagnostic);
+      await selectIstruttore(formCtxNonPartita, page, nome || istruttore, diagnostic);
+      const saved = await clickFormSave(formCtxNonPartita, page, ['Salvare e uscire', 'Salvare e chiudere', 'Salva'], diagnostic);
       if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Lezione.', diagnostic);
-
     } else {
-      // Partita
-      // 1. Verifica/aggiusta orari via "Personalizzare" se necessario
-      const formText = await readContextBody(formCtx, 3000).catch(() => '');
-      const hasCorrectTimes = formText.includes(ora) && formText.includes(oraFineCalc);
-      if (!hasCorrectTimes) {
-        diagnostic.steps.push('partita_personalizzare');
-        const personalizzaClicked = await clickMenuEntry(formCtx, 'Personalizzare', 'click_personalizzare', diagnostic);
-        if (personalizzaClicked) {
-          await page.waitForTimeout(600);
-          await setMaskedTime(page, formCtx, 'Ora Inizio', ora.replace(':', ''));
-          await setMaskedTime(page, formCtx, 'Ora Fine', oraFineCalc.replace(':', ''));
-          await clickMenuEntry(formCtx, 'Accettare', 'click_accettare', diagnostic);
-          await page.waitForTimeout(600);
-        }
-      }
-
-      // 2. Spunta "Privato" (obbligatorio per ogni partita)
-      await checkPrivatoCheckbox(formCtx, page, diagnostic);
-
-      // 3. Aggiungi giocatore via autocomplete (keystroke reali)
-      await searchAndAddPlayer(formCtx, page, nome, diagnostic);
-
-      // 4. Salva
-      const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare e uscire', 'Salva'], diagnostic);
-      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Partita.', diagnostic);
+      // manutenzione / stagionale
+      const saved = await clickFormSave(formCtxNonPartita, page, ['Salvare e chiudere', 'Salvare e uscire', 'Salva'], diagnostic);
+      if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', `Bottone di salvataggio non trovato nel form ${tipo}.`, diagnostic);
     }
 
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
@@ -3551,19 +3577,16 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.postSubmitUrl = page.url();
     diagnostic.postSubmitTitle = await page.title().catch(() => '');
 
-    // Rileva errori post-submit (messaggi inline di Matchpoint)
     const postSubmitText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => '');
     const hasError = /error[ei]?|ocupad|occupat|no disponib|non disponib/i.test(postSubmitText);
     if (hasError) diagnostic.postSubmitBodySample = postSubmitText.slice(0, 500);
 
-    // ── Verifica: torna al tabellone e controlla che la cella risulti occupata ──────────────────
     await verifyBookingCreated(page, tabCtx, cellSel, data, baseUrl, diagnostic);
 
     diagnostic.steps.push('done');
-    const effectiveOraFine = oraFine || oraFineCalc;
     return {
       ok: true,
-      campo, data, ora, oraFine: effectiveOraFine, nome, durata, tipo, istruttore,
+      campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
       diagnostic,
       warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
     };
