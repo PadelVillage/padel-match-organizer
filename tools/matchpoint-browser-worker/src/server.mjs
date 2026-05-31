@@ -3299,8 +3299,43 @@ async function createBookingWithBrowser(options = {}) {
 
     diagnostic.cellInfo = cellXPath;
     if (!cellXPath) {
+      const struct = await tabCtx.evaluate(({ campoNum, oraStr }) => {
+        const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+        const campoRe = /campo\s*(\d+)/i;
+        const timeRe = /^\d{1,2}:\d{2}$/;
+        const tables = [...document.querySelectorAll('table')];
+        const biggest = tables.sort((a, b) => b.querySelectorAll('tr').length - a.querySelectorAll('tr').length)[0];
+
+        const all = [...document.querySelectorAll('*')];
+        const desc = (el) => `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : ''}`;
+
+        const campoEls = all.filter((el) => {
+          const t = compact(el.innerText || el.getAttribute?.('title') || '');
+          return campoRe.test(t) && t.length <= 40;
+        }).slice(0, 8).map((el) => ({ tag: desc(el), text: compact(el.innerText || '').slice(0, 25) }));
+
+        const timeEls = all.filter((el) => timeRe.test(compact(el.childNodes?.length ? el.textContent : el.innerText)))
+          .slice(0, 12).map((el) => ({ tag: desc(el), text: compact(el.innerText || el.textContent || '').slice(0, 8) }));
+
+        const targetEls = all.filter((el) => compact(el.innerText || '') === oraStr).slice(0, 6).map((el) => ({
+          tag: desc(el),
+          parent: el.parentElement ? desc(el.parentElement) : '',
+        }));
+
+        return {
+          tables: tables.length,
+          biggestTableRows: biggest ? biggest.querySelectorAll('tr').length : 0,
+          campoEls,
+          timeEls,
+          targetEls,
+        };
+      }, { campoNum: campo, oraStr: ora }).catch((e) => ({ diagError: String(e && e.message || e) }));
+
+      diagnostic.tabelloneStructure = struct;
+      const compact = (s) => JSON.stringify(s).slice(0, 700);
       throw fail('TABELLONE_CELL_NOT_FOUND',
-        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone.`, diagnostic);
+        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. DIAG=${compact(struct)}`,
+        diagnostic);
     }
     if (!cellXPath.seemsFree) {
       throw fail('SLOT_NOT_FREE',
