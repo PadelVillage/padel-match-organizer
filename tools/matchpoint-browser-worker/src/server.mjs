@@ -3200,166 +3200,62 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.steps.push('set_date');
     await impostaDataTabellone(tabCtx, page, data, diagnostic);
 
-    // ── Trova la cella libera (campo × ora) tramite matrice 2D ───────────────
+    // ── Trova le coordinate (campo × ora) nel tabellone SVG e clicca ─────────
     diagnostic.steps.push('find_free_cell');
-
-    const cellXPath = await tabCtx.evaluate(({ campoNum, oraStr }) => {
+    const target = await tabCtx.evaluate(({ campoNum, oraStr }) => {
       const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
-      const timePattern = /^\d{1,2}:\d{2}$/;
       const campoRe = /campo\s*(\d+)/i;
+      const rect = (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+      const all = [...document.querySelectorAll('*')];
 
-      const allEls = [...document.querySelectorAll('td, th, div, span, img')];
-      const campoEls = allEls.filter((el) => {
-        const texts = [compact(el.innerText || ''), compact(el.getAttribute('alt') || ''), compact(el.getAttribute('title') || '')];
-        return texts.some((t) => campoRe.test(t) && t.length <= 100);
-      });
-
-      let gridTable = null;
-      if (campoEls.length > 0) {
-        const hdr = campoEls[0].closest('tr') || campoEls[0].parentElement;
-        gridTable = hdr?.closest('table') || hdr?.parentElement;
-      }
-      if (!gridTable) {
-        let best = 0;
-        for (const t of document.querySelectorAll('table')) {
-          const cnt = [...t.querySelectorAll('tr')].filter((row) => {
-            const first = row.querySelector('td,th');
-            return first && timePattern.test(compact(first.innerText));
-          }).length;
-          if (cnt > best) { best = cnt; gridTable = t; }
-        }
-        if (best < 4) gridTable = null;
-      }
-      if (!gridTable) return null;
-
-      const allRows = [...gridTable.querySelectorAll('tr')];
-      const matrix = [];
-      for (let ri = 0; ri < allRows.length; ri++) {
-        if (!matrix[ri]) matrix[ri] = [];
-        let ci = 0;
-        for (const cell of allRows[ri].querySelectorAll('td, th')) {
-          while (matrix[ri][ci] !== undefined) ci++;
-          const rs = Math.max(1, parseInt(cell.getAttribute('rowspan') || '1', 10));
-          const cs = Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
-          for (let r = 0; r < rs; r++) {
-            if (!matrix[ri + r]) matrix[ri + r] = [];
-            for (let c = 0; c < cs; c++) {
-              matrix[ri + r][ci + c] = { cell, isPrimary: r === 0 && c === 0 };
-            }
-          }
-          ci += cs;
+      // colonna del campo: elemento testo "Campo N" (centro X = centro colonna)
+      let campo = null;
+      for (const el of all) {
+        const t = compact(el.textContent || '');
+        const m = t.match(campoRe);
+        if (m && parseInt(m[1], 10) === campoNum && t.length <= 20) {
+          const r = rect(el);
+          if (r.w > 0 && r.h > 0) { campo = r; break; }
         }
       }
-
-      let campoColIdx = -1;
-      for (let ri = 0; ri < matrix.length && campoColIdx < 0; ri++) {
-        for (let ci = 0; ci < (matrix[ri] || []).length; ci++) {
-          const entry = matrix[ri][ci];
-          if (!entry?.isPrimary) continue;
-          const texts = [compact(entry.cell.innerText || ''), compact(entry.cell.getAttribute('alt') || ''), compact(entry.cell.getAttribute('title') || '')];
-          if (texts.some((t) => { const m = t.match(campoRe); return m && parseInt(m[1], 10) === campoNum; })) {
-            campoColIdx = ci; break;
-          }
+      // riga dell'ora: elemento testo uguale a "HH:MM"
+      let time = null;
+      for (const el of all) {
+        if (compact(el.textContent || '') === oraStr) {
+          const r = rect(el);
+          if (r.w > 0 && r.h > 0) { time = r; break; }
         }
       }
-      if (campoColIdx < 0) return null;
-
-      let timeRowIdx = -1;
-      for (let ri = 0; ri < matrix.length; ri++) {
-        const first = matrix[ri]?.[0];
-        if (!first?.isPrimary) continue;
-        const t = compact(first.cell.innerText);
-        if (t === oraStr || t.startsWith(oraStr)) { timeRowIdx = ri; break; }
+      const svg = document.querySelector('svg');
+      const svgR = svg ? rect(svg) : null;
+      if (!campo || !time || !svgR) {
+        return { ok: false, hasCampo: !!campo, hasTime: !!time, hasSvg: !!svgR };
       }
-      if (timeRowIdx < 0) return null;
-
-      const entry = matrix[timeRowIdx]?.[campoColIdx];
-      if (!entry) return null;
-
-      const cell = entry.cell;
-      const getXPath = (el) => {
-        if (el.id) return `//*[@id="${el.id}"]`;
-        const parts = [];
-        let cur = el;
-        while (cur && cur.nodeType === 1) {
-          const tag = cur.tagName.toLowerCase();
-          const siblings = [...(cur.parentElement?.children || [])].filter((c) => c.tagName === cur.tagName);
-          const idx = siblings.indexOf(cur) + 1;
-          parts.unshift(siblings.length > 1 ? `${tag}[${idx}]` : tag);
-          cur = cur.parentElement;
-        }
-        return '/' + parts.join('/');
+      const clickX = campo.x + campo.w / 2;     // centro colonna del campo
+      const clickY = time.y + 15;               // poco sotto la linea dell'ora → dentro la fascia di quell'ora
+      return {
+        ok: true,
+        posX: clickX - svgR.x,                  // posizione relativa all'SVG
+        posY: clickY - svgR.y,
+        abs: { clickX, clickY },
+        svg: svgR,
       };
+    }, { campoNum: campo, oraStr: ora }).catch((e) => ({ ok: false, err: String((e && e.message) || e) }));
 
-      const bg = window.getComputedStyle(cell).backgroundColor;
-      const text = compact(cell.innerText);
-      const seemsFree = text.length < 15;
-      return { xpath: getXPath(cell), bg, seemsFree, text };
-    }, { campoNum: campo, oraStr: ora }).catch(() => null);
-
-    diagnostic.cellInfo = cellXPath;
-    if (!cellXPath) {
-      const geo = await tabCtx.evaluate(({ oraStr }) => {
-        const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
-        const campoRe = /campo\s*(\d+)/i;
-        const timeRe = /^\d{1,2}:\d{2}$/;
-        const rectOf = (el) => {
-          const r = el.getBoundingClientRect();
-          return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
-        };
-        const all = [...document.querySelectorAll('*')];
-        const txt = (el) => compact(el.textContent || '');
-
-        const seen = new Set();
-        const pick = (el) => { const r = rectOf(el); const k = `${r.x},${r.y}`; if (seen.has(k)) return null; seen.add(k); return r; };
-
-        const campoEls = [];
-        for (const el of all) {
-          const t = txt(el);
-          if (campoRe.test(t) && t.length <= 40) {
-            const r = pick(el);
-            if (r && r.w > 0) campoEls.push({ text: t.slice(0, 20), tag: el.tagName.toLowerCase(), ...r });
-          }
-          if (campoEls.length >= 8) break;
-        }
-
-        const timeEls = [];
-        for (const el of all) {
-          const t = txt(el);
-          if (timeRe.test(t)) {
-            const r = pick(el);
-            if (r && r.w > 0) timeEls.push({ text: t, tag: el.tagName.toLowerCase(), ...r });
-          }
-          if (timeEls.length >= 18) break;
-        }
-
-        const svgs = [...document.querySelectorAll('svg')];
-        return {
-          inIframe: window.top !== window.self,
-          href: String(location.href).slice(0, 120),
-          viewport: { w: window.innerWidth, h: window.innerHeight },
-          svgCount: svgs.length,
-          svgRect: svgs[0] ? rectOf(svgs[0]) : null,
-          campoEls,
-          timeEls,
-        };
-      }, { oraStr: ora }).catch((e) => ({ diagError: String((e && e.message) || e) }));
-
-      diagnostic.tabelloneGeometry = geo;
+    diagnostic.clickTarget = target;
+    if (!target || !target.ok) {
       throw fail('TABELLONE_CELL_NOT_FOUND',
-        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. DIAG=${JSON.stringify(geo).slice(0, 1100)}`,
+        `Impossibile localizzare Campo ${campo} · ${ora} nel tabellone SVG. DIAG=${JSON.stringify(target).slice(0, 700)}`,
         diagnostic);
     }
-    if (!cellXPath.seemsFree) {
-      throw fail('SLOT_NOT_FREE',
-        `Lo slot Campo ${campo} · ${data} · ${ora} risulta già occupato.`,
-        { ...diagnostic, cellText: cellXPath.text });
-    }
 
-    // ── Clicca la cella libera ────────────────────────────────────────────────
-    diagnostic.steps.push('click_free_cell');
-    await tabCtx.locator(`xpath=${cellXPath.xpath}`).first().click({ timeout: 15000, force: false });
-    await page.waitForTimeout(800);
+    // Click a coordinate sull'SVG (Playwright traduce in coordinate di pagina, gestendo l'iframe)
+    diagnostic.steps.push('click_svg_cell');
+    await tabCtx.locator('svg').first().click({
+      position: { x: Math.round(target.posX), y: Math.round(target.posY) },
+      timeout: 15000,
+    });
+    await page.waitForTimeout(900);
 
     // ── Seleziona tipo dal menu contestuale ───────────────────────────────────
     // Dopo il click appare un dropdown: Partita / Lezione / Manutenzione / Prenotazione stagionale
