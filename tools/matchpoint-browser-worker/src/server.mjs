@@ -2958,51 +2958,48 @@ async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
   return null;
 }
 
-// ── Helper: seleziona istruttore nel dropdown del form Lezione ────────────────
+// ── Helper: seleziona istruttore nel dropdown "Monitor" del form Lezione ──────
+// FIX: aggancio DIRETTO al select corretto (DropDownListMonitor) per id, invece
+// della ricerca per label, che agganciava per errore il select "Lezione"
+// (DropDownListTipoActividad). Il Monitor fa AutoPostBack → si usa selectOption
+// di Playwright e si attende il ricaricamento del pannello.
 async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
   if (!istruttore) return;
-  // Trova il select vicino al label "Istruttore" per somiglianza di id/nome
-  const result = await formCtx.evaluate((name) => {
-    const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
-    // Cerca label "Istruttore" → trova il select associato
-    const labels = [...document.querySelectorAll('label, td, th, span, div')];
-    let targetSelect = null;
-    for (const lbl of labels) {
-      if (!/istruttore/i.test(compact(lbl.innerText || ''))) continue;
-      // Cerca il select nel prossimo fratello o nella stessa cella
-      let candidate = lbl.nextElementSibling;
-      while (candidate && candidate.tagName !== 'SELECT') {
-        const inner = candidate.querySelector('select');
-        if (inner) { candidate = inner; break; }
-        candidate = candidate.nextElementSibling;
-      }
-      if (!candidate || candidate.tagName !== 'SELECT') {
-        candidate = lbl.closest('td, tr')?.querySelector('select') || null;
-      }
-      if (candidate?.tagName === 'SELECT') { targetSelect = candidate; break; }
-    }
-    // Fallback: qualsiasi select con id/name che contiene "struttore"
-    if (!targetSelect) {
-      targetSelect = document.querySelector('select[id*="struttore" i], select[name*="struttore" i], select[id*="nstructor" i]');
-    }
-    if (!targetSelect) return { found: false };
-    const opts = [...targetSelect.options];
-    const match = opts.find((o) => o.text.toLowerCase().includes(name.toLowerCase()));
-    if (!match) return { found: true, matched: false, opts: opts.map((o) => o.text) };
-    targetSelect.value = match.value;
-    targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    return { found: true, matched: true, value: match.value, text: match.text };
-  }, istruttore).catch(() => ({ found: false }));
 
-  diagnostic.istruttoreResult = result;
-  if (result.matched) {
-    diagnostic.steps.push(`istruttore_selected:${result.text}`);
-  } else if (!result.found) {
-    diagnostic.steps.push('istruttore_select_not_found');
-  } else {
-    diagnostic.steps.push(`istruttore_not_matched:${istruttore}`);
-    diagnostic.istruttoreOpts = result.opts;
+  // 1. Individua il select dei maestri per id (con fallback robusto)
+  let sel = formCtx.locator('#CC_Datos_FormViewFicha_WUCCabeceraClaseSuelta_DropDownListMonitor');
+  if (!(await sel.count().catch(() => 0))) {
+    sel = formCtx.locator('select[id*="DropDownListMonitor" i]');
   }
+  if (!(await sel.count().catch(() => 0))) {
+    diagnostic.istruttoreResult = { found: false };
+    diagnostic.steps.push('istruttore_select_not_found');
+    return;
+  }
+
+  // 2. Trova l'opzione il cui testo contiene il nome del maestro (esclude la vuota)
+  const opts = await sel.first().evaluate((el) =>
+    [...el.options].map((o) => ({ value: o.value, text: (o.text || '').trim() })),
+  ).catch(() => []);
+  const target = opts.find((o) =>
+    o.text && o.value && o.value !== '0' &&
+    o.text.toLowerCase().includes(istruttore.toLowerCase()),
+  );
+
+  if (!target) {
+    diagnostic.istruttoreResult = { found: true, matched: false, opts: opts.map((o) => o.text) };
+    diagnostic.istruttoreOpts = opts.map((o) => o.text);
+    diagnostic.steps.push(`istruttore_not_matched:${istruttore}`);
+    return;
+  }
+
+  // 3. Seleziona (eventi corretti via Playwright) e attendi l'AutoPostBack
+  await sel.first().selectOption(target.value, { timeout: 6000 }).catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(800);
+
+  diagnostic.istruttoreResult = { found: true, matched: true, value: target.value, text: target.text };
+  diagnostic.steps.push(`istruttore_selected:${target.text}`);
 }
 
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
