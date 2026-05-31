@@ -3193,7 +3193,7 @@ async function createBookingWithBrowser(options = {}) {
 
     // ── Naviga al tabellone ───────────────────────────────────────────────────
     diagnostic.steps.push('navigate_tabellone');
-    const tabCtx = await navigateToTabellone(page, baseUrl, diagnostic);
+    const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
     diagnostic.tabelloneUrl = page.url();
 
     // ── Imposta data ──────────────────────────────────────────────────────────
