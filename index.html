@@ -6684,6 +6684,7 @@ body.assessment-public-mode .assessment-public-only-card {
                       <div class="matchpoint-data-file">
                         <div class="matchpoint-data-actions">
                           <button id="matchpointTestBookingButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCreate()">🧪 Test prenotazione Matchpoint</button>
+                          <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
                           <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
@@ -34382,6 +34383,89 @@ Per confermare scrivi ELIMINA.`);
           'Authorization': `Bearer ${staff.accessToken}`
         },
         body: JSON.stringify(TEST_BOOKING),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+
+      if (response.ok && data?.ok !== false) {
+        const lines = ['✅ Successo!'];
+        if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
+        if (stateEl) { stateEl.textContent = 'Completato'; stateEl.className = 'matchpoint-action-state done'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#eefaf2';
+          resultEl.style.border = '1px solid #b7e4c7';
+          resultEl.style.color = '#168a53';
+          resultEl.textContent = lines.join('\n');
+        }
+      } else {
+        const lines = [`❌ Errore HTTP ${response.status}`];
+        if (data?.error) lines.push(`Codice: ${data.error}`);
+        if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        else if (typeof data === 'string' && data) lines.push(data);
+        if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#fff0f0';
+          resultEl.style.border = '1px solid #fca5a5';
+          resultEl.style.color = '#dc2626';
+          resultEl.textContent = lines.join('\n');
+        }
+      }
+    } catch (err) {
+      const msg = `❌ Errore di rete o configurazione: ${err?.message || err || 'errore sconosciuto'}`;
+      if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fff0f0';
+        resultEl.style.border = '1px solid #fca5a5';
+        resultEl.style.color = '#dc2626';
+        resultEl.textContent = msg;
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Test annullamento prenotazione Matchpoint (solo TEST env) ─────────────
+  async function matchpointTestBookingCancel() {
+    const TEST_CANCEL = {
+      campo: 2,
+      data: "2026-06-01",
+      ora: "09:00",
+    };
+
+    const btn = document.getElementById('matchpointTestCancelButton');
+    const stateEl = document.getElementById('matchpointTestBookingState');
+    const resultEl = document.getElementById('matchpointTestBookingResult');
+
+    if (!isStaffSessionValid()) {
+      if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+
+    const confirmed = confirm(
+      `Annullare la prenotazione di test su Matchpoint? (Campo ${TEST_CANCEL.campo}, ${TEST_CANCEL.data}, ${TEST_CANCEL.ora})`
+    );
+    if (!confirmed) return;
+
+    if (btn) btn.disabled = true;
+    if (stateEl) { stateEl.textContent = 'Annullamento in corso… (può durare fino a 30 s)'; stateEl.className = 'matchpoint-action-state pending'; }
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`
+        },
+        body: JSON.stringify(TEST_CANCEL),
       });
       const respText = await response.text();
       let data = null;
