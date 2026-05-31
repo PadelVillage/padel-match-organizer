@@ -2939,6 +2939,13 @@ async function handleCreateBooking(req, res) {
   json(res, 200, result);
 }
 
+async function handleCancelBooking(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await cancelBookingWithBrowser(body);
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -3680,6 +3687,152 @@ async function createBookingWithBrowser(options = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// CANCELLAZIONE PRENOTAZIONE — annulla una prenotazione esistente su Matchpoint
+// ---------------------------------------------------------------------------
+// Input: { idReserva?, campo?, data?, ora? }
+// Se idReserva è fornito viene usato direttamente; altrimenti il worker ricava
+// l'id dal tabellone usando campo + data (YYYY-MM-DD) + ora (HH:MM).
+async function cancelBookingWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'cancel_booking',
+    steps: [],
+    input: { idReserva: input.idReserva, campo: input.campo, data: input.data, ora: input.ora },
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const context = await browser.newContext({
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    // Login (stessa sequenza di createBookingWithBrowser)
+    diagnostic.steps.push('login_page');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+
+    diagnostic.steps.push('login_submit');
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
+    }
+
+    await maybeClickCashEnter(page, diagnostic);
+    diagnostic.afterCashUrl = page.url();
+
+    let idReserva = input.idReserva ? String(input.idReserva) : null;
+
+    // Se non ho l'id, lo ricavo dal tabellone per campo+data+ora
+    if (!idReserva) {
+      const recurso = RECURSO_BY_CAMPO[Number(input.campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${input.campo} senza id_recurso noto.`, diagnostic);
+      if (!input.data || !input.ora) throw fail('PARAMS_MANCANTI', 'Servono idReserva, oppure campo+data+ora.', diagnostic);
+      const [yyyy, mm, dd] = input.data.split('-');
+      const fechaTab = `${dd}/${mm}/${yyyy}`;
+
+      diagnostic.steps.push('goto_tabellone');
+      await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.evaluate((f) => {
+        const el = document.getElementById('fechaTabla');
+        if (el) {
+          el.value = f;
+          ['input', 'change', 'keyup', 'blur'].forEach((ev) => el.dispatchEvent(new Event(ev, { bubbles: true })));
+        }
+      }, fechaTab);
+      await page.waitForTimeout(4000);
+
+      diagnostic.steps.push('cerca_evento');
+      idReserva = await page.evaluate(({ recurso: rec, ora }) => {
+        const eventi = [...document.querySelectorAll('div.evento')]
+          .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+        const hit = eventi.find((e) => (e.innerText || '').includes(ora));
+        return hit ? hit.id : null;
+      }, { recurso, ora: input.ora });
+
+      if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
+        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
+    }
+    diagnostic.idReserva = idReserva;
+
+    // Apri la scheda della prenotazione via URL diretto
+    // L'URL funziona per qualsiasi tipo di prenotazione (partita/lezione/manutenzione/stagionale)
+    diagnostic.steps.push('goto_ficha');
+    await page.goto(`${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      { waitUntil: 'domcontentloaded', timeout: 25000 });
+
+    // Verifica stato iniziale (se già annullata, esci ok)
+    const giaAnnullata = await page.evaluate(() => /ANNULLATA/i.test(document.body.innerText || ''));
+    if (giaAnnullata) {
+      diagnostic.steps.push('gia_annullata');
+      diagnostic.alreadyCancelled = true;
+      return { ok: true, idReserva, alreadyCancelled: true, diagnostic };
+    }
+
+    // ⚠️ CRUCIALE: registra l'handler per il popup nativo window.confirm PRIMA di cliccare.
+    // Matchpoint mostra un confirm() nativo dopo la conferma; se non viene accettato
+    // l'annullamento non si finalizza pur tornando HTTP 200 (falso successo silenzioso).
+    page.on('dialog', (d) => d.accept().catch(() => {}));
+
+    // Premi "Annullare" sulla scheda → apre il dialogo anularreserva in un iframe fancybox
+    diagnostic.steps.push('click_annulla');
+    await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
+
+    // Il dialogo è in un iframe Reservas/anularreserva.aspx: i default sono già corretti,
+    // non toccarli. Si clicca direttamente il pulsante di conferma.
+    diagnostic.steps.push('attendi_dialogo');
+    const dlg = page.frameLocator('iframe[src*="anularreserva.aspx"]');
+    await dlg.locator('#CC_Datos_ButtonAnular').first().waitFor({ state: 'visible', timeout: 10000 });
+    diagnostic.steps.push('conferma_annulla');
+    await dlg.locator('#CC_Datos_ButtonAnular').first().click({ timeout: 10000 });
+
+    // Attendi il completamento del postback (operazione lenta su Matchpoint)
+    await page.waitForTimeout(6000);
+
+    // Verifica esito ricaricando la scheda
+    diagnostic.steps.push('verifica');
+    await page.goto(`${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      { waitUntil: 'domcontentloaded', timeout: 25000 });
+    const annullata = await page.evaluate(() => /ANNULLATA/i.test(document.body.innerText || ''));
+    diagnostic.statoFinale = annullata ? 'ANNULLATA' : 'NON_ANNULLATA';
+    if (!annullata) {
+      throw fail('ANNULLAMENTO_NON_RIUSCITO',
+        'La prenotazione risulta ancora attiva dopo la conferma (popup OK non accettato?).',
+        diagnostic);
+    }
+
+    diagnostic.steps.push('done');
+    return { ok: true, idReserva, statoFinale: 'ANNULLATA', diagnostic };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BACKGROUND POLLER — controllo automatico disponibilità Matchpoint
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4018,7 +4171,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
-          '/create-booking',
+          '/create-booking', '/cancel-booking',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -4049,6 +4202,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/create-booking') {
       return await handleCreateBooking(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/cancel-booking') {
+      return await handleCancelBooking(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
