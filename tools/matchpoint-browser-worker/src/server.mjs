@@ -3236,6 +3236,35 @@ async function createBookingWithBrowser(options = {}) {
     await tabCtx.locator(cellSel).first().click({ timeout: 15000 });
     await page.waitForTimeout(900);
 
+    // ── DIAGNOSTICA post-click: com'è fatta la tendina tipologia? (temporanea) ──
+    diagnostic.steps.push('diag_post_click');
+    const scanMenu = () => {
+      const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+      const isVis = (el) => {
+        try {
+          const r = el.getBoundingClientRect();
+          const st = getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && st.visibility !== 'hidden' && st.display !== 'none';
+        } catch { return false; }
+      };
+      const wanted = /(partita|lezione|manutenzion|prenotazion|stagional)/i;
+      const hits = [];
+      for (const el of document.querySelectorAll('a,button,li,span,div,td,p')) {
+        const t = compact(el.innerText || el.textContent || '');
+        if (t && t.length <= 45 && wanted.test(t) && el.children.length <= 2 && isVis(el)) {
+          hits.push({ tag: el.tagName.toLowerCase(), cls: String(el.className || '').slice(0, 45), text: t.slice(0, 45) });
+          if (hits.length >= 12) break;
+        }
+      }
+      return { href: String(location.href).slice(0, 100), hits };
+    };
+    const fromIframe = await tabCtx.evaluate(scanMenu).catch((e) => ({ err: String((e && e.message) || e) }));
+    const fromMain = await page.evaluate(scanMenu).catch((e) => ({ err: String((e && e.message) || e) }));
+    diagnostic.postClickMenu = { fromIframe, fromMain };
+    throw fail('POST_CLICK_DIAG',
+      `Dopo click cella. IFRAME=${JSON.stringify(fromIframe).slice(0, 450)} | MAIN=${JSON.stringify(fromMain).slice(0, 450)}`,
+      diagnostic);
+
     // ── Seleziona tipo dal menu contestuale ───────────────────────────────────
     // Dopo il click appare un dropdown: Partita / Lezione / Manutenzione / Prenotazione stagionale
     diagnostic.steps.push('click_context_menu');
