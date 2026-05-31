@@ -34335,17 +34335,22 @@ Per confermare scrivi ELIMINA.`);
     //   campo: 1, data: "2026-06-01", ora: "09:00", oraFine: "10:30", durata: 90,
     //   nome: "Maurizio Aprea", tipo: "partita", note: "TEST PV — CANCELLARE"
     // };
-    // --- Variante LEZIONE (test corrente) ---
+    // --- Variante LEZIONE (verificata, tenuta per eventuale ri-test rapido) ---
+    // const TEST_BOOKING = {
+    //   campo: 2, data: "2026-06-01", ora: "08:00", oraFine: "08:30", durata: 30,
+    //   nome: "Maurizio Aprea", istruttore: "Santiago Carabajal",
+    //   tipo: "lezione", note: "TEST PV — CANCELLARE"
+    // };
+    // --- Variante MANUTENZIONE (test corrente) ---
     const TEST_BOOKING = {
-      campo: 2,                       // Campo 2 = id_recurso 14 (mattina 01/06 libera)
+      campo: 3,                       // Campo 3 = id_recurso 15 (mattina 01/06 libera)
       data: "2026-06-01",
       ora: "08:00",
       oraFine: "08:30",
-      durata: 30,                     // lezione: 30 min
-      nome: "Maurizio Aprea",         // allievo (socio reale)
-      istruttore: "Santiago Carabajal", // maestro: uno tra "LoZio" | "Santiago Carabajal" | "Spinazze"
-      tipo: "lezione",
-      note: "TEST PV — CANCELLARE"
+      durata: 30,
+      nome: "Manutenzione test PV",   // descrizione → campo "Manutenzione" del form
+      tipo: "manutenzione",
+      note: "TEST PV — CANCELLARE"     // → campo "Osservazioni"
     };
 
     const btn = document.getElementById('matchpointTestBookingButton');
