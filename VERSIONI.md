@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.596 / TEST: slot prova Matchpoint allineato a 90 min
+
+- **Solo ambiente TEST**: aggiornato il payload di prova del pulsante **🧪 Test prenotazione Matchpoint** da 60 a 90 minuti (`ora: "09:00"`, `oraFine: "10:30"`, `durata: 90`), allineando la prenotazione di test al default Matchpoint per le partite.
+
 ## v5.595 / TEST: pulsante test prenotazione Matchpoint
 
 - **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV` / `data-test-env-only`): aggiunto pulsante nascosto **🧪 Test prenotazione Matchpoint** nell'area dati Matchpoint, dopo il box "Backup dati". Permette allo staff con permesso `cloud_sync` di lanciare una singola prenotazione di prova reale (`Campo 1 · 2026-06-01 · 08:00–09:00 · "TEST PV — CANCELLARE"`) chiamando la edge function `matchpoint-bookings-create`. Il pulsante richiede conferma esplicita, mostra lo stato di avanzamento, disabilita il pulsante durante l'attesa e visualizza l'esito (successo o errore) in un riquadro colorato. In produzione non compare mai.
