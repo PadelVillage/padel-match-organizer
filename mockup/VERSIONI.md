@@ -2,6 +2,7 @@
 
 | Versione | Data       | Changelog                                                                                                                  |
 |----------|------------|----------------------------------------------------------------------------------------------------------------------------|
+| v3.4     | 2026-05-31 | Lettura dati reali da Supabase TEST via vista `v_calendario_pubblico` (anon key, sola lettura). Dati di esempio rimossi; `loadDay(dateISO)` con cache sostituisce i dati hardcoded. Creazione/modifica/eliminazione restano solo locali (Tappa 3). |
 | v3.3     | 2026-05-30 | v3.2 → v3.3: ingranditi i testi del pannello chat e della scheda di modifica su mobile (coerenti con l'agenda a 20px); desktop invariato; nessuna modifica di logica. |
 | v3.2     | 2026-05-30 | v3.1 → v3.2: testi mobile portati a 20px base (agenda più leggibile a bordo campo); desktop invariato; nessuna modifica di logica. |
 | v3.1     | —          | Tipografia mobile 16px (era 15px); rimossa legenda icone su mobile; desktop invariato.                                     |
