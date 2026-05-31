@@ -3510,6 +3510,79 @@ async function createBookingWithBrowser(options = {}) {
       };
     }
 
+    if (tipo === 'manutenzione') {
+      // ── Percorso diretto Ficha manutenzione (salta il tabellone) ─────────────
+      const recurso = RECURSO_BY_CAMPO[Number(campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${campo} senza id_recurso noto.`, diagnostic);
+
+      const [yyyy, mm, dd] = data.split('-');
+      const fecha = `${dd}/${mm}/${yyyy}`;
+      const fichaUrl = `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx`
+        + `?modo=fancy&id_recurso=${recurso}`
+        + `&fecha=${encodeURIComponent(fecha)}`
+        + `&hora_inicio=${encodeURIComponent(ora)}`
+        + `&hora_fin=${encodeURIComponent(oraFineCalc)}`;
+
+      diagnostic.steps.push('goto_ficha_manutenzione');
+      diagnostic.fichaUrl = fichaUrl;
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+      // Form pronto = bottone "Salvare" (ButtonInsertar) o textarea descrizione visibili
+      diagnostic.steps.push('wait_form');
+      const descBox = page.locator('#CC_Datos_FormViewFicha_TextBox2');
+      const saveBtn = page.locator('#CC_Datos_FormViewFicha_ButtonInsertar');
+      const formOk = (await saveBtn.first().isVisible({ timeout: 8000 }).catch(() => false))
+        || (await descBox.first().isVisible({ timeout: 2000 }).catch(() => false));
+      if (!formOk) {
+        const afterUrl = page.url();
+        const bodySample = await page.evaluate(() =>
+          (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+        ).catch(() => '');
+        let inputs = [];
+        try { inputs = await dumpFormInputs(page); } catch {}
+        diagnostic.afterGotoUrl = afterUrl;
+        diagnostic.bodySample = bodySample;
+        diagnostic.formInputsDump = inputs;
+        throw fail('FICHA_MANUTENZIONE_FORM_NOT_VISIBLE',
+          `Form manutenzione non visibile. afterUrl=${afterUrl} body="${bodySample}" inputs=${JSON.stringify(inputs).slice(0, 400)}`,
+          diagnostic);
+      }
+
+      const formCtx = page; // il form è sulla pagina principale, non in un iframe
+      diagnostic.formInputsDump = await dumpFormInputs(formCtx);
+      diagnostic.steps.push('fill_form_manutenzione');
+
+      // Descrizione manutenzione (← nome) e Osservazioni (← note). Niente altro.
+      if (nome) {
+        await descBox.first().fill(nome, { timeout: 6000 }).catch(() => {});
+        diagnostic.steps.push('manutenzione_descrizione_set');
+      }
+      const noteManut = clean(booking.note || '');
+      if (noteManut) {
+        await formCtx.locator('#CC_Datos_FormViewFicha_TextBoxObservaciones')
+          .first().fill(noteManut, { timeout: 6000 }).catch(() => {});
+        diagnostic.steps.push('manutenzione_osservazioni_set');
+      }
+
+      // Salva (questo form ha solo "Salvare" = ButtonInsertar)
+      const saved = await clickFormSave(formCtx, page, ['Salvare'], diagnostic);
+      if (!saved) {
+        let inputs2 = [];
+        try { inputs2 = await dumpFormInputs(formCtx); } catch {}
+        diagnostic.formInputsDump = inputs2;
+        throw fail('SAVE_BUTTON_NOT_FOUND', 'Bottone di salvataggio non trovato nel form Manutenzione.', diagnostic);
+      }
+
+      await page.waitForTimeout(2000);
+      diagnostic.postSubmitUrl = page.url();
+      diagnostic.steps.push('done');
+      return {
+        ok: true,
+        campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        diagnostic,
+      };
+    }
+
     // ── Percorso tabellone (lezione / manutenzione / stagionale) ─────────────
     diagnostic.steps.push('navigate_tabellone');
     const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
