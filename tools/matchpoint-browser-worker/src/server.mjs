@@ -3006,8 +3006,8 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
 }
 
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
-async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
-  const PFX = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_';
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_') {
+  const PFX = pfx;
   const norm = (s) => String(s || '').toLowerCase().trim();
   if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
 
@@ -3425,6 +3425,83 @@ async function createBookingWithBrowser(options = {}) {
       }
 
       // 4. Breve attesa — NON ricaricare il tabellone pesante
+      await page.waitForTimeout(2000);
+      diagnostic.postSubmitUrl = page.url();
+      diagnostic.steps.push('done');
+      return {
+        ok: true,
+        campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        diagnostic,
+      };
+    }
+
+    if (tipo === 'lezione') {
+      // ── Percorso diretto Ficha lezione (salta il tabellone) ──────────────────
+      const recurso = RECURSO_BY_CAMPO[Number(campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${campo} senza id_recurso noto.`, diagnostic);
+
+      const [yyyy, mm, dd] = data.split('-');
+      const fecha = `${dd}/${mm}/${yyyy}`;
+      const fichaUrl = `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx`
+        + `?modo=fancy&id_recurso=${recurso}`
+        + `&fecha=${encodeURIComponent(fecha)}`
+        + `&hora_inicio=${encodeURIComponent(ora)}`
+        + `&hora_fin=${encodeURIComponent(oraFineCalc)}`;
+
+      diagnostic.steps.push('goto_ficha_lezione');
+      diagnostic.fichaUrl = fichaUrl;
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+      diagnostic.steps.push('wait_form');
+      const formOk = await page.getByText('Nuova lezione', { exact: false })
+        .first().isVisible({ timeout: 8000 }).catch(() => false);
+      if (!formOk) {
+        const afterUrl = page.url();
+        const bodySample = await page.evaluate(() =>
+          (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+        ).catch(() => '');
+        let inputs = [];
+        try { inputs = await dumpFormInputs(page); } catch {}
+        diagnostic.afterGotoUrl = afterUrl;
+        diagnostic.bodySample = bodySample;
+        diagnostic.formInputsDump = inputs;
+        throw fail('FICHA_LEZIONE_FORM_NOT_VISIBLE',
+          `Form lezione non visibile. afterUrl=${afterUrl} body="${bodySample}" inputs=${JSON.stringify(inputs).slice(0, 400)}`,
+          diagnostic);
+      }
+
+      const formCtx = page; // il form è sulla pagina principale, non in un iframe
+      diagnostic.formInputsDump = await dumpFormInputs(formCtx);
+      diagnostic.steps.push('fill_form_lezione');
+
+      // 1. Seleziona l'ISTRUTTORE per primo (fa AutoPostBack) e attendi l'assestamento
+      await selectIstruttore(formCtx, page, istruttore, diagnostic);
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(800);
+
+      // 2. Aggiungi gli ALLIEVI via autocomplete (prefisso WUCUsuarioClase)
+      const LEZIONE_PLAYER_PFX = '#CC_Datos_FormViewFicha_WUCUsuarioClase_Anyadir_';
+      const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
+        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
+        : (nome ? [nome] : []);
+      diagnostic.playersRequested = players;
+      const playersResult = [];
+      for (const p of players) {
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic, LEZIONE_PLAYER_PFX));
+      }
+      diagnostic.playersResult = playersResult;
+
+      // 3. NIENTE "Privato" nelle lezioni → non chiamare checkPrivatoCheckbox
+
+      // 4. Salva
+      const saved = await clickFormSave(formCtx, page, ['Salvare e uscire', 'Salvare'], diagnostic);
+      if (!saved) {
+        let inputs2 = [];
+        try { inputs2 = await dumpFormInputs(formCtx); } catch {}
+        diagnostic.formInputsDump = inputs2;
+        throw fail('SAVE_BUTTON_NOT_FOUND', 'Bottone di salvataggio non trovato nel form Lezione.', diagnostic);
+      }
+
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
