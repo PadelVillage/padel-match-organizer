@@ -50,3 +50,10 @@ To maximize the user's AI credits and prevent slow response times due to context
 - Prima di modificare `index.html` o qualsiasi file deployato, **chiedere sempre conferma esplicita** all'utente: *"Modifico index.html su test-preview?"*.
 - Il merge su `main`/prod avviene **solo dopo approvazione esplicita** dell'utente, mai in autonomia.
 - Sequenza obbligatoria: **modifica → commit test-preview → test utente → approvazione → merge prod**.
+---
+
+## 7. PUBBLICAZIONE & PULL REQUEST (vedi docs/flusso-pubblicazione-pr.md)
+- **Regola ferrea:** il merge su `main` lo fa sempre Maurizio via Pull Request. L'agente non fa mai merge su `main`, non cancella branch, non chiude PR.
+- L'agente committa e pusha **sempre sul proprio branch di sessione** (non inseguire un branch fisso: si perde lavoro). Lo spostamento verso `test-preview`/`main` è di Maurizio.
+- **Due tracce:** (A) app operativa → via `test-preview` → TEST → approvazione → merge PROD (§6); (B) mockup + documenti → PR su `main`, con CSS/docs ammessi anche in commit diretto su `main`.
+- Dettaglio completo e checklist PR: `docs/flusso-pubblicazione-pr.md`.
