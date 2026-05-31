@@ -3299,42 +3299,55 @@ async function createBookingWithBrowser(options = {}) {
 
     diagnostic.cellInfo = cellXPath;
     if (!cellXPath) {
-      const struct = await tabCtx.evaluate(({ campoNum, oraStr }) => {
+      const geo = await tabCtx.evaluate(({ oraStr }) => {
         const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
         const campoRe = /campo\s*(\d+)/i;
         const timeRe = /^\d{1,2}:\d{2}$/;
-        const tables = [...document.querySelectorAll('table')];
-        const biggest = tables.sort((a, b) => b.querySelectorAll('tr').length - a.querySelectorAll('tr').length)[0];
-
+        const rectOf = (el) => {
+          const r = el.getBoundingClientRect();
+          return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+        };
         const all = [...document.querySelectorAll('*')];
-        const desc = (el) => `${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : ''}`;
+        const txt = (el) => compact(el.textContent || '');
 
-        const campoEls = all.filter((el) => {
-          const t = compact(el.innerText || el.getAttribute?.('title') || '');
-          return campoRe.test(t) && t.length <= 40;
-        }).slice(0, 8).map((el) => ({ tag: desc(el), text: compact(el.innerText || '').slice(0, 25) }));
+        const seen = new Set();
+        const pick = (el) => { const r = rectOf(el); const k = `${r.x},${r.y}`; if (seen.has(k)) return null; seen.add(k); return r; };
 
-        const timeEls = all.filter((el) => timeRe.test(compact(el.childNodes?.length ? el.textContent : el.innerText)))
-          .slice(0, 12).map((el) => ({ tag: desc(el), text: compact(el.innerText || el.textContent || '').slice(0, 8) }));
+        const campoEls = [];
+        for (const el of all) {
+          const t = txt(el);
+          if (campoRe.test(t) && t.length <= 40) {
+            const r = pick(el);
+            if (r && r.w > 0) campoEls.push({ text: t.slice(0, 20), tag: el.tagName.toLowerCase(), ...r });
+          }
+          if (campoEls.length >= 8) break;
+        }
 
-        const targetEls = all.filter((el) => compact(el.innerText || '') === oraStr).slice(0, 6).map((el) => ({
-          tag: desc(el),
-          parent: el.parentElement ? desc(el.parentElement) : '',
-        }));
+        const timeEls = [];
+        for (const el of all) {
+          const t = txt(el);
+          if (timeRe.test(t)) {
+            const r = pick(el);
+            if (r && r.w > 0) timeEls.push({ text: t, tag: el.tagName.toLowerCase(), ...r });
+          }
+          if (timeEls.length >= 18) break;
+        }
 
+        const svgs = [...document.querySelectorAll('svg')];
         return {
-          tables: tables.length,
-          biggestTableRows: biggest ? biggest.querySelectorAll('tr').length : 0,
+          inIframe: window.top !== window.self,
+          href: String(location.href).slice(0, 120),
+          viewport: { w: window.innerWidth, h: window.innerHeight },
+          svgCount: svgs.length,
+          svgRect: svgs[0] ? rectOf(svgs[0]) : null,
           campoEls,
           timeEls,
-          targetEls,
         };
-      }, { campoNum: campo, oraStr: ora }).catch((e) => ({ diagError: String(e && e.message || e) }));
+      }, { oraStr: ora }).catch((e) => ({ diagError: String((e && e.message) || e) }));
 
-      diagnostic.tabelloneStructure = struct;
-      const compact = (s) => JSON.stringify(s).slice(0, 700);
+      diagnostic.tabelloneGeometry = geo;
       throw fail('TABELLONE_CELL_NOT_FOUND',
-        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. DIAG=${compact(struct)}`,
+        `Impossibile trovare la cella Campo ${campo} · ${ora} nel tabellone. DIAG=${JSON.stringify(geo).slice(0, 1100)}`,
         diagnostic);
     }
     if (!cellXPath.seemsFree) {
