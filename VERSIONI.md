@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.595 / TEST: pulsante test prenotazione Matchpoint
+
+- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV` / `data-test-env-only`): aggiunto pulsante nascosto **🧪 Test prenotazione Matchpoint** nell'area dati Matchpoint, dopo il box "Backup dati". Permette allo staff con permesso `cloud_sync` di lanciare una singola prenotazione di prova reale (`Campo 1 · 2026-06-01 · 08:00–09:00 · "TEST PV — CANCELLARE"`) chiamando la edge function `matchpoint-bookings-create`. Il pulsante richiede conferma esplicita, mostra lo stato di avanzamento, disabilita il pulsante durante l'attesa e visualizza l'esito (successo o errore) in un riquadro colorato. In produzione non compare mai.
+
 ## v5.594 / TEST: storico prenotazioni disattivato
 
 - **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV`): lo storico prenotazioni non viene più caricato, salvato in localStorage, né spinto sul cloud. Evita l'errore `setItem ... exceeded the quota` dovuto al localStorage di dominio condiviso con PROD, e non serve in TEST. Quattro guard: (a) `importMatchpointHistoryAutomatic()` no-op, (b) `save()` salta `storicoPrenotazioni`, (c) backup cloud non spinge `booking_history`, (d) restore non ripopola lo storico. **PROD invariato.**
