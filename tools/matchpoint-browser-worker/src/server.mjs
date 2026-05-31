@@ -3471,12 +3471,9 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic.formInputsDump = await dumpFormInputs(formCtx);
       diagnostic.steps.push('fill_form_lezione');
 
-      // 1. Seleziona l'ISTRUTTORE per primo (fa AutoPostBack) e attendi l'assestamento
-      await selectIstruttore(formCtx, page, istruttore, diagnostic);
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-      await page.waitForTimeout(800);
-
-      // 2. Aggiungi gli ALLIEVI via autocomplete (prefisso WUCUsuarioClase)
+      // 1. Aggiungi gli ALLIEVI per primi, su form "pulito" (autocomplete affidabile).
+      //    NB: l'istruttore va selezionato DOPO: il suo AutoPostBack ricarica il
+      //    pannello e impedirebbe all'autocomplete dell'allievo di agganciarsi.
       const LEZIONE_PLAYER_PFX = '#CC_Datos_FormViewFicha_WUCUsuarioClase_Anyadir_';
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
         ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
@@ -3487,6 +3484,10 @@ async function createBookingWithBrowser(options = {}) {
         playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic, LEZIONE_PLAYER_PFX));
       }
       diagnostic.playersResult = playersResult;
+
+      // 2. Seleziona l'ISTRUTTORE per ultimo (il suo AutoPostBack resta dopo
+      //    l'inserimento allievi). selectIstruttore attende già il networkidle.
+      await selectIstruttore(formCtx, page, istruttore, diagnostic);
 
       // 3. NIENTE "Privato" nelle lezioni → non chiamare checkPrivatoCheckbox
 
