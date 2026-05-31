@@ -19,10 +19,13 @@ jobs:
       # Override via repo Settings → Variables, se i default non corrispondono.
       DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
       DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
-      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/padel-match-organizer' }}
+      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/matchpoint-worker' }}
       DEPLOY_SERVICE: ${{ vars.HETZNER_WORKER_SERVICE || 'matchpoint-worker' }}
       DEPLOY_BRANCH: ${{ github.ref_name }}
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Prepara SSH
         run: |
           set -euo pipefail
@@ -86,40 +89,33 @@ jobs:
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
 
-      - name: Pull + restart worker
+      - name: Deploy + restart (pm2)
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            DEPLOY_PATH="$DEPLOY_PATH" \
-            DEPLOY_BRANCH="$DEPLOY_BRANCH" \
-            DEPLOY_SERVICE="$DEPLOY_SERVICE" \
-            bash -s <<'EOF'
+          echo "→ rsync files to server"
+          rsync -az --no-perms --no-owner --no-group \
+            --exclude '.git' --exclude 'node_modules' --exclude '.env' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes" \
+            ./tools/matchpoint-browser-worker/ "root@$DEPLOY_HOST:/opt/matchpoint-worker/"
+          echo "→ npm install + pm2 restart"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "root@$DEPLOY_HOST" bash -s <<'EOF'
             set -euo pipefail
-            cd "$DEPLOY_PATH"
-            echo "→ git fetch + reset su origin/$DEPLOY_BRANCH"
-            git fetch --depth=1 origin "$DEPLOY_BRANCH"
-            git reset --hard "origin/$DEPLOY_BRANCH"
-            git log -1 --oneline
-            cd tools/matchpoint-browser-worker
-            echo "→ npm ci (production)"
-            npm ci --omit=dev
-            echo "→ systemctl restart $DEPLOY_SERVICE"
-            sudo systemctl restart "$DEPLOY_SERVICE" || systemctl restart "$DEPLOY_SERVICE"
-            echo "→ status servizio"
-            systemctl is-active "$DEPLOY_SERVICE"
+            cd /opt/matchpoint-worker
+            npm install --omit=dev
+            pm2 restart matchpoint-worker --update-env
+            pm2 save
+            sleep 3
+            echo "--- health dopo restart ---"
+            curl -s http://127.0.0.1:8787/health || true
           EOF
 
-      - name: Health check
+      - name: Health check (verifica /create-booking)
         run: |
           set -e
           for i in 1 2 3 4 5; do
-            if curl -sf --max-time 5 "http://$DEPLOY_HOST:8787/health" > /tmp/health.json; then
-              echo "Worker risponde:"
-              cat /tmp/health.json
-              exit 0
-            fi
-            echo "Attempt $i fallito, retry in 3s..."
-            sleep 3
+            OUT=$(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "root@$DEPLOY_HOST" 'curl -s --max-time 5 http://127.0.0.1:8787/health' || true)
+            echo "$OUT"
+            if echo "$OUT" | grep -q 'create-booking'; then echo "OK: /create-booking presente"; exit 0; fi
+            echo "tentativo $i: /create-booking non ancora presente, retry..."; sleep 3
           done
-          echo "::error::Worker non risponde su /health dopo 5 tentativi"
-          exit 1
+          echo "::error::Dopo il deploy il worker non espone /create-booking"; exit 1
