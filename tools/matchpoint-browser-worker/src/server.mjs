@@ -3006,92 +3006,40 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
 }
 
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
-async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
-  if (!nome) return false;
-
-  // Selettori per l'input di ricerca autocomplete (valore testuale del giocatore)
-  const SEARCH_SELECTORS = [
-    'input[placeholder*="valore cercato"]',
-    'input[placeholder*="selezioni"]',
-    'input[placeholder*="Scriva il valore"]',
-    'input[placeholder*="cerca"]',
-    'input[placeholder*="Cerca"]',
-  ];
-
-  let searchInput = null;
-  for (const sel of SEARCH_SELECTORS) {
-    const loc = formCtx.locator(sel).last(); // .last() per evitare campo numero
-    if (await loc.isVisible({ timeout: 2000 }).catch(() => false)) {
-      searchInput = loc;
-      diagnostic.playerSearchSel = sel;
-      break;
-    }
+async function searchAndAddPlayer(formCtx, nome, diagnostic) {
+  if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { added: false }; }
+  const input = formCtx.locator('#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_TextBoxTitular');
+  if (!(await input.count().catch(() => 0))) { diagnostic.steps.push('player_search_input_not_found'); return { added: false }; }
+  await input.first().click({ timeout: 5000 }).catch(() => {});
+  await input.first().fill('').catch(() => {});                 // togli il watermark/value
+  await input.first().type(nome, { delay: 70 });                 // keystroke veri → autocomplete
+  await formCtx.waitForTimeout(1600);
+  // l'opzione autocomplete ha forma "NNNNNN-Nome": selezionare quella che contiene il nome
+  const opt = formCtx.locator(`text=/${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i`).first();
+  if (!(await opt.isVisible({ timeout: 3500 }).catch(() => false))) {
+    diagnostic.steps.push('player_option_not_found');           // nessun socio corrispondente → si prosegue
+    return { added: false };
   }
-  if (!searchInput) {
-    diagnostic.steps.push('player_search_input_not_found');
-    return false;
+  await opt.click().catch(() => {});
+  await formCtx.waitForTimeout(400);
+  // "+ Aggiungere all'elenco"
+  const addBtn = formCtx.getByText("Aggiungere all'elenco", { exact: false }).first();
+  if (await addBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await addBtn.click().catch(() => {});
+    diagnostic.steps.push('player_added');
+    return { added: true };
   }
-
-  await searchInput.click({ timeout: 5000 });
-  await searchInput.type(nome, { delay: 70 }); // keystroke reali per attivare autocomplete jQuery UI
-  await page.waitForTimeout(1800); // jQuery UI autocomplete debounce
-
-  // Aspetta e clicca il primo risultato dell'autocomplete
-  const AUTOCOMPLETE_SELECTORS = [
-    '.ui-autocomplete li:first-child',
-    '.ui-menu-item:first-child',
-    '[role="listbox"] [role="option"]:first-child',
-    '.autocomplete-results li:first-child',
-    '.dropdown-menu li:first-child',
-    '.ui-autocomplete-loading + .ui-autocomplete li:first-child',
-  ];
-  let playerSelected = false;
-  for (const sel of AUTOCOMPLETE_SELECTORS) {
-    const acLoc = page.locator(sel).first(); // autocomplete appare nella pagina principale
-    if (await acLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await acLoc.click({ timeout: 5000 });
-      playerSelected = true;
-      diagnostic.steps.push('player_autocomplete_selected');
-      break;
-    }
-  }
-
-  if (!playerSelected) {
-    const inputs = await dumpFormInputs(formCtx).catch(() => []);
-    diagnostic.steps.push('player_option_not_found');
-    throw fail('PLAYER_OPTION_NOT_FOUND',
-      `Nessuna opzione autocomplete per "${nome}" dopo tipo+attesa. inputs=${JSON.stringify(inputs).slice(0, 400)}`,
-      { ...diagnostic, formInputsDump: inputs });
-  }
-
-  // Clicca "+ Aggiungere all'elenco"
-  const ADD_SELECTORS = [
-    'button:has-text("Aggiungere")',
-    'a:has-text("Aggiungere")',
-    'input[value*="Aggiungere"]',
-    ':text-is("+ Aggiungere all\'elenco")',
-    'button:has-text("Aggiunge")',
-  ];
-  let added = false;
-  for (const sel of ADD_SELECTORS) {
-    const addLoc = formCtx.locator(sel).first();
-    if (await addLoc.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await addLoc.click({ timeout: 8000 });
-      added = true;
-      diagnostic.steps.push('player_added_to_list');
-      break;
-    }
-  }
-  if (!added) diagnostic.steps.push('player_add_btn_not_found');
-  return added;
+  diagnostic.steps.push('player_add_button_not_found');
+  return { added: false };
 }
 
 // ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
 async function clickFormSave(formCtx, page, labels, diagnostic) {
   const selectors = [
+    '#CC_Datos_FormViewFicha_ButtonInsertarYSalir',
+    '#CC_Datos_FormViewFicha_ButtonInsertar',
     ...labels.map((l) => `button:has-text("${l}")`),
     ...labels.map((l) => `a:has-text("${l}")`),
-    ...labels.map((l) => `input[value*="${l.split(' ')[0]}"]`),
     'input[type="submit"]',
     'button[type="submit"]',
   ];
@@ -3147,58 +3095,18 @@ async function dumpFormInputs(formCtx) {
 }
 
 // ── Helper: spunta la checkbox "Privato" nel form partita ─────────────────────
-async function checkPrivatoCheckbox(formCtx, page, diagnostic) {
-  // Prima strategia: evaluate DOM — cerca input[type=checkbox] associato al testo "Privato"
-  const result = await formCtx.evaluate(() => {
-    const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
-    const labels = [...document.querySelectorAll('label, span, td, th, div')];
-    for (const lbl of labels) {
-      if (!/privato/i.test(compact(lbl.innerText || ''))) continue;
-      const chk = lbl.control
-        || lbl.previousElementSibling?.querySelector?.('input[type="checkbox"]')
-        || lbl.nextElementSibling?.querySelector?.('input[type="checkbox"]')
-        || lbl.closest('td, tr, div')?.querySelector('input[type="checkbox"]');
-      if (chk) {
-        if (!chk.checked) {
-          chk.checked = true;
-          chk.dispatchEvent(new Event('change', { bubbles: true }));
-          chk.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        }
-        return { found: true, id: chk.id || '', name: chk.name || '', alreadyChecked: chk.checked };
-      }
-    }
-    // Fallback per name/id contenente "privat"
-    const byAttr = document.querySelector('input[type="checkbox"][name*="rivat" i], input[type="checkbox"][id*="rivat" i]');
-    if (byAttr) {
-      if (!byAttr.checked) {
-        byAttr.checked = true;
-        byAttr.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      return { found: true, id: byAttr.id || '', name: byAttr.name || '', method: 'attr_match' };
-    }
-    return { found: false };
-  }).catch(() => ({ found: false }));
-
-  if (!result.found) {
-    // Seconda strategia: locator Playwright — checkbox vicino al testo "Privato"
-    try {
-      const checkboxLoc = formCtx.locator('input[type="checkbox"]').filter({
-        near: formCtx.getByText('Privato', { exact: false }),
-      }).first();
-      const isVis = await checkboxLoc.isVisible({ timeout: 2000 }).catch(() => false);
-      if (isVis) {
-        await checkboxLoc.check({ timeout: 5000 });
-        result.found = true;
-        result.method = 'playwright_near';
-      }
-    } catch (e) {
-      diagnostic.privatoLocatorErr = String(e).slice(0, 80);
-    }
+async function checkPrivatoCheckbox(formCtx, diagnostic) {
+  const cb = formCtx.locator('#CC_Datos_FormViewFicha_WUCCabeceraReserva_CheckBoxPrivada');
+  if (await cb.count().catch(() => 0)) {
+    await cb.first().check({ timeout: 6000 }).catch(async () => {
+      // fallback: alcuni temi nascondono l'input; cliccare la label associata
+      await formCtx.locator('label[for="CC_Datos_FormViewFicha_WUCCabeceraReserva_CheckBoxPrivada"]').first().click({ timeout: 4000 }).catch(() => {});
+    });
+    diagnostic.steps.push('privato_checked:CheckBoxPrivada');
+    return { found: true };
   }
-
-  diagnostic.privatoResult = result;
-  diagnostic.steps.push(result.found ? `privato_checked:${result.id || result.name || 'ok'}` : 'privato_not_found');
-  return result.found;
+  diagnostic.steps.push('privato_checkbox_not_found');
+  return { found: false };
 }
 
 // ── Helper: imposta un campo ora con maschera HH:MM (scrivendo solo cifre HHMM) ─
@@ -3479,10 +3387,10 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic.steps.push(`fill_form_${tipo}`);
 
       // 1. Spunta "Privato" (obbligatorio)
-      await checkPrivatoCheckbox(formCtx, page, diagnostic);
+      await checkPrivatoCheckbox(formCtx, diagnostic);
 
       // 2. Aggiungi giocatore via autocomplete
-      await searchAndAddPlayer(formCtx, page, nome, diagnostic);
+      await searchAndAddPlayer(formCtx, nome, diagnostic);
 
       // 3. Salva
       const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare'], diagnostic);
