@@ -3200,61 +3200,40 @@ async function createBookingWithBrowser(options = {}) {
     diagnostic.steps.push('set_date');
     await impostaDataTabellone(tabCtx, page, data, diagnostic);
 
-    // ── Trova le coordinate (campo × ora) nel tabellone SVG e clicca ─────────
-    diagnostic.steps.push('find_free_cell');
-    const target = await tabCtx.evaluate(({ campoNum, oraStr }) => {
-      const compact = (v) => String(v || '').replace(/\s+/g, ' ').trim();
-      const campoRe = /campo\s*(\d+)/i;
-      const rect = (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
-      const all = [...document.querySelectorAll('*')];
+    // ── Seleziona e clicca la cella reale (div.division) per attributi ──────────
+    diagnostic.steps.push('find_division_cell');
+    const cellSel = `div.division[columna="${campo}"][time="${ora}"]`;
+    diagnostic.cellSelector = cellSel;
+    const cellCount = await tabCtx.locator(cellSel).count().catch(() => 0);
+    diagnostic.cellCount = cellCount;
 
-      // colonna del campo: elemento testo "Campo N" (centro X = centro colonna)
-      let campo = null;
-      for (const el of all) {
-        const t = compact(el.textContent || '');
-        const m = t.match(campoRe);
-        if (m && parseInt(m[1], 10) === campoNum && t.length <= 20) {
-          const r = rect(el);
-          if (r.w > 0 && r.h > 0) { campo = r; break; }
-        }
-      }
-      // riga dell'ora: elemento testo uguale a "HH:MM"
-      let time = null;
-      for (const el of all) {
-        if (compact(el.textContent || '') === oraStr) {
-          const r = rect(el);
-          if (r.w > 0 && r.h > 0) { time = r; break; }
-        }
-      }
-      const svg = document.querySelector('svg');
-      const svgR = svg ? rect(svg) : null;
-      if (!campo || !time || !svgR) {
-        return { ok: false, hasCampo: !!campo, hasTime: !!time, hasSvg: !!svgR };
-      }
-      const clickX = campo.x + campo.w / 2;     // centro colonna del campo
-      const clickY = time.y + 15;               // poco sotto la linea dell'ora → dentro la fascia di quell'ora
-      return {
-        ok: true,
-        posX: clickX - svgR.x,                  // posizione relativa all'SVG
-        posY: clickY - svgR.y,
-        abs: { clickX, clickY },
-        svg: svgR,
-      };
-    }, { campoNum: campo, oraStr: ora }).catch((e) => ({ ok: false, err: String((e && e.message) || e) }));
-
-    diagnostic.clickTarget = target;
-    if (!target || !target.ok) {
+    if (cellCount === 0) {
+      // Diagnostica: elenca le celle disponibili per quel campo (per capire formato time)
+      const avail = await tabCtx.evaluate((col) => {
+        return [...document.querySelectorAll(`div.division[columna="${col}"]`)]
+          .slice(0, 30)
+          .map((d) => ({
+            time: d.getAttribute('time'),
+            end: d.getAttribute('timeend'),
+            bloccato: d.getAttribute('bloqueado'),
+            libero: d.getAttribute('horariolibre'),
+          }));
+      }, String(campo)).catch(() => []);
+      diagnostic.availableDivisions = avail;
       throw fail('TABELLONE_CELL_NOT_FOUND',
-        `Impossibile localizzare Campo ${campo} · ${ora} nel tabellone SVG. DIAG=${JSON.stringify(target).slice(0, 700)}`,
+        `Nessuna cella div.division per Campo ${campo} · ${ora}. DIAG=${JSON.stringify(avail).slice(0, 800)}`,
         diagnostic);
     }
 
-    // Click a coordinate sull'SVG (Playwright traduce in coordinate di pagina, gestendo l'iframe)
-    diagnostic.steps.push('click_svg_cell');
-    await tabCtx.locator('svg').first().click({
-      position: { x: Math.round(target.posX), y: Math.round(target.posY) },
-      timeout: 15000,
-    });
+    // Verifica (best-effort) che lo slot non sia bloccato
+    const bloccato = await tabCtx.locator(cellSel).first().getAttribute('bloqueado').catch(() => null);
+    if (bloccato === 'true') {
+      throw fail('SLOT_NOT_FREE', `Lo slot Campo ${campo} · ${data} · ${ora} risulta bloccato/occupato.`, diagnostic);
+    }
+
+    diagnostic.steps.push('click_division_cell');
+    await tabCtx.locator(cellSel).first().scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+    await tabCtx.locator(cellSel).first().click({ timeout: 15000 });
     await page.waitForTimeout(900);
 
     // ── Seleziona tipo dal menu contestuale ───────────────────────────────────
