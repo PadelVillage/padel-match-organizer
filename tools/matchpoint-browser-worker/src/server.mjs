@@ -3056,10 +3056,11 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
   }
 
   if (!playerSelected) {
-    // Fallback: premi Enter sull'input e spera che venga accettato
-    await searchInput.press('Enter');
-    await page.waitForTimeout(600);
-    diagnostic.steps.push('player_autocomplete_enter_fallback');
+    const inputs = await dumpFormInputs(formCtx).catch(() => []);
+    diagnostic.steps.push('player_option_not_found');
+    throw fail('PLAYER_OPTION_NOT_FOUND',
+      `Nessuna opzione autocomplete per "${nome}" dopo tipo+attesa. inputs=${JSON.stringify(inputs).slice(0, 400)}`,
+      { ...diagnostic, formInputsDump: inputs });
   }
 
   // Clicca "+ Aggiungere all'elenco"
@@ -3098,7 +3099,7 @@ async function clickFormSave(formCtx, page, labels, diagnostic) {
     if (!await btn.isVisible({ timeout: 2000 }).catch(() => false)) continue;
     try {
       await Promise.all([
-        page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
+        page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
         btn.click({ timeout: 10000 }),
       ]);
       diagnostic.submitSelector = sel;
@@ -3108,7 +3109,11 @@ async function clickFormSave(formCtx, page, labels, diagnostic) {
       diagnostic.navigationAttempts.push({ action: 'save_attempt', sel, error: e.message.slice(0, 80) });
     }
   }
-  return false;
+  const inputs = await dumpFormInputs(formCtx).catch(() => []);
+  diagnostic.steps.push('save_button_not_found');
+  throw fail('SAVE_BUTTON_NOT_FOUND',
+    `Bottone salvataggio non trovato (labels=${JSON.stringify(labels)}). inputs=${JSON.stringify(inputs).slice(0, 400)}`,
+    { ...diagnostic, formInputsDump: inputs });
 }
 
 // ── Helper: calcola ora fine da ora inizio + durata minuti ───────────────────
@@ -3249,17 +3254,32 @@ async function openFichaPartita(page, baseUrl, idrecurso, fecha, oraInizio, oraF
   diagnostic.fichaUrl = fichaUrl;
   diagnostic.steps.push('ficha_goto');
   try {
-    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(1500);
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(1000);
   } catch (err) {
     diagnostic.fichaGotoError = err.message.slice(0, 120);
     return null;
   }
   // Cerca "Nuova partita" su pagina principale e frame
   const formCtx = await waitForBookingForm(page, 'partita', diagnostic, 8000);
-  if (formCtx) diagnostic.steps.push('ficha_form_found');
-  else diagnostic.steps.push('ficha_form_not_found');
-  return formCtx;
+  if (formCtx) {
+    diagnostic.steps.push('ficha_form_found');
+    return formCtx;
+  }
+  // Form non comparso — raccoglie diagnostica ricca e fallisce subito
+  const url = page.url();
+  const bodySample = await page.evaluate(
+    () => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+  ).catch(() => '');
+  let inputs = [];
+  try { inputs = await dumpFormInputs(page); } catch {}
+  diagnostic.afterGotoUrl = url;
+  diagnostic.bodySample = bodySample;
+  diagnostic.formInputsDump = inputs;
+  diagnostic.steps.push('ficha_form_not_visible');
+  throw fail('FICHA_FORM_NOT_VISIBLE',
+    `Form non visibile dopo goto Ficha. afterUrl=${url} | body="${bodySample}" | inputs=${JSON.stringify(inputs).slice(0, 500)}`,
+    diagnostic);
 }
 
 // ── Helper: fallback clic reale mouse sulla cella tabellone ───────────────────
@@ -3378,6 +3398,7 @@ async function createBookingWithBrowser(options = {}) {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
 
+  let page;
   try {
     const context = await browser.newContext({
       acceptDownloads: false,
@@ -3386,7 +3407,9 @@ async function createBookingWithBrowser(options = {}) {
       viewport: { width: 1440, height: 900 },
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
     });
-    const page = await context.newPage();
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
 
     // ── Login ─────────────────────────────────────────────────────────────────
     diagnostic.steps.push('login');
@@ -3398,7 +3421,7 @@ async function createBookingWithBrowser(options = {}) {
       await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
     }
     await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
       page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
     ]);
     await page.waitForTimeout(2500);
@@ -3523,7 +3546,7 @@ async function createBookingWithBrowser(options = {}) {
       if (!saved) throw fail('BOOKING_FORM_SUBMIT_FAILED', 'Bottone di salvataggio non trovato nel form Partita.', diagnostic);
     }
 
-    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(2000);
     diagnostic.postSubmitUrl = page.url();
     diagnostic.postSubmitTitle = await page.title().catch(() => '');
@@ -3544,6 +3567,12 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic,
       warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
     };
+  } catch (err) {
+    const urlStr = (() => { try { return page?.url() ?? '?'; } catch { return '?'; } })();
+    const extra = ` | steps=${JSON.stringify(diagnostic.steps)} url=${urlStr}`;
+    if (!err.message.includes('steps=')) err.message = `${err.message}${extra}`;
+    if (!err.diagnostic) err.diagnostic = diagnostic;
+    throw err;
   } finally {
     await browser.close().catch(() => {});
   }
