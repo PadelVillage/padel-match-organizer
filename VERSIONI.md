@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.594 / TEST: storico prenotazioni disattivato
+
+- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV`): lo storico prenotazioni non viene più caricato, salvato in localStorage, né spinto sul cloud. Evita l'errore `setItem ... exceeded the quota` dovuto al localStorage di dominio condiviso con PROD, e non serve in TEST. Quattro guard: (a) `importMatchpointHistoryAutomatic()` no-op, (b) `save()` salta `storicoPrenotazioni`, (c) backup cloud non spinge `booking_history`, (d) restore non ripopola lo storico. **PROD invariato.**
+
 ## v5.588 / Fix: Tab 2 INVALID_RULES
 
 - **Correzione INVALID_RULES nel Parser Config (Tab 2 "Genera Aggiornamento")**: Il pulsante "Approva e Aggiorna File" ritornava `INVALID_RULES`. Causa: il front-end inviava alla Edge Function `parser-rules-update` solo le `modifiche` e il frammento filtrato di regole mostrato in Tab 2, mentre la funzione valida lo schema completo delle regole. Ora il client costruisce il SET COMPLETO di regole applicando le modifiche all'intero `PARSER_RULES` e lo invia nel campo `regole` del payload. La Edge Function è stata irrobustita per accettare e validare l'oggetto `regole` completo (con fallback su `modifiche`), restituendo `INVALID_RULES` solo se mancano `intents` o `campi_obbligatori`.
