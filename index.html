@@ -34330,14 +34330,21 @@ Per confermare scrivi ELIMINA.`);
 
   // ── Test prenotazione Matchpoint (solo TEST env) ──────────────────────────
   async function matchpointTestBookingCreate() {
+    // --- Variante PARTITA (verificata, tenuta per eventuale ri-test rapido) ---
+    // const TEST_BOOKING = {
+    //   campo: 1, data: "2026-06-01", ora: "09:00", oraFine: "10:30", durata: 90,
+    //   nome: "Maurizio Aprea", tipo: "partita", note: "TEST PV — CANCELLARE"
+    // };
+    // --- Variante LEZIONE (test corrente) ---
     const TEST_BOOKING = {
-      campo: 1,
+      campo: 2,                       // Campo 2 = id_recurso 14 (mattina 01/06 libera)
       data: "2026-06-01",
-      ora: "09:00",
-      oraFine: "10:30",
-      durata: 90,
-      nome: "Maurizio Aprea",
-      tipo: "partita",
+      ora: "08:00",
+      oraFine: "08:30",
+      durata: 30,                     // lezione: 30 min
+      nome: "Maurizio Aprea",         // allievo (socio reale)
+      istruttore: "Santiago Carabajal", // maestro: uno tra "LoZio" | "Santiago Carabajal" | "Spinazze"
+      tipo: "lezione",
       note: "TEST PV — CANCELLARE"
     };
 
