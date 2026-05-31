@@ -2,6 +2,7 @@
 
 | Versione | Data       | Changelog                                                                                                                  |
 |----------|------------|----------------------------------------------------------------------------------------------------------------------------|
+| v3.6     | 2026-05-31 | Tolto il box titolo della chat ("Assistente Prenotazioni Staff"): parte dritta col campo di scrittura; resta solo la ✕ per chiudere su mobile. Nessuna modifica di logica rispetto al v3.5. |
 | v3.5     | 2026-05-31 | Chat instrada al flusso guidato i campi mancanti (campo/ora da frase; tipo/durata/giocatori dal flusso esistente); niente più finto-confermato; rimossi nomi demo finti. |
 | v3.4     | 2026-05-31 | Lettura dati reali da Supabase TEST via vista `v_calendario_pubblico` (anon key, sola lettura). Dati di esempio rimossi; `loadDay(dateISO)` con cache sostituisce i dati hardcoded. Creazione/modifica/eliminazione restano solo locali (Tappa 3). |
 | v3.3     | 2026-05-30 | v3.2 → v3.3: ingranditi i testi del pannello chat e della scheda di modifica su mobile (coerenti con l'agenda a 20px); desktop invariato; nessuna modifica di logica. |
