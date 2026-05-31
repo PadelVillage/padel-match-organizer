@@ -3006,31 +3006,46 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
 }
 
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
-async function searchAndAddPlayer(formCtx, nome, diagnostic) {
-  if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { added: false }; }
-  const input = formCtx.locator('#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_TextBoxTitular');
-  if (!(await input.count().catch(() => 0))) { diagnostic.steps.push('player_search_input_not_found'); return { added: false }; }
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic) {
+  const PFX = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_';
+  const norm = (s) => String(s || '').toLowerCase().trim();
+  if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
+
+  const input = formCtx.locator(PFX + 'TextBoxTitular');
+  if (!(await input.count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
+
   await input.first().click({ timeout: 5000 }).catch(() => {});
-  await input.first().fill('').catch(() => {});                 // togli il watermark/value
-  await input.first().type(nome, { delay: 70 });                 // keystroke veri → autocomplete
-  await formCtx.waitForTimeout(1600);
-  // l'opzione autocomplete ha forma "NNNNNN-Nome": selezionare quella che contiene il nome
-  const opt = formCtx.locator(`text=/${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i`).first();
-  if (!(await opt.isVisible({ timeout: 3500 }).catch(() => false))) {
-    diagnostic.steps.push('player_option_not_found');           // nessun socio corrispondente → si prosegue
-    return { added: false };
+  // pulisce eventuale residuo/watermark prima di digitare
+  await page.keyboard.press('Control+A').catch(() => {});
+  await page.keyboard.press('Delete').catch(() => {});
+  await input.first().type(nome, { delay: 80 });               // keystroke veri → autocomplete
+
+  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
+  const li = ul.locator('li');
+  let appeared = false;
+  for (let i = 0; i < 24; i++) {                               // ~6s max
+    const n = await li.count().catch(() => 0);
+    if (n > 0 && await ul.isVisible().catch(() => false)) { appeared = true; break; }
+    await page.waitForTimeout(250);
   }
-  await opt.click().catch(() => {});
-  await formCtx.waitForTimeout(400);
-  // "+ Aggiungere all'elenco"
-  const addBtn = formCtx.getByText("Aggiungere all'elenco", { exact: false }).first();
-  if (await addBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await addBtn.click().catch(() => {});
-    diagnostic.steps.push('player_added');
-    return { added: true };
+  if (!appeared) { diagnostic.steps.push('player_option_not_found:' + nome); return { nome, added: false, reason: 'no_match' }; }
+
+  // sceglie il <li> che contiene il nome, altrimenti il primo
+  const count = await li.count().catch(() => 0);
+  let target = li.first();
+  for (let i = 0; i < count; i++) {
+    const t = norm(await li.nth(i).innerText().catch(() => ''));
+    if (t.includes(norm(nome))) { target = li.nth(i); break; }
   }
-  diagnostic.steps.push('player_add_button_not_found');
-  return { added: false };
+  await target.click({ timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(400);
+
+  const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir');
+  if (!(await addLink.count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
+  await addLink.first().click({ timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(1200);                              // attende il postback parziale (UpdatePanel)
+  diagnostic.steps.push('player_added:' + nome);
+  return { nome, added: true };
 }
 
 // ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
@@ -3389,8 +3404,16 @@ async function createBookingWithBrowser(options = {}) {
       // 1. Spunta "Privato" (obbligatorio)
       await checkPrivatoCheckbox(formCtx, diagnostic);
 
-      // 2. Aggiungi giocatore via autocomplete
-      await searchAndAddPlayer(formCtx, nome, diagnostic);
+      // 2. Aggiungi giocatori via autocomplete
+      const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
+        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
+        : (nome ? [nome] : []);
+      diagnostic.playersRequested = players;
+      const playersResult = [];
+      for (const p of players) {
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic));
+      }
+      diagnostic.playersResult = playersResult;
 
       // 3. Salva
       const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare'], diagnostic);
