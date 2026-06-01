@@ -4176,11 +4176,36 @@ async function cancelBookingWithBrowser(input = {}) {
     }
     diagnostic.idReserva = idReserva;
 
-    // Apri la scheda della prenotazione via URL diretto
-    // L'URL funziona per qualsiasi tipo di prenotazione (partita/lezione/manutenzione/stagionale)
+    // === APRI FICHA (auto-rileva il tipo) — stesso approccio della FIX 5 dell'edit ===
+    // La scheda ha URL DIVERSA per tipo (partita/lezione/manutenzione). Aprendo la URL
+    // sbagliata Matchpoint rende una pagina vuota (nessun pulsante). Proviamo le 3 schede e
+    // teniamo la prima valida: pulsante presente, oppure prenotazione già ANNULLATA.
     diagnostic.steps.push('goto_ficha');
-    await page.goto(`${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
-      { waitUntil: 'domcontentloaded', timeout: 25000 });
+    let fichaUrl = null;
+    const fichaCandidates = [
+      `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
+    ];
+    for (const cand of fichaCandidates) {
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await page.waitForTimeout(400);
+      const valida = await page.evaluate(() =>
+        !!document.querySelector('#CC_Datos_FormViewFicha_ButtonAnularReserva') ||
+        !!document.querySelector('#CC_Datos_FormViewFicha_ButtonExtender') ||
+        /ANNULLAT/i.test(document.body.innerText || '')
+      );
+      if (valida) { fichaUrl = cand; break; }
+    }
+    if (!fichaUrl) {
+      throw fail('FICHA_NON_TROVATA',
+        `Nessuna scheda valida per id ${idReserva} (partita/lezione/manutenzione).`,
+        diagnostic);
+    }
+    diagnostic.steps.push('ficha_detected:' + (
+      fichaUrl.includes('ClaseSuelta') ? 'lezione' :
+      fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
+    ));
 
     // Verifica stato iniziale (se già annullata, esci ok)
     const giaAnnullata = await page.evaluate(() => /ANNULLATA/i.test(document.body.innerText || ''));
@@ -4210,10 +4235,9 @@ async function cancelBookingWithBrowser(input = {}) {
     // Attendi il completamento del postback (operazione lenta su Matchpoint)
     await page.waitForTimeout(6000);
 
-    // Verifica esito ricaricando la scheda
+    // Verifica esito ricaricando la SCHEDA GIUSTA (stessa URL auto-rilevata sopra)
     diagnostic.steps.push('verifica');
-    await page.goto(`${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
-      { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
     const annullata = await page.evaluate(() => /ANNULLATA/i.test(document.body.innerText || ''));
     diagnostic.statoFinale = annullata ? 'ANNULLATA' : 'NON_ANNULLATA';
     if (!annullata) {
