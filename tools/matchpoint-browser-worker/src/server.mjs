@@ -2946,6 +2946,13 @@ async function handleCancelBooking(req, res) {
   json(res, 200, result);
 }
 
+async function handleEditBooking(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await editBookingWithBrowser(body);
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -3010,46 +3017,89 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
 }
 
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
+// ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
+// 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
 async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_') {
   const PFX = pfx;
   const norm = (s) => String(s || '').toLowerCase().trim();
   if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
 
-  const input = formCtx.locator(PFX + 'TextBoxTitular');
-  if (!(await input.count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
-
-  await input.first().click({ timeout: 5000 }).catch(() => {});
-  // pulisce eventuale residuo/watermark prima di digitare
-  await page.keyboard.press('Control+A').catch(() => {});
-  await page.keyboard.press('Delete').catch(() => {});
-  await input.first().type(nome, { delay: 80 });               // keystroke veri → autocomplete
-
-  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
-  const li = ul.locator('li');
-  let appeared = false;
-  for (let i = 0; i < 24; i++) {                               // ~6s max
-    const n = await li.count().catch(() => 0);
-    if (n > 0 && await ul.isVisible().catch(() => false)) { appeared = true; break; }
-    await page.waitForTimeout(250);
-  }
-  if (!appeared) { diagnostic.steps.push('player_option_not_found:' + nome); return { nome, added: false, reason: 'no_match' }; }
-
-  // sceglie il <li> che contiene il nome, altrimenti il primo
-  const count = await li.count().catch(() => 0);
-  let target = li.first();
-  for (let i = 0; i < count; i++) {
-    const t = norm(await li.nth(i).innerText().catch(() => ''));
-    if (t.includes(norm(nome))) { target = li.nth(i); break; }
-  }
-  await target.click({ timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  const inputEl = formCtx.locator(PFX + 'TextBoxTitular');
+  if (!(await inputEl.count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
 
   const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir');
   if (!(await addLink.count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
+
+  const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople');
+  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
+  const li = ul.locator('li');
+
+  let lockedId = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // Pulisce campo e digita nome con keystroke reali
+    await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+    await page.keyboard.press('Control+A').catch(() => {});
+    await page.keyboard.press('Delete').catch(() => {});
+    await inputEl.first().type(nome, { delay: 80 });
+
+    // Attende autocomplete
+    let appeared = false;
+    for (let i = 0; i < 24; i++) {
+      const n = await li.count().catch(() => 0);
+      if (n > 0 && await ul.isVisible().catch(() => false)) { appeared = true; break; }
+      await page.waitForTimeout(250);
+    }
+    if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
+
+    // Sceglie il <li> che contiene il nome, altrimenti il primo
+    const count = await li.count().catch(() => 0);
+    let target = li.first();
+    for (let i = 0; i < count; i++) {
+      const t = norm(await li.nth(i).innerText().catch(() => ''));
+      if (t.includes(norm(nome))) { target = li.nth(i); break; }
+    }
+    await target.click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(400);
+
+    // Verifica che l'id nascosto si sia agganciato
+    lockedId = (await hiddenId.first().inputValue().catch(() => '')).trim();
+    diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:id=${lockedId}`);
+    if (lockedId) break;
+  }
+
+  if (!lockedId) {
+    throw fail('PLAYER_ID_NOT_LOCKED',
+      `Autocomplete non agganciato (HiddenFieldIdPeople vuoto) per: ${nome}`,
+      diagnostic);
+  }
+
+  // Clicca "Aggiungere" solo con id valido agganciato
   await addLink.first().click({ timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1200);                              // attende il postback parziale (UpdatePanel)
+  await page.waitForTimeout(1200);
+
+  // Verifica post-aggiunta: cerca la riga per nome
+  let addedIdCliente = null;
+  let n = 0;
+  while (true) {
+    const nomeInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_TextBoxNombreValor_${n}"]`);
+    if (!(await nomeInput.count().catch(() => 0))) break;
+    const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+    if (nomeVal === norm(nome)) {
+      const idInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_HiddenFieldIdCliente_${n}"]`);
+      addedIdCliente = (await idInput.first().inputValue().catch(() => '')).trim();
+      break;
+    }
+    n++;
+  }
+
+  if (addedIdCliente === null) {
+    throw fail('PLAYER_ADD_NOT_CONFIRMED',
+      `Giocatore ${nome} non trovato nelle righe partecipanti dopo l'aggiunta.`,
+      diagnostic);
+  }
+
   diagnostic.steps.push('player_added:' + nome);
-  return { nome, added: true };
+  return { nome, added: true, idCliente: addedIdCliente };
 }
 
 // ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
@@ -3693,6 +3743,275 @@ async function createBookingWithBrowser(options = {}) {
 // Input: { idReserva?, campo?, data?, ora? }
 // Se idReserva è fornito viene usato direttamente; altrimenti il worker ricava
 // l'id dal tabellone usando campo + data (YYYY-MM-DD) + ora (HH:MM).
+async function editBookingWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const idReserva = input.idReserva ? String(input.idReserva) : null;
+  if (!idReserva) throw fail('PARAMS_MANCANTI', 'Serve idReserva.');
+
+  const move = input.move || null;
+  const players = input.players || null;
+  if (!move && !players) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
+
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, move, players } };
+  const fichaUrl = `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`;
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  try {
+    const context = await browser.newContext({
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    const page = await context.newPage();
+    page.on('dialog', (d) => d.accept().catch(() => {}));
+
+    // === LOGIN (stessa sequenza di cancelBookingWithBrowser) ===
+    diagnostic.steps.push('login_page');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+
+    diagnostic.steps.push('login_submit');
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
+    }
+
+    await maybeClickCashEnter(page, diagnostic);
+    diagnostic.afterCashUrl = page.url();
+
+    // === APRI FICHA ===
+    diagnostic.steps.push('goto_ficha');
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+
+    let moved = false;
+
+    // === SPOSTAMENTO ===
+    if (move) {
+      const recurso = move.campo != null ? RECURSO_BY_CAMPO[Number(move.campo)] : null;
+      if (move.campo != null && !recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${move.campo} senza id_recurso noto.`, diagnostic);
+      const oraFine = move.oraFine || (move.oraInizio && move.durationMinutes ? computeEndTime(move.oraInizio, move.durationMinutes) : null);
+      const fecha = move.data ? (() => { const [y, m, d] = move.data.split('-'); return `${d}/${m}/${y}`; })() : null;
+
+      diagnostic.steps.push('open_extender');
+      await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').first().click({ timeout: 10000 });
+      await page.waitForTimeout(1500);
+
+      const f = page.frameLocator('iframe[src*="ExtenderHorarioReserva.aspx"]');
+      if (recurso)        await f.locator('#CC_Datos_DropDownListRecursos').selectOption(String(recurso), { timeout: 8000 });
+      if (fecha)          await f.locator('#CC_Datos_TextBoxFecha').fill(fecha, { timeout: 8000 });
+      if (move.oraInizio) await f.locator('#CC_Datos_TextBoxHoraInicio').fill(move.oraInizio, { timeout: 8000 });
+      if (oraFine)        await f.locator('#CC_Datos_TextBoxHoraFin').fill(oraFine, { timeout: 8000 });
+
+      diagnostic.steps.push('click_aceptar');
+      await f.locator('#CC_Datos_ButtonAceptar').click({ timeout: 10000 });
+
+      // SweetAlert2 conferma: cercalo prima nell'iframe, poi nella pagina
+      diagnostic.steps.push('attendi_swal');
+      const okFrame = f.locator('button.swal2-confirm');
+      const okPage  = page.locator('button.swal2-confirm');
+      const t0 = Date.now();
+      let clicked = false;
+      while (Date.now() - t0 < 12000 && !clicked) {
+        if (await okFrame.isVisible().catch(() => false)) {
+          await okFrame.click({ timeout: 4000 }).catch(() => {});
+          clicked = true;
+        } else if (await okPage.isVisible().catch(() => false)) {
+          await okPage.click({ timeout: 4000 }).catch(() => {});
+          clicked = true;
+        } else {
+          await page.waitForTimeout(300);
+        }
+      }
+      await page.waitForTimeout(2500);
+      moved = true;
+
+      // Ricarica Ficha pulita prima di toccare i giocatori e per la verifica
+      diagnostic.steps.push('reload_after_move');
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    }
+
+    // === GIOCATORI ===
+    if (players) {
+      const removeNames = (players.remove || []).map((n) => n.toLowerCase().trim());
+      const removeAll = players.removeAll === true;
+
+      // RIMOZIONI — loop con ri-scan (no indici cached: il repeater si re-indicizza dopo ogni postback)
+      if (removeAll || removeNames.length > 0) {
+        diagnostic.steps.push('rimozioni_start');
+        let keepRemoving = true;
+        while (keepRemoving) {
+          keepRemoving = false;
+          let idx = 0;
+          while (true) {
+            const nomeInput = page.locator(
+              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+            );
+            if (!(await nomeInput.count().catch(() => 0))) break;
+            const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+            const doRemove = removeAll || removeNames.includes(nomeVal);
+            if (doRemove) {
+              diagnostic.steps.push(`elimina:${nomeVal}`);
+              const elimBtn = page.locator(
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_LinkButtonEliminar_${idx}`,
+              );
+              await elimBtn.first().click({ timeout: 8000 });
+              await page.waitForTimeout(1200);
+              keepRemoving = true;
+              break; // ri-scan dall'inizio dopo il postback
+            }
+            idx++;
+          }
+        }
+      }
+
+      // AGGIUNTE
+      for (const p of (players.add || [])) {
+        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic);
+        diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
+
+        // Imposta costo se fornito
+        if (p.costo != null && r.added) {
+          let idx = 0;
+          while (true) {
+            const nomeInput = page.locator(
+              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+            );
+            if (!(await nomeInput.count().catch(() => 0))) break;
+            const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+            if (nomeVal === p.nome.toLowerCase().trim()) {
+              const costoField = page.locator(
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}`,
+              );
+              if (await costoField.count().catch(() => 0)) {
+                await costoField.first().fill(String(p.costo), { timeout: 5000 });
+                await costoField.first().dispatchEvent('change');
+                diagnostic.steps.push(`costo_set:${p.nome}=${p.costo}`);
+              }
+              break;
+            }
+            idx++;
+          }
+        }
+      }
+
+      // SALVA giocatori con ButtonActualizar
+      diagnostic.steps.push('salva');
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
+        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
+      ]);
+      await page.waitForTimeout(2500);
+    }
+
+    // === VERIFICA (reload + lettura) ===
+    diagnostic.steps.push('verifica_reload');
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+
+    const pageText = await page.evaluate(() => document.body.innerText || '').catch(() => '');
+
+    // Leggi slot dal testo
+    let slotFinale = null;
+    if (move) {
+      const normalizeHour = (hhmm) => (hhmm ? hhmm.replace(/^0(\d:)/, '$1') : '');
+      const expectedData = move.data
+        ? (() => { const [y, m, d] = move.data.split('-'); return `${d}/${m}/${y}`; })()
+        : null;
+      const oraFineCalc = move.oraFine || (move.oraInizio && move.durationMinutes
+        ? computeEndTime(move.oraInizio, move.durationMinutes) : null);
+      const expectedOraInizio = normalizeHour(move.oraInizio);
+
+      const dataMatch = pageText.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+      const campoMatch = pageText.match(/Prenotazione\s+(Campo\s+\d+)/i) || pageText.match(/(Campo\s+\d+)/i);
+      const campoName = campoMatch ? campoMatch[1] : null;
+      slotFinale = dataMatch
+        ? `${campoName || '?'} · ${dataMatch[1]} · ${dataMatch[2]}–${dataMatch[3]}`
+        : null;
+
+      if (expectedData && dataMatch && !dataMatch[1].includes(expectedData)) {
+        throw fail('EDIT_VERIFICA_FALLITA',
+          `Data attesa ${expectedData} ma pagina mostra ${dataMatch[1]}`, diagnostic);
+      }
+      if (expectedOraInizio && dataMatch) {
+        const pageOra = dataMatch[2];
+        const expOra  = expectedOraInizio;
+        if (pageOra !== expOra && pageOra !== expOra.replace(/^0/, '')) {
+          throw fail('EDIT_VERIFICA_FALLITA',
+            `Ora inizio attesa ${expOra} ma trovata ${pageOra}`, diagnostic);
+        }
+      }
+      diagnostic.slotFinale = slotFinale;
+    }
+
+    // Scansiona righe partecipanti
+    const partecipantiFinali = [];
+    let idx = 0;
+    while (true) {
+      const nomeInput = page.locator(
+        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+      );
+      if (!(await nomeInput.count().catch(() => 0))) break;
+      const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
+      const idClienteInput = page.locator(
+        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
+      );
+      const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
+      const costoInput = page.locator(
+        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}"]`,
+      );
+      const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
+      partecipantiFinali.push({ idx: String(idx), nome, idCliente, costo });
+      idx++;
+    }
+    diagnostic.partecipantiFinali = partecipantiFinali;
+
+    // Verifica giocatori vs richiesta
+    if (players) {
+      const nomiFinali = partecipantiFinali.map((p) => p.nome.toLowerCase().trim());
+      for (const p of (players.add || [])) {
+        if (!nomiFinali.includes(p.nome.toLowerCase().trim())) {
+          throw fail('EDIT_VERIFICA_FALLITA',
+            `Giocatore aggiunto ${p.nome} non trovato nella verifica finale.`, diagnostic);
+        }
+      }
+      if (!players.removeAll) {
+        for (const nome of (players.remove || [])) {
+          if (nomiFinali.includes(nome.toLowerCase().trim())) {
+            throw fail('EDIT_VERIFICA_FALLITA',
+              `Giocatore ${nome} doveva essere rimosso ma è ancora presente.`, diagnostic);
+          }
+        }
+      }
+    }
+
+    diagnostic.steps.push('done');
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, diagnostic };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 async function cancelBookingWithBrowser(input = {}) {
   const username = clean(input.username) || env('MATCHPOINT_USERNAME');
   const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
@@ -4171,7 +4490,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
-          '/create-booking', '/cancel-booking',
+          '/create-booking', '/cancel-booking', '/edit-booking',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -4205,6 +4524,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/cancel-booking') {
       return await handleCancelBooking(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/edit-booking') {
+      return await handleEditBooking(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
