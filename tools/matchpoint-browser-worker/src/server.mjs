@@ -3837,8 +3837,28 @@ async function editBookingWithBrowser(input = {}) {
       const f = page.frameLocator('iframe[src*="ExtenderHorarioReserva.aspx"]');
       if (recurso)        await f.locator('#CC_Datos_DropDownListRecursos').selectOption(String(recurso), { timeout: 8000 });
       if (fecha)          await f.locator('#CC_Datos_TextBoxFecha').fill(fecha, { timeout: 8000 });
-      if (move.oraInizio) await f.locator('#CC_Datos_TextBoxHoraInicio').fill(move.oraInizio, { timeout: 8000 });
-      if (oraFine)        await f.locator('#CC_Datos_TextBoxHoraFin').fill(oraFine, { timeout: 8000 });
+      // ⚠️ I campi ORA hanno un MaskedEditExtender (AjaxControlToolkit) + RequiredFieldValidator.
+      // .fill() imposta il value ma NON aggiorna lo stato della maschera → la validazione blocca
+      // il postback di "Accettare" e lo spostamento NON si applica. Vanno scritti con KEYSTROKE
+      // VERI (solo cifre HHMM): la maschera formatta in HH:MM e popola il ClientState.
+      if (move.oraInizio) {
+        const hi = f.locator('#CC_Datos_TextBoxHoraInicio');
+        await hi.click({ timeout: 8000 });
+        await page.keyboard.press('Control+A').catch(() => {});
+        await page.keyboard.press('Delete').catch(() => {});
+        await hi.type(String(move.oraInizio).replace(/[^0-9]/g, ''), { delay: 60 });
+        await page.keyboard.press('Tab').catch(() => {});
+        diagnostic.steps.push(`ora_inizio_typed:${String(move.oraInizio).replace(/[^0-9]/g, '')}`);
+      }
+      if (oraFine) {
+        const hf = f.locator('#CC_Datos_TextBoxHoraFin');
+        await hf.click({ timeout: 8000 });
+        await page.keyboard.press('Control+A').catch(() => {});
+        await page.keyboard.press('Delete').catch(() => {});
+        await hf.type(String(oraFine).replace(/[^0-9]/g, ''), { delay: 60 });
+        await page.keyboard.press('Tab').catch(() => {});
+        diagnostic.steps.push(`ora_fine_typed:${String(oraFine).replace(/[^0-9]/g, '')}`);
+      }
 
       diagnostic.steps.push('click_aceptar');
       await f.locator('#CC_Datos_ButtonAceptar').click({ timeout: 10000 });
