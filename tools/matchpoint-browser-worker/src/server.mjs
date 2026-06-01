@@ -3775,7 +3775,7 @@ async function editBookingWithBrowser(input = {}) {
   if (!move && !players) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
 
   const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, move, players } };
-  const fichaUrl = `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`;
+  let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
   const browser = await chromium.launch({
     headless: boolEnv('MATCHPOINT_HEADLESS', true),
@@ -3817,9 +3817,32 @@ async function editBookingWithBrowser(input = {}) {
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
-    // === APRI FICHA ===
+    // === APRI FICHA (auto-rileva il tipo) ===
+    // Il pulsante "Spostare/Cambiare" (#CC_Datos_FormViewFicha_ButtonExtender) ha lo STESSO id
+    // su partita/lezione/manutenzione, ma la pagina-scheda è a URL diverso per tipo. Aprendo
+    // l'URL sbagliato Matchpoint rende una pagina vuota (niente pulsante). Proviamo le 3 schede
+    // e teniamo quella in cui il pulsante esiste.
     diagnostic.steps.push('goto_ficha');
-    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    const fichaCandidates = [
+      `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
+    ];
+    for (const cand of fichaCandidates) {
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await page.waitForTimeout(400);
+      const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
+      if (hasExtender) { fichaUrl = cand; break; }
+    }
+    if (!fichaUrl) {
+      throw fail('FICHA_NON_TROVATA',
+        `Nessuna scheda con pulsante "Spostare" per id ${idReserva} (partita/lezione/manutenzione).`,
+        diagnostic);
+    }
+    diagnostic.steps.push('ficha_detected:' + (
+      fichaUrl.includes('ClaseSuelta') ? 'lezione' :
+      fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
+    ));
 
     let moved = false;
 
@@ -3993,7 +4016,7 @@ async function editBookingWithBrowser(input = {}) {
         ? computeEndTime(move.oraInizio, move.durationMinutes) : null);
       const expectedOraInizio = normalizeHour(move.oraInizio);
 
-      const dataMatch = pageText.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+      const dataMatch = pageText.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{1,2}:\d{2})\s*[-–]?\s*(\d{1,2}:\d{2})/);
       const campoMatch = pageText.match(/Prenotazione\s+(Campo\s+\d+)/i) || pageText.match(/(Campo\s+\d+)/i);
       const campoName = campoMatch ? campoMatch[1] : null;
       slotFinale = dataMatch
