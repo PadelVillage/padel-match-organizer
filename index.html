@@ -10292,7 +10292,16 @@ Grazie.`
           giocatori[idx] = {
             ...existing,
             id: existing.id || member.id || makeId(),
-            memberId: existing.memberId || member.memberId || nextMemberId(),
+            memberId: (function(){
+              const imported = cleanCell(member.memberId || '');
+              const local = cleanCell(existing.memberId || '');
+              const isMatchpointCode = v => !!v && !/^PMO-/i.test(v);
+              // Adotta il codice Matchpoint (es. 000004) al posto del segnaposto locale PMO-...
+              if (isMatchpointCode(imported)) return imported;
+              if (local) return local;
+              if (imported) return imported;
+              return nextMemberId();
+            })(),
             firstName: titleCaseNamePart(existing.firstName || member.firstName),
             surname: titleCaseNamePart(existing.surname || member.surname),
             name: compactSpaces(`${titleCaseNamePart(existing.firstName || member.firstName)} ${titleCaseNamePart(existing.surname || member.surname)}`),
@@ -12534,6 +12543,9 @@ Grazie.`
             <div class="member-source-lines">${availabilitySource}</div>
           </section>`);
       const initials = `${cleanCell(g.firstName || '').charAt(0)}${cleanCell(g.surname || '').charAt(0)}`.toLocaleUpperCase('it-IT') || 'PV';
+      const cardMemberIdValue = cleanCell(g.memberId || '');
+      const cardInMatchpoint = !!cardMemberIdValue && !/^PMO-/i.test(cardMemberIdValue);
+      const cardMatchpointBadge = cardInMatchpoint ? '' : '<span class="badge badge-warning">Non in Matchpoint</span>';
       card.style.display = 'block';
       card.className = 'member-card member-card-optimized';
       card.innerHTML = `
@@ -12546,6 +12558,7 @@ Grazie.`
                 <span class="badge badge-muted">ID ${escapeHtml(g.memberId || '-')}</span>
                 <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
                 <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
+                ${cardMatchpointBadge}
                 <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
               </div>
             </div>
