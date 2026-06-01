@@ -34516,20 +34516,26 @@ Per confermare scrivi ELIMINA.`);
   // ── Test MODIFICA prenotazione Matchpoint (solo TEST env) ─────────────────
   // Input dinamico via prompt() così non serve ritoccare il codice ogni volta.
   async function matchpointTestBookingEdit() {
-    const idReserva = (prompt('idReserva da modificare:', '7996') || '').trim();
+    const idReserva = (prompt('idReserva da modificare (es. 7996):', '') || '').trim();
     if (!idReserva) return;
+    if (!/^\d+$/.test(idReserva)) { alert(`idReserva non valido: "${idReserva}". Deve essere un numero (es. 7996). Modifica annullata.`); return; }
 
     // SPOSTAMENTO (opzionale): "campo,YYYY-MM-DD,HH:MM,HH:MM" — vuoto = nessuno
     const moveRaw = (prompt('SPOSTAMENTO (vuoto = nessuno)\nFormato: campo,YYYY-MM-DD,HH:MM,HH:MM\nEs: 2,2026-06-02,09:00,10:30', '') || '').trim();
     let move = undefined;
     if (moveRaw) {
-      const [campo, data, oraInizio, oraFine] = moveRaw.split(',').map((s) => s.trim());
-      move = {
-        campo: campo ? parseInt(campo, 10) : undefined,
-        data: data || undefined,
-        oraInizio: oraInizio || undefined,
-        oraFine: oraFine || undefined,
-      };
+      const parts = moveRaw.split(',').map((s) => s.trim());
+      const [campoS, dataS, oiS, ofS] = parts;
+      const okFormat = parts.length === 4
+        && /^[1-4]$/.test(campoS || '')
+        && /^\d{4}-\d{2}-\d{2}$/.test(dataS || '')
+        && /^\d{1,2}:\d{2}$/.test(oiS || '')
+        && /^\d{1,2}:\d{2}$/.test(ofS || '');
+      if (!okFormat) {
+        alert(`Formato SPOSTAMENTO non valido: "${moveRaw}".\nServe: campo,YYYY-MM-DD,HH:MM,HH:MM (es. 2,2026-06-02,09:00,10:30). Modifica annullata.`);
+        return;
+      }
+      move = { campo: parseInt(campoS, 10), data: dataS, oraInizio: oiS, oraFine: ofS };
     }
 
     // GIOCATORI (opzionali)
