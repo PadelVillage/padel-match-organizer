@@ -3051,13 +3051,18 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     }
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
 
-    // Sceglie il <li> che contiene il nome, altrimenti il primo
+    // ⚠️ Sceglie SOLO un <li> che CONTIENE davvero il nome richiesto.
+    // NIENTE fallback al primo elemento: con un input spurio (es. "ok") nessun <li>
+    // combacia → non selezioniamo nulla → l'id non si aggancia → si aborta senza
+    // scrivere su Matchpoint. (È così che era finito il cliente 921.)
     const count = await li.count().catch(() => 0);
-    let target = li.first();
+    let target = null;
+    let chosenText = '';
     for (let i = 0; i < count; i++) {
       const t = norm(await li.nth(i).innerText().catch(() => ''));
-      if (t.includes(norm(nome))) { target = li.nth(i); break; }
+      if (t.includes(norm(nome))) { target = li.nth(i); chosenText = t; break; }
     }
+    if (!target) { diagnostic.steps.push(`player_no_matching_option:${nome}:attempt${attempt}`); continue; }
     await target.click({ timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(400);
 
@@ -3073,7 +3078,18 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       diagnostic);
   }
 
-  // Clicca "Aggiungere" solo con id valido agganciato
+  // ⚠️ SICUREZZA PRIMA DI SCRIVERE: "+ Aggiungere" persiste SUBITO su Matchpoint,
+  // quindi il nome selezionato va verificato ADESSO, non dopo. Se la selezione non
+  // combacia col richiesto, NON aggiungere (aborta).
+  const selName = norm(await inputEl.first().inputValue().catch(() => ''));
+  diagnostic.steps.push(`player_name_precheck:req=${norm(nome)}:sel=${selName.slice(0, 40)}`);
+  if (selName && !selName.includes(norm(nome)) && !norm(nome).includes(selName)) {
+    throw fail('PLAYER_NAME_MISMATCH',
+      `Selezione autocomplete diversa dal richiesto "${nome}" (selezionato: "${selName}"). Aggiunta annullata per sicurezza.`,
+      diagnostic);
+  }
+
+  // Clicca "Aggiungere" solo con id valido E nome combaciante
   await addLink.first().click({ timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
@@ -3084,7 +3100,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     const nomeInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_TextBoxNombreValor_${n}"]`);
     if (!(await nomeInput.count().catch(() => 0))) break;
     const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
-    if (nomeVal === norm(nome)) {
+    if (nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal))) {
       const idInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_HiddenFieldIdCliente_${n}"]`);
       addedIdCliente = (await idInput.first().inputValue().catch(() => '')).trim();
       break;
