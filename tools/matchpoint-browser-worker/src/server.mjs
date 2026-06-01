@@ -4222,31 +4222,27 @@ async function cancelBookingWithBrowser(input = {}) {
 
     // Il flusso di conferma DIPENDE DAL TIPO:
     //  • PARTITA/LEZIONE → "Annullare" apre un iframe fancybox anularreserva.aspx (ButtonAnular).
-    //  • MANUTENZIONE    → "Annullare" è un <input type=submit> che fa postback dopo un
-    //    confirm() nativo ("Sei sicuro di voler cancellare la prenotazione?"), già auto-accettato
-    //    dall'handler page.on('dialog', ...) registrato sopra. NON c'è iframe anularreserva.aspx.
+    //  • MANUTENZIONE    → NON supportata dal worker. La procedura reale di cancellazione si
+    //    innesca SOLO entrando dal tabellone (non dall'URL diretta ?modo=fancy usata dal worker)
+    //    e tocca rimborsi/pagamenti. Falliamo SUBITO con un errore chiaro invece di tentare un
+    //    flusso che non cancella nulla (vecchia "FIX B": ~30s di attesa inutile e poi 502).
     const isManutenzione = fichaUrl.includes('Mantenimiento');
-
-    diagnostic.steps.push('click_annulla:' + (isManutenzione ? 'manutenzione' : 'partita/lezione'));
     if (isManutenzione) {
-      // Click + attesa del postback (il confirm nativo è accettato dall'handler dialog).
-      await Promise.all([
-        page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {}),
-        page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 }),
-      ]);
-      diagnostic.steps.push('manutenzione_postback');
-      await page.waitForTimeout(3000);
-    } else {
-      // PARTITA / LEZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
-      await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
-      diagnostic.steps.push('attendi_dialogo');
-      const dlg = page.frameLocator('iframe[src*="anularreserva.aspx"]');
-      await dlg.locator('#CC_Datos_ButtonAnular').first().waitFor({ state: 'visible', timeout: 10000 });
-      diagnostic.steps.push('conferma_annulla');
-      await dlg.locator('#CC_Datos_ButtonAnular').first().click({ timeout: 10000 });
-      // Attendi il completamento del postback (operazione lenta su Matchpoint)
-      await page.waitForTimeout(6000);
+      throw fail('MANUTENZIONE_CANCEL_NON_SUPPORTATA',
+        'Cancellazione manutenzione non supportata dal worker: va eseguita a mano dal tabellone su Matchpoint.',
+        diagnostic);
     }
+
+    // PARTITA / LEZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
+    diagnostic.steps.push('click_annulla:partita/lezione');
+    await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
+    diagnostic.steps.push('attendi_dialogo');
+    const dlg = page.frameLocator('iframe[src*="anularreserva.aspx"]');
+    await dlg.locator('#CC_Datos_ButtonAnular').first().waitFor({ state: 'visible', timeout: 10000 });
+    diagnostic.steps.push('conferma_annulla');
+    await dlg.locator('#CC_Datos_ButtonAnular').first().click({ timeout: 10000 });
+    // Attendi il completamento del postback (operazione lenta su Matchpoint)
+    await page.waitForTimeout(6000);
 
     // Verifica esito ricaricando la SCHEDA GIUSTA (stessa URL auto-rilevata sopra)
     diagnostic.steps.push('verifica');
