@@ -1,5 +1,13 @@
 # Versioni
 
+## 2026-06-01 / TEST · Edge function `matchpoint-clients-sync` v45 + browser worker + guardrail PROD
+
+- **Solo ambiente TEST** (Supabase `cudiqnrrlbyqryrtaprd`; nessuna modifica a PROD). Modifiche a Edge Function `matchpoint-clients-sync` (versione 45) e al browser worker, non alla UI dell'app.
+- **ID Matchpoint nei soci**: la sync clienti scarica anche il report `Listadoclientes` (colonna `Codice`) e riempie `memberId` con il codice interno a 6 cifre (es. `000004`), abbinando per telefono/email. Collaudo: 982/983 soci agganciati; 1 segnalato per revisione manuale (Fabio De Luca).
+- **Login HTTP non operativo**: entrambi i report (livello + Codice) passano dal browser worker; il report Codice usa la modalita' `direct_clients`. La sync risulta piu' lenta (due chiamate al worker).
+- **Pulizia doppioni legacy**: i record non-Matchpoint (`PMO-xxxxxx`) con gemello Matchpoint vengono soft-deleted (`legacy_duplicate_superseded`), con due guardie (sopravvissuto Matchpoint + nessun dato curato); i doppioni con dati curati vengono solo segnalati. Collaudo: 1 eliminato (`PMO-000948`), 0 in revisione, 0 soci attivi con id `PMO-` residuo. **Supera la decisione v5.488** (vedi `docs/matchpoint.md`, nota TEST 2026-06-01).
+- **Guardrail PROD (su `main`)**: aggiunto workflow `guard-main` (`.github/workflows/guard-main-prs.yml`) + ruleset GitHub sul branch `main`. La verifica fallisce se una PR verso `main` proviene da `test-preview`, cancella file, o tocca piu' di 15 file; il ruleset blocca anche force-push e cancellazione del branch.
+
 ## v5.596 / TEST: slot prova Matchpoint allineato a 90 min
 
 - **Solo ambiente TEST**: aggiornato il payload di prova del pulsante **🧪 Test prenotazione Matchpoint** da 60 a 90 minuti (`ora: "09:00"`, `oraFine: "10:30"`, `durata: 90`), allineando la prenotazione di test al default Matchpoint per le partite.
