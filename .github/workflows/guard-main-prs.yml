@@ -1,0 +1,62 @@
+name: Guard main PRs
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  guard-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Controlla sicurezza della PR verso main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          MAX_FILES: "15"
+        run: |
+          set -euo pipefail
+          echo "PR #$PR_NUMBER — base=main, head=$HEAD_REF"
+          FAIL=0
+
+          # Regola 1: vietate le PR che arrivano dal branch test-preview
+          if [ "$HEAD_REF" = "test-preview" ]; then
+            echo "::error::PR vietata: arriva dal branch 'test-preview' verso 'main' (merge all'ingrosso)."
+            FAIL=1
+          fi
+
+          # Scarica l'elenco dei file della PR con il loro stato (added/removed/modified/...)
+          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+            --jq '.[] | [.status, .filename] | @tsv' > files.tsv
+
+          TOTAL=$(wc -l < files.tsv | tr -d ' ')
+          REMOVED=$(awk -F'\t' '$1=="removed"{c++} END{print c+0}' files.tsv)
+
+          echo "File toccati: $TOTAL — cancellati: $REMOVED — soglia massima: $MAX_FILES"
+          echo "----- elenco file della PR -----"
+          cat files.tsv || true
+          echo "--------------------------------"
+
+          # Regola 2: vietate le PR che cancellano file
+          if [ "$REMOVED" -gt 0 ]; then
+            echo "::error::PR vietata: cancella $REMOVED file. Verso 'main' non si cancellano file."
+            awk -F'\t' '$1=="removed"{print "  - cancellato: "$2}' files.tsv
+            FAIL=1
+          fi
+
+          # Regola 3: vietate le PR che toccano troppi file (sospetto merge all'ingrosso)
+          if [ "$TOTAL" -gt "$MAX_FILES" ]; then
+            echo "::error::PR vietata: tocca $TOTAL file (> $MAX_FILES). Sospetto merge all'ingrosso."
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "❌ Guard FALLITO — questa PR verso main è bloccata."
+            exit 1
+          fi
+          echo "✅ Guard OK — PR verso main consentita."
