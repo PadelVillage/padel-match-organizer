@@ -911,13 +911,12 @@ function isExcelResponse(bytes: Uint8Array, contentType: string, disposition: st
   return zip || xls || cd.includes('.xls') || ct.includes('spreadsheet') || ct.includes('excel');
 }
 
-async function exportClientsViaHttp(clientsPathOverride?: string, exportTargetOverride?: string): Promise<MatchpointExport> {
-  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const clientsPath = clientsPathOverride ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
-  const exportTarget = exportTargetOverride ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
-  const session = new MatchpointSession(baseUrl);
-
-  const login = await loginToMatchpoint(session);
+async function downloadReportFromSession(
+  session: MatchpointSession,
+  login: { finalUrl: string; html: string },
+  clientsPath: string,
+  exportTarget: string,
+): Promise<MatchpointExport> {
   let homeResponse: Response | null = null;
   let homeText = '';
   try {
@@ -1058,6 +1057,15 @@ async function exportClientsViaHttp(clientsPathOverride?: string, exportTargetOv
   };
 }
 
+async function exportClientsViaHttp(clientsPathOverride?: string, exportTargetOverride?: string): Promise<MatchpointExport> {
+  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const clientsPath = clientsPathOverride ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
+  const exportTarget = exportTargetOverride ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
+  const session = new MatchpointSession(baseUrl);
+  const login = await loginToMatchpoint(session);
+  return downloadReportFromSession(session, login, clientsPath, exportTarget);
+}
+
 function bytesFromBase64(value: string) {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -1190,6 +1198,43 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
     if (!shouldFallbackToBrowserWorker(error)) throw error;
     return await exportClientsViaBrowserWorker(error);
   }
+}
+
+type CodiceDownloadResult = { ok: boolean; bytes?: Uint8Array; skippedReason?: string };
+
+async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codice: CodiceDownloadResult }> {
+  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const mainPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
+  const mainTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+
+  const session = new MatchpointSession(baseUrl);
+  const login = await loginToMatchpoint(session);
+
+  let main: MatchpointExport;
+  let viaWorker = false;
+  try {
+    main = await downloadReportFromSession(session, login, mainPath, mainTarget);
+  } catch (error) {
+    if (!shouldFallbackToBrowserWorker(error)) throw error;
+    main = await exportClientsViaBrowserWorker(error);
+    viaWorker = true;
+  }
+
+  if (viaWorker) {
+    return { main, codice: { ok: false, skippedReason: 'MAIN_VIA_WORKER_NO_SHARED_SESSION' } };
+  }
+
+  let codice: CodiceDownloadResult;
+  try {
+    const codiceExported = await downloadReportFromSession(session, login, codicePath, codiceTarget);
+    codice = { ok: true, bytes: codiceExported.bytes };
+  } catch (error) {
+    codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+  }
+
+  return { main, codice };
 }
 
 type CodiceMap = Map<string, string>;
@@ -1550,7 +1595,8 @@ Deno.serve(async (req) => {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }
 
-    const exported = await exportClientsFromMatchpoint();
+    const syncResult = await exportClientsWithCodice();
+    const exported = syncResult.main;
     const validation = validateClientWorkbook(exported.bytes, importedAt);
     if (!validation.ok) {
       const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
@@ -1588,34 +1634,37 @@ Deno.serve(async (req) => {
       unmatchedSample: [] as Array<{ firstName: string; surname: string }>,
     };
     try {
-      const codiceExported = await exportCodiceFromMatchpoint();
-      const codiceResult = parseCodiceWorkbook(codiceExported.bytes);
-      if (!codiceResult.ok) {
-        memberIdEnrichment.skippedReason = `${codiceResult.error}: ${codiceResult.message}`;
+      if (!syncResult.codice.ok || !syncResult.codice.bytes) {
+        memberIdEnrichment.skippedReason = syncResult.codice.skippedReason || 'CODICE_NOT_AVAILABLE';
       } else {
-        memberIdEnrichment.ok = true;
-        memberIdEnrichment.codiceRowsParsed = codiceResult.rowsParsed;
-        const codiceMap = codiceResult.map;
-        const unmatchedSample: Array<{ firstName: string; surname: string }> = [];
-        let enrichMatched = 0;
-        let enrichUnmatched = 0;
-        for (const member of validation.members) {
-          const pDigits = phoneDigits(member.phone);
-          const eKey = emailKey(member.email);
-          const found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
-          if (found) {
-            member.memberId = found;
-            enrichMatched += 1;
-          } else {
-            enrichUnmatched += 1;
-            if (unmatchedSample.length < 50) {
-              unmatchedSample.push({ firstName: member.firstName, surname: member.surname });
+        const codiceResult = parseCodiceWorkbook(syncResult.codice.bytes);
+        if (!codiceResult.ok) {
+          memberIdEnrichment.skippedReason = `${codiceResult.error}: ${codiceResult.message}`;
+        } else {
+          memberIdEnrichment.ok = true;
+          memberIdEnrichment.codiceRowsParsed = codiceResult.rowsParsed;
+          const codiceMap = codiceResult.map;
+          const unmatchedSample: Array<{ firstName: string; surname: string }> = [];
+          let enrichMatched = 0;
+          let enrichUnmatched = 0;
+          for (const member of validation.members) {
+            const pDigits = phoneDigits(member.phone);
+            const eKey = emailKey(member.email);
+            const found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
+            if (found) {
+              member.memberId = found;
+              enrichMatched += 1;
+            } else {
+              enrichUnmatched += 1;
+              if (unmatchedSample.length < 50) {
+                unmatchedSample.push({ firstName: member.firstName, surname: member.surname });
+              }
             }
           }
+          memberIdEnrichment.matched = enrichMatched;
+          memberIdEnrichment.unmatched = enrichUnmatched;
+          memberIdEnrichment.unmatchedSample = unmatchedSample;
         }
-        memberIdEnrichment.matched = enrichMatched;
-        memberIdEnrichment.unmatched = enrichUnmatched;
-        memberIdEnrichment.unmatchedSample = unmatchedSample;
       }
     } catch (enrichError) {
       memberIdEnrichment.skippedReason = errorText(enrichError).slice(0, 500);
