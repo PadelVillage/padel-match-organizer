@@ -100,42 +100,34 @@ async function callWorkerEditBooking(opts: {
   const { workerUrl, workerApiKey, edit } = opts;
   const endpoint = `${workerUrl}/edit-booking`;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    let res: Response;
-    try {
-      res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${workerApiKey}`,
-        },
-        body: JSON.stringify({ idReserva: edit.idReserva, move: edit.move, players: edit.players }),
-      });
-    } catch (netErr) {
-      if (attempt === 3) {
-        throw new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`);
-      }
-      await new Promise((r) => setTimeout(r, attempt * 3000));
-      continue;
-    }
-
-    const body = await res.json().catch(() => ({}));
-
-    if (res.ok) return body as JsonMap;
-
-    if (res.status === 501 || res.status === 404) {
-      throw new Error('WORKER_EDIT_BOOKING_NOT_IMPLEMENTED: Il worker browser non espone /edit-booking. Verifica che il worker sia aggiornato e deployato.');
-    }
-
-    if (attempt === 3) {
-      throw new Error(
-        `Worker error ${res.status} after ${attempt} attempts: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-      );
-    }
-    await new Promise((r) => setTimeout(r, attempt * 3000));
+  // ⚠️ NESSUN RETRY. La modifica scrive su Matchpoint in modo incrementale:
+  // "+ Aggiungere all'elenco" persiste il giocatore SUBITO (prima del Salvare).
+  // Ritentare su errore del worker DUPLICA le scritture (è così che il cliente 921
+  // era stato aggiunto 3 volte). Un solo tentativo; in caso di errore si riporta e basta.
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${workerApiKey}`,
+      },
+      body: JSON.stringify({ idReserva: edit.idReserva, move: edit.move, players: edit.players }),
+    });
+  } catch (netErr) {
+    throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
   }
 
-  throw new Error('Worker call failed after retries');
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return body as JsonMap;
+
+  if (res.status === 501 || res.status === 404) {
+    throw new Error('WORKER_EDIT_BOOKING_NOT_IMPLEMENTED: Il worker browser non espone /edit-booking. Verifica che il worker sia aggiornato e deployato.');
+  }
+
+  throw new Error(
+    `Worker error ${res.status} (nessun retry): ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
+  );
 }
 
 async function saveStaffEditRecord(opts: {

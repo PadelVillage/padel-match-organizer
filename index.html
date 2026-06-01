@@ -34533,10 +34533,14 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // GIOCATORI (opzionali)
-    const addNome = (prompt('Giocatore da AGGIUNGERE (vuoto = nessuno):', '') || '').trim();
+    let addNome = (prompt('Giocatore da AGGIUNGERE — scrivi NOME e COGNOME. Vuoto = nessuno. (NON scrivere "ok"/"sì": per saltare premi solo Invio/OK senza testo)', '') || '').trim();
+    const _BLOCK_NAMES = ['ok','si','sì','no','yes','y','n','true','false','-'];
+    const _isBadName = (s) => !s || s.length < 3 || _BLOCK_NAMES.includes(s.toLowerCase());
+    if (addNome && _isBadName(addNome)) { alert(`Ignoro "${addNome}": non sembra un nome valido, nessun giocatore verrà aggiunto.`); addNome = ''; }
     let addCosto = undefined;
     if (addNome) addCosto = (prompt(`Costo per ${addNome} (es. 0,00):`, '0,00') || '').trim();
-    const removeNome = (prompt('Giocatore da RIMUOVERE (vuoto = nessuno):', '') || '').trim();
+    let removeNome = (prompt('Giocatore da RIMUOVERE — NOME e COGNOME. Vuoto = nessuno.', '') || '').trim();
+    if (removeNome && _isBadName(removeNome)) { alert(`Ignoro "${removeNome}": non sembra un nome valido, nessuna rimozione.`); removeNome = ''; }
 
     let players = undefined;
     if (addNome || removeNome) {
