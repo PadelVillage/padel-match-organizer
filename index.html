@@ -34432,12 +34432,6 @@ Per confermare scrivi ELIMINA.`);
 
   // ── Test annullamento prenotazione Matchpoint (solo TEST env) ─────────────
   async function matchpointTestBookingCancel() {
-    const TEST_CANCEL = {
-      campo: 2,
-      data: "2026-06-01",
-      ora: "09:00",
-    };
-
     const btn = document.getElementById('matchpointTestCancelButton');
     const stateEl = document.getElementById('matchpointTestBookingState');
     const resultEl = document.getElementById('matchpointTestBookingResult');
@@ -34447,9 +34441,12 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
 
-    const confirmed = confirm(
-      `Annullare la prenotazione di test su Matchpoint? (Campo ${TEST_CANCEL.campo}, ${TEST_CANCEL.data}, ${TEST_CANCEL.ora})`
-    );
+    // Input dinamico via prompt() così non serve ritoccare il codice ogni volta (come il test Modifica).
+    const idReserva = (prompt('idReserva da annullare (es. 7996):', '') || '').trim();
+    if (!idReserva) return;
+    if (!/^\d+$/.test(idReserva)) { alert(`idReserva non valido: "${idReserva}". Deve essere un numero (es. 7996). Annullamento annullato.`); return; }
+
+    const confirmed = confirm(`Annullare su Matchpoint la prenotazione idReserva ${idReserva}?`);
     if (!confirmed) return;
 
     if (btn) btn.disabled = true;
@@ -34466,7 +34463,7 @@ Per confermare scrivi ELIMINA.`);
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`
         },
-        body: JSON.stringify(TEST_CANCEL),
+        body: JSON.stringify({ idReserva }),
       });
       const respText = await response.text();
       let data = null;
