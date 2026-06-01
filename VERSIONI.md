@@ -1,21 +1,5 @@
 # Versioni
 
-## v5.596 / TEST: slot prova Matchpoint allineato a 90 min
-
-- **Solo ambiente TEST**: aggiornato il payload di prova del pulsante **🧪 Test prenotazione Matchpoint** da 60 a 90 minuti (`ora: "09:00"`, `oraFine: "10:30"`, `durata: 90`), allineando la prenotazione di test al default Matchpoint per le partite.
-
-## v5.595 / TEST: pulsante test prenotazione Matchpoint
-
-- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV` / `data-test-env-only`): aggiunto pulsante nascosto **🧪 Test prenotazione Matchpoint** nell'area dati Matchpoint, dopo il box "Backup dati". Permette allo staff con permesso `cloud_sync` di lanciare una singola prenotazione di prova reale (`Campo 1 · 2026-06-01 · 08:00–09:00 · "TEST PV — CANCELLARE"`) chiamando la edge function `matchpoint-bookings-create`. Il pulsante richiede conferma esplicita, mostra lo stato di avanzamento, disabilita il pulsante durante l'attesa e visualizza l'esito (successo o errore) in un riquadro colorato. In produzione non compare mai.
-
-## v5.594 / TEST: storico prenotazioni disattivato
-
-- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV`): lo storico prenotazioni non viene più caricato, salvato in localStorage, né spinto sul cloud. Evita l'errore `setItem ... exceeded the quota` dovuto al localStorage di dominio condiviso con PROD, e non serve in TEST. Quattro guard: (a) `importMatchpointHistoryAutomatic()` no-op, (b) `save()` salta `storicoPrenotazioni`, (c) backup cloud non spinge `booking_history`, (d) restore non ripopola lo storico. **PROD invariato.**
-
-## v5.588 / Fix: Tab 2 INVALID_RULES
-
-- **Correzione INVALID_RULES nel Parser Config (Tab 2 "Genera Aggiornamento")**: Il pulsante "Approva e Aggiorna File" ritornava `INVALID_RULES`. Causa: il front-end inviava alla Edge Function `parser-rules-update` solo le `modifiche` e il frammento filtrato di regole mostrato in Tab 2, mentre la funzione valida lo schema completo delle regole. Ora il client costruisce il SET COMPLETO di regole applicando le modifiche all'intero `PARSER_RULES` e lo invia nel campo `regole` del payload. La Edge Function è stata irrobustita per accettare e validare l'oggetto `regole` completo (con fallback su `modifiche`), restituendo `INVALID_RULES` solo se mancano `intents` o `campi_obbligatori`.
-
 ## v5.538 / Scorciatoia di sincronizzazione nel lotto vuoto dell'Autovalutazione
 
 - **Pulsante Sincronizza Ora nel Flusso**: Aggiunto un pulsante di sincronizzazione rapida ("Sincronizza dati locali ora") direttamente nel riquadro dell'Autovalutazione quando il lotto risulta vuoto. Questo evita allo staff di dover cercare il pannello "Amministrazione > Supabase", guidandoli visivamente all'azione corretta e gestendo in tempo reale la notifica di eventuali errori di permessi.
