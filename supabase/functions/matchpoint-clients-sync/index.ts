@@ -1439,6 +1439,30 @@ function shouldDeleteDuplicateMemberRecord(record: any) {
   return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
 }
 
+function legacyMemberHasCuratedData(payload: any): boolean {
+  try {
+    const p = payload || {};
+    const nonEmptyStr = (v: unknown) => typeof v === 'string' && v.trim() !== '';
+    const nonEmptyArr = (v: unknown) => Array.isArray(v) && v.length > 0;
+    if (nonEmptyArr(p.prefDays) || nonEmptyArr(p.prefHours)) return true;
+    if (nonEmptyStr(p.preferredDays) || nonEmptyStr(p.preferredTimes)) return true;
+    if (nonEmptyStr(p.availabilityTime) || nonEmptyStr(p.desiredFrequency)) return true;
+    if (nonEmptyStr(p.preferredMatchType)) return true;
+    if (nonEmptyStr(p.notice) || nonEmptyStr(p.note) || nonEmptyStr(p.staffNotes)) return true;
+    const ap = p.availabilityProfile;
+    if (ap && typeof ap === 'object') {
+      for (const k of ['days', 'time', 'notice', 'frequency', 'matchType']) {
+        if (nonEmptyStr((ap as any)[k])) return true;
+      }
+    }
+    if (nonEmptyArr(p.groups) || nonEmptyArr(p.tags) || nonEmptyArr(p.partners)) return true;
+    if (p.preferences && typeof p.preferences === 'object' && Object.keys(p.preferences).length > 0) return true;
+    return false;
+  } catch {
+    return true; // nel dubbio, NON cancellare
+  }
+}
+
 function shouldNormalizeMemberLocalKey(record: any) {
   if (!record) return false;
   const payload = record.payload || {};
@@ -1704,6 +1728,9 @@ Deno.serve(async (req) => {
     let duplicateRows = 0;
     let duplicateDeleted = 0;
     let staleDeleted = 0;
+    let legacyDuplicateDeleted = 0;
+    let legacyDuplicateReview = 0;
+    const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
 
     for (const member of validation.members) {
       const candidates = collectExistingMemberCandidates(existing, member);
@@ -1732,8 +1759,26 @@ Deno.serve(async (req) => {
       for (const candidate of candidates) {
         const candidateKey = clean(candidate?.local_key || '');
         if (!candidateKey || candidateKey === localKey) continue;
-        if (!shouldDeleteDuplicateMemberRecord(candidate)) continue;
-        duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
+        if (shouldDeleteDuplicateMemberRecord(candidate)) {
+          duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
+          continue;
+        }
+        // Doppione "legacy" (non-Matchpoint) con gemello Matchpoint per lo stesso socio.
+        // Guardia A: si elimina solo se il record che sopravvive e' davvero Matchpoint.
+        const survivorIsMatchpoint = payload?.source === 'matchpoint_auto' || !!payload?.matchpointImportedAt;
+        if (!survivorIsMatchpoint) continue;
+        // Guardia B: se ha dati curati, NON cancellare: segnalare per controllo manuale.
+        if (legacyMemberHasCuratedData(candidate?.payload || {})) {
+          legacyDuplicateReview += 1;
+          if (legacyDuplicateReviewSample.length < 50) {
+            legacyDuplicateReviewSample.push({
+              firstName: clean(candidate?.payload?.firstName || ''),
+              surname: clean(candidate?.payload?.surname || ''),
+            });
+          }
+          continue;
+        }
+        duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'legacy_duplicate_superseded'));
       }
     }
 
@@ -1762,6 +1807,8 @@ Deno.serve(async (req) => {
         duplicateRows,
         duplicateDeleted,
         staleDeleted,
+        legacyDuplicateDeleted,
+        legacyDuplicateReview,
         added,
         updated,
       },
@@ -1779,6 +1826,7 @@ Deno.serve(async (req) => {
       },
       diagnostic: exported.diagnostic,
       memberIdEnrichment,
+      legacyDuplicateReviewSample,
     };
     records.push({
       record_type: 'matchpoint_data',
@@ -1802,6 +1850,13 @@ Deno.serve(async (req) => {
     )).length;
     summaryPayload.rows.duplicateDeleted = duplicateDeleted;
     summaryPayload.rows.staleDeleted = staleDeleted;
+    legacyDuplicateDeleted = finalRecords.filter((record) => (
+      record.record_type === 'member' &&
+      record.deleted === true &&
+      record.payload?.matchpointDeleteReason === 'legacy_duplicate_superseded'
+    )).length;
+    summaryPayload.rows.legacyDuplicateDeleted = legacyDuplicateDeleted;
+    summaryPayload.rows.legacyDuplicateReview = legacyDuplicateReview;
 
     const { error: upsertError } = await admin
       .from('pmo_cloud_records')
@@ -1817,6 +1872,9 @@ Deno.serve(async (req) => {
       duplicateRows,
       duplicateDeleted,
       staleDeleted,
+      legacyDuplicateDeleted,
+      legacyDuplicateReview,
+      legacyDuplicateReviewSample,
       diagnosticFile,
       upserted: finalRecords.length,
       memberIdEnrichment,
