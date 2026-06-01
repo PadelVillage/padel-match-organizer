@@ -1097,8 +1097,11 @@ function shouldFallbackToBrowserWorker(error: unknown) {
   ].includes(code);
 }
 
-async function exportClientsViaBrowserWorker(originalError: unknown): Promise<MatchpointExport> {
-  const fallbackFrom = parseErrorInfo(originalError);
+async function exportClientsViaBrowserWorker(
+  originalError: unknown,
+  options?: { navigationMode?: string; clientsPath?: string; exportTarget?: string; fallbackLabel?: string },
+): Promise<MatchpointExport> {
+  const fallbackFrom = options?.fallbackLabel ? { code: options.fallbackLabel } : parseErrorInfo(originalError);
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
   if (!workerUrl || !workerApiKey) {
@@ -1113,11 +1116,11 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   if (!username || !password) throw new Error('MATCHPOINT_SECRETS_MISSING');
 
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
-  const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const clientsPath = options?.clientsPath ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
+  const exportTarget = options?.exportTarget ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
   const endpoint = workerExportUrl(workerUrl);
   const healthEndpoint = workerHealthUrl(workerUrl);
-  const requestBody = JSON.stringify({
+  const bodyObj: JsonMap = {
     username,
     password,
     baseUrl,
@@ -1125,7 +1128,9 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
     exportTarget,
     fallbackFrom: fallbackFrom.code,
     credentialSource: 'supabase_secret',
-  });
+  };
+  if (options?.navigationMode) bodyObj.navigationMode = options.navigationMode;
+  const requestBody = JSON.stringify(bodyObj);
   let payload: JsonMap = {};
   let lastDiagnostic: JsonMap = {};
 
@@ -1191,6 +1196,18 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   };
 }
 
+async function exportCodiceViaBrowserWorker(): Promise<MatchpointExport> {
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const codiceNavMode = Deno.env.get('MATCHPOINT_CODICE_NAV_MODE') || 'direct_clients';
+  return exportClientsViaBrowserWorker(null, {
+    navigationMode: codiceNavMode,
+    clientsPath: codicePath,
+    exportTarget: codiceTarget,
+    fallbackLabel: 'CODICE_VIA_WORKER',
+  });
+}
+
 async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
   try {
     return await exportClientsViaHttp();
@@ -1223,16 +1240,23 @@ async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codi
     viaWorker = true;
   }
 
-  if (viaWorker || !login) {
-    return { main, codice: { ok: false, skippedReason: 'MAIN_VIA_WORKER_NO_SHARED_SESSION' } };
-  }
-
   let codice: CodiceDownloadResult;
-  try {
-    const codiceExported = await downloadReportFromSession(session, login, codicePath, codiceTarget);
-    codice = { ok: true, bytes: codiceExported.bytes };
-  } catch (error) {
-    codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+  if (!viaWorker && login) {
+    // Sessione HTTP disponibile: scarica il Codice riusando la stessa sessione.
+    try {
+      const codiceExported = await downloadReportFromSession(session, login, codicePath, codiceTarget);
+      codice = { ok: true, bytes: codiceExported.bytes };
+    } catch (error) {
+      codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+    }
+  } else {
+    // Login HTTP non disponibile (principale arrivato dal worker): scarica il Codice anch'esso dal worker.
+    try {
+      const codiceExported = await exportCodiceViaBrowserWorker();
+      codice = { ok: true, bytes: codiceExported.bytes };
+    } catch (error) {
+      codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+    }
   }
 
   return { main, codice };
