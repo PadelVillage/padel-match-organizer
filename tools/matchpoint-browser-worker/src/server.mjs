@@ -3836,7 +3836,22 @@ async function editBookingWithBrowser(input = {}) {
 
       const f = page.frameLocator('iframe[src*="ExtenderHorarioReserva.aspx"]');
       if (recurso)        await f.locator('#CC_Datos_DropDownListRecursos').selectOption(String(recurso), { timeout: 8000 });
-      if (fecha)          await f.locator('#CC_Datos_TextBoxFecha').fill(fecha, { timeout: 8000 });
+      if (fecha) {
+        // ⚠️ Il campo data ha un datepicker jQuery UI: con .fill() il popup (#ui-datepicker-div)
+        // resta aperto SOPRA i campi ORA e ne intercetta i click (locator.click Timeout).
+        // Lo impostiamo via JS SENZA dare focus (niente datepicker) e nascondiamo il popup residuo.
+        const fr = page.frames().find((x) => /ExtenderHorarioReserva/i.test(x.url()));
+        if (fr) {
+          await fr.evaluate((val) => {
+            const el = document.getElementById('CC_Datos_TextBoxFecha');
+            if (el) { el.value = val; el.dispatchEvent(new Event('change', { bubbles: true })); }
+            const d = document.getElementById('ui-datepicker-div'); if (d) d.style.display = 'none';
+          }, fecha).catch(() => {});
+          diagnostic.steps.push(`fecha_set_js:${fecha}`);
+        } else {
+          await f.locator('#CC_Datos_TextBoxFecha').fill(fecha, { timeout: 8000 });
+        }
+      }
       // ⚠️ I campi ORA hanno un MaskedEditExtender (AjaxControlToolkit) + RequiredFieldValidator.
       // .fill() imposta il value ma NON aggiorna lo stato della maschera → la validazione blocca
       // il postback di "Accettare" e lo spostamento NON si applica. Vanno scritti con KEYSTROKE
