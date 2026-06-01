@@ -4028,9 +4028,12 @@ async function editBookingWithBrowser(input = {}) {
           `Data attesa ${expectedData} ma pagina mostra ${dataMatch[1]}`, diagnostic);
       }
       if (expectedOraInizio && dataMatch) {
-        const pageOra = dataMatch[2];
-        const expOra  = expectedOraInizio;
-        if (pageOra !== expOra && pageOra !== expOra.replace(/^0/, '')) {
+        // Normalizza ENTRAMBI i lati allo stesso formato: la manutenzione mostra "07:00",
+        // partita/lezione "7:00". Senza normalizzare anche pageOra il confronto dava un
+        // falso EDIT_VERIFICA_FALLITA pur essendo lo spostamento corretto.
+        const pageOra = normalizeHour(dataMatch[2]);
+        const expOra  = expectedOraInizio; // già normalizzato
+        if (pageOra !== expOra) {
           throw fail('EDIT_VERIFICA_FALLITA',
             `Ora inizio attesa ${expOra} ma trovata ${pageOra}`, diagnostic);
         }
