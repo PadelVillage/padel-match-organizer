@@ -6685,6 +6685,7 @@ body.assessment-public-mode .assessment-public-only-card {
                         <div class="matchpoint-data-actions">
                           <button id="matchpointTestBookingButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCreate()">🧪 Test prenotazione Matchpoint</button>
                           <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
+                          <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
                           <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
@@ -34466,6 +34467,121 @@ Per confermare scrivi ELIMINA.`);
           'Authorization': `Bearer ${staff.accessToken}`
         },
         body: JSON.stringify(TEST_CANCEL),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+
+      if (response.ok && data?.ok !== false) {
+        const lines = ['✅ Successo!'];
+        if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
+        if (stateEl) { stateEl.textContent = 'Completato'; stateEl.className = 'matchpoint-action-state done'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#eefaf2';
+          resultEl.style.border = '1px solid #b7e4c7';
+          resultEl.style.color = '#168a53';
+          resultEl.textContent = lines.join('\n');
+        }
+      } else {
+        const lines = [`❌ Errore HTTP ${response.status}`];
+        if (data?.error) lines.push(`Codice: ${data.error}`);
+        if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        else if (typeof data === 'string' && data) lines.push(data);
+        if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#fff0f0';
+          resultEl.style.border = '1px solid #fca5a5';
+          resultEl.style.color = '#dc2626';
+          resultEl.textContent = lines.join('\n');
+        }
+      }
+    } catch (err) {
+      const msg = `❌ Errore di rete o configurazione: ${err?.message || err || 'errore sconosciuto'}`;
+      if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fff0f0';
+        resultEl.style.border = '1px solid #fca5a5';
+        resultEl.style.color = '#dc2626';
+        resultEl.textContent = msg;
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Test MODIFICA prenotazione Matchpoint (solo TEST env) ─────────────────
+  // Input dinamico via prompt() così non serve ritoccare il codice ogni volta.
+  async function matchpointTestBookingEdit() {
+    const idReserva = (prompt('idReserva da modificare:', '7996') || '').trim();
+    if (!idReserva) return;
+
+    // SPOSTAMENTO (opzionale): "campo,YYYY-MM-DD,HH:MM,HH:MM" — vuoto = nessuno
+    const moveRaw = (prompt('SPOSTAMENTO (vuoto = nessuno)\nFormato: campo,YYYY-MM-DD,HH:MM,HH:MM\nEs: 2,2026-06-02,09:00,10:30', '') || '').trim();
+    let move = undefined;
+    if (moveRaw) {
+      const [campo, data, oraInizio, oraFine] = moveRaw.split(',').map((s) => s.trim());
+      move = {
+        campo: campo ? parseInt(campo, 10) : undefined,
+        data: data || undefined,
+        oraInizio: oraInizio || undefined,
+        oraFine: oraFine || undefined,
+      };
+    }
+
+    // GIOCATORI (opzionali)
+    const addNome = (prompt('Giocatore da AGGIUNGERE (vuoto = nessuno):', '') || '').trim();
+    let addCosto = undefined;
+    if (addNome) addCosto = (prompt(`Costo per ${addNome} (es. 0,00):`, '0,00') || '').trim();
+    const removeNome = (prompt('Giocatore da RIMUOVERE (vuoto = nessuno):', '') || '').trim();
+
+    let players = undefined;
+    if (addNome || removeNome) {
+      players = {};
+      if (addNome) players.add = [{ nome: addNome, costo: addCosto || undefined }];
+      if (removeNome) players.remove = [removeNome];
+    }
+
+    if (!move && !players) { alert('Niente da modificare: nessuno spostamento e nessun giocatore.'); return; }
+
+    const payload = { idReserva, move, players };
+
+    const btn = document.getElementById('matchpointTestEditButton');
+    const stateEl = document.getElementById('matchpointTestBookingState');
+    const resultEl = document.getElementById('matchpointTestBookingResult');
+
+    if (!isStaffSessionValid()) {
+      if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+
+    const riepilogo = [
+      `idReserva ${idReserva}`,
+      move ? `sposta → Campo ${move.campo} · ${move.data} · ${move.oraInizio}–${move.oraFine}` : 'nessuno spostamento',
+      addNome ? `aggiungi "${addNome}" (costo ${addCosto || 'default'})` : null,
+      removeNome ? `rimuovi "${removeNome}"` : null,
+    ].filter(Boolean).join('\n');
+    const confirmed = confirm(`Modifica REALE su Matchpoint:\n\n${riepilogo}\n\nProcedere?`);
+    if (!confirmed) return;
+
+    if (btn) btn.disabled = true;
+    if (stateEl) { stateEl.textContent = 'Modifica in corso… (può durare fino a 40 s)'; stateEl.className = 'matchpoint-action-state pending'; }
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`
+        },
+        body: JSON.stringify(payload),
       });
       const respText = await response.text();
       let data = null;
