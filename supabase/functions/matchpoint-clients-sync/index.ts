@@ -1210,11 +1210,12 @@ async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codi
   const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
 
   const session = new MatchpointSession(baseUrl);
-  const login = await loginToMatchpoint(session);
 
   let main: MatchpointExport;
   let viaWorker = false;
+  let login: { finalUrl: string; html: string } | null = null;
   try {
+    login = await loginToMatchpoint(session);
     main = await downloadReportFromSession(session, login, mainPath, mainTarget);
   } catch (error) {
     if (!shouldFallbackToBrowserWorker(error)) throw error;
@@ -1222,7 +1223,7 @@ async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codi
     viaWorker = true;
   }
 
-  if (viaWorker) {
+  if (viaWorker || !login) {
     return { main, codice: { ok: false, skippedReason: 'MAIN_VIA_WORKER_NO_SHARED_SESSION' } };
   }
 
