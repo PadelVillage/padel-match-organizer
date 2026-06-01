@@ -911,10 +911,10 @@ function isExcelResponse(bytes: Uint8Array, contentType: string, disposition: st
   return zip || xls || cd.includes('.xls') || ct.includes('spreadsheet') || ct.includes('excel');
 }
 
-async function exportClientsViaHttp(): Promise<MatchpointExport> {
+async function exportClientsViaHttp(clientsPathOverride?: string, exportTargetOverride?: string): Promise<MatchpointExport> {
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
-  const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const clientsPath = clientsPathOverride ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
+  const exportTarget = exportTargetOverride ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
   const session = new MatchpointSession(baseUrl);
 
   const login = await loginToMatchpoint(session);
@@ -1190,6 +1190,44 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
     if (!shouldFallbackToBrowserWorker(error)) throw error;
     return await exportClientsViaBrowserWorker(error);
   }
+}
+
+type CodiceMap = Map<string, string>;
+
+function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; rowsParsed: number } | { ok: false; error: string; message: string } {
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(bytes, { type: 'array', cellDates: true });
+  } catch (e) {
+    return { ok: false, error: 'CODICE_PARSE_ERROR', message: errorText(e) };
+  }
+  if (!workbook.SheetNames.includes('Risultati')) {
+    return { ok: false, error: 'CODICE_SHEET_MISSING', message: 'Il report Codice non contiene il foglio Risultati.' };
+  }
+  const sheet = workbook.Sheets['Risultati'];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) as JsonMap[];
+  const map: CodiceMap = new Map();
+  let rowsParsed = 0;
+  for (const row of rows) {
+    const codiceRaw = clean(getCell(row, ['Codice']));
+    if (!codiceRaw) continue;
+    const codiceDigits = codiceRaw.replace(/\D/g, '');
+    if (!codiceDigits) continue;
+    const memberId = codiceDigits.length <= 6 ? codiceDigits.padStart(6, '0') : codiceDigits;
+    const phone = phoneDigits(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
+    const email = emailKey(getCell(row, ['E-mail', 'Email', 'Mail']));
+    if (!phone && !email) continue;
+    rowsParsed += 1;
+    if (phone) map.set(`phone:${phone}`, memberId);
+    if (email) map.set(`email:${email}`, memberId);
+  }
+  return { ok: true, map, rowsParsed };
+}
+
+async function exportCodiceFromMatchpoint(): Promise<MatchpointExport> {
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  return exportClientsViaHttp(codicePath, codiceTarget);
 }
 
 async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: string): Promise<StaffActor> {
@@ -1540,6 +1578,49 @@ Deno.serve(async (req) => {
       });
     }
 
+    const memberIdEnrichment = {
+      attempted: true,
+      ok: false,
+      skippedReason: null as string | null,
+      codiceRowsParsed: 0,
+      matched: 0,
+      unmatched: 0,
+      unmatchedSample: [] as Array<{ firstName: string; surname: string }>,
+    };
+    try {
+      const codiceExported = await exportCodiceFromMatchpoint();
+      const codiceResult = parseCodiceWorkbook(codiceExported.bytes);
+      if (!codiceResult.ok) {
+        memberIdEnrichment.skippedReason = `${codiceResult.error}: ${codiceResult.message}`;
+      } else {
+        memberIdEnrichment.ok = true;
+        memberIdEnrichment.codiceRowsParsed = codiceResult.rowsParsed;
+        const codiceMap = codiceResult.map;
+        const unmatchedSample: Array<{ firstName: string; surname: string }> = [];
+        let enrichMatched = 0;
+        let enrichUnmatched = 0;
+        for (const member of validation.members) {
+          const pDigits = phoneDigits(member.phone);
+          const eKey = emailKey(member.email);
+          const found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
+          if (found) {
+            member.memberId = found;
+            enrichMatched += 1;
+          } else {
+            enrichUnmatched += 1;
+            if (unmatchedSample.length < 50) {
+              unmatchedSample.push({ firstName: member.firstName, surname: member.surname });
+            }
+          }
+        }
+        memberIdEnrichment.matched = enrichMatched;
+        memberIdEnrichment.unmatched = enrichUnmatched;
+        memberIdEnrichment.unmatchedSample = unmatchedSample;
+      }
+    } catch (enrichError) {
+      memberIdEnrichment.skippedReason = errorText(enrichError).slice(0, 500);
+    }
+
     const existing = await loadExistingMemberRecords(admin);
     const records = [];
     const memberRecordKeys = new Set<string>();
@@ -1623,6 +1704,7 @@ Deno.serve(async (req) => {
         warnings: validation.warnings,
       },
       diagnostic: exported.diagnostic,
+      memberIdEnrichment,
     };
     records.push({
       record_type: 'matchpoint_data',
@@ -1663,6 +1745,7 @@ Deno.serve(async (req) => {
       staleDeleted,
       diagnosticFile,
       upserted: finalRecords.length,
+      memberIdEnrichment,
     });
 
     return okResponse({
