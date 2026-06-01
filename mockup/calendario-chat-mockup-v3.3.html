@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<!--
+  Calendario Staff — Griglia + Chat AI
+  Versione: v3.3 — MOCKUP STATICO (nessuna logica reale, nessun backend)
+  Scopo: approvazione layout/UX prima dello sviluppo
+  Tappa 1 di 5
+
+  Novità v3.2 (rispetto al v3.1):
+  - Testi mobile portati a 20px base (era 16px): agenda più leggibile a bordo campo.
+  - Desktop invariato. Nessuna modifica di logica.
+
+  Novità v3.1 (rispetto al v3.0):
+  - Tipografia mobile ingrandita: font base 16px (era 15px), card agenda più leggibili a bordo campo.
+  - Rimossa la legenda a icone 🔒✏️➕ dalla vista mobile (non serve nell'agenda).
+  - Badge "Mockup v3.1" resta nella riga superiore dell'header (logo + badge).
+  - Desktop invariato. Nessuna modifica di logica.
+
+  Novità v3.0 (rispetto al v2.4):
+  - Impianto responsive: render() sceglie griglia (≥900px) o agenda (<900px); ricostruzione al
+    resize (debounce 150ms); refreshView() aggiorna la vista corretta dopo create/edit/delete.
+  - Mobile — Agenda per campo: tab C1·C2·C3·C4 + navigatore data compatto già nell'header;
+    lista cronologica 07:00–23:00 per il campo selezionato:
+      · prenotazioni come card grandi (ora, tipo, giocatori; ✏️/🗑 se staff, 🔒 Matchpoint)
+      · fasce libere consecutive unite → riga "Libero HH:MM–HH:MM · + Prenota"
+      · tap su fascia libera → scelta ora di inizio (inizi a passo 30' nella fascia) → flusso
+        guidato esistente (startBookingFlow); se l'unico inizio possibile è uno solo, si va
+        direttamente al flusso senza passare dalla scelta.
+  - Desktop: griglia 4 campi + drag&drop invariati (come v2.4).
+  - Leggibilità: font base 15px (era 14px); --text-muted più scuro (#4b5563, era #6b7280);
+    "+" visibile nelle celle libere anche senza hover (opacity bassa → piena all'hover).
+  - Nessuna regressione: i fix v2.3 e v2.4 sono intatti; la chat libera testuale resta com'è.
+
+  Storico v2.4: rimosso bottone «➕ Aggiungi» (ridondante) dalla riga Giocatori modifica.
+  Storico v2.3: consolidamento 5 fix (doppione "+", split nomi, scroll chat, chip giocatori,
+                drag&drop con durata evidenziata e motivo rifiuto).
+  Storico v2.2: modifica guidata staff (scheda in chat, campi editabili, conferma per id).
+  Storico v2.1: validazione canPlace in creazione, bottoni scheda robusti su mobile.
+  Storico v2.0: id booking, chip giocatori, drag&drop simulato, schede Modifica/Elimina.
+-->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calendario Staff — Griglia + Chat · Mockup v3.3</title>
+<style>
+  /* ── Reset & base ───────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0eeea;
+    --border: #d8d7d2;
+    --text: #1f2430;
+    --text-muted: #4b5563;        /* v3.0: più scuro (era #6b7280) */
+    --accent: #2563eb;
+    --accent-light: rgba(37,99,235,0.10);
+    --accent-hover: #1d4ed8;
+    --green: #16a34a;
+    --green-light: rgba(22,163,74,0.10);
+    --amber: #b45309;
+    --amber-light: rgba(180,83,9,0.10);
+    --red: #dc2626;
+    --red-light: rgba(220,38,38,0.08);
+    --mp-bg: #f3f2ef;
+    --mp-border: #c9c7c1;
+    --mp-text: #4b5563;
+    --staff-bg: rgba(37,99,235,0.08);
+    --staff-border: #2563eb;
+    --staff-text: #1e3a8a;
+    --row-h: 38px;
+    --col-time: 52px;
+    --col-field: minmax(160px, 1fr);
+    --chat-w: 340px;
+    --bar2-h: 44px;
+    --radius: 8px;
+    --radius-sm: 5px;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  html { font-size: 15px; height: 100%; }   /* v3.0: 14→15px */
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    height: 100dvh;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Scrollbar ──────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     BARRA 1 — header fisso
+     ══════════════════════════════════════════════════════════════ */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .hdr-left {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-logo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .header-logo span { color: var(--text-muted); font-weight: 400; font-size: 0.85rem; }
+  .hdr-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .dnav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .dnav-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .dnav-current {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+    min-width: 165px;
+    text-align: center;
+    letter-spacing: 0.01em;
+  }
+  .dnav-current .dnav-dow {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .dnav-picker-label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .dnav-picker-label:hover { border-color: var(--accent); background: var(--accent-light); }
+  .dnav-picker-label input[type="date"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%; height: 100%;
+    border: none;
+    padding: 0;
+  }
+  .dnav-today {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .dnav-today:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .dnav-today.is-today { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .hdr-right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hdr-chat-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .hdr-legend {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    user-select: none;
+    cursor: default;
+  }
+  .hdr-legend-item {
+    font-size: 0.9rem;
+    padding: 2px 5px;
+    border-radius: var(--radius-sm);
+    cursor: default;
+    color: var(--text-muted);
+    transition: background 0.12s;
+  }
+  .hdr-legend-item:hover { background: var(--surface2); }
+  .badge-mockup {
+    background: var(--amber-light);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ── Main layout ─────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+  }
+
+  /* ── Grid wrap ───────────────────────────────────────────────── */
+  .grid-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 0 16px 12px 16px;
+    min-height: 0;
+    min-width: 0;
+  }
+  .grid-table {
+    display: grid;
+    grid-template-columns: var(--col-time) repeat(4, var(--col-field));
+    min-width: 600px;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: clip;
+  }
+
+  /* ── Grid header row (sticky = Barra 2 sx) ──────────────────── */
+  .gh {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--border);
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 0 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--bar2-h);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .gh.field { color: var(--text); border-left: 1px solid var(--border); gap: 5px; }
+  .gh .field-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* ── Time label ─────────────────────────────────────────────── */
+  .time-label {
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
+    height: var(--row-h);
+    font-variant-numeric: tabular-nums;
+  }
+  .time-label.hour { color: var(--text); font-weight: 600; }
+
+  /* ── Grid cell ──────────────────────────────────────────────── */
+  .cell {
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    height: var(--row-h);
+    position: relative;
+    transition: background 0.12s;
+  }
+  .cell.free { cursor: pointer; }
+  /* v3.0: "+" sempre visibile nelle celle libere (opacity bassa → piena all'hover) */
+  .cell.free::before {
+    content: '+';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.1rem;
+    color: var(--accent);
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  .cell.free:hover { background: var(--accent-light); }
+  .cell.free:hover::before { opacity: 0.72; }
+  .cell.occupied { overflow: visible; z-index: 2; }
+
+  /* ── Booking block ──────────────────────────────────────────── */
+  .booking {
+    position: absolute;
+    left: 3px; right: 3px; top: 3px;
+    border-radius: var(--radius-sm);
+    padding: 4px 6px;
+    font-size: 0.72rem;
+    overflow: hidden;
+    z-index: 10;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .booking.matchpoint {
+    background: var(--mp-bg);
+    border: 1px solid var(--mp-border);
+    color: var(--mp-text);
+    cursor: not-allowed;
+  }
+  .booking.staff {
+    background: var(--staff-bg);
+    border: 1px solid var(--staff-border);
+    color: var(--staff-text);
+    cursor: pointer;
+  }
+  .booking.staff:hover { border-color: var(--accent-hover); background: rgba(37,99,235,0.16); }
+  .booking-header { display: flex; align-items: center; gap: 4px; font-weight: 600; }
+  .booking-icon { font-size: 0.75rem; flex-shrink: 0; }
+  .booking-type { flex: 1; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .booking-time { font-size: 0.67rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+  .booking-players { font-size: 0.67rem; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.6rem;
+    background: rgba(0,0,0,0.07);
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin-top: 2px;
+    color: var(--text-muted);
+    width: fit-content;
+  }
+
+  /* ── v2.0 — Bottoni azione scheda staff (Modifica / Elimina) ──── */
+  .card-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 3px;
+  }
+  .card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border-radius: 3px;
+    padding: 2px 5px;
+    border: 1px solid;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s;
+  }
+  .card-edit { background: rgba(37,99,235,0.12); border-color: var(--accent); color: var(--accent); }
+  .card-edit:hover { background: rgba(37,99,235,0.22); }
+  .card-del  { background: var(--red-light); border-color: var(--red); color: var(--red); }
+  .card-del:hover { background: rgba(220,38,38,0.18); }
+
+  /* ── v2.0 — Drag&drop simulato (solo desktop) ─────────────────── */
+  .booking.staff[draggable="true"] { cursor: grab; }
+  .booking.staff.dragging { opacity: 0.45; cursor: grabbing; }
+  .cell.drop-ok  { background: var(--green-light); }
+  .cell.drop-bad { background: var(--red-light); }
+
+  /* ── v2.0 — Chip giocatori ───────────────────────────────────── */
+  .player-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .players-empty {
+    margin-top: 8px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 14px;
+    padding: 3px 6px 3px 10px;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .chip-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.12s;
+  }
+  .chip-x:hover:not(:disabled) { background: var(--red-light); color: var(--red); }
+  .chip-x:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── v2.2 — Scheda di modifica prenotazione ───────────────────── */
+  .edit-title { margin-bottom: 6px; font-size: 0.9rem; }
+  .edit-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-top: 1px solid var(--border);
+  }
+  .edit-field-label { font-size: 0.78rem; color: var(--text-muted); min-width: 92px; }
+  .edit-field-value { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+  .edit-change-btn {
+    margin-left: auto;
+    padding: 3px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
+    transition: background 0.15s;
+  }
+  .edit-change-btn:hover { background: var(--accent-light); }
+  .edit-note { flex: 0 0 100%; font-size: 0.72rem; color: var(--amber); margin-top: 2px; }
+  .edit-date-input, .edit-time-select {
+    font-family: var(--font);
+    font-size: 0.82rem;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .edit-date-input:focus, .edit-time-select:focus { border-color: var(--accent); outline: none; }
+  .edit-field .step-buttons { margin-top: 4px; flex: 0 0 100%; }
+  .edit-field .player-chips  { margin-top: 4px; flex: 0 0 100%; }
+  .edit-hint { font-size: 0.72rem; color: var(--text-muted); }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLUSSO GUIDATO — bottoni tipo e durata
+     ══════════════════════════════════════════════════════════════ */
+  .step-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .btn-step {
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .btn-step:hover:not(:disabled) { background: var(--accent-light); }
+  .btn-step.selected {
+    background: var(--accent);
+    color: #fff;
+    cursor: default;
+  }
+  .btn-step.selected:disabled { opacity: 1; background: var(--accent); color:#fff; border-color: var(--accent); cursor: default; }
+  .btn-step:disabled:not(.selected) {
+    opacity: 0.38;
+    cursor: not-allowed;
+    border-color: var(--border);
+    color: var(--text-muted);
+    background: var(--surface2);
+  }
+  .btn-step-cancel {
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-step-cancel:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  .btn-step-cancel:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Chat panel ─────────────────────────────────────────────── */
+  .chat-panel {
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .chat-header {
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-header-inner { flex: 1; min-width: 0; }
+  .chat-header-icon { font-size: 1rem; }
+  .chat-header-title { font-size: 0.85rem; font-weight: 600; }
+  .chat-header-sub { font-size: 0.72rem; color: var(--text-muted); }
+  .chat-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .chat-close-btn:hover { color: var(--text); }
+  .chat-input-row {
+    padding: 0 12px;
+    height: var(--bar2-h);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface2);
+    transition: background 0.2s;
+  }
+  .chat-input-row.flow-locked { background: var(--surface2); opacity: 0.7; }
+  .chat-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s, opacity 0.15s;
+    min-width: 0;
+  }
+  .chat-input::placeholder { color: var(--text-muted); }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--surface2);
+  }
+  .chat-send {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .chat-send:hover:not(:disabled) { background: var(--accent-hover); }
+  .chat-send:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── Messaggi ────────────────────────────────────────────────── */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .msg {
+    max-width: 85%;
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .msg.staff {
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.system {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+  }
+  .msg.system.ok      { border-color: var(--green); }
+  .msg.system.confirm { border-color: var(--amber); }
+  .msg.system.flow    { border-color: var(--accent); background: var(--accent-light); max-width: 95%; }
+  .msg-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .msg.staff .msg-label          { color: var(--accent); }
+  .msg.system .msg-label         { color: var(--text-muted); }
+  .msg.system.ok .msg-label      { color: var(--green); }
+  .msg.system.confirm .msg-label { color: var(--amber); }
+  .msg.system.flow .msg-label    { color: var(--accent); }
+
+  .confirm-buttons { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .btn-confirm {
+    padding: 4px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+  }
+  .btn-yes { background: var(--green-light); border-color: var(--green); color: var(--green); }
+  .btn-yes:hover { background: rgba(22,163,74,0.22); }
+  .btn-no  { background: var(--red-light);   border-color: var(--red);   color: var(--red); }
+  .btn-no:hover  { background: rgba(220,38,38,0.18); }
+  .btn-rewrite { background: var(--surface2); border-color: var(--border); color: var(--text-muted); }
+  .btn-rewrite:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── Footer ─────────────────────────────────────────────────── */
+  .footer {
+    text-align: center;
+    padding: 5px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  /* ── Tooltip ────────────────────────────────────────────────── */
+  .tooltip-wrap { position: relative; }
+  .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    color: var(--text);
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .tooltip-wrap:hover .tooltip { display: block; }
+
+  /* ══════════════════════════════════════════════════════════════
+     v3.0 — AGENDA (mobile)
+     ══════════════════════════════════════════════════════════════ */
+  .agenda-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .agenda-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .agenda-tab {
+    flex: 1;
+    min-width: 52px;
+    padding: 10px 4px 8px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    transition: color 0.15s, border-color 0.15s, background 0.12s;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: -2px;   /* sovrappone il border-bottom del tab container */
+    white-space: nowrap;
+  }
+  .agenda-tab .tab-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .agenda-tab.active {
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .agenda-tab:hover:not(.active) {
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .agenda-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  /* Card prenotazione nell'agenda */
+  .agenda-card {
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .agenda-card.staff {
+    background: var(--staff-bg);
+    border: 1.5px solid var(--staff-border);
+  }
+  .agenda-card.matchpoint {
+    background: var(--mp-bg);
+    border: 1.5px solid var(--mp-border);
+  }
+  .agenda-card-time {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .agenda-card-type {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.3;
+  }
+  .agenda-card-players {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .agenda-card-mp-badge {
+    font-size: 0.72rem;
+    color: var(--mp-text);
+    margin-top: 4px;
+  }
+  .agenda-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .agenda-card-btn {
+    flex: 1;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid;
+    transition: background 0.12s;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .agenda-card-edit {
+    background: rgba(37,99,235,0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .agenda-card-edit:hover { background: rgba(37,99,235,0.18); }
+  .agenda-card-del {
+    background: var(--red-light);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .agenda-card-del:hover { background: rgba(220,38,38,0.18); }
+
+  /* Fascia libera nell'agenda */
+  .agenda-free {
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1.5px dashed var(--border);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    gap: 10px;
+  }
+  .agenda-free:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .agenda-free-label {
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  .agenda-free-label span {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-left: 4px;
+  }
+  .agenda-free-cta {
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .agenda-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     DESKTOP ≥900px
+     ══════════════════════════════════════════════════════════════ */
+  @media (min-width: 900px) {
+    .hdr-right { display: flex; }
+    .main { flex-direction: row; }
+    .grid-wrap { flex: 1; min-width: 0; overflow-y: auto; overflow-x: auto; }
+    .chat-panel {
+      width: var(--chat-w);
+      flex-shrink: 0;
+      border-left: 2px solid var(--border);
+      overflow: hidden;
+    }
+    .chat-header    { display: none !important; }
+    .chat-fab       { display: none !important; }
+    .chat-overlay   { display: none !important; }
+    .chat-close-btn { display: none !important; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     MOBILE <900px
+     ══════════════════════════════════════════════════════════════ */
+  @media (max-width: 899px) {
+    /* v3.3 — base 20px per leggibilità a bordo campo (era 16px in v3.1) */
+    html { font-size: 20px; }
+
+    :root { --col-field: minmax(120px, 1fr); }
+    .header { flex-wrap: wrap; row-gap: 6px; padding: 8px 12px; }
+    .hdr-left  { flex: 0 0 auto; }
+    .hdr-center { flex: 0 0 100%; justify-content: flex-start; }
+    .hdr-right  { display: flex; margin-left: auto; gap: 6px; }
+    .hdr-chat-label { display: none; }
+    /* v3.3 — legenda icone nascosta su mobile (non serve nell'agenda) */
+    .hdr-legend { display: none; }
+    /* v3.3 — data/intestazione un filo più grande */
+    .dnav-current { min-width: 140px; font-size: 0.92rem; }
+
+    /* v3.3 — tipografia agenda mobile */
+    .agenda-card-type    { font-size: 1.0625rem; font-weight: 500; }
+    .agenda-card-time    { font-size: 0.875rem; }
+    .agenda-card-players { font-size: 0.9375rem; }
+    .agenda-free-label   { font-size: 0.9375rem; }
+    .agenda-free-label strong { font-size: 1.0625rem; }
+    .agenda-free-label span   { font-size: 0.875rem; }
+    .agenda-free-cta     { font-size: 0.9375rem; font-weight: 500; }
+    .agenda-tab          { font-size: 0.9375rem; }
+
+    .card-btn { padding: 5px 7px; font-size: 0.64rem; min-height: 28px; }
+    .card-btn-label { display: none; }
+    .card-btn { padding: 5px 8px; }
+
+    .chat-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 75vh; max-height: 75vh;
+      border-top: 2px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+      z-index: 300;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .chat-panel.chat-open { transform: translateY(0); }
+    .chat-header { display: flex; }
+    .chat-close-btn { display: flex; align-items: center; justify-content: center; }
+
+    .chat-input-row {
+      height: auto;
+      padding: 10px 12px;
+      background: var(--surface);
+    }
+    .chat-input-row.flow-locked { background: var(--surface2); }
+    /* v3.3 — testi chat/scheda più grandi su mobile (coerenti con agenda a 20px) */
+    .chat-input  { padding: 10px 12px; font-size: 0.9rem; }
+    .chat-send   { padding: 10px 14px; font-size: 0.85rem; min-height: 44px; }
+    .msg { max-width: 95%; font-size: 0.875rem; }
+    .msg.system.flow { max-width: 98%; }
+    .chat-header-title { font-size: 0.85rem; }
+    .chat-header-sub   { font-size: 0.7rem; }
+    .btn-step        { font-size: 0.85rem; min-height: 44px; padding: 10px 14px; }
+    .btn-step-cancel { font-size: 0.85rem; min-height: 44px; padding: 10px 12px; }
+    .edit-title       { font-size: 0.85rem; }
+    .edit-field-label { font-size: 0.75rem; }
+    .edit-field-value { font-size: 0.8rem; }
+    .edit-hint        { font-size: 0.7rem; }
+    .edit-note        { font-size: 0.7rem; }
+
+    .chat-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      z-index: 200;
+      pointer-events: none;
+      transition: background 0.3s;
+    }
+    .chat-overlay.active { background: rgba(0,0,0,0.35); pointer-events: auto; }
+
+    .chat-fab {
+      display: flex;
+      position: fixed;
+      bottom: 20px; right: 20px;
+      z-index: 250;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.40);
+      transition: background 0.15s, transform 0.15s;
+    }
+    .chat-fab:hover { background: var(--accent-hover); transform: scale(1.08); }
+    .chat-fab .fab-badge {
+      position: absolute;
+      top: 4px; right: 4px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg);
+    }
+  }
+
+  @media (max-width: 600px) {
+    :root { --col-time: 42px; --col-field: minmax(100px, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ BARRA 1 ═══════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="hdr-left">
+    <h1 class="header-logo">PadelVillage <span>Staff · v3.3</span></h1>
+  </div>
+  <div class="hdr-center">
+    <button class="dnav-btn" id="prevDay" title="Giorno precedente">‹</button>
+    <div class="dnav-current" id="currentDateLabel"></div>
+    <button class="dnav-btn" id="nextDay" title="Giorno successivo">›</button>
+    <label class="dnav-picker-label" title="Scegli una data">
+      📅
+      <input type="date" id="datePicker" />
+    </label>
+    <button class="dnav-today" id="todayBtn">Oggi</button>
+  </div>
+  <div class="hdr-right">
+    <span class="hdr-chat-label">Assistente Prenotazioni Staff</span>
+    <div class="hdr-legend">
+      <span class="hdr-legend-item" title="Matchpoint — sola lettura">🔒</span>
+      <span class="hdr-legend-item" title="Staff — modificabile">✏️</span>
+      <span class="hdr-legend-item" title="Libero — click per prenotare">➕</span>
+    </div>
+    <span class="badge-mockup">Mockup v3.3</span>
+  </div>
+</header>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- Griglia 4 campi (desktop ≥900px) -->
+  <div class="grid-wrap" id="gridWrap">
+    <div class="grid-table" id="gridTable"></div>
+  </div>
+
+  <!-- Agenda per campo (mobile <900px) — mostrata/nascosta da render() -->
+  <div class="agenda-wrap" id="agendaWrap" style="display:none">
+    <div class="agenda-tabs" id="agendaTabs">
+      <button class="agenda-tab active" data-field="1">
+        <span class="tab-dot" style="background:#f87171"></span>C1
+      </button>
+      <button class="agenda-tab" data-field="2">
+        <span class="tab-dot" style="background:#fbbf24"></span>C2
+      </button>
+      <button class="agenda-tab" data-field="3">
+        <span class="tab-dot" style="background:#34d399"></span>C3
+      </button>
+      <button class="agenda-tab" data-field="4">
+        <span class="tab-dot" style="background:#818cf8"></span>C4
+      </button>
+    </div>
+    <div class="agenda-body" id="agendaBody"></div>
+  </div>
+
+  <!-- Chat AI (desktop: sidebar fissa; mobile: slide-up overlay) -->
+  <div class="chat-panel" id="chatPanel">
+
+    <!-- Intestazione chat (visibile solo mobile) -->
+    <div class="chat-header">
+      <span class="chat-header-icon">💬</span>
+      <div class="chat-header-inner">
+        <div class="chat-header-title">Assistente Prenotazioni Staff</div>
+        <div class="chat-header-sub">Flusso guidato · Solo simulazione</div>
+      </div>
+      <button class="chat-close-btn" id="chatCloseBtn" title="Chiudi chat">✕</button>
+    </div>
+
+    <!-- Barra 2 dx: riga input -->
+    <div class="chat-input-row" id="chatInputRow">
+      <input class="chat-input" id="chatInput" type="text"
+        placeholder="Es: Sposta o modifica una prenotazione…" />
+      <button class="chat-send" id="chatSend">Invia ↵</button>
+    </div>
+
+    <!-- Messaggi (più recente in alto = prepend) -->
+    <div class="chat-messages" id="chatMessages"></div>
+
+  </div>
+</main>
+
+<!-- Overlay (mobile) -->
+<div class="chat-overlay" id="chatOverlay"></div>
+
+<!-- FAB (mobile) -->
+<button class="chat-fab" id="chatFab" title="Apri assistente">
+  💬
+  <span class="fab-badge" id="fabBadge">3</span>
+</button>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════ -->
+<footer class="footer">
+  Mockup v3.3 — Calendario Staff · Griglia + Chat AI &nbsp;·&nbsp; Solo layout/UX — nessun dato reale &nbsp;·&nbsp; In attesa di approvazione
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+//  Mockup v3.3 — Calendario Staff · Griglia + Chat AI
+//  ATTENZIONE: dati hardcoded finti, nessuna logica reale, nessun backend
+//  NOTA Drag&drop: solo desktop (mouse). Su mobile si usano ✏️/🗑 nell'agenda.
+// ─────────────────────────────────────────────────────────────────
+
+// ── Date helpers ────────────────────────────────────────────────
+function fmtDate(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+function fmtDateISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dateFromISO(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function addMinutesToTime(timeStr, minutes) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const tot = h * 60 + m + minutes;
+  return `${String(Math.floor(tot/60)).padStart(2,'0')}:${String(tot%60).padStart(2,'0')}`;
+}
+const DOW_IT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+
+// ── Today / active date ──────────────────────────────────────────
+const today = new Date();
+today.setHours(0,0,0,0);
+const todayISO = fmtDateISO(today);
+let activeISO  = todayISO;
+
+// ── Bookings store ───────────────────────────────────────────────
+const BOOKINGS = {};
+
+let bookingIdCounter = 0;
+
+function addBooking(dateISO, campo, startSlot, durationSlots, type, players, source) {
+  if (!BOOKINGS[dateISO]) BOOKINGS[dateISO] = [];
+  const id = ++bookingIdCounter;
+  BOOKINGS[dateISO].push({ id, campo, startSlot, durationSlots, type, players, source });
+  return id;
+}
+
+// Dati di esempio
+const T   = todayISO;
+addBooking(T, 1, 22, 3, "Partita 90'",          '-Marco Rossi.-Luigi Bianchi.-Anna Verdi.-Sara Neri.',        'matchpoint');
+addBooking(T, 3, 24, 2, "Lezione Singola 60'",  '-Giulia Conti.',                                             'staff');
+addBooking(T, 2, 27, 4, "Torneo 120'",           '-Vari giocatori (8)',                                        'matchpoint');
+addBooking(T, 4,  4, 3, "Lezione di Gruppo 90'",'-Paolo Marini.-Chiara Esposito.-Luca Ferrari.-Elena Russo.',  'staff');
+addBooking(T, 1,  7, 2, "Partita 60'",           '-Roberto Manca.-Simone Gallo.',                             'matchpoint');
+addBooking(T, 3,  8, 6, "Torneo 180'",           '-8 iscritti confermati',                                    'staff');
+
+const YESTERDAY = new Date(today); YESTERDAY.setDate(today.getDate()-1);
+const Y = fmtDateISO(YESTERDAY);
+addBooking(Y, 2, 18, 2, "Partita 60'",           '-Mario Bello.-Carla Neri.',  'matchpoint');
+addBooking(Y, 1, 20, 3, "Lezione di Gruppo 90'", '-Gruppo Avanzati (6)',       'staff');
+
+const TOMORROW = new Date(today); TOMORROW.setDate(today.getDate()+1);
+const TOM = fmtDateISO(TOMORROW);
+addBooking(TOM, 2, 16, 4, "Torneo 120'",         '-Torneo Misto Open',         'matchpoint');
+addBooking(TOM, 4, 20, 2, "Lezione Singola 60'", '-Andrea Lippi.',             'staff');
+
+// ── Slot helpers ─────────────────────────────────────────────────
+const SLOT_COUNT = 32;
+const START_HOUR = 7;
+function slotToTime(slot) {
+  const tot = START_HOUR * 60 + slot * 30;
+  return `${String(Math.floor(tot/60)).padStart(2,'0')}:${String(tot%60).padStart(2,'0')}`;
+}
+const FIELD_COLORS = ['#f87171','#fbbf24','#34d399','#818cf8'];
+
+// ── v2.0 — Stato del drag in corso ──────────────────────────────
+let dragState = null;
+
+// ── Fix 5 — helper evidenziazione drag su tutta la durata ────────
+function clearDropHighlight() {
+  document.querySelectorAll('.cell.drop-ok, .cell.drop-bad')
+    .forEach(c => c.classList.remove('drop-ok', 'drop-bad'));
+}
+function highlightSpan(campo, startSlot, durationSlots, ok) {
+  clearDropHighlight();
+  const cls = ok ? 'drop-ok' : 'drop-bad';
+  for (let s = startSlot; s < startSlot + durationSlots && s < SLOT_COUNT; s++) {
+    const c = document.querySelector(`.cell[data-campo="${campo}"][data-slot="${s}"]`);
+    if (c) c.classList.add(cls);
+  }
+}
+function placementError(campo, startSlot, durationSlots, ignoreId, dateISO = activeISO) {
+  if (startSlot + durationSlots > SLOT_COUNT) return 'supererebbe l\'orario di chiusura (23:00)';
+  const endSlot = startSlot + durationSlots;
+  for (const b of (BOOKINGS[dateISO] || [])) {
+    if (b.id === ignoreId || b.campo !== campo) continue;
+    if (startSlot < b.startSlot + b.durationSlots && endSlot > b.startSlot)
+      return 'si sovrapporrebbe a un\'altra prenotazione';
+  }
+  return null;
+}
+
+// ── v2.0/v2.1 — canPlace ──────────────────────────────────────────
+function canPlace(campo, startSlot, durationSlots, ignoreId, dateISO = activeISO) {
+  if (startSlot < 0) return false;
+  const endSlot = startSlot + durationSlots;
+  if (endSlot > SLOT_COUNT) return false;
+  const list = BOOKINGS[dateISO] || [];
+  for (const b of list) {
+    if (b.id === ignoreId) continue;
+    if (b.campo !== campo) continue;
+    const bEnd = b.startSlot + b.durationSlots;
+    if (startSlot < bEnd && endSlot > b.startSlot) return false;
+  }
+  return true;
+}
+
+// ── Date nav ─────────────────────────────────────────────────────
+function updateDateNav() {
+  const d   = dateFromISO(activeISO);
+  const dow = DOW_IT[d.getDay()];
+  document.getElementById('currentDateLabel').innerHTML =
+    `<span class="dnav-dow">${dow}</span>${fmtDate(d)}`;
+  const btn = document.getElementById('todayBtn');
+  if (activeISO === todayISO) {
+    btn.classList.add('is-today'); btn.title = 'Sei già su oggi';
+  } else {
+    btn.classList.remove('is-today'); btn.title = 'Vai a oggi';
+  }
+  document.getElementById('datePicker').value = activeISO;
+}
+function setActiveDate(iso) { activeISO = iso; updateDateNav(); render(); }
+
+document.getElementById('prevDay').addEventListener('click', () => {
+  const d = dateFromISO(activeISO); d.setDate(d.getDate()-1); setActiveDate(fmtDateISO(d));
+});
+document.getElementById('nextDay').addEventListener('click', () => {
+  const d = dateFromISO(activeISO); d.setDate(d.getDate()+1); setActiveDate(fmtDateISO(d));
+});
+document.getElementById('todayBtn').addEventListener('click', () => setActiveDate(todayISO));
+document.getElementById('datePicker').addEventListener('change', e => { if (e.target.value) setActiveDate(e.target.value); });
+
+// ── Mobile chat: FAB + slide-up ──────────────────────────────────
+const chatPanel   = document.getElementById('chatPanel');
+const chatOverlay = document.getElementById('chatOverlay');
+const chatFab     = document.getElementById('chatFab');
+const fabBadge    = document.getElementById('fabBadge');
+
+function openChat() {
+  chatPanel.classList.add('chat-open');
+  chatOverlay.classList.add('active');
+  fabBadge.style.display = 'none';
+  setTimeout(() => { if (!chatInput.disabled) chatInput.focus(); }, 350);
+}
+function closeChat() {
+  chatPanel.classList.remove('chat-open');
+  chatOverlay.classList.remove('active');
+}
+chatFab.addEventListener('click', openChat);
+document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
+chatOverlay.addEventListener('click', closeChat);
+
+// ═══════════════════════════════════════════════════════════════════
+//  v3.0 — render() / refreshView() / buildAgenda()
+// ═══════════════════════════════════════════════════════════════════
+
+let agendaField = 1;   // tab attivo nell'agenda (1–4)
+
+// Sceglie griglia o agenda in base alla larghezza; richiamata anche al resize.
+function render() {
+  const desktop = window.innerWidth >= 900;
+  document.getElementById('gridWrap').style.display  = desktop ? '' : 'none';
+  document.getElementById('agendaWrap').style.display = desktop ? 'none' : '';
+  if (desktop) buildGrid();
+  else         buildAgenda();
+}
+
+// Aggiorna la vista corrente dopo create/edit/delete.
+function refreshView() { render(); }
+
+// Debounce resize: evita di ricostruire ad ogni pixel.
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(render, 150);
+});
+
+// ── buildAgenda() — costruisce la vista agenda mobile ───────────
+function buildAgenda() {
+  // Aggiorna tab attivo (stile + colore bordo)
+  document.querySelectorAll('.agenda-tab').forEach(btn => {
+    const f = parseInt(btn.dataset.field, 10);
+    const active = (f === agendaField);
+    btn.classList.toggle('active', active);
+    const color = FIELD_COLORS[f - 1];
+    btn.style.borderBottomColor = active ? color : 'transparent';
+    btn.style.color = active ? color : '';
+  });
+
+  const body = document.getElementById('agendaBody');
+  body.innerHTML = '';
+
+  // Mappa occupazione per il campo attivo
+  const dayBookings = (BOOKINGS[activeISO] || []).filter(b => b.campo === agendaField);
+  const occ = Array(SLOT_COUNT).fill(null);
+  dayBookings.forEach(b => {
+    for (let s = b.startSlot; s < b.startSlot + b.durationSlots && s < SLOT_COUNT; s++) {
+      occ[s] = b;
+    }
+  });
+
+  // Costruisce i blocchi: prenotazioni + fasce libere unite
+  let s = 0;
+  while (s < SLOT_COUNT) {
+    if (occ[s]) {
+      const b = occ[s];
+      if (b.startSlot === s) {
+        body.appendChild(makeAgendaCard(b));
+        s += b.durationSlots;
+      } else {
+        s++;   // slot intermedio (non dovrebbe accadere)
+      }
+    } else {
+      // Fascia libera: trova l'estensione contigua
+      const freeStart = s;
+      while (s < SLOT_COUNT && !occ[s]) s++;
+      body.appendChild(makeAgendaFreeRow(agendaField, freeStart, s));
+    }
+  }
+
+  if (body.children.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'agenda-empty';
+    empty.innerHTML = 'Nessuna prenotazione per questa data.<br><span style="font-size:0.78rem">Tutte le fasce sono libere.</span>';
+    body.appendChild(empty);
+  }
+}
+
+// Crea la card di una prenotazione nell'agenda
+function makeAgendaCard(b) {
+  const card = document.createElement('div');
+  card.className = `agenda-card ${b.source}`;
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'agenda-card-time';
+  timeEl.textContent = `${slotToTime(b.startSlot)} – ${slotToTime(b.startSlot + b.durationSlots)}  ·  ${b.durationSlots * 30}'`;
+  card.appendChild(timeEl);
+
+  const typeEl = document.createElement('div');
+  typeEl.className = 'agenda-card-type';
+  typeEl.innerHTML = `${b.source === 'matchpoint' ? '🔒' : '✏️'}&nbsp;${b.type}`;
+  card.appendChild(typeEl);
+
+  if (b.players) {
+    const playersEl = document.createElement('div');
+    playersEl.className = 'agenda-card-players';
+    playersEl.textContent = b.players.replace(/^-/, '').replace(/\.-/g, ', ').replace(/\.$/, '');
+    card.appendChild(playersEl);
+  }
+
+  if (b.source === 'staff') {
+    const actions = document.createElement('div');
+    actions.className = 'agenda-card-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'agenda-card-btn agenda-card-edit';
+    editBtn.innerHTML = '✏️ Modifica';
+    editBtn.addEventListener('click', () => startEditFlow(b));
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'agenda-card-btn agenda-card-del';
+    delBtn.innerHTML = '🗑 Elimina';
+    delBtn.addEventListener('click', () => askDeleteBooking(b));
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    card.appendChild(actions);
+  } else {
+    const badge = document.createElement('div');
+    badge.className = 'agenda-card-mp-badge';
+    badge.textContent = '🔒 Matchpoint · Sola lettura';
+    card.appendChild(badge);
+  }
+
+  return card;
+}
+
+// Crea la riga di fascia libera nell'agenda
+function makeAgendaFreeRow(campo, freeStartSlot, freeEndSlot) {
+  const row = document.createElement('div');
+  row.className = 'agenda-free';
+
+  const label = document.createElement('div');
+  label.className = 'agenda-free-label';
+  label.innerHTML = `<strong>Libero</strong><span>${slotToTime(freeStartSlot)}–${slotToTime(freeEndSlot)}</span>`;
+  row.appendChild(label);
+
+  const cta = document.createElement('div');
+  cta.className = 'agenda-free-cta';
+  cta.textContent = '+ Prenota';
+  row.appendChild(cta);
+
+  row.addEventListener('click', () => tapFreeAgendaSlot(campo, freeStartSlot, freeEndSlot));
+  return row;
+}
+
+// Tap su fascia libera: chiede l'ora di inizio se ci sono più opzioni,
+// poi delega al flusso guidato esistente (startBookingFlow).
+function tapFreeAgendaSlot(campo, freeStartSlot, freeEndSlot) {
+  // Tutti gli slot di inizio possibili dentro la fascia
+  const opts = [];
+  for (let s = freeStartSlot; s < freeEndSlot; s++) opts.push(s);
+
+  // Singolo inizio possibile → vai direttamente al flusso
+  if (opts.length === 1) {
+    const slot = opts[0], time = slotToTime(slot);
+    if (window.innerWidth < 900) openChat();
+    if (flowState) { cancelFlow(null, true); addMessage('system', '↪️ Ho annullato l\'operazione in corso e ne avvio una nuova.'); }
+    flowState = { step: 'opening', mode: 'create', campo, dateISO: activeISO, slot, time };
+    setTimeout(() => startBookingFlow(campo, activeISO, slot, time),
+      window.innerWidth < 900 ? 360 : 0);
+    return;
+  }
+
+  // Più opzioni: chiedi l'ora di inizio
+  if (window.innerWidth < 900) openChat();
+  if (flowState) { cancelFlow(null, true); addMessage('system', '↪️ Ho annullato l\'operazione in corso e ne avvio una nuova.'); }
+
+  const freeTimeStr = `${slotToTime(freeStartSlot)}–${slotToTime(freeEndSlot)}`;
+  const div = addMessage('system',
+    `🕐 <strong>Fascia libera ${freeTimeStr} · Campo ${campo}</strong><br>` +
+    `<span style="color:var(--text-muted);font-size:0.75rem;">A che ora vuoi iniziare?</span>`,
+    'flow'
+  );
+
+  const wrap = document.createElement('div');
+  wrap.className = 'step-buttons';
+
+  opts.forEach(slot => {
+    const time = slotToTime(slot);
+    const b = document.createElement('button');
+    b.className = 'btn-step';
+    b.textContent = time;
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      wrap.querySelectorAll('.btn-step').forEach(x => x.disabled = true);
+      wrap.querySelector('.btn-step-cancel').disabled = true;
+      b.classList.add('selected');
+      flowState = { step: 'opening', mode: 'create', campo, dateISO: activeISO, slot, time };
+      setTimeout(() => startBookingFlow(campo, activeISO, slot, time), 0);
+    });
+    wrap.appendChild(b);
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-step-cancel';
+  cancelBtn.textContent = '✕ Annulla';
+  cancelBtn.addEventListener('click', () => cancelFlow(div));
+  wrap.appendChild(cancelBtn);
+
+  div.appendChild(wrap);
+  flowState = { step: 'time-select', mode: 'create', campo, dateISO: activeISO, stepMsg: div };
+  setInputMode('flow-buttons');
+}
+
+// ── Build grid (desktop) ─────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('gridTable');
+  grid.innerHTML = '';
+
+  const corner = document.createElement('div');
+  corner.className = 'gh';
+  grid.appendChild(corner);
+
+  for (let f = 1; f <= 4; f++) {
+    const gh = document.createElement('div');
+    gh.className = 'gh field';
+    const dot = document.createElement('span');
+    dot.className = 'field-dot';
+    dot.style.background = FIELD_COLORS[f-1];
+    gh.appendChild(dot);
+    gh.appendChild(document.createTextNode(`Campo ${f}`));
+    grid.appendChild(gh);
+  }
+
+  const dayBookings = BOOKINGS[activeISO] || [];
+  const occ = {};
+  for (let f = 1; f <= 4; f++) occ[f] = Array(SLOT_COUNT).fill(null);
+  dayBookings.forEach(b => {
+    for (let s = b.startSlot; s < b.startSlot + b.durationSlots && s < SLOT_COUNT; s++) {
+      occ[b.campo][s] = { ...b, isHead: s === b.startSlot };
+    }
+  });
+
+  for (let slot = 0; slot < SLOT_COUNT; slot++) {
+    const time   = slotToTime(slot);
+    const isHour = slot % 2 === 0;
+
+    const tl = document.createElement('div');
+    tl.className = 'time-label' + (isHour ? ' hour' : '');
+    tl.textContent = isHour ? time : '';
+    grid.appendChild(tl);
+
+    for (let f = 1; f <= 4; f++) {
+      const entry = occ[f][slot];
+
+      if (entry && !entry.isHead) {
+        const fc = document.createElement('div');
+        fc.className = 'cell occupied';
+        fc.style.visibility = 'hidden';
+        fc.dataset.campo = f;
+        fc.dataset.slot  = slot;
+        grid.appendChild(fc);
+
+      } else if (entry && entry.isHead) {
+        const cell = document.createElement('div');
+        cell.className = 'cell occupied';
+        cell.dataset.campo = f;
+        cell.dataset.slot  = slot;
+        const hpx = entry.durationSlots * 38 - 6;
+
+        const block = document.createElement('div');
+        block.className = `booking ${entry.source}`;
+        block.style.height = `${hpx}px`;
+
+        const hdr = document.createElement('div');
+        hdr.className = 'booking-header';
+        const icon = document.createElement('span');
+        icon.className = 'booking-icon';
+        icon.textContent = entry.source === 'matchpoint' ? '🔒' : '✏️';
+        const typSpan = document.createElement('span');
+        typSpan.className = 'booking-type';
+        typSpan.textContent = entry.type;
+        hdr.appendChild(icon); hdr.appendChild(typSpan);
+
+        const timeSpan = document.createElement('div');
+        timeSpan.className = 'booking-time';
+        const endSlot = entry.startSlot + entry.durationSlots;
+        timeSpan.textContent = `${slotToTime(entry.startSlot)} – ${slotToTime(Math.min(endSlot, SLOT_COUNT))}`;
+
+        const playersSpan = document.createElement('div');
+        playersSpan.className = 'booking-players';
+        playersSpan.textContent = entry.players;
+
+        block.appendChild(hdr);
+        block.appendChild(timeSpan);
+        const showPlayers = entry.source === 'staff' ? hpx > 100 : hpx > 45;
+        if (showPlayers) block.appendChild(playersSpan);
+
+        if (entry.source === 'matchpoint') {
+          const badge = document.createElement('div');
+          badge.className = 'lock-badge';
+          badge.textContent = '🔒 Matchpoint · Sola lettura';
+          if (hpx > 65) block.appendChild(badge);
+
+        } else {
+          block.draggable = true;
+          block.addEventListener('dragstart', e => {
+            dragState = { id: entry.id, durationSlots: entry.durationSlots, fromCampo: entry.campo, fromSlot: entry.startSlot };
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(entry.id));
+            block.classList.add('dragging');
+          });
+          block.addEventListener('dragend', () => {
+            block.classList.remove('dragging');
+            dragState = null;
+            clearDropHighlight();
+          });
+
+          const actions = document.createElement('div');
+          actions.className = 'card-actions';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'card-btn card-edit';
+          editBtn.type = 'button';
+          editBtn.draggable = false;
+          editBtn.innerHTML = '✏️<span class="card-btn-label"> Modifica</span>';
+          editBtn.title = 'Modifica prenotazione';
+          editBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            startEditFlow(entry);
+          });
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'card-btn card-del';
+          delBtn.type = 'button';
+          delBtn.draggable = false;
+          delBtn.innerHTML = '🗑<span class="card-btn-label"> Elimina</span>';
+          delBtn.title = 'Elimina prenotazione';
+          delBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            askDeleteBooking(entry);
+          });
+
+          actions.appendChild(editBtn);
+          actions.appendChild(delBtn);
+          block.appendChild(actions);
+        }
+
+        cell.appendChild(block);
+        grid.appendChild(cell);
+
+      } else {
+        const cell = document.createElement('div');
+        cell.className = 'cell free';
+        cell.dataset.campo = f;
+        cell.dataset.slot  = slot;
+        cell.addEventListener('click', () => {
+          if (flowState && flowState.mode !== 'edit'
+              && flowState.campo === f && flowState.dateISO === activeISO && flowState.slot === slot) {
+            if (window.innerWidth < 900) openChat();
+            return;
+          }
+          if (window.innerWidth < 900) openChat();
+          if (flowState) {
+            cancelFlow(null, true);
+            addMessage('system', '↪️ Ho annullato l\'operazione in corso e ne avvio una nuova.');
+          }
+          flowState = { step: 'opening', mode: 'create', campo: f, dateISO: activeISO, slot, time };
+          setTimeout(() => startBookingFlow(f, activeISO, slot, time),
+            window.innerWidth < 900 ? 360 : 0);
+        });
+
+        cell.addEventListener('dragover', e => {
+          if (!dragState) return;
+          e.preventDefault();
+          const ok = canPlace(f, slot, dragState.durationSlots, dragState.id);
+          e.dataTransfer.dropEffect = ok ? 'move' : 'none';
+          highlightSpan(f, slot, dragState.durationSlots, ok);
+        });
+        cell.addEventListener('drop', e => {
+          if (!dragState) return;
+          e.preventDefault();
+          const d = dragState;
+          clearDropHighlight();
+          const why = placementError(f, slot, d.durationSlots, d.id);
+          if (why) {
+            addMessage('system',
+              `❌ <strong>Spostamento non possibile</strong><br>` +
+              `Campo ${f} · ${slotToTime(slot)} per ${d.durationSlots * 30}': ${why}.`, 'confirm');
+            return;
+          }
+          const b = (BOOKINGS[activeISO] || []).find(x => x.id === d.id);
+          if (!b) return;
+          const oldCampo = b.campo, oldSlot = b.startSlot;
+          b.campo = f; b.startSlot = slot;
+          refreshView();
+          addMessage('system',
+            `↔️ Spostato (simulazione): Campo ${oldCampo} ${slotToTime(oldSlot)} → Campo ${f} ${slotToTime(slot)}`);
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CHAT CORE
+// ═══════════════════════════════════════════════════════════════════
+const chatMessages = document.getElementById('chatMessages');
+const chatInput    = document.getElementById('chatInput');
+const chatSend     = document.getElementById('chatSend');
+const chatInputRow = document.getElementById('chatInputRow');
+
+const PLACEHOLDER_DEFAULT = 'Es: Sposta o modifica una prenotazione…';
+const PLACEHOLDER_BUTTONS = 'Scegli un\'opzione qui sopra ↑';
+const PLACEHOLDER_PLAYERS = 'Es: Marco Rossi, Anna Verdi — Invia';
+const PLACEHOLDER_SUMMARY = 'Conferma o annulla qui sopra ↑';
+const PLACEHOLDER_EDIT    = 'Es: Marco Rossi, Anna Verdi — Invia';
+
+function setInputMode(mode) {
+  const locked = (mode === 'flow-buttons' || mode === 'flow-summary');
+  chatInput.disabled  = locked;
+  chatSend.disabled   = locked;
+  chatInputRow.classList.toggle('flow-locked', locked);
+  if (mode === 'normal')        chatInput.placeholder = PLACEHOLDER_DEFAULT;
+  if (mode === 'flow-buttons')  chatInput.placeholder = PLACEHOLDER_BUTTONS;
+  if (mode === 'flow-players') { chatInput.placeholder = PLACEHOLDER_PLAYERS; chatInput.focus(); }
+  if (mode === 'flow-summary')  chatInput.placeholder = PLACEHOLDER_SUMMARY;
+  if (mode === 'edit')         { chatInput.placeholder = PLACEHOLDER_EDIT; chatInput.focus(); }
+}
+
+function addMessage(role, html, extraClass = '') {
+  const div = document.createElement('div');
+  div.className = `msg ${role}${extraClass ? ' '+extraClass : ''}`;
+  const lbl = document.createElement('div');
+  lbl.className = 'msg-label';
+  lbl.textContent = role === 'staff' ? '👤 Staff' : '🤖 Sistema';
+  div.appendChild(lbl);
+  const body = document.createElement('div');
+  body.innerHTML = html;
+  div.appendChild(body);
+  chatMessages.prepend(div);
+  chatMessages.scrollTop = 0;
+  return div;
+}
+
+function addConfirmMessage(html, onYes, onNo, onRewrite) {
+  const div  = addMessage('system', html, 'confirm');
+  const btns = document.createElement('div');
+  btns.className = 'confirm-buttons';
+
+  const btnY = document.createElement('button');
+  btnY.className = 'btn-confirm btn-yes'; btnY.textContent = '✓ Sì, conferma';
+  btnY.addEventListener('click', () => { btns.remove(); onYes && onYes(); });
+
+  const btnN = document.createElement('button');
+  btnN.className = 'btn-confirm btn-no'; btnN.textContent = '✗ No, annulla';
+  btnN.addEventListener('click', () => { btns.remove(); onNo && onNo(); });
+
+  btns.appendChild(btnY); btns.appendChild(btnN);
+
+  if (onRewrite) {
+    const btnR = document.createElement('button');
+    btnR.className = 'btn-confirm btn-rewrite'; btnR.textContent = '↺ Riscrivi';
+    btnR.addEventListener('click', () => { btns.remove(); onRewrite(); });
+    btns.appendChild(btnR);
+  }
+
+  div.appendChild(btns);
+}
+
+// v2.0 — Elimina prenotazione staff con conferma
+function askDeleteBooking(entry) {
+  if (window.innerWidth < 900) openChat();
+  addConfirmMessage(
+    `🗑 <strong>Eliminare questa prenotazione?</strong><br>` +
+    `Campo ${entry.campo} · ${slotToTime(entry.startSlot)} · ${entry.type}`,
+    () => {
+      const list = BOOKINGS[activeISO] || [];
+      const idx  = list.findIndex(b => b.id === entry.id);
+      if (idx !== -1) list.splice(idx, 1);
+      refreshView();   /* v3.0: era buildGrid() */
+      addMessage('system', '✅ Prenotazione eliminata (simulazione)', 'ok');
+    },
+    () => addMessage('system', '↩️ Operazione annullata.')
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  FLUSSO GUIDATO PRENOTAZIONE
+// ═══════════════════════════════════════════════════════════════════
+
+const DURATE_PER_TIPO = {
+  'Lezione Singola':   [60, 90],
+  'Lezione di Gruppo': [60, 90],
+  'Partita':           [60, 90, 120, 180],
+  'Torneo':            [90, 120, 180],
+};
+
+let flowState = null;
+
+function cancelFlow(msgDiv, silent = false) {
+  const target = msgDiv || (flowState && flowState.stepMsg);
+  if (target) {
+    target.querySelectorAll('.btn-step, .btn-step-cancel, .chip-x').forEach(b => b.disabled = true);
+  }
+  flowState = null;
+  setInputMode('normal');
+  if (!silent) addMessage('system', '↩️ Operazione annullata.');
+}
+
+// Step 1 — scelta tipo
+function startBookingFlow(campo, dateISO, slot, time) {
+  flowState = { step: 'tipo', campo, dateISO, slot, time };
+  const ddmm = dateISO.split('-').slice(1).reverse().join('/');
+
+  const div = addMessage('system',
+    `➕ <strong>Nuova prenotazione</strong><br>` +
+    `📍 Campo ${campo} &nbsp;·&nbsp; ${ddmm} &nbsp;·&nbsp; ${time}<br>` +
+    `<span style="color:var(--text-muted);font-size:0.75rem;margin-top:4px;display:block;">Che tipo di prenotazione?</span>`,
+    'flow'
+  );
+  flowState.stepMsg = div;
+
+  const btns = makeStepButtons(
+    Object.keys(DURATE_PER_TIPO),
+    tipo => {
+      freezeMsg(div);
+      flowState.tipo  = tipo;
+      flowState.step  = 'durata';
+      askDurata(tipo);
+    },
+    () => cancelFlow(div)
+  );
+  div.appendChild(btns);
+  setInputMode('flow-buttons');
+}
+
+// Step 2 — scelta durata
+function askDurata(tipo) {
+  const labels = DURATE_PER_TIPO[tipo].map(m => `${m}'`);
+
+  const div = addMessage('system',
+    `⏱ <strong>Durata?</strong><br>` +
+    `<span style="color:var(--text-muted);font-size:0.75rem;">Scegli la durata per ${tipo}</span>`,
+    'flow'
+  );
+  flowState.stepMsg = div;
+
+  const btns = makeStepButtons(
+    labels,
+    label => {
+      freezeMsg(div);
+      flowState.durata = parseInt(label);
+      flowState.step   = 'players';
+      askPlayers();
+    },
+    () => cancelFlow(div)
+  );
+  div.appendChild(btns);
+  setInputMode('flow-buttons');
+}
+
+// Step 3 — giocatori a chip
+function askPlayers() {
+  flowState.step = 'players';
+  if (!Array.isArray(flowState.players)) flowState.players = [];
+
+  const div = addMessage('system',
+    `👥 <strong>Chi gioca?</strong><br>` +
+    `<span style="color:var(--text-muted);font-size:0.75rem;">` +
+    `Aggiungi i giocatori: scrivi un nome (o più, separati da virgola o «e») e premi <strong>Invia ↵</strong></span>`,
+    'flow'
+  );
+  flowState.stepMsg = div;
+
+  const empty = document.createElement('div');
+  empty.className = 'players-empty';
+  empty.textContent = 'Nessun giocatore aggiunto.';
+  div.appendChild(empty);
+
+  const chips = document.createElement('div');
+  chips.className = 'player-chips';
+  div.appendChild(chips);
+
+  const nav = document.createElement('div');
+  nav.className = 'step-buttons';
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'btn-step';
+  backBtn.type = 'button';
+  backBtn.textContent = '‹ Indietro';
+  backBtn.addEventListener('click', () => {
+    if (backBtn.disabled) return;
+    freezePlayersStep(div);
+    flowState.step = 'durata';
+    askDurata(flowState.tipo);
+  });
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn-step';
+  nextBtn.type = 'button';
+  nextBtn.textContent = 'Avanti ›';
+  nextBtn.addEventListener('click', () => {
+    if (nextBtn.disabled) return;
+    freezePlayersStep(div);
+    showSummary(flowState.players);
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-step-cancel';
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = '✕ Annulla';
+  cancelBtn.addEventListener('click', () => cancelFlow(div));
+
+  nav.appendChild(backBtn);
+  nav.appendChild(nextBtn);
+  nav.appendChild(cancelBtn);
+  div.appendChild(nav);
+
+  flowState.playersUI = { chips, nextBtn, empty };
+  renderPlayerChips();
+  setInputMode('flow-players');
+}
+
+function renderPlayerChips() {
+  const ui = flowState && flowState.playersUI;
+  if (!ui) return;
+  ui.chips.innerHTML = '';
+  flowState.players.forEach((name, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'player-chip';
+    const txt = document.createElement('span');
+    txt.textContent = name;
+    const x = document.createElement('button');
+    x.className = 'chip-x';
+    x.type = 'button';
+    x.textContent = '×';
+    x.title = 'Rimuovi giocatore';
+    x.addEventListener('click', () => {
+      if (!flowState || flowState.step !== 'players') return;
+      flowState.players.splice(i, 1);
+      renderPlayerChips();
+      if (!chatInput.disabled) chatInput.focus();
+    });
+    chip.appendChild(txt);
+    chip.appendChild(x);
+    ui.chips.appendChild(chip);
+  });
+  const has = flowState.players.length > 0;
+  ui.nextBtn.disabled    = !has;
+  ui.empty.style.display = has ? 'none' : '';
+}
+
+function freezePlayersStep(div) {
+  div.querySelectorAll('.btn-step, .btn-step-cancel, .chip-x').forEach(b => b.disabled = true);
+  if (flowState) flowState.playersUI = null;
+}
+
+// Step 4 — riepilogo
+function showSummary(players) {
+  flowState.players = players;
+  flowState.step    = 'summary';
+  const { campo, dateISO, slot, time, tipo, durata } = flowState;
+  const ddmm    = dateISO.split('-').slice(1).reverse().join('/');
+  const endTime = addMinutesToTime(time, durata);
+
+  const div = addMessage('system',
+    `📋 <strong>Riepilogo prenotazione</strong><br><br>` +
+    `📍 Campo ${campo} &nbsp;·&nbsp; ${ddmm} &nbsp;·&nbsp; ${time}–${endTime}<br>` +
+    `🎾 ${tipo} &nbsp;·&nbsp; ${durata}'<br>` +
+    `👥 ${players.join(', ')}<br><br>` +
+    `<span style="color:var(--text-muted);font-size:0.75rem;">Tutto corretto?</span>`,
+    'confirm'
+  );
+
+  const btns = document.createElement('div');
+  btns.className = 'confirm-buttons';
+
+  const btnY = document.createElement('button');
+  btnY.className = 'btn-confirm btn-yes'; btnY.textContent = '✓ Conferma';
+  btnY.addEventListener('click', () => {
+    const durationSlots = durata / 30;
+    if (!canPlace(campo, slot, durationSlots, null, dateISO)) {
+      addMessage('system',
+        `❌ <strong>Slot non disponibile</strong><br>` +
+        `Campo ${campo} · ${time} per ${durata}' si sovrappone a un'altra prenotazione o supera le 23:00.<br>` +
+        `<span style="color:var(--text-muted);font-size:0.75rem;">Usa «‹ Indietro» per cambiare durata, o «✗ Annulla».</span>`,
+        'confirm');
+      return;
+    }
+    btns.remove();
+    confirmBooking();
+  });
+
+  const btnBack = document.createElement('button');
+  btnBack.className = 'btn-confirm btn-rewrite'; btnBack.textContent = '‹ Indietro';
+  btnBack.addEventListener('click', () => {
+    btns.remove();
+    flowState.step = 'players';
+    askPlayers();
+  });
+
+  const btnN = document.createElement('button');
+  btnN.className = 'btn-confirm btn-no'; btnN.textContent = '✗ Annulla';
+  btnN.addEventListener('click', () => {
+    btns.remove();
+    flowState = null;
+    setInputMode('normal');
+    addMessage('system', '↩️ Operazione annullata.');
+  });
+
+  btns.appendChild(btnY); btns.appendChild(btnBack); btns.appendChild(btnN);
+  div.appendChild(btns);
+  setInputMode('flow-summary');
+}
+
+// Step 5 — conferma: aggiunge il blocco in griglia (in memoria)
+function confirmBooking() {
+  const { campo, dateISO, slot, time, tipo, durata, players } = flowState;
+  const durationSlots = durata / 30;
+  if (!canPlace(campo, slot, durationSlots, null, dateISO)) return;
+  const endTime       = addMinutesToTime(time, durata);
+  const ddmm          = dateISO.split('-').slice(1).reverse().join('/');
+  const playersStr    = players.join(', ');
+
+  addBooking(dateISO, campo, slot, durationSlots, `${tipo} ${durata}'`, playersStr, 'staff');
+  refreshView();   /* v3.0: era buildGrid() */
+
+  addMessage('system',
+    `✅ <strong>Prenotazione creata</strong> (simulazione):<br>` +
+    `📍 Campo ${campo} &nbsp;·&nbsp; ${ddmm} &nbsp;·&nbsp; ${time}–${endTime} &nbsp;·&nbsp; ${tipo} ${durata}'<br>` +
+    `👥 ${playersStr}`,
+    'ok'
+  );
+  flowState = null;
+  setInputMode('normal');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  v2.2 — MODIFICA GUIDATA DI UNA PRENOTAZIONE STAFF
+// ═══════════════════════════════════════════════════════════════════
+
+function parseTypeDuration(typeStr) {
+  const m = String(typeStr).match(/^(.*?)\s+(\d+)'$/);
+  return m ? { tipo: m[1], durata: parseInt(m[2], 10) } : { tipo: typeStr, durata: 60 };
+}
+function parsePlayers(str) {
+  if (!str) return [];
+  if (str.includes(', ')) return str.split(', ').map(s => s.trim()).filter(Boolean);
+  return str.split(/\.-|^-|\.$/).map(s => s.replace(/^-/, '').trim()).filter(Boolean);
+}
+// Fix 2a — split nomi giocatori su più separatori
+function splitPlayerNames(raw) {
+  return String(raw)
+    .split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function startEditFlow(entry) {
+  if (window.innerWidth < 900) openChat();
+  if (flowState) { cancelFlow(null, true); addMessage('system', '↪️ Ho interrotto l\'operazione in corso e apro la modifica.'); }
+  const { tipo, durata } = parseTypeDuration(entry.type);
+  flowState = {
+    mode: 'edit', editId: entry.id, origDateISO: activeISO,
+    step: 'edit', campo: entry.campo, dateISO: activeISO,
+    slot: entry.startSlot, time: slotToTime(entry.startSlot),
+    tipo, durata, players: parsePlayers(entry.players)
+  };
+  renderEditCard();
+  setInputMode('edit');
+}
+
+function renderEditCard() {
+  if (!flowState || flowState.mode !== 'edit') return;
+  if (!flowState.editUI) {
+    const msg = addMessage('system', '', 'flow');
+    flowState.editUI = { msg, body: msg.lastElementChild };
+  }
+  const card = flowState.editUI.body;
+  card.innerHTML = '';
+  const open = flowState.editOpen || null;
+
+  const title = document.createElement('div');
+  title.className = 'edit-title';
+  title.innerHTML = '✏️ <strong>Modifica prenotazione</strong>';
+  card.appendChild(title);
+
+  const row = (icon, labelText) => {
+    const r = document.createElement('div');
+    r.className = 'edit-field';
+    const lab = document.createElement('span');
+    lab.className = 'edit-field-label';
+    lab.innerHTML = `${icon} ${labelText}`;
+    r.appendChild(lab);
+    card.appendChild(r);
+    return r;
+  };
+  const valueSpan = (txt) => {
+    const s = document.createElement('span');
+    s.className = 'edit-field-value';
+    s.textContent = txt;
+    return s;
+  };
+  const changeBtn = (fieldKey) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'edit-change-btn';
+    b.textContent = 'Cambia';
+    b.addEventListener('click', () => { flowState.editOpen = fieldKey; renderEditCard(); });
+    return b;
+  };
+
+  // 🎾 Tipo
+  const rTipo = row('🎾', 'Tipo');
+  if (open === 'tipo') {
+    rTipo.appendChild(makeStepButtons(
+      Object.keys(DURATE_PER_TIPO),
+      (label) => {
+        flowState.tipo = label;
+        if (!DURATE_PER_TIPO[label].includes(flowState.durata)) {
+          flowState.durata = DURATE_PER_TIPO[label][0];
+          flowState.note = 'Durata adeguata al tipo';
+        }
+        flowState.editOpen = null;
+        renderEditCard();
+      },
+      () => { flowState.editOpen = null; renderEditCard(); }
+    ));
+  } else {
+    rTipo.appendChild(valueSpan(flowState.tipo));
+    rTipo.appendChild(changeBtn('tipo'));
+  }
+
+  // ⏱ Durata
+  const rDur = row('⏱', 'Durata');
+  if (open === 'durata') {
+    rDur.appendChild(makeStepButtons(
+      DURATE_PER_TIPO[flowState.tipo].map(m => m + "'"),
+      (label) => {
+        flowState.durata = parseInt(label, 10);
+        flowState.editOpen = null;
+        renderEditCard();
+      },
+      () => { flowState.editOpen = null; renderEditCard(); }
+    ));
+  } else {
+    rDur.appendChild(valueSpan(flowState.durata + "'"));
+    rDur.appendChild(changeBtn('durata'));
+  }
+  if (flowState.note) {
+    const note = document.createElement('div');
+    note.className = 'edit-note';
+    note.textContent = 'ℹ️ ' + flowState.note;
+    rDur.appendChild(note);
+    flowState.note = null;
+  }
+
+  // 📍 Campo
+  const rCampo = row('📍', 'Campo');
+  if (open === 'campo') {
+    rCampo.appendChild(makeStepButtons(
+      [1, 2, 3, 4].map(n => 'Campo ' + n),
+      (label) => {
+        flowState.campo = parseInt(label.replace(/\D/g, ''), 10);
+        flowState.editOpen = null;
+        renderEditCard();
+      },
+      () => { flowState.editOpen = null; renderEditCard(); }
+    ));
+  } else {
+    rCampo.appendChild(valueSpan('Campo ' + flowState.campo));
+    rCampo.appendChild(changeBtn('campo'));
+  }
+
+  // 📅 Data
+  const rData = row('📅', 'Data');
+  const dateInp = document.createElement('input');
+  dateInp.type = 'date';
+  dateInp.className = 'edit-date-input';
+  dateInp.value = flowState.dateISO;
+  dateInp.addEventListener('change', () => {
+    if (dateInp.value) { flowState.dateISO = dateInp.value; renderEditCard(); }
+  });
+  rData.appendChild(dateInp);
+
+  // 🕐 Ora
+  const rOra = row('🕐', 'Ora');
+  const timeSel = document.createElement('select');
+  timeSel.className = 'edit-time-select';
+  for (let s = 0; s < SLOT_COUNT; s++) {
+    const opt = document.createElement('option');
+    opt.value = String(s);
+    opt.textContent = slotToTime(s);
+    if (s === flowState.slot) opt.selected = true;
+    timeSel.appendChild(opt);
+  }
+  timeSel.addEventListener('change', () => {
+    flowState.slot = parseInt(timeSel.value, 10);
+    flowState.time = slotToTime(flowState.slot);
+    renderEditCard();
+  });
+  rOra.appendChild(timeSel);
+
+  // 👥 Giocatori
+  const rPlayers = row('👥', 'Giocatori');
+  const chips = document.createElement('div');
+  chips.className = 'player-chips';
+  if (flowState.players.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'players-empty';
+    empty.textContent = 'Nessun giocatore — scrivi un nome nell\'input e premi Invia.';
+    chips.appendChild(empty);
+  }
+  flowState.players.forEach((name, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'player-chip';
+    const txt = document.createElement('span');
+    txt.textContent = name;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'chip-x';
+    x.textContent = '×';
+    x.title = 'Rimuovi giocatore';
+    x.addEventListener('click', () => {
+      if (!flowState || flowState.mode !== 'edit') return;
+      flowState.players.splice(i, 1);
+      renderEditCard();
+      if (!chatInput.disabled) chatInput.focus();
+    });
+    chip.appendChild(txt);
+    chip.appendChild(x);
+    chips.appendChild(chip);
+  });
+  rPlayers.appendChild(chips);
+
+  const hint = document.createElement('div');
+  hint.className = 'edit-hint';
+  hint.textContent = 'Scrivi i nomi nell\'input in alto e premi Invia (più nomi: virgola o «e»).';
+  rPlayers.appendChild(hint);
+
+  // ✓ Conferma · ✗ Annulla
+  const btns = document.createElement('div');
+  btns.className = 'confirm-buttons';
+  const btnY = document.createElement('button');
+  btnY.type = 'button';
+  btnY.className = 'btn-confirm btn-yes';
+  btnY.textContent = '✓ Conferma modifica';
+  btnY.addEventListener('click', confirmEdit);
+  const btnN = document.createElement('button');
+  btnN.type = 'button';
+  btnN.className = 'btn-confirm btn-no';
+  btnN.textContent = '✗ Annulla';
+  btnN.addEventListener('click', () => {
+    flowState = null;
+    setInputMode('normal');
+    addMessage('system', '↩️ Modifica annullata.');
+  });
+  btns.appendChild(btnY);
+  btns.appendChild(btnN);
+  card.appendChild(btns);
+
+  if (flowState.editUI && flowState.editUI.msg) {
+    flowState.editUI.msg.scrollIntoView({ block: 'start' });
+  }
+}
+
+function confirmEdit() {
+  const { editId, origDateISO, dateISO, campo, slot, tipo, durata, players } = flowState;
+  const durationSlots = durata / 30;
+  if (!canPlace(campo, slot, durationSlots, editId, dateISO)) {
+    addMessage('system',
+      `❌ <strong>Slot non disponibile</strong><br>` +
+      `Campo ${campo} · ${slotToTime(slot)} per ${durata}' si sovrappone a un'altra prenotazione o supera le 23:00.<br>` +
+      `<span style="color:var(--text-muted);font-size:0.75rem;">Cambia ora/durata/campo e riprova.</span>`, 'confirm');
+    return;
+  }
+  const fromList = BOOKINGS[origDateISO] || [];
+  const idx = fromList.findIndex(b => b.id === editId);
+  if (idx !== -1) fromList.splice(idx, 1);
+  if (!BOOKINGS[dateISO]) BOOKINGS[dateISO] = [];
+  BOOKINGS[dateISO].push({
+    id: editId, campo, startSlot: slot, durationSlots,
+    type: `${tipo} ${durata}'`, players: players.join(', '), source: 'staff'
+  });
+  const endTime = addMinutesToTime(slotToTime(slot), durata);
+  flowState = null;
+  setInputMode('normal');
+  if (dateISO !== activeISO) setActiveDate(dateISO); else refreshView();   /* v3.0: era buildGrid() */
+  addMessage('system',
+    `✅ <strong>Prenotazione modificata</strong> (simulazione):<br>` +
+    `📍 Campo ${campo} · ${dateISO.split('-').slice(1).reverse().join('/')} · ${slotToTime(slot)}–${endTime} · ${tipo} ${durata}'<br>` +
+    `👥 ${players.join(', ')}`, 'ok');
+}
+
+// ── Helpers flusso ────────────────────────────────────────────────
+
+function makeStepButtons(labels, onChoose, onCancel) {
+  const wrap = document.createElement('div');
+  wrap.className = 'step-buttons';
+
+  labels.forEach(label => {
+    const b = document.createElement('button');
+    b.className = 'btn-step';
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      wrap.querySelectorAll('.btn-step').forEach(x => x.disabled = true);
+      b.classList.add('selected');
+      wrap.querySelector('.btn-step-cancel').disabled = true;
+      onChoose(label);
+    });
+    wrap.appendChild(b);
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-step-cancel';
+  cancelBtn.textContent = '✕ Annulla';
+  cancelBtn.addEventListener('click', onCancel);
+  wrap.appendChild(cancelBtn);
+
+  return wrap;
+}
+
+function freezeMsg(div) {
+  div.querySelectorAll('.btn-step, .btn-step-cancel').forEach(b => {
+    if (!b.classList.contains('selected')) b.disabled = true;
+  });
+}
+
+// ── handleSend ────────────────────────────────────────────────────
+function handleSend() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  if (flowState?.step === 'players') {
+    chatInput.value = '';
+    splitPlayerNames(text).forEach(n => flowState.players.push(n));
+    renderPlayerChips();
+    chatInput.focus();
+    return;
+  }
+
+  if (flowState?.mode === 'edit') {
+    chatInput.value = '';
+    splitPlayerNames(text).forEach(n => flowState.players.push(n));
+    renderEditCard();
+    chatInput.focus();
+    return;
+  }
+
+  chatInput.value = '';
+  addMessage('staff', text);
+
+  setTimeout(() => {
+    const lc = text.toLowerCase();
+    if (lc.includes('prenota') || lc.includes('booking')) {
+      addConfirmMessage(
+        `🟡 <strong>Intendi creare questa prenotazione?</strong><br><br>` +
+        `📝 <em>${text}</em><br><br>` +
+        `<small style="color:var(--text-muted)">Tip: clicca una cella libera sul calendario per il flusso guidato</small>`,
+        () => addMessage('system', `✅ Prenotazione confermata (simulazione): <em>${text}</em>`, 'ok'),
+        () => addMessage('system', '↩️ Operazione annullata.'),
+        () => { chatInput.value = text; chatInput.focus(); }
+      );
+    } else if (lc.includes('sposta') || lc.includes('modifica')) {
+      addConfirmMessage(
+        `🟡 <strong>Intendi modificare questa prenotazione?</strong><br><br>` +
+        `📝 <em>${text}</em><br><br>` +
+        `<small style="color:var(--text-muted)">Verifica prima di procedere</small>`,
+        () => addMessage('system', `✅ Modifica confermata (simulazione): <em>${text}</em>`, 'ok'),
+        () => addMessage('system', '↩️ Operazione annullata.'),
+        () => { chatInput.value = text; chatInput.focus(); }
+      );
+    } else if (lc.includes('cancella') || lc.includes('elimina')) {
+      addConfirmMessage(
+        `🔴 <strong>Intendi CANCELLARE questa prenotazione?</strong><br><br>` +
+        `📝 <em>${text}</em><br><br>` +
+        `<small style="color:var(--red)">Attenzione: l'operazione non sarà reversibile</small>`,
+        () => addMessage('system', `✅ Cancellazione confermata (simulazione): <em>${text}</em>`, 'ok'),
+        () => addMessage('system', '↩️ Operazione annullata.'),
+        () => { chatInput.value = text; chatInput.focus(); }
+      );
+    } else {
+      addMessage('system',
+        `ℹ️ Comando non riconosciuto (simulazione).<br>` +
+        `Prova: <em>"Sposta Campo X ore HH:MM"</em> oppure clicca ➕ sul calendario.`
+      );
+    }
+  }, 400);
+}
+
+chatSend.addEventListener('click', handleSend);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(); });
+
+// ── Cronologia di esempio ─────────────────────────────────────────
+function loadFakeChatHistory() {
+  addMessage('staff', 'Prenota Campo 2 — 30/05 18:00 — Partita 90 min — Mario Bello, Carla Neri');
+  addMessage('system',
+    "✅ <strong>Prenotazione creata</strong> (simulazione):<br>" +
+    "📍 Campo 2 · 30/05 · 18:00–19:30 · Partita 90'<br>" +
+    "👥 Mario Bello, Carla Neri", 'ok');
+  addMessage('staff', 'Sposta la lezione di Giulia Conti di Campo 3 alle 20:00');
+  addConfirmMessage(
+    '🟡 <strong>Intendi spostare questa prenotazione?</strong><br><br>' +
+    '📍 <em>Campo 3 · oggi · 19:00–20:00 · Lezione Singola · Giulia Conti</em><br><br>' +
+    '→ Nuovo orario: <strong>Campo 3 · oggi · 20:00–21:00</strong><br>' +
+    '<small style="color:var(--text-muted)">NB: la fascia 20:00–21:00 risulta libera (simulazione)</small>',
+    () => addMessage('system', '✅ Spostamento confermato (simulazione) — Campo 3 · 20:00–21:00 · Giulia Conti', 'ok'),
+    () => addMessage('system', '↩️ Operazione annullata.'),
+    () => { chatInput.value = 'Sposta lezione Giulia Conti — '; chatInput.focus(); }
+  );
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+
+// Collega i tab dell'agenda
+document.querySelectorAll('.agenda-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    agendaField = parseInt(btn.dataset.field, 10);
+    buildAgenda();
+  });
+});
+
+updateDateNav();
+render();
+loadFakeChatHistory();
+</script>
+</body>
+</html>

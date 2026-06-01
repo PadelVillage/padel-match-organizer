@@ -19,10 +19,13 @@ jobs:
       # Override via repo Settings → Variables, se i default non corrispondono.
       DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
       DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
-      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/padel-match-organizer' }}
+      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/matchpoint-worker' }}
       DEPLOY_SERVICE: ${{ vars.HETZNER_WORKER_SERVICE || 'matchpoint-worker' }}
       DEPLOY_BRANCH: ${{ github.ref_name }}
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Prepara SSH
         run: |
           set -euo pipefail
@@ -36,53 +39,83 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
-            set -e
-            echo "=== uname ==="
-            uname -a
-            echo "=== ls $DEPLOY_PATH ==="
-            ls -la "${DEPLOY_PATH:-/opt/padel-match-organizer}" 2>/dev/null || echo "PATH NON ESISTE: ${DEPLOY_PATH}"
-            echo "=== ricerca worker fra /opt /home /srv /root ==="
-            find /opt /home /srv /root -maxdepth 4 -type d -name "matchpoint-browser-worker" 2>/dev/null | head -5
-            echo "=== systemd unit per matchpoint ==="
-            systemctl list-units --type=service --all | grep -i matchpoint || echo "Nessuna unit matchpoint trovata"
+            set +e
+            echo "=== hostname / uname ==="
+            hostname; uname -a
+            echo
+            echo "=== chi ASCOLTA sulla porta 8787 (la porta del worker) ==="
+            ss -ltnp 2>/dev/null | grep -E ':8787' || netstat -ltnp 2>/dev/null | grep ':8787' || echo "nessun listener trovato su 8787 (o ss/netstat assenti)"
+            echo
+            echo "=== dettaglio del processo che ascolta su 8787 (cwd + comando di avvio) ==="
+            PID=$(ss -ltnp 2>/dev/null | grep ':8787' | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
+            if [ -n "$PID" ]; then
+              echo "PID=$PID"
+              echo "directory di lavoro:"; readlink -f /proc/$PID/cwd 2>/dev/null
+              echo "comando:"; tr '\0' ' ' < /proc/$PID/cmdline 2>/dev/null; echo
+              echo "processo padre/albero:"; ps -o pid,ppid,user,cmd --ppid $(ps -o ppid= -p $PID 2>/dev/null) 2>/dev/null
+            else
+              echo "PID non determinato dalla porta; provo a cercare processi node:"
+            fi
+            echo
+            echo "=== processi node / server.mjs in esecuzione ==="
+            ps -eo pid,ppid,user,etime,cmd | grep -iE 'node|server\.mjs|matchpoint' | grep -v grep || echo "nessun processo node correlato"
+            echo
+            echo "=== Docker presente? container in esecuzione? ==="
+            if command -v docker >/dev/null 2>&1; then
+              docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null
+            else
+              echo "docker non installato"
+            fi
+            echo
+            echo "=== pm2 presente? ==="
+            if command -v pm2 >/dev/null 2>&1; then pm2 list 2>/dev/null; else echo "pm2 non installato"; fi
+            echo
+            echo "=== servizi systemd potenzialmente correlati ==="
+            systemctl list-units --type=service --all 2>/dev/null | grep -iE 'matchpoint|worker|node|pmo|padel|playwright' || echo "nessun servizio correlato"
+            echo
+            echo "=== posizione del codice worker su disco ==="
+            find /opt /root /home /srv /var /app -maxdepth 6 -name 'server.mjs' -path '*matchpoint*' 2>/dev/null | head -5
+            find /opt /root /home /srv /var /app -maxdepth 6 -type d -name 'matchpoint-browser-worker' 2>/dev/null | head -5
+            echo
+            echo "=== HEALTH del worker visto dal server stesso (elenca gli endpoint, incluso o meno /create-booking) ==="
+            curl -s --max-time 5 http://127.0.0.1:8787/health || echo "health non raggiungibile da localhost:8787"
+            echo
+            echo "=== come viene avviato all'accensione (cron @reboot / rc.local / unit files) ==="
+            crontab -l 2>/dev/null | grep -iE 'node|worker|matchpoint|8787' || echo "nessun cron utente correlato"
+            grep -RiE 'matchpoint|server\.mjs|8787' /etc/systemd/system /etc/cron* /etc/rc.local 2>/dev/null | head -10
+            echo
+            echo "=== fine diagnosi ==="
           EOF
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
 
-      - name: Pull + restart worker
+      - name: Deploy + restart (pm2)
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            DEPLOY_PATH="$DEPLOY_PATH" \
-            DEPLOY_BRANCH="$DEPLOY_BRANCH" \
-            DEPLOY_SERVICE="$DEPLOY_SERVICE" \
-            bash -s <<'EOF'
+          echo "→ rsync files to server"
+          rsync -az --no-perms --no-owner --no-group \
+            --exclude '.git' --exclude 'node_modules' --exclude '.env' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes" \
+            ./tools/matchpoint-browser-worker/ "root@$DEPLOY_HOST:/opt/matchpoint-worker/"
+          echo "→ npm install + pm2 restart"
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "root@$DEPLOY_HOST" bash -s <<'EOF'
             set -euo pipefail
-            cd "$DEPLOY_PATH"
-            echo "→ git fetch + reset su origin/$DEPLOY_BRANCH"
-            git fetch --depth=1 origin "$DEPLOY_BRANCH"
-            git reset --hard "origin/$DEPLOY_BRANCH"
-            git log -1 --oneline
-            cd tools/matchpoint-browser-worker
-            echo "→ npm ci (production)"
-            npm ci --omit=dev
-            echo "→ systemctl restart $DEPLOY_SERVICE"
-            sudo systemctl restart "$DEPLOY_SERVICE" || systemctl restart "$DEPLOY_SERVICE"
-            echo "→ status servizio"
-            systemctl is-active "$DEPLOY_SERVICE"
+            cd /opt/matchpoint-worker
+            npm install --omit=dev
+            pm2 restart matchpoint-worker --update-env
+            pm2 save
+            sleep 3
+            echo "--- health dopo restart ---"
+            curl -s http://127.0.0.1:8787/health || true
           EOF
 
-      - name: Health check
+      - name: Health check (verifica /create-booking)
         run: |
           set -e
           for i in 1 2 3 4 5; do
-            if curl -sf --max-time 5 "http://$DEPLOY_HOST:8787/health" > /tmp/health.json; then
-              echo "Worker risponde:"
-              cat /tmp/health.json
-              exit 0
-            fi
-            echo "Attempt $i fallito, retry in 3s..."
-            sleep 3
+            OUT=$(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "root@$DEPLOY_HOST" 'curl -s --max-time 5 http://127.0.0.1:8787/health' || true)
+            echo "$OUT"
+            if echo "$OUT" | grep -q 'create-booking'; then echo "OK: /create-booking presente"; exit 0; fi
+            echo "tentativo $i: /create-booking non ancora presente, retry..."; sleep 3
           done
-          echo "::error::Worker non risponde su /health dopo 5 tentativi"
-          exit 1
+          echo "::error::Dopo il deploy il worker non espone /create-booking"; exit 1
