@@ -60,7 +60,8 @@ create table if not exists pmo_cloud_records (
       'whatsapp_message_template',
       'matchpoint_data',
       'assessment_email',
-      'app_setting'
+      'app_setting',
+      'staff_booking'
     )
   )
 );
