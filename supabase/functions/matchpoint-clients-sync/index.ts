@@ -1264,7 +1264,7 @@ async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codi
 
 type CodiceMap = Map<string, string>;
 
-function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; rowsParsed: number } | { ok: false; error: string; message: string } {
+function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; nameMap: CodiceMap; rowsParsed: number } | { ok: false; error: string; message: string } {
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(bytes, { type: 'array', cellDates: true });
@@ -1277,6 +1277,9 @@ function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; row
   const sheet = workbook.Sheets['Risultati'];
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) as JsonMap[];
   const map: CodiceMap = new Map();
+  // Indice per nome completo: raccoglie tutti i codici visti per ciascun nome normalizzato,
+  // ANCHE dalle righe senza telefono/email (servono per i soci senza contatti, es. Fabio De Luca).
+  const nameCodes = new Map<string, Set<string>>();
   let rowsParsed = 0;
   for (const row of rows) {
     const codiceRaw = clean(getCell(row, ['Codice']));
@@ -1284,6 +1287,20 @@ function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; row
     const codiceDigits = codiceRaw.replace(/\D/g, '');
     if (!codiceDigits) continue;
     const memberId = codiceDigits.length <= 6 ? codiceDigits.padStart(6, '0') : codiceDigits;
+    // Nome completo della riga Codice, con le stesse colonne/normalizzazione del parser principale.
+    const cliente = clean(getCell(row, CLIENT_FULL_NAME_COLUMNS));
+    let firstName = clean(getCell(row, CLIENT_FIRST_NAME_COLUMNS));
+    let surname = clean(getCell(row, CLIENT_SURNAME_COLUMNS));
+    if ((!firstName || !surname) && cliente) {
+      const split = splitClienteName(cliente);
+      firstName = firstName || split.firstName;
+      surname = surname || split.surname;
+    }
+    const nameKey = normalizeKey(compactSpaces(`${titleCaseNamePart(firstName)} ${titleCaseNamePart(surname)}`));
+    if (nameKey) {
+      if (!nameCodes.has(nameKey)) nameCodes.set(nameKey, new Set());
+      nameCodes.get(nameKey)!.add(memberId);
+    }
     const phone = phoneDigits(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
     const email = emailKey(getCell(row, ['E-mail', 'Email', 'Mail']));
     if (!phone && !email) continue;
@@ -1291,7 +1308,12 @@ function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; row
     if (phone) map.set(`phone:${phone}`, memberId);
     if (email) map.set(`email:${email}`, memberId);
   }
-  return { ok: true, map, rowsParsed };
+  // nameMap: SOLO nomi univoci nel report (un unico codice). Guardia anti-omonimia.
+  const nameMap: CodiceMap = new Map();
+  for (const [nameKey, codes] of nameCodes) {
+    if (codes.size === 1) nameMap.set(nameKey, [...codes][0]);
+  }
+  return { ok: true, map, nameMap, rowsParsed };
 }
 
 async function exportCodiceFromMatchpoint(): Promise<MatchpointExport> {
@@ -1679,6 +1701,7 @@ Deno.serve(async (req) => {
       skippedReason: null as string | null,
       codiceRowsParsed: 0,
       matched: 0,
+      matchedByName: 0,
       unmatched: 0,
       unmatchedSample: [] as Array<{ firstName: string; surname: string }>,
     };
@@ -1693,13 +1716,25 @@ Deno.serve(async (req) => {
           memberIdEnrichment.ok = true;
           memberIdEnrichment.codiceRowsParsed = codiceResult.rowsParsed;
           const codiceMap = codiceResult.map;
+          const codiceNameMap = codiceResult.nameMap;
           const unmatchedSample: Array<{ firstName: string; surname: string }> = [];
           let enrichMatched = 0;
+          let enrichMatchedByName = 0;
           let enrichUnmatched = 0;
           for (const member of validation.members) {
             const pDigits = phoneDigits(member.phone);
             const eKey = emailKey(member.email);
-            const found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
+            let found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
+            // Fallback per nome: SOLO se il socio non ha ne telefono ne email,
+            // e SOLO se quel nome e' univoco nel report Codice (guardia anti-omonimia).
+            if (!found && !pDigits && !eKey) {
+              const nKey = normalizeKey(memberName(member));
+              const byName = nKey ? (codiceNameMap.get(nKey) || '') : '';
+              if (byName) {
+                found = byName;
+                enrichMatchedByName += 1;
+              }
+            }
             if (found) {
               member.memberId = found;
               enrichMatched += 1;
@@ -1711,6 +1746,7 @@ Deno.serve(async (req) => {
             }
           }
           memberIdEnrichment.matched = enrichMatched;
+          memberIdEnrichment.matchedByName = enrichMatchedByName;
           memberIdEnrichment.unmatched = enrichUnmatched;
           memberIdEnrichment.unmatchedSample = unmatchedSample;
         }
