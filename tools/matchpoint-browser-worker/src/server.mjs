@@ -3700,10 +3700,10 @@ async function createBookingWithBrowser(options = {}) {
       await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
     }
     await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {}),
       page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
     ]);
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1000);
     diagnostic.loginUrl = page.url();
     if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
       throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
@@ -3783,7 +3783,7 @@ async function createBookingWithBrowser(options = {}) {
       }
 
       // 4. Breve attesa — NON ricaricare il tabellone pesante
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(800);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
       return {

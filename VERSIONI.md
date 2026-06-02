@@ -1,5 +1,7 @@
 # Versioni
 
+## 2026-06-02 / worker (create-booking): ridotti tempi morti nel solo percorso prenotazione (networkidle login 8000→3000, pausa post-login 2500→1000, pausa post-save partita 2000→800). Altri flussi invariati.
+
 - 2026-06-02 — worker — inserimento giocatore disambiguato per codice Matchpoint (retrocompatibile); PLAYER_CODE_MISMATCH se nessun candidato combacia col codice.
 
 - v5.582 — Socio di test identificato via email (aprea.maurizio@gmail.com) invece che via PMO-000948/000956.
