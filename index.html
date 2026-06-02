@@ -6683,6 +6683,9 @@ body.assessment-public-mode .assessment-public-only-card {
                       <p class="matchpoint-data-copy">Crea una prenotazione di prova reale in Matchpoint per collaudare la catena end-to-end. Solo ambiente TEST.</p>
                       <div class="matchpoint-data-file">
                         <div class="matchpoint-data-actions">
+                          <input id="matchpointTestBookingSocio" type="text" value="Maurizio Aprea"
+                            placeholder="Nome socio da prenotare"
+                            style="margin-right:8px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; min-width:220px;">
                           <button id="matchpointTestBookingButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCreate()">🧪 Test prenotazione Matchpoint</button>
                           <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
                           <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
@@ -6953,7 +6956,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.598';
+    const APP_VERSION = '5.599';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34340,17 +34343,11 @@ Per confermare scrivi ELIMINA.`);
     //   nome: "Maurizio Aprea", istruttore: "Santiago Carabajal",
     //   tipo: "lezione", note: "TEST PV — CANCELLARE"
     // };
-    // --- Variante MANUTENZIONE (test corrente) ---
-    const TEST_BOOKING = {
-      campo: 3,                       // Campo 3 = id_recurso 15 (mattina 01/06 libera)
-      data: "2026-06-01",
-      ora: "08:00",
-      oraFine: "08:30",
-      durata: 30,
-      nome: "Manutenzione test PV",   // descrizione → campo "Manutenzione" del form
-      tipo: "manutenzione",
-      note: "TEST PV — CANCELLARE"     // → campo "Osservazioni"
-    };
+    // --- Variante MANUTENZIONE (tenuta per riferimento) ---
+    // const TEST_BOOKING = {
+    //   campo: 3, data: "2026-06-01", ora: "08:00", oraFine: "08:30", durata: 30,
+    //   nome: "Manutenzione test PV", tipo: "manutenzione", note: "TEST PV — CANCELLARE"
+    // };
 
     const btn = document.getElementById('matchpointTestBookingButton');
     const stateEl = document.getElementById('matchpointTestBookingState');
@@ -34361,9 +34358,32 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
 
-    const confirmed = confirm(
-      `Stai per creare una prenotazione di PROVA REALE dentro Matchpoint (Campo ${TEST_BOOKING.campo} · ${TEST_BOOKING.data} · ${TEST_BOOKING.ora}–${TEST_BOOKING.oraFine} · "${TEST_BOOKING.nome}"). Procedere?`
-    );
+    // Slot di prova (modificabili): scegliere uno slot LIBERO e FUTURO
+    const TEST_CAMPO = 3, TEST_DATA = "2026-06-03", TEST_ORA = "08:00", TEST_ORA_FINE = "09:30", TEST_DURATA = 90;
+
+    const socioName = (document.getElementById('matchpointTestBookingSocio')?.value || '').trim();
+    if (!socioName) { if (stateEl){ stateEl.textContent='Scrivi il nome del socio.'; stateEl.className='matchpoint-action-state error'; } return; }
+    const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(socioName, 5) : [];
+    if (!matches.length) { if (stateEl){ stateEl.textContent=`Nessun socio trovato per "${socioName}".`; stateEl.className='matchpoint-action-state error'; } return; }
+    const best = matches[0].member;
+    if (matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best) {
+      const lista = matches.slice(0,5).map(m => `• ${playerFullName(m.member)} (${m.member.memberId || 'senza codice'})`).join('\n');
+      if (stateEl){ stateEl.textContent='Più soci con questo nome: specifica meglio.'; stateEl.className='matchpoint-action-state error'; }
+      if (resultEl){ resultEl.style.display='block'; resultEl.textContent='Candidati:\n'+lista; }
+      return;
+    }
+    const nomeSocio = playerFullName(best) || best.name || socioName;
+    const rawCode = String(best.memberId || '').trim();
+    const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';   // SOLO numerico; PMO-/vuoto => niente codice
+
+    const TEST_BOOKING = {
+      campo: TEST_CAMPO, data: TEST_DATA, ora: TEST_ORA, oraFine: TEST_ORA_FINE, durata: TEST_DURATA,
+      nome: nomeSocio, tipo: "partita", note: "TEST PV — CANCELLARE",
+      giocatori: [{ nome: nomeSocio, codice }],
+    };
+
+    const codeMsg = codice ? `codice Matchpoint ${codice}` : 'NESSUN codice numerico → userò il nome (fallback)';
+    const confirmed = confirm(`Prova REALE in Matchpoint: Campo ${TEST_BOOKING.campo} · ${TEST_BOOKING.data} · ${TEST_BOOKING.ora}–${TEST_BOOKING.oraFine} · "${nomeSocio}" · ${codeMsg}. Procedere?`);
     if (!confirmed) return;
 
     if (btn) btn.disabled = true;
