@@ -6956,7 +6956,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.600';
+    const APP_VERSION = '5.601';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34757,6 +34757,21 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // Restituisce lo slot occupato che confligge con 'parsed' (anche sovrapposizione parziale), oppure null.
+  function staffCalFindConflict(parsed) {
+    if (!parsed || !parsed.campoNum || !parsed.ora) return null;
+    const occupied = staffCalBuildOccupancyMap(parsed.data);
+    const slots = staffCalSlots();
+    const startIdx = slots.indexOf(parsed.ora);
+    if (startIdx < 0) return null;
+    const durSlots = Math.max(1, Math.round((parsed.durata || 90) / STAFF_CAL_SLOT_MIN));
+    for (let i = 0; i < durSlots && startIdx + i < slots.length; i++) {
+      const hit = occupied[`${slots[startIdx + i]}|${parsed.campoNum}`];
+      if (hit) return hit;
+    }
+    return null;
+  }
+
   // ── Submit principale con gestione ricorrenza ──────────────────────────────
   async function staffCalSubmitBooking() {
     const input = document.getElementById('staffCalInput');
@@ -34825,6 +34840,12 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Prenotazione singola ───────────────────────────────────────────────────
     _staffCalPendingRicorrenza = null;
+    // Pre-check istantaneo: se lo slot è già occupato (anche in parte) non chiamare il worker
+    const slotConflict = staffCalFindConflict(parsed);
+    if (slotConflict) {
+      staffCalSetStatus(`⛔ ${parsed.campo} è già occupato ${parsed.ora}–${parsed.oraFine}${slotConflict.nome ? ' (' + slotConflict.nome + ')' : ''}. Prenotazione NON inviata.`, 'error');
+      return;
+    }
     const sendBtn = document.getElementById('staffCalSendBtn');
     if (sendBtn) sendBtn.disabled = true;
     const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
@@ -34834,7 +34855,7 @@ Per confermare scrivi ELIMINA.`);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey);
       staffCalSaveLocal(parsed);
-      staffCalSetStatus(`✓ ${tipoLabel} inviata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+      staffCalSetStatus(`📨 ${tipoLabel} inviata a Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}. Controlla nel calendario.`, 'done');
       if (input) { input.value = ''; staffCalAutoResize(input); }
       if (parsed.data === isoDate) renderStaffCalendar();
     } catch (err) {
