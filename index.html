@@ -6755,7 +6755,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.580';
+    const APP_VERSION = '5.581';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9111,6 +9111,14 @@ Grazie.`
       return `PMO-${String(memberIdCounter).padStart(6, '0')}`;
     }
 
+    // Etichetta a VIDEO: codice Matchpoint numerico -> "ID-MP-001017". PMO-.../vuoto restano com'erano.
+    // NON cambia mai il valore salvato in g.memberId.
+    function formatMemberIdLabel(memberId) {
+      const v = cleanCell(memberId || '');
+      if (/^\d{3,}$/.test(v)) return `ID-MP-${v}`;
+      return v;
+    }
+
     function ensureMemberId(member) {
       if (!member) return member;
       if (!member.id) member.id = makeId();
@@ -10090,7 +10098,16 @@ Grazie.`
           giocatori[idx] = {
             ...existing,
             id: existing.id || member.id || makeId(),
-            memberId: existing.memberId || member.memberId || nextMemberId(),
+            memberId: (function(){
+              const imported = cleanCell(member.memberId || '');
+              const local = cleanCell(existing.memberId || '');
+              const isMatchpointCode = v => !!v && !/^PMO-/i.test(v);
+              // Adotta il codice Matchpoint (es. 000004) al posto del segnaposto locale PMO-...
+              if (isMatchpointCode(imported)) return imported;
+              if (local) return local;
+              if (imported) return imported;
+              return nextMemberId();
+            })(),
             firstName: titleCaseNamePart(existing.firstName || member.firstName),
             surname: titleCaseNamePart(existing.surname || member.surname),
             name: compactSpaces(`${titleCaseNamePart(existing.firstName || member.firstName)} ${titleCaseNamePart(existing.surname || member.surname)}`),
@@ -12230,7 +12247,7 @@ Grazie.`
         const pref = [Array.isArray(g.prefDays) ? g.prefDays.join(', ') : '', Array.isArray(g.prefHours) ? g.prefHours.join(', ') : ''].filter(Boolean).join(' · ') || '-';
         const isOpen = String(memberInlineOpenId) === String(g.id);
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
-          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(g.memberId || 'ID mancante')} · ${escapeHtml(g.email || 'email non presente')}</div></td>
+          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')} · ${escapeHtml(g.email || 'email non presente')}</div></td>
           <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
           <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
@@ -12391,7 +12408,7 @@ Grazie.`
             <div>
               <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
               <div class="member-card-badges">
-                <span class="badge badge-muted">ID ${escapeHtml(g.memberId || '-')}</span>
+                <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
                 <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
                 <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
                 <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
@@ -12411,7 +12428,7 @@ Grazie.`
                 <span class="member-panel-hint">Anagrafica modificabile</span>
               </div>
               <div class="member-form-grid">
-                <div><label>ID giocatore</label><input value="${escapeHtml(g.memberId || '-')}" readonly></div>
+                <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>

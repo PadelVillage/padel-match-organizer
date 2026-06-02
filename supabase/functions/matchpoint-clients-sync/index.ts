@@ -84,6 +84,15 @@ function clean(value: unknown) {
   return String(value ?? '').trim();
 }
 
+function chooseMemberId(existingId: unknown, importedId: unknown) {
+  const existing = clean(existingId);
+  const imported = clean(importedId);
+  const isMatchpointCode = (v: string) => /^\d{3,}$/.test(v); // codice Matchpoint = sole cifre (3+)
+  // Il codice Matchpoint numerico vince su un segnaposto PMO-... o su un campo vuoto.
+  if (isMatchpointCode(imported) && !isMatchpointCode(existing)) return imported;
+  return existing || imported || '';
+}
+
 function errorText(value: unknown) {
   if (typeof value === 'string') return value;
   if (value instanceof Error) return value.message || value.name || String(value);
@@ -367,7 +376,7 @@ function mergeProtectedMember(existing: JsonMap, imported: ParsedMember, importe
   return {
     ...existing,
     id: existing.id || imported.id,
-    memberId: existing.memberId || imported.memberId || '',
+    memberId: chooseMemberId(existing.memberId, imported.memberId),
     firstName: titleCaseNamePart(existing.firstName || imported.firstName),
     surname: titleCaseNamePart(existing.surname || imported.surname),
     name: compactSpaces(`${titleCaseNamePart(existing.firstName || imported.firstName)} ${titleCaseNamePart(existing.surname || imported.surname)}`),

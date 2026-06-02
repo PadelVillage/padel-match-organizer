@@ -1,5 +1,7 @@
 # Versioni
 
+- v5.581 — ID Matchpoint: il codice numerico sostituisce il segnaposto PMO- (sync + import app); etichetta "ID-MP-" a video nell'elenco e nella scheda socio.
+
 ## v5.580 / PROD: creazione socio app-first in Matchpoint
 
 - **Promozione TEST→PROD** del flusso "creazione socio app-first". Alla creazione di un nuovo socio non-guest (`addMember`) l'app crea il cliente anche in Matchpoint tramite la nuova Edge Function `matchpoint-clients-create` (chiamata fire-and-forget `pmoCreateMemberInMatchpoint`), poi adotta il Codice Matchpoint restituito come `memberId` (sovrascrive l'id provvisorio `PMO-XXXXXX`). In caso di errore il socio resta salvato in locale con banner di avviso.
