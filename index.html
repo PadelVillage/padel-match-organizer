@@ -6953,7 +6953,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.597';
+    const APP_VERSION = '5.598';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -7339,7 +7339,7 @@ Grazie.`
 	    let pmoStaffUserInlineMode = 'none';
 	    let pmoStaffUserInlineEmail = '';
 	    const PMO_STAFF_NOTIFICATIONS_STORAGE_KEY = 'pmoStaffNotificationRecipientsV1';
-	    const PMO_STAFF_NOTIFICATION_TEST_RECIPIENT = { id:'PMO-000948', name:'Maurizio Aprea', email:'aprea.maurizio@gmail.com', active:true, test:true };
+	    const PMO_STAFF_NOTIFICATION_TEST_RECIPIENT = { id:'pmo-test-recipient', name:'Maurizio Aprea', email:'aprea.maurizio@gmail.com', active:true, test:true };
 	    let pmoStaffNotificationRecipients = pmoNormalizeStaffNotificationRecipients(safeLoad(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, null));
 	    save(PMO_STAFF_NOTIFICATIONS_STORAGE_KEY, pmoStaffNotificationRecipients);
 	    let pmoAdminStaffAutoLoadAttempted = false;
@@ -11655,7 +11655,7 @@ Grazie.`
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`
         },
-        body: JSON.stringify({ action, ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV, ...(PMO_IS_TEST_ENV && { test_override_recipient: 'aprea.maurizio@gmail.com' }) })
+        body: JSON.stringify({ action, ...payload, source:'pmo_assessment_email', appVersion:APP_VERSION, runtimeEnv:PMO_RUNTIME_ENV, ...(PMO_IS_TEST_ENV && { test_override_recipient: 'aprea.maurizio@gmail.com' /* TEST: destinatario di prova = Maurizio Aprea (email). Telefono test: vedi WA_TEST_OVERRIDE_NUMBER. */ }) })
       });
       const text = await response.text();
       let data = null;
@@ -20553,8 +20553,8 @@ Grazie!`
       return (giocatori || []).find(member => assessmentMemberMatchesAnyId(member, value)) || null;
     }
     function assessmentIsObsoleteAssessmentTestMember(member={}) {
-      return !member?.matchpoint &&
-        cleanCell(member?.email || '').toLowerCase() === 'aprea.maurizio@gmail.com';
+      // Maurizio Aprea è un socio normale: nessun membro 'test obsoleto' da escludere.
+      return false;
     }
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
@@ -20638,10 +20638,11 @@ Grazie!`
       }) || null;
     }
     function assessmentExternalTestLinkUrl() {
+      const _tm = (typeof assessmentExternalTestMember === 'function') ? assessmentExternalTestMember() : null;
       return assessmentExternalBuildUrl({
         env: 'test',
         assessment: 'link-esterno',
-        memberId: 'PMO-000948'
+        memberId: _tm ? cleanCell(_tm.memberId || _tm.id || '') : ''
       }, getAssessmentExternalTestBaseUrl());
     }
     function assessmentPublicNormalizeGender(value) {
@@ -27326,14 +27327,13 @@ Per confermare scrivi ELIMINA.`);
       };
     }
     const ASSESSMENT_PROCESS_PAGE_SIZE = 20;
-    const ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID = 'PMO-000948';
     const ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL = 'aprea.maurizio@gmail.com';
 
     function assessmentInjectTestValidareEntry() {
       if (!PMO_IS_TEST_ENV) return;
-      const pmoCode = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
       const member = giocatori.find(m => cleanCell(m?.email || '').toLowerCase() === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL);
       if (!member) { showAlert('❌ Membro test ' + ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL + ' non trovato', 'danger'); return; }
+      const pmoCode = cleanCell(member.memberId || member.id || '');
       const memberKey = String(member.id);
       member.level = '0.5';
       member.selfAssessmentToken = '';
@@ -33018,7 +33018,7 @@ Per confermare scrivi ELIMINA.`);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waInit);
     else waInit();
 
-    /* TEST: ?testValidare=1 → inietta risposta fake per PMO-000948 in Da validare */
+    /* TEST: ?testValidare=1 → inietta risposta fake per il socio di test Maurizio Aprea (per email) in Da validare */
     if (PMO_IS_TEST_ENV && new URLSearchParams(window.location.search).get('testValidare') === '1') {
       setTimeout(() => {
         assessmentInjectTestValidareEntry();
