@@ -107,44 +107,31 @@ async function callWorkerCreateBooking(opts: {
   const { workerUrl, workerApiKey, username, password, baseUrl, booking } = opts;
   const endpoint = `${workerUrl}/create-booking`;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    let res: Response;
-    try {
-      res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${workerApiKey}`,
-        },
-        body: JSON.stringify({ username, password, baseUrl, booking }),
-      });
-    } catch (netErr) {
-      if (attempt === 3) {
-        throw new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`);
-      }
-      await new Promise((r) => setTimeout(r, attempt * 3000));
-      continue;
-    }
-
-    const body = await res.json().catch(() => ({}));
-
-    if (res.ok) return body as JsonMap;
-
-    // Worker returned an error response
-    if (res.status === 501) {
-      // NOT_IMPLEMENTED — worker does not yet support create-booking
-      throw new Error('WORKER_CREATE_BOOKING_NOT_IMPLEMENTED: Il worker browser non supporta ancora la creazione di prenotazioni. Contatta l\'amministratore per aggiornare il worker.');
-    }
-
-    if (attempt === 3) {
-      throw new Error(
-        `Worker error ${res.status} after ${attempt} attempts: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-      );
-    }
-    await new Promise((r) => setTimeout(r, attempt * 3000));
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${workerApiKey}`,
+      },
+      body: JSON.stringify({ username, password, baseUrl, booking }),
+    });
+  } catch (netErr) {
+    // NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.
+    throw new Error(`Worker network error: ${errorText(netErr)}`);
   }
 
-  throw new Error('Worker call failed after retries');
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return body as JsonMap;
+
+  if (res.status === 501) {
+    throw new Error('WORKER_CREATE_BOOKING_NOT_IMPLEMENTED: Il worker browser non supporta ancora la creazione di prenotazioni. Contatta l\'amministratore per aggiornare il worker.');
+  }
+
+  throw new Error(
+    `Worker error ${res.status}: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
+  );
 }
 
 async function saveStaffBookingRecord(opts: {
