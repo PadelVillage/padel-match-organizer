@@ -6,6 +6,8 @@
 
 ## 2026-06-02 / TEST (edge matchpoint-bookings-create): rimosso il retry automatico (erano 3 tentativi) della chiamata al worker per create-booking — anti-doppione su prenotazioni lente. Una sola chiamata.
 
+## v5.603 — Assistente: controllo stato prenotazione più frequente (1,5s) per conferma più rapida.
+
 ## v5.602 — Assistente prenotazioni (ramo singolo): modalità asincrona — invia, mostra 'in corso…' e conferma 'prenotata ✓' a esito reale; gestiti errore e attesa troppo lunga. Ricorrenza invariata.
 
 ## v5.601 — Assistente prenotazioni: controllo istantaneo 'slot già occupato' (anche sovrapposizioni parziali) prima di inviare al worker; messaggio di successo più onesto ('inviata a Matchpoint, controlla nel calendario').

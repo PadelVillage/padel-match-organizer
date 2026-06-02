@@ -6956,7 +6956,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.602';
+    const APP_VERSION = '5.603';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34360,7 +34360,7 @@ Per confermare scrivi ELIMINA.`);
     const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` };
     const startedAt = Date.now();
     const MAX_MS = 180000;   // 3 minuti
-    const STEP_MS = 3000;
+    const STEP_MS = 1500;
     while (Date.now() - startedAt < MAX_MS) {
       await new Promise(r => setTimeout(r, STEP_MS));
       if (typeof onTick === 'function') onTick(Math.round((Date.now() - startedAt) / 1000));
