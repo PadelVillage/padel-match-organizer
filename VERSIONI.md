@@ -8,6 +8,8 @@
 
 ## v5.603 — Assistente: controllo stato prenotazione più frequente (1,5s) per conferma più rapida.
 
+## v5.606 — Calendario staff: flusso Lezione collegato al motore reale (step maestro a pulsanti + istruttore). Singola/Gruppo inviate come 'lezione'. Allievi opzionali. (Tappa A3b)
+
 ## v5.605 — Calendario staff: assistente a pulsanti in sidebar (come mockup v3.6), flusso Partita collegato al motore reale (prenotazione asincrona + conferma). Lezione/Torneo visibili ma non ancora attivi. (Tappa A3a)
 
 ## v5.604 — Calendario staff: nuovo look griglia v3.6 (desktop) + agenda mobile, alimentato dai dati esistenti. Nessuna modifica al motore di prenotazione. (Tappa A1)
