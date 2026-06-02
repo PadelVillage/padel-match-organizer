@@ -1,5 +1,7 @@
 # Versioni
 
+- v5.582 — Socio di test identificato via email (aprea.maurizio@gmail.com) invece che via PMO-000948/000956.
+
 - v5.581 — ID Matchpoint: il codice numerico sostituisce il segnaposto PMO- (sync + import app); etichetta "ID-MP-" a video nell'elenco e nella scheda socio.
 
 ## v5.580 / PROD: creazione socio app-first in Matchpoint
