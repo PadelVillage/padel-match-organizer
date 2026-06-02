@@ -6755,7 +6755,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.581';
+    const APP_VERSION = '5.582';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -10343,7 +10343,7 @@ Grazie.`
     }
 
     function pmoMemberAuditIsOfficialTestIdentity(row={}) {
-      return cleanCell(row.memberId || '') === 'PMO-000948' && row.emailKey === 'aprea.maurizio@gmail.com';
+      return cleanCell(row.emailKey || '').toLowerCase() === 'aprea.maurizio@gmail.com';
     }
 
     function pmoMemberAuditIsMaurizioAprea(row={}) {
@@ -10357,8 +10357,8 @@ Grazie.`
     }
 
     function pmoMemberAuditIsOldAssessmentTestMember(row={}) {
-      return cleanCell(row.memberId || '') === 'PMO-000956' &&
-        row.emailKey === 'aprea.maurizio@gmail.com';
+      return !row.matchpoint &&
+        cleanCell(row.emailKey || '').toLowerCase() === 'aprea.maurizio@gmail.com';
     }
 
     function pmoMemberAuditApprovedDecision(row={}, twin=null) {
@@ -20400,22 +20400,8 @@ Grazie!`
       return (giocatori || []).find(member => assessmentMemberMatchesAnyId(member, value)) || null;
     }
     function assessmentIsObsoleteAssessmentTestMember(member={}) {
-      const email = assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT');
-      if (email !== 'aprea.maurizio@gmail.com') return false;
-      return [
-        member?.id,
-        member?.memberId,
-        member?.pmoId,
-        member?.pmo_id,
-        member?.memberCode,
-        member?.member_code,
-        member?.codiceSocio,
-        member?.codice_socio,
-        member?.idSocio,
-        member?.id_socio,
-        member?.externalId,
-        member?.external_id
-      ].some(value => cleanCell(value || '').toLocaleUpperCase('it-IT') === 'PMO-000956');
+      return !member?.matchpoint &&
+        cleanCell(member?.email || '').toLowerCase() === 'aprea.maurizio@gmail.com';
     }
     function getAssessmentResponseByToken(token) {
       return assessmentResponses.find(r => normalizeText(r.token) === normalizeText(token)) || null;
@@ -20494,9 +20480,8 @@ Grazie!`
     }
     function assessmentExternalTestMember() {
       return (giocatori || []).find(member => {
-        const pmoId = cleanCell(member?.memberId || member?.id || '').toUpperCase();
         const email = cleanCell(member?.email || '').toLowerCase();
-        return pmoId === 'PMO-000948' && email === 'aprea.maurizio@gmail.com';
+        return email === 'aprea.maurizio@gmail.com';
       }) || null;
     }
     function assessmentExternalTestLinkUrl() {
@@ -20571,10 +20556,8 @@ Grazie!`
         catch { searchParams = new URLSearchParams(); }
       }
       if (!assessmentPublicIsExternalLinkRequest(searchParams)) return false;
-      const requestedId = cleanCell(searchParams.get('memberId') || '').toUpperCase();
-      const memberPmoId = cleanCell(member.memberId || member.id || '').toUpperCase();
       const email = cleanCell(member.email || '').toLowerCase();
-      return (requestedId === 'PMO-000948' || memberPmoId === 'PMO-000948') && email === 'aprea.maurizio@gmail.com';
+      return email === 'aprea.maurizio@gmail.com';
     }
     function assessmentPublicSetControlState(element, enabled=false, required=false) {
       if (!element) return;
@@ -23971,14 +23954,13 @@ Per confermare scrivi ELIMINA.`);
 	      return compactSpaces(local.replace(/[._-]+/g, ' ')).replace(/\b\w/g, char => char.toUpperCase()) || 'Destinatario';
 	    }
 	    function pmoStaffNotificationIsTestRecipient(row={}) {
-	      return cleanCell(row?.id || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.id
-	        && pmoStaffNotificationEmail(row?.email || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
+	      return pmoStaffNotificationEmail(row?.email || '') === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
 	    }
 	    function pmoNormalizeStaffNotificationRecipient(item={}, index=0) {
 	      const email = pmoStaffNotificationEmail(item.email || item.mail || '');
 	      if (!email || email.endsWith('.example')) return null;
 	      const id = cleanCell(item.id || item.memberId || item.pmoId || '');
-	      const isTest = id === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.id && email === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
+	      const isTest = email === PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.email;
 	      return {
 	        id: id || `manual-${index}-${email.replace(/[^a-z0-9]+/gi, '-')}`,
 	        name: compactSpaces(item.name || item.fullName || item.label || (isTest ? PMO_STAFF_NOTIFICATION_TEST_RECIPIENT.name : pmoStaffNotificationLabelFromEmail(email))),
@@ -27188,8 +27170,8 @@ Per confermare scrivi ELIMINA.`);
     function assessmentInjectTestValidareEntry() {
       if (!PMO_IS_TEST_ENV) return;
       const pmoCode = ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID;
-      const member = giocatori.find(m => assessmentMemberMatchesAnyId(m, pmoCode));
-      if (!member) { showAlert('❌ Membro test PMO-000948 non trovato', 'danger'); return; }
+      const member = giocatori.find(m => cleanCell(m?.email || '').toLowerCase() === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL);
+      if (!member) { showAlert('❌ Membro test ' + ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL + ' non trovato', 'danger'); return; }
       const memberKey = String(member.id);
       member.level = '0.5';
       member.selfAssessmentToken = '';
@@ -27390,6 +27372,7 @@ Per confermare scrivi ELIMINA.`);
       return 'Controllo stop 09:00';
     }
     function assessmentProcessIsFollowupTestMemberId(member={}) {
+      if (assessmentProcessIsFollowupTestMemberEmail(member)) return true;
       if (assessmentMemberMatchesAnyId(member, ASSESSMENT_FOLLOWUP_TEST_MEMBER_ID)) return true;
       const possibleIds = [
         member?.pmoId,
@@ -27409,8 +27392,7 @@ Per confermare scrivi ELIMINA.`);
       return assessmentEmailMemberEmail(member).toLocaleLowerCase('it-IT') === ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL;
     }
     function assessmentProcessIsProtectedFollowupTestMember(member={}) {
-      const pmoIdOk = assessmentProcessIsFollowupTestMemberId(member);
-      return pmoIdOk && assessmentProcessIsFollowupTestMemberEmail(member);
+      return assessmentProcessIsFollowupTestMemberEmail(member);
     }
     function assessmentProcessFollowupTestActions(member={}) {
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) return '';
@@ -30105,7 +30087,7 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
       if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
-        return showAlert('Invio test non consentito: il bottone e limitato a PMO-000948 con email aprea.maurizio@gmail.com.', 'danger');
+        return showAlert('Invio test non consentito: il bottone è limitato al socio con email ' + ASSESSMENT_FOLLOWUP_TEST_MEMBER_EMAIL + '.', 'danger');
       }
       const safeTemplate = cleanCell(templateKey || '');
       if (!['recall-email', 'third-email'].includes(safeTemplate)) {
