@@ -3102,38 +3102,71 @@ async function createClientWithBrowser(options = {}) {
         }
       }),
     ]);
-    await page.waitForURL(/FichaCliente\.aspx/i, { timeout: 25000 }).catch(() => {});
+    // ── Attesa robusta post-salvataggio (Matchpoint può essere lento) ──
+    // Polling: si RI-LEGGE la pagina a intervalli finché compaiono Codice + id
+    // interno, oppure finché scade il budget. NON si ri-clicca mai "salva"
+    // (rischio doppione): qui si legge soltanto.
+    const POST_SAVE_BUDGET_MS = 75000; // budget totale d'attesa post-salvataggio
+    const POST_SAVE_POLL_MS = 1500;    // intervallo fra un controllo e l'altro
+    const postSaveDeadline = Date.now() + POST_SAVE_BUDGET_MS;
+
+    const readValidationMessages = () => page.evaluate(() => {
+      const sels = ['[id*="ValidationSummary"]', '.field-validation-error',
+                    'span[style*="color:Red"]', 'span[style*="color:red"]', '[id*="Label"][style*="red" i]'];
+      const out = [];
+      for (const s of sels) {
+        document.querySelectorAll(s).forEach((el) => {
+          const t = (el.textContent || '').trim();
+          if (t) out.push(t);
+        });
+      }
+      return out.slice(0, 20);
+    }).catch(() => []);
+
+    let codice = '';
+    let idInterno = '';
+    let bodyText = '';
+    let earlyValidation = null;
+
+    while (Date.now() < postSaveDeadline) {
+      bodyText = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim()).catch(() => '');
+      const codiceMatch = bodyText.match(/Scheda cliente\s*:\s*(\d{4,6})\s*-/i);
+      codice = codiceMatch ? codiceMatch[1] : '';
+      const idMatch = decodeURIComponent(page.url()).match(/[?&]id=\s*(\d+)/i);
+      idInterno = idMatch ? idMatch[1] : '';
+      idInterno = decodeURIComponent(String(idInterno || '')).replace(/\s+/g, '').trim();
+
+      if (codice && idInterno) break; // successo: scheda cliente arrivata
+
+      // Fail-fast: ancora sul form di inserimento + messaggi di validazione
+      // = errore di dato, inutile aspettare l'intero budget.
+      if (/FichaAltaCliente\.aspx/i.test(page.url())) {
+        const vmsgs = await readValidationMessages();
+        if (vmsgs && vmsgs.length) { earlyValidation = vmsgs; break; }
+      }
+
+      await page.waitForTimeout(POST_SAVE_POLL_MS);
+    }
+
     diagnostic.afterSaveUrl = page.url();
     diagnostic.postbackFired = !/FichaAltaCliente\.aspx/i.test(page.url());
-
-    // ── Lettura Codice + id interno dalla scheda cliente ──
-    const bodyText = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim()).catch(() => '');
-    const codiceMatch = bodyText.match(/Scheda cliente\s*:\s*(\d{4,6})\s*-/i);
-    const codice = codiceMatch ? codiceMatch[1] : '';
-    const idMatch = decodeURIComponent(page.url()).match(/[?&]id=\s*(\d+)/i);
-    let idInterno = idMatch ? idMatch[1] : '';
-    idInterno = decodeURIComponent(String(idInterno || '')).replace(/\s+/g, '').trim();
     diagnostic.codice = codice;
     diagnostic.idInterno = idInterno;
 
+    // Errore di validazione rilevato presto → fallimento esplicito e immediato.
+    if (earlyValidation && (!codice || !idInterno)) {
+      diagnostic.validationMessages = earlyValidation;
+      diagnostic.bodySample = bodyText.slice(0, 1000);
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+      throw fail('CLIENT_CREATE_VALIDATION', `Matchpoint ha rifiutato i dati del cliente. url=${page.url()}`, diagnostic);
+    }
+
+    // Budget esaurito senza Codice/id → comportamento storico (con diagnostica).
     if (!codice || !idInterno) {
       diagnostic.bodySample = bodyText.replace(/\s+/g, ' ').trim().slice(0, 1000);
       try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
-      try {
-        diagnostic.validationMessages = await page.evaluate(() => {
-          const sels = ['[id*="ValidationSummary"]', '.field-validation-error',
-                        'span[style*="color:Red"]', 'span[style*="color:red"]', '[id*="Label"][style*="red" i]'];
-          const out = [];
-          for (const s of sels) {
-            document.querySelectorAll(s).forEach((el) => {
-              const t = (el.textContent || '').trim();
-              if (t) out.push(t);
-            });
-          }
-          return out.slice(0, 20);
-        });
-      } catch {}
-      throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti. url=${page.url()}`, diagnostic);
+      try { diagnostic.validationMessages = await readValidationMessages(); } catch {}
+      throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti dopo ${Math.round(POST_SAVE_BUDGET_MS / 1000)}s. url=${page.url()}`, diagnostic);
     }
 
     // ── Assegna livello (per far comparire il cliente nel report livelli) ──
