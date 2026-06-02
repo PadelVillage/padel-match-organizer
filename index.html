@@ -6956,7 +6956,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.599';
+    const APP_VERSION = '5.600';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34310,6 +34310,28 @@ Per confermare scrivi ELIMINA.`);
 
   // ── Submit singola prenotazione via edge function ──────────────────────────
   async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey) {
+    let giocatoriPayload;
+    if ((parsed.tipo || 'partita') === 'partita' && parsed.nome) {
+      const splitPlayers = (raw) => String(raw)
+        .split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i)
+        .map(s => s.trim()).filter(Boolean);
+      const names = splitPlayers(parsed.nome);
+      const resolved = [];
+      for (const nm of names) {
+        const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
+        if (!matches.length) { resolved.push({ nome: nm, codice: '' }); continue; }
+        const best = matches[0].member;
+        if (matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best) {
+          const lista = matches.slice(0,5).map(m => `${playerFullName(m.member)} (${m.member.memberId || 'senza codice'})`).join(', ');
+          throw new Error(`Più soci chiamati "${nm}": specifica meglio. Candidati: ${lista}`);
+        }
+        const nomeSocio = playerFullName(best) || best.name || nm;
+        const rawCode = String(best.memberId || '').trim();
+        const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';
+        resolved.push({ nome: nomeSocio, codice });
+      }
+      if (resolved.length) giocatoriPayload = resolved;
+    }
     const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
@@ -34318,6 +34340,7 @@ Per confermare scrivi ELIMINA.`);
         oraFine: parsed.oraFine, durata: parsed.durata,
         nome: parsed.nome, tipo: parsed.tipo || 'partita',
         istruttore: parsed.istruttore || undefined,
+        ...(giocatoriPayload ? { giocatori: giocatoriPayload } : {}),
       }),
     });
     const respText = await response.text();
