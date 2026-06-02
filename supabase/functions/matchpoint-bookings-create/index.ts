@@ -20,6 +20,7 @@ type BookingRequest = {
   tipo?: string;       // 'partita' | 'lezione' | 'manutenzione' (default: 'partita')
   istruttore?: string; // istruttore name override (Lezione) — defaults to nome
   note?: string;
+  giocatori?: { nome: string; codice?: string }[];
 };
 
 const CORS_HEADERS = {
@@ -168,6 +169,7 @@ async function saveStaffBookingRecord(opts: {
       durata: booking.durata,
       nome: booking.nome,
       note: booking.note ?? '',
+      giocatori: booking.giocatori ?? [],
       created_by_email: actor.email,
       created_by_role: actor.role,
       worker_result: workerResult,
@@ -207,6 +209,13 @@ Deno.serve(async (req: Request) => {
 
   const tipo = clean(body.tipo || 'partita').toLowerCase();
   const istruttore = clean(body.istruttore);
+  const giocatori = (Array.isArray(body.giocatori) ? body.giocatori : [])
+    .map((g) => {
+      if (typeof g === 'string') return { nome: clean(g), codice: '' };
+      const o = (g ?? {}) as JsonMap;
+      return { nome: clean(o.nome ?? o.name), codice: clean(o.codice ?? o.memberId ?? o.id) };
+    })
+    .filter((g) => g.nome);
   const VALID_TIPOS = ['partita', 'lezione', 'manutenzione', 'stagionale'];
 
   if (!campo || campo < 1 || campo > 4) return err(400, 'INVALID_CAMPO', 'Campo deve essere un numero da 1 a 4.');
@@ -217,7 +226,12 @@ Deno.serve(async (req: Request) => {
   if (!nome) return err(400, 'INVALID_NOME', 'Nome giocatore/istruttore richiesto.');
   if (!VALID_TIPOS.includes(tipo)) return err(400, 'INVALID_TIPO', `tipo deve essere uno di: ${VALID_TIPOS.join(', ')}.`);
 
-  const booking: BookingRequest = { campo, data, ora, oraFine, durata, nome, tipo, istruttore: istruttore || undefined, note: clean(body.note) };
+  const booking: BookingRequest = {
+    campo, data, ora, oraFine, durata, nome, tipo,
+    istruttore: istruttore || undefined,
+    note: clean(body.note),
+    giocatori: giocatori.length ? giocatori : undefined,
+  };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
