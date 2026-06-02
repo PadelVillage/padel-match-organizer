@@ -26,7 +26,7 @@ type BookingRequest = {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
@@ -167,8 +167,67 @@ async function saveStaffBookingRecord(opts: {
   }, { onConflict: 'record_type,local_key' });
 }
 
+async function writeBookingJob(
+  client: ReturnType<typeof createClient>,
+  jobId: string,
+  status: string,
+  extra: JsonMap = {},
+) {
+  const now = new Date().toISOString();
+  await client.from('pmo_cloud_records').upsert({
+    record_type: 'booking_job',
+    local_key: jobId,
+    payload: { status, updated_at: now, ...extra },
+    deleted: false,
+    updated_at: now,
+    synced_at: now,
+  }, { onConflict: 'record_type,local_key' });
+}
+
+async function runBookingJobInBackground(opts: {
+  jobId: string; supabaseUrl: string; supabaseKey: string; actor: StaffActor;
+  booking: BookingRequest; workerUrl: string; workerApiKey: string;
+  username: string; password: string; baseUrl: string;
+}) {
+  const { jobId, supabaseUrl, supabaseKey, actor, booking, workerUrl, workerApiKey, username, password, baseUrl } = opts;
+  const client = createClient(supabaseUrl, supabaseKey);
+  const base = { booking, created_by_email: actor.email };
+  const tipoLabel = booking.tipo === 'lezione' ? 'Lezione' : booking.tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
+  try {
+    const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking });
+    try {
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+    } catch (dbErr) {
+      console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
+    }
+    await writeBookingJob(client, jobId, 'done', {
+      ...base,
+      message: `${tipoLabel} prenotata: Campo ${booking.campo} · ${booking.data} · ${booking.ora}–${booking.oraFine} · ${booking.nome}`,
+      worker_result: workerResult,
+    });
+  } catch (workerErr) {
+    await writeBookingJob(client, jobId, 'error', { ...base, error: errorText(workerErr) });
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  if (req.method === 'GET') {
+    const actorGet = await getActor(req).catch(() => null);
+    if (!actorGet) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
+    const jobId = clean(new URL(req.url).searchParams.get('jobId'));
+    if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
+    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    const client = createClient(sUrl, sKey);
+    const { data, error } = await client.from('pmo_cloud_records')
+      .select('payload').eq('record_type', 'booking_job').eq('local_key', jobId).maybeSingle();
+    if (error) return err(500, 'DB_ERROR', errorText(error));
+    if (!data) return err(404, 'JOB_NOT_FOUND', 'Job non trovato.');
+    return ok({ jobId, ...((data.payload as JsonMap) ?? {}) });
+  }
+
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   // Auth
@@ -234,6 +293,15 @@ Deno.serve(async (req: Request) => {
   }
   if (!username || !password) {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
+  }
+
+  // ── Modalità asincrona (opzionale): rispondi subito, prenota in background ──
+  if (body.async === true) {
+    const jobId = crypto.randomUUID();
+    const clientJob = createClient(supabaseUrl, supabaseKey);
+    await writeBookingJob(clientJob, jobId, 'pending', { booking, created_by_email: actor.email, created_at: new Date().toISOString() });
+    EdgeRuntime.waitUntil(runBookingJobInBackground({ jobId, supabaseUrl, supabaseKey, actor, booking, workerUrl, workerApiKey, username, password, baseUrl }));
+    return ok({ jobId, status: 'pending', message: 'Prenotazione avviata, in corso…' });
   }
 
   // Call browser worker
