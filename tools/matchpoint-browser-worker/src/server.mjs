@@ -2976,6 +2976,11 @@ async function createClientWithBrowser(options = {}) {
   const email = clean(client.email || '');
   const sessoRaw = clean(client.sesso || client.gender || '');
   if (!nome || !cognome) throw fail('INVALID_CLIENT_NAME', 'Nome e cognome del cliente sono obbligatori.');
+  if (!email || !telefono || !sessoRaw) {
+    throw fail('CLIENT_CREATE_MISSING_REQUIRED',
+      'Campi obbligatori mancanti per la creazione cliente: servono sesso, email e telefono.',
+      { nome, cognome, email, telefono, sesso: sessoRaw });
+  }
 
   // Data nascita: usa quella fornita (ISO o gg/mm/aaaa); altrimenti default oggi -20 anni.
   let dataNascita = clean(client.dataNascita || client.birthDate || '');
@@ -3067,12 +3072,14 @@ async function createClientWithBrowser(options = {}) {
     // click su un altro campo per chiudere l'eventuale datepicker e far validare la data
     await page.locator(P + 'TextBoxApellido1').first().click({ timeout: 5000 }).catch(() => {});
     await page.locator(P + 'DropDownListSexo').first().selectOption({ label: sessoLabel }, { timeout: 5000 }).catch(() => {});
-    if (telefono) await page.locator(P + 'TextBoxMovil').first().fill(telefono, { timeout: 8000 }).catch(() => {});
-    if (email) await page.locator(P + 'TextBoxEmail').first().fill(email, { timeout: 8000 }).catch(() => {});
-    // Togliere "Creare utente (accesso al sito)" per NON inviare email all'interessato.
+    await page.locator(P + 'TextBoxMovil').first().fill(telefono || '', { timeout: 10000 });
+    await page.locator(P + 'TextBoxEmail').first().fill(email || '', { timeout: 10000 });
+    // Deselezionare "Creare utente (accesso al sito)" per NON inviare email di sistema all'interessato.
     const accesso = page.locator(P + 'CheckBoxDar_Acceso_Extranet').first();
     if (await accesso.isChecked().catch(() => false)) {
-      await accesso.uncheck({ timeout: 5000 }).catch(() => {});
+      await accesso.uncheck({ timeout: 5000 }).catch(async () => {
+        await accesso.click({ timeout: 5000 }).catch(() => {});
+      });
     }
 
     diagnostic.steps.push('salva_cliente');
