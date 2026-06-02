@@ -3071,11 +3071,18 @@ async function createClientWithBrowser(options = {}) {
     }
 
     diagnostic.steps.push('salva_cliente');
+    // Matchpoint apre un confirm() alla pressione di "Iscrizione cliente":
+    // va ACCETTATO, altrimenti Playwright lo annulla e il salvataggio non parte.
+    page.once('dialog', async (dialog) => {
+      diagnostic.dialogMessage = dialog.message();
+      diagnostic.dialogType = dialog.type();
+      await dialog.accept().catch(() => {});
+    });
     await Promise.all([
       page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
       page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
     ]);
-    await page.waitForURL(/FichaCliente\.aspx/i, { timeout: 15000 }).catch(() => {});
+    await page.waitForURL(/FichaCliente\.aspx/i, { timeout: 25000 }).catch(() => {});
     diagnostic.afterSaveUrl = page.url();
 
     // ── Lettura Codice + id interno dalla scheda cliente ──
@@ -3090,6 +3097,20 @@ async function createClientWithBrowser(options = {}) {
     if (!codice || !idInterno) {
       diagnostic.bodySample = bodyText.replace(/\s+/g, ' ').trim().slice(0, 1000);
       try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+      try {
+        diagnostic.validationMessages = await page.evaluate(() => {
+          const sels = ['[id*="ValidationSummary"]', '.field-validation-error',
+                        'span[style*="color:Red"]', 'span[style*="color:red"]', '[id*="Label"][style*="red" i]'];
+          const out = [];
+          for (const s of sels) {
+            document.querySelectorAll(s).forEach((el) => {
+              const t = (el.textContent || '').trim();
+              if (t) out.push(t);
+            });
+          }
+          return out.slice(0, 20);
+        });
+      } catch {}
       throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti. url=${page.url()}`, diagnostic);
     }
 
