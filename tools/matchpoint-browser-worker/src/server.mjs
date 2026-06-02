@@ -3079,11 +3079,19 @@ async function createClientWithBrowser(options = {}) {
       await dialog.accept().catch(() => {});
     });
     await Promise.all([
-      page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
-      page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
+      page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {}),
+      page.evaluate(() => {
+        const btn = document.getElementById('CC_Datos_FormViewFicha_ButtonActualizar');
+        if (btn && typeof btn.click === 'function') { btn.click(); return; }
+        // fallback: postback diretto ASP.NET
+        if (typeof window.__doPostBack === 'function') {
+          window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$ButtonActualizar', '');
+        }
+      }),
     ]);
     await page.waitForURL(/FichaCliente\.aspx/i, { timeout: 25000 }).catch(() => {});
     diagnostic.afterSaveUrl = page.url();
+    diagnostic.postbackFired = !/FichaAltaCliente\.aspx/i.test(page.url());
 
     // ── Lettura Codice + id interno dalla scheda cliente ──
     const bodyText = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim()).catch(() => '');
