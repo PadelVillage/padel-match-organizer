@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.600 — Assistente prenotazioni: invio nome→codice Matchpoint (campo giocatori[]) alla edge per le partite; più giocatori; omonimi → 'specifica meglio'. Lezione invariata.
+
 ## 2026-06-02 / TEST: il pulsante test prenotazione prenota una PARTITA su un socio per nome, risolvendo il codice Matchpoint dal DB locale (solo numerico; PMO-/vuoto -> nome). Valida la catena con disambiguazione per codice.
 
 ## 2026-06-02 / TEST: rimossi gli ultimi riferimenti placeholder PMO-000948; i test (notifiche/follow-up/link autovalutazione/testValidare) puntano al socio di prova Maurizio Aprea via email/codice reale. Mantenuti gli override email/telefono di test.
