@@ -3047,7 +3047,18 @@ async function createClientWithBrowser(options = {}) {
     const P = '#CC_Datos_FormViewFicha_WUCDatosAltaCliente_';
     await page.locator(P + 'TextBoxNombre').first().fill(nome, { timeout: 15000 });
     await page.locator(P + 'TextBoxApellido1').first().fill(cognome, { timeout: 10000 });
-    await page.locator(P + 'TextBoxFecha_Nacimiento').first().fill(dataNascita, { timeout: 10000 });
+    const fechaSel = '#CC_Datos_FormViewFicha_WUCDatosAltaCliente_TextBoxFecha_Nacimiento';
+    const fld = page.locator(fechaSel);
+    await fld.click();
+    await fld.fill('');
+    await fld.pressSequentially(dataNascita, { delay: 50 });
+    await page.evaluate((id) => {
+      const e = document.getElementById(id);
+      if (!e) return;
+      e.dispatchEvent(new Event('input',  { bubbles: true }));
+      e.dispatchEvent(new Event('change', { bubbles: true }));
+      e.dispatchEvent(new Event('blur',   { bubbles: true }));
+    }, 'CC_Datos_FormViewFicha_WUCDatosAltaCliente_TextBoxFecha_Nacimiento');
     // click su un altro campo per chiudere l'eventuale datepicker e far validare la data
     await page.locator(P + 'TextBoxApellido1').first().click({ timeout: 5000 }).catch(() => {});
     await page.locator(P + 'DropDownListSexo').first().selectOption({ label: sessoLabel }, { timeout: 5000 }).catch(() => {});
@@ -3064,7 +3075,7 @@ async function createClientWithBrowser(options = {}) {
       page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
       page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
     ]);
-    await page.waitForTimeout(2500);
+    await page.waitForURL(/FichaCliente\.aspx/i, { timeout: 15000 }).catch(() => {});
     diagnostic.afterSaveUrl = page.url();
 
     // ── Lettura Codice + id interno dalla scheda cliente ──
@@ -3077,7 +3088,7 @@ async function createClientWithBrowser(options = {}) {
     diagnostic.idInterno = idInterno;
 
     if (!codice || !idInterno) {
-      diagnostic.bodySample = bodyText.slice(0, 300);
+      diagnostic.bodySample = bodyText.replace(/\s+/g, ' ').trim().slice(0, 1000);
       try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
       throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti. url=${page.url()}`, diagnostic);
     }
