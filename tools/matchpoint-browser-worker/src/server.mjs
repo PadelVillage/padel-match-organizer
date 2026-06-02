@@ -3111,7 +3111,8 @@ async function createClientWithBrowser(options = {}) {
     const codiceMatch = bodyText.match(/Scheda cliente\s*:\s*(\d{4,6})\s*-/i);
     const codice = codiceMatch ? codiceMatch[1] : '';
     const idMatch = decodeURIComponent(page.url()).match(/[?&]id=\s*(\d+)/i);
-    const idInterno = idMatch ? idMatch[1] : '';
+    let idInterno = idMatch ? idMatch[1] : '';
+    idInterno = decodeURIComponent(String(idInterno || '')).replace(/\s+/g, '').trim();
     diagnostic.codice = codice;
     diagnostic.idInterno = idInterno;
 
