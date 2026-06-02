@@ -1,5 +1,7 @@
 # Versioni
 
+## 2026-06-02 / DB: migrazione — aggiunto record_type 'booking_job' al vincolo di pmo_cloud_records (stato lavoro prenotazione asincrona). Già applicato a mano su TEST; il file lo rende permanente e lo porta in PROD.
+
 ## 2026-06-02 / TEST (edge matchpoint-bookings-create): aggiunta modalità asincrona opzionale (flag async) + endpoint GET stato lavoro, riusando pmo_cloud_records (record_type booking_job). Retrocompatibile: senza async, comportamento invariato. Worker non toccato.
 
 ## 2026-06-02 / TEST (edge matchpoint-bookings-create): rimosso il retry automatico (erano 3 tentativi) della chiamata al worker per create-booking — anti-doppione su prenotazioni lente. Una sola chiamata.
