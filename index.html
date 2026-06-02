@@ -6686,6 +6686,7 @@ body.assessment-public-mode .assessment-public-only-card {
                           <button id="matchpointTestBookingButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCreate()">🧪 Test prenotazione Matchpoint</button>
                           <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
                           <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
+                          <button id="matchpointTestClientButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestClientCreate()">🧪 Test crea cliente</button>
                           <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
@@ -34405,6 +34406,88 @@ Per confermare scrivi ELIMINA.`);
       if (response.ok && data?.ok !== false) {
         const lines = ['✅ Successo!'];
         if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
+        if (stateEl) { stateEl.textContent = 'Completato'; stateEl.className = 'matchpoint-action-state done'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#eefaf2';
+          resultEl.style.border = '1px solid #b7e4c7';
+          resultEl.style.color = '#168a53';
+          resultEl.textContent = lines.join('\n');
+        }
+      } else {
+        const lines = [`❌ Errore HTTP ${response.status}`];
+        if (data?.error) lines.push(`Codice: ${data.error}`);
+        if (data?.message) lines.push(`Messaggio: ${data.message}`);
+        else if (typeof data === 'string' && data) lines.push(data);
+        if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+        if (resultEl) {
+          resultEl.style.display = 'block';
+          resultEl.style.background = '#fff0f0';
+          resultEl.style.border = '1px solid #fca5a5';
+          resultEl.style.color = '#dc2626';
+          resultEl.textContent = lines.join('\n');
+        }
+      }
+    } catch (err) {
+      const msg = `❌ Errore di rete o configurazione: ${err?.message || err || 'errore sconosciuto'}`;
+      if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fff0f0';
+        resultEl.style.border = '1px solid #fca5a5';
+        resultEl.style.color = '#dc2626';
+        resultEl.textContent = msg;
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Test creazione cliente Matchpoint (solo TEST env) ─────────────
+  async function matchpointTestClientCreate() {
+    const btn = document.getElementById('matchpointTestClientButton');
+    const stateEl = document.getElementById('matchpointTestBookingState');
+    const resultEl = document.getElementById('matchpointTestBookingResult');
+
+    if (!isStaffSessionValid()) {
+      if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+
+    const nome = (prompt('Nome del cliente di prova:', 'Prova') || '').trim();
+    if (!nome) return;
+    const cognome = (prompt('Cognome del cliente di prova:', 'WorkerPmo') || '').trim();
+    if (!cognome) return;
+    const telefono = (prompt('Telefono (vuoto = testa anche l\'aggancio per nome):', '') || '').trim();
+    const email = (prompt('Email (facoltativa):', '') || '').trim();
+
+    const confirmed = confirm(`Stai per creare un CLIENTE REALE in Matchpoint: "${nome} ${cognome}"${telefono ? ' · tel ' + telefono : ''}. Procedere?`);
+    if (!confirmed) return;
+
+    if (btn) btn.disabled = true;
+    if (stateEl) { stateEl.textContent = 'Creazione in corso… (può durare fino a 30 s)'; stateEl.className = 'matchpoint-action-state pending'; }
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'testare la creazione cliente Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`
+        },
+        body: JSON.stringify({ client: { nome, cognome, telefono, email, sesso: 'M' } }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+
+      if (response.ok && data?.ok !== false) {
+        const lines = ['✅ Cliente creato!'];
+        if (data?.message) lines.push(data.message);
         if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
         if (stateEl) { stateEl.textContent = 'Completato'; stateEl.className = 'matchpoint-action-state done'; }
         if (resultEl) {
