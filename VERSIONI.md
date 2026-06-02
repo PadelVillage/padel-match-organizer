@@ -1,5 +1,7 @@
 # Versioni
 
+## 2026-06-02 / TEST (edge matchpoint-bookings-create): rimosso il retry automatico (erano 3 tentativi) della chiamata al worker per create-booking — anti-doppione su prenotazioni lente. Una sola chiamata.
+
 ## v5.600 — Assistente prenotazioni: invio nome→codice Matchpoint (campo giocatori[]) alla edge per le partite; più giocatori; omonimi → 'specifica meglio'. Lezione invariata.
 
 ## 2026-06-02 / TEST: il pulsante test prenotazione prenota una PARTITA su un socio per nome, risolvendo il codice Matchpoint dal DB locale (solo numerico; PMO-/vuoto -> nome). Valida la catena con disambiguazione per codice.
