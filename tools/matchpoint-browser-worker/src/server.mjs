@@ -2953,6 +2953,179 @@ async function handleEditBooking(req, res) {
   json(res, 200, result);
 }
 
+async function handleCreateClient(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await createClientWithBrowser(body);
+  json(res, 200, result);
+}
+
+// ── createClientWithBrowser: crea un cliente in Matchpoint, legge il Codice e
+//    gli assegna un livello (default 0,5) cosi' compare nel report livelli. ──
+async function createClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const client = options.client || {};
+  const nome = clean(client.nome || client.firstName);
+  const cognome = clean(client.cognome || client.surname);
+  const telefono = clean(client.telefono || client.phone || '');
+  const email = clean(client.email || '');
+  const sessoRaw = clean(client.sesso || client.gender || '');
+  if (!nome || !cognome) throw fail('INVALID_CLIENT_NAME', 'Nome e cognome del cliente sono obbligatori.');
+
+  // Data nascita: usa quella fornita (ISO o gg/mm/aaaa); altrimenti default oggi -20 anni.
+  let dataNascita = clean(client.dataNascita || client.birthDate || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataNascita)) dataNascita = isoToItalianDate(dataNascita);
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita)) {
+    const [y, m, d] = todayIsoRome().split('-');
+    dataNascita = `${d}/${m}/${String(Number(y) - 20)}`;
+  }
+
+  // Livello default 0,5 (segnaposto: il livello vero resta nell'app). Formato italiano con virgola.
+  const livelloNum = (client.livello === undefined || client.livello === null || client.livello === '')
+    ? 0.5 : Number(client.livello);
+  const livelloStr = String(Number.isFinite(livelloNum) ? livelloNum : 0.5).replace('.', ',');
+
+  // Sesso -> etichetta della select Matchpoint
+  let sessoLabel = 'N.D.';
+  if (/^f|donna|female|mujer/i.test(sessoRaw)) sessoLabel = 'Donna';
+  else if (/^m|uomo|male|hombre/i.test(sessoRaw)) sessoLabel = 'Uomo';
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'create_client',
+    nome, cognome, telefono, email, sessoLabel, dataNascita, livello: livelloStr, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  let page;
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    // ── Login (stessa sequenza di createBookingWithBrowser) ──
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+    await maybeClickCashEnter(page, diagnostic);
+
+    // ── Form creazione cliente ──
+    diagnostic.steps.push('goto_alta_cliente');
+    await page.goto(absoluteUrl(baseUrl, '/Clientes/FichaAltaCliente.aspx'), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const P = '#CC_Datos_FormViewFicha_WUCDatosAltaCliente_';
+    await page.locator(P + 'TextBoxNombre').first().fill(nome, { timeout: 15000 });
+    await page.locator(P + 'TextBoxApellido1').first().fill(cognome, { timeout: 10000 });
+    await page.locator(P + 'TextBoxFecha_Nacimiento').first().fill(dataNascita, { timeout: 10000 });
+    // click su un altro campo per chiudere l'eventuale datepicker e far validare la data
+    await page.locator(P + 'TextBoxApellido1').first().click({ timeout: 5000 }).catch(() => {});
+    await page.locator(P + 'DropDownListSexo').first().selectOption({ label: sessoLabel }, { timeout: 5000 }).catch(() => {});
+    if (telefono) await page.locator(P + 'TextBoxMovil').first().fill(telefono, { timeout: 8000 }).catch(() => {});
+    if (email) await page.locator(P + 'TextBoxEmail').first().fill(email, { timeout: 8000 }).catch(() => {});
+    // Togliere "Creare utente (accesso al sito)" per NON inviare email all'interessato.
+    const accesso = page.locator(P + 'CheckBoxDar_Acceso_Extranet').first();
+    if (await accesso.isChecked().catch(() => false)) {
+      await accesso.uncheck({ timeout: 5000 }).catch(() => {});
+    }
+
+    diagnostic.steps.push('salva_cliente');
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+      page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.afterSaveUrl = page.url();
+
+    // ── Lettura Codice + id interno dalla scheda cliente ──
+    const bodyText = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim()).catch(() => '');
+    const codiceMatch = bodyText.match(/Scheda cliente\s*:\s*(\d{4,6})\s*-/i);
+    const codice = codiceMatch ? codiceMatch[1] : '';
+    const idMatch = decodeURIComponent(page.url()).match(/[?&]id=\s*(\d+)/i);
+    const idInterno = idMatch ? idMatch[1] : '';
+    diagnostic.codice = codice;
+    diagnostic.idInterno = idInterno;
+
+    if (!codice || !idInterno) {
+      diagnostic.bodySample = bodyText.slice(0, 300);
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+      throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti. url=${page.url()}`, diagnostic);
+    }
+
+    // ── Assegna livello (per far comparire il cliente nel report livelli) ──
+    let livelloAssegnato = false;
+    try {
+      diagnostic.steps.push('goto_livello');
+      const livelloUrl = absoluteUrl(baseUrl,
+        `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
+        + `&cbf=callbackRefrescarPestanyaJuegoNivel`
+        + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
+      await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
+      // Sport "Padel" e' gia' selezionato di default; impostiamo solo il livello numerico.
+      await page.locator(L + 'TextBoxNivelNumerico').first().fill(livelloStr, { timeout: 10000 });
+      diagnostic.steps.push('salva_livello');
+      await Promise.all([
+        page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
+      ]);
+      await page.waitForTimeout(2000);
+      livelloAssegnato = true;
+    } catch (levelError) {
+      diagnostic.levelError = (levelError && levelError.message) || String(levelError);
+    }
+    diagnostic.livelloAssegnato = livelloAssegnato;
+
+    return {
+      ok: true,
+      codice,
+      idInterno,
+      nome,
+      cognome,
+      telefono,
+      email,
+      livello: livelloStr,
+      livelloAssegnato,
+      diagnostic,
+    };
+  } catch (error) {
+    if (error && error.code && error.diagnostic) throw error;
+    throw fail('CLIENT_CREATE_FAILED', (error && error.message) || String(error), diagnostic);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -4600,7 +4773,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
-          '/create-booking', '/cancel-booking', '/edit-booking',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -4637,6 +4810,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/edit-booking') {
       return await handleEditBooking(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/create-client') {
+      return await handleCreateClient(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
