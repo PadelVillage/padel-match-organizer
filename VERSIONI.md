@@ -1,5 +1,7 @@
 # Versioni
 
+- 2026-06-02 — worker — inserimento giocatore disambiguato per codice Matchpoint (retrocompatibile); PLAYER_CODE_MISMATCH se nessun candidato combacia col codice.
+
 - v5.582 — Socio di test identificato via email (aprea.maurizio@gmail.com) invece che via PMO-000948/000956.
 
 - v5.581 — ID Matchpoint: il codice numerico sostituisce il segnaposto PMO- (sync + import app); etichetta "ID-MP-" a video nell'elenco e nella scheda socio.

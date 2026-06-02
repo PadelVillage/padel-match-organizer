@@ -3279,9 +3279,10 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
-async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_') {
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_', expectedCode = '') {
   const PFX = pfx;
   const norm = (s) => String(s || '').toLowerCase().trim();
+  const onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
   if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
 
   const inputEl = formCtx.locator(PFX + 'TextBoxTitular');
@@ -3295,7 +3296,8 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const li = ul.locator('li');
 
   let lockedId = '';
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let codeCheckFailed = false;
+  outer: for (let attempt = 0; attempt < 3; attempt++) {
     // Pulisce campo e digita nome con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
     await page.keyboard.press('Control+A').catch(() => {});
@@ -3312,27 +3314,50 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
 
     // ⚠️ Sceglie SOLO un <li> che CONTIENE davvero il nome richiesto.
+    // Con expectedCode, itera TUTTI i candidati per nome e scarta quelli il cui
+    // HiddenFieldIdPeople non coincide col codice atteso (evita omonimi).
     // NIENTE fallback al primo elemento: con un input spurio (es. "ok") nessun <li>
     // combacia → non selezioniamo nulla → l'id non si aggancia → si aborta senza
     // scrivere su Matchpoint. (È così che era finito il cliente 921.)
     const count = await li.count().catch(() => 0);
-    let target = null;
-    let chosenText = '';
+    let foundNameMatch = false;
     for (let i = 0; i < count; i++) {
       const t = norm(await li.nth(i).innerText().catch(() => ''));
-      if (t.includes(norm(nome))) { target = li.nth(i); chosenText = t; break; }
+      if (!t.includes(norm(nome))) continue;
+      foundNameMatch = true;
+      await li.nth(i).click({ timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      const candidateId = (await hiddenId.first().inputValue().catch(() => '')).trim();
+      diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
+      if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
+      if (expectedCode && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
+        // Codice non combacia: pulisce il campo, ri-digita il nome e prova il prossimo candidato
+        codeCheckFailed = true;
+        await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+        await page.keyboard.press('Control+A').catch(() => {});
+        await page.keyboard.press('Delete').catch(() => {});
+        await inputEl.first().type(nome, { delay: 80 });
+        for (let j = 0; j < 24; j++) {
+          const n2 = await li.count().catch(() => 0);
+          if (n2 > 0 && await ul.isVisible().catch(() => false)) break;
+          await page.waitForTimeout(250);
+        }
+        continue;
+      }
+      // Candidato valido (codice combacia o nessun codice richiesto)
+      lockedId = candidateId;
+      codeCheckFailed = false;
+      break outer;
     }
-    if (!target) { diagnostic.steps.push(`player_no_matching_option:${nome}:attempt${attempt}`); continue; }
-    await target.click({ timeout: 4000 }).catch(() => {});
-    await page.waitForTimeout(400);
-
-    // Verifica che l'id nascosto si sia agganciato
-    lockedId = (await hiddenId.first().inputValue().catch(() => '')).trim();
-    diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:id=${lockedId}`);
-    if (lockedId) break;
+    if (!foundNameMatch) diagnostic.steps.push(`player_no_matching_option:${nome}:attempt${attempt}`);
   }
 
   if (!lockedId) {
+    if (expectedCode && codeCheckFailed) {
+      throw fail('PLAYER_CODE_MISMATCH',
+        `Nessun socio Matchpoint con codice ${expectedCode} tra i risultati per "${nome}". Aggiunta annullata per sicurezza.`,
+        diagnostic);
+    }
     throw fail('PLAYER_ID_NOT_LOCKED',
       `Autocomplete non agganciato (HiddenFieldIdPeople vuoto) per: ${nome}`,
       diagnostic);
@@ -3736,12 +3761,15 @@ async function createBookingWithBrowser(options = {}) {
 
       // 2. Aggiungi giocatori via autocomplete
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
-        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
-        : (nome ? [nome] : []);
-      diagnostic.playersRequested = players;
+        ? booking.giocatori.map((g) => typeof g === 'string'
+            ? { nome: g, codice: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.memberId || g.id)) || '' }
+          ).filter((p) => p.nome)
+        : (nome ? [{ nome, codice: booking.codice || '' }] : []);
+      diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, undefined, p.codice));
       }
       diagnostic.playersResult = playersResult;
 
@@ -3809,12 +3837,15 @@ async function createBookingWithBrowser(options = {}) {
       //    pannello e impedirebbe all'autocomplete dell'allievo di agganciarsi.
       const LEZIONE_PLAYER_PFX = '#CC_Datos_FormViewFicha_WUCUsuarioClase_Anyadir_';
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
-        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
-        : (nome ? [nome] : []);
-      diagnostic.playersRequested = players;
+        ? booking.giocatori.map((g) => typeof g === 'string'
+            ? { nome: g, codice: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.memberId || g.id)) || '' }
+          ).filter((p) => p.nome)
+        : (nome ? [{ nome, codice: booking.codice || '' }] : []);
+      diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic, LEZIONE_PLAYER_PFX));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, LEZIONE_PLAYER_PFX, p.codice));
       }
       diagnostic.playersResult = playersResult;
 
