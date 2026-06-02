@@ -1,5 +1,7 @@
 # Versioni
 
+## 2026-06-02 / TEST: rimosso il trattamento segnaposto/test del socio Maurizio Aprea nell'audit soci e nei default del modulo autovalutazione; ora gestito come socio normale (codice Matchpoint 000004). Notifiche/email di test trattate a parte.
+
 ## 2026-06-02 / TEST · Edge function `matchpoint-bookings-create` — giocatori con codice Matchpoint
 
 - edge `matchpoint-bookings-create` — accetta e inoltra al worker la lista giocatori con codice Matchpoint (retrocompatibile).

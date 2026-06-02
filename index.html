@@ -6058,11 +6058,11 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="assessment-external-preview">
               <div class="assessment-external-field">
                 <label>Nome</label>
-                <input id="assessmentExternalFirstNameInput" value="Maurizio">
+                <input id="assessmentExternalFirstNameInput" value="">
               </div>
               <div class="assessment-external-field">
                 <label>Cognome</label>
-                <input id="assessmentExternalLastNameInput" value="Aprea">
+                <input id="assessmentExternalLastNameInput" value="">
               </div>
               <div class="assessment-external-field">
                 <label>Telefono</label>
@@ -6070,7 +6070,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="assessment-external-field">
                 <label>Email</label>
-                <input id="assessmentExternalEmailInput" value="aprea.maurizio@gmail.com" type="email">
+                <input id="assessmentExternalEmailInput" value="" type="email">
               </div>
               <div class="assessment-external-field">
                 <label>Sesso</label>
@@ -6162,7 +6162,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="assessment-public-form-card soft assessment-public-identity">
             <div>
               <div class="assessment-public-eyebrow">La scheda è intestata a</div>
-              <div class="assessment-public-name" id="assessmentPublicPlayerName">Maurizio Aprea</div>
+              <div class="assessment-public-name" id="assessmentPublicPlayerName"></div>
               <div class="assessment-public-small">Se il nome non è corretto o vuoi segnalarci una modifica, contatta la segreteria.</div>
             </div>
             <a id="assessmentPublicWhatsappHelp" href="#" target="_blank" rel="noopener" class="assessment-public-whatsapp-btn"><span class="wa-icon">💬</span><span>Contatta segreteria</span></a>
@@ -6953,7 +6953,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.596';
+    const APP_VERSION = '5.597';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -10545,63 +10545,16 @@ Grazie.`
       return candidates.find(row => row && row.localKey !== item.localKey) || null;
     }
 
-    function pmoMemberAuditIsOfficialTestIdentity(row={}) {
-      return cleanCell(row.emailKey || '').toLowerCase() === 'aprea.maurizio@gmail.com';
-    }
-
-    function pmoMemberAuditIsMaurizioAprea(row={}) {
-      const nameKey = normalizeText(row.fullName || '');
-      return pmoMemberAuditIsOfficialTestIdentity(row) && nameKey.includes('maurizio') && nameKey.includes('aprea');
-    }
-
-    function pmoMemberAuditIsAssessmentTestDuplicate(row={}) {
-      const nameKey = normalizeText(row.fullName || '');
-      return pmoMemberAuditIsOfficialTestIdentity(row) && nameKey.includes('test') && nameKey.includes('autovalutaz');
-    }
-
-    function pmoMemberAuditIsOldAssessmentTestMember(row={}) {
-      return !row.matchpoint &&
-        cleanCell(row.emailKey || '').toLowerCase() === 'aprea.maurizio@gmail.com';
-    }
-
     function pmoMemberAuditApprovedDecision(row={}, twin=null) {
       if (!row) return null;
       const nameKey = normalizeText(row.fullName || '');
-      if (row.deleted && pmoMemberAuditIsMaurizioAprea(row)) {
-        return {
-          classification: 'approved_restore',
-          action: 'Ripristino approvato',
-          reason: 'Decisione Maurizio: tenere Maurizio Aprea come scheda ufficiale PMO-000948; il record va ripristinato se era finito in soft-delete.',
-          risk: 'Basso'
-        };
-      }
       if (row.deleted) return null;
-      if (pmoMemberAuditIsMaurizioAprea(row)) return null;
-      if (!row.matchpoint && pmoMemberAuditIsOldAssessmentTestMember(row)) {
-        return {
-          classification: 'approved_soft_delete',
-          action: 'Soft-delete approvato',
-          reason: 'Decisione Maurizio: vecchio socio test Autovalutazione PMO-000956 sostituito da PMO-000948; neutralizzare il record senza hard-delete.',
-          risk: 'Basso',
-          mergedInto: 'PMO-000948'
-        };
-      }
       if (row.technical && !row.matchpoint && ['tennis app', 'tennis up', 'tennisup'].includes(nameKey)) {
         return {
           classification: 'approved_soft_delete',
           action: 'Soft-delete approvato',
           reason: 'Decisione Maurizio: record tecnico Tennis Up/App da rimuovere dalla base soci app; resta disponibile solo la sorgente Matchpoint.',
           risk: 'Basso'
-        };
-      }
-      const isAssessmentTestDuplicate = pmoMemberAuditIsAssessmentTestDuplicate(row);
-      const linkedToMaurizio = !!twin && normalizeText(twin.fullName || '').includes('maurizio') && normalizeText(twin.fullName || '').includes('aprea');
-      if (!row.matchpoint && isAssessmentTestDuplicate && (linkedToMaurizio || pmoMemberAuditIsOfficialTestIdentity(row))) {
-        return {
-          classification: 'approved_soft_delete',
-          action: 'Soft-delete approvato',
-          reason: 'Decisione Maurizio: record Test Maurizio Autovalutazione duplicato della scheda Maurizio Aprea; tenere Maurizio Aprea.',
-          risk: 'Medio'
         };
       }
       return null;
@@ -10619,26 +10572,14 @@ Grazie.`
       const allMatchpointRows = cloudActiveRows.filter(row => row.matchpoint);
       const nonMatchpointRows = cloudActiveRows.filter(row => !row.technical && !row.matchpoint);
       const maps = { memberId:new Map(), email:new Map(), phone:new Map() };
-      const maurizioMaps = { memberId:new Map(), email:new Map(), phone:new Map() };
       allMatchpointRows.forEach(row => {
         pmoMemberAuditAddKey(maps.memberId, row.memberId, row);
         pmoMemberAuditAddKey(maps.email, row.emailKey, row);
         pmoMemberAuditAddKey(maps.phone, row.phoneKey, row);
       });
-      cloudRows
-        .filter(row => {
-          const nameKey = normalizeText(row.fullName || '');
-          return nameKey.includes('maurizio') && nameKey.includes('aprea');
-        })
-        .forEach(row => {
-          pmoMemberAuditAddKey(maurizioMaps.memberId, row.memberId, row);
-          pmoMemberAuditAddKey(maurizioMaps.email, row.emailKey, row);
-          pmoMemberAuditAddKey(maurizioMaps.phone, row.phoneKey, row);
-        });
       const classifiedRows = cloudRows.map(row => {
         const matchpointTwin = !row.deleted && !row.matchpoint ? pmoMemberAuditFindTwin(row, maps) : null;
-        const maurizioTwin = !row.deleted ? pmoMemberAuditFindTwin(row, maurizioMaps) : null;
-        const twin = matchpointTwin || maurizioTwin;
+        const twin = matchpointTwin;
         const approvedDecision = pmoMemberAuditApprovedDecision(row, twin);
         let classification = 'keep_matchpoint';
         let suggestedAction = 'Mantenere';
@@ -20955,10 +20896,10 @@ Grazie!`
     }
     function assessmentExternalRegistrationData() {
       return {
-        firstName: cleanCell(document.getElementById('assessmentExternalFirstNameInput')?.value || 'Maurizio'),
-        lastName: cleanCell(document.getElementById('assessmentExternalLastNameInput')?.value || 'Aprea'),
+        firstName: cleanCell(document.getElementById('assessmentExternalFirstNameInput')?.value || ''),
+        lastName: cleanCell(document.getElementById('assessmentExternalLastNameInput')?.value || ''),
         phone: cleanCell(document.getElementById('assessmentExternalPhoneInput')?.value || ''),
-        email: cleanCell(document.getElementById('assessmentExternalEmailInput')?.value || 'aprea.maurizio@gmail.com'),
+        email: cleanCell(document.getElementById('assessmentExternalEmailInput')?.value || ''),
         gender: assessmentPublicNormalizeGender(document.getElementById('assessmentExternalSexSelect')?.value || 'M')
       };
     }
@@ -21001,10 +20942,10 @@ Grazie!`
         request_code: 'staff-preview-pmo-000948',
         status: 'received',
         submitted_at: submission.submittedAt || new Date().toISOString(),
-        first_name: submission.firstName || 'Maurizio',
-        last_name: submission.lastName || 'Aprea',
+        first_name: submission.firstName || '',
+        last_name: submission.lastName || '',
         phone: submission.phone || '',
-        email: submission.email || 'aprea.maurizio@gmail.com',
+        email: submission.email || '',
         gender: submission.gender || 'M',
         privacy_accepted: true,
         declared_level: submission.declaredLevel || '',
@@ -21017,7 +20958,7 @@ Grazie!`
           origin_label: 'Origine: Da link esterno',
           external_request_id: 'staff-preview-pmo-000948',
           external_request_code: 'staff-preview-pmo-000948',
-          external_email: submission.email || 'aprea.maurizio@gmail.com',
+          external_email: submission.email || '',
           gender: submission.gender || 'M',
           gender_label: assessmentPublicGenderLabel(submission.gender || 'M'),
           gender_status: assessmentPublicGenderStatus(submission.gender || 'M'),
