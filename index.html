@@ -11992,7 +11992,10 @@ Grazie.`
     }
     async function pmoCreateMemberInMatchpoint(member) {
       if (isGuestJollyMember(member)) return;
-      if (member.memberId) return;
+      // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
+      // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
+      const hasMatchpointCode = /^\d{4,6}$/.test(String(member.memberId || '').trim());
+      if (hasMatchpointCode) return;
       const sesso = member.gender === 'F' ? 'F' : 'M';
       try {
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
