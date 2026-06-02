@@ -1,5 +1,11 @@
 # Versioni
 
+## v5.580 / PROD: creazione socio app-first in Matchpoint
+
+- **Promozione TEST→PROD** del flusso "creazione socio app-first". Alla creazione di un nuovo socio non-guest (`addMember`) l'app crea il cliente anche in Matchpoint tramite la nuova Edge Function `matchpoint-clients-create` (chiamata fire-and-forget `pmoCreateMemberInMatchpoint`), poi adotta il Codice Matchpoint restituito come `memberId` (sovrascrive l'id provvisorio `PMO-XXXXXX`). In caso di errore il socio resta salvato in locale con banner di avviso.
+- **Email obbligatoria** per i soci non-guest in fase di creazione (richiesta da Matchpoint).
+- Nessun'altra modifica: parser, Tappa 3 bookings e affini restano fuori da PROD.
+
 ## v5.538 / Scorciatoia di sincronizzazione nel lotto vuoto dell'Autovalutazione
 
 - **Pulsante Sincronizza Ora nel Flusso**: Aggiunto un pulsante di sincronizzazione rapida ("Sincronizza dati locali ora") direttamente nel riquadro dell'Autovalutazione quando il lotto risulta vuoto. Questo evita allo staff di dover cercare il pannello "Amministrazione > Supabase", guidandoli visivamente all'azione corretta e gestendo in tempo reale la notifica di eventuali errori di permessi.
