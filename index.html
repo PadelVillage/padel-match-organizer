@@ -7148,7 +7148,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.605';
+    const APP_VERSION = '5.606';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35413,7 +35413,8 @@ Per confermare scrivi ELIMINA.`);
       ui.chips.appendChild(chip);
     });
     const has = (svcFlowState.players || []).length > 0;
-    ui.nextBtn.disabled = !has;
+    const isLezione = svcFlowState.tipoEngine === 'lezione';
+    ui.nextBtn.disabled = isLezione ? false : !has;
     ui.empty.style.display = has ? 'none' : '';
   }
 
@@ -35454,9 +35455,10 @@ Per confermare scrivi ELIMINA.`);
         svcFreezeMsg(div);
         svcFlowState.tipo = tipo;
         if (tipo === 'Lezione Singola' || tipo === 'Lezione di Gruppo') {
-          svcFlowState = null;
-          svcSetInputMode('normal');
-          svcAddMessage('system', '🛠 Le lezioni arrivano nel prossimo passo (A3b). Per ora prenota una Partita.');
+          svcFlowState.tipoLabel = tipo;
+          svcFlowState.tipoEngine = 'lezione';
+          svcFlowState.step = 'durata';
+          svcAskDurata(tipo);
           return;
         }
         if (tipo === 'Torneo') {
@@ -35465,6 +35467,7 @@ Per confermare scrivi ELIMINA.`);
           svcAddMessage('system', '⛔ Il Torneo non \xe8 ancora gestito dal sistema di prenotazione.');
           return;
         }
+        svcFlowState.tipoEngine = 'partita';
         svcFlowState.step = 'durata';
         svcAskDurata(tipo);
       },
@@ -35488,6 +35491,31 @@ Per confermare scrivi ELIMINA.`);
       function(label) {
         svcFreezeMsg(div);
         svcFlowState.durata = parseInt(label, 10);
+        if (svcFlowState.tipoEngine === 'lezione') {
+          svcFlowState.step = 'maestro';
+          svcAskMaestro();
+        } else {
+          svcFlowState.step = 'players';
+          svcAskPlayers();
+        }
+      },
+      function() { svcCancelFlow(div); }
+    );
+    div.appendChild(btns);
+    svcSetInputMode('flow-buttons');
+  }
+
+  // Step 2b — maestro (solo lezione)
+  function svcAskMaestro() {
+    svcFlowState.step = 'maestro';
+    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES?.campi_opzionali?.istruttore?.valori_validi) || ['Santiago', 'LoZio', 'Spinazze'];
+    const div = svcAddMessage('system', '👨‍🏫 <strong>Quale maestro?</strong>', 'flow');
+    svcFlowState.stepMsg = div;
+    const btns = svcMakeStepButtons(
+      maestri,
+      function(maestro) {
+        svcFreezeMsg(div);
+        svcFlowState.istruttore = maestro;
         svcFlowState.step = 'players';
         svcAskPlayers();
       },
@@ -35501,15 +35529,15 @@ Per confermare scrivi ELIMINA.`);
   function svcAskPlayers() {
     svcFlowState.step = 'players';
     if (!Array.isArray(svcFlowState.players)) svcFlowState.players = [];
-    const div = svcAddMessage('system',
-      '👥 <strong>Chi gioca?</strong><br>' +
-      '<span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>',
-      'flow'
-    );
+    const isLezione = svcFlowState.tipoEngine === 'lezione';
+    const titleHtml = isLezione
+      ? '👥 <strong>Quali allievi?</strong> (opzionale)<br><span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>'
+      : '👥 <strong>Chi gioca?</strong><br><span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>';
+    const div = svcAddMessage('system', titleHtml, 'flow');
     svcFlowState.stepMsg = div;
     const empty = document.createElement('div');
     empty.className = 'svc-players-empty';
-    empty.textContent = 'Nessun giocatore aggiunto.';
+    empty.textContent = isLezione ? 'Nessun allievo aggiunto.' : 'Nessun giocatore aggiunto.';
     div.appendChild(empty);
     const chips = document.createElement('div');
     chips.className = 'svc-player-chips';
@@ -35523,14 +35551,19 @@ Per confermare scrivi ELIMINA.`);
     backBtn.addEventListener('click', function() {
       if (backBtn.disabled) return;
       svcFreezePlayersStep(div);
-      svcFlowState.step = 'durata';
-      svcAskDurata(svcFlowState.tipo);
+      if (svcFlowState.tipoEngine === 'lezione') {
+        svcFlowState.step = 'maestro';
+        svcAskMaestro();
+      } else {
+        svcFlowState.step = 'durata';
+        svcAskDurata(svcFlowState.tipo);
+      }
     });
     const nextBtn = document.createElement('button');
     nextBtn.className = 'svc-btn-step';
     nextBtn.type = 'button';
     nextBtn.textContent = 'Avanti ›';
-    nextBtn.disabled = true;
+    nextBtn.disabled = !isLezione;
     nextBtn.addEventListener('click', function() {
       if (nextBtn.disabled) return;
       svcFreezePlayersStep(div);
@@ -35561,11 +35594,20 @@ Per confermare scrivi ELIMINA.`);
     const durata = svcFlowState.durata;
     const ddmm = dateISO.split('-').slice(1).reverse().join('/');
     const endTime = svcEndTime(ora, durata);
+    const tipoLabel = svcFlowState.tipoLabel || tipo;
+    const isLezione = svcFlowState.tipoEngine === 'lezione';
+    const istruttore = svcFlowState.istruttore || '';
+    const allievi = players.length ? players.join(', ') : 'nessuno';
+    const detailRows = isLezione
+      ? '🎾 ' + tipoLabel + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
+        '👨‍🏫 Maestro: ' + istruttore + '<br>' +
+        '👥 Allievi: ' + allievi + '<br><br>'
+      : '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
+        '👥 ' + players.join(', ') + '<br><br>';
     const div = svcAddMessage('system',
       '📋 <strong>Riepilogo prenotazione</strong><br><br>' +
       '📍 Campo ' + campo + ' &nbsp;\xb7&nbsp; ' + ddmm + ' &nbsp;\xb7&nbsp; ' + ora + '–' + endTime + '<br>' +
-      '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
-      '👥 ' + players.join(', ') + '<br><br>' +
+      detailRows +
       '<span style="color:var(--text-muted);font-size:0.75rem;">Tutto corretto?</span>',
       'confirm'
     );
@@ -35605,19 +35647,34 @@ Per confermare scrivi ELIMINA.`);
     svcSetInputMode('flow-summary');
   }
 
-  // Step 5 — conferma reale (solo Partita)
+  // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
-    const { campo, dateISO, ora, durata, players } = svcFlowState;
-    const parsed = {
-      campoNum: campo,
-      campo: 'Campo ' + campo,
-      data: dateISO,
-      ora: ora,
-      oraFine: svcEndTime(ora, durata),
-      durata: durata,
-      nome: players.join(', '),
-      tipo: 'partita'
-    };
+    const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
+    let parsed;
+    if (tipoEngine === 'lezione') {
+      parsed = {
+        campoNum: campo,
+        campo: 'Campo ' + campo,
+        data: dateISO,
+        ora: ora,
+        oraFine: svcEndTime(ora, durata),
+        durata: durata,
+        tipo: 'lezione',
+        istruttore: istruttore,
+        nome: (players && players.length) ? players.join(', ') : istruttore
+      };
+    } else {
+      parsed = {
+        campoNum: campo,
+        campo: 'Campo ' + campo,
+        data: dateISO,
+        ora: ora,
+        oraFine: svcEndTime(ora, durata),
+        durata: durata,
+        nome: players.join(', '),
+        tipo: 'partita'
+      };
+    }
     // Pre-check conflitto istantaneo
     const c = staffCalFindConflict(parsed);
     if (c) {
@@ -35639,11 +35696,20 @@ Per confermare scrivi ELIMINA.`);
       });
       if (result.status === 'done') {
         staffCalSaveLocal(parsed);
-        svcAddMessage('system',
-          '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
-          '👥 ' + parsed.nome,
-          'ok'
-        );
+        if (tipoEngine === 'lezione') {
+          const allievi = (players && players.length) ? players.join(', ') : '—';
+          svcAddMessage('system',
+            '✅ <strong>Lezione prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
+            '👨‍🏫 ' + istruttore + ' 👥 ' + allievi,
+            'ok'
+          );
+        } else {
+          svcAddMessage('system',
+            '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
+            '👥 ' + parsed.nome,
+            'ok'
+          );
+        }
         renderStaffCalendar();
       } else if (result.status === 'error') {
         svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
