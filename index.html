@@ -2624,6 +2624,8 @@
       --border:#d8d7d2; --text:#1f2430; --text-muted:#4b5563;
       --mp-bg:#f3f2ef; --mp-border:#c9c7c1; --mp-text:#4b5563;
       --staff-bg:rgba(37,99,235,0.08); --staff-border:#2563eb; --staff-text:#1e3a8a;
+      --accent-hover:#1d4ed8; --green:#16a34a; --green-light:rgba(22,163,74,0.10);
+      --red:#dc2626; --red-light:rgba(220,38,38,0.08); --chat-w:340px;
       --row-h:38px; --col-time:52px; --col-field:minmax(160px,1fr);
       --bar2-h:44px; --radius:8px; --radius-sm:5px;
       margin-top:16px;
@@ -2722,6 +2724,76 @@
     #staffCalV36 .agenda-free-label span { color:var(--text-muted); font-size:.8rem; margin-left:4px; }
     #staffCalV36 .agenda-free-cta { font-size:.8rem; color:var(--accent); font-weight:700; white-space:nowrap; flex-shrink:0; }
     #staffCalV36 .agenda-empty { padding:32px 16px; text-align:center; color:var(--text-muted); font-size:.85rem; line-height:1.6; }
+    /* ── svc layout (Tappa A3a) ─────────────────────────────────── */
+    #staffCalV36 .svc-layout { display:flex; flex-direction:column; }
+    #staffCalV36 .svc-grid-col { flex:1; min-width:0; overflow:hidden; }
+    #staffCalV36 .svc-chat-panel { background:var(--surface); display:flex; flex-direction:column; overflow:hidden; min-height:0; border-top:1px solid var(--border); }
+    #staffCalV36 .svc-chat-header { padding:8px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; justify-content:flex-end; }
+    #staffCalV36 .svc-chat-close-btn { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted); padding:2px 6px; border-radius:var(--radius-sm); line-height:1; transition:color .15s; }
+    #staffCalV36 .svc-chat-close-btn:hover { color:var(--text); }
+    #staffCalV36 .svc-chat-input-row { padding:0 12px; height:var(--bar2-h); display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface2); transition:background .2s; }
+    #staffCalV36 .svc-chat-input-row.svc-flow-locked { opacity:.7; }
+    #staffCalV36 .svc-chat-input { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:6px 10px; font-size:.82rem; font-family:inherit; outline:none; transition:border-color .15s,opacity .15s; min-width:0; }
+    #staffCalV36 .svc-chat-input::placeholder { color:var(--text-muted); }
+    #staffCalV36 .svc-chat-input:focus { border-color:var(--accent); }
+    #staffCalV36 .svc-chat-input:disabled { opacity:.5; cursor:not-allowed; background:var(--surface2); }
+    #staffCalV36 .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:var(--radius-sm); padding:6px 12px; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s,opacity .15s; white-space:nowrap; flex-shrink:0; }
+    #staffCalV36 .svc-chat-send:hover:not(:disabled) { background:var(--accent-hover); }
+    #staffCalV36 .svc-chat-send:disabled { opacity:.45; cursor:not-allowed; }
+    #staffCalV36 .svc-chat-messages { flex:1; overflow-y:auto; min-height:0; padding:10px 16px; display:flex; flex-direction:column; gap:8px; }
+    #staffCalV36 .svc-msg { max-width:85%; border-radius:var(--radius); padding:8px 12px; font-size:.82rem; line-height:1.45; }
+    #staffCalV36 .svc-msg.staff { background:var(--accent-light); border:1px solid var(--accent); color:var(--text); align-self:flex-end; border-bottom-right-radius:2px; }
+    #staffCalV36 .svc-msg.system { background:var(--surface2); border:1px solid var(--border); color:var(--text); align-self:flex-start; border-bottom-left-radius:2px; }
+    #staffCalV36 .svc-msg.system.ok { border-color:var(--green); }
+    #staffCalV36 .svc-msg.system.confirm { border-color:#b45309; }
+    #staffCalV36 .svc-msg.system.flow { border-color:var(--accent); background:var(--accent-light); max-width:95%; }
+    #staffCalV36 .svc-msg-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+    #staffCalV36 .svc-msg.staff .svc-msg-label { color:var(--accent); }
+    #staffCalV36 .svc-msg.system .svc-msg-label { color:var(--text-muted); }
+    #staffCalV36 .svc-msg.system.ok .svc-msg-label { color:var(--green); }
+    #staffCalV36 .svc-msg.system.confirm .svc-msg-label { color:#b45309; }
+    #staffCalV36 .svc-msg.system.flow .svc-msg-label { color:var(--accent); }
+    #staffCalV36 .svc-confirm-buttons { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    #staffCalV36 .svc-btn-confirm { padding:4px 14px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
+    #staffCalV36 .svc-btn-yes { background:var(--green-light); border-color:var(--green); color:var(--green); }
+    #staffCalV36 .svc-btn-yes:hover:not(:disabled) { background:rgba(22,163,74,.22); }
+    #staffCalV36 .svc-btn-yes:disabled { opacity:.5; cursor:not-allowed; }
+    #staffCalV36 .svc-btn-no { background:var(--red-light); border-color:var(--red); color:var(--red); }
+    #staffCalV36 .svc-btn-no:hover { background:rgba(220,38,38,.18); }
+    #staffCalV36 .svc-btn-rewrite { background:var(--surface2); border-color:var(--border); color:var(--text-muted); }
+    #staffCalV36 .svc-btn-rewrite:hover { border-color:var(--text-muted); color:var(--text); }
+    #staffCalV36 .svc-step-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    #staffCalV36 .svc-btn-step { padding:5px 12px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid var(--accent); background:var(--surface); color:var(--accent); transition:all .15s; white-space:nowrap; user-select:none; }
+    #staffCalV36 .svc-btn-step:hover:not(:disabled) { background:var(--accent-light); }
+    #staffCalV36 .svc-btn-step.selected { background:var(--accent); color:#fff; cursor:default; }
+    #staffCalV36 .svc-btn-step.selected:disabled { opacity:1; }
+    #staffCalV36 .svc-btn-step:disabled:not(.selected) { opacity:.38; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
+    #staffCalV36 .svc-btn-step-cancel { padding:5px 10px; border-radius:var(--radius-sm); font-size:.75rem; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); transition:all .15s; white-space:nowrap; }
+    #staffCalV36 .svc-btn-step-cancel:hover:not(:disabled) { border-color:var(--red); color:var(--red); }
+    #staffCalV36 .svc-btn-step-cancel:disabled { opacity:.3; cursor:not-allowed; }
+    #staffCalV36 .svc-player-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    #staffCalV36 .svc-players-empty { margin-top:8px; font-size:.72rem; color:var(--text-muted); font-style:italic; }
+    #staffCalV36 .svc-player-chip { display:inline-flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--accent); color:var(--accent); border-radius:14px; padding:3px 6px 3px 10px; font-size:.76rem; font-weight:600; }
+    #staffCalV36 .svc-chip-x { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:none; background:var(--accent-light); color:var(--accent); font-size:.85rem; line-height:1; cursor:pointer; padding:0; transition:background .12s; }
+    #staffCalV36 .svc-chip-x:hover:not(:disabled) { background:var(--red-light); color:var(--red); }
+    #staffCalV36 .svc-chip-x:disabled { opacity:.4; cursor:not-allowed; }
+    @media (min-width:900px) {
+      #staffCalV36 .svc-layout { flex-direction:row; height:520px; }
+      #staffCalV36 .svc-grid-col { overflow:auto; }
+      #staffCalV36 .svc-chat-panel { width:var(--chat-w); flex-shrink:0; border-left:2px solid var(--border); border-top:none; }
+      #staffCalV36 .svc-chat-header { display:none !important; }
+      #staffCalV36 .svc-chat-fab { display:none !important; }
+      #staffCalV36 .svc-chat-overlay { display:none !important; }
+    }
+    @media (max-width:899px) {
+      #staffCalV36 .svc-chat-panel { position:fixed; bottom:0; left:0; right:0; height:75vh; max-height:75vh; border-top:2px solid var(--border); border-radius:8px 8px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+      #staffCalV36 .svc-chat-panel.svc-chat-open { transform:translateY(0); }
+      #staffCalV36 .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
+      #staffCalV36 .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
+      #staffCalV36 .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
+      #staffCalV36 .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
+      #staffCalV36 .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+    }
 
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -6912,16 +6984,32 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
 
             <div id="staffCalV36">
-              <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
-              <div class="agenda-wrap" id="staffCalAgendaWrap" style="display:none">
-                <div class="agenda-tabs" id="staffCalAgendaTabs">
-                  <button class="agenda-tab active" data-field="1"><span class="tab-dot" style="background:#f87171"></span>C1</button>
-                  <button class="agenda-tab" data-field="2"><span class="tab-dot" style="background:#fbbf24"></span>C2</button>
-                  <button class="agenda-tab" data-field="3"><span class="tab-dot" style="background:#34d399"></span>C3</button>
-                  <button class="agenda-tab" data-field="4"><span class="tab-dot" style="background:#818cf8"></span>C4</button>
+              <div class="svc-layout">
+                <div class="svc-grid-col">
+                  <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
+                  <div class="agenda-wrap" id="staffCalAgendaWrap" style="display:none">
+                    <div class="agenda-tabs" id="staffCalAgendaTabs">
+                      <button class="agenda-tab active" data-field="1"><span class="tab-dot" style="background:#f87171"></span>C1</button>
+                      <button class="agenda-tab" data-field="2"><span class="tab-dot" style="background:#fbbf24"></span>C2</button>
+                      <button class="agenda-tab" data-field="3"><span class="tab-dot" style="background:#34d399"></span>C3</button>
+                      <button class="agenda-tab" data-field="4"><span class="tab-dot" style="background:#818cf8"></span>C4</button>
+                    </div>
+                    <div class="agenda-body" id="staffCalAgendaBody"></div>
+                  </div>
                 </div>
-                <div class="agenda-body" id="staffCalAgendaBody"></div>
+                <div class="svc-chat-panel" id="svcChatPanel">
+                  <div class="svc-chat-header">
+                    <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
+                  </div>
+                  <div class="svc-chat-input-row" id="svcChatInputRow">
+                    <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
+                    <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
+                  </div>
+                  <div class="svc-chat-messages" id="svcChatMessages"></div>
+                </div>
               </div>
+              <div class="svc-chat-overlay" id="svcChatOverlay"></div>
+              <button class="svc-chat-fab" id="svcChatFab" title="Assistente prenotazioni">💬<span class="svc-fab-badge" id="svcFabBadge"></span></button>
             </div>
 
             <div class="staff-cal-legend" style="margin-top:14px">
@@ -7060,7 +7148,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.604';
+    const APP_VERSION = '5.605';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34130,8 +34218,7 @@ Per confermare scrivi ELIMINA.`);
     const input = document.getElementById('staffCalDate');
     if (input && !input.value) input.value = staffCalTodayIso();
     renderStaffCalendar();
-    const bar = document.getElementById('staffCalInputBar');
-    if (bar) bar.style.display = '';
+    // staffCalInputBar permanently hidden — replaced by svc chat panel
   }
 
   function staffCalGoToday() {
@@ -34416,12 +34503,8 @@ Per confermare scrivi ELIMINA.`);
   }
 
   function staffCalClickFree(isoDate, campo, ora) {
-    const input = document.getElementById('staffCalInput');
-    if (!input) return;
-    input.value = `Campo ${campo} ${isoDate} ${ora} - `;
-    input.focus();
-    staffCalAutoResize(input);
-    input.selectionStart = input.selectionEnd = input.value.length;
+    if (window.innerWidth < 900) svcOpenChat();
+    svcStartBookingFlow(campo, isoDate, ora);
   }
 
   function staffCalAutoResize(el) {
@@ -35201,6 +35284,419 @@ Per confermare scrivi ELIMINA.`);
     el.textContent = msg;
     el.className = 'staff-cal-input-status' + (type ? ' ' + type : '');
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  SVC — Assistente a pulsanti (Tappa A3a)
+  //  Tutte le funzioni e variabili prefissate con "svc" per isolare
+  //  dal namespace globale (evita collisioni con addMessage, flowState, ecc.)
+  // ═══════════════════════════════════════════════════════════════════
+
+  const SVC_DURATE_PER_TIPO = {
+    'Partita':           [60, 90, 120, 180],
+    'Lezione Singola':   [60, 90],
+    'Lezione di Gruppo': [60, 90],
+    'Torneo':            [90, 120, 180],
+  };
+
+  let svcFlowState = null;
+
+  function svcEndTime(timeStr, minutes) {
+    const parts = String(timeStr).split(':');
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    const tot = h * 60 + m + (parseInt(minutes, 10) || 0);
+    return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '0');
+  }
+
+  function svcOpenChat() {
+    const panel = document.getElementById('svcChatPanel');
+    const overlay = document.getElementById('svcChatOverlay');
+    if (panel) panel.classList.add('svc-chat-open');
+    if (overlay) overlay.classList.add('active');
+  }
+
+  function svcCloseChat() {
+    const panel = document.getElementById('svcChatPanel');
+    const overlay = document.getElementById('svcChatOverlay');
+    if (panel) panel.classList.remove('svc-chat-open');
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  function svcSetInputMode(mode) {
+    const input = document.getElementById('svcChatInput');
+    const send = document.getElementById('svcChatSend');
+    const row = document.getElementById('svcChatInputRow');
+    if (!input || !send || !row) return;
+    const locked = (mode === 'flow-buttons' || mode === 'flow-summary');
+    input.disabled = locked;
+    send.disabled = locked;
+    row.classList.toggle('svc-flow-locked', locked);
+    if (mode === 'normal')       { input.placeholder = 'Clicca uno slot libero per prenotare ↑'; }
+    if (mode === 'flow-buttons') { input.placeholder = 'Scegli un’opzione qui sopra ↑'; }
+    if (mode === 'flow-players') { input.placeholder = 'Es: Mario Rossi, Anna Verdi — Invia'; input.focus(); }
+    if (mode === 'flow-summary') { input.placeholder = 'Conferma o annulla qui sopra ↑'; }
+  }
+
+  function svcAddMessage(role, html, extraClass) {
+    const container = document.getElementById('svcChatMessages');
+    if (!container) { const d = document.createElement('div'); return d; }
+    const div = document.createElement('div');
+    div.className = 'svc-msg ' + role + (extraClass ? ' ' + extraClass : '');
+    const lbl = document.createElement('div');
+    lbl.className = 'svc-msg-label';
+    lbl.textContent = role === 'staff' ? '👤 Staff' : '🤖 Sistema';
+    div.appendChild(lbl);
+    const body = document.createElement('div');
+    body.innerHTML = html;
+    div.appendChild(body);
+    container.prepend(div);
+    container.scrollTop = 0;
+    return div;
+  }
+
+  function svcMakeStepButtons(labels, onChoose, onCancel) {
+    const wrap = document.createElement('div');
+    wrap.className = 'svc-step-buttons';
+    labels.forEach(function(label) {
+      const b = document.createElement('button');
+      b.className = 'svc-btn-step';
+      b.textContent = label;
+      b.type = 'button';
+      b.addEventListener('click', function() {
+        if (b.disabled) return;
+        wrap.querySelectorAll('.svc-btn-step').forEach(function(x) { x.disabled = true; });
+        b.classList.add('selected');
+        const cancelEl = wrap.querySelector('.svc-btn-step-cancel');
+        if (cancelEl) cancelEl.disabled = true;
+        onChoose(label);
+      });
+      wrap.appendChild(b);
+    });
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'svc-btn-step-cancel';
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = '✕ Annulla';
+    cancelBtn.addEventListener('click', onCancel);
+    wrap.appendChild(cancelBtn);
+    return wrap;
+  }
+
+  function svcFreezeMsg(div) {
+    div.querySelectorAll('.svc-btn-step, .svc-btn-step-cancel').forEach(function(b) {
+      if (!b.classList.contains('selected')) b.disabled = true;
+    });
+  }
+
+  function svcRenderPlayerChips() {
+    const ui = svcFlowState && svcFlowState.playersUI;
+    if (!ui) return;
+    ui.chips.innerHTML = '';
+    (svcFlowState.players || []).forEach(function(name, i) {
+      const chip = document.createElement('span');
+      chip.className = 'svc-player-chip';
+      const txt = document.createElement('span');
+      txt.textContent = name;
+      const x = document.createElement('button');
+      x.className = 'svc-chip-x';
+      x.type = 'button';
+      x.textContent = '\xd7';
+      x.title = 'Rimuovi giocatore';
+      x.addEventListener('click', function() {
+        if (!svcFlowState || svcFlowState.step !== 'players') return;
+        svcFlowState.players.splice(i, 1);
+        svcRenderPlayerChips();
+        const inp = document.getElementById('svcChatInput');
+        if (inp && !inp.disabled) inp.focus();
+      });
+      chip.appendChild(txt);
+      chip.appendChild(x);
+      ui.chips.appendChild(chip);
+    });
+    const has = (svcFlowState.players || []).length > 0;
+    ui.nextBtn.disabled = !has;
+    ui.empty.style.display = has ? 'none' : '';
+  }
+
+  function svcFreezePlayersStep(div) {
+    div.querySelectorAll('.svc-btn-step, .svc-btn-step-cancel, .svc-chip-x').forEach(function(b) {
+      b.disabled = true;
+    });
+    if (svcFlowState) svcFlowState.playersUI = null;
+  }
+
+  function svcCancelFlow(msgDiv, silent) {
+    const target = msgDiv || (svcFlowState && svcFlowState.stepMsg);
+    if (target) {
+      target.querySelectorAll('.svc-btn-step, .svc-btn-step-cancel, .svc-chip-x').forEach(function(b) {
+        b.disabled = true;
+      });
+    }
+    svcFlowState = null;
+    svcSetInputMode('normal');
+    if (!silent) svcAddMessage('system', '↩️ Operazione annullata.');
+  }
+
+  // Step 1 — scelta tipo
+  function svcStartBookingFlow(campo, dateISO, ora) {
+    if (svcFlowState) svcCancelFlow(null, true);
+    svcFlowState = { step: 'tipo', campo: campo, dateISO: dateISO, ora: ora };
+    const ddmm = dateISO.split('-').slice(1).reverse().join('/');
+    const div = svcAddMessage('system',
+      '➕ <strong>Nuova prenotazione</strong><br>' +
+      '📍 Campo ' + campo + ' &nbsp;\xb7&nbsp; ' + ddmm + ' &nbsp;\xb7&nbsp; ' + ora + '<br>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;margin-top:4px;display:block;">Che tipo di prenotazione?</span>',
+      'flow'
+    );
+    svcFlowState.stepMsg = div;
+    const btns = svcMakeStepButtons(
+      Object.keys(SVC_DURATE_PER_TIPO),
+      function(tipo) {
+        svcFreezeMsg(div);
+        svcFlowState.tipo = tipo;
+        if (tipo === 'Lezione Singola' || tipo === 'Lezione di Gruppo') {
+          svcFlowState = null;
+          svcSetInputMode('normal');
+          svcAddMessage('system', '🛠 Le lezioni arrivano nel prossimo passo (A3b). Per ora prenota una Partita.');
+          return;
+        }
+        if (tipo === 'Torneo') {
+          svcFlowState = null;
+          svcSetInputMode('normal');
+          svcAddMessage('system', '⛔ Il Torneo non \xe8 ancora gestito dal sistema di prenotazione.');
+          return;
+        }
+        svcFlowState.step = 'durata';
+        svcAskDurata(tipo);
+      },
+      function() { svcCancelFlow(div); }
+    );
+    div.appendChild(btns);
+    svcSetInputMode('flow-buttons');
+  }
+
+  // Step 2 — durata
+  function svcAskDurata(tipo) {
+    const labels = (SVC_DURATE_PER_TIPO[tipo] || [60, 90]).map(function(m) { return m + "'"; });
+    const div = svcAddMessage('system',
+      '⏱ <strong>Durata?</strong><br>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">Scegli la durata per ' + tipo + '</span>',
+      'flow'
+    );
+    svcFlowState.stepMsg = div;
+    const btns = svcMakeStepButtons(
+      labels,
+      function(label) {
+        svcFreezeMsg(div);
+        svcFlowState.durata = parseInt(label, 10);
+        svcFlowState.step = 'players';
+        svcAskPlayers();
+      },
+      function() { svcCancelFlow(div); }
+    );
+    div.appendChild(btns);
+    svcSetInputMode('flow-buttons');
+  }
+
+  // Step 3 — giocatori
+  function svcAskPlayers() {
+    svcFlowState.step = 'players';
+    if (!Array.isArray(svcFlowState.players)) svcFlowState.players = [];
+    const div = svcAddMessage('system',
+      '👥 <strong>Chi gioca?</strong><br>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>',
+      'flow'
+    );
+    svcFlowState.stepMsg = div;
+    const empty = document.createElement('div');
+    empty.className = 'svc-players-empty';
+    empty.textContent = 'Nessun giocatore aggiunto.';
+    div.appendChild(empty);
+    const chips = document.createElement('div');
+    chips.className = 'svc-player-chips';
+    div.appendChild(chips);
+    const nav = document.createElement('div');
+    nav.className = 'svc-step-buttons';
+    const backBtn = document.createElement('button');
+    backBtn.className = 'svc-btn-step';
+    backBtn.type = 'button';
+    backBtn.textContent = '‹ Indietro';
+    backBtn.addEventListener('click', function() {
+      if (backBtn.disabled) return;
+      svcFreezePlayersStep(div);
+      svcFlowState.step = 'durata';
+      svcAskDurata(svcFlowState.tipo);
+    });
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'svc-btn-step';
+    nextBtn.type = 'button';
+    nextBtn.textContent = 'Avanti ›';
+    nextBtn.disabled = true;
+    nextBtn.addEventListener('click', function() {
+      if (nextBtn.disabled) return;
+      svcFreezePlayersStep(div);
+      svcShowSummary(svcFlowState.players);
+    });
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'svc-btn-step-cancel';
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = '✕ Annulla';
+    cancelBtn.addEventListener('click', function() { svcCancelFlow(div); });
+    nav.appendChild(backBtn);
+    nav.appendChild(nextBtn);
+    nav.appendChild(cancelBtn);
+    div.appendChild(nav);
+    svcFlowState.playersUI = { chips: chips, nextBtn: nextBtn, empty: empty };
+    svcRenderPlayerChips();
+    svcSetInputMode('flow-players');
+  }
+
+  // Step 4 — riepilogo
+  function svcShowSummary(players) {
+    svcFlowState.players = players;
+    svcFlowState.step = 'summary';
+    const campo = svcFlowState.campo;
+    const dateISO = svcFlowState.dateISO;
+    const ora = svcFlowState.ora;
+    const tipo = svcFlowState.tipo;
+    const durata = svcFlowState.durata;
+    const ddmm = dateISO.split('-').slice(1).reverse().join('/');
+    const endTime = svcEndTime(ora, durata);
+    const div = svcAddMessage('system',
+      '📋 <strong>Riepilogo prenotazione</strong><br><br>' +
+      '📍 Campo ' + campo + ' &nbsp;\xb7&nbsp; ' + ddmm + ' &nbsp;\xb7&nbsp; ' + ora + '–' + endTime + '<br>' +
+      '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
+      '👥 ' + players.join(', ') + '<br><br>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">Tutto corretto?</span>',
+      'confirm'
+    );
+    const btns = document.createElement('div');
+    btns.className = 'svc-confirm-buttons';
+    const btnY = document.createElement('button');
+    btnY.className = 'svc-btn-confirm svc-btn-yes';
+    btnY.textContent = '✓ Conferma';
+    btnY.type = 'button';
+    btnY.addEventListener('click', function() {
+      btns.querySelectorAll('.svc-btn-confirm').forEach(function(b) { b.disabled = true; });
+      svcConfirmBooking();
+    });
+    const btnBack = document.createElement('button');
+    btnBack.className = 'svc-btn-confirm svc-btn-rewrite';
+    btnBack.textContent = '‹ Indietro';
+    btnBack.type = 'button';
+    btnBack.addEventListener('click', function() {
+      btns.remove();
+      svcFlowState.step = 'players';
+      svcAskPlayers();
+    });
+    const btnN = document.createElement('button');
+    btnN.className = 'svc-btn-confirm svc-btn-no';
+    btnN.textContent = '✗ Annulla';
+    btnN.type = 'button';
+    btnN.addEventListener('click', function() {
+      btns.remove();
+      svcFlowState = null;
+      svcSetInputMode('normal');
+      svcAddMessage('system', '↩️ Operazione annullata.');
+    });
+    btns.appendChild(btnY);
+    btns.appendChild(btnBack);
+    btns.appendChild(btnN);
+    div.appendChild(btns);
+    svcSetInputMode('flow-summary');
+  }
+
+  // Step 5 — conferma reale (solo Partita)
+  async function svcConfirmBooking() {
+    const { campo, dateISO, ora, durata, players } = svcFlowState;
+    const parsed = {
+      campoNum: campo,
+      campo: 'Campo ' + campo,
+      data: dateISO,
+      ora: ora,
+      oraFine: svcEndTime(ora, durata),
+      durata: durata,
+      nome: players.join(', '),
+      tipo: 'partita'
+    };
+    // Pre-check conflitto istantaneo
+    const c = staffCalFindConflict(parsed);
+    if (c) {
+      svcAddMessage('system', '⛔ Slot gi\xe0 occupato' + (c.nome ? ' (' + c.nome + ')' : '') + '. Prenotazione NON inviata.');
+      svcFlowState = null;
+      svcSetInputMode('normal');
+      return;
+    }
+    try {
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const inProgress = svcAddMessage('system', '⏳ Prenotazione in corso su Matchpoint…');
+      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true });
+      const jobId = submit && submit.jobId;
+      if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+      const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function(sec) {
+        const last = inProgress.querySelector(':scope > div:last-child');
+        if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)';
+      });
+      if (result.status === 'done') {
+        staffCalSaveLocal(parsed);
+        svcAddMessage('system',
+          '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
+          '👥 ' + parsed.nome,
+          'ok'
+        );
+        renderStaffCalendar();
+      } else if (result.status === 'error') {
+        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
+      } else {
+        svcAddMessage('system', '⏳ Ci sta mettendo pi\xf9 del previsto. Controlla la griglia tra poco; se non compare riprova (NON confermare due volte).');
+      }
+    } catch (err) {
+      svcAddMessage('system', '❌ Errore: ' + (err.message || err));
+    }
+    svcFlowState = null;
+    svcSetInputMode('normal');
+  }
+
+  // Handle send (nello step players: aggiunge chip; altrimenti messaggio neutro)
+  function svcHandleSend() {
+    const input = document.getElementById('svcChatInput');
+    if (!input || input.disabled) return;
+    const text = input.value.trim();
+    if (!text) return;
+    if (svcFlowState && svcFlowState.step === 'players') {
+      input.value = '';
+      String(text).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+/i)
+        .map(function(s) { return s.trim(); })
+        .filter(Boolean)
+        .forEach(function(n) { svcFlowState.players.push(n); });
+      svcRenderPlayerChips();
+      input.focus();
+      return;
+    }
+    input.value = '';
+    svcAddMessage('staff', text);
+    svcAddMessage('system', 'ℹ️ Clicca una cella libera sul calendario per avviare una prenotazione guidata.');
+  }
+
+  // Init listener svc chat
+  (function svcInitChat() {
+    const fab = document.getElementById('svcChatFab');
+    const closeBtn = document.getElementById('svcChatCloseBtn');
+    const overlay = document.getElementById('svcChatOverlay');
+    const sendBtn = document.getElementById('svcChatSend');
+    const input = document.getElementById('svcChatInput');
+    if (fab) fab.addEventListener('click', svcOpenChat);
+    if (closeBtn) closeBtn.addEventListener('click', svcCloseChat);
+    if (overlay) overlay.addEventListener('click', svcCloseChat);
+    if (sendBtn) sendBtn.addEventListener('click', svcHandleSend);
+    if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') svcHandleSend(); });
+    svcAddMessage('system',
+      '👋 <strong>Assistente prenotazioni</strong><br>' +
+      'Clicca una cella libera sul calendario per avviare il flusso guidato.<br>' +
+      '<small style="color:var(--text-muted)">Solo Partita \xe8 attiva in questa tappa (A3a).</small>'
+    );
+  })();
+
   </script>
   <!-- ════ end Staff Calendar ════ -->
 
