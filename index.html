@@ -6755,7 +6755,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.579';
+    const APP_VERSION = '5.580';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -11727,6 +11727,8 @@ Grazie.`
       if (!guestJolly && !phone) { showAlert('❌ Telefono obbligatorio', 'danger'); return null; }
       if (!guestJolly && (!genderValue || genderValue === 'NA')) { showAlert('❌ Sesso obbligatorio', 'danger'); return null; }
       if (!guestJolly && !levelRaw) { showAlert('❌ Livello obbligatorio', 'danger'); return null; }
+      const emailVal = cleanCell(document.getElementById('email').value);
+      if (!guestJolly && !emailVal) { showAlert('❌ Email obbligatoria', 'danger'); return null; }
       const candidate = {
         firstName,
         surname,
@@ -11769,7 +11771,59 @@ Grazie.`
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       pmoQueueImmediateMemberCloudSync(newMember, 'salvare subito il nuovo socio su Supabase');
       if (!options.skipSuccessAlert) showAlert('✅ Socio aggiunto', 'success');
+      pmoCreateMemberInMatchpoint(newMember).catch(err => console.warn('create-in-matchpoint fallita', err));
       return newMember;
+    }
+    async function pmoCreateMemberInMatchpoint(member) {
+      if (isGuestJollyMember(member)) return;
+      // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
+      // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
+      const hasMatchpointCode = /^\d{4,6}$/.test(String(member.memberId || '').trim());
+      if (hasMatchpointCode) return;
+      const sesso = member.gender === 'F' ? 'F' : 'M';
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'creare il socio in Matchpoint');
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${staff.accessToken}`
+          },
+          body: JSON.stringify({ client: { nome: member.firstName, cognome: member.surname, telefono: member.phone, email: member.email, sesso } })
+        });
+        const respText = await response.text();
+        let data = null;
+        try { data = respText ? JSON.parse(respText) : null; } catch { data = null; }
+        const workerData = (data && typeof data === 'object' && data.worker && typeof data.worker === 'object') ? data.worker : data;
+        const codiceFromWorker = (workerData && (workerData.codice || workerData.codigo)) || (data && data.codice) || '';
+        const idInternoFromWorker = (workerData && workerData.idInterno) || (data && data.idInterno) || '';
+        if (response.ok && data?.ok !== false && codiceFromWorker) {
+          const idx = giocatori.findIndex(g => g.id === member.id);
+          const codiceClean = String(codiceFromWorker).trim();
+          const idInternoClean = String(idInternoFromWorker || '').trim();
+          if (idx >= 0) {
+            giocatori[idx].memberId = codiceClean;
+            giocatori[idx].matchpointIdInterno = idInternoClean;
+            giocatori[idx].matchpointCreatedAt = new Date().toISOString();
+            Object.assign(member, giocatori[idx]);
+          } else {
+            member.memberId = codiceClean;
+            member.matchpointIdInterno = idInternoClean;
+            member.matchpointCreatedAt = new Date().toISOString();
+          }
+          save('giocatori', giocatori);
+          pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
+          showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
+        } else {
+          const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
+          showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+        }
+      } catch (err) {
+        const msg = err?.message || String(err) || 'errore sconosciuto';
+        showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+      }
     }
     function detectGender() {
       let updated = 0;
