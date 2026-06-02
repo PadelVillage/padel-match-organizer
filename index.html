@@ -12009,21 +12009,26 @@ Grazie.`
         const respText = await response.text();
         let data = null;
         try { data = respText ? JSON.parse(respText) : null; } catch { data = null; }
-        if (response.ok && data?.ok !== false && data?.codice) {
+        const workerData = (data && typeof data === 'object' && data.worker && typeof data.worker === 'object') ? data.worker : data;
+        const codiceFromWorker = (workerData && (workerData.codice || workerData.codigo)) || (data && data.codice) || '';
+        const idInternoFromWorker = (workerData && workerData.idInterno) || (data && data.idInterno) || '';
+        if (response.ok && data?.ok !== false && codiceFromWorker) {
           const idx = giocatori.findIndex(g => g.id === member.id);
+          const codiceClean = String(codiceFromWorker).trim();
+          const idInternoClean = String(idInternoFromWorker || '').trim();
           if (idx >= 0) {
-            giocatori[idx].memberId = String(data.codice).trim();
-            giocatori[idx].matchpointIdInterno = String(data.idInterno || '').trim();
+            giocatori[idx].memberId = codiceClean;
+            giocatori[idx].matchpointIdInterno = idInternoClean;
             giocatori[idx].matchpointCreatedAt = new Date().toISOString();
             Object.assign(member, giocatori[idx]);
           } else {
-            member.memberId = String(data.codice).trim();
-            member.matchpointIdInterno = String(data.idInterno || '').trim();
+            member.memberId = codiceClean;
+            member.matchpointIdInterno = idInternoClean;
             member.matchpointCreatedAt = new Date().toISOString();
           }
           save('giocatori', giocatori);
           pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
-          showAlert('✅ Socio creato anche in Matchpoint · codice ' + member.memberId, 'success');
+          showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
         } else {
           const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
           showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
