@@ -1,5 +1,7 @@
 # Versioni
 
+## 2026-06-02 / TEST: il pulsante test prenotazione prenota una PARTITA su un socio per nome, risolvendo il codice Matchpoint dal DB locale (solo numerico; PMO-/vuoto -> nome). Valida la catena con disambiguazione per codice.
+
 ## 2026-06-02 / TEST: rimossi gli ultimi riferimenti placeholder PMO-000948; i test (notifiche/follow-up/link autovalutazione/testValidare) puntano al socio di prova Maurizio Aprea via email/codice reale. Mantenuti gli override email/telefono di test.
 
 ## 2026-06-02 / TEST: rimosso il trattamento segnaposto/test del socio Maurizio Aprea nell'audit soci e nei default del modulo autovalutazione; ora gestito come socio normale (codice Matchpoint 000004). Notifiche/email di test trattate a parte.
