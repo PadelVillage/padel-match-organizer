@@ -85,40 +85,32 @@ async function callWorkerCreateClient(opts: {
   const { workerUrl, workerApiKey, username, password, baseUrl, client } = opts;
   const endpoint = `${workerUrl}/create-client`;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    let res: Response;
-    try {
-      res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${workerApiKey}`,
-        },
-        body: JSON.stringify({ username, password, baseUrl, client }),
-      });
-    } catch (netErr) {
-      if (attempt === 3) {
-        throw new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`);
-      }
-      await new Promise((r) => setTimeout(r, attempt * 3000));
-      continue;
-    }
-
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) return body as JsonMap;
-
-    if (res.status === 501) {
-      throw new Error('WORKER_CREATE_CLIENT_NOT_IMPLEMENTED: Il worker non supporta /create-client. Aggiornare il worker.');
-    }
-    if (attempt === 3) {
-      throw new Error(
-        `Worker error ${res.status} after ${attempt} attempts: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-      );
-    }
-    await new Promise((r) => setTimeout(r, attempt * 3000));
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${workerApiKey}`,
+      },
+      body: JSON.stringify({ username, password, baseUrl, client }),
+    });
+  } catch (netErr) {
+    throw new Error(`Worker network error: ${errorText(netErr)}`);
   }
 
-  throw new Error('Worker call failed after retries');
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return body as JsonMap;
+
+  if (res.status === 501) {
+    throw new Error('WORKER_CREATE_CLIENT_NOT_IMPLEMENTED: Il worker non supporta /create-client. Aggiornare il worker.');
+  }
+
+  const workerError = new Error(
+    `Worker error ${res.status}: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
+  );
+  (workerError as unknown as JsonMap).diagnostic = (body as JsonMap).diagnostic;
+  throw workerError;
 }
 
 Deno.serve(async (req: Request) => {
@@ -171,7 +163,8 @@ Deno.serve(async (req: Request) => {
   try {
     workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client });
   } catch (workerErr) {
-    return err(502, 'WORKER_ERROR', errorText(workerErr), { client });
+    const diagnostic = (workerErr as unknown as JsonMap)?.diagnostic;
+    return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });
   }
 
   const codice = clean((workerResult as JsonMap).codice);
