@@ -2617,6 +2617,112 @@
     .staff-cal-input-status.done { color:#168a53; font-weight:800; }
     .staff-cal-input-status.error { color:#dc2626; }
 
+    /* ── Calendario Staff v3.6 — look griglia (scoped) ─────────── */
+    #staffCalV36 {
+      --accent:#2563eb; --accent-light:rgba(37,99,235,0.10);
+      --surface:#ffffff; --surface2:#f0eeea;
+      --border:#d8d7d2; --text:#1f2430; --text-muted:#4b5563;
+      --mp-bg:#f3f2ef; --mp-border:#c9c7c1; --mp-text:#4b5563;
+      --staff-bg:rgba(37,99,235,0.08); --staff-border:#2563eb; --staff-text:#1e3a8a;
+      --row-h:38px; --col-time:52px; --col-field:minmax(160px,1fr);
+      --bar2-h:44px; --radius:8px; --radius-sm:5px;
+      margin-top:16px;
+    }
+    #staffCalV36 .grid-wrap { overflow-x:auto; overflow-y:auto; }
+    #staffCalV36 .grid-table {
+      display:grid;
+      grid-template-columns:var(--col-time) repeat(4,var(--col-field));
+      min-width:600px;
+      border:1px solid var(--border);
+      border-top:none;
+      border-radius:0 0 var(--radius) var(--radius);
+      overflow:clip;
+    }
+    #staffCalV36 .gh {
+      background:var(--surface2); border-bottom:2px solid var(--border); border-top:1px solid var(--border);
+      font-size:.78rem; font-weight:700; color:var(--text-muted); padding:0 10px;
+      letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center;
+      justify-content:center; height:var(--bar2-h); position:sticky; top:0; z-index:20;
+    }
+    #staffCalV36 .gh.field { color:var(--text); border-left:1px solid var(--border); gap:5px; }
+    #staffCalV36 .gh .field-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    #staffCalV36 .time-label {
+      background:var(--surface2); border-right:1px solid var(--border); border-top:1px solid var(--border);
+      font-size:.72rem; color:var(--text-muted); display:flex; align-items:center;
+      justify-content:flex-end; padding-right:6px; height:var(--row-h); font-variant-numeric:tabular-nums;
+    }
+    #staffCalV36 .time-label.hour { color:var(--text); font-weight:600; }
+    #staffCalV36 .cell {
+      border-left:1px solid var(--border); border-top:1px solid var(--border);
+      height:var(--row-h); position:relative; transition:background .12s;
+    }
+    #staffCalV36 .cell.free { cursor:pointer; }
+    #staffCalV36 .cell.free::before {
+      content:'+'; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%); font-size:1.1rem;
+      color:var(--accent); opacity:.18; pointer-events:none;
+    }
+    #staffCalV36 .cell.free:hover { background:var(--accent-light); }
+    #staffCalV36 .cell.free:hover::before { opacity:.72; }
+    #staffCalV36 .cell.occupied { overflow:visible; z-index:2; }
+    #staffCalV36 .booking {
+      position:absolute; left:3px; right:3px; top:3px;
+      border-radius:var(--radius-sm); padding:4px 6px; font-size:.72rem;
+      overflow:hidden; z-index:10; cursor:default;
+      display:flex; flex-direction:column; gap:2px;
+    }
+    #staffCalV36 .booking.matchpoint { background:var(--mp-bg); border:1px solid var(--mp-border); color:var(--mp-text); cursor:not-allowed; }
+    #staffCalV36 .booking.staff { background:var(--staff-bg); border:1px solid var(--staff-border); color:var(--staff-text); }
+    #staffCalV36 .booking-header { display:flex; align-items:center; gap:4px; font-weight:600; }
+    #staffCalV36 .booking-icon { font-size:.75rem; flex-shrink:0; }
+    #staffCalV36 .booking-type { flex:1; font-size:.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .booking-time { font-size:.67rem; opacity:.8; font-variant-numeric:tabular-nums; }
+    #staffCalV36 .booking-players { font-size:.67rem; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .lock-badge {
+      display:inline-flex; align-items:center; gap:2px; font-size:.6rem;
+      background:rgba(0,0,0,.07); border-radius:3px; padding:1px 4px; margin-top:2px;
+      color:var(--text-muted); width:fit-content;
+    }
+    #staffCalV36 .agenda-wrap { display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    #staffCalV36 .agenda-tabs {
+      display:flex; gap:0; background:var(--surface);
+      border-bottom:2px solid var(--border); flex-shrink:0; overflow-x:auto;
+    }
+    #staffCalV36 .agenda-tab {
+      flex:1; min-width:52px; padding:10px 4px 8px; border:none;
+      border-bottom:3px solid transparent; background:none; cursor:pointer;
+      font-size:.85rem; font-weight:700; color:var(--text-muted);
+      transition:color .15s,border-color .15s,background .12s;
+      border-radius:var(--radius-sm) var(--radius-sm) 0 0; min-height:44px;
+      display:flex; align-items:center; justify-content:center; gap:5px;
+      margin-bottom:-2px; white-space:nowrap;
+    }
+    #staffCalV36 .agenda-tab .tab-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    #staffCalV36 .agenda-tab.active { color:var(--text); background:var(--surface2); }
+    #staffCalV36 .agenda-tab:hover:not(.active) { color:var(--text); background:var(--surface2); }
+    #staffCalV36 .agenda-body {
+      overflow-y:auto; padding:10px 0 12px;
+      display:flex; flex-direction:column; gap:8px; min-height:200px;
+    }
+    #staffCalV36 .agenda-card { border-radius:var(--radius); padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+    #staffCalV36 .agenda-card.staff { background:var(--staff-bg); border:1.5px solid var(--staff-border); }
+    #staffCalV36 .agenda-card.matchpoint { background:var(--mp-bg); border:1.5px solid var(--mp-border); }
+    #staffCalV36 .agenda-card-time { font-size:.78rem; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+    #staffCalV36 .agenda-card-type { font-size:.95rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; line-height:1.3; }
+    #staffCalV36 .agenda-card-players { font-size:.82rem; color:var(--text-muted); margin-top:2px; }
+    #staffCalV36 .agenda-card-mp-badge { font-size:.72rem; color:var(--mp-text); margin-top:4px; }
+    #staffCalV36 .agenda-free {
+      border-radius:var(--radius); padding:12px 14px; background:var(--surface);
+      border:1.5px dashed var(--border); min-height:44px; display:flex;
+      align-items:center; justify-content:space-between; cursor:pointer;
+      transition:border-color .15s,background .15s; gap:10px;
+    }
+    #staffCalV36 .agenda-free:hover { border-color:var(--accent); background:var(--accent-light); }
+    #staffCalV36 .agenda-free-label { font-size:.85rem; color:var(--text); }
+    #staffCalV36 .agenda-free-label span { color:var(--text-muted); font-size:.8rem; margin-left:4px; }
+    #staffCalV36 .agenda-free-cta { font-size:.8rem; color:var(--accent); font-weight:700; white-space:nowrap; flex-shrink:0; }
+    #staffCalV36 .agenda-empty { padding:32px 16px; text-align:center; color:var(--text-muted); font-size:.85rem; line-height:1.6; }
+
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .matchpoint-routine-head { grid-template-columns:1fr; }
@@ -6805,19 +6911,17 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
             </div>
 
-            <div class="staff-cal-table-wrap" style="margin-top:16px">
-              <table class="staff-cal-table" aria-label="Griglia campi">
-                <thead>
-                  <tr>
-                    <th>Ora</th>
-                    <th>Campo 1</th>
-                    <th>Campo 2</th>
-                    <th>Campo 3</th>
-                    <th>Campo 4</th>
-                  </tr>
-                </thead>
-                <tbody id="staffCalBody"></tbody>
-              </table>
+            <div id="staffCalV36">
+              <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
+              <div class="agenda-wrap" id="staffCalAgendaWrap" style="display:none">
+                <div class="agenda-tabs" id="staffCalAgendaTabs">
+                  <button class="agenda-tab active" data-field="1"><span class="tab-dot" style="background:#f87171"></span>C1</button>
+                  <button class="agenda-tab" data-field="2"><span class="tab-dot" style="background:#fbbf24"></span>C2</button>
+                  <button class="agenda-tab" data-field="3"><span class="tab-dot" style="background:#34d399"></span>C3</button>
+                  <button class="agenda-tab" data-field="4"><span class="tab-dot" style="background:#818cf8"></span>C4</button>
+                </div>
+                <div class="agenda-body" id="staffCalAgendaBody"></div>
+              </div>
             </div>
 
             <div class="staff-cal-legend" style="margin-top:14px">
@@ -6956,7 +7060,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.603';
+    const APP_VERSION = '5.604';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34098,41 +34202,216 @@ Per confermare scrivi ELIMINA.`);
     return map;
   }
 
+  let _staffCalAgendaField = 1;
+  let _staffCalResizeInited = false;
+  let _staffCalResizeTimer = null;
+
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
-    const tbody = document.getElementById('staffCalBody');
-    if (!tbody) return;
+    if (!_staffCalResizeInited) {
+      _staffCalResizeInited = true;
+      window.addEventListener('resize', function() {
+        clearTimeout(_staffCalResizeTimer);
+        _staffCalResizeTimer = setTimeout(renderStaffCalendar, 150);
+      });
+    }
+    const desktop = window.innerWidth >= 900;
+    const gridWrap = document.getElementById('staffCalGridWrap');
+    const agendaWrap = document.getElementById('staffCalAgendaWrap');
+    if (!gridWrap || !agendaWrap) return;
+    if (desktop) {
+      gridWrap.style.display = '';
+      agendaWrap.style.display = 'none';
+      _staffCalBuildGrid(isoDate);
+    } else {
+      gridWrap.style.display = 'none';
+      agendaWrap.style.display = '';
+      _staffCalBuildAgenda(isoDate);
+    }
+  }
+
+  function _staffCalEndTime(startHHMM, durMin) {
+    const [h, m] = startHHMM.split(':').map(Number);
+    const tot = h * 60 + m + (durMin || 90);
+    return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '00');
+  }
+
+  function _staffCalBuildGrid(isoDate) {
+    const grid = document.getElementById('staffCalGridTable');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const FIELD_COLORS = ['#f87171', '#fbbf24', '#34d399', '#818cf8'];
     const slots = staffCalSlots();
     const occupied = staffCalBuildOccupancyMap(isoDate);
-    tbody.innerHTML = '';
-    for (const hour of slots) {
-      const tr = document.createElement('tr');
-      const tdTime = document.createElement('td');
-      tdTime.className = 'staff-cal-time';
-      tdTime.textContent = hour;
-      tr.appendChild(tdTime);
-      for (let campo = 1; campo <= 4; campo++) {
-        const slot = occupied[`${hour}|${campo}`] || null;
-        const td = document.createElement('td');
-        if (slot) {
-          td.className = `staff-cal-cell ${slot.tipo}`;
-          const nameEl = document.createElement('div');
-          nameEl.className = 'staff-cal-slot-name';
-          nameEl.textContent = slot.nome || '';
-          td.appendChild(nameEl);
-          if (slot.tipo === 'lezione' || slot.tipo === 'staff-booking') {
-            const lbl = document.createElement('span');
-            lbl.className = 'staff-cal-slot-label';
-            lbl.textContent = 'STAFF';
-            td.appendChild(lbl);
+    const ROW_H = 38;
+    // corner
+    const corner = document.createElement('div');
+    corner.className = 'gh';
+    grid.appendChild(corner);
+    for (let f = 1; f <= 4; f++) {
+      const gh = document.createElement('div');
+      gh.className = 'gh field';
+      const dot = document.createElement('span');
+      dot.className = 'field-dot';
+      dot.style.background = FIELD_COLORS[f - 1];
+      gh.appendChild(dot);
+      gh.appendChild(document.createTextNode('Campo ' + f));
+      grid.appendChild(gh);
+    }
+    // Build head-slot set: for each raw slot, s.ora is the start time
+    const headKeys = new Set();
+    for (const s of staffCalGetSlots(isoDate)) headKeys.add(s.ora + '|' + s.campo);
+
+    for (let si = 0; si < slots.length; si++) {
+      const hour = slots[si];
+      const isHour = !hour.endsWith(':30');
+      const tl = document.createElement('div');
+      tl.className = 'time-label' + (isHour ? ' hour' : '');
+      tl.textContent = isHour ? hour : '';
+      grid.appendChild(tl);
+      for (let f = 1; f <= 4; f++) {
+        const key = hour + '|' + f;
+        const slot = occupied[key] || null;
+        if (slot && !headKeys.has(key)) {
+          const fc = document.createElement('div');
+          fc.className = 'cell occupied';
+          fc.style.visibility = 'hidden';
+          grid.appendChild(fc);
+        } else if (slot && headKeys.has(key)) {
+          const cell = document.createElement('div');
+          cell.className = 'cell occupied';
+          const durSlots = Math.max(1, Math.round((slot.durata || 90) / 30));
+          const hpx = durSlots * ROW_H - 6;
+          const isMatchpoint = slot.tipo !== 'staff-booking';
+          const block = document.createElement('div');
+          block.className = 'booking ' + (isMatchpoint ? 'matchpoint' : 'staff');
+          block.style.height = hpx + 'px';
+          const hdr = document.createElement('div');
+          hdr.className = 'booking-header';
+          const icon = document.createElement('span');
+          icon.className = 'booking-icon';
+          icon.textContent = isMatchpoint ? '🔒' : '✏️';
+          const typSpan = document.createElement('span');
+          typSpan.className = 'booking-type';
+          typSpan.textContent = slot.tipo === 'lezione' ? 'Lezione' : slot.tipo === 'staff-booking' ? 'Staff' : 'Partita';
+          hdr.appendChild(icon);
+          hdr.appendChild(typSpan);
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'booking-time';
+          timeDiv.textContent = hour + ' – ' + _staffCalEndTime(hour, slot.durata);
+          const playersDiv = document.createElement('div');
+          playersDiv.className = 'booking-players';
+          playersDiv.textContent = slot.nome || '';
+          block.appendChild(hdr);
+          block.appendChild(timeDiv);
+          if (hpx > 45) block.appendChild(playersDiv);
+          if (isMatchpoint && hpx > 65) {
+            const badge = document.createElement('div');
+            badge.className = 'lock-badge';
+            badge.textContent = '🔒 Matchpoint · Sola lettura';
+            block.appendChild(badge);
           }
+          cell.appendChild(block);
+          grid.appendChild(cell);
         } else {
-          td.className = 'staff-cal-cell libero';
-          td.onclick = () => staffCalClickFree(isoDate, campo, hour);
+          const cell = document.createElement('div');
+          cell.className = 'cell free';
+          cell.addEventListener('click', (function(iso, campo, h) {
+            return function() { staffCalClickFree(iso, campo, h); };
+          })(isoDate, f, hour));
+          grid.appendChild(cell);
         }
-        tr.appendChild(td);
       }
-      tbody.appendChild(tr);
+    }
+  }
+
+  function _staffCalBuildAgenda(isoDate) {
+    const FIELD_COLORS = ['#f87171', '#fbbf24', '#34d399', '#818cf8'];
+    const tabsEl = document.getElementById('staffCalAgendaTabs');
+    if (!tabsEl) return;
+    tabsEl.querySelectorAll('.agenda-tab').forEach(function(btn) {
+      const f = parseInt(btn.dataset.field, 10);
+      const active = f === _staffCalAgendaField;
+      btn.classList.toggle('active', active);
+      const color = FIELD_COLORS[f - 1];
+      btn.style.borderBottomColor = active ? color : 'transparent';
+      btn.style.color = active ? color : '';
+      btn.onclick = function() { _staffCalAgendaField = f; _staffCalBuildAgenda(isoDate); };
+    });
+    const body = document.getElementById('staffCalAgendaBody');
+    if (!body) return;
+    body.innerHTML = '';
+    const slots = staffCalSlots();
+    const rawSlots = staffCalGetSlots(isoDate).filter(function(s) { return s.campo === _staffCalAgendaField; });
+    const occ = Array(slots.length).fill(null);
+    for (const s of rawSlots) {
+      const startIdx = slots.indexOf(s.ora);
+      if (startIdx < 0) continue;
+      const durSlots = Math.max(1, Math.round((s.durata || 90) / 30));
+      for (let i = 0; i < durSlots && startIdx + i < slots.length; i++) {
+        if (!occ[startIdx + i]) occ[startIdx + i] = Object.assign({}, s, { _startIdx: startIdx, _durSlots: durSlots });
+      }
+    }
+    let si = 0;
+    while (si < slots.length) {
+      const entry = occ[si];
+      if (entry && entry._startIdx === si) {
+        const card = document.createElement('div');
+        card.className = 'agenda-card ' + (entry.tipo === 'staff-booking' ? 'staff' : 'matchpoint');
+        const endT = _staffCalEndTime(slots[si], entry.durata);
+        const timeEl = document.createElement('div');
+        timeEl.className = 'agenda-card-time';
+        timeEl.textContent = slots[si] + ' – ' + endT + '  ·  ' + (entry.durata || 90) + "'";
+        card.appendChild(timeEl);
+        const typeEl = document.createElement('div');
+        typeEl.className = 'agenda-card-type';
+        const ico = entry.tipo === 'staff-booking' ? '✏️' : '🔒';
+        const lbl = entry.tipo === 'lezione' ? 'Lezione' : entry.tipo === 'staff-booking' ? 'Staff' : 'Partita';
+        typeEl.innerHTML = ico + '&nbsp;' + lbl;
+        card.appendChild(typeEl);
+        if (entry.nome) {
+          const playersEl = document.createElement('div');
+          playersEl.className = 'agenda-card-players';
+          playersEl.textContent = entry.nome;
+          card.appendChild(playersEl);
+        }
+        if (entry.tipo !== 'staff-booking') {
+          const badge = document.createElement('div');
+          badge.className = 'agenda-card-mp-badge';
+          badge.textContent = '🔒 Matchpoint · Sola lettura';
+          card.appendChild(badge);
+        }
+        body.appendChild(card);
+        si += entry._durSlots;
+      } else if (entry) {
+        si++;
+      } else {
+        const freeStart = si;
+        while (si < slots.length && !occ[si]) si++;
+        const freeEndTime = si < slots.length
+          ? slots[si]
+          : _staffCalEndTime(slots[slots.length - 1], 30);
+        const freeRow = document.createElement('div');
+        freeRow.className = 'agenda-free';
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'agenda-free-label';
+        labelDiv.innerHTML = '<strong>Libero</strong><span>' + slots[freeStart] + '–' + freeEndTime + '</span>';
+        freeRow.appendChild(labelDiv);
+        const ctaDiv = document.createElement('div');
+        ctaDiv.className = 'agenda-free-cta';
+        ctaDiv.textContent = '+ Prenota';
+        freeRow.appendChild(ctaDiv);
+        freeRow.addEventListener('click', (function(iso, campo, h) {
+          return function() { staffCalClickFree(iso, campo, h); };
+        })(isoDate, _staffCalAgendaField, slots[freeStart]));
+        body.appendChild(freeRow);
+      }
+    }
+    if (body.children.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'agenda-empty';
+      empty.innerHTML = 'Nessuna prenotazione.<br><span style="font-size:.78rem">Tutte le fasce sono libere.</span>';
+      body.appendChild(empty);
     }
   }
 
