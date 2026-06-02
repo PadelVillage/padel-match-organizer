@@ -911,13 +911,12 @@ function isExcelResponse(bytes: Uint8Array, contentType: string, disposition: st
   return zip || xls || cd.includes('.xls') || ct.includes('spreadsheet') || ct.includes('excel');
 }
 
-async function exportClientsViaHttp(): Promise<MatchpointExport> {
-  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
-  const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
-  const session = new MatchpointSession(baseUrl);
-
-  const login = await loginToMatchpoint(session);
+async function downloadReportFromSession(
+  session: MatchpointSession,
+  login: { finalUrl: string; html: string },
+  clientsPath: string,
+  exportTarget: string,
+): Promise<MatchpointExport> {
   let homeResponse: Response | null = null;
   let homeText = '';
   try {
@@ -1058,6 +1057,15 @@ async function exportClientsViaHttp(): Promise<MatchpointExport> {
   };
 }
 
+async function exportClientsViaHttp(clientsPathOverride?: string, exportTargetOverride?: string): Promise<MatchpointExport> {
+  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const clientsPath = clientsPathOverride ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
+  const exportTarget = exportTargetOverride ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
+  const session = new MatchpointSession(baseUrl);
+  const login = await loginToMatchpoint(session);
+  return downloadReportFromSession(session, login, clientsPath, exportTarget);
+}
+
 function bytesFromBase64(value: string) {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -1089,8 +1097,11 @@ function shouldFallbackToBrowserWorker(error: unknown) {
   ].includes(code);
 }
 
-async function exportClientsViaBrowserWorker(originalError: unknown): Promise<MatchpointExport> {
-  const fallbackFrom = parseErrorInfo(originalError);
+async function exportClientsViaBrowserWorker(
+  originalError: unknown,
+  options?: { navigationMode?: string; clientsPath?: string; exportTarget?: string; fallbackLabel?: string },
+): Promise<MatchpointExport> {
+  const fallbackFrom = options?.fallbackLabel ? { code: options.fallbackLabel } : parseErrorInfo(originalError);
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
   if (!workerUrl || !workerApiKey) {
@@ -1105,11 +1116,11 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   if (!username || !password) throw new Error('MATCHPOINT_SECRETS_MISSING');
 
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const clientsPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
-  const exportTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const clientsPath = options?.clientsPath ?? (Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH);
+  const exportTarget = options?.exportTarget ?? (Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET);
   const endpoint = workerExportUrl(workerUrl);
   const healthEndpoint = workerHealthUrl(workerUrl);
-  const requestBody = JSON.stringify({
+  const bodyObj: JsonMap = {
     username,
     password,
     baseUrl,
@@ -1117,7 +1128,9 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
     exportTarget,
     fallbackFrom: fallbackFrom.code,
     credentialSource: 'supabase_secret',
-  });
+  };
+  if (options?.navigationMode) bodyObj.navigationMode = options.navigationMode;
+  const requestBody = JSON.stringify(bodyObj);
   let payload: JsonMap = {};
   let lastDiagnostic: JsonMap = {};
 
@@ -1183,6 +1196,18 @@ async function exportClientsViaBrowserWorker(originalError: unknown): Promise<Ma
   };
 }
 
+async function exportCodiceViaBrowserWorker(): Promise<MatchpointExport> {
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const codiceNavMode = Deno.env.get('MATCHPOINT_CODICE_NAV_MODE') || 'direct_clients';
+  return exportClientsViaBrowserWorker(null, {
+    navigationMode: codiceNavMode,
+    clientsPath: codicePath,
+    exportTarget: codiceTarget,
+    fallbackLabel: 'CODICE_VIA_WORKER',
+  });
+}
+
 async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
   try {
     return await exportClientsViaHttp();
@@ -1190,6 +1215,111 @@ async function exportClientsFromMatchpoint(): Promise<MatchpointExport> {
     if (!shouldFallbackToBrowserWorker(error)) throw error;
     return await exportClientsViaBrowserWorker(error);
   }
+}
+
+type CodiceDownloadResult = { ok: boolean; bytes?: Uint8Array; skippedReason?: string };
+
+async function exportClientsWithCodice(): Promise<{ main: MatchpointExport; codice: CodiceDownloadResult }> {
+  const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const mainPath = Deno.env.get('MATCHPOINT_CLIENTS_PATH') || DEFAULT_CLIENTS_PATH;
+  const mainTarget = Deno.env.get('MATCHPOINT_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+
+  const session = new MatchpointSession(baseUrl);
+
+  let main: MatchpointExport;
+  let viaWorker = false;
+  let login: { finalUrl: string; html: string } | null = null;
+  try {
+    login = await loginToMatchpoint(session);
+    main = await downloadReportFromSession(session, login, mainPath, mainTarget);
+  } catch (error) {
+    if (!shouldFallbackToBrowserWorker(error)) throw error;
+    main = await exportClientsViaBrowserWorker(error);
+    viaWorker = true;
+  }
+
+  let codice: CodiceDownloadResult;
+  if (!viaWorker && login) {
+    // Sessione HTTP disponibile: scarica il Codice riusando la stessa sessione.
+    try {
+      const codiceExported = await downloadReportFromSession(session, login, codicePath, codiceTarget);
+      codice = { ok: true, bytes: codiceExported.bytes };
+    } catch (error) {
+      codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+    }
+  } else {
+    // Login HTTP non disponibile (principale arrivato dal worker): scarica il Codice anch'esso dal worker.
+    try {
+      const codiceExported = await exportCodiceViaBrowserWorker();
+      codice = { ok: true, bytes: codiceExported.bytes };
+    } catch (error) {
+      codice = { ok: false, skippedReason: errorText(error).slice(0, 500) };
+    }
+  }
+
+  return { main, codice };
+}
+
+type CodiceMap = Map<string, string>;
+
+function parseCodiceWorkbook(bytes: Uint8Array): { ok: true; map: CodiceMap; nameMap: CodiceMap; rowsParsed: number } | { ok: false; error: string; message: string } {
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(bytes, { type: 'array', cellDates: true });
+  } catch (e) {
+    return { ok: false, error: 'CODICE_PARSE_ERROR', message: errorText(e) };
+  }
+  if (!workbook.SheetNames.includes('Risultati')) {
+    return { ok: false, error: 'CODICE_SHEET_MISSING', message: 'Il report Codice non contiene il foglio Risultati.' };
+  }
+  const sheet = workbook.Sheets['Risultati'];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) as JsonMap[];
+  const map: CodiceMap = new Map();
+  // Indice per nome completo: raccoglie tutti i codici visti per ciascun nome normalizzato,
+  // ANCHE dalle righe senza telefono/email (servono per i soci senza contatti, es. Fabio De Luca).
+  const nameCodes = new Map<string, Set<string>>();
+  let rowsParsed = 0;
+  for (const row of rows) {
+    const codiceRaw = clean(getCell(row, ['Codice']));
+    if (!codiceRaw) continue;
+    const codiceDigits = codiceRaw.replace(/\D/g, '');
+    if (!codiceDigits) continue;
+    const memberId = codiceDigits.length <= 6 ? codiceDigits.padStart(6, '0') : codiceDigits;
+    // Nome completo della riga Codice, con le stesse colonne/normalizzazione del parser principale.
+    const cliente = clean(getCell(row, CLIENT_FULL_NAME_COLUMNS));
+    let firstName = clean(getCell(row, CLIENT_FIRST_NAME_COLUMNS));
+    let surname = clean(getCell(row, CLIENT_SURNAME_COLUMNS));
+    if ((!firstName || !surname) && cliente) {
+      const split = splitClienteName(cliente);
+      firstName = firstName || split.firstName;
+      surname = surname || split.surname;
+    }
+    const nameKey = normalizeKey(compactSpaces(`${titleCaseNamePart(firstName)} ${titleCaseNamePart(surname)}`));
+    if (nameKey) {
+      if (!nameCodes.has(nameKey)) nameCodes.set(nameKey, new Set());
+      nameCodes.get(nameKey)!.add(memberId);
+    }
+    const phone = phoneDigits(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
+    const email = emailKey(getCell(row, ['E-mail', 'Email', 'Mail']));
+    if (!phone && !email) continue;
+    rowsParsed += 1;
+    if (phone) map.set(`phone:${phone}`, memberId);
+    if (email) map.set(`email:${email}`, memberId);
+  }
+  // nameMap: SOLO nomi univoci nel report (un unico codice). Guardia anti-omonimia.
+  const nameMap: CodiceMap = new Map();
+  for (const [nameKey, codes] of nameCodes) {
+    if (codes.size === 1) nameMap.set(nameKey, [...codes][0]);
+  }
+  return { ok: true, map, nameMap, rowsParsed };
+}
+
+async function exportCodiceFromMatchpoint(): Promise<MatchpointExport> {
+  const codicePath = Deno.env.get('MATCHPOINT_CODICE_PATH') || DEFAULT_CLIENTS_PATH;
+  const codiceTarget = Deno.env.get('MATCHPOINT_CODICE_EXPORT_TARGET') || DEFAULT_EXPORT_TARGET;
+  return exportClientsViaHttp(codicePath, codiceTarget);
 }
 
 async function authenticateStaff(req: Request, supabaseUrl: string, anonKey: string): Promise<StaffActor> {
@@ -1329,6 +1459,30 @@ function shouldDeleteDuplicateMemberRecord(record: any) {
   const payload = record?.payload || {};
   const source = clean(payload.source || '');
   return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
+}
+
+function legacyMemberHasCuratedData(payload: any): boolean {
+  try {
+    const p = payload || {};
+    const nonEmptyStr = (v: unknown) => typeof v === 'string' && v.trim() !== '';
+    const nonEmptyArr = (v: unknown) => Array.isArray(v) && v.length > 0;
+    if (nonEmptyArr(p.prefDays) || nonEmptyArr(p.prefHours)) return true;
+    if (nonEmptyStr(p.preferredDays) || nonEmptyStr(p.preferredTimes)) return true;
+    if (nonEmptyStr(p.availabilityTime) || nonEmptyStr(p.desiredFrequency)) return true;
+    if (nonEmptyStr(p.preferredMatchType)) return true;
+    if (nonEmptyStr(p.notice) || nonEmptyStr(p.note) || nonEmptyStr(p.staffNotes)) return true;
+    const ap = p.availabilityProfile;
+    if (ap && typeof ap === 'object') {
+      for (const k of ['days', 'time', 'notice', 'frequency', 'matchType']) {
+        if (nonEmptyStr((ap as any)[k])) return true;
+      }
+    }
+    if (nonEmptyArr(p.groups) || nonEmptyArr(p.tags) || nonEmptyArr(p.partners)) return true;
+    if (p.preferences && typeof p.preferences === 'object' && Object.keys(p.preferences).length > 0) return true;
+    return false;
+  } catch {
+    return true; // nel dubbio, NON cancellare
+  }
 }
 
 function shouldNormalizeMemberLocalKey(record: any) {
@@ -1512,7 +1666,8 @@ Deno.serve(async (req) => {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }
 
-    const exported = await exportClientsFromMatchpoint();
+    const syncResult = await exportClientsWithCodice();
+    const exported = syncResult.main;
     const validation = validateClientWorkbook(exported.bytes, importedAt);
     if (!validation.ok) {
       const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
@@ -1540,6 +1695,66 @@ Deno.serve(async (req) => {
       });
     }
 
+    const memberIdEnrichment = {
+      attempted: true,
+      ok: false,
+      skippedReason: null as string | null,
+      codiceRowsParsed: 0,
+      matched: 0,
+      matchedByName: 0,
+      unmatched: 0,
+      unmatchedSample: [] as Array<{ firstName: string; surname: string }>,
+    };
+    try {
+      if (!syncResult.codice.ok || !syncResult.codice.bytes) {
+        memberIdEnrichment.skippedReason = syncResult.codice.skippedReason || 'CODICE_NOT_AVAILABLE';
+      } else {
+        const codiceResult = parseCodiceWorkbook(syncResult.codice.bytes);
+        if (!codiceResult.ok) {
+          memberIdEnrichment.skippedReason = `${codiceResult.error}: ${codiceResult.message}`;
+        } else {
+          memberIdEnrichment.ok = true;
+          memberIdEnrichment.codiceRowsParsed = codiceResult.rowsParsed;
+          const codiceMap = codiceResult.map;
+          const codiceNameMap = codiceResult.nameMap;
+          const unmatchedSample: Array<{ firstName: string; surname: string }> = [];
+          let enrichMatched = 0;
+          let enrichMatchedByName = 0;
+          let enrichUnmatched = 0;
+          for (const member of validation.members) {
+            const pDigits = phoneDigits(member.phone);
+            const eKey = emailKey(member.email);
+            let found = (pDigits && codiceMap.get(`phone:${pDigits}`)) || (eKey && codiceMap.get(`email:${eKey}`)) || '';
+            // Fallback per nome: SOLO se il socio non ha ne telefono ne email,
+            // e SOLO se quel nome e' univoco nel report Codice (guardia anti-omonimia).
+            if (!found && !pDigits && !eKey) {
+              const nKey = normalizeKey(memberName(member));
+              const byName = nKey ? (codiceNameMap.get(nKey) || '') : '';
+              if (byName) {
+                found = byName;
+                enrichMatchedByName += 1;
+              }
+            }
+            if (found) {
+              member.memberId = found;
+              enrichMatched += 1;
+            } else {
+              enrichUnmatched += 1;
+              if (unmatchedSample.length < 50) {
+                unmatchedSample.push({ firstName: member.firstName, surname: member.surname });
+              }
+            }
+          }
+          memberIdEnrichment.matched = enrichMatched;
+          memberIdEnrichment.matchedByName = enrichMatchedByName;
+          memberIdEnrichment.unmatched = enrichUnmatched;
+          memberIdEnrichment.unmatchedSample = unmatchedSample;
+        }
+      }
+    } catch (enrichError) {
+      memberIdEnrichment.skippedReason = errorText(enrichError).slice(0, 500);
+    }
+
     const existing = await loadExistingMemberRecords(admin);
     const records = [];
     const memberRecordKeys = new Set<string>();
@@ -1549,6 +1764,9 @@ Deno.serve(async (req) => {
     let duplicateRows = 0;
     let duplicateDeleted = 0;
     let staleDeleted = 0;
+    let legacyDuplicateDeleted = 0;
+    let legacyDuplicateReview = 0;
+    const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
 
     for (const member of validation.members) {
       const candidates = collectExistingMemberCandidates(existing, member);
@@ -1577,8 +1795,26 @@ Deno.serve(async (req) => {
       for (const candidate of candidates) {
         const candidateKey = clean(candidate?.local_key || '');
         if (!candidateKey || candidateKey === localKey) continue;
-        if (!shouldDeleteDuplicateMemberRecord(candidate)) continue;
-        duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
+        if (shouldDeleteDuplicateMemberRecord(candidate)) {
+          duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
+          continue;
+        }
+        // Doppione "legacy" (non-Matchpoint) con gemello Matchpoint per lo stesso socio.
+        // Guardia A: si elimina solo se il record che sopravvive e' davvero Matchpoint.
+        const survivorIsMatchpoint = payload?.source === 'matchpoint_auto' || !!payload?.matchpointImportedAt;
+        if (!survivorIsMatchpoint) continue;
+        // Guardia B: se ha dati curati, NON cancellare: segnalare per controllo manuale.
+        if (legacyMemberHasCuratedData(candidate?.payload || {})) {
+          legacyDuplicateReview += 1;
+          if (legacyDuplicateReviewSample.length < 50) {
+            legacyDuplicateReviewSample.push({
+              firstName: clean(candidate?.payload?.firstName || ''),
+              surname: clean(candidate?.payload?.surname || ''),
+            });
+          }
+          continue;
+        }
+        duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'legacy_duplicate_superseded'));
       }
     }
 
@@ -1607,6 +1843,8 @@ Deno.serve(async (req) => {
         duplicateRows,
         duplicateDeleted,
         staleDeleted,
+        legacyDuplicateDeleted,
+        legacyDuplicateReview,
         added,
         updated,
       },
@@ -1623,6 +1861,8 @@ Deno.serve(async (req) => {
         warnings: validation.warnings,
       },
       diagnostic: exported.diagnostic,
+      memberIdEnrichment,
+      legacyDuplicateReviewSample,
     };
     records.push({
       record_type: 'matchpoint_data',
@@ -1646,6 +1886,13 @@ Deno.serve(async (req) => {
     )).length;
     summaryPayload.rows.duplicateDeleted = duplicateDeleted;
     summaryPayload.rows.staleDeleted = staleDeleted;
+    legacyDuplicateDeleted = finalRecords.filter((record) => (
+      record.record_type === 'member' &&
+      record.deleted === true &&
+      record.payload?.matchpointDeleteReason === 'legacy_duplicate_superseded'
+    )).length;
+    summaryPayload.rows.legacyDuplicateDeleted = legacyDuplicateDeleted;
+    summaryPayload.rows.legacyDuplicateReview = legacyDuplicateReview;
 
     const { error: upsertError } = await admin
       .from('pmo_cloud_records')
@@ -1661,8 +1908,12 @@ Deno.serve(async (req) => {
       duplicateRows,
       duplicateDeleted,
       staleDeleted,
+      legacyDuplicateDeleted,
+      legacyDuplicateReview,
+      legacyDuplicateReviewSample,
       diagnosticFile,
       upserted: finalRecords.length,
+      memberIdEnrichment,
     });
 
     return okResponse({
