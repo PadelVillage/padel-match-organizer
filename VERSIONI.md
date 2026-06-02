@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.607 — Calendario staff: disambiguazione giocatori/allievi con lista nomi completi quando un nome è ambiguo; i chip portano il codice socio scelto e vengono inviati codici esatti (partita e lezione) → niente più aggancio omonimo. Allievo obbligatorio per la lezione. (A3b+)
+
 ## 2026-06-02 / DB: migrazione — aggiunto record_type 'booking_job' al vincolo di pmo_cloud_records (stato lavoro prenotazione asincrona). Già applicato a mano su TEST; il file lo rende permanente e lo porta in PROD.
 
 ## 2026-06-02 / TEST (edge matchpoint-bookings-create): aggiunta modalità asincrona opzionale (flag async) + endpoint GET stato lavoro, riusando pmo_cloud_records (record_type booking_job). Retrocompatibile: senza async, comportamento invariato. Worker non toccato.

@@ -7148,7 +7148,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.606';
+    const APP_VERSION = '5.607';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34673,7 +34673,9 @@ Per confermare scrivi ELIMINA.`);
   // ── Submit singola prenotazione via edge function ──────────────────────────
   async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, options = {}) {
     let giocatoriPayload;
-    if ((parsed.tipo || 'partita') === 'partita' && parsed.nome) {
+    if (Array.isArray(parsed.giocatori) && parsed.giocatori.length) {
+      giocatoriPayload = parsed.giocatori;
+    } else if (['partita', 'lezione'].includes(parsed.tipo || 'partita') && parsed.nome) {
       const splitPlayers = (raw) => String(raw)
         .split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i)
         .map(s => s.trim()).filter(Boolean);
@@ -35391,11 +35393,11 @@ Per confermare scrivi ELIMINA.`);
     const ui = svcFlowState && svcFlowState.playersUI;
     if (!ui) return;
     ui.chips.innerHTML = '';
-    (svcFlowState.players || []).forEach(function(name, i) {
+    (svcFlowState.players || []).forEach(function(chipObj, i) {
       const chip = document.createElement('span');
       chip.className = 'svc-player-chip';
       const txt = document.createElement('span');
-      txt.textContent = name;
+      txt.textContent = (chipObj && typeof chipObj === 'object') ? chipObj.nome : String(chipObj || '');
       const x = document.createElement('button');
       x.className = 'svc-chip-x';
       x.type = 'button';
@@ -35413,8 +35415,7 @@ Per confermare scrivi ELIMINA.`);
       ui.chips.appendChild(chip);
     });
     const has = (svcFlowState.players || []).length > 0;
-    const isLezione = svcFlowState.tipoEngine === 'lezione';
-    ui.nextBtn.disabled = isLezione ? false : !has;
+    ui.nextBtn.disabled = !has;
     ui.empty.style.display = has ? 'none' : '';
   }
 
@@ -35531,7 +35532,7 @@ Per confermare scrivi ELIMINA.`);
     if (!Array.isArray(svcFlowState.players)) svcFlowState.players = [];
     const isLezione = svcFlowState.tipoEngine === 'lezione';
     const titleHtml = isLezione
-      ? '👥 <strong>Quali allievi?</strong> (opzionale)<br><span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>'
+      ? '👥 <strong>Quali allievi?</strong><br><span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>'
       : '👥 <strong>Chi gioca?</strong><br><span style="color:var(--text-muted);font-size:0.75rem;">Scrivi i nomi (separati da virgola o \xabe\xbb) e premi <strong>Invia ↵</strong></span>';
     const div = svcAddMessage('system', titleHtml, 'flow');
     svcFlowState.stepMsg = div;
@@ -35563,7 +35564,7 @@ Per confermare scrivi ELIMINA.`);
     nextBtn.className = 'svc-btn-step';
     nextBtn.type = 'button';
     nextBtn.textContent = 'Avanti ›';
-    nextBtn.disabled = !isLezione;
+    nextBtn.disabled = true;
     nextBtn.addEventListener('click', function() {
       if (nextBtn.disabled) return;
       svcFreezePlayersStep(div);
@@ -35597,13 +35598,14 @@ Per confermare scrivi ELIMINA.`);
     const tipoLabel = svcFlowState.tipoLabel || tipo;
     const isLezione = svcFlowState.tipoEngine === 'lezione';
     const istruttore = svcFlowState.istruttore || '';
-    const allievi = players.length ? players.join(', ') : 'nessuno';
+    const playerNames = players.map(function(p) { return (p && typeof p === 'object') ? p.nome : String(p || ''); });
+    const allievi = playerNames.length ? playerNames.join(', ') : 'nessuno';
     const detailRows = isLezione
       ? '🎾 ' + tipoLabel + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
         '👨‍🏫 Maestro: ' + istruttore + '<br>' +
         '👥 Allievi: ' + allievi + '<br><br>'
       : '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
-        '👥 ' + players.join(', ') + '<br><br>';
+        '👥 ' + playerNames.join(', ') + '<br><br>';
     const div = svcAddMessage('system',
       '📋 <strong>Riepilogo prenotazione</strong><br><br>' +
       '📍 Campo ' + campo + ' &nbsp;\xb7&nbsp; ' + ddmm + ' &nbsp;\xb7&nbsp; ' + ora + '–' + endTime + '<br>' +
@@ -35650,6 +35652,8 @@ Per confermare scrivi ELIMINA.`);
   // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
     const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
+    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '' }; });
+    const nomeStr = giocatori.map(function(g) { return g.nome; }).join(', ');
     let parsed;
     if (tipoEngine === 'lezione') {
       parsed = {
@@ -35661,7 +35665,8 @@ Per confermare scrivi ELIMINA.`);
         durata: durata,
         tipo: 'lezione',
         istruttore: istruttore,
-        nome: (players && players.length) ? players.join(', ') : istruttore
+        nome: (players && players.length) ? nomeStr : istruttore,
+        giocatori: giocatori
       };
     } else {
       parsed = {
@@ -35671,8 +35676,9 @@ Per confermare scrivi ELIMINA.`);
         ora: ora,
         oraFine: svcEndTime(ora, durata),
         durata: durata,
-        nome: players.join(', '),
-        tipo: 'partita'
+        nome: nomeStr,
+        tipo: 'partita',
+        giocatori: giocatori
       };
     }
     // Pre-check conflitto istantaneo
@@ -35697,7 +35703,7 @@ Per confermare scrivi ELIMINA.`);
       if (result.status === 'done') {
         staffCalSaveLocal(parsed);
         if (tipoEngine === 'lezione') {
-          const allievi = (players && players.length) ? players.join(', ') : '—';
+          const allievi = (players && players.length) ? nomeStr : '—';
           svcAddMessage('system',
             '✅ <strong>Lezione prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
             '👨‍🏫 ' + istruttore + ' 👥 ' + allievi,
@@ -35723,7 +35729,64 @@ Per confermare scrivi ELIMINA.`);
     svcSetInputMode('normal');
   }
 
-  // Handle send (nello step players: aggiunge chip; altrimenti messaggio neutro)
+  function svcAddResolvedChip(member, raw) {
+    const rawCode = String(member.memberId || '').trim();
+    const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';
+    const nome = (typeof playerFullName === 'function' ? playerFullName(member) : '') || member.name || raw;
+    svcFlowState.players.push({ nome: nome, codice: codice, raw: raw });
+  }
+
+  function svcProcessDisambigQueue(queue, idx) {
+    if (!svcFlowState || idx >= queue.length) {
+      svcRenderPlayerChips();
+      const inp = document.getElementById('svcChatInput');
+      if (inp && !inp.disabled) inp.focus();
+      return;
+    }
+    const item = queue[idx];
+    svcAskPlayerChoice(item.raw, item.candidati, function() {
+      svcProcessDisambigQueue(queue, idx + 1);
+    });
+  }
+
+  function svcAskPlayerChoice(nomeDigitato, candidati, onDone) {
+    if (!svcFlowState) { onDone(); return; }
+    const inp = document.getElementById('svcChatInput');
+    const snd = document.getElementById('svcChatSend');
+    if (inp) inp.disabled = true;
+    if (snd) snd.disabled = true;
+    const msgDiv = svcAddMessage('system',
+      '👥 <strong>Quale \xab' + escapeHtml(nomeDigitato) + '\xbb?</strong> Ci sono pi\xf9 soci con questo nome.',
+      'flow'
+    );
+    const labels = candidati.map(function(m) {
+      const fn = (typeof playerFullName === 'function' ? playerFullName(m) : '') || m.name || '';
+      return fn + (m.memberId ? ' (' + m.memberId + ')' : '');
+    });
+    const btns = svcMakeStepButtons(
+      labels,
+      function(label) {
+        svcFreezeMsg(msgDiv);
+        const idx = labels.indexOf(label);
+        if (idx >= 0) svcAddResolvedChip(candidati[idx], nomeDigitato);
+        svcRenderPlayerChips();
+        if (inp) inp.disabled = false;
+        if (snd) snd.disabled = false;
+        onDone();
+      },
+      function() {
+        svcFreezeMsg(msgDiv);
+        if (inp) inp.disabled = false;
+        if (snd) snd.disabled = false;
+        onDone();
+      }
+    );
+    const cancelBtnEl = btns.querySelector('.svc-btn-step-cancel');
+    if (cancelBtnEl) cancelBtnEl.textContent = '✕ Salta';
+    msgDiv.appendChild(btns);
+  }
+
+  // Handle send (nello step players: aggiunge chip con disambiguazione; altrimenti messaggio neutro)
   function svcHandleSend() {
     const input = document.getElementById('svcChatInput');
     if (!input || input.disabled) return;
@@ -35731,12 +35794,28 @@ Per confermare scrivi ELIMINA.`);
     if (!text) return;
     if (svcFlowState && svcFlowState.step === 'players') {
       input.value = '';
-      String(text).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+/i)
+      const rawNames = String(text).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+/i)
         .map(function(s) { return s.trim(); })
-        .filter(Boolean)
-        .forEach(function(n) { svcFlowState.players.push(n); });
+        .filter(Boolean);
+      const queue = [];
+      rawNames.forEach(function(raw) {
+        const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
+        if (sugg.length === 0) {
+          svcFlowState.players.push({ nome: raw, codice: '', raw: raw });
+        } else if (sugg.length === 1) {
+          svcAddResolvedChip(sugg[0].member, raw);
+        } else if (sugg[0].distance === 0 && sugg[1].distance > 0) {
+          svcAddResolvedChip(sugg[0].member, raw);
+        } else {
+          queue.push({ raw: raw, candidati: sugg.map(function(s) { return s.member; }) });
+        }
+      });
       svcRenderPlayerChips();
-      input.focus();
+      if (queue.length > 0) {
+        svcProcessDisambigQueue(queue, 0);
+      } else {
+        input.focus();
+      }
       return;
     }
     input.value = '';
