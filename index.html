@@ -6956,7 +6956,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.601';
+    const APP_VERSION = '5.602';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34309,7 +34309,7 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalPendingRicorrenza = null;
 
   // ── Submit singola prenotazione via edge function ──────────────────────────
-  async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey) {
+  async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, options = {}) {
     let giocatoriPayload;
     if ((parsed.tipo || 'partita') === 'partita' && parsed.nome) {
       const splitPlayers = (raw) => String(raw)
@@ -34341,6 +34341,7 @@ Per confermare scrivi ELIMINA.`);
         nome: parsed.nome, tipo: parsed.tipo || 'partita',
         istruttore: parsed.istruttore || undefined,
         ...(giocatoriPayload ? { giocatori: giocatoriPayload } : {}),
+        ...(options.async ? { async: true } : {}),
       }),
     });
     const respText = await response.text();
@@ -34351,6 +34352,30 @@ Per confermare scrivi ELIMINA.`);
     }
     if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
     return data;
+  }
+
+  // Controlla lo stato del lavoro asincrono finché 'done' / 'error' / scade il tempo
+  async function staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, onTick) {
+    const url = `${supabaseUrl}/functions/v1/matchpoint-bookings-create?jobId=${encodeURIComponent(jobId)}`;
+    const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` };
+    const startedAt = Date.now();
+    const MAX_MS = 180000;   // 3 minuti
+    const STEP_MS = 3000;
+    while (Date.now() - startedAt < MAX_MS) {
+      await new Promise(r => setTimeout(r, STEP_MS));
+      if (typeof onTick === 'function') onTick(Math.round((Date.now() - startedAt) / 1000));
+      let data = null;
+      try {
+        const resp = await fetch(url, { headers });
+        const txt = await resp.text();
+        try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+      } catch { data = null; }
+      if (!data) continue;
+      if (data.status === 'done') return { status: 'done', message: data.message };
+      if (data.status === 'error') return { status: 'error', error: data.error || data.message };
+      // 'pending' → continua
+    }
+    return { status: 'timeout' };
   }
 
   // ── Test prenotazione Matchpoint (solo TEST env) ──────────────────────────
@@ -34849,15 +34874,26 @@ Per confermare scrivi ELIMINA.`);
     const sendBtn = document.getElementById('staffCalSendBtn');
     if (sendBtn) sendBtn.disabled = true;
     const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
-    staffCalSetStatus(`Prenotando ${tipoLabel} ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine} su Matchpoint (~45s)...`, 'pending');
+    staffCalSetStatus(`Avvio prenotazione ${tipoLabel} ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine}…`, 'pending');
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey);
-      staffCalSaveLocal(parsed);
-      staffCalSetStatus(`📨 ${tipoLabel} inviata a Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}. Controlla nel calendario.`, 'done');
-      if (input) { input.value = ''; staffCalAutoResize(input); }
-      if (parsed.data === isoDate) renderStaffCalendar();
+      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true });
+      const jobId = submit && submit.jobId;
+      if (!jobId) throw new Error('Avvio prenotazione non riuscito (nessun codice lavoro).');
+      staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint…`, 'pending');
+      const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey,
+        (sec) => staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint… (${sec}s)`, 'pending'));
+      if (result.status === 'done') {
+        staffCalSaveLocal(parsed);
+        staffCalSetStatus(result.message ? `✓ ${result.message}` : `✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+        if (input) { input.value = ''; staffCalAutoResize(input); }
+        if (parsed.data === isoDate) renderStaffCalendar();
+      } else if (result.status === 'error') {
+        staffCalSetStatus(`❌ Prenotazione non riuscita: ${result.error || 'errore sconosciuto'}`, 'error');
+      } else {
+        staffCalSetStatus(`⏳ Ci sta mettendo più del previsto. Controlla nel calendario tra poco; se non compare, riprova (NON premere Prenota due volte).`, 'pending');
+      }
     } catch (err) {
       staffCalSetStatus('Errore: ' + (err.message || err), 'error');
     } finally {
