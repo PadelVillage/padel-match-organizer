@@ -3018,6 +3018,11 @@ async function createClientWithBrowser(options = {}) {
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
     });
     page = await context.newPage();
+    // Matchpoint mette un confirm() sull'onclick di "Iscrizione cliente".
+    // Lo neutralizziamo: ritorna sempre true, così il postback parte senza dialog.
+    await page.addInitScript(() => {
+      window.confirm = () => true;
+    });
     page.setDefaultTimeout(12000);
     page.setDefaultNavigationTimeout(20000);
 
@@ -3071,8 +3076,9 @@ async function createClientWithBrowser(options = {}) {
     }
 
     diagnostic.steps.push('salva_cliente');
-    // Matchpoint apre un confirm() alla pressione di "Iscrizione cliente":
-    // va ACCETTATO, altrimenti Playwright lo annulla e il salvataggio non parte.
+    // Ribadisce la soppressione del confirm() sulla pagina corrente prima del click.
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    // Lasciato come rete di sicurezza per eventuali alert() post-salvataggio.
     page.once('dialog', async (dialog) => {
       diagnostic.dialogMessage = dialog.message();
       diagnostic.dialogType = dialog.type();
