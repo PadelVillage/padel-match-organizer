@@ -1,5 +1,9 @@
 # Versioni
 
+## 2026-06-02 / TEST · Edge function `matchpoint-bookings-create` — giocatori con codice Matchpoint
+
+- edge `matchpoint-bookings-create` — accetta e inoltra al worker la lista giocatori con codice Matchpoint (retrocompatibile).
+
 ## 2026-06-01 / TEST · Edge function `matchpoint-clients-sync` v45 + browser worker + guardrail PROD
 
 - **Solo ambiente TEST** (Supabase `cudiqnrrlbyqryrtaprd`; nessuna modifica a PROD). Modifiche a Edge Function `matchpoint-clients-sync` (versione 45) e al browser worker, non alla UI dell'app.
