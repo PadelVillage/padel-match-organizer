@@ -7154,7 +7154,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.611';
+    const APP_VERSION = '5.612';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35372,18 +35372,40 @@ Per confermare scrivi ELIMINA.`);
 
       clearInterval(_timer);
 
-      if (response.ok && data?.ok !== false) {
+      // Rimozione robusta della copia locale: campo confrontato come NUMERO (alcune card vecchie
+      // lo hanno salvato come stringa, per questo prima non sparivano), data e ora normalizzate.
+      const removeLocalCopy = () => {
         const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        const filtered = existing.filter((b) => !(b.data === isoDate && b.campo === campo && b.ora === ora));
+        const wantCampo = Number(String(campo).replace(/\D/g, ''));
+        const wantOra = String(ora).trim();
+        const filtered = existing.filter((b) => !(
+          String(b.data).trim() === isoDate &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra
+        ));
         if (typeof save === 'function') save('staffBookings', filtered);
+      };
+      const _msgTxt = ((data && (data.message || data.error)) || '') + '';
+      const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
+
+      if (response.ok && data?.ok !== false) {
+        removeLocalCopy();
         svcAddMessage('system',
           '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
           (nome ? '<br>👥 ' + nome : ''),
           'ok'
         );
         renderStaffCalendar();
+      } else if (notFoundOnMatchpoint) {
+        // Non c'è più su Matchpoint (ghost locale rimasto dai test): pulisci comunque la card.
+        removeLocalCopy();
+        svcAddMessage('system',
+          '🧹 <strong>Non più presente su Matchpoint</strong> — card rimossa dal calendario: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora,
+          'ok'
+        );
+        renderStaffCalendar();
       } else {
-        const msg = (data && (data.message || data.error)) || (typeof data === 'string' ? data : 'errore HTTP ' + response.status);
+        const msg = _msgTxt || ('errore HTTP ' + response.status);
         svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg);
       }
     } catch (err) {
