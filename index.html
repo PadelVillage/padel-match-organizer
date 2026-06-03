@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.624';
+    const APP_VERSION = '5.625';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34220,8 +34220,10 @@ Per confermare scrivi ELIMINA.`);
   let staffCalPlayersState = null;
 
   function _staffCalPlayerCode(member) {
-    const raw = String((member && member.memberId) || '').trim();
-    return /^\d{1,7}$/.test(raw) ? raw : '';
+    // Id da confrontare col worker = id interno Matchpoint (id_people = HiddenFieldIdPeople),
+    // salvato in matchpointIdInterno. NON memberId (che è il codice/tessera, un numero diverso).
+    const raw = String((member && member.matchpointIdInterno) || '').trim();
+    return /^\d{1,12}$/.test(raw) ? raw : '';
   }
   function _staffCalPlayerName(member, fallback) {
     const fn = (typeof playerFullName === 'function') ? playerFullName(member) : '';
@@ -35920,8 +35922,8 @@ Per confermare scrivi ELIMINA.`);
   }
 
   function svcAddResolvedChip(member, raw) {
-    const rawCode = String(member.memberId || '').trim();
-    const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';
+    const rawCode = String(member.matchpointIdInterno || '').trim();
+    const codice = /^\d{1,12}$/.test(rawCode) ? rawCode : '';
     const nome = (typeof playerFullName === 'function' ? playerFullName(member) : '') || member.name || raw;
     svcFlowState.players.push({ nome: nome, codice: codice, raw: raw });
   }

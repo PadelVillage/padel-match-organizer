@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.625 — Giocatori: usare l'id interno Matchpoint (matchpointIdInterno) invece di memberId
+- Aggiungendo un giocatore (editor 👥 e creazione prenotazione) l'app passava `memberId` (codice/tessera) come codice atteso, ma il worker confronta con `HiddenFieldIdPeople` = id interno (`id_people`). Risultato: `PLAYER_CODE_MISMATCH` per i soci con id interno noto. Ora si passa `matchpointIdInterno` (l'id interno reale). Se assente, aggiunta per nome come prima. Solo app; edge e worker invariati.
+
 ## v5.624 — Calendario: avvio indipendente (fix definitivo griglia vuota all'apertura)
 - La griglia restava vuota (data "gg/mm/aaaa") perché `staffCalInit` non veniva chiamato: nella sequenza di avvio `renderInitialDashboard()` non è protetta ed è subito prima di `staffCalInit`; un suo errore interrompeva l'avvio. Aggiunto `staffCalBootstrap`: un poller indipendente che inizializza il calendario appena il contenitore è pronto e si ferma quando la griglia è disegnata. Solo app; edge e worker invariati.
 
