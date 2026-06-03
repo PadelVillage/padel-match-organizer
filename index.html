@@ -5656,7 +5656,7 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="side-nav-section-label">Capitoli</div>
         <button class="tab-button side-nav-main-item" onclick="switchTab('dashboard', this)">
           <span class="nav-order">0</span>
-          <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Tabellone Matchpoint</span></span>
+          <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Campi staff</span></span>
         </button>
 
         <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
@@ -5691,7 +5691,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
-          <button class="side-sub-link" onclick="goToTabSection('administration','Calendario staff')">📅 Calendario staff</button>
           <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
@@ -5704,7 +5703,7 @@ body.assessment-public-mode .assessment-public-only-card {
     <div class="top-nav-bar">
       <div class="top-nav-left">
         <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
-        <span id="currentSectionLabel" class="current-section">📅 Calendario / Tabellone Matchpoint</span>
+        <span id="currentSectionLabel" class="current-section">📅 Calendario campi staff</span>
         <span id="dashboardTopUpdate" class="dashboard-top-update">Aggiornamento: non disponibile</span>
       </div>
       <div class="top-nav-actions">
@@ -5784,50 +5783,72 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
     <div id="dashboard" class="tab-content active">
-      <div class="cal-root">
-
-        <!-- Header: navigazione data + azioni -->
-        <div class="cal-header">
-          <div class="cal-nav">
-            <button class="cal-nav-btn" onclick="calPrevDay()" title="Giorno precedente">&#8249;</button>
-            <span id="calDateLabel" class="cal-date-label">—</span>
-            <button class="cal-nav-btn" onclick="calNextDay()" title="Giorno successivo">&#8250;</button>
-            <button class="cal-today-btn" onclick="calGoToday()">Oggi</button>
-          </div>
-          <div class="cal-actions">
-            <span id="calStatusMsg" class="cal-status"></span>
-            <button class="cal-reload-btn" onclick="calReload()">↻ Aggiorna</button>
-          </div>
-        </div>
-
-        <div class="cal-body">
-          <div class="cal-main">
-
-            <!-- Intestazioni: gutter + campi + colonna WA -->
-            <div class="cal-col-headers">
-              <div class="cal-time-gutter"></div>
-              <div id="calCampoHeaders" class="cal-campo-headers-row"></div>
-              <div class="cal-wa-col-hdr" id="calWaColHdr">
-                <span>WhatsApp</span>
-                <span id="calWaDateLabel" class="cal-wa-col-date"></span>
-                <button class="cal-wa-toggle" id="calWaToggle" onclick="calToggleWa()" title="Mostra/nascondi messaggi">◀</button>
+      <div class="admin-panel" id="pmoCalendarioStaffPanel" data-admin-anchor="calendario-staff" style="padding-bottom:140px">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Calendario campi staff</h3>
+                <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
+              </div>
+              <div class="staff-cal-date-nav" style="margin-left:auto">
+                <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
+                <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
+                <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
+                <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
               </div>
             </div>
 
-            <!-- Griglia unica scrollabile: tempo + 4 campi + colonna WA -->
-            <div class="cal-scroll" id="calScroll">
-              <div class="cal-grid" id="calGrid">
-                <div class="cal-time-col" id="calTimeCol"></div>
-                <div class="cal-campi-cols" id="calCampiCols"></div>
-                <div class="cal-wa-col" id="calWaCol">
-                  <div class="cal-empty cal-wa-loading">Caricamento…</div>
+            <div id="staffCalV36">
+              <div class="svc-layout">
+                <div class="svc-grid-col">
+                  <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
+                  <div class="agenda-wrap" id="staffCalAgendaWrap" style="display:none">
+                    <div class="agenda-tabs" id="staffCalAgendaTabs">
+                      <button class="agenda-tab active" data-field="1"><span class="tab-dot" style="background:#f87171"></span>C1</button>
+                      <button class="agenda-tab" data-field="2"><span class="tab-dot" style="background:#fbbf24"></span>C2</button>
+                      <button class="agenda-tab" data-field="3"><span class="tab-dot" style="background:#34d399"></span>C3</button>
+                      <button class="agenda-tab" data-field="4"><span class="tab-dot" style="background:#818cf8"></span>C4</button>
+                    </div>
+                    <div class="agenda-body" id="staffCalAgendaBody"></div>
+                  </div>
+                </div>
+                <div class="svc-chat-panel" id="svcChatPanel">
+                  <div class="svc-chat-header">
+                    <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
+                  </div>
+                  <div class="svc-chat-input-row" id="svcChatInputRow">
+                    <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
+                    <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
+                  </div>
+                  <div class="svc-chat-messages" id="svcChatMessages"></div>
                 </div>
               </div>
+              <div class="svc-chat-overlay" id="svcChatOverlay"></div>
+              <button class="svc-chat-fab" id="svcChatFab" title="Assistente prenotazioni">💬<span class="svc-fab-badge" id="svcFabBadge"></span></button>
             </div>
 
+            <div class="staff-cal-legend" style="margin-top:14px">
+              <span class="staff-cal-legend-dot partita">Partita</span>
+              <span class="staff-cal-legend-dot lezione">Lezione [STAFF]</span>
+              <span class="staff-cal-legend-dot staff-booking">Prenotazione staff</span>
+              <span class="staff-cal-legend-dot libero">Libero</span>
+            </div>
+
+            <p class="staff-cal-hint" style="margin-top:8px">Clicca su uno slot libero per pre-compilare l'input · <kbd>Enter</kbd> per prenotare</p>
           </div>
+      <div class="staff-cal-input-bar" id="staffCalInputBar" style="display:none">
+          <div class="staff-cal-input-wrap">
+            <textarea
+              id="staffCalInput"
+              placeholder='Es: "lezione Santiago campo 1 18-19:30" · "campo 2 ogni martedì 20-21" · 🎤'
+              rows="1"
+              oninput="staffCalAutoResize(this)"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffCalSubmitBooking()}"
+            ></textarea>
+            <button class="staff-cal-mic-btn" id="staffCalMicBtn" onclick="staffCalToggleDictation()" title="Ditta prenotazione">🎤</button>
+            <button class="staff-cal-send-btn" id="staffCalSendBtn" onclick="staffCalSubmitBooking()">Prenota</button>
+          </div>
+          <div id="staffCalInputStatus" class="staff-cal-input-status"></div>
         </div>
-      </div>
     </div>
 
 
@@ -6979,78 +7000,6 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
 
-        <!-- ===== CALENDARIO STAFF (v5.580) ===== -->
-        <div id="pmoAdminCalendarioStaffSection" class="admin-section-panel" data-pmo-admin-section="calendario-staff" hidden>
-          <div class="admin-panel" id="pmoCalendarioStaffPanel" data-admin-anchor="calendario-staff" style="padding-bottom:140px">
-            <div class="admin-panel-head">
-              <div>
-                <h3>Calendario campi staff</h3>
-                <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
-              </div>
-              <div class="staff-cal-date-nav" style="margin-left:auto">
-                <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
-                <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
-                <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
-                <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
-              </div>
-            </div>
-
-            <div id="staffCalV36">
-              <div class="svc-layout">
-                <div class="svc-grid-col">
-                  <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
-                  <div class="agenda-wrap" id="staffCalAgendaWrap" style="display:none">
-                    <div class="agenda-tabs" id="staffCalAgendaTabs">
-                      <button class="agenda-tab active" data-field="1"><span class="tab-dot" style="background:#f87171"></span>C1</button>
-                      <button class="agenda-tab" data-field="2"><span class="tab-dot" style="background:#fbbf24"></span>C2</button>
-                      <button class="agenda-tab" data-field="3"><span class="tab-dot" style="background:#34d399"></span>C3</button>
-                      <button class="agenda-tab" data-field="4"><span class="tab-dot" style="background:#818cf8"></span>C4</button>
-                    </div>
-                    <div class="agenda-body" id="staffCalAgendaBody"></div>
-                  </div>
-                </div>
-                <div class="svc-chat-panel" id="svcChatPanel">
-                  <div class="svc-chat-header">
-                    <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
-                  </div>
-                  <div class="svc-chat-input-row" id="svcChatInputRow">
-                    <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
-                    <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
-                  </div>
-                  <div class="svc-chat-messages" id="svcChatMessages"></div>
-                </div>
-              </div>
-              <div class="svc-chat-overlay" id="svcChatOverlay"></div>
-              <button class="svc-chat-fab" id="svcChatFab" title="Assistente prenotazioni">💬<span class="svc-fab-badge" id="svcFabBadge"></span></button>
-            </div>
-
-            <div class="staff-cal-legend" style="margin-top:14px">
-              <span class="staff-cal-legend-dot partita">Partita</span>
-              <span class="staff-cal-legend-dot lezione">Lezione [STAFF]</span>
-              <span class="staff-cal-legend-dot staff-booking">Prenotazione staff</span>
-              <span class="staff-cal-legend-dot libero">Libero</span>
-            </div>
-
-            <p class="staff-cal-hint" style="margin-top:8px">Clicca su uno slot libero per pre-compilare l'input · <kbd>Enter</kbd> per prenotare</p>
-          </div>
-        </div>
-
-        <!-- Sticky input bar calendario staff -->
-        <div class="staff-cal-input-bar" id="staffCalInputBar" style="display:none">
-          <div class="staff-cal-input-wrap">
-            <textarea
-              id="staffCalInput"
-              placeholder='Es: "lezione Santiago campo 1 18-19:30" · "campo 2 ogni martedì 20-21" · 🎤'
-              rows="1"
-              oninput="staffCalAutoResize(this)"
-              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();staffCalSubmitBooking()}"
-            ></textarea>
-            <button class="staff-cal-mic-btn" id="staffCalMicBtn" onclick="staffCalToggleDictation()" title="Ditta prenotazione">🎤</button>
-            <button class="staff-cal-send-btn" id="staffCalSendBtn" onclick="staffCalSubmitBooking()">Prenota</button>
-          </div>
-          <div id="staffCalInputStatus" class="staff-cal-input-status"></div>
-        </div>
-
         <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
           <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
             <div class="admin-panel-head">
@@ -7160,7 +7109,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.615';
+    const APP_VERSION = '5.616';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -8864,7 +8813,7 @@ Grazie.`
         document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('pmoSidebarCollapsed', '0');
       }
-      if (label) label.textContent = tabName === 'dashboard' ? '🏠 Dashboard / Situazione ad oggi' : (SECTION_LABELS[tabName] || tabName);
+      if (label) label.textContent = tabName === 'dashboard' ? '📅 Calendario campi staff' : (SECTION_LABELS[tabName] || tabName);
       if (updateBadge) {
         if (tabName === 'dashboard') {
           updateBadge.textContent = getDashboardTopUpdateText();
@@ -9225,7 +9174,7 @@ Grazie.`
         requestAnimationFrame(() => {
           setTimeout(() => {
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
-            if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof calLoad === 'function') calLoad(); }
+            if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); }
             if (tabName === 'members') displayMembers();
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
@@ -26074,6 +26023,7 @@ Per confermare scrivi ELIMINA.`);
       handlePostMatchFeedbackPublicDeepLink();
       handleAssessmentPublicDeepLink();
 	      renderInitialDashboard();
+	      try { staffCalInit(); } catch (err) { console.warn('Calendario staff non inizializzato:', err); }
 	      renderPlayerAvailabilityPreview();
 	      renderPmoRoutineCenter();
 	      renderPmoAdministration();
