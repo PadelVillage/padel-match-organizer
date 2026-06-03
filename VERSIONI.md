@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.621 — Calendario: rimossa la legenda e la riga di suggerimento in alto
+- Tolta dalla testata del Calendario staff la legenda colorata (Partita / Lezione [STAFF] / Prenotazione staff / Libero) e la riga grigia di suggerimento ("Clicca su uno slot libero…"). Rimosse anche le regole CSS ormai inutilizzate (`.staff-cal-legend`, `.staff-cal-legend-dot`, `.staff-cal-hint`). Solo app; edge e worker invariati.
+
 ## v5.620 — Calendario: card staff più chiare (tipo reale) + via il pulsante 🧹
 - Le card delle prenotazioni staff (✏️) mostrano ora il **tipo reale** scelto in prenotazione (Partita / Lezione / Manutenzione / Torneo) al posto della generica "Staff", sia in griglia desktop sia in agenda mobile. Il tipo è già salvato nel record; ora `staffCalGetSlots` lo porta come `tipoReale` e un helper `_staffCalTipoLabel` lo traduce in etichetta. Le card Matchpoint (🔒) restano invariate.
 - Rimosso il pulsante 🧹 "rimuovi solo dal calendario" da entrambe le viste e cancellata la funzione `staffCalRemoveLocalOnly` ormai inutilizzata. L'annullamento con 🗑 ripulisce già da solo le card "fantasma" non più presenti su Matchpoint. Solo app; edge e worker invariati.
