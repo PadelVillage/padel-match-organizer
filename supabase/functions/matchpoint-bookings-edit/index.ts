@@ -99,8 +99,9 @@ async function callWorkerEditBooking(opts: {
   workerUrl: string;
   workerApiKey: string;
   edit: EditRequest;
+  operatore?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, edit } = opts;
+  const { workerUrl, workerApiKey, edit, operatore } = opts;
   const endpoint = `${workerUrl}/edit-booking`;
 
   // ⚠️ NESSUN RETRY. La modifica scrive su Matchpoint in modo incrementale:
@@ -115,7 +116,7 @@ async function callWorkerEditBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players }),
+      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
@@ -217,7 +218,7 @@ Deno.serve(async (req: Request) => {
   // Call browser worker
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerEditBooking({ workerUrl, workerApiKey, edit });
+    workerResult = await callWorkerEditBooking({ workerUrl, workerApiKey, edit, operatore: actor.email });
   } catch (workerErr) {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { edit });
   }
