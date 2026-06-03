@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.622 — Calendario: modifica giocatori sulle card partita (👥)
+- Sulle card partita staff (✏️) un nuovo pulsante 👥 apre un editor nel pannello chat: legge i partecipanti reali da Matchpoint (edge `matchpoint-bookings-edit` con `read`), permette di rimuovere i presenti e aggiungere nuovi soci tramite la ricerca clienti (che porta il codice → aggiunta a prova di omonimi). Al salvataggio chiama la edge col blocco `players`, aggiorna la card locale con la lista reale restituita dal worker e ridisegna. Compare solo sulle partite (non su lezione/manutenzione). Solo app; edge e worker già pronti.
+
 ## v5.621 — Calendario: rimossa la legenda e la riga di suggerimento in alto
 - Tolta dalla testata del Calendario staff la legenda colorata (Partita / Lezione [STAFF] / Prenotazione staff / Libero) e la riga grigia di suggerimento ("Clicca su uno slot libero…"). Rimosse anche le regole CSS ormai inutilizzate (`.staff-cal-legend`, `.staff-cal-legend-dot`, `.staff-cal-hint`). Solo app; edge e worker invariati.
 

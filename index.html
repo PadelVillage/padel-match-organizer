@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.621';
+    const APP_VERSION = '5.622';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34014,6 +34014,15 @@ Per confermare scrivi ELIMINA.`);
             mvBtn.textContent = '↔';
             mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
             hdr.appendChild(mvBtn);
+            if ((slot.tipoReale || 'partita') === 'partita') {
+              const pgBtn = document.createElement('button');
+              pgBtn.type = 'button';
+              pgBtn.className = 'staff-cal-localdel-btn';
+              pgBtn.title = 'Modifica giocatori (aggiungi/rimuovi)';
+              pgBtn.textContent = '👥';
+              pgBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome); });
+              hdr.appendChild(pgBtn);
+            }
           }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
@@ -34115,6 +34124,15 @@ Per confermare scrivi ELIMINA.`);
           mvBtn.textContent = '↔ Sposta';
           mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
           card.appendChild(mvBtn);
+          if ((entry.tipoReale || 'partita') === 'partita') {
+            const pgBtn = document.createElement('button');
+            pgBtn.type = 'button';
+            pgBtn.className = 'staff-cal-localdel-btn';
+            pgBtn.title = 'Modifica giocatori (aggiungi/rimuovi)';
+            pgBtn.textContent = '👥 Giocatori';
+            pgBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome); });
+            card.appendChild(pgBtn);
+          }
         }
         body.appendChild(card);
         si += entry._durSlots;
@@ -34155,6 +34173,271 @@ Per confermare scrivi ELIMINA.`);
   // di destinazione → edge "matchpoint-bookings-edit" col solo blocco move. Non
   // tocca i giocatori. Identifica per campo+data+ora (come l'annullamento).
   let staffCalMoveState = null;
+
+  // ════════ Modifica giocatori (solo PARTITA) — editor nel pannello chat ════════
+  // 👥 sulle card partita: legge i partecipanti reali da Matchpoint (edge "read"),
+  // permette di aggiungere (ricerca socio → codice, omonimia-safe) e rimuovere,
+  // poi salva via matchpoint-bookings-edit. Aggiorna la copia locale e ridisegna.
+  let staffCalPlayersState = null;
+
+  function _staffCalPlayerCode(member) {
+    const raw = String((member && member.memberId) || '').trim();
+    return /^\d{1,7}$/.test(raw) ? raw : '';
+  }
+  function _staffCalPlayerName(member, fallback) {
+    const fn = (typeof playerFullName === 'function') ? playerFullName(member) : '';
+    return (fn || (member && member.name) || fallback || '').trim();
+  }
+
+  async function staffCalEditPlayers(isoDate, campo, ora, nome) {
+    if (typeof svcOpenChat === 'function') svcOpenChat();
+    const dataIt = isoDate.split('-').reverse().join('/');
+    const loading = svcAddMessage('system', '⏳ Leggo i giocatori attuali su Matchpoint…');
+    let _sec = 0;
+    const _timer = setInterval(function() {
+      _sec += 1;
+      const last = loading.querySelector(':scope > div:last-child');
+      if (last) last.innerHTML = '⏳ Leggo i giocatori attuali su Matchpoint… (' + _sec + 's)';
+    }, 1000);
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della partita');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ campo: campo, data: isoDate, ora: ora, read: true }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      clearInterval(_timer);
+      if (!response.ok || (data && data.ok === false)) {
+        const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
+        svcAddMessage('system', '❌ Lettura giocatori non riuscita: ' + msg, 'error');
+        return;
+      }
+      const roster = (data && data.worker && Array.isArray(data.worker.partecipantiFinali))
+        ? data.worker.partecipantiFinali : [];
+      staffCalPlayersState = {
+        isoDate: isoDate, campo: campo, ora: ora, dataIt: dataIt,
+        roster: roster, remove: {}, add: [], msg: null, box: null, busy: false,
+      };
+      const editor = svcAddMessage('system', '', 'flow');
+      const box = document.createElement('div');
+      editor.appendChild(box);
+      staffCalPlayersState.msg = editor;
+      staffCalPlayersState.box = box;
+      staffCalRenderPlayersEditor();
+    } catch (err) {
+      clearInterval(_timer);
+      svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+    }
+  }
+
+  function staffCalRenderPlayersEditor() {
+    const st = staffCalPlayersState;
+    if (!st || !st.box) return;
+    const box = st.box;
+    box.innerHTML = '';
+
+    const title = document.createElement('div');
+    title.innerHTML = '👥 <strong>Giocatori partita</strong><br>📍 Campo ' + st.campo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.ora;
+    title.style.marginBottom = '8px';
+    box.appendChild(title);
+
+    const curLbl = document.createElement('div');
+    curLbl.textContent = 'Attuali:';
+    curLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:6px 0 2px;';
+    box.appendChild(curLbl);
+    if (!st.roster.length) {
+      const none = document.createElement('div');
+      none.textContent = '(nessuno)';
+      none.style.cssText = 'font-size:.78rem;color:var(--text-muted);font-style:italic;';
+      box.appendChild(none);
+    }
+    st.roster.forEach(function(p) {
+      const marked = !!st.remove[p.idx];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
+      const nm = document.createElement('span');
+      nm.textContent = p.nome;
+      nm.style.cssText = 'flex:1;font-size:.84rem;' + (marked ? 'text-decoration:line-through;opacity:.5;' : '');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = marked ? '↩︎ ripristina' : '✕ rimuovi';
+      btn.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:' + (marked ? 'var(--surface2)' : 'rgba(220,38,38,.08)') + ';color:' + (marked ? 'var(--text)' : '#b91c1c') + ';cursor:pointer;';
+      btn.disabled = st.busy;
+      btn.addEventListener('click', function() {
+        if (st.busy) return;
+        if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+        staffCalRenderPlayersEditor();
+      });
+      row.appendChild(nm);
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+
+    if (st.add.length) {
+      const addLbl = document.createElement('div');
+      addLbl.textContent = 'Da aggiungere:';
+      addLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:8px 0 2px;';
+      box.appendChild(addLbl);
+      st.add.forEach(function(p, i) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
+        const nm = document.createElement('span');
+        nm.textContent = '➕ ' + p.nome + (p.codice ? ' (' + p.codice + ')' : ' (senza codice)');
+        nm.style.cssText = 'flex:1;font-size:.84rem;color:#15803d;';
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.textContent = '✕';
+        x.title = 'Togli dalla lista';
+        x.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
+        x.disabled = st.busy;
+        x.addEventListener('click', function() { if (st.busy) return; st.add.splice(i, 1); staffCalRenderPlayersEditor(); });
+        row.appendChild(nm);
+        row.appendChild(x);
+        box.appendChild(row);
+      });
+    }
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '➕ Aggiungi giocatore';
+    addBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
+    addBtn.disabled = st.busy;
+    addBtn.addEventListener('click', function() { if (!st.busy) staffCalPlayersAdd(); });
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.textContent = '✓ Salva';
+    saveBtn.style.cssText = 'font-size:.78rem;padding:5px 12px;border-radius:8px;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;';
+    saveBtn.disabled = st.busy;
+    saveBtn.addEventListener('click', function() { if (!st.busy) staffCalPlayersSave(); });
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '✗ Chiudi';
+    closeBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;';
+    closeBtn.disabled = st.busy;
+    closeBtn.addEventListener('click', function() {
+      if (st.busy) return;
+      staffCalPlayersState = null;
+      svcAddMessage('system', '👥 Modifica giocatori chiusa.');
+    });
+    actions.appendChild(addBtn);
+    actions.appendChild(saveBtn);
+    actions.appendChild(closeBtn);
+    box.appendChild(actions);
+  }
+
+  function staffCalPlayersAdd() {
+    const st = staffCalPlayersState;
+    if (!st || st.busy) return;
+    const raw = (prompt('Nome e cognome del giocatore da aggiungere:') || '').trim();
+    if (!raw) return;
+    const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
+    const addResolved = function(member) {
+      st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member) });
+      staffCalRenderPlayersEditor();
+    };
+    if (sugg.length === 0) {
+      const ok = confirm('"' + raw + '" non risulta tra i soci.\nAggiungerlo comunque come testo libero (senza codice)?');
+      if (ok) { st.add.push({ nome: raw, codice: '' }); staffCalRenderPlayersEditor(); }
+      return;
+    }
+    if (sugg.length === 1 || (sugg[0].distance === 0 && sugg[1] && sugg[1].distance > 0)) {
+      addResolved(sugg[0].member);
+      return;
+    }
+    const msg = svcAddMessage('system', '👥 <strong>Quale «' + (typeof escapeHtml === 'function' ? escapeHtml(raw) : raw) + '»?</strong>', 'flow');
+    const labels = sugg.map(function(s) {
+      const fn = _staffCalPlayerName(s.member, '');
+      return fn + (s.member.memberId ? ' (' + s.member.memberId + ')' : '');
+    });
+    const btns = svcMakeStepButtons(labels, function(label) {
+      svcFreezeMsg(msg);
+      const idx = labels.indexOf(label);
+      if (idx >= 0) addResolved(sugg[idx].member);
+    }, function() { svcFreezeMsg(msg); });
+    const cancelEl = btns.querySelector('.svc-btn-step-cancel');
+    if (cancelEl) cancelEl.textContent = '✕ Annulla';
+    msg.appendChild(btns);
+  }
+
+  async function staffCalPlayersSave() {
+    const st = staffCalPlayersState;
+    if (!st || st.busy) return;
+    const remove = st.roster.filter(function(p) { return st.remove[p.idx]; }).map(function(p) { return p.nome; });
+    const add = st.add.map(function(p) { return p.codice ? { nome: p.nome, codice: p.codice } : { nome: p.nome }; });
+    if (!add.length && !remove.length) {
+      svcAddMessage('system', 'ℹ️ Nessuna modifica ai giocatori.');
+      return;
+    }
+    st.busy = true;
+    staffCalRenderPlayersEditor();
+    const inProgress = svcAddMessage('system', '⏳ Aggiorno i giocatori su Matchpoint…');
+    let _sec = 0;
+    const _timer = setInterval(function() {
+      _sec += 1;
+      const last = inProgress.querySelector(':scope > div:last-child');
+      if (last) last.innerHTML = '⏳ Aggiorno i giocatori su Matchpoint… (' + _sec + 's)';
+    }, 1000);
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare i giocatori della partita');
+      const players = {};
+      if (add.length) players.add = add;
+      if (remove.length) players.remove = remove;
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ campo: st.campo, data: st.isoDate, ora: st.ora, players: players }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      clearInterval(_timer);
+      if (response.ok && data && data.ok !== false) {
+        const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
+        const nomi = finalRoster ? finalRoster.map(function(p) { return p.nome; }).filter(Boolean).join(', ') : null;
+        if (nomi != null) staffCalUpdateLocalPlayers(st.isoDate, st.campo, st.ora, nomi);
+        svcAddMessage('system',
+          '✅ <strong>Giocatori aggiornati</strong>: Campo ' + st.campo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.ora +
+          (nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''),
+          'ok');
+        staffCalPlayersState = null;
+        renderStaffCalendar();
+      } else {
+        const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
+        svcAddMessage('system', '❌ Aggiornamento non riuscito: ' + msg, 'error');
+        st.busy = false;
+        staffCalRenderPlayersEditor();
+      }
+    } catch (err) {
+      clearInterval(_timer);
+      svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+      st.busy = false;
+      staffCalRenderPlayersEditor();
+    }
+  }
+
+  function staffCalUpdateLocalPlayers(isoDate, campo, ora, nomi) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function(b) {
+      if (String(b.data).trim() === isoDate &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        b.nome = nomi;
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
 
   function staffCalStartMove(isoDate, campo, ora, nome, durata, tipo) {
     const campoNum = Number(String(campo).replace(/\D/g, ''));
