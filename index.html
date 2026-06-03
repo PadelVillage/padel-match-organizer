@@ -2691,6 +2691,12 @@
     }
     #staffCalV36 .staff-cal-del-btn:hover { background:rgba(220,38,38,.12); }
     #staffCalV36 .agenda-card .staff-cal-del-btn { display:block; margin-top:8px; font-size:.92rem; padding:5px 10px; background:rgba(220,38,38,.08); }
+    #staffCalV36 .staff-cal-localdel-btn {
+      border:none; background:transparent; color:var(--text-muted); cursor:pointer;
+      font-size:.78rem; line-height:1; padding:0 2px; flex-shrink:0; border-radius:4px;
+    }
+    #staffCalV36 .staff-cal-localdel-btn:hover { background:rgba(0,0,0,.08); }
+    #staffCalV36 .agenda-card .staff-cal-localdel-btn { display:block; margin-top:6px; font-size:.85rem; padding:4px 8px; background:rgba(0,0,0,.05); }
     #staffCalV36 .agenda-wrap { display:flex; flex-direction:column; overflow:hidden; min-height:0; }
     #staffCalV36 .agenda-tabs {
       display:flex; gap:0; background:var(--surface);
@@ -7154,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.612';
+    const APP_VERSION = '5.613';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34398,6 +34404,13 @@ Per confermare scrivi ELIMINA.`);
             const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate;
             delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
             hdr.appendChild(delBtn);
+            const rmBtn = document.createElement('button');
+            rmBtn.type = 'button';
+            rmBtn.className = 'staff-cal-localdel-btn';
+            rmBtn.title = 'Rimuovi solo dal calendario (non tocca Matchpoint)';
+            rmBtn.textContent = '🧹';
+            rmBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalRemoveLocalOnly(_iso, _campo, _ora, _nome); });
+            hdr.appendChild(rmBtn);
           }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
@@ -34492,6 +34505,13 @@ Per confermare scrivi ELIMINA.`);
           const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate;
           delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
           card.appendChild(delBtn);
+          const rmBtn = document.createElement('button');
+          rmBtn.type = 'button';
+          rmBtn.className = 'staff-cal-localdel-btn';
+          rmBtn.title = 'Rimuovi solo dal calendario (non tocca Matchpoint)';
+          rmBtn.textContent = '🧹 Solo calendario';
+          rmBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalRemoveLocalOnly(_iso, _campo, _ora, _nome); });
+          card.appendChild(rmBtn);
         }
         body.appendChild(card);
         si += entry._durSlots;
@@ -35340,6 +35360,32 @@ Per confermare scrivi ELIMINA.`);
   // 🗑 Annulla una prenotazione STAFF dal calendario (solo card ✏️ Staff; le 🔒 Matchpoint sono sola lettura).
   // Cancella per campo+data+ora (l'app non memorizza l'idReserva): stessa via già validata col pulsante di test.
   // Feedback nella colonna chat (bolle SISTEMA in cima), come la creazione prenotazione.
+  // 🧹 Rimuove SOLO la copia locale della card (NON tocca Matchpoint). Per i "fantasmi":
+  // prenotazioni già annullate/rimosse a mano su Matchpoint ma rimaste nel calendario.
+  function staffCalRemoveLocalOnly(isoDate, campo, ora, nome) {
+    const dataIt = isoDate.split('-').reverse().join('/');
+    const chi = nome ? ` (${nome})` : '';
+    const ok = confirm(
+      `Rimuovere SOLO dal calendario?\nCampo ${campo} · ${dataIt} · ${ora}${chi}\n\n` +
+      `⚠️ Questo NON annulla la prenotazione su Matchpoint.\n` +
+      `Usalo solo per card già rimosse a mano su Matchpoint. Se la prenotazione esiste ancora là, usa invece il 🗑.`
+    );
+    if (!ok) return;
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    const filtered = existing.filter((b) => !(
+      String(b.data).trim() === isoDate &&
+      Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+      String(b.ora).trim() === wantOra
+    ));
+    if (typeof save === 'function') save('staffBookings', filtered);
+    if (typeof svcAddMessage === 'function') svcAddMessage('system',
+      '🧹 <strong>Rimossa dal calendario</strong> (Matchpoint non toccato): Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora,
+      'ok');
+    renderStaffCalendar();
+  }
+
   async function staffCalAskCancel(isoDate, campo, ora, nome) {
     const dataIt = isoDate.split('-').reverse().join('/');
     const chi = nome ? ` di ${nome}` : '';

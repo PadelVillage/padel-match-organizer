@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.613 — Calendario staff: nuovo pulsante 🧹 "rimuovi solo dal calendario" sulle card Staff (griglia + agenda), in grigio per distinguerlo dal 🗑. Rimuove la copia locale all'istante senza chiamare il worker (per i fantasmi già rimossi a mano su Matchpoint), con conferma che avvisa che NON tocca Matchpoint.
+
 ## v5.612 — Calendario staff: il 🗑 ora rimuove davvero la card locale dopo l'annullamento (confronto campo come numero: alcune card vecchie lo avevano come stringa e non sparivano). Se la prenotazione non è più su Matchpoint, la card viene comunque ripulita invece di restare bloccata in errore.
 
 ## v5.611 — TEST: modifica prenotazione anche per campo+data+ora. Edge matchpoint-bookings-edit accetta la terna (oltre all'idReserva) e la inoltra al worker (che la risolve dal tabellone). Pulsante 🧪 Modifica: idReserva vuoto → chiede campo,YYYY-MM-DD,HH:MM. Additivo e retrocompatibile.
