@@ -5750,7 +5750,6 @@ body.assessment-public-mode .assessment-public-only-card {
                   <div class="svc-chat-header">
                     <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
                   </div>
-                  <div class="svc-queue-status" id="svcQueueStatus" style="display:none;margin:8px 10px 0;padding:8px 10px;border-left:3px solid #3b82f6;border-radius:6px;background:rgba(59,130,246,.12);font-size:.8rem;line-height:1.35;color:inherit;"></div>
                   <div class="svc-chat-input-row" id="svcChatInputRow">
                     <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
                     <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
@@ -7037,7 +7036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.626';
+    const APP_VERSION = '5.627';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36079,7 +36078,8 @@ Per confermare scrivi ELIMINA.`);
     svcPollQueueStatus();
     setInterval(svcPollQueueStatus, 4000);
   }
-  svcStartQueuePolling();
+  /* Banner "Sincronizzazione automatica in corso" rimosso (v5.627): nessun polling, nessun banner. */
+  // svcStartQueuePolling();
 
   // Init listener svc chat
   (function svcInitChat() {
