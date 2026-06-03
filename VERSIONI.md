@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.617 — Pulizia: rimosso il codice morto del vecchio Tabellone Matchpoint (blocco <script> "Calendario Matchpoint" e regole CSS .cal-*), ormai inutilizzato dopo lo spostamento del Calendario staff (v5.616). Mantenuta la regola #dashboard { padding:0 } che stila la tab Calendario. Nessun cambio di comportamento. Solo app; edge e worker invariati. [Fase 2/2]
+
 ## v5.616 — Calendario: la tab "Calendario" ora mostra il Calendario campi staff (spostato qui da Amministrazione) al posto del vecchio Tabellone Matchpoint. Riagganciati avvio (DOMContentLoaded) e apertura tab a staffCalInit; aggiornate le etichette ("Campi staff"); rimosso il link ridondante in Amministrazione. Il codice del vecchio tabellone resta presente ma inutilizzato (sarà rimosso in una versione successiva). Solo app; edge e worker invariati. [Fase 1/2]
 
 ## v5.615 — Calendario staff: corretta la durata degli eventi. La durata importata da Matchpoint è in ore come stringa (es. '1.5'=90min); con parseInt diventava 1 → tutti gli eventi apparivano lunghi 1 minuto ("17:00–17:01") su un solo slot. Ora un helper converte correttamente ore→minuti (minuti già numerici invariati) per occupazione, prenotazioni e prenotazioni staff: card e orario di fine rispettano la durata reale. Solo app; edge e worker invariati.
