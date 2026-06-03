@@ -3858,44 +3858,12 @@ async function createBookingWithBrowser(options = {}) {
     navigationAttempts: [],
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
-  let page;
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      acceptDownloads: false,
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    page = await context.newPage();
     page.setDefaultTimeout(12000);
     page.setDefaultNavigationTimeout(20000);
-
-    // ── Login ─────────────────────────────────────────────────────────────────
-    diagnostic.steps.push('login');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(1000);
-    diagnostic.loginUrl = page.url();
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
     // ── Ora fine: usata da entrambi i percorsi ────────────────────────────────
@@ -4220,13 +4188,14 @@ async function createBookingWithBrowser(options = {}) {
       warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
     };
   } catch (err) {
+    _opFailed = true;
     const urlStr = (() => { try { return page?.url() ?? '?'; } catch { return '?'; } })();
     const extra = ` | steps=${JSON.stringify(diagnostic.steps)} url=${urlStr}`;
     if (!err.message.includes('steps=')) err.message = `${err.message}${extra}`;
     if (!err.diagnostic) err.diagnostic = diagnostic;
     throw err;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -4623,43 +4592,10 @@ async function cancelBookingWithBrowser(input = {}) {
     input: { idReserva: input.idReserva, campo: input.campo, data: input.data, ora: input.ora },
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-
-    // Login (stessa sequenza di createBookingWithBrowser)
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
     let idReserva = input.idReserva ? String(input.idReserva) : null;
@@ -4777,8 +4713,11 @@ async function cancelBookingWithBrowser(input = {}) {
 
     diagnostic.steps.push('done');
     return { ok: true, idReserva, statoFinale: 'ANNULLATA', diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
