@@ -5759,6 +5759,7 @@ body.assessment-public-mode .assessment-public-only-card {
                   <div class="svc-chat-header">
                     <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
                   </div>
+                  <div class="svc-queue-status" id="svcQueueStatus" style="display:none;margin:8px 10px 0;padding:8px 10px;border-left:3px solid #3b82f6;border-radius:6px;background:rgba(59,130,246,.12);font-size:.8rem;line-height:1.35;color:inherit;"></div>
                   <div class="svc-chat-input-row" id="svcChatInputRow">
                     <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
                     <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
@@ -7053,7 +7054,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.617';
+    const APP_VERSION = '5.618';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35610,6 +35611,72 @@ Per confermare scrivi ELIMINA.`);
     svcAddMessage('staff', text);
     svcAddMessage('system', 'ℹ️ Clicca una cella libera sul calendario per avviare una prenotazione guidata.');
   }
+
+  // ── Stato coda Matchpoint (chi/cosa in corso) — SOLA LETTURA ───────────────
+  // Legge periodicamente la edge "matchpoint-queue-status" e mostra nel pannello
+  // chat cosa sta girando, chi l'ha avviato e quanti job in attesa. Non prenota
+  // nulla. Silenzioso su errore/rete. Interroga solo quando la tab Calendario
+  // (#dashboard) è attiva e la pagina è visibile, ogni 4s.
+  let _svcQueuePollStarted = false;
+
+  function svcQueuePretty(op) {
+    const s = String(op || '').trim();
+    if (!s || s === '—') return '';
+    if (s === 'sistema') return 'sistema';
+    const base = s.split('@')[0].replace(/[._]+/g, ' ').trim();
+    return base.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function svcRenderQueueStatus(snap) {
+    const el = document.getElementById('svcQueueStatus');
+    if (!el) return;
+    const running = snap && snap.running;
+    const waiting = (snap && Number(snap.waitingCount)) || 0;
+    if (!running && waiting === 0) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    let html;
+    if (running && running.op === 'poll') {
+      html = '🔄 Sincronizzazione automatica in corso…';
+    } else if (running) {
+      const chi = svcQueuePretty(running.operatore);
+      html = '🔄 In corso: ' + (running.label || 'operazione') + (chi ? ' — ' + chi : '');
+    } else {
+      html = '⏳ In attesa…';
+    }
+    if (waiting > 0) html += ' · in coda: ' + waiting;
+    el.innerHTML = html;
+    el.style.display = 'block';
+  }
+
+  async function svcPollQueueStatus() {
+    try {
+      const dash = document.getElementById('dashboard');
+      if (document.hidden || !dash || !dash.classList.contains('active')) return;
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg && cfg.supabaseUrl;
+      const supabaseKey = cfg && cfg.supabaseKey;
+      if (!supabaseUrl || !supabaseKey) return;
+      const accessToken = await pmoGetSupabaseStaffAccessToken();
+      if (!accessToken) return;
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-queue-status', {
+        headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + accessToken },
+      });
+      if (!resp.ok) return;
+      const snap = await resp.json().catch(function () { return null; });
+      if (snap && snap.ok) svcRenderQueueStatus(snap);
+    } catch (_e) { /* silenzioso: rete/config/sessione assenti → niente banner */ }
+  }
+
+  function svcStartQueuePolling() {
+    if (_svcQueuePollStarted) return;
+    _svcQueuePollStarted = true;
+    svcPollQueueStatus();
+    setInterval(svcPollQueueStatus, 4000);
+  }
+  svcStartQueuePolling();
 
   // Init listener svc chat
   (function svcInitChat() {
