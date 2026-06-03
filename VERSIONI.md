@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.623 — Calendario: fix griglia vuota all'apertura (ridisegno di sicurezza)
+- All'apertura del Calendario la griglia poteva restare vuota (data "gg/mm/aaaa") finché non si cliccava "Oggi": `staffCalInit` disegnava prima che il contenitore fosse pronto. Aggiunto `staffCalEnsureRendered`: per ~5s dopo l'apertura ridisegna appena la griglia è costruibile ma vuota e imposta la data di oggi. Si ferma da solo appena la griglia è piena. Solo app; edge e worker invariati.
+
 ## v5.622 — Calendario: modifica giocatori sulle card partita (👥)
 - Sulle card partita staff (✏️) un nuovo pulsante 👥 apre un editor nel pannello chat: legge i partecipanti reali da Matchpoint (edge `matchpoint-bookings-edit` con `read`), permette di rimuovere i presenti e aggiungere nuovi soci tramite la ricerca clienti (che porta il codice → aggiunta a prova di omonimi). Al salvataggio chiama la edge col blocco `players`, aggiorna la card locale con la lista reale restituita dal worker e ridisegna. Compare solo sulle partite (non su lezione/manutenzione). Solo app; edge e worker già pronti.
 

@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.622';
+    const APP_VERSION = '5.623';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33802,7 +33802,25 @@ Per confermare scrivi ELIMINA.`);
     const input = document.getElementById('staffCalDate');
     if (input && !input.value) input.value = staffCalTodayIso();
     renderStaffCalendar();
+    // Ridisegno di sicurezza: all'apertura il markup/i dati del calendario possono non essere
+    // ancora pronti (la griglia resta vuota finché non si clicca "Oggi"). Controlla per qualche
+    // secondo e ridisegna appena la griglia è costruibile ma ancora vuota.
+    staffCalEnsureRendered(0);
     // staffCalInputBar permanently hidden — replaced by svc chat panel
+  }
+
+  function staffCalEnsureRendered(tries) {
+    if (tries >= 8) return;
+    setTimeout(function() {
+      const input = document.getElementById('staffCalDate');
+      if (input && !input.value) input.value = staffCalTodayIso();
+      const grid = document.getElementById('staffCalGridTable');
+      const agenda = document.getElementById('staffCalAgendaBody');
+      const built = (grid && grid.children.length > 0) || (agenda && agenda.children.length > 0);
+      if (built) return;
+      renderStaffCalendar();
+      staffCalEnsureRendered(tries + 1);
+    }, 600);
   }
 
   function staffCalGoToday() {
