@@ -21,7 +21,7 @@ type EditMove = {
 type EditPlayers = {
   remove?: string[];
   removeAll?: boolean;
-  add?: Array<{ nome: string; costo?: string }>;
+  add?: Array<{ nome: string; codice?: string; costo?: string }>;
 };
 
 type EditRequest = {
@@ -31,6 +31,7 @@ type EditRequest = {
   ora?: string;             // HH:MM (inizio) — per far ricavare l'idReserva dal tabellone lato worker
   move?: EditMove;
   players?: EditPlayers;
+  read?: boolean;           // lettura sola: restituisce i partecipanti attuali senza modificare
 };
 
 const CORS_HEADERS = {
@@ -116,7 +117,7 @@ async function callWorkerEditBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, operatore: operatore ?? '' }),
+      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, read: edit.read === true, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
@@ -187,8 +188,10 @@ Deno.serve(async (req: Request) => {
   const ora = body.ora != null ? clean(body.ora) : undefined;
   const move = (body.move && typeof body.move === 'object') ? (body.move as EditMove) : undefined;
   const players = (body.players && typeof body.players === 'object') ? (body.players as EditPlayers) : undefined;
+  const readOnly = body.read === true;
 
-  // Validation: serve idReserva OPPURE (campo+data+ora), + almeno uno tra move/players
+  // Validation: serve idReserva OPPURE (campo+data+ora). Per modificare serve almeno uno tra
+  // move/players; in lettura sola (read) non serve nessuna modifica.
   const hasTerna = !!campo && !!data && !!ora;
   if (!idReserva && !hasTerna) {
     return err(400, 'PARAMS_MANCANTI', 'Serve idReserva, oppure campo+data+ora.');
@@ -199,11 +202,11 @@ Deno.serve(async (req: Request) => {
     (Array.isArray(players.remove) && players.remove.length > 0) ||
     players.removeAll === true
   );
-  if (!hasMove && !hasPlayers) {
+  if (!readOnly && !hasMove && !hasPlayers) {
     return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move e players.');
   }
 
-  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, read: readOnly };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -223,11 +226,21 @@ Deno.serve(async (req: Request) => {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { edit });
   }
 
-  // Save record to DB (best-effort)
-  try {
-    await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
-  } catch (dbErr) {
-    console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
+  // Save record to DB (best-effort). In lettura sola non si registra nessuna "modifica".
+  if (!readOnly) {
+    try {
+      await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
+    } catch (dbErr) {
+      console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
+    }
+  }
+
+  if (readOnly) {
+    return ok({
+      message: 'Lettura partecipanti completata.',
+      edit,
+      worker: workerResult,
+    });
   }
 
   const parts: string[] = [`idReserva ${edit.idReserva}`];
