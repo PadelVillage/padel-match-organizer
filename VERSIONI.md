@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.615 — Calendario staff: corretta la durata degli eventi. La durata importata da Matchpoint è in ore come stringa (es. '1.5'=90min); con parseInt diventava 1 → tutti gli eventi apparivano lunghi 1 minuto ("17:00–17:01") su un solo slot. Ora un helper converte correttamente ore→minuti (minuti già numerici invariati) per occupazione, prenotazioni e prenotazioni staff: card e orario di fine rispettano la durata reale. Solo app; edge e worker invariati.
+
 ## v5.614 — Calendario staff: corrette le frecce ‹ › di navigazione giorno. Usavano toISOString() (UTC) per riformattare la data: in Italia (UTC+1/+2) la freccia avanti restava ferma e quella indietro saltava di 2 giorni. Ora lo spostamento usa i componenti di data locali, con base a mezzogiorno (robusto ai cambi ora legale/solare). Solo app; edge e worker invariati.
 
 ## v5.613 — Calendario staff: nuovo pulsante 🧹 "rimuovi solo dal calendario" sulle card Staff (griglia + agenda), in grigio per distinguerlo dal 🗑. Rimuove la copia locale all'istante senza chiamare il worker (per i fantasmi già rimossi a mano su Matchpoint), con conferma che avvisa che NON tocca Matchpoint.

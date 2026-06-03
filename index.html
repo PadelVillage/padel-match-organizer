@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.614';
+    const APP_VERSION = '5.615';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34259,6 +34259,23 @@ Per confermare scrivi ELIMINA.`);
   function staffCalPrevDay() { staffCalShiftDay(-1); }
   function staffCalNextDay() { staffCalShiftDay(1); }
 
+  // Durata robusta in MINUTI. v5.615.
+  // L'occupazione e le prenotazioni importate da Matchpoint salvano la durata in
+  // ORE come stringa (es. '1.5' = 90 min, '1' = 60 min, default '1.5'); le
+  // prenotazioni staff la salvano già in minuti (es. 90). Prima si usava
+  // parseInt(durata), che su '1.5' dava 1 → gli eventi risultavano lunghi 1 minuto
+  // ("17:00–17:01") su un solo slot. Riusa il convertitore canonico dell'app se
+  // raggiungibile, con fallback locale equivalente.
+  function _staffCalDurMin(value) {
+    if (typeof parseBookingDurationMinutes === 'function') {
+      return parseBookingDurationMinutes(value, 90);
+    }
+    const n = parseFloat(String(value).replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0) return 90;
+    if (n >= 30) return Math.round(n);          // già in minuti
+    return Math.max(30, Math.round(n * 60));    // in ore → minuti
+  }
+
   function staffCalGetSlots(isoDate) {
     const result = [];
     // Read occupancy from local data
@@ -34272,19 +34289,19 @@ Per confermare scrivi ELIMINA.`);
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
-      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo, durata: parseInt(p.durata) || 90 });
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo, durata: _staffCalDurMin(p.durata) });
     }
     for (const p of bookings) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       if (result.some(r => r.ora === p.ora && r.campo === campoNum)) continue;
-      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo: 'partita', durata: parseInt(p.durata) || 90 });
+      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo: 'partita', durata: _staffCalDurMin(p.durata) });
     }
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
-      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', durata: b.durata || 90 });
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', durata: _staffCalDurMin(b.durata) });
     }
     return result;
   }
