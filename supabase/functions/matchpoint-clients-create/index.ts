@@ -81,8 +81,9 @@ async function callWorkerCreateClient(opts: {
   password: string;
   baseUrl: string;
   client: JsonMap;
+  operatore?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, username, password, baseUrl, client } = opts;
+  const { workerUrl, workerApiKey, username, password, baseUrl, client, operatore } = opts;
   const endpoint = `${workerUrl}/create-client`;
 
   let res: Response;
@@ -93,7 +94,7 @@ async function callWorkerCreateClient(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ username, password, baseUrl, client }),
+      body: JSON.stringify({ username, password, baseUrl, client, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error: ${errorText(netErr)}`);
@@ -161,7 +162,7 @@ Deno.serve(async (req: Request) => {
 
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client });
+    workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client, operatore: actor.email });
   } catch (workerErr) {
     const diagnostic = (workerErr as unknown as JsonMap)?.diagnostic;
     return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });

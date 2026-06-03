@@ -83,8 +83,9 @@ async function callWorkerCancelBooking(opts: {
   workerUrl: string;
   workerApiKey: string;
   cancel: CancelRequest;
+  operatore?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, cancel } = opts;
+  const { workerUrl, workerApiKey, cancel, operatore } = opts;
   const endpoint = `${workerUrl}/cancel-booking`;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -96,7 +97,7 @@ async function callWorkerCancelBooking(opts: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${workerApiKey}`,
         },
-        body: JSON.stringify({ idReserva: cancel.idReserva, campo: cancel.campo, data: cancel.data, ora: cancel.ora }),
+        body: JSON.stringify({ idReserva: cancel.idReserva, campo: cancel.campo, data: cancel.data, ora: cancel.ora, operatore: operatore ?? '' }),
       });
     } catch (netErr) {
       if (attempt === 3) {
@@ -200,7 +201,7 @@ Deno.serve(async (req: Request) => {
   // Call browser worker
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel });
+    workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
   } catch (workerErr) {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { cancel });
   }

@@ -103,8 +103,9 @@ async function callWorkerCreateBooking(opts: {
   password: string;
   baseUrl: string;
   booking: BookingRequest;
+  operatore?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, username, password, baseUrl, booking } = opts;
+  const { workerUrl, workerApiKey, username, password, baseUrl, booking, operatore } = opts;
   const endpoint = `${workerUrl}/create-booking`;
 
   let res: Response;
@@ -115,7 +116,7 @@ async function callWorkerCreateBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ username, password, baseUrl, booking }),
+      body: JSON.stringify({ username, password, baseUrl, booking, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     // NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.
@@ -194,7 +195,7 @@ async function runBookingJobInBackground(opts: {
   const base = { booking, created_by_email: actor.email };
   const tipoLabel = booking.tipo === 'lezione' ? 'Lezione' : booking.tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
   try {
-    const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking });
+    const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
     try {
       await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
     } catch (dbErr) {
@@ -307,7 +308,7 @@ Deno.serve(async (req: Request) => {
   // Call browser worker
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking });
+    workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
   } catch (workerErr) {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { booking });
   }
