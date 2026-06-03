@@ -2102,6 +2102,109 @@ async function parseGrigliaTabellone(tabCtx, diagnostic) {
   return rawGrid;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// SESSIONE "CALDA" CONDIVISA (Fase 1: poller + editor)
+// ────────────────────────────────────────────────────────────────────────────
+// Evita avvio Chromium + login a OGNI operazione: un solo browser già loggato,
+// riusato dalle operazioni e tenuto vivo dal poller. Reti di sicurezza:
+//  1) FALLBACK: se la sessione calda manca o dà errore → browser a freddo (come prima).
+//  2) INTERRUTTORE: env MATCHPOINT_WARM_SESSION=false → sempre a freddo.
+//  3) VALIDITÀ: prima di riusare si verifica di essere loggati; se scaduta, re-login.
+//     Età massima 30 min (sicurezza memoria/stato).
+const MP_WARM_ENABLED = boolEnv('MATCHPOINT_WARM_SESSION', true);
+const MP_WARM_MAX_AGE_MS = 30 * 60 * 1000;
+let _mpWarm = null; // { browser, context, page, createdAt }
+
+function mpLaunchOptions() {
+  return { headless: boolEnv('MATCHPOINT_HEADLESS', true), args: ['--no-sandbox', '--disable-dev-shm-usage'] };
+}
+
+async function mpNewContextPage(browser) {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    timezoneId: 'Europe/Rome',
+    viewport: { width: 1440, height: 900 },
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+  });
+  const page = await context.newPage();
+  page.on('dialog', (d) => d.accept().catch(() => {}));
+  return { context, page };
+}
+
+async function mpDoLogin(page, baseUrl, username, password, diagnostic) {
+  diagnostic.steps.push('login_page');
+  await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+  await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+  const language = page.locator('select[name="ddlLenguaje"]');
+  if (await language.count().catch(() => 0)) {
+    await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+  }
+  diagnostic.steps.push('login_submit');
+  await Promise.all([
+    page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+    page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+  ]);
+  await page.waitForTimeout(2500);
+  diagnostic.loginUrl = page.url();
+  if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+    throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
+  }
+  await maybeClickCashEnter(page, diagnostic);
+}
+
+async function mpWarmInvalidate() {
+  const w = _mpWarm;
+  _mpWarm = null;
+  if (w && w.browser) { try { await w.browser.close(); } catch (_e) {} }
+}
+
+async function mpWarmEnsureLogged(baseUrl, username, password, diagnostic) {
+  const w = _mpWarm;
+  await w.page.goto(absoluteUrl(baseUrl, '/Reservas/CuadroReservas.aspx?id_cuadro=3'), { waitUntil: 'domcontentloaded', timeout: 25000 });
+  if (/Login\.aspx/i.test(w.page.url()) && await w.page.locator('input[type="password"]').count().catch(() => 0)) {
+    diagnostic.steps.push('warm_relogin');
+    await mpDoLogin(w.page, baseUrl, username, password, diagnostic);
+  } else {
+    diagnostic.steps.push('warm_reuse');
+  }
+}
+
+async function mpAcquirePage(baseUrl, username, password, diagnostic) {
+  if (MP_WARM_ENABLED) {
+    try {
+      if (_mpWarm && (Date.now() - (_mpWarm.createdAt || 0) > MP_WARM_MAX_AGE_MS)) await mpWarmInvalidate();
+      if (!_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed()) {
+        const browser = await chromium.launch(mpLaunchOptions());
+        const { context, page } = await mpNewContextPage(browser);
+        await mpDoLogin(page, baseUrl, username, password, diagnostic);
+        _mpWarm = { browser, context, page, createdAt: Date.now() };
+        diagnostic.session = 'warm_new';
+      } else {
+        await mpWarmEnsureLogged(baseUrl, username, password, diagnostic);
+        diagnostic.session = 'warm';
+      }
+      return {
+        page: _mpWarm.page,
+        isWarm: true,
+        release: async (failed) => { if (failed) await mpWarmInvalidate(); },
+      };
+    } catch (e) {
+      await mpWarmInvalidate();
+      diagnostic.warmError = String((e && e.message) || e);
+    }
+  }
+  const browser = await chromium.launch(mpLaunchOptions());
+  const { page } = await mpNewContextPage(browser);
+  await mpDoLogin(page, baseUrl, username, password, diagnostic);
+  diagnostic.session = 'cold';
+  return {
+    page,
+    isWarm: false,
+    release: async () => { try { await browser.close(); } catch (_e) {} },
+  };
+}
+
 async function getSlotsWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -2121,44 +2224,10 @@ async function getSlotsWithBrowser(options = {}) {
     steps: [],
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-
-    // Login
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
-
     // Navigazione al tabellone
     const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
 
@@ -2175,8 +2244,11 @@ async function getSlotsWithBrowser(options = {}) {
       ...grid,
       diagnostic,
     };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -4187,44 +4259,10 @@ async function editBookingWithBrowser(input = {}) {
   const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players } };
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-    page.on('dialog', (d) => d.accept().catch(() => {}));
-
-    // === LOGIN (stessa sequenza di cancelBookingWithBrowser) ===
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
     // Se non ho l'idReserva, lo ricavo dal tabellone per campo+data+ora
@@ -4563,8 +4601,11 @@ async function editBookingWithBrowser(input = {}) {
 
     diagnostic.steps.push('done');
     return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
