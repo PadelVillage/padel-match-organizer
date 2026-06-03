@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.624 — Calendario: avvio indipendente (fix definitivo griglia vuota all'apertura)
+- La griglia restava vuota (data "gg/mm/aaaa") perché `staffCalInit` non veniva chiamato: nella sequenza di avvio `renderInitialDashboard()` non è protetta ed è subito prima di `staffCalInit`; un suo errore interrompeva l'avvio. Aggiunto `staffCalBootstrap`: un poller indipendente che inizializza il calendario appena il contenitore è pronto e si ferma quando la griglia è disegnata. Solo app; edge e worker invariati.
+
 ## v5.623 — Calendario: fix griglia vuota all'apertura (ridisegno di sicurezza)
 - All'apertura del Calendario la griglia poteva restare vuota (data "gg/mm/aaaa") finché non si cliccava "Oggi": `staffCalInit` disegnava prima che il contenitore fosse pronto. Aggiunto `staffCalEnsureRendered`: per ~5s dopo l'apertura ridisegna appena la griglia è costruibile ma vuota e imposta la data di oggi. Si ferma da solo appena la griglia è piena. Solo app; edge e worker invariati.
 
