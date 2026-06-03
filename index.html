@@ -2685,6 +2685,12 @@
       background:rgba(0,0,0,.07); border-radius:3px; padding:1px 4px; margin-top:2px;
       color:var(--text-muted); width:fit-content;
     }
+    #staffCalV36 .staff-cal-del-btn {
+      border:none; background:transparent; color:#dc2626; cursor:pointer;
+      font-size:.78rem; line-height:1; padding:0 2px; flex-shrink:0; border-radius:4px;
+    }
+    #staffCalV36 .staff-cal-del-btn:hover { background:rgba(220,38,38,.12); }
+    #staffCalV36 .agenda-card .staff-cal-del-btn { display:block; margin-top:8px; font-size:.92rem; padding:5px 10px; background:rgba(220,38,38,.08); }
     #staffCalV36 .agenda-wrap { display:flex; flex-direction:column; overflow:hidden; min-height:0; }
     #staffCalV36 .agenda-tabs {
       display:flex; gap:0; background:var(--surface);
@@ -7148,7 +7154,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.608';
+    const APP_VERSION = '5.609';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34383,6 +34389,16 @@ Per confermare scrivi ELIMINA.`);
           typSpan.textContent = slot.tipo === 'lezione' ? 'Lezione' : slot.tipo === 'staff-booking' ? 'Staff' : 'Partita';
           hdr.appendChild(icon);
           hdr.appendChild(typSpan);
+          if (!isMatchpoint) {
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'staff-cal-del-btn';
+            delBtn.title = 'Annulla prenotazione';
+            delBtn.textContent = '🗑';
+            const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate;
+            delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
+            hdr.appendChild(delBtn);
+          }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
           timeDiv.textContent = hour + ' – ' + _staffCalEndTime(hour, slot.durata);
@@ -34467,6 +34483,15 @@ Per confermare scrivi ELIMINA.`);
           badge.className = 'agenda-card-mp-badge';
           badge.textContent = '🔒 Matchpoint · Sola lettura';
           card.appendChild(badge);
+        } else {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'staff-cal-del-btn';
+          delBtn.title = 'Annulla prenotazione';
+          delBtn.textContent = '🗑 Annulla';
+          const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate;
+          delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
+          card.appendChild(delBtn);
         }
         body.appendChild(card);
         si += entry._durSlots;
@@ -35299,6 +35324,46 @@ Per confermare scrivi ELIMINA.`);
     });
     if (typeof save === 'function') save('staffBookings', existing);
     return true;
+  }
+
+  // 🗑 Annulla una prenotazione STAFF dal calendario (solo card ✏️ Staff; le 🔒 Matchpoint sono sola lettura).
+  // Cancella per campo+data+ora (l'app non memorizza l'idReserva): stessa via già validata col pulsante di test.
+  async function staffCalAskCancel(isoDate, campo, ora, nome) {
+    const dataIt = isoDate.split('-').reverse().join('/');
+    const chi = nome ? ` di ${nome}` : '';
+    const confirmed = confirm(`Annullare su Matchpoint la prenotazione${chi}?\nCampo ${campo} · ${dataIt} · ${ora}\n\nL'operazione è irreversibile.`);
+    if (!confirmed) return;
+
+    staffCalSetStatus('⏳ Annullamento in corso… (può durare fino a 30 s)', 'pending');
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`,
+        },
+        body: JSON.stringify({ campo, data: isoDate, ora }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+
+      if (response.ok && data?.ok !== false) {
+        const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const filtered = existing.filter((b) => !(b.data === isoDate && b.campo === campo && b.ora === ora));
+        if (typeof save === 'function') save('staffBookings', filtered);
+        staffCalSetStatus(`✓ Prenotazione annullata: Campo ${campo} · ${dataIt} · ${ora}.`, 'done');
+        renderStaffCalendar();
+      } else {
+        const msg = (data && (data.message || data.error)) || (typeof data === 'string' ? data : `errore HTTP ${response.status}`);
+        staffCalSetStatus(`❌ Annullamento non riuscito: ${msg}`, 'error');
+      }
+    } catch (err) {
+      staffCalSetStatus(`❌ Errore: ${err?.message || err || 'sconosciuto'}`, 'error');
+    }
   }
 
   function staffCalSetStatus(msg, type) {
