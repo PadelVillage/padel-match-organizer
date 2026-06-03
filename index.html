@@ -7054,7 +7054,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.618';
+    const APP_VERSION = '5.619';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34010,9 +34010,16 @@ Per confermare scrivi ELIMINA.`);
             delBtn.className = 'staff-cal-del-btn';
             delBtn.title = 'Annulla prenotazione';
             delBtn.textContent = '🗑';
-            const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate;
+            const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate, _durata = slot.durata, _tipo = slot.tipo;
             delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
             hdr.appendChild(delBtn);
+            const mvBtn = document.createElement('button');
+            mvBtn.type = 'button';
+            mvBtn.className = 'staff-cal-localdel-btn';
+            mvBtn.title = 'Sposta su Matchpoint (campo/data/ora)';
+            mvBtn.textContent = '↔';
+            mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
+            hdr.appendChild(mvBtn);
             const rmBtn = document.createElement('button');
             rmBtn.type = 'button';
             rmBtn.className = 'staff-cal-localdel-btn';
@@ -34111,9 +34118,16 @@ Per confermare scrivi ELIMINA.`);
           delBtn.className = 'staff-cal-del-btn';
           delBtn.title = 'Annulla prenotazione';
           delBtn.textContent = '🗑 Annulla';
-          const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate;
+          const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate, _durata = entry.durata, _tipo = entry.tipo;
           delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
           card.appendChild(delBtn);
+          const mvBtn = document.createElement('button');
+          mvBtn.type = 'button';
+          mvBtn.className = 'staff-cal-localdel-btn';
+          mvBtn.title = 'Sposta su Matchpoint (campo/data/ora)';
+          mvBtn.textContent = '↔ Sposta';
+          mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
+          card.appendChild(mvBtn);
           const rmBtn = document.createElement('button');
           rmBtn.type = 'button';
           rmBtn.className = 'staff-cal-localdel-btn';
@@ -34156,7 +34170,118 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── Spostamento prenotazione STAFF dal calendario (solo card ✏️) ─────────────
+  // SOLO spostamento (campo/data/ora): "↔ Sposta" sulla card → clic su slot LIBERO
+  // di destinazione → edge "matchpoint-bookings-edit" col solo blocco move. Non
+  // tocca i giocatori. Identifica per campo+data+ora (come l'annullamento).
+  let staffCalMoveState = null;
+
+  function staffCalStartMove(isoDate, campo, ora, nome, durata, tipo) {
+    const campoNum = Number(String(campo).replace(/\D/g, ''));
+    // Toggle: se è già attivo lo spostamento di QUESTA stessa card, annulla.
+    if (staffCalMoveState && staffCalMoveState.iso === isoDate
+        && staffCalMoveState.campo === campoNum && staffCalMoveState.ora === ora) {
+      staffCalCancelMove(false);
+      return;
+    }
+    staffCalMoveState = {
+      iso: isoDate, campo: campoNum, ora: ora,
+      nome: nome || '', durata: Number(durata) || 90, tipo: tipo || 'partita',
+    };
+    if (window.innerWidth < 900 && typeof svcOpenChat === 'function') svcOpenChat();
+    const dataIt = isoDate.split('-').reverse().join('/');
+    svcAddMessage('system',
+      '↔ <strong>Spostamento attivo</strong>: Campo ' + campoNum + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+      (nome ? ' (' + nome + ')' : '') +
+      '<br>Clicca lo <strong>slot libero di destinazione</strong> sul calendario.' +
+      '<br><small>Premi di nuovo ↔ sulla stessa card per annullare.</small>');
+  }
+
+  function staffCalCancelMove(silent) {
+    staffCalMoveState = null;
+    if (!silent && typeof svcAddMessage === 'function') {
+      svcAddMessage('system', '↔ Spostamento annullato.');
+    }
+  }
+
+  async function staffCalDoMove(toIso, toCampo, toOra) {
+    const st = staffCalMoveState;
+    if (!st) return;
+    const toCampoNum = Number(String(toCampo).replace(/\D/g, ''));
+    if (st.iso === toIso && st.campo === toCampoNum && st.ora === toOra) {
+      svcAddMessage('system', 'ℹ️ Destinazione uguale all\'origine: spostamento annullato.');
+      staffCalCancelMove(true);
+      return;
+    }
+    const toOraFine = (typeof _staffCalEndTime === 'function') ? _staffCalEndTime(toOra, st.durata) : toOra;
+    const fromDataIt = st.iso.split('-').reverse().join('/');
+    const toDataIt = toIso.split('-').reverse().join('/');
+    const confirmed = confirm(
+      'Spostare su Matchpoint?\n\n' +
+      'DA: Campo ' + st.campo + ' \xb7 ' + fromDataIt + ' \xb7 ' + st.ora + '\n' +
+      'A:  Campo ' + toCampoNum + ' \xb7 ' + toDataIt + ' \xb7 ' + toOra + '–' + toOraFine +
+      (st.nome ? '\n\n(' + st.nome + ')' : ''));
+    if (!confirmed) return; // resta in modalità: può scegliere un altro slot
+
+    const inProgress = svcAddMessage('system', '⏳ Spostamento in corso su Matchpoint…');
+    let _sec = 0;
+    const _timer = setInterval(function() {
+      _sec += 1;
+      const last = inProgress.querySelector(':scope > div:last-child');
+      if (last) last.innerHTML = '⏳ Spostamento in corso su Matchpoint… (' + _sec + 's)';
+    }, 1000);
+
+    const from = { iso: st.iso, campo: st.campo, ora: st.ora, nome: st.nome };
+    staffCalCancelMove(true);
+
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'spostare la prenotazione Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`,
+        },
+        body: JSON.stringify({
+          campo: from.campo, data: from.iso, ora: from.ora,
+          move: { campo: toCampoNum, data: toIso, oraInizio: toOra, oraFine: toOraFine },
+        }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      clearInterval(_timer);
+
+      if (response.ok && data?.ok !== false) {
+        // Aggiorna la copia locale: sposta il record staffBookings da → a.
+        const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const updated = existing.map((b) => {
+          const sameFrom = String(b.data).trim() === from.iso
+            && Number(String(b.campo).replace(/\D/g, '')) === from.campo
+            && String(b.ora).trim() === from.ora;
+          return sameFrom ? Object.assign({}, b, { data: toIso, campo: toCampoNum, ora: toOra, oraFine: toOraFine }) : b;
+        });
+        if (typeof save === 'function') save('staffBookings', updated);
+        svcAddMessage('system',
+          '↔ <strong>Prenotazione spostata</strong>: Campo ' + from.campo + ' \xb7 ' + fromDataIt + ' \xb7 ' + from.ora +
+          '  →  Campo ' + toCampoNum + ' \xb7 ' + toDataIt + ' \xb7 ' + toOra + '–' + toOraFine +
+          (from.nome ? '<br>👥 ' + from.nome : ''),
+          'ok');
+        renderStaffCalendar();
+      } else {
+        const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
+        svcAddMessage('system', '❌ Spostamento non riuscito: ' + msg);
+      }
+    } catch (err) {
+      clearInterval(_timer);
+      svcAddMessage('system', '❌ Errore durante lo spostamento: ' + (err?.message || err || 'sconosciuto'));
+    }
+  }
+
   function staffCalClickFree(isoDate, campo, ora) {
+    if (staffCalMoveState) { staffCalDoMove(isoDate, campo, ora); return; }
     if (window.innerWidth < 900) svcOpenChat();
     svcStartBookingFlow(campo, isoDate, ora);
   }

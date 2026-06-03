@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.619 — Calendario: spostamento prenotazione dalla card (↔)
+- Sulle card staff (✏️) un pulsante "↔ Sposta" avvia lo spostamento: si clicca lo slot libero di destinazione (anche di un altro giorno) e l'app chiama l'edge `matchpoint-bookings-edit` col solo blocco move (campo/data/ora; durata invariata). Non tocca i giocatori. Conferma e feedback nel pannello chat; copia locale aggiornata.
+
 ## v5.618 — Calendario: stato coda Matchpoint nel pannello chat
 - Il pannello "Assistente prenotazioni" mostra in tempo quasi-reale cosa sta facendo il worker e chi l'ha avviato (+ quanti job in coda), leggendo la edge `matchpoint-queue-status` ogni 4s mentre la tab Calendario è attiva. Sola lettura: nessun impatto sul flusso di prenotazione.
 
