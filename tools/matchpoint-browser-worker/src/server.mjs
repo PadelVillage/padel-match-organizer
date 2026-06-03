@@ -3476,20 +3476,31 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   await addLink.first().click({ timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
-  // Verifica post-aggiunta: cerca la riga per nome
+  // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
+  // tipo di form. La partita usa il repeater "WUCUsuarioPartida", la lezione
+  // "WUCUsuarioClase": il vecchio selettore fisso su WUCUsuarioPartida falliva sulle
+  // lezioni (allievo in realtà aggiunto, ma cercato nel repeater sbagliato → falso
+  // PLAYER_ADD_NOT_CONFIRMED). Ora si cerca per nome tra TUTTI gli input
+  // "TextBoxNombreValor" e si ricava l'id cliente sostituendo, nello stesso id,
+  // "TextBoxNombreValor" → "HiddenFieldIdCliente".
   let addedIdCliente = null;
-  let n = 0;
-  while (true) {
-    const nomeInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_TextBoxNombreValor_${n}"]`);
-    if (!(await nomeInput.count().catch(() => 0))) break;
-    const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+  const righeViste = [];
+  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+  const righeTot = await nomeInputs.count().catch(() => 0);
+  for (let r = 0; r < righeTot; r++) {
+    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+    righeViste.push(`${rowId}=${nomeVal}`);
     if (nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal))) {
-      const idInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_HiddenFieldIdCliente_${n}"]`);
-      addedIdCliente = (await idInput.first().inputValue().catch(() => '')).trim();
+      if (rowId) {
+        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+        addedIdCliente = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+      }
+      if (addedIdCliente === null) addedIdCliente = ''; // riga trovata; id non determinabile, ma aggiunta confermata
       break;
     }
-    n++;
   }
+  diagnostic.partecipantiRighe = righeViste.slice(0, 30);
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
