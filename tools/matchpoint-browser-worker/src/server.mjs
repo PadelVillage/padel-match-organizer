@@ -90,6 +90,104 @@ function absoluteUrl(baseUrl, pathOrUrl) {
   return new URL(pathOrUrl, baseUrl).toString();
 }
 
+// ── Coda operazioni browser Matchpoint (concorrenza 1) ───────────────────────
+// Il worker usa UN solo account Matchpoint e regge una sola sessione browser per
+// volta. Ogni operazione che lancia Chromium DEVE essere serializzata: mai due
+// sessioni Matchpoint in parallelo (collisione di sessione + carico VM). La coda è
+// in memoria, nel processo singolo del worker, e si azzera al restart (accettabile).
+const QUEUE_JOB_TIMEOUT_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_MS', '180000')); // 3 min di sicurezza
+const mpQueue = {
+  seq: 0,
+  running: null, // { id, op, label, operatore, startedAt }
+  waiting: [],   // [{ id, op, label, operatore, enqueuedAt }]
+  _chain: Promise.resolve(),
+};
+
+// Etichetta leggibile ("cosa") per /queue/status, ricavata dal payload della richiesta.
+// `operatore` ("chi") arriverà dall'app in Fase 2; per ora ripiega su '—'.
+function mpJobMeta(op, body = {}) {
+  const operatore = clean(body.operatore) || '—';
+  const b = body.booking || body || {};
+  const campoTxt = (b.campo !== undefined && b.campo !== null && b.campo !== '')
+    ? `Campo ${b.campo}`
+    : (body.idReserva ? `#${body.idReserva}` : '');
+  const ora = clean(b.ora || body.ora) || '';
+  if (op === 'create') {
+    const tipo = clean(b.tipo) || 'prenotazione';
+    return { op, operatore, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
+  }
+  if (op === 'edit')   return { op, operatore, label: ['modifica', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'cancel') return { op, operatore, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'client') {
+    const c = body.client || {};
+    const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
+    return { op, operatore, label: ['nuovo cliente', nome].filter(Boolean).join(' · ') };
+  }
+  return { op, operatore, label: op };
+}
+
+// Fotografia dello stato della coda per GET /queue/status.
+function mpQueueSnapshot() {
+  const now = Date.now();
+  return {
+    ok: true,
+    busy: !!mpQueue.running,
+    running: mpQueue.running ? {
+      id: mpQueue.running.id,
+      op: mpQueue.running.op,
+      label: mpQueue.running.label,
+      operatore: mpQueue.running.operatore,
+      runningMs: now - mpQueue.running.startedAt,
+    } : null,
+    waitingCount: mpQueue.waiting.length,
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore })),
+    time: new Date().toISOString(),
+  };
+}
+
+// Esegue `fn` (async) in modo serializzato: una sola operazione browser alla volta.
+// `meta` = { op, label, operatore } (solo per /queue/status).
+// Ritorna/propaga ESATTAMENTE ciò che ritorna/lancia `fn`, così gli handler non cambiano semantica.
+function mpQueueRun(meta, fn) {
+  const job = {
+    id: ++mpQueue.seq,
+    op: meta.op || 'op',
+    label: meta.label || meta.op || 'operazione',
+    operatore: meta.operatore || '—',
+    enqueuedAt: Date.now(),
+  };
+  mpQueue.waiting.push(job);
+
+  const result = mpQueue._chain.then(async () => {
+    const idx = mpQueue.waiting.findIndex((j) => j.id === job.id);
+    if (idx >= 0) mpQueue.waiting.splice(idx, 1);
+    mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, startedAt: Date.now() };
+    let timer = null;
+    try {
+      // Timeout di sicurezza: un job piantato non deve bloccare la coda all'infinito.
+      const guard = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(fail('QUEUE_JOB_TIMEOUT',
+          `Operazione "${job.label}" oltre ${Math.round(QUEUE_JOB_TIMEOUT_MS / 1000)}s: annullata per non bloccare la coda.`)),
+          QUEUE_JOB_TIMEOUT_MS);
+      });
+      return await Promise.race([Promise.resolve().then(fn), guard]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      mpQueue.running = null;
+    }
+  });
+
+  // La catena prosegue SEMPRE (anche se questo job fallisce) così il prossimo parte.
+  mpQueue._chain = result.then(() => {}, () => {});
+  return result;
+}
+
+// Handler per GET /queue/status (autenticato come gli altri).
+function handleQueueStatus(req, res) {
+  requireWorkerAuth(req);
+  return json(res, 200, mpQueueSnapshot());
+}
+
 function parseIsoDate(value) {
   const raw = clean(value);
   if (!raw) return '';
@@ -2935,28 +3033,28 @@ async function handleGetSlots(req, res) {
 async function handleCreateBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await createBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('create', body), () => createBookingWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleCancelBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await cancelBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('cancel', body), () => cancelBookingWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleEditBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await editBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('edit', body), () => editBookingWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleCreateClient(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await createClientWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('client', body), () => createClientWithBrowser(body));
   json(res, 200, result);
 }
 
@@ -4759,7 +4857,10 @@ async function runPollCycle() {
       break;
     }
     try {
-      const result = await getSlotsWithBrowser({ date: isoDate });
+      const result = await mpQueueRun(
+        { op: 'poll', label: `sync slot ${isoDate}`, operatore: 'sistema' },
+        () => getSlotsWithBrowser({ date: isoDate }),
+      );
       consecutiveFails = 0;
       bailCode = null;
       const prevSnap = pollerMem.snapshots[isoDate];
@@ -4968,6 +5069,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
+    }
+    if (req.method === 'GET' && req.url === '/queue/status') {
+      return handleQueueStatus(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
