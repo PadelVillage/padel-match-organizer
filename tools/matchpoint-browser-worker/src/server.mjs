@@ -2113,6 +2113,7 @@ async function parseGrigliaTabellone(tabCtx, diagnostic) {
 //     Età massima 30 min (sicurezza memoria/stato).
 const MP_WARM_ENABLED = boolEnv('MATCHPOINT_WARM_SESSION', true);
 const MP_WARM_MAX_AGE_MS = 30 * 60 * 1000;
+const MP_WARM_FRESH_MS = 5 * 60 * 1000; // se usata con successo da meno di 5 min, salta la verifica
 let _mpWarm = null; // { browser, context, page, createdAt }
 
 function mpLaunchOptions() {
@@ -2178,8 +2179,11 @@ async function mpAcquirePage(baseUrl, username, password, diagnostic) {
         const browser = await chromium.launch(mpLaunchOptions());
         const { context, page } = await mpNewContextPage(browser);
         await mpDoLogin(page, baseUrl, username, password, diagnostic);
-        _mpWarm = { browser, context, page, createdAt: Date.now() };
+        _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
         diagnostic.session = 'warm_new';
+      } else if (Date.now() - (_mpWarm.lastOkAt || 0) < MP_WARM_FRESH_MS) {
+        // Usata con successo da poco → riuso diretto, niente navigazione di verifica.
+        diagnostic.session = 'warm_fresh';
       } else {
         await mpWarmEnsureLogged(baseUrl, username, password, diagnostic);
         diagnostic.session = 'warm';
@@ -2187,7 +2191,7 @@ async function mpAcquirePage(baseUrl, username, password, diagnostic) {
       return {
         page: _mpWarm.page,
         isWarm: true,
-        release: async (failed) => { if (failed) await mpWarmInvalidate(); },
+        release: async (failed) => { if (failed) { await mpWarmInvalidate(); } else if (_mpWarm) { _mpWarm.lastOkAt = Date.now(); } },
       };
     } catch (e) {
       await mpWarmInvalidate();
