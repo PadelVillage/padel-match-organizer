@@ -3450,6 +3450,27 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
   diagnostic.steps.push(`istruttore_selected:${target.text}`);
 }
 
+// ── Helper: attende che un postback parziale ASP.NET (UpdatePanel) sia concluso ──
+// Dopo aver aggiunto un giocatore, Matchpoint fa un postback async che ricostruisce
+// il blocco "Aggiungi giocatore". Se si digita il giocatore successivo PRIMA che il
+// postback sia finito, l'AutoCompleteExtender non è ancora riagganciato e
+// l'autocomplete non compare → HiddenFieldIdPeople resta vuoto (PLAYER_ID_NOT_LOCKED).
+// Se ScriptManager non è presente, la funzione non blocca (fallback sicuro).
+async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
+  try {
+    await page.waitForFunction(() => {
+      try {
+        const S = window.Sys;
+        if (S && S.WebForms && S.WebForms.PageRequestManager) {
+          const prm = S.WebForms.PageRequestManager.getInstance();
+          return prm ? !prm.get_isInAsyncPostBack() : true;
+        }
+      } catch (e) {}
+      return true;
+    }, { timeout: timeoutMs });
+  } catch (e) { /* timeout: proseguiamo comunque, c'è il fallback dei 3 tentativi */ }
+}
+
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
@@ -3468,6 +3489,17 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople');
   const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
   const li = ul.locator('li');
+
+  // ⚙️ Stabilizza il form PRIMA di digitare. Per il 2°+ giocatore, l'aggiunta
+  // precedente ha appena fatto un postback parziale: attendi che sia concluso e
+  // ri-sveglia il campo (focus → blur), così l'AutoCompleteExtender è riagganciato
+  // e l'autocomplete compare anche per i giocatori successivi.
+  await mpWaitAsyncPostbackIdle(page, 12000);
+  await inputEl.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+  await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+  await inputEl.first().blur({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  diagnostic.steps.push(`player_form_settled:${nome}`);
 
   let lockedId = '';
   let codeCheckFailed = false;
