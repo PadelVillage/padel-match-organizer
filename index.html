@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.623';
+    const APP_VERSION = '5.624';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33822,6 +33822,27 @@ Per confermare scrivi ELIMINA.`);
       staffCalEnsureRendered(tries + 1);
     }, 600);
   }
+
+  // Avvio indipendente del Calendario: la sequenza di avvio principale può interrompersi
+  // prima di chiamare staffCalInit (un errore non incatenato in un widget precedente, es.
+  // renderInitialDashboard), lasciando la griglia vuota (data "gg/mm/aaaa") finché non si
+  // clicca "Oggi". Questo poller, indipendente da quella sequenza, inizializza il calendario
+  // appena il suo contenitore è pronto e poi si ferma.
+  (function staffCalBootstrap() {
+    let tries = 0;
+    const iv = setInterval(function() {
+      tries += 1;
+      const grid = document.getElementById('staffCalGridTable');
+      const agenda = document.getElementById('staffCalAgendaBody');
+      const built = (grid && grid.children.length > 0) || (agenda && agenda.children.length > 0);
+      if (built) { clearInterval(iv); return; }
+      const wrap = document.getElementById('staffCalGridWrap');
+      if (wrap && typeof staffCalInit === 'function') {
+        try { staffCalInit(); } catch (e) { /* riprova al giro successivo */ }
+      }
+      if (tries >= 25) clearInterval(iv);
+    }, 700);
+  })();
 
   function staffCalGoToday() {
     const input = document.getElementById('staffCalDate');
