@@ -4176,7 +4176,8 @@ async function editBookingWithBrowser(input = {}) {
 
   const move = input.move || null;
   const players = input.players || null;
-  if (!move && !players) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
+  const readOnly = input.read === true;
+  if (!move && !players && !readOnly) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
 
   const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players } };
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
@@ -4280,6 +4281,33 @@ async function editBookingWithBrowser(input = {}) {
       fichaUrl.includes('ClaseSuelta') ? 'lezione' :
       fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
     ));
+
+    // === LETTURA SOLA (read) — restituisce i partecipanti attuali senza modificare nulla ===
+    if (readOnly) {
+      diagnostic.steps.push('read_only_roster');
+      const partecipantiLettura = [];
+      let ridx = 0;
+      while (true) {
+        const nomeInput = page.locator(
+          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_TextBoxNombreValor_${ridx}"]`,
+        );
+        if (!(await nomeInput.count().catch(() => 0))) break;
+        const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
+        const idClienteInput = page.locator(
+          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_HiddenFieldIdCliente_${ridx}"]`,
+        );
+        const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
+        const costoInput = page.locator(
+          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`,
+        );
+        const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
+        partecipantiLettura.push({ idx: String(ridx), nome, idCliente, costo });
+        ridx++;
+      }
+      diagnostic.partecipantiFinali = partecipantiLettura;
+      diagnostic.steps.push('done');
+      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, diagnostic };
+    }
 
     let moved = false;
 
@@ -4399,7 +4427,7 @@ async function editBookingWithBrowser(input = {}) {
 
       // AGGIUNTE
       for (const p of (players.add || [])) {
-        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic);
+        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, undefined, p.codice);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
