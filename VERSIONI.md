@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.627 — Rimosso il banner "Sincronizzazione automatica in corso"
+- Tolto il banner azzurro nel pannello Calendario e il relativo polling (ogni 4s). Effetto collaterale voluto: la riga di input della chat torna allineata in alto con l'intestazione dei campi. Solo app; edge e worker invariati.
+
 ## v5.626 — Calendario: pannello più alto (chat non più tagliata)
 - L'altezza del blocco calendario+chat in desktop passa da 520px fissi a `min(80vh, 860px)` (adattiva all'altezza schermo, con tetto). I messaggi lunghi (es. editor giocatori) non restano più tagliati in basso e si vedono più ore nella griglia. Solo CSS; edge e worker invariati.
 
