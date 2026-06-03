@@ -3487,7 +3487,13 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   if (!(await addLink.count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
 
   const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople');
-  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
+  // ⚠️ Dopo un postback parziale, Matchpoint lascia in pagina la VECCHIA lista di
+  // autocomplete (vuota/nascosta) e ne crea una NUOVA con lo STESSO id: il selettore
+  // matcha 2 elementi e `ul.isVisible()` va in errore strict-mode (catturato come
+  // "non visibile") → la tendina del 2° giocatore non viene mai rilevata. Prendendo
+  // sempre l'ULTIMA (la nuova/attiva) il match è singolo e il problema sparisce; col
+  // 1° giocatore (match unico) .last() resta quell'unico elemento, quindi invariato.
+  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').last();
   const li = ul.locator('li');
 
   // ⚙️ Stabilizza il form PRIMA di digitare. Per il 2°+ giocatore, l'aggiunta
