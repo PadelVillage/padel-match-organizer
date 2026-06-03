@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.620 — Calendario: card staff più chiare (tipo reale) + via il pulsante 🧹
+- Le card delle prenotazioni staff (✏️) mostrano ora il **tipo reale** scelto in prenotazione (Partita / Lezione / Manutenzione / Torneo) al posto della generica "Staff", sia in griglia desktop sia in agenda mobile. Il tipo è già salvato nel record; ora `staffCalGetSlots` lo porta come `tipoReale` e un helper `_staffCalTipoLabel` lo traduce in etichetta. Le card Matchpoint (🔒) restano invariate.
+- Rimosso il pulsante 🧹 "rimuovi solo dal calendario" da entrambe le viste e cancellata la funzione `staffCalRemoveLocalOnly` ormai inutilizzata. L'annullamento con 🗑 ripulisce già da solo le card "fantasma" non più presenti su Matchpoint. Solo app; edge e worker invariati.
+
 ## v5.619 — Calendario: spostamento prenotazione dalla card (↔)
 - Sulle card staff (✏️) un pulsante "↔ Sposta" avvia lo spostamento: si clicca lo slot libero di destinazione (anche di un altro giorno) e l'app chiama l'edge `matchpoint-bookings-edit` col solo blocco move (campo/data/ora; durata invariata). Non tocca i giocatori. Conferma e feedback nel pannello chat; copia locale aggiornata.
 
