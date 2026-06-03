@@ -7036,7 +7036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.627';
+    const APP_VERSION = '5.628';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33897,6 +33897,39 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── Slot annullati di recente (anti-"rinascita" della card) ────────────────
+  // Dopo un annullamento riuscito, la cache di occupazione Matchpoint
+  // (prenotazioniOccupazione) può restare "vecchia" finché non risincronizza, e la
+  // card riapparirebbe come 🔒 sola lettura. Teniamo una lista a scadenza degli slot
+  // appena annullati e li nascondiamo nel calendario finché i dati non si aggiornano.
+  const _STAFFCAL_SUPPRESS_TTL_MS = 30 * 60 * 1000; // 30 min, poi si pulisce da sola
+  function _staffCalSuppressKey(data, campo, ora) {
+    return String(data).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
+  }
+  function _staffCalGetSuppressed() {
+    const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    const now = Date.now();
+    const live = list.filter(e => e && e.key && (now - (e.ts || 0)) < _STAFFCAL_SUPPRESS_TTL_MS);
+    if (live.length !== list.length && typeof save === 'function') save('staffCalCancelled', live);
+    return new Set(live.map(e => e.key));
+  }
+  function _staffCalAddSuppressed(data, campo, ora) {
+    const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    const key = _staffCalSuppressKey(data, campo, ora);
+    const next = list.filter(e => e && e.key !== key);
+    next.push({ key: key, ts: Date.now() });
+    if (typeof save === 'function') save('staffCalCancelled', next);
+  }
+  function _staffCalClearSuppressed(data, campo, ora) {
+    const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
+    const list = Array.isArray(arr) ? arr : [];
+    const key = _staffCalSuppressKey(data, campo, ora);
+    const next = list.filter(e => e && e.key !== key);
+    if (next.length !== list.length && typeof save === 'function') save('staffCalCancelled', next);
+  }
+
   function staffCalGetSlots(isoDate) {
     const result = [];
     // Read occupancy from local data
@@ -33923,6 +33956,11 @@ Per confermare scrivi ELIMINA.`);
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
       result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', durata: _staffCalDurMin(b.durata) });
+    }
+    // Nascondi gli slot annullati di recente, anche se la cache di occupazione è vecchia.
+    const _supp = _staffCalGetSuppressed();
+    if (_supp.size) {
+      return result.filter(r => !_supp.has(_staffCalSuppressKey(isoDate, r.campo, r.ora)));
     }
     return result;
   }
@@ -34567,6 +34605,8 @@ Per confermare scrivi ELIMINA.`);
           return sameFrom ? Object.assign({}, b, { data: toIso, campo: toCampoNum, ora: toOra, oraFine: toOraFine }) : b;
         });
         if (typeof save === 'function') save('staffBookings', updated);
+        _staffCalAddSuppressed(from.iso, from.campo, from.ora);
+        _staffCalClearSuppressed(toIso, toCampoNum, toOra);
         svcAddMessage('system',
           '↔ <strong>Prenotazione spostata</strong>: Campo ' + from.campo + ' \xb7 ' + fromDataIt + ' \xb7 ' + from.ora +
           '  →  Campo ' + toCampoNum + ' \xb7 ' + toDataIt + ' \xb7 ' + toOra + '–' + toOraFine +
@@ -35391,6 +35431,7 @@ Per confermare scrivi ELIMINA.`);
       createdAt: new Date().toISOString(),
     });
     if (typeof save === 'function') save('staffBookings', existing);
+    _staffCalClearSuppressed(parsed.data, parsed.campoNum, parsed.ora);
     return true;
   }
 
@@ -35441,6 +35482,7 @@ Per confermare scrivi ELIMINA.`);
           String(b.ora).trim() === wantOra
         ));
         if (typeof save === 'function') save('staffBookings', filtered);
+        _staffCalAddSuppressed(isoDate, campo, ora);
       };
       const _msgTxt = ((data && (data.message || data.error)) || '') + '';
       const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);

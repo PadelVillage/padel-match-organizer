@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.628 — La prenotazione annullata non "rinasce" più nel calendario
+- Dopo un annullamento riuscito, lo slot veniva talvolta ridisegnato come 🔒 sola lettura perché la cache di occupazione Matchpoint (`prenotazioniOccupazione`) era ancora vecchia. Ora il calendario tiene una lista a scadenza (30 min) degli slot annullati di recente e li nasconde finché i dati non si aggiornano. La lista si pulisce da sola ed è azzerata quando si crea/sposta una prenotazione sullo stesso slot. Solo app; nessun dato principale cancellato; edge e worker invariati.
+
 ## v5.627 — Rimosso il banner "Sincronizzazione automatica in corso"
 - Tolto il banner azzurro nel pannello Calendario e il relativo polling (ogni 4s). Effetto collaterale voluto: la riga di input della chat torna allineata in alto con l'intestazione dei campi. Solo app; edge e worker invariati.
 
