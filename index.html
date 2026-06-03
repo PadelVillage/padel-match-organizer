@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.613';
+    const APP_VERSION = '5.614';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34238,23 +34238,26 @@ Per confermare scrivi ELIMINA.`);
     if (input) { input.value = staffCalTodayIso(); renderStaffCalendar(); }
   }
 
-  function staffCalPrevDay() {
+  // Sposta la data dell'input #staffCalDate di `delta` giorni.
+  // Base a mezzogiorno locale (T12:00:00) → robusto ai cambi di ora legale/solare.
+  // La data si riformatta dai componenti LOCALI, NON con toISOString(): toISOString()
+  // restituisce UTC e in Italia (UTC+1/+2) faceva scivolare il risultato al giorno
+  // prima (avanti restava ferma, indietro saltava di 2). v5.614.
+  function staffCalShiftDay(delta) {
     const input = document.getElementById('staffCalDate');
     if (!input) return;
-    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
-    d.setDate(d.getDate() - 1);
-    input.value = d.toISOString().slice(0, 10);
+    const base = input.value || staffCalTodayIso();
+    const d = new Date(base + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    input.value = `${y}-${m}-${day}`;
     renderStaffCalendar();
   }
 
-  function staffCalNextDay() {
-    const input = document.getElementById('staffCalDate');
-    if (!input) return;
-    const d = new Date((input.value || staffCalTodayIso()) + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    input.value = d.toISOString().slice(0, 10);
-    renderStaffCalendar();
-  }
+  function staffCalPrevDay() { staffCalShiftDay(-1); }
+  function staffCalNextDay() { staffCalShiftDay(1); }
 
   function staffCalGetSlots(isoDate) {
     const result = [];

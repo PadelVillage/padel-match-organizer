@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.614 — Calendario staff: corrette le frecce ‹ › di navigazione giorno. Usavano toISOString() (UTC) per riformattare la data: in Italia (UTC+1/+2) la freccia avanti restava ferma e quella indietro saltava di 2 giorni. Ora lo spostamento usa i componenti di data locali, con base a mezzogiorno (robusto ai cambi ora legale/solare). Solo app; edge e worker invariati.
+
 ## v5.613 — Calendario staff: nuovo pulsante 🧹 "rimuovi solo dal calendario" sulle card Staff (griglia + agenda), in grigio per distinguerlo dal 🗑. Rimuove la copia locale all'istante senza chiamare il worker (per i fantasmi già rimossi a mano su Matchpoint), con conferma che avvisa che NON tocca Matchpoint.
 
 ## v5.612 — Calendario staff: il 🗑 ora rimuove davvero la card locale dopo l'annullamento (confronto campo come numero: alcune card vecchie lo avevano come stringa e non sparivano). Se la prenotazione non è più su Matchpoint, la card viene comunque ripulita invece di restare bloccata in errore.
