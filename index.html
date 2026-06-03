@@ -7054,7 +7054,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.619';
+    const APP_VERSION = '5.620';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33865,6 +33865,17 @@ Per confermare scrivi ELIMINA.`);
     return Math.max(30, Math.round(n * 60));    // in ore → minuti
   }
 
+  // v5.620 — etichetta del tipo prenotazione per le card del calendario.
+  // Staff: usa il tipo reale salvato (tipoReale). Matchpoint/occupazione: usa 'tipo' (lezione/partita).
+  function _staffCalTipoLabel(t) {
+    switch (String(t || '').toLowerCase()) {
+      case 'lezione':      return 'Lezione';
+      case 'manutenzione': return 'Manutenzione';
+      case 'torneo':       return 'Torneo';
+      default:             return 'Partita';
+    }
+  }
+
   function staffCalGetSlots(isoDate) {
     const result = [];
     // Read occupancy from local data
@@ -33890,7 +33901,7 @@ Per confermare scrivi ELIMINA.`);
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
-      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', durata: _staffCalDurMin(b.durata) });
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', durata: _staffCalDurMin(b.durata) });
     }
     return result;
   }
@@ -34001,7 +34012,7 @@ Per confermare scrivi ELIMINA.`);
           icon.textContent = isMatchpoint ? '🔒' : '✏️';
           const typSpan = document.createElement('span');
           typSpan.className = 'booking-type';
-          typSpan.textContent = slot.tipo === 'lezione' ? 'Lezione' : slot.tipo === 'staff-booking' ? 'Staff' : 'Partita';
+          typSpan.textContent = _staffCalTipoLabel(slot.tipoReale || slot.tipo);
           hdr.appendChild(icon);
           hdr.appendChild(typSpan);
           if (!isMatchpoint) {
@@ -34020,13 +34031,6 @@ Per confermare scrivi ELIMINA.`);
             mvBtn.textContent = '↔';
             mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
             hdr.appendChild(mvBtn);
-            const rmBtn = document.createElement('button');
-            rmBtn.type = 'button';
-            rmBtn.className = 'staff-cal-localdel-btn';
-            rmBtn.title = 'Rimuovi solo dal calendario (non tocca Matchpoint)';
-            rmBtn.textContent = '🧹';
-            rmBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalRemoveLocalOnly(_iso, _campo, _ora, _nome); });
-            hdr.appendChild(rmBtn);
           }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
@@ -34098,7 +34102,7 @@ Per confermare scrivi ELIMINA.`);
         const typeEl = document.createElement('div');
         typeEl.className = 'agenda-card-type';
         const ico = entry.tipo === 'staff-booking' ? '✏️' : '🔒';
-        const lbl = entry.tipo === 'lezione' ? 'Lezione' : entry.tipo === 'staff-booking' ? 'Staff' : 'Partita';
+        const lbl = _staffCalTipoLabel(entry.tipoReale || entry.tipo);
         typeEl.innerHTML = ico + '&nbsp;' + lbl;
         card.appendChild(typeEl);
         if (entry.nome) {
@@ -34128,13 +34132,6 @@ Per confermare scrivi ELIMINA.`);
           mvBtn.textContent = '↔ Sposta';
           mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
           card.appendChild(mvBtn);
-          const rmBtn = document.createElement('button');
-          rmBtn.type = 'button';
-          rmBtn.className = 'staff-cal-localdel-btn';
-          rmBtn.title = 'Rimuovi solo dal calendario (non tocca Matchpoint)';
-          rmBtn.textContent = '🧹 Solo calendario';
-          rmBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalRemoveLocalOnly(_iso, _campo, _ora, _nome); });
-          card.appendChild(rmBtn);
         }
         body.appendChild(card);
         si += entry._durSlots;
@@ -35094,32 +35091,6 @@ Per confermare scrivi ELIMINA.`);
   // 🗑 Annulla una prenotazione STAFF dal calendario (solo card ✏️ Staff; le 🔒 Matchpoint sono sola lettura).
   // Cancella per campo+data+ora (l'app non memorizza l'idReserva): stessa via già validata col pulsante di test.
   // Feedback nella colonna chat (bolle SISTEMA in cima), come la creazione prenotazione.
-  // 🧹 Rimuove SOLO la copia locale della card (NON tocca Matchpoint). Per i "fantasmi":
-  // prenotazioni già annullate/rimosse a mano su Matchpoint ma rimaste nel calendario.
-  function staffCalRemoveLocalOnly(isoDate, campo, ora, nome) {
-    const dataIt = isoDate.split('-').reverse().join('/');
-    const chi = nome ? ` (${nome})` : '';
-    const ok = confirm(
-      `Rimuovere SOLO dal calendario?\nCampo ${campo} · ${dataIt} · ${ora}${chi}\n\n` +
-      `⚠️ Questo NON annulla la prenotazione su Matchpoint.\n` +
-      `Usalo solo per card già rimosse a mano su Matchpoint. Se la prenotazione esiste ancora là, usa invece il 🗑.`
-    );
-    if (!ok) return;
-    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-    const wantCampo = Number(String(campo).replace(/\D/g, ''));
-    const wantOra = String(ora).trim();
-    const filtered = existing.filter((b) => !(
-      String(b.data).trim() === isoDate &&
-      Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
-      String(b.ora).trim() === wantOra
-    ));
-    if (typeof save === 'function') save('staffBookings', filtered);
-    if (typeof svcAddMessage === 'function') svcAddMessage('system',
-      '🧹 <strong>Rimossa dal calendario</strong> (Matchpoint non toccato): Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora,
-      'ok');
-    renderStaffCalendar();
-  }
-
   async function staffCalAskCancel(isoDate, campo, ora, nome) {
     const dataIt = isoDate.split('-').reverse().join('/');
     const chi = nome ? ` di ${nome}` : '';
