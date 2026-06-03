@@ -3480,13 +3480,24 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
   if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
 
-  const inputEl = formCtx.locator(PFX + 'TextBoxTitular');
-  if (!(await inputEl.count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
+  // ⚠️ Dopo il postback del 1° giocatore, Matchpoint lascia in pagina la VECCHIA
+  // copia (nascosta) del campo "aggiungi giocatore" accanto a quella nuova, con lo
+  // STESSO id. Digitando nella copia vecchia/nascosta l'autocomplete non parte mai.
+  // Per campo e link usiamo quindi la copia VISIBILE (quella su cui digiterebbe
+  // l'operatore); col 1° giocatore c'è un'unica copia, quindi invariato.
+  const inputEl = formCtx.locator(PFX + 'TextBoxTitular:visible').last();
+  if (!(await formCtx.locator(PFX + 'TextBoxTitular').count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
 
-  const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir');
-  if (!(await addLink.count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
+  const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir:visible').last();
+  if (!(await formCtx.locator(PFX + 'LinkButtonAnyadir').count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
 
-  const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople');
+  const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople').last();
+  try {
+    const nInputTot = await formCtx.locator(PFX + 'TextBoxTitular').count();
+    const nInputVis = await formCtx.locator(PFX + 'TextBoxTitular:visible').count();
+    const nList = await formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').count();
+    diagnostic.steps.push(`player_ctrl_count:${nome}:inputTot=${nInputTot}:inputVis=${nInputVis}:list=${nList}`);
+  } catch (e) {}
   // ⚠️ Dopo un postback parziale, Matchpoint lascia in pagina la VECCHIA lista di
   // autocomplete (vuota/nascosta) e ne crea una NUOVA con lo STESSO id: il selettore
   // matcha 2 elementi e `ul.isVisible()` va in errore strict-mode (catturato come
@@ -3494,7 +3505,10 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // sempre l'ULTIMA (la nuova/attiva) il match è singolo e il problema sparisce; col
   // 1° giocatore (match unico) .last() resta quell'unico elemento, quindi invariato.
   const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').last();
-  const li = ul.locator('li');
+  // I <li> dei suggerimenti: prendiamo quelli VISIBILI di QUALUNQUE lista (solo la
+  // tendina realmente mostrata ha <li> visibili), così non dipendiamo da quale copia
+  // della lista sia attiva dopo il postback.
+  const li = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem li:visible');
 
   // ⚙️ Stabilizza il form PRIMA di digitare. Per il 2°+ giocatore, l'aggiunta
   // precedente ha appena fatto un postback parziale: attendi che sia concluso e
@@ -3516,11 +3530,11 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     await page.keyboard.press('Delete').catch(() => {});
     await inputEl.first().type(nome, { delay: 80 });
 
-    // Attende autocomplete
+    // Attende autocomplete (i <li> sono già filtrati per :visible → n>0 = tendina mostrata)
     let appeared = false;
     for (let i = 0; i < 24; i++) {
       const n = await li.count().catch(() => 0);
-      if (n > 0 && await ul.isVisible().catch(() => false)) { appeared = true; break; }
+      if (n > 0) { appeared = true; break; }
       await page.waitForTimeout(250);
     }
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
@@ -3556,7 +3570,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
         await inputEl.first().type(nome, { delay: 80 });
         for (let j = 0; j < 24; j++) {
           const n2 = await li.count().catch(() => 0);
-          if (n2 > 0 && await ul.isVisible().catch(() => false)) break;
+          if (n2 > 0) break;
           await page.waitForTimeout(250);
         }
         continue;
