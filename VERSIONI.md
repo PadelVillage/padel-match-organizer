@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.626 — Calendario: pannello più alto (chat non più tagliata)
+- L'altezza del blocco calendario+chat in desktop passa da 520px fissi a `min(80vh, 860px)` (adattiva all'altezza schermo, con tetto). I messaggi lunghi (es. editor giocatori) non restano più tagliati in basso e si vedono più ore nella griglia. Solo CSS; edge e worker invariati.
+
 ## v5.625 — Giocatori: usare l'id interno Matchpoint (matchpointIdInterno) invece di memberId
 - Aggiungendo un giocatore (editor 👥 e creazione prenotazione) l'app passava `memberId` (codice/tessera) come codice atteso, ma il worker confronta con `HiddenFieldIdPeople` = id interno (`id_people`). Risultato: `PLAYER_CODE_MISMATCH` per i soci con id interno noto. Ora si passa `matchpointIdInterno` (l'id interno reale). Se assente, aggiunta per nome come prima. Solo app; edge e worker invariati.
 

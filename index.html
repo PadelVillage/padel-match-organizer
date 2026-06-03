@@ -2781,7 +2781,7 @@
     #staffCalV36 .svc-chip-x:hover:not(:disabled) { background:var(--red-light); color:var(--red); }
     #staffCalV36 .svc-chip-x:disabled { opacity:.4; cursor:not-allowed; }
     @media (min-width:900px) {
-      #staffCalV36 .svc-layout { flex-direction:row; height:520px; }
+      #staffCalV36 .svc-layout { flex-direction:row; height:min(80vh, 860px); }
       #staffCalV36 .svc-grid-col { overflow:auto; }
       #staffCalV36 .svc-chat-panel { width:var(--chat-w); flex-shrink:0; border-left:2px solid var(--border); border-top:none; }
       #staffCalV36 .svc-chat-header { display:none !important; }
@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.625';
+    const APP_VERSION = '5.626';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
