@@ -4301,22 +4301,24 @@ async function editBookingWithBrowser(input = {}) {
 
       diagnostic.steps.push('goto_tabellone');
       await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate((f) => {
-        const el = document.getElementById('fechaTabla');
-        if (el) {
-          el.value = f;
-          ['input', 'change', 'keyup', 'blur'].forEach((ev) => el.dispatchEvent(new Event(ev, { bubbles: true })));
-        }
-      }, fechaTab);
-      await page.waitForTimeout(4000);
+      // ⚠️ Imposta la data col metodo robusto (datepicker onSelect → ricarica AJAX
+      // della griglia). Il vecchio `.value=` + eventi NON ricaricava la griglia per un
+      // giorno diverso da oggi → una prenotazione di un altro giorno non veniva trovata.
+      await impostaDataTabellone(page, page, input.data, diagnostic);
 
       diagnostic.steps.push('cerca_evento');
-      idReserva = await page.evaluate(({ recurso: rec, ora }) => {
+      const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
+        const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
         const eventi = [...document.querySelectorAll('div.evento')]
           .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-        const hit = eventi.find((e) => (e.innerText || '').includes(ora));
-        return hit ? hit.id : null;
+        const hit = eventi.find((e) => {
+          const t = e.innerText || '';
+          return variants.some((v) => t.includes(v));
+        });
+        return { id: hit ? hit.id : null, eventiRecurso: eventi.length, eventiTot: document.querySelectorAll('div.evento').length };
       }, { recurso, ora: input.ora });
+      idReserva = _resEvento.id;
+      diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
 
       if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
         `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
@@ -4666,22 +4668,24 @@ async function cancelBookingWithBrowser(input = {}) {
 
       diagnostic.steps.push('goto_tabellone');
       await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate((f) => {
-        const el = document.getElementById('fechaTabla');
-        if (el) {
-          el.value = f;
-          ['input', 'change', 'keyup', 'blur'].forEach((ev) => el.dispatchEvent(new Event(ev, { bubbles: true })));
-        }
-      }, fechaTab);
-      await page.waitForTimeout(4000);
+      // ⚠️ Imposta la data col metodo robusto (datepicker onSelect → ricarica AJAX
+      // della griglia). Il vecchio `.value=` + eventi NON ricaricava la griglia per un
+      // giorno diverso da oggi → una prenotazione di un altro giorno non veniva trovata.
+      await impostaDataTabellone(page, page, input.data, diagnostic);
 
       diagnostic.steps.push('cerca_evento');
-      idReserva = await page.evaluate(({ recurso: rec, ora }) => {
+      const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
+        const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
         const eventi = [...document.querySelectorAll('div.evento')]
           .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-        const hit = eventi.find((e) => (e.innerText || '').includes(ora));
-        return hit ? hit.id : null;
+        const hit = eventi.find((e) => {
+          const t = e.innerText || '';
+          return variants.some((v) => t.includes(v));
+        });
+        return { id: hit ? hit.id : null, eventiRecurso: eventi.length, eventiTot: document.querySelectorAll('div.evento').length };
       }, { recurso, ora: input.ora });
+      idReserva = _resEvento.id;
+      diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
 
       if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
         `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
