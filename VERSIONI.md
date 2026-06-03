@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.611 — TEST: modifica prenotazione anche per campo+data+ora. Edge matchpoint-bookings-edit accetta la terna (oltre all'idReserva) e la inoltra al worker (che la risolve dal tabellone). Pulsante 🧪 Modifica: idReserva vuoto → chiede campo,YYYY-MM-DD,HH:MM. Additivo e retrocompatibile.
+
 ## v5.610 — Calendario staff: l'esito dell'annullamento dal 🗑 ora compare come bolla SISTEMA in cima alla colonna chat (⏳ in corso con contatore secondi → ✅/❌), coerente con la creazione prenotazione. Niente più riga di stato nascosta. Logica di cancellazione invariata.
 
 ## v5.609 — Calendario staff: pulsante 🗑 sulle card ✏️ Staff (griglia desktop + agenda mobile) per annullare la prenotazione su Matchpoint via campo+data+ora (con conferma) e rimuovere la copia locale. Le card 🔒 Matchpoint restano sola lettura. Edge e worker invariati.

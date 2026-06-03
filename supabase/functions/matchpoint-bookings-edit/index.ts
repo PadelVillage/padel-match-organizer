@@ -26,6 +26,9 @@ type EditPlayers = {
 
 type EditRequest = {
   idReserva?: string;
+  campo?: number;
+  data?: string;            // ISO yyyy-mm-dd
+  ora?: string;             // HH:MM (inizio) — per far ricavare l'idReserva dal tabellone lato worker
   move?: EditMove;
   players?: EditPlayers;
 };
@@ -112,7 +115,7 @@ async function callWorkerEditBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ idReserva: edit.idReserva, move: edit.move, players: edit.players }),
+      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
@@ -178,12 +181,16 @@ Deno.serve(async (req: Request) => {
   }
 
   const idReserva = body.idReserva != null ? clean(body.idReserva) : undefined;
+  const campo = body.campo != null ? parseInt(String(body.campo)) : undefined;
+  const data = body.data != null ? clean(body.data) : undefined;
+  const ora = body.ora != null ? clean(body.ora) : undefined;
   const move = (body.move && typeof body.move === 'object') ? (body.move as EditMove) : undefined;
   const players = (body.players && typeof body.players === 'object') ? (body.players as EditPlayers) : undefined;
 
-  // Validation: serve idReserva + almeno uno tra move/players
-  if (!idReserva) {
-    return err(400, 'PARAMS_MANCANTI', 'Serve idReserva.');
+  // Validation: serve idReserva OPPURE (campo+data+ora), + almeno uno tra move/players
+  const hasTerna = !!campo && !!data && !!ora;
+  if (!idReserva && !hasTerna) {
+    return err(400, 'PARAMS_MANCANTI', 'Serve idReserva, oppure campo+data+ora.');
   }
   const hasMove = !!move && Object.keys(move).length > 0;
   const hasPlayers = !!players && (
@@ -195,7 +202,7 @@ Deno.serve(async (req: Request) => {
     return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move e players.');
   }
 
-  const edit: EditRequest = { idReserva, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));

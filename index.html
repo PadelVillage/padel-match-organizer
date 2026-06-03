@@ -7154,7 +7154,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.610';
+    const APP_VERSION = '5.611';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35070,9 +35070,20 @@ Per confermare scrivi ELIMINA.`);
   // ── Test MODIFICA prenotazione Matchpoint (solo TEST env) ─────────────────
   // Input dinamico via prompt() così non serve ritoccare il codice ogni volta.
   async function matchpointTestBookingEdit() {
-    const idReserva = (prompt('idReserva da modificare (es. 7996):', '') || '').trim();
-    if (!idReserva) return;
-    if (!/^\d+$/.test(idReserva)) { alert(`idReserva non valido: "${idReserva}". Deve essere un numero (es. 7996). Modifica annullata.`); return; }
+    const idReserva = (prompt('idReserva da modificare (es. 7996).\nLascia VUOTO per identificare invece per campo+data+ora.', '') || '').trim();
+    let target;
+    if (idReserva) {
+      if (!/^\d+$/.test(idReserva)) { alert(`idReserva non valido: "${idReserva}". Deve essere un numero (es. 7996). Modifica annullata.`); return; }
+      target = { idReserva };
+    } else {
+      const ternaRaw = (prompt('Identifica la prenotazione per CAMPO+DATA+ORA\nFormato: campo,YYYY-MM-DD,HH:MM\nEs: 4,2026-06-03,08:30', '') || '').trim();
+      if (!ternaRaw) return;
+      const tp = ternaRaw.split(',').map((s) => s.trim());
+      const [cS, dS, oS] = tp;
+      const okT = tp.length === 3 && /^[1-4]$/.test(cS || '') && /^\d{4}-\d{2}-\d{2}$/.test(dS || '') && /^\d{1,2}:\d{2}$/.test(oS || '');
+      if (!okT) { alert(`Formato non valido: "${ternaRaw}".\nServe: campo,YYYY-MM-DD,HH:MM (es. 4,2026-06-03,08:30). Modifica annullata.`); return; }
+      target = { campo: parseInt(cS, 10), data: dS, ora: oS };
+    }
 
     // SPOSTAMENTO (opzionale): "campo,YYYY-MM-DD,HH:MM,HH:MM" — vuoto = nessuno
     const moveRaw = (prompt('SPOSTAMENTO (vuoto = nessuno)\nFormato: campo,YYYY-MM-DD,HH:MM,HH:MM\nEs: 2,2026-06-02,09:00,10:30', '') || '').trim();
@@ -35111,7 +35122,7 @@ Per confermare scrivi ELIMINA.`);
 
     if (!move && !players) { alert('Niente da modificare: nessuno spostamento e nessun giocatore.'); return; }
 
-    const payload = { idReserva, move, players };
+    const payload = { ...target, move, players };
 
     const btn = document.getElementById('matchpointTestEditButton');
     const stateEl = document.getElementById('matchpointTestBookingState');
@@ -35123,7 +35134,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     const riepilogo = [
-      `idReserva ${idReserva}`,
+      target.idReserva ? `idReserva ${target.idReserva}` : `Campo ${target.campo} · ${target.data} · ${target.ora}`,
       move ? `sposta → Campo ${move.campo} · ${move.data} · ${move.oraInizio}–${move.oraFine}` : 'nessuno spostamento',
       addNome ? `aggiungi "${addNome}" (costo ${addCosto || 'default'})` : null,
       removeNome ? `rimuovi "${removeNome}"` : null,
