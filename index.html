@@ -7036,7 +7036,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.628';
+    const APP_VERSION = '5.629';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34280,15 +34280,19 @@ Per confermare scrivi ELIMINA.`);
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della partita');
+      const _editReadCtrl = new AbortController();
+      const _editReadTo = setTimeout(function() { _editReadCtrl.abort(); }, 90000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
         body: JSON.stringify({ campo: campo, data: isoDate, ora: ora, read: true }),
+        signal: _editReadCtrl.signal,
       });
       const respText = await response.text();
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       clearInterval(_timer);
+      clearTimeout(_editReadTo);
       if (!response.ok || (data && data.ok === false)) {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
         svcAddMessage('system', '❌ Lettura giocatori non riuscita: ' + msg, 'error');
@@ -34308,7 +34312,11 @@ Per confermare scrivi ELIMINA.`);
       staffCalRenderPlayersEditor();
     } catch (err) {
       clearInterval(_timer);
-      svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+      if (err && err.name === 'AbortError') {
+        svcAddMessage('system', '⌛ <strong>Lettura troppo lenta</strong> (oltre 90s): il worker Matchpoint non ha risposto. Riprova tra poco; se capita spesso è un problema lato worker, non lato app.', 'error');
+      } else {
+        svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+      }
     }
   }
 
@@ -34467,15 +34475,19 @@ Per confermare scrivi ELIMINA.`);
       const players = {};
       if (add.length) players.add = add;
       if (remove.length) players.remove = remove;
+      const _editSaveCtrl = new AbortController();
+      const _editSaveTo = setTimeout(function() { _editSaveCtrl.abort(); }, 200000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
         body: JSON.stringify({ campo: st.campo, data: st.isoDate, ora: st.ora, players: players }),
+        signal: _editSaveCtrl.signal,
       });
       const respText = await response.text();
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       clearInterval(_timer);
+      clearTimeout(_editSaveTo);
       if (response.ok && data && data.ok !== false) {
         const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
         const nomi = finalRoster ? finalRoster.map(function(p) { return p.nome; }).filter(Boolean).join(', ') : null;
@@ -34494,7 +34506,11 @@ Per confermare scrivi ELIMINA.`);
       }
     } catch (err) {
       clearInterval(_timer);
-      svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+      if (err && err.name === 'AbortError') {
+        svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di ritentare (non rifarla alla cieca, rischi un doppione).', 'error');
+      } else {
+        svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+      }
       st.busy = false;
       staffCalRenderPlayersEditor();
     }

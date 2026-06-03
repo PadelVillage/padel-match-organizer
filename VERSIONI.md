@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.629 — Editor giocatori: niente più blocco infinito (timeout + messaggio chiaro)
+- Le chiamate dell'editor 👥 (lettura e salvataggio giocatori partita) non avevano timeout: se il worker Matchpoint era lento o si piantava, l'interfaccia restava col contatore all'infinito e si era costretti a ricaricare. Aggiunto un timeout lato app: 90s sulla lettura, 200s sul salvataggio. Allo scadere l'editor si sblocca e mostra un messaggio dedicato; sul salvataggio avvisa che la modifica potrebbe essere già stata applicata (ricaricare e controllare prima di ritentare, per non duplicare). I 200s sono volutamente sopra il guardiano della coda del worker (180s), così l'eventuale errore reale del worker emerge invece di restare nascosto. Solo app; edge e worker invariati.
+
 ## v5.628 — La prenotazione annullata non "rinasce" più nel calendario
 - Dopo un annullamento riuscito, lo slot veniva talvolta ridisegnato come 🔒 sola lettura perché la cache di occupazione Matchpoint (`prenotazioniOccupazione`) era ancora vecchia. Ora il calendario tiene una lista a scadenza (30 min) degli slot annullati di recente e li nasconde finché i dati non si aggiornano. La lista si pulisce da sola ed è azzerata quando si crea/sposta una prenotazione sullo stesso slot. Solo app; nessun dato principale cancellato; edge e worker invariati.
 
