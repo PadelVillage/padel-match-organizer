@@ -3424,8 +3424,13 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       if (!t.includes(norm(nome))) continue;
       foundNameMatch = true;
       await li.nth(i).click({ timeout: 4000 }).catch(() => {});
-      await page.waitForTimeout(400);
-      const candidateId = (await hiddenId.first().inputValue().catch(() => '')).trim();
+      // L'id si aggancia via callback async dell'autocomplete: attendi finché compare (fino a ~2.4s)
+      let candidateId = '';
+      for (let w = 0; w < 12; w++) {
+        await page.waitForTimeout(200);
+        candidateId = (await hiddenId.first().inputValue().catch(() => '')).trim();
+        if (candidateId) break;
+      }
       diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
       if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
       if (expectedCode && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
@@ -4423,6 +4428,15 @@ async function editBookingWithBrowser(input = {}) {
             idx++;
           }
         }
+      }
+
+      // Dopo le RIMOZIONI il form ha subito postback: ricarica la Ficha pulita prima
+      // delle AGGIUNTE, così l'autocomplete del giocatore si aggancia in modo affidabile
+      // (senza, un add subito dopo un remove puo' lasciare HiddenFieldIdPeople vuoto).
+      if (removeAll || removeNames.length > 0) {
+        diagnostic.steps.push('reload_after_removals');
+        await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await page.waitForTimeout(800);
       }
 
       // AGGIUNTE
