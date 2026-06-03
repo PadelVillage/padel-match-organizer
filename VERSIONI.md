@@ -1,5 +1,7 @@
 # Versioni
 
+## v5.610 — Calendario staff: l'esito dell'annullamento dal 🗑 ora compare come bolla SISTEMA in cima alla colonna chat (⏳ in corso con contatore secondi → ✅/❌), coerente con la creazione prenotazione. Niente più riga di stato nascosta. Logica di cancellazione invariata.
+
 ## v5.609 — Calendario staff: pulsante 🗑 sulle card ✏️ Staff (griglia desktop + agenda mobile) per annullare la prenotazione su Matchpoint via campo+data+ora (con conferma) e rimuovere la copia locale. Le card 🔒 Matchpoint restano sola lettura. Edge e worker invariati.
 
 ## v5.608 — TEST: pulsante "🧪 Annulla prenotazione" ora accetta anche la terna campo+data+ora (formato campo,YYYY-MM-DD,HH:MM) oltre all'idReserva — per validare la cancellazione via tabellone prima di collegare il 🗑 al calendario. Solo pulsante di test; edge e worker invariati.

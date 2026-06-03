@@ -7154,7 +7154,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.609';
+    const APP_VERSION = '5.610';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35328,13 +35328,21 @@ Per confermare scrivi ELIMINA.`);
 
   // 🗑 Annulla una prenotazione STAFF dal calendario (solo card ✏️ Staff; le 🔒 Matchpoint sono sola lettura).
   // Cancella per campo+data+ora (l'app non memorizza l'idReserva): stessa via già validata col pulsante di test.
+  // Feedback nella colonna chat (bolle SISTEMA in cima), come la creazione prenotazione.
   async function staffCalAskCancel(isoDate, campo, ora, nome) {
     const dataIt = isoDate.split('-').reverse().join('/');
     const chi = nome ? ` di ${nome}` : '';
     const confirmed = confirm(`Annullare su Matchpoint la prenotazione${chi}?\nCampo ${campo} · ${dataIt} · ${ora}\n\nL'operazione è irreversibile.`);
     if (!confirmed) return;
 
-    staffCalSetStatus('⏳ Annullamento in corso… (può durare fino a 30 s)', 'pending');
+    const inProgress = svcAddMessage('system', '⏳ Annullamento in corso su Matchpoint…');
+    let _sec = 0;
+    const _timer = setInterval(function() {
+      _sec += 1;
+      const last = inProgress.querySelector(':scope > div:last-child');
+      if (last) last.innerHTML = '⏳ Annullamento in corso su Matchpoint… (' + _sec + 's)';
+    }, 1000);
+
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
@@ -35351,18 +35359,25 @@ Per confermare scrivi ELIMINA.`);
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
 
+      clearInterval(_timer);
+
       if (response.ok && data?.ok !== false) {
         const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
         const filtered = existing.filter((b) => !(b.data === isoDate && b.campo === campo && b.ora === ora));
         if (typeof save === 'function') save('staffBookings', filtered);
-        staffCalSetStatus(`✓ Prenotazione annullata: Campo ${campo} · ${dataIt} · ${ora}.`, 'done');
+        svcAddMessage('system',
+          '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+          (nome ? '<br>👥 ' + nome : ''),
+          'ok'
+        );
         renderStaffCalendar();
       } else {
-        const msg = (data && (data.message || data.error)) || (typeof data === 'string' ? data : `errore HTTP ${response.status}`);
-        staffCalSetStatus(`❌ Annullamento non riuscito: ${msg}`, 'error');
+        const msg = (data && (data.message || data.error)) || (typeof data === 'string' ? data : 'errore HTTP ' + response.status);
+        svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg);
       }
     } catch (err) {
-      staffCalSetStatus(`❌ Errore: ${err?.message || err || 'sconosciuto'}`, 'error');
+      clearInterval(_timer);
+      svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto'));
     }
   }
 
