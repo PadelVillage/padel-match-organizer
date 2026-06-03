@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.618 — Calendario: stato coda Matchpoint nel pannello chat
+- Il pannello "Assistente prenotazioni" mostra in tempo quasi-reale cosa sta facendo il worker e chi l'ha avviato (+ quanti job in coda), leggendo la edge `matchpoint-queue-status` ogni 4s mentre la tab Calendario è attiva. Sola lettura: nessun impatto sul flusso di prenotazione.
+
 ## v5.617 — Pulizia: rimosso il codice morto del vecchio Tabellone Matchpoint (blocco <script> "Calendario Matchpoint" e regole CSS .cal-*), ormai inutilizzato dopo lo spostamento del Calendario staff (v5.616). Mantenuta la regola #dashboard { padding:0 } che stila la tab Calendario. Nessun cambio di comportamento. Solo app; edge e worker invariati. [Fase 2/2]
 
 ## v5.616 — Calendario: la tab "Calendario" ora mostra il Calendario campi staff (spostato qui da Amministrazione) al posto del vecchio Tabellone Matchpoint. Riagganciati avvio (DOMContentLoaded) e apertura tab a staffCalInit; aggiornate le etichette ("Campi staff"); rimosso il link ridondante in Amministrazione. Il codice del vecchio tabellone resta presente ma inutilizzato (sarà rimosso in una versione successiva). Solo app; edge e worker invariati. [Fase 1/2]
