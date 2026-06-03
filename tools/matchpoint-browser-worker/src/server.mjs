@@ -4058,14 +4058,18 @@ async function editBookingWithBrowser(input = {}) {
   }
 
   const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
-  const idReserva = input.idReserva ? String(input.idReserva) : null;
-  if (!idReserva) throw fail('PARAMS_MANCANTI', 'Serve idReserva.');
+  // idReserva può arrivare diretto, oppure essere ricavato dopo il login da campo+data+ora
+  // (stesso metodo di cancelBookingWithBrowser). La risoluzione vera avviene dopo il login,
+  // dove esiste `page`; qui validiamo solo di avere almeno una delle due forme.
+  let idReserva = input.idReserva ? String(input.idReserva) : null;
+  const hasTerna = input.campo != null && !!input.data && !!input.ora;
+  if (!idReserva && !hasTerna) throw fail('PARAMS_MANCANTI', 'Serve idReserva, oppure campo+data+ora.');
 
   const move = input.move || null;
   const players = input.players || null;
   if (!move && !players) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
 
-  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, move, players } };
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players } };
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
   const browser = await chromium.launch({
@@ -4107,6 +4111,39 @@ async function editBookingWithBrowser(input = {}) {
 
     await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
+
+    // Se non ho l'idReserva, lo ricavo dal tabellone per campo+data+ora
+    // (stesso identico metodo già usato e validato in cancelBookingWithBrowser).
+    if (!idReserva) {
+      const recurso = RECURSO_BY_CAMPO[Number(input.campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${input.campo} senza id_recurso noto.`, diagnostic);
+      if (!input.data || !input.ora) throw fail('PARAMS_MANCANTI', 'Servono idReserva, oppure campo+data+ora.', diagnostic);
+      const [yyyy, mm, dd] = input.data.split('-');
+      const fechaTab = `${dd}/${mm}/${yyyy}`;
+
+      diagnostic.steps.push('goto_tabellone');
+      await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.evaluate((f) => {
+        const el = document.getElementById('fechaTabla');
+        if (el) {
+          el.value = f;
+          ['input', 'change', 'keyup', 'blur'].forEach((ev) => el.dispatchEvent(new Event(ev, { bubbles: true })));
+        }
+      }, fechaTab);
+      await page.waitForTimeout(4000);
+
+      diagnostic.steps.push('cerca_evento');
+      idReserva = await page.evaluate(({ recurso: rec, ora }) => {
+        const eventi = [...document.querySelectorAll('div.evento')]
+          .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+        const hit = eventi.find((e) => (e.innerText || '').includes(ora));
+        return hit ? hit.id : null;
+      }, { recurso, ora: input.ora });
+
+      if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
+        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
+      diagnostic.idReserva = idReserva;
+    }
 
     // === APRI FICHA (auto-rileva il tipo) ===
     // Il pulsante "Spostare/Cambiare" (#CC_Datos_FormViewFicha_ButtonExtender) ha lo STESSO id
