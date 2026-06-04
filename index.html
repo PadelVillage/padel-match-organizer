@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.638';
+    const APP_VERSION = '5.639';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34313,6 +34313,12 @@ Per confermare scrivi ELIMINA.`);
   }
 
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
+    const _pk = _staffCalEditKey(isoDate, campo, ora);
+    if (_staffCalPendingEdits.has(_pk)) {
+      if (typeof svcOpenChat === 'function') svcOpenChat();
+      svcAddMessage('system', '⏳ Su questa prenotazione c\'è già una modifica in corso su Matchpoint: attendi l\'esito prima di riaprirla.');
+      return;
+    }
     if (typeof svcOpenChat === 'function') svcOpenChat();
     const dataIt = isoDate.split('-').reverse().join('/');
     const campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
@@ -34574,6 +34580,11 @@ Per confermare scrivi ELIMINA.`);
     msg.appendChild(btns);
   }
 
+  const _staffCalPendingEdits = new Set();
+  function _staffCalEditKey(iso, campo, ora) {
+    return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
+  }
+
   async function staffCalPlayersSave() {
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
@@ -34601,19 +34612,35 @@ Per confermare scrivi ELIMINA.`);
     if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
     if (!confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
 
-    st.busy = true;
-    staffCalRenderPlayersEditor();
-    const inProgress = svcAddMessage('system', '⏳ Salvo le modifiche su Matchpoint…');
+    // ── Cattura tutto in "op" e LIBERA SUBITO l'operatore: la scrittura prosegue in sottofondo ──
+    const op = {
+      origIso: st.origIso, origCampo: st.origCampo, origOra: st.origOra, dataIt: st.dataIt,
+      mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
+      origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
+    };
+    const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
+    if (moveChanged) payload.move = { campo: op.mCampo, data: op.mIso, oraInizio: op.mOraIni, oraFine: op.mOraFin };
+    if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
+
+    const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
+    _staffCalPendingEdits.add(pendKey);
+
+    // Chiudi la schedina: l'operatore torna libero immediatamente.
+    staffCalPlayersState = null;
+    const destTxt = moveChanged
+      ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
+      : ('Campo ' + op.origCampo + ' \xb7 ' + op.dataIt + ' \xb7 ' + op.origOra);
+    const inProgress = svcAddMessage('system', '⏳ <strong>Modifica avviata su Matchpoint</strong> (in sottofondo): ' + destTxt + '<br><span style="color:var(--text-muted);font-size:.78rem;">Può richiedere 1–2 minuti. Puoi continuare a lavorare: ti avviso qui quando è pronta.</span>');
     let _sec = 0;
-    const _timer = setInterval(function () { _sec += 1; const last = inProgress.querySelector(':scope > div:last-child'); if (last) last.innerHTML = '⏳ Salvo le modifiche su Matchpoint… (' + _sec + 's)'; }, 1000);
+    const _timer = setInterval(function () {
+      _sec += 1;
+      const last = inProgress.querySelector(':scope > div:last-child');
+      if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">⏳ In corso da ' + _sec + 's… puoi continuare a lavorare.</span>';
+    }, 1000);
 
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
-      const payload = { campo: st.origCampo, data: st.origIso, ora: st.origOra };
-      if (moveChanged) payload.move = { campo: st.mCampo, data: st.mIso, oraInizio: st.mOraIni, oraFine: st.mOraFin };
-      if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
-
       const _ctrl = new AbortController();
       const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
@@ -34627,32 +34654,28 @@ Per confermare scrivi ELIMINA.`);
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       clearInterval(_timer);
       clearTimeout(_to);
+      _staffCalPendingEdits.delete(pendKey);
 
       if (response.ok && data && data.ok !== false) {
         const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-        _staffCalApplyLocalEdit(st, moveChanged, durMin, finalRoster);
+        _staffCalApplyLocalEdit(op, moveChanged, durMin, finalRoster);
         const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
-        const dest = moveChanged
-          ? ('Campo ' + st.mCampo + ' \xb7 ' + st.mIso.split('-').reverse().join('/') + ' \xb7 ' + st.mOraIni + '–' + st.mOraFin)
-          : ('Campo ' + st.origCampo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.origOra);
-        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + dest + (st.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
-        staffCalPlayersState = null;
+        const lastP = inProgress.querySelector(':scope > div:last-child');
+        if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
+        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
         renderStaffCalendar();
       } else {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-        svcAddMessage('system', '❌ Aggiornamento non riuscito: ' + msg, 'error');
-        st.busy = false;
-        staffCalRenderPlayersEditor();
+        svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg, 'error');
       }
     } catch (err) {
       clearInterval(_timer);
+      _staffCalPendingEdits.delete(pendKey);
       if (err && err.name === 'AbortError') {
         svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di ritentare (non rifarla alla cieca, rischi un doppione).', 'error');
       } else {
         svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
       }
-      st.busy = false;
-      staffCalRenderPlayersEditor();
     }
   }
 
