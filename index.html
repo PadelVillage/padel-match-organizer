@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.644';
+    const APP_VERSION = '5.645';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34091,6 +34091,14 @@ Per confermare scrivi ELIMINA.`);
             edBtn.textContent = '📝';
             edBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome, _durata, _tipo); });
             hdr.appendChild(edBtn);
+            const _plStaff = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)];
+            const vbtnS = document.createElement('button');
+            vbtnS.type = 'button';
+            vbtnS.className = 'staff-cal-localdel-btn';
+            vbtnS.title = (_plStaff ? 'Nascondi giocatori' : 'Mostra tutti i giocatori');
+            vbtnS.textContent = (_plStaff ? '🙈' : '👁');
+            vbtnS.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalToggleStaffPlayers(_iso, _campo, _ora, _nome); });
+            hdr.appendChild(vbtnS);
           } else {
             const _iso = isoDate, _campo = f, _ora = hour;
             const _plBtn = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)];
@@ -34108,19 +34116,27 @@ Per confermare scrivi ELIMINA.`);
           timeDiv.textContent = hour + ' – ' + _staffCalEndTime(hour, slot.durata);
           const playersDiv = document.createElement('div');
           playersDiv.className = 'booking-players';
-          const _pl = isMatchpoint ? _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)] : null;
+          const _pl = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)] || null;
           if (_pl && _pl.loading) playersDiv.textContent = '⏳ ' + (slot.nome || '');
           else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join(', ') : (slot.nome || '(nessun giocatore)');
           else if (_pl && _pl.error) playersDiv.textContent = (slot.nome || '') + ' ⚠️';
           else playersDiv.textContent = slot.nome || '';
           block.appendChild(hdr);
           block.appendChild(timeDiv);
-          if (hpx > 45 || (isMatchpoint && _pl)) block.appendChild(playersDiv);
-          if (isMatchpoint && hpx > 65) {
+          if (hpx > 45 || _pl) block.appendChild(playersDiv);
+          if (isMatchpoint && hpx > 65 && !(_pl && Array.isArray(_pl.names))) {
             const badge = document.createElement('div');
             badge.className = 'lock-badge';
             badge.textContent = '🔒 Matchpoint · Sola lettura';
             block.appendChild(badge);
+          }
+          if (_pl && Array.isArray(_pl.names)) {
+            block.style.height = 'auto';
+            block.style.minHeight = hpx + 'px';
+            block.style.overflow = 'visible';
+            block.style.zIndex = '30';
+            playersDiv.style.whiteSpace = 'normal';
+            playersDiv.style.overflow = 'visible';
           }
           cell.appendChild(block);
           grid.appendChild(cell);
@@ -34349,10 +34365,19 @@ Per confermare scrivi ELIMINA.`);
   function _staffCalMpKey(iso, campo, ora) {
     return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
   }
+  // Card STAFF: i giocatori sono già in locale (campo nome) → 👁 espande/richiude all'istante (nessuna rete).
+  function staffCalToggleStaffPlayers(iso, campo, ora, nome) {
+    const key = _staffCalMpKey(iso, campo, ora);
+    if (_staffCalMpPlayers[key]) { delete _staffCalMpPlayers[key]; }
+    else { _staffCalMpPlayers[key] = { names: String(nome || '').split(/\s*,\s*/).filter(Boolean) }; }
+    renderStaffCalendar();
+  }
+
   async function staffCalViewMatchpointPlayers(iso, campo, ora) {
     const key = _staffCalMpKey(iso, campo, ora);
     const cur = _staffCalMpPlayers[key];
     if (cur && cur.loading) return;
+    if (cur && Array.isArray(cur.names)) { delete _staffCalMpPlayers[key]; renderStaffCalendar(); return; }
     _staffCalMpPlayers[key] = { loading: true };
     renderStaffCalendar();
     try {
