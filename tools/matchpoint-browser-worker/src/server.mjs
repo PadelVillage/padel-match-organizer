@@ -90,6 +90,104 @@ function absoluteUrl(baseUrl, pathOrUrl) {
   return new URL(pathOrUrl, baseUrl).toString();
 }
 
+// ── Coda operazioni browser Matchpoint (concorrenza 1) ───────────────────────
+// Il worker usa UN solo account Matchpoint e regge una sola sessione browser per
+// volta. Ogni operazione che lancia Chromium DEVE essere serializzata: mai due
+// sessioni Matchpoint in parallelo (collisione di sessione + carico VM). La coda è
+// in memoria, nel processo singolo del worker, e si azzera al restart (accettabile).
+const QUEUE_JOB_TIMEOUT_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_MS', '180000')); // 3 min di sicurezza
+const mpQueue = {
+  seq: 0,
+  running: null, // { id, op, label, operatore, startedAt }
+  waiting: [],   // [{ id, op, label, operatore, enqueuedAt }]
+  _chain: Promise.resolve(),
+};
+
+// Etichetta leggibile ("cosa") per /queue/status, ricavata dal payload della richiesta.
+// `operatore` ("chi") arriverà dall'app in Fase 2; per ora ripiega su '—'.
+function mpJobMeta(op, body = {}) {
+  const operatore = clean(body.operatore) || '—';
+  const b = body.booking || body || {};
+  const campoTxt = (b.campo !== undefined && b.campo !== null && b.campo !== '')
+    ? `Campo ${b.campo}`
+    : (body.idReserva ? `#${body.idReserva}` : '');
+  const ora = clean(b.ora || body.ora) || '';
+  if (op === 'create') {
+    const tipo = clean(b.tipo) || 'prenotazione';
+    return { op, operatore, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
+  }
+  if (op === 'edit')   return { op, operatore, label: ['modifica', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'cancel') return { op, operatore, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'client') {
+    const c = body.client || {};
+    const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
+    return { op, operatore, label: ['nuovo cliente', nome].filter(Boolean).join(' · ') };
+  }
+  return { op, operatore, label: op };
+}
+
+// Fotografia dello stato della coda per GET /queue/status.
+function mpQueueSnapshot() {
+  const now = Date.now();
+  return {
+    ok: true,
+    busy: !!mpQueue.running,
+    running: mpQueue.running ? {
+      id: mpQueue.running.id,
+      op: mpQueue.running.op,
+      label: mpQueue.running.label,
+      operatore: mpQueue.running.operatore,
+      runningMs: now - mpQueue.running.startedAt,
+    } : null,
+    waitingCount: mpQueue.waiting.length,
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore })),
+    time: new Date().toISOString(),
+  };
+}
+
+// Esegue `fn` (async) in modo serializzato: una sola operazione browser alla volta.
+// `meta` = { op, label, operatore } (solo per /queue/status).
+// Ritorna/propaga ESATTAMENTE ciò che ritorna/lancia `fn`, così gli handler non cambiano semantica.
+function mpQueueRun(meta, fn) {
+  const job = {
+    id: ++mpQueue.seq,
+    op: meta.op || 'op',
+    label: meta.label || meta.op || 'operazione',
+    operatore: meta.operatore || '—',
+    enqueuedAt: Date.now(),
+  };
+  mpQueue.waiting.push(job);
+
+  const result = mpQueue._chain.then(async () => {
+    const idx = mpQueue.waiting.findIndex((j) => j.id === job.id);
+    if (idx >= 0) mpQueue.waiting.splice(idx, 1);
+    mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, startedAt: Date.now() };
+    let timer = null;
+    try {
+      // Timeout di sicurezza: un job piantato non deve bloccare la coda all'infinito.
+      const guard = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(fail('QUEUE_JOB_TIMEOUT',
+          `Operazione "${job.label}" oltre ${Math.round(QUEUE_JOB_TIMEOUT_MS / 1000)}s: annullata per non bloccare la coda.`)),
+          QUEUE_JOB_TIMEOUT_MS);
+      });
+      return await Promise.race([Promise.resolve().then(fn), guard]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      mpQueue.running = null;
+    }
+  });
+
+  // La catena prosegue SEMPRE (anche se questo job fallisce) così il prossimo parte.
+  mpQueue._chain = result.then(() => {}, () => {});
+  return result;
+}
+
+// Handler per GET /queue/status (autenticato come gli altri).
+function handleQueueStatus(req, res) {
+  requireWorkerAuth(req);
+  return json(res, 200, mpQueueSnapshot());
+}
+
 function parseIsoDate(value) {
   const raw = clean(value);
   if (!raw) return '';
@@ -2004,6 +2102,113 @@ async function parseGrigliaTabellone(tabCtx, diagnostic) {
   return rawGrid;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// SESSIONE "CALDA" CONDIVISA (Fase 1: poller + editor)
+// ────────────────────────────────────────────────────────────────────────────
+// Evita avvio Chromium + login a OGNI operazione: un solo browser già loggato,
+// riusato dalle operazioni e tenuto vivo dal poller. Reti di sicurezza:
+//  1) FALLBACK: se la sessione calda manca o dà errore → browser a freddo (come prima).
+//  2) INTERRUTTORE: env MATCHPOINT_WARM_SESSION=false → sempre a freddo.
+//  3) VALIDITÀ: prima di riusare si verifica di essere loggati; se scaduta, re-login.
+//     Età massima 30 min (sicurezza memoria/stato).
+const MP_WARM_ENABLED = boolEnv('MATCHPOINT_WARM_SESSION', true);
+const MP_WARM_MAX_AGE_MS = 30 * 60 * 1000;
+const MP_WARM_FRESH_MS = 5 * 60 * 1000; // se usata con successo da meno di 5 min, salta la verifica
+let _mpWarm = null; // { browser, context, page, createdAt }
+
+function mpLaunchOptions() {
+  return { headless: boolEnv('MATCHPOINT_HEADLESS', true), args: ['--no-sandbox', '--disable-dev-shm-usage'] };
+}
+
+async function mpNewContextPage(browser) {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    timezoneId: 'Europe/Rome',
+    viewport: { width: 1440, height: 900 },
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+  });
+  const page = await context.newPage();
+  page.on('dialog', (d) => d.accept().catch(() => {}));
+  return { context, page };
+}
+
+async function mpDoLogin(page, baseUrl, username, password, diagnostic) {
+  diagnostic.steps.push('login_page');
+  await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+  await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+  const language = page.locator('select[name="ddlLenguaje"]');
+  if (await language.count().catch(() => 0)) {
+    await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+  }
+  diagnostic.steps.push('login_submit');
+  await Promise.all([
+    page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+    page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+  ]);
+  await page.waitForTimeout(2500);
+  diagnostic.loginUrl = page.url();
+  if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+    throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
+  }
+  await maybeClickCashEnter(page, diagnostic);
+}
+
+async function mpWarmInvalidate() {
+  const w = _mpWarm;
+  _mpWarm = null;
+  if (w && w.browser) { try { await w.browser.close(); } catch (_e) {} }
+}
+
+async function mpWarmEnsureLogged(baseUrl, username, password, diagnostic) {
+  const w = _mpWarm;
+  await w.page.goto(absoluteUrl(baseUrl, '/Reservas/CuadroReservas.aspx?id_cuadro=3'), { waitUntil: 'domcontentloaded', timeout: 25000 });
+  if (/Login\.aspx/i.test(w.page.url()) && await w.page.locator('input[type="password"]').count().catch(() => 0)) {
+    diagnostic.steps.push('warm_relogin');
+    await mpDoLogin(w.page, baseUrl, username, password, diagnostic);
+  } else {
+    diagnostic.steps.push('warm_reuse');
+  }
+}
+
+async function mpAcquirePage(baseUrl, username, password, diagnostic) {
+  if (MP_WARM_ENABLED) {
+    try {
+      if (_mpWarm && (Date.now() - (_mpWarm.createdAt || 0) > MP_WARM_MAX_AGE_MS)) await mpWarmInvalidate();
+      if (!_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed()) {
+        const browser = await chromium.launch(mpLaunchOptions());
+        const { context, page } = await mpNewContextPage(browser);
+        await mpDoLogin(page, baseUrl, username, password, diagnostic);
+        _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+        diagnostic.session = 'warm_new';
+      } else if (Date.now() - (_mpWarm.lastOkAt || 0) < MP_WARM_FRESH_MS) {
+        // Usata con successo da poco → riuso diretto, niente navigazione di verifica.
+        diagnostic.session = 'warm_fresh';
+      } else {
+        await mpWarmEnsureLogged(baseUrl, username, password, diagnostic);
+        diagnostic.session = 'warm';
+      }
+      return {
+        page: _mpWarm.page,
+        isWarm: true,
+        release: async (failed) => { if (failed) { await mpWarmInvalidate(); } else if (_mpWarm) { _mpWarm.lastOkAt = Date.now(); } },
+      };
+    } catch (e) {
+      await mpWarmInvalidate();
+      diagnostic.warmError = String((e && e.message) || e);
+    }
+  }
+  const browser = await chromium.launch(mpLaunchOptions());
+  const { page } = await mpNewContextPage(browser);
+  await mpDoLogin(page, baseUrl, username, password, diagnostic);
+  diagnostic.session = 'cold';
+  return {
+    page,
+    isWarm: false,
+    release: async () => { try { await browser.close(); } catch (_e) {} },
+  };
+}
+
 async function getSlotsWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -2023,44 +2228,10 @@ async function getSlotsWithBrowser(options = {}) {
     steps: [],
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-
-    // Login
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
-
     // Navigazione al tabellone
     const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
 
@@ -2077,8 +2248,11 @@ async function getSlotsWithBrowser(options = {}) {
       ...grid,
       diagnostic,
     };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -2935,22 +3109,282 @@ async function handleGetSlots(req, res) {
 async function handleCreateBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await createBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('create', body), () => createBookingWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleCancelBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await cancelBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('cancel', body), () => cancelBookingWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleEditBooking(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await editBookingWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('edit', body), () => editBookingWithBrowser(body));
   json(res, 200, result);
+}
+
+async function handleCreateClient(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('client', body), () => createClientWithBrowser(body));
+  json(res, 200, result);
+}
+
+// ── createClientWithBrowser: crea un cliente in Matchpoint, legge il Codice e
+//    gli assegna un livello (default 0,5) cosi' compare nel report livelli. ──
+async function createClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const client = options.client || {};
+  const nome = clean(client.nome || client.firstName);
+  const cognome = clean(client.cognome || client.surname);
+  const telefono = clean(client.telefono || client.phone || '');
+  const email = clean(client.email || '');
+  const sessoRaw = clean(client.sesso || client.gender || '');
+  if (!nome || !cognome) throw fail('INVALID_CLIENT_NAME', 'Nome e cognome del cliente sono obbligatori.');
+  if (!email || !telefono || !sessoRaw) {
+    throw fail('CLIENT_CREATE_MISSING_REQUIRED',
+      'Campi obbligatori mancanti per la creazione cliente: servono sesso, email e telefono.',
+      { nome, cognome, email, telefono, sesso: sessoRaw });
+  }
+
+  // Data nascita: usa quella fornita (ISO o gg/mm/aaaa); altrimenti default oggi -20 anni.
+  let dataNascita = clean(client.dataNascita || client.birthDate || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataNascita)) dataNascita = isoToItalianDate(dataNascita);
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataNascita)) {
+    const [y, m, d] = todayIsoRome().split('-');
+    dataNascita = `${d}/${m}/${String(Number(y) - 20)}`;
+  }
+
+  // Livello default 0,5 (segnaposto: il livello vero resta nell'app). Formato italiano con virgola.
+  const livelloNum = (client.livello === undefined || client.livello === null || client.livello === '')
+    ? 0.5 : Number(client.livello);
+  const livelloStr = String(Number.isFinite(livelloNum) ? livelloNum : 0.5).replace('.', ',');
+
+  // Sesso -> etichetta della select Matchpoint
+  let sessoLabel = 'N.D.';
+  if (/^f|donna|female|mujer/i.test(sessoRaw)) sessoLabel = 'Donna';
+  else if (/^m|uomo|male|hombre/i.test(sessoRaw)) sessoLabel = 'Uomo';
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'create_client',
+    nome, cognome, telefono, email, sessoLabel, dataNascita, livello: livelloStr, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  let page;
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    page = await context.newPage();
+    // Matchpoint mette un confirm() sull'onclick di "Iscrizione cliente".
+    // Lo neutralizziamo: ritorna sempre true, così il postback parte senza dialog.
+    await page.addInitScript(() => {
+      window.confirm = () => true;
+    });
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    // ── Login (stessa sequenza di createBookingWithBrowser) ──
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+    await maybeClickCashEnter(page, diagnostic);
+
+    // ── Form creazione cliente ──
+    diagnostic.steps.push('goto_alta_cliente');
+    await page.goto(absoluteUrl(baseUrl, '/Clientes/FichaAltaCliente.aspx'), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const P = '#CC_Datos_FormViewFicha_WUCDatosAltaCliente_';
+    await page.locator(P + 'TextBoxNombre').first().fill(nome, { timeout: 15000 });
+    await page.locator(P + 'TextBoxApellido1').first().fill(cognome, { timeout: 10000 });
+    const fechaSel = '#CC_Datos_FormViewFicha_WUCDatosAltaCliente_TextBoxFecha_Nacimiento';
+    const fld = page.locator(fechaSel);
+    await fld.click();
+    await fld.fill('');
+    await fld.pressSequentially(dataNascita, { delay: 50 });
+    await page.evaluate((id) => {
+      const e = document.getElementById(id);
+      if (!e) return;
+      e.dispatchEvent(new Event('input',  { bubbles: true }));
+      e.dispatchEvent(new Event('change', { bubbles: true }));
+      e.dispatchEvent(new Event('blur',   { bubbles: true }));
+    }, 'CC_Datos_FormViewFicha_WUCDatosAltaCliente_TextBoxFecha_Nacimiento');
+    // click su un altro campo per chiudere l'eventuale datepicker e far validare la data
+    await page.locator(P + 'TextBoxApellido1').first().click({ timeout: 5000 }).catch(() => {});
+    await page.locator(P + 'DropDownListSexo').first().selectOption({ label: sessoLabel }, { timeout: 5000 }).catch(() => {});
+    await page.locator(P + 'TextBoxMovil').first().fill(telefono || '', { timeout: 10000 });
+    await page.locator(P + 'TextBoxEmail').first().fill(email || '', { timeout: 10000 });
+    // Deselezionare "Creare utente (accesso al sito)" per NON inviare email di sistema all'interessato.
+    const accesso = page.locator(P + 'CheckBoxDar_Acceso_Extranet').first();
+    if (await accesso.isChecked().catch(() => false)) {
+      await accesso.uncheck({ timeout: 5000 }).catch(async () => {
+        await accesso.click({ timeout: 5000 }).catch(() => {});
+      });
+    }
+
+    diagnostic.steps.push('salva_cliente');
+    // Ribadisce la soppressione del confirm() sulla pagina corrente prima del click.
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    // Lasciato come rete di sicurezza per eventuali alert() post-salvataggio.
+    page.once('dialog', async (dialog) => {
+      diagnostic.dialogMessage = dialog.message();
+      diagnostic.dialogType = dialog.type();
+      await dialog.accept().catch(() => {});
+    });
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {}),
+      page.evaluate(() => {
+        const btn = document.getElementById('CC_Datos_FormViewFicha_ButtonActualizar');
+        if (btn && typeof btn.click === 'function') { btn.click(); return; }
+        // fallback: postback diretto ASP.NET
+        if (typeof window.__doPostBack === 'function') {
+          window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$ButtonActualizar', '');
+        }
+      }),
+    ]);
+    // ── Attesa robusta post-salvataggio (Matchpoint può essere lento) ──
+    // Polling: si RI-LEGGE la pagina a intervalli finché compaiono Codice + id
+    // interno, oppure finché scade il budget. NON si ri-clicca mai "salva"
+    // (rischio doppione): qui si legge soltanto.
+    const POST_SAVE_BUDGET_MS = 75000; // budget totale d'attesa post-salvataggio
+    const POST_SAVE_POLL_MS = 1500;    // intervallo fra un controllo e l'altro
+    const postSaveDeadline = Date.now() + POST_SAVE_BUDGET_MS;
+
+    const readValidationMessages = () => page.evaluate(() => {
+      const sels = ['[id*="ValidationSummary"]', '.field-validation-error',
+                    'span[style*="color:Red"]', 'span[style*="color:red"]', '[id*="Label"][style*="red" i]'];
+      const out = [];
+      for (const s of sels) {
+        document.querySelectorAll(s).forEach((el) => {
+          const t = (el.textContent || '').trim();
+          if (t) out.push(t);
+        });
+      }
+      return out.slice(0, 20);
+    }).catch(() => []);
+
+    let codice = '';
+    let idInterno = '';
+    let bodyText = '';
+    let earlyValidation = null;
+
+    while (Date.now() < postSaveDeadline) {
+      bodyText = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim()).catch(() => '');
+      const codiceMatch = bodyText.match(/Scheda cliente\s*:\s*(\d{4,6})\s*-/i);
+      codice = codiceMatch ? codiceMatch[1] : '';
+      const idMatch = decodeURIComponent(page.url()).match(/[?&]id=\s*(\d+)/i);
+      idInterno = idMatch ? idMatch[1] : '';
+      idInterno = decodeURIComponent(String(idInterno || '')).replace(/\s+/g, '').trim();
+
+      if (codice && idInterno) break; // successo: scheda cliente arrivata
+
+      // Fail-fast: ancora sul form di inserimento + messaggi di validazione
+      // = errore di dato, inutile aspettare l'intero budget.
+      if (/FichaAltaCliente\.aspx/i.test(page.url())) {
+        const vmsgs = await readValidationMessages();
+        if (vmsgs && vmsgs.length) { earlyValidation = vmsgs; break; }
+      }
+
+      await page.waitForTimeout(POST_SAVE_POLL_MS);
+    }
+
+    diagnostic.afterSaveUrl = page.url();
+    diagnostic.postbackFired = !/FichaAltaCliente\.aspx/i.test(page.url());
+    diagnostic.codice = codice;
+    diagnostic.idInterno = idInterno;
+
+    // Errore di validazione rilevato presto → fallimento esplicito e immediato.
+    if (earlyValidation && (!codice || !idInterno)) {
+      diagnostic.validationMessages = earlyValidation;
+      diagnostic.bodySample = bodyText.slice(0, 1000);
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+      throw fail('CLIENT_CREATE_VALIDATION', `Matchpoint ha rifiutato i dati del cliente. url=${page.url()}`, diagnostic);
+    }
+
+    // Budget esaurito senza Codice/id → comportamento storico (con diagnostica).
+    if (!codice || !idInterno) {
+      diagnostic.bodySample = bodyText.replace(/\s+/g, ' ').trim().slice(0, 1000);
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+      try { diagnostic.validationMessages = await readValidationMessages(); } catch {}
+      throw fail('CLIENT_CREATE_NO_CODICE', `Cliente forse creato ma Codice/id non letti dopo ${Math.round(POST_SAVE_BUDGET_MS / 1000)}s. url=${page.url()}`, diagnostic);
+    }
+
+    // ── Assegna livello (per far comparire il cliente nel report livelli) ──
+    let livelloAssegnato = false;
+    try {
+      diagnostic.steps.push('goto_livello');
+      const livelloUrl = absoluteUrl(baseUrl,
+        `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
+        + `&cbf=callbackRefrescarPestanyaJuegoNivel`
+        + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
+      await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
+      // Sport "Padel" e' gia' selezionato di default; impostiamo solo il livello numerico.
+      await page.locator(L + 'TextBoxNivelNumerico').first().fill(livelloStr, { timeout: 10000 });
+      diagnostic.steps.push('salva_livello');
+      await Promise.all([
+        page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 15000 }),
+      ]);
+      await page.waitForTimeout(2000);
+      livelloAssegnato = true;
+    } catch (levelError) {
+      diagnostic.levelError = (levelError && levelError.message) || String(levelError);
+    }
+    diagnostic.livelloAssegnato = livelloAssegnato;
+
+    return {
+      ok: true,
+      codice,
+      idInterno,
+      nome,
+      cognome,
+      telefono,
+      email,
+      livello: livelloStr,
+      livelloAssegnato,
+      diagnostic,
+    };
+  } catch (error) {
+    if (error && error.code && error.diagnostic) throw error;
+    throw fail('CLIENT_CREATE_FAILED', (error && error.message) || String(error), diagnostic);
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
 
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
@@ -3016,63 +3450,162 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
   diagnostic.steps.push(`istruttore_selected:${target.text}`);
 }
 
+// ── Helper: attende che un postback parziale ASP.NET (UpdatePanel) sia concluso ──
+// Dopo aver aggiunto un giocatore, Matchpoint fa un postback async che ricostruisce
+// il blocco "Aggiungi giocatore". Se si digita il giocatore successivo PRIMA che il
+// postback sia finito, l'AutoCompleteExtender non è ancora riagganciato e
+// l'autocomplete non compare → HiddenFieldIdPeople resta vuoto (PLAYER_ID_NOT_LOCKED).
+// Se ScriptManager non è presente, la funzione non blocca (fallback sicuro).
+async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
+  try {
+    await page.waitForFunction(() => {
+      try {
+        const S = window.Sys;
+        if (S && S.WebForms && S.WebForms.PageRequestManager) {
+          const prm = S.WebForms.PageRequestManager.getInstance();
+          return prm ? !prm.get_isInAsyncPostBack() : true;
+        }
+      } catch (e) {}
+      return true;
+    }, { timeout: timeoutMs });
+  } catch (e) { /* timeout: proseguiamo comunque, c'è il fallback dei 3 tentativi */ }
+}
+
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
-async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_') {
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_', expectedCode = '', expectedClientCode = '') {
   const PFX = pfx;
   const norm = (s) => String(s || '').toLowerCase().trim();
+  const onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
   if (!nome || !nome.trim()) { diagnostic.steps.push('player_skip_no_name'); return { nome, added: false, reason: 'no_name' }; }
 
-  const inputEl = formCtx.locator(PFX + 'TextBoxTitular');
-  if (!(await inputEl.count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
+  // ⚠️ Dopo il postback del 1° giocatore, Matchpoint lascia in pagina la VECCHIA
+  // copia (nascosta) del campo "aggiungi giocatore" accanto a quella nuova, con lo
+  // STESSO id. Digitando nella copia vecchia/nascosta l'autocomplete non parte mai.
+  // Per campo e link usiamo quindi la copia VISIBILE (quella su cui digiterebbe
+  // l'operatore); col 1° giocatore c'è un'unica copia, quindi invariato.
+  const inputEl = formCtx.locator(PFX + 'TextBoxTitular:visible').last();
+  if (!(await formCtx.locator(PFX + 'TextBoxTitular').count().catch(() => 0))) { diagnostic.steps.push('player_input_not_found'); return { nome, added: false, reason: 'input_not_found' }; }
 
-  const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir');
-  if (!(await addLink.count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
+  const addLink = formCtx.locator(PFX + 'LinkButtonAnyadir:visible').last();
+  if (!(await formCtx.locator(PFX + 'LinkButtonAnyadir').count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
 
-  const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople');
-  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem');
-  const li = ul.locator('li');
+  const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople').last();
+  try {
+    const nInputTot = await formCtx.locator(PFX + 'TextBoxTitular').count();
+    const nInputVis = await formCtx.locator(PFX + 'TextBoxTitular:visible').count();
+    const nList = await formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').count();
+    diagnostic.steps.push(`player_ctrl_count:${nome}:inputTot=${nInputTot}:inputVis=${nInputVis}:list=${nList}`);
+  } catch (e) {}
+  // ⚠️ Dopo un postback parziale, Matchpoint lascia in pagina la VECCHIA lista di
+  // autocomplete (vuota/nascosta) e ne crea una NUOVA con lo STESSO id: il selettore
+  // matcha 2 elementi e `ul.isVisible()` va in errore strict-mode (catturato come
+  // "non visibile") → la tendina del 2° giocatore non viene mai rilevata. Prendendo
+  // sempre l'ULTIMA (la nuova/attiva) il match è singolo e il problema sparisce; col
+  // 1° giocatore (match unico) .last() resta quell'unico elemento, quindi invariato.
+  const ul = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').last();
+  // I <li> dei suggerimenti: prendiamo quelli VISIBILI di QUALUNQUE lista (solo la
+  // tendina realmente mostrata ha <li> visibili), così non dipendiamo da quale copia
+  // della lista sia attiva dopo il postback.
+  const li = formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem li:visible');
+
+  // ⚙️ Stabilizza il form PRIMA di digitare. Per il 2°+ giocatore, l'aggiunta
+  // precedente ha appena fatto un postback parziale: attendi che sia concluso e
+  // ri-sveglia il campo (focus → blur), così l'AutoCompleteExtender è riagganciato
+  // e l'autocomplete compare anche per i giocatori successivi.
+  await mpWaitAsyncPostbackIdle(page, 12000);
+  await inputEl.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+  await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+  await inputEl.first().blur({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  diagnostic.steps.push(`player_form_settled:${nome}`);
 
   let lockedId = '';
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let codeCheckFailed = false;
+  let clientCodeChecked = false;
+  outer: for (let attempt = 0; attempt < 3; attempt++) {
     // Pulisce campo e digita nome con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
     await page.keyboard.press('Control+A').catch(() => {});
     await page.keyboard.press('Delete').catch(() => {});
     await inputEl.first().type(nome, { delay: 80 });
 
-    // Attende autocomplete
+    // Attende autocomplete (i <li> sono già filtrati per :visible → n>0 = tendina mostrata)
     let appeared = false;
     for (let i = 0; i < 24; i++) {
       const n = await li.count().catch(() => 0);
-      if (n > 0 && await ul.isVisible().catch(() => false)) { appeared = true; break; }
+      if (n > 0) { appeared = true; break; }
       await page.waitForTimeout(250);
     }
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
 
     // ⚠️ Sceglie SOLO un <li> che CONTIENE davvero il nome richiesto.
+    // Con expectedCode, itera TUTTI i candidati per nome e scarta quelli il cui
+    // HiddenFieldIdPeople non coincide col codice atteso (evita omonimi).
     // NIENTE fallback al primo elemento: con un input spurio (es. "ok") nessun <li>
     // combacia → non selezioniamo nulla → l'id non si aggancia → si aborta senza
     // scrivere su Matchpoint. (È così che era finito il cliente 921.)
     const count = await li.count().catch(() => 0);
-    let target = null;
-    let chosenText = '';
+    let foundNameMatch = false;
     for (let i = 0; i < count; i++) {
       const t = norm(await li.nth(i).innerText().catch(() => ''));
-      if (t.includes(norm(nome))) { target = li.nth(i); chosenText = t; break; }
+      if (!t.includes(norm(nome))) continue;
+      // 🔒 Guardia anti-omonimia col CODICE CLIENTE: la riga è "000005-Nome Cognome".
+      // Se l'app passa il codice atteso (memberId), scarta i candidati col codice
+      // diverso PRIMA di cliccare. Confronto su onlyDigits (ignora gli zeri iniziali).
+      if (expectedClientCode) {
+        const liCode = (t.match(/^\s*(\d+)\s*-/) || [])[1] || '';
+        if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
+          clientCodeChecked = true;
+          diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+          continue;
+        }
+      }
+      foundNameMatch = true;
+      await li.nth(i).click({ timeout: 4000 }).catch(() => {});
+      // L'id si aggancia via callback async dell'autocomplete: attendi finché compare (fino a ~2.4s)
+      let candidateId = '';
+      for (let w = 0; w < 12; w++) {
+        await page.waitForTimeout(200);
+        candidateId = (await hiddenId.first().inputValue().catch(() => '')).trim();
+        if (candidateId) break;
+      }
+      diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
+      if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
+      if (expectedCode && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
+        // Codice non combacia: pulisce il campo, ri-digita il nome e prova il prossimo candidato
+        codeCheckFailed = true;
+        await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+        await page.keyboard.press('Control+A').catch(() => {});
+        await page.keyboard.press('Delete').catch(() => {});
+        await inputEl.first().type(nome, { delay: 80 });
+        for (let j = 0; j < 24; j++) {
+          const n2 = await li.count().catch(() => 0);
+          if (n2 > 0) break;
+          await page.waitForTimeout(250);
+        }
+        continue;
+      }
+      // Candidato valido (codice combacia o nessun codice richiesto)
+      lockedId = candidateId;
+      codeCheckFailed = false;
+      break outer;
     }
-    if (!target) { diagnostic.steps.push(`player_no_matching_option:${nome}:attempt${attempt}`); continue; }
-    await target.click({ timeout: 4000 }).catch(() => {});
-    await page.waitForTimeout(400);
-
-    // Verifica che l'id nascosto si sia agganciato
-    lockedId = (await hiddenId.first().inputValue().catch(() => '')).trim();
-    diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:id=${lockedId}`);
-    if (lockedId) break;
+    if (!foundNameMatch) diagnostic.steps.push(`player_no_matching_option:${nome}:attempt${attempt}`);
   }
 
   if (!lockedId) {
+    if (expectedClientCode && clientCodeChecked) {
+      throw fail('PLAYER_CLIENTCODE_MISMATCH',
+        `Nessun socio con codice ${expectedClientCode} tra i risultati per "${nome}". Aggiunta annullata per sicurezza.`,
+        diagnostic);
+    }
+    if (expectedCode && codeCheckFailed) {
+      throw fail('PLAYER_CODE_MISMATCH',
+        `Nessun socio Matchpoint con codice ${expectedCode} tra i risultati per "${nome}". Aggiunta annullata per sicurezza.`,
+        diagnostic);
+    }
     throw fail('PLAYER_ID_NOT_LOCKED',
       `Autocomplete non agganciato (HiddenFieldIdPeople vuoto) per: ${nome}`,
       diagnostic);
@@ -3093,20 +3626,31 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   await addLink.first().click({ timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
-  // Verifica post-aggiunta: cerca la riga per nome
+  // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
+  // tipo di form. La partita usa il repeater "WUCUsuarioPartida", la lezione
+  // "WUCUsuarioClase": il vecchio selettore fisso su WUCUsuarioPartida falliva sulle
+  // lezioni (allievo in realtà aggiunto, ma cercato nel repeater sbagliato → falso
+  // PLAYER_ADD_NOT_CONFIRMED). Ora si cerca per nome tra TUTTI gli input
+  // "TextBoxNombreValor" e si ricava l'id cliente sostituendo, nello stesso id,
+  // "TextBoxNombreValor" → "HiddenFieldIdCliente".
   let addedIdCliente = null;
-  let n = 0;
-  while (true) {
-    const nomeInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_TextBoxNombreValor_${n}"]`);
-    if (!(await nomeInput.count().catch(() => 0))) break;
-    const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+  const righeViste = [];
+  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+  const righeTot = await nomeInputs.count().catch(() => 0);
+  for (let r = 0; r < righeTot; r++) {
+    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+    righeViste.push(`${rowId}=${nomeVal}`);
     if (nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal))) {
-      const idInput = page.locator(`input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${n}_HiddenFieldIdCliente_${n}"]`);
-      addedIdCliente = (await idInput.first().inputValue().catch(() => '')).trim();
+      if (rowId) {
+        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+        addedIdCliente = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+      }
+      if (addedIdCliente === null) addedIdCliente = ''; // riga trovata; id non determinabile, ma aggiunta confermata
       break;
     }
-    n++;
   }
+  diagnostic.partecipantiRighe = righeViste.slice(0, 30);
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
@@ -3387,44 +3931,12 @@ async function createBookingWithBrowser(options = {}) {
     navigationAttempts: [],
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
-  let page;
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      acceptDownloads: false,
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    page = await context.newPage();
     page.setDefaultTimeout(12000);
     page.setDefaultNavigationTimeout(20000);
-
-    // ── Login ─────────────────────────────────────────────────────────────────
-    diagnostic.steps.push('login');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
     // ── Ora fine: usata da entrambi i percorsi ────────────────────────────────
@@ -3476,12 +3988,15 @@ async function createBookingWithBrowser(options = {}) {
 
       // 2. Aggiungi giocatori via autocomplete
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
-        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
-        : (nome ? [nome] : []);
-      diagnostic.playersRequested = players;
+        ? booking.giocatori.map((g) => typeof g === 'string'
+            ? { nome: g, codice: '', codiceCliente: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.id)) || '', codiceCliente: (g && (g.codiceCliente || g.memberId)) || '' }
+          ).filter((p) => p.nome)
+        : (nome ? [{ nome, codice: booking.codice || '', codiceCliente: '' }] : []);
+      diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, undefined, p.codice, p.codiceCliente));
       }
       diagnostic.playersResult = playersResult;
 
@@ -3495,7 +4010,7 @@ async function createBookingWithBrowser(options = {}) {
       }
 
       // 4. Breve attesa — NON ricaricare il tabellone pesante
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(800);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
       return {
@@ -3549,12 +4064,15 @@ async function createBookingWithBrowser(options = {}) {
       //    pannello e impedirebbe all'autocomplete dell'allievo di agganciarsi.
       const LEZIONE_PLAYER_PFX = '#CC_Datos_FormViewFicha_WUCUsuarioClase_Anyadir_';
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
-        ? booking.giocatori.map((g) => (typeof g === 'string' ? g : (g && (g.nome || g.name)) || '')).filter(Boolean)
-        : (nome ? [nome] : []);
-      diagnostic.playersRequested = players;
+        ? booking.giocatori.map((g) => typeof g === 'string'
+            ? { nome: g, codice: '', codiceCliente: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.id)) || '', codiceCliente: (g && (g.codiceCliente || g.memberId)) || '' }
+          ).filter((p) => p.nome)
+        : (nome ? [{ nome, codice: booking.codice || '', codiceCliente: '' }] : []);
+      diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p, diagnostic, LEZIONE_PLAYER_PFX));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, LEZIONE_PLAYER_PFX, p.codice, p.codiceCliente));
       }
       diagnostic.playersResult = playersResult;
 
@@ -3743,13 +4261,14 @@ async function createBookingWithBrowser(options = {}) {
       warning: hasError ? 'Possibile errore rilevato nel DOM post-submit — verificare manualmente.' : undefined,
     };
   } catch (err) {
+    _opFailed = true;
     const urlStr = (() => { try { return page?.url() ?? '?'; } catch { return '?'; } })();
     const extra = ` | steps=${JSON.stringify(diagnostic.steps)} url=${urlStr}`;
     if (!err.message.includes('steps=')) err.message = `${err.message}${extra}`;
     if (!err.diagnostic) err.diagnostic = diagnostic;
     throw err;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -3767,55 +4286,61 @@ async function editBookingWithBrowser(input = {}) {
   }
 
   const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
-  const idReserva = input.idReserva ? String(input.idReserva) : null;
-  if (!idReserva) throw fail('PARAMS_MANCANTI', 'Serve idReserva.');
+  // idReserva può arrivare diretto, oppure essere ricavato dopo il login da campo+data+ora
+  // (stesso metodo di cancelBookingWithBrowser). La risoluzione vera avviene dopo il login,
+  // dove esiste `page`; qui validiamo solo di avere almeno una delle due forme.
+  let idReserva = input.idReserva ? String(input.idReserva) : null;
+  const hasTerna = input.campo != null && !!input.data && !!input.ora;
+  if (!idReserva && !hasTerna) throw fail('PARAMS_MANCANTI', 'Serve idReserva, oppure campo+data+ora.');
 
   const move = input.move || null;
   const players = input.players || null;
-  if (!move && !players) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
+  const readOnly = input.read === true;
+  if (!move && !players && !readOnly) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
 
-  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, move, players } };
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players } };
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-    page.on('dialog', (d) => d.accept().catch(() => {}));
-
-    // === LOGIN (stessa sequenza di cancelBookingWithBrowser) ===
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
+
+    // Se non ho l'idReserva, lo ricavo dal tabellone per campo+data+ora
+    // (stesso identico metodo già usato e validato in cancelBookingWithBrowser).
+    if (!idReserva) {
+      const recurso = RECURSO_BY_CAMPO[Number(input.campo)];
+      if (!recurso) throw fail('CAMPO_NON_VALIDO', `Campo ${input.campo} senza id_recurso noto.`, diagnostic);
+      if (!input.data || !input.ora) throw fail('PARAMS_MANCANTI', 'Servono idReserva, oppure campo+data+ora.', diagnostic);
+      const [yyyy, mm, dd] = input.data.split('-');
+      const fechaTab = `${dd}/${mm}/${yyyy}`;
+
+      diagnostic.steps.push('goto_tabellone');
+      await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      // ⚠️ Imposta la data col metodo robusto (datepicker onSelect → ricarica AJAX
+      // della griglia). Il vecchio `.value=` + eventi NON ricaricava la griglia per un
+      // giorno diverso da oggi → una prenotazione di un altro giorno non veniva trovata.
+      await impostaDataTabellone(page, page, input.data, diagnostic);
+
+      diagnostic.steps.push('cerca_evento');
+      const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
+        const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
+        const eventi = [...document.querySelectorAll('div.evento')]
+          .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+        const hit = eventi.find((e) => {
+          const t = e.innerText || '';
+          return variants.some((v) => t.includes(v));
+        });
+        return { id: hit ? hit.id : null, eventiRecurso: eventi.length, eventiTot: document.querySelectorAll('div.evento').length };
+      }, { recurso, ora: input.ora });
+      idReserva = _resEvento.id;
+      diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
+
+      if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
+        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
+      diagnostic.idReserva = idReserva;
+    }
 
     // === APRI FICHA (auto-rileva il tipo) ===
     // Il pulsante "Spostare/Cambiare" (#CC_Datos_FormViewFicha_ButtonExtender) ha lo STESSO id
@@ -3843,6 +4368,40 @@ async function editBookingWithBrowser(input = {}) {
       fichaUrl.includes('ClaseSuelta') ? 'lezione' :
       fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
     ));
+
+    // Repeater partecipanti dipendente dal tipo scheda: partita = WUCUsuarioPartida,
+    // lezione = WUCUsuarioClase. Stessi soci, stessa ricerca per nome; cambia solo il
+    // contenitore in pagina. ADD_PFX = controllo "aggiungi" del tipo giusto.
+    const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
+    const ADD_PFX = `#CC_Datos_FormViewFicha_${RP}_Anyadir_`;
+    diagnostic.steps.push('repeater_mode:' + RP);
+
+    // === LETTURA SOLA (read) — restituisce i partecipanti attuali senza modificare nulla ===
+    if (readOnly) {
+      diagnostic.steps.push('read_only_roster');
+      const partecipantiLettura = [];
+      let ridx = 0;
+      while (true) {
+        const nomeInput = page.locator(
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxNombreValor_${ridx}"]`,
+        );
+        if (!(await nomeInput.count().catch(() => 0))) break;
+        const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
+        const idClienteInput = page.locator(
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_HiddenFieldIdCliente_${ridx}"]`,
+        );
+        const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
+        const costoInput = page.locator(
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`,
+        );
+        const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
+        partecipantiLettura.push({ idx: String(ridx), nome, idCliente, costo });
+        ridx++;
+      }
+      diagnostic.partecipantiFinali = partecipantiLettura;
+      diagnostic.steps.push('done');
+      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, diagnostic };
+    }
 
     let moved = false;
 
@@ -3940,7 +4499,7 @@ async function editBookingWithBrowser(input = {}) {
           let idx = 0;
           while (true) {
             const nomeInput = page.locator(
-              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+              `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
             const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
@@ -3948,7 +4507,7 @@ async function editBookingWithBrowser(input = {}) {
             if (doRemove) {
               diagnostic.steps.push(`elimina:${nomeVal}`);
               const elimBtn = page.locator(
-                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_LinkButtonEliminar_${idx}`,
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_LinkButtonEliminar_${idx}`,
               );
               await elimBtn.first().click({ timeout: 8000 });
               await page.waitForTimeout(1200);
@@ -3960,9 +4519,18 @@ async function editBookingWithBrowser(input = {}) {
         }
       }
 
+      // Dopo le RIMOZIONI il form ha subito postback: ricarica la Ficha pulita prima
+      // delle AGGIUNTE, così l'autocomplete del giocatore si aggancia in modo affidabile
+      // (senza, un add subito dopo un remove puo' lasciare HiddenFieldIdPeople vuoto).
+      if (removeAll || removeNames.length > 0) {
+        diagnostic.steps.push('reload_after_removals');
+        await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await page.waitForTimeout(800);
+      }
+
       // AGGIUNTE
       for (const p of (players.add || [])) {
-        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic);
+        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
@@ -3970,13 +4538,13 @@ async function editBookingWithBrowser(input = {}) {
           let idx = 0;
           while (true) {
             const nomeInput = page.locator(
-              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+              `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
             const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
             if (nomeVal === p.nome.toLowerCase().trim()) {
               const costoField = page.locator(
-                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}`,
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxCargoReserva_${idx}`,
               );
               if (await costoField.count().catch(() => 0)) {
                 await costoField.first().fill(String(p.costo), { timeout: 5000 });
@@ -4046,16 +4614,16 @@ async function editBookingWithBrowser(input = {}) {
     let idx = 0;
     while (true) {
       const nomeInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
       );
       if (!(await nomeInput.count().catch(() => 0))) break;
       const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
       const idClienteInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
       );
       const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
       const costoInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxCargoReserva_${idx}"]`,
       );
       const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
       partecipantiFinali.push({ idx: String(idx), nome, idCliente, costo });
@@ -4084,8 +4652,11 @@ async function editBookingWithBrowser(input = {}) {
 
     diagnostic.steps.push('done');
     return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -4103,43 +4674,10 @@ async function cancelBookingWithBrowser(input = {}) {
     input: { idReserva: input.idReserva, campo: input.campo, data: input.data, ora: input.ora },
   };
 
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const context = await browser.newContext({
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    const page = await context.newPage();
-
-    // Login (stessa sequenza di createBookingWithBrowser)
-    diagnostic.steps.push('login_page');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('login_submit');
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', { url: page.url() });
-    }
-
-    await maybeClickCashEnter(page, diagnostic);
     diagnostic.afterCashUrl = page.url();
 
     let idReserva = input.idReserva ? String(input.idReserva) : null;
@@ -4154,22 +4692,24 @@ async function cancelBookingWithBrowser(input = {}) {
 
       diagnostic.steps.push('goto_tabellone');
       await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate((f) => {
-        const el = document.getElementById('fechaTabla');
-        if (el) {
-          el.value = f;
-          ['input', 'change', 'keyup', 'blur'].forEach((ev) => el.dispatchEvent(new Event(ev, { bubbles: true })));
-        }
-      }, fechaTab);
-      await page.waitForTimeout(4000);
+      // ⚠️ Imposta la data col metodo robusto (datepicker onSelect → ricarica AJAX
+      // della griglia). Il vecchio `.value=` + eventi NON ricaricava la griglia per un
+      // giorno diverso da oggi → una prenotazione di un altro giorno non veniva trovata.
+      await impostaDataTabellone(page, page, input.data, diagnostic);
 
       diagnostic.steps.push('cerca_evento');
-      idReserva = await page.evaluate(({ recurso: rec, ora }) => {
+      const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
+        const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
         const eventi = [...document.querySelectorAll('div.evento')]
           .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-        const hit = eventi.find((e) => (e.innerText || '').includes(ora));
-        return hit ? hit.id : null;
+        const hit = eventi.find((e) => {
+          const t = e.innerText || '';
+          return variants.some((v) => t.includes(v));
+        });
+        return { id: hit ? hit.id : null, eventiRecurso: eventi.length, eventiTot: document.querySelectorAll('div.evento').length };
       }, { recurso, ora: input.ora });
+      idReserva = _resEvento.id;
+      diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
 
       if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
         `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
@@ -4257,8 +4797,11 @@ async function cancelBookingWithBrowser(input = {}) {
 
     diagnostic.steps.push('done');
     return { ok: true, idReserva, statoFinale: 'ANNULLATA', diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
@@ -4431,7 +4974,10 @@ async function runPollCycle() {
       break;
     }
     try {
-      const result = await getSlotsWithBrowser({ date: isoDate });
+      const result = await mpQueueRun(
+        { op: 'poll', label: `sync slot ${isoDate}`, operatore: 'sistema' },
+        () => getSlotsWithBrowser({ date: isoDate }),
+      );
       consecutiveFails = 0;
       bailCode = null;
       const prevSnap = pollerMem.snapshots[isoDate];
@@ -4600,7 +5146,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
-          '/create-booking', '/cancel-booking', '/edit-booking',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -4637,6 +5183,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/edit-booking') {
       return await handleEditBooking(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/create-client') {
+      return await handleCreateClient(req, res);
+    }
+    if (req.method === 'GET' && req.url === '/queue/status') {
+      return handleQueueStatus(req, res);
     }
     if (req.method === 'GET' && req.url === '/poller/status') {
       return handlePollerStatus(req, res);
