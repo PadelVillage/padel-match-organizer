@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.645';
+    const APP_VERSION = '5.646';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -25919,7 +25919,7 @@ Per confermare scrivi ELIMINA.`);
         const checkMobileGate = () => {
           const overlay = document.getElementById('pmoMobileGateOverlay');
           if (!overlay) return;
-          if (window.innerWidth <= 760) {
+          if (false) { // v5.646 — gate mobile disabilitato (accesso telefono consentito; era: window.innerWidth <= 760)
             overlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
           } else {
