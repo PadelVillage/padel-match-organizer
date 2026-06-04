@@ -3474,7 +3474,7 @@ async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
-async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_', expectedCode = '') {
+async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Datos_FormViewFicha_WUCUsuarioPartida_Anyadir_', expectedCode = '', expectedClientCode = '') {
   const PFX = pfx;
   const norm = (s) => String(s || '').toLowerCase().trim();
   const onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
@@ -3523,6 +3523,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
 
   let lockedId = '';
   let codeCheckFailed = false;
+  let clientCodeChecked = false;
   outer: for (let attempt = 0; attempt < 3; attempt++) {
     // Pulisce campo e digita nome con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
@@ -3550,6 +3551,17 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     for (let i = 0; i < count; i++) {
       const t = norm(await li.nth(i).innerText().catch(() => ''));
       if (!t.includes(norm(nome))) continue;
+      // 🔒 Guardia anti-omonimia col CODICE CLIENTE: la riga è "000005-Nome Cognome".
+      // Se l'app passa il codice atteso (memberId), scarta i candidati col codice
+      // diverso PRIMA di cliccare. Confronto su onlyDigits (ignora gli zeri iniziali).
+      if (expectedClientCode) {
+        const liCode = (t.match(/^\s*(\d+)\s*-/) || [])[1] || '';
+        if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
+          clientCodeChecked = true;
+          diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+          continue;
+        }
+      }
       foundNameMatch = true;
       await li.nth(i).click({ timeout: 4000 }).catch(() => {});
       // L'id si aggancia via callback async dell'autocomplete: attendi finché compare (fino a ~2.4s)
@@ -3584,6 +3596,11 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   }
 
   if (!lockedId) {
+    if (expectedClientCode && clientCodeChecked) {
+      throw fail('PLAYER_CLIENTCODE_MISMATCH',
+        `Nessun socio con codice ${expectedClientCode} tra i risultati per "${nome}". Aggiunta annullata per sicurezza.`,
+        diagnostic);
+    }
     if (expectedCode && codeCheckFailed) {
       throw fail('PLAYER_CODE_MISMATCH',
         `Nessun socio Matchpoint con codice ${expectedCode} tra i risultati per "${nome}". Aggiunta annullata per sicurezza.`,
@@ -4513,7 +4530,7 @@ async function editBookingWithBrowser(input = {}) {
 
       // AGGIUNTE
       for (const p of (players.add || [])) {
-        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice);
+        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
