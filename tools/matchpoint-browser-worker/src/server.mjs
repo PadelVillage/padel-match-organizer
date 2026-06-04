@@ -3989,14 +3989,14 @@ async function createBookingWithBrowser(options = {}) {
       // 2. Aggiungi giocatori via autocomplete
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
         ? booking.giocatori.map((g) => typeof g === 'string'
-            ? { nome: g, codice: '' }
-            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.memberId || g.id)) || '' }
+            ? { nome: g, codice: '', codiceCliente: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.id)) || '', codiceCliente: (g && (g.codiceCliente || g.memberId)) || '' }
           ).filter((p) => p.nome)
-        : (nome ? [{ nome, codice: booking.codice || '' }] : []);
+        : (nome ? [{ nome, codice: booking.codice || '', codiceCliente: '' }] : []);
       diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, undefined, p.codice));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, undefined, p.codice, p.codiceCliente));
       }
       diagnostic.playersResult = playersResult;
 
@@ -4065,14 +4065,14 @@ async function createBookingWithBrowser(options = {}) {
       const LEZIONE_PLAYER_PFX = '#CC_Datos_FormViewFicha_WUCUsuarioClase_Anyadir_';
       const players = (Array.isArray(booking.giocatori) && booking.giocatori.length)
         ? booking.giocatori.map((g) => typeof g === 'string'
-            ? { nome: g, codice: '' }
-            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.memberId || g.id)) || '' }
+            ? { nome: g, codice: '', codiceCliente: '' }
+            : { nome: (g && (g.nome || g.name)) || '', codice: (g && (g.codice || g.id)) || '', codiceCliente: (g && (g.codiceCliente || g.memberId)) || '' }
           ).filter((p) => p.nome)
-        : (nome ? [{ nome, codice: booking.codice || '' }] : []);
+        : (nome ? [{ nome, codice: booking.codice || '', codiceCliente: '' }] : []);
       diagnostic.playersRequested = players.map((p) => ({ nome: p.nome, codice: p.codice }));
       const playersResult = [];
       for (const p of players) {
-        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, LEZIONE_PLAYER_PFX, p.codice));
+        playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, LEZIONE_PLAYER_PFX, p.codice, p.codiceCliente));
       }
       diagnostic.playersResult = playersResult;
 
