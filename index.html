@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.639';
+    const APP_VERSION = '5.640';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34627,6 +34627,9 @@ Per confermare scrivi ELIMINA.`);
 
     // Chiudi la schedina: l'operatore torna libero immediatamente.
     staffCalPlayersState = null;
+    // OTTIMISTICO: applico SUBITO lo spostamento in locale così il tabellone si aggiorna all'istante.
+    // Se più sotto Matchpoint dà errore CERTO, la riporto indietro (_staffCalRevertMoveLocal).
+    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); renderStaffCalendar(); }
     const destTxt = moveChanged
       ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
       : ('Campo ' + op.origCampo + ' \xb7 ' + op.dataIt + ' \xb7 ' + op.origOra);
@@ -34658,15 +34661,19 @@ Per confermare scrivi ELIMINA.`);
 
       if (response.ok && data && data.ok !== false) {
         const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-        _staffCalApplyLocalEdit(op, moveChanged, durMin, finalRoster);
         const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
+        // Lo spostamento è già applicato in modo ottimistico al click. Per le sole modifiche
+        // giocatori (senza spostamento) applico ora; e fisso i nomi alla posizione CORRENTE.
+        if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
+        if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
         renderStaffCalendar();
       } else {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-        svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg, 'error');
+        if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
+        svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione alla posizione di prima.</span>', 'error');
       }
     } catch (err) {
       clearInterval(_timer);
@@ -34677,6 +34684,24 @@ Per confermare scrivi ELIMINA.`);
         svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
       }
     }
+  }
+
+  function _staffCalRevertMoveLocal(op) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantIso = op.mIso, wantCampo = Number(op.mCampo), wantOra = op.mOraIni;
+    let changed = false;
+    existing.forEach(function (b) {
+      if (String(b.data).trim() === wantIso &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        b.data = op.origIso; b.campo = op.origCampo; b.ora = op.origOra;
+        b.oraFine = _staffCalEndTime(op.origOra, op.origDurMin); b.durata = op.origDurMin;
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+    _staffCalClearSuppressed(op.origIso, op.origCampo, op.origOra);
   }
 
   function staffCalUpdateLocalPlayers(isoDate, campo, ora, nomi) {
