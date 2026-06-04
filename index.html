@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.640';
+    const APP_VERSION = '5.641';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36133,6 +36133,10 @@ Per confermare scrivi ELIMINA.`);
       const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true });
       const jobId = submit && submit.jobId;
       if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+      // OTTIMISTICO: mostra SUBITO la prenotazione nel calendario (lo slot è già stato verificato
+      // libero da staffCalFindConflict qui sopra). Se il job fallisce, più sotto la rimuovo.
+      staffCalSaveLocal(parsed);
+      renderStaffCalendar();
       const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function(sec) {
         const last = inProgress.querySelector(':scope > div:last-child');
         if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)';
@@ -36155,9 +36159,16 @@ Per confermare scrivi ELIMINA.`);
         }
         renderStaffCalendar();
       } else if (result.status === 'error') {
-        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
+        // Creazione fallita davvero: rimuovo la card ottimistica appena inserita.
+        if (typeof safeLoad === 'function' && typeof save === 'function') {
+          const _ex = safeLoad('staffBookings', []);
+          const _f = _ex.filter(function (b) { return !(String(b.data).trim() === parsed.data && Number(String(b.campo).replace(/\D/g, '')) === parsed.campoNum && String(b.ora).trim() === parsed.ora); });
+          if (_f.length !== _ex.length) save('staffBookings', _f);
+        }
+        renderStaffCalendar();
+        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho tolto la prenotazione dal calendario.</span>');
       } else {
-        svcAddMessage('system', '⏳ Ci sta mettendo pi\xf9 del previsto. Controlla la griglia tra poco; se non compare riprova (NON confermare due volte).');
+        svcAddMessage('system', '⏳ Ci sta mettendo pi\xf9 del previsto: la prenotazione \xe8 gi\xe0 mostrata nel calendario ma <strong>non ancora confermata</strong>. Controlla su Matchpoint prima di rifarla (NON confermare due volte).');
       }
     } catch (err) {
       svcAddMessage('system', '❌ Errore: ' + (err.message || err));
