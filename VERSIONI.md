@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.631 — Giocatori: la scheda attiva torna in cima dopo la disambiguazione
+- Aggiungendo giocatori, quando un nome è ambiguo compare la scheda "Quale «…»?" in cima alla chat. Dopo la scelta, la scheda dello step attivo (la "Chi gioca?" in creazione, la card "Giocatori partita" nell'editor 👥) ora torna in cima invece di restare sotto la disambiguazione, così l'operatore continua a lavorare dall'alto. Vale per entrambi i flussi (creazione ed editor). Solo app.
+
 ## v5.630 — Chat: la scheda in testa risalta (barra accent a sinistra)
 - Nella colonna chat del Calendario la scheda più recente (in cima) ora si distingue nettamente dalle altre grazie a una barra accent a sinistra + un leggero sfondo accent. Realizzato in CSS puro su `#svcChatMessages > .svc-msg:first-child`, quindi l'evidenziazione si sposta da sola sulla nuova scheda quando arriva un messaggio. Non altera il colore-tipo delle schede (verde ok / ambra conferma / accent flusso), che resta visibile. Nessun JavaScript. Solo app.
 

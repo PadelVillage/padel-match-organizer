@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.630';
+    const APP_VERSION = '5.631';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34418,6 +34418,12 @@ Per confermare scrivi ELIMINA.`);
     box.appendChild(actions);
   }
 
+  function staffCalBringEditorToTop() {
+    const st = staffCalPlayersState;
+    const cont = document.getElementById('svcChatMessages');
+    if (st && st.box && cont && cont.contains(st.box)) { cont.prepend(st.box); cont.scrollTop = 0; }
+  }
+
   function staffCalPlayersAdd() {
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
@@ -34427,10 +34433,11 @@ Per confermare scrivi ELIMINA.`);
     const addResolved = function(member) {
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member) });
       staffCalRenderPlayersEditor();
+      staffCalBringEditorToTop();
     };
     if (sugg.length === 0) {
       const ok = confirm('"' + raw + '" non risulta tra i soci.\nAggiungerlo comunque come testo libero (senza codice)?');
-      if (ok) { st.add.push({ nome: raw, codice: '' }); staffCalRenderPlayersEditor(); }
+      if (ok) { st.add.push({ nome: raw, codice: '' }); staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); }
       return;
     }
     if (sugg.length === 1 || (sugg[0].distance === 0 && sugg[1] && sugg[1].distance > 0)) {
@@ -35989,6 +35996,13 @@ Per confermare scrivi ELIMINA.`);
   function svcProcessDisambigQueue(queue, idx) {
     if (!svcFlowState || idx >= queue.length) {
       svcRenderPlayerChips();
+      // Riporta in cima la scheda dello step attivo ("Chi gioca?"), così resta sopra
+      // alle schede di disambiguazione appena risolte invece di finire sotto.
+      const _cont = document.getElementById('svcChatMessages');
+      if (_cont && svcFlowState && svcFlowState.stepMsg && _cont.contains(svcFlowState.stepMsg)) {
+        _cont.prepend(svcFlowState.stepMsg);
+        _cont.scrollTop = 0;
+      }
       const inp = document.getElementById('svcChatInput');
       if (inp && !inp.disabled) inp.focus();
       return;
