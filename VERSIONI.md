@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.637 — Chat: tolta l'etichetta "Sistema" dalle schede
+- In cima alle schede della chat del Calendario non compare più l'etichetta "🤖 Sistema": le schede risultano più pulite. Il contenuto resta invariato (ha già le sue icone). L'etichetta "👤 Staff" sui messaggi dell'operatore resta. Solo CSS, nessun cambio di comportamento. Solo app.
+
 ## v5.636 — Chat: resta blu solo la scheda in cima, le card "flow" sotto sono grigie
 - Nella colonna chat del Calendario solo la scheda più recente (in cima) resta evidenziata in blu. Le schede di tipo "flow" (disambiguazione "Quale «…»?", card "Giocatori partita", "Quale maestro?") non hanno più lo sfondo/bordo blu fisso: una volta scorse sotto dopo l'uso appaiono grigie come le altre schede di sistema. La scheda in cima resta blu in ogni caso (regola first-child invariata, anche se è una "flow" attiva). Solo CSS, nessun cambio di comportamento. Solo app.
 
