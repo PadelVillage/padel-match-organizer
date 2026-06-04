@@ -2799,6 +2799,34 @@
       #staffCalV36 .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
     }
 
+    /* ── Tappa 2: Mobile 3-panel layout (< 900px) ── */
+    #staffCalMobileHead, #staffCalMobileChatBar { display:none; }
+    @media (max-width:899px) {
+      #pmoCalendarioStaffPanel { padding-bottom:0 !important; overflow:hidden; }
+      #pmoCalendarioStaffPanel .admin-panel-head { display:none !important; }
+      #staffCalV36 { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; overflow:hidden; background:#f1f5f9; }
+      #staffCalMobileHead { display:flex; flex:0 0 auto; align-items:center; gap:10px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+      .smc-logo { width:36px; height:36px; border-radius:8px; border:1px solid #e5e7eb; object-fit:cover; flex-shrink:0; }
+      .smc-datebar { display:flex; align-items:center; gap:5px; flex:1; min-width:0; }
+      .smc-nav-btn { min-width:32px; height:36px; border-radius:8px; border:1px solid #d1d5db; background:#f8fbff; color:#374151; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; }
+      .smc-pill-wrap { flex:1; min-width:0; position:relative; height:36px; }
+      .smc-date-pill { display:flex; align-items:center; justify-content:center; height:100%; background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:20px; padding:0 10px; font-size:.8rem; font-weight:700; color:#1d4ed8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none; pointer-events:none; }
+      .smc-date-hidden { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+      .smc-oggi-btn { background:none; border:none; color:#2563eb; font-size:.82rem; font-weight:700; cursor:pointer; padding:4px 6px; white-space:nowrap; flex-shrink:0; }
+      .smc-team-btn { background:none; border:none; font-size:1.25rem; cursor:pointer; padding:4px 6px; flex-shrink:0; line-height:1; }
+      #staffCalV36 > .svc-layout { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+      #staffCalV36 .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+      #staffCalV36 .agenda-wrap { flex:1 1 auto; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
+      #staffCalMobileChatBar { display:flex; flex:0 0 auto; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-top:1px solid #e5e7eb; box-shadow:0 -2px 8px rgba(0,0,0,.06); }
+      .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:19px; padding:7px 14px; font-size:.88rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:38px; transition:border-color .15s; }
+      .smc-input:focus { border-color:#2563eb; }
+      .smc-input:disabled { opacity:.5; cursor:not-allowed; }
+      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:19px; padding:0 18px; height:38px; font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
+      .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
+      .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
+      #staffCalV36 .svc-chat-fab { display:none !important; }
+    }
+
     @media (max-width:1100px) {
       .matchpoint-data-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .matchpoint-routine-head { grid-template-columns:1fr; }
@@ -5734,6 +5762,20 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
 
             <div id="staffCalV36">
+              <!-- ── Tappa 2: testata mobile ── -->
+              <div id="staffCalMobileHead">
+                <img src="logo-padel-village.jpeg" alt="PadelVillage" class="smc-logo">
+                <div class="smc-datebar">
+                  <button class="smc-nav-btn" onclick="staffCalPrevDay()">‹</button>
+                  <div class="smc-pill-wrap">
+                    <span id="staffCalMobileDateLabel" class="smc-date-pill">📅 —</span>
+                    <input type="date" id="staffCalMobileDateInput" class="smc-date-hidden" onchange="staffCalMobileDateChange()">
+                  </div>
+                  <button class="smc-nav-btn" onclick="staffCalNextDay()">›</button>
+                  <button id="staffCalMobileOggi" class="smc-oggi-btn" onclick="staffCalGoToday()">Oggi</button>
+                  <button class="smc-team-btn" onclick="alert('Anagrafica — in arrivo')">👥</button>
+                </div>
+              </div>
               <div class="svc-layout">
                 <div class="svc-grid-col">
                   <div class="grid-wrap" id="staffCalGridWrap"><div class="grid-table" id="staffCalGridTable"></div></div>
@@ -5757,6 +5799,11 @@ body.assessment-public-mode .assessment-public-only-card {
                   </div>
                   <div class="svc-chat-messages" id="svcChatMessages"></div>
                 </div>
+              </div>
+              <!-- ── Tappa 2: barra chat mobile ── -->
+              <div id="staffCalMobileChatBar">
+                <input id="staffCalMobileInput" class="smc-input" type="text" placeholder="Clicca uno slot per prenotare ↑">
+                <button id="staffCalMobileSend" class="smc-send-btn">Invia</button>
               </div>
               <div class="svc-chat-overlay" id="svcChatOverlay"></div>
               <button class="svc-chat-fab" id="svcChatFab" title="Assistente prenotazioni">💬<span class="svc-fab-badge" id="svcFabBadge"></span></button>
@@ -7037,7 +7084,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.647';
+    const APP_VERSION = '5.648';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34007,6 +34054,7 @@ Per confermare scrivi ELIMINA.`);
       agendaWrap.style.display = '';
       _staffCalBuildMap(isoDate);
     }
+    if (typeof staffCalMobileUpdateHeader === 'function') staffCalMobileUpdateHeader();
   }
 
   function _staffCalEndTime(startHHMM, durMin) {
@@ -36619,6 +36667,59 @@ Per confermare scrivi ELIMINA.`);
       '<small style="color:var(--text-muted)">Solo Partita \xe8 attiva in questa tappa (A3a).</small>'
     );
   })();
+
+  // ── Tappa 2: Mobile header + chat bar ──
+  function staffCalMobileDateChange() {
+    var mInput = document.getElementById('staffCalMobileDateInput');
+    var realInput = document.getElementById('staffCalDate');
+    if (mInput && realInput) { realInput.value = mInput.value; renderStaffCalendar(); }
+  }
+  function staffCalMobileUpdateHeader() {
+    var realInput = document.getElementById('staffCalDate');
+    var mInput = document.getElementById('staffCalMobileDateInput');
+    var label = document.getElementById('staffCalMobileDateLabel');
+    var oggiBtn = document.getElementById('staffCalMobileOggi');
+    if (!realInput) return;
+    var iso = realInput.value || (typeof staffCalTodayIso === 'function' ? staffCalTodayIso() : '');
+    if (mInput) mInput.value = iso;
+    if (label && iso) {
+      var d = new Date(iso + 'T12:00:00');
+      var dow = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'][d.getDay()];
+      var dd = String(d.getDate()).padStart(2,'0');
+      var mm = String(d.getMonth()+1).padStart(2,'0');
+      label.textContent = '📅 ' + dow + ' ' + dd + '/' + mm + '/' + d.getFullYear();
+    }
+    if (oggiBtn) {
+      var today = typeof staffCalTodayIso === 'function' ? staffCalTodayIso() : '';
+      oggiBtn.style.display = (iso === today) ? 'none' : '';
+    }
+  }
+  (function staffCalMobileChatInit() {
+    var mInput = document.getElementById('staffCalMobileInput');
+    var mSend = document.getElementById('staffCalMobileSend');
+    var realInput = document.getElementById('svcChatInput');
+    var realSend = document.getElementById('svcChatSend');
+    if (mInput && realInput) {
+      mInput.addEventListener('input', function() { realInput.value = mInput.value; });
+      var obs = new MutationObserver(function() {
+        mInput.disabled = realInput.disabled;
+        if (mSend) mSend.disabled = realSend ? realSend.disabled : false;
+      });
+      obs.observe(realInput, { attributes: true, attributeFilter: ['disabled'] });
+      mInput.disabled = realInput.disabled;
+      if (mSend && realSend) mSend.disabled = realSend.disabled;
+    }
+    if (mSend) {
+      mSend.addEventListener('click', function() {
+        var ri = document.getElementById('svcChatInput');
+        if (!ri || ri.disabled) return;
+        ri.value = mInput ? mInput.value : '';
+        if (typeof svcHandleSend === 'function') svcHandleSend();
+        if (mInput) mInput.value = '';
+      });
+    }
+  })();
+  staffCalMobileUpdateHeader();
 
   </script>
   <!-- ════ end Staff Calendar ════ -->
