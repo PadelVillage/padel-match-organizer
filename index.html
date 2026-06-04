@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.632';
+    const APP_VERSION = '5.633';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34263,6 +34263,12 @@ Per confermare scrivi ELIMINA.`);
     const raw = String((member && member.matchpointIdInterno) || '').trim();
     return /^\d{1,12}$/.test(raw) ? raw : '';
   }
+  function _staffCalClientCode(member) {
+    // Codice cliente Matchpoint (quello in tendina "000005-Nome"), salvato in memberId
+    // per i soci importati. È la guardia anti-omonimia che passiamo al worker.
+    const raw = String((member && member.memberId) || '').trim();
+    return /^\d{3,}$/.test(raw) ? raw : '';
+  }
   function _staffCalPlayerName(member, fallback) {
     const fn = (typeof playerFullName === 'function') ? playerFullName(member) : '';
     return (fn || (member && member.name) || fallback || '').trim();
@@ -34431,7 +34437,7 @@ Per confermare scrivi ELIMINA.`);
     if (!raw) return;
     const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
     const addResolved = function(member) {
-      st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member) });
+      st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
       staffCalRenderPlayersEditor();
       staffCalBringEditorToTop();
     };
@@ -34463,7 +34469,12 @@ Per confermare scrivi ELIMINA.`);
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
     const remove = st.roster.filter(function(p) { return st.remove[p.idx]; }).map(function(p) { return p.nome; });
-    const add = st.add.map(function(p) { return p.codice ? { nome: p.nome, codice: p.codice } : { nome: p.nome }; });
+    const add = st.add.map(function(p) {
+      const o = { nome: p.nome };
+      if (p.codice) o.codice = p.codice;
+      if (p.codiceCliente) o.codiceCliente = p.codiceCliente;
+      return o;
+    });
     if (!add.length && !remove.length) {
       svcAddMessage('system', 'ℹ️ Nessuna modifica ai giocatori.');
       return;

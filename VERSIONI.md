@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.633
+- Editor giocatori: l'app passa al worker il Codice cliente (memberId, es. 000005) come `codiceCliente`, così Matchpoint identifica il socio dalla riga "Codice-Nome" della tendina ed evita gli omonimi. Additivo: se il Codice manca, resta l'aggiunta per nome come prima.
+
 ## v5.632 — Lezioni: abilitato il bottone 👥 per modificare gli allievi
 - Il bottone 👥 (aggiungi/rimuovi giocatori) ora compare anche sulle card delle lezioni, oltre che sulle partite, in entrambe le viste (griglia e agenda). Gli allievi sono gli stessi soci del DB. Le manutenzioni restano escluse (niente partecipanti). Richiede il supporto lezioni nel worker (già in produzione). Solo app.
 
