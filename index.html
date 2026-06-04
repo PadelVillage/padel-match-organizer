@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.634';
+    const APP_VERSION = '5.635';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35921,7 +35921,7 @@ Per confermare scrivi ELIMINA.`);
   // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
     const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
-    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '' }; });
+    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '', codiceCliente: (p && p.codiceCliente) || '' }; });
     const nomeStr = giocatori.map(function(g) { return g.nome; }).join(', ');
     let parsed;
     if (tipoEngine === 'lezione') {
@@ -36001,8 +36001,10 @@ Per confermare scrivi ELIMINA.`);
   function svcAddResolvedChip(member, raw) {
     const rawCode = String(member.matchpointIdInterno || '').trim();
     const codice = /^\d{1,12}$/.test(rawCode) ? rawCode : '';
+    const rawClient = String(member.memberId || '').trim();
+    const codiceCliente = /^\d{3,}$/.test(rawClient) ? rawClient : '';
     const nome = (typeof playerFullName === 'function' ? playerFullName(member) : '') || member.name || raw;
-    svcFlowState.players.push({ nome: nome, codice: codice, raw: raw });
+    svcFlowState.players.push({ nome: nome, codice: codice, codiceCliente: codiceCliente, raw: raw });
   }
 
   function svcProcessDisambigQueue(queue, idx) {

@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.635 — Creazione prenotazioni: anti-omonimia via Codice cliente
+- Anche in creazione (partita e lezione), quando si sceglie un socio l'app aggancia ora il Codice cliente (memberId, es. 000005) al giocatore e lo manda al worker come `codiceCliente`, così Matchpoint identifica la persona dalla riga "Codice-Nome" della tendina ed evita gli omonimi — come già avviene nell'editor delle prenotazioni esistenti. Additivo: per i soci senza Codice valido (creati in-app o testo libero) resta l'aggiunta per nome. Richiede il worker con anti-omonimia in creazione (già in produzione). Solo app.
+
 ## v5.634 — Editor giocatori: il chip "Da aggiungere" mostra il Codice cliente
 - Il chip di un giocatore in attesa di salvataggio nell'editor 👥 mostrava "(senza codice)" anche quando il Codice cliente (memberId, es. 000005) era presente, perché l'etichetta guardava solo l'id interno Matchpoint (matchpointIdInterno, quasi sempre vuoto). Ora mostra il primo codice disponibile — id interno o, in mancanza, Codice cliente — e tiene "(senza codice)" solo quando manca davvero ogni codice (socio creato in-app o testo libero). Solo etichetta: nessun cambio di logica, il codiceCliente era già passato al worker da v5.633. Solo app.
 
