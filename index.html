@@ -2756,6 +2756,7 @@
     #staffCalV36 .svc-msg.system.ok .svc-msg-label { color:var(--green); }
     #staffCalV36 .svc-msg.system.confirm .svc-msg-label { color:#b45309; }
     #staffCalV36 .svc-msg.system.flow .svc-msg-label { color:var(--accent); }
+    #staffCalV36 #svcChatMessages > .svc-msg:first-child { box-shadow: inset 4px 0 0 var(--accent); background: var(--accent-light); }
     #staffCalV36 .svc-confirm-buttons { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
     #staffCalV36 .svc-btn-confirm { padding:4px 14px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
     #staffCalV36 .svc-btn-yes { background:var(--green-light); border-color:var(--green); color:var(--green); }
@@ -7036,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.629';
+    const APP_VERSION = '5.630';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
