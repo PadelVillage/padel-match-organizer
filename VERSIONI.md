@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.636 — Chat: resta blu solo la scheda in cima, le card "flow" sotto sono grigie
+- Nella colonna chat del Calendario solo la scheda più recente (in cima) resta evidenziata in blu. Le schede di tipo "flow" (disambiguazione "Quale «…»?", card "Giocatori partita", "Quale maestro?") non hanno più lo sfondo/bordo blu fisso: una volta scorse sotto dopo l'uso appaiono grigie come le altre schede di sistema. La scheda in cima resta blu in ogni caso (regola first-child invariata, anche se è una "flow" attiva). Solo CSS, nessun cambio di comportamento. Solo app.
+
 ## v5.635 — Creazione prenotazioni: anti-omonimia via Codice cliente
 - Anche in creazione (partita e lezione), quando si sceglie un socio l'app aggancia ora il Codice cliente (memberId, es. 000005) al giocatore e lo manda al worker come `codiceCliente`, così Matchpoint identifica la persona dalla riga "Codice-Nome" della tendina ed evita gli omonimi — come già avviene nell'editor delle prenotazioni esistenti. Additivo: per i soci senza Codice valido (creati in-app o testo libero) resta l'aggiunta per nome. Richiede il worker con anti-omonimia in creazione (già in produzione). Solo app.
 
