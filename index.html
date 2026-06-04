@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.637';
+    const APP_VERSION = '5.638';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34081,25 +34081,16 @@ Per confermare scrivi ELIMINA.`);
             delBtn.className = 'staff-cal-del-btn';
             delBtn.title = 'Annulla prenotazione';
             delBtn.textContent = '🗑';
-            const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate, _durata = slot.durata, _tipo = slot.tipo;
+            const _ora = hour, _campo = f, _nome = slot.nome, _iso = isoDate, _durata = slot.durata, _tipo = slot.tipoReale;
             delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
             hdr.appendChild(delBtn);
-            const mvBtn = document.createElement('button');
-            mvBtn.type = 'button';
-            mvBtn.className = 'staff-cal-localdel-btn';
-            mvBtn.title = 'Sposta su Matchpoint (campo/data/ora)';
-            mvBtn.textContent = '↔';
-            mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
-            hdr.appendChild(mvBtn);
-            if (['partita', 'lezione'].includes(slot.tipoReale || 'partita')) {
-              const pgBtn = document.createElement('button');
-              pgBtn.type = 'button';
-              pgBtn.className = 'staff-cal-localdel-btn';
-              pgBtn.title = 'Modifica giocatori (aggiungi/rimuovi)';
-              pgBtn.textContent = '👥';
-              pgBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome); });
-              hdr.appendChild(pgBtn);
-            }
+            const edBtn = document.createElement('button');
+            edBtn.type = 'button';
+            edBtn.className = 'staff-cal-localdel-btn';
+            edBtn.title = 'Modifica prenotazione (campo/data/durata/giocatori)';
+            edBtn.textContent = '📝';
+            edBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome, _durata, _tipo); });
+            hdr.appendChild(edBtn);
           }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
@@ -34191,25 +34182,16 @@ Per confermare scrivi ELIMINA.`);
           delBtn.className = 'staff-cal-del-btn';
           delBtn.title = 'Annulla prenotazione';
           delBtn.textContent = '🗑 Annulla';
-          const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate, _durata = entry.durata, _tipo = entry.tipo;
+          const _ora = slots[si], _campo = entry.campo, _nome = entry.nome, _iso = isoDate, _durata = entry.durata, _tipo = entry.tipoReale;
           delBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalAskCancel(_iso, _campo, _ora, _nome); });
           card.appendChild(delBtn);
-          const mvBtn = document.createElement('button');
-          mvBtn.type = 'button';
-          mvBtn.className = 'staff-cal-localdel-btn';
-          mvBtn.title = 'Sposta su Matchpoint (campo/data/ora)';
-          mvBtn.textContent = '↔ Sposta';
-          mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
-          card.appendChild(mvBtn);
-          if (['partita', 'lezione'].includes(entry.tipoReale || 'partita')) {
-            const pgBtn = document.createElement('button');
-            pgBtn.type = 'button';
-            pgBtn.className = 'staff-cal-localdel-btn';
-            pgBtn.title = 'Modifica giocatori (aggiungi/rimuovi)';
-            pgBtn.textContent = '👥 Giocatori';
-            pgBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome); });
-            card.appendChild(pgBtn);
-          }
+          const edBtn = document.createElement('button');
+          edBtn.type = 'button';
+          edBtn.className = 'staff-cal-localdel-btn';
+          edBtn.title = 'Modifica prenotazione (campo/data/durata/giocatori)';
+          edBtn.textContent = '📝 Modifica';
+          edBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome, _durata, _tipo); });
+          card.appendChild(edBtn);
         }
         body.appendChild(card);
         si += entry._durSlots;
@@ -34274,12 +34256,92 @@ Per confermare scrivi ELIMINA.`);
     return (fn || (member && member.name) || fallback || '').trim();
   }
 
-  async function staffCalEditPlayers(isoDate, campo, ora, nome) {
+  function _staffCalToMin(hhmm) {
+    const [h, m] = String(hhmm).split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  function _staffCalEditorMoveChanged(st) {
+    const origFin = _staffCalEndTime(st.origOra, st.origDurMin);
+    return st.mCampo !== st.origCampo
+      || st.mIso !== st.origIso
+      || st.mOraIni !== st.origOra
+      || st.mOraFin !== origFin;
+  }
+
+  function _staffCalDestOccupied(toIso, toCampo, toOraIni, durMin, st) {
+    try {
+      const map = staffCalBuildOccupancyMap(toIso);
+      const slots = staffCalSlots();
+      const startIdx = slots.indexOf(toOraIni);
+      if (startIdx < 0) return false;
+      const need = Math.max(1, Math.round((durMin || 90) / STAFF_CAL_SLOT_MIN));
+      const origSlots = new Set();
+      if (st && toIso === st.origIso && Number(toCampo) === Number(st.origCampo)) {
+        const oIdx = slots.indexOf(st.origOra);
+        const oNeed = Math.max(1, Math.round((st.origDurMin || 90) / STAFF_CAL_SLOT_MIN));
+        for (let i = 0; i < oNeed && oIdx + i < slots.length; i++) origSlots.add(slots[oIdx + i]);
+      }
+      for (let i = 0; i < need && startIdx + i < slots.length; i++) {
+        const t = slots[startIdx + i];
+        if (origSlots.has(t)) continue;
+        if (map[t + '|' + toCampo]) return true;
+      }
+      return false;
+    } catch (_e) { return false; }
+  }
+
+  function _staffCalApplyLocalEdit(st, moveChanged, durMin, finalRoster) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
+    const existing = safeLoad('staffBookings', []);
+    let changed = false;
+    existing.forEach(function (b) {
+      if (String(b.data).trim() === st.origIso &&
+        Number(String(b.campo).replace(/\D/g, '')) === st.origCampo &&
+        String(b.ora).trim() === st.origOra) {
+        if (moveChanged) { b.data = st.mIso; b.campo = st.mCampo; b.ora = st.mOraIni; b.oraFine = st.mOraFin; b.durata = durMin; }
+        if (nomi != null) b.nome = nomi;
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+    if (moveChanged) {
+      _staffCalAddSuppressed(st.origIso, st.origCampo, st.origOra);
+      _staffCalClearSuppressed(st.mIso, st.mCampo, st.mOraIni);
+    }
+  }
+
+  async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
     if (typeof svcOpenChat === 'function') svcOpenChat();
     const dataIt = isoDate.split('-').reverse().join('/');
+    const campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
+    const durMin = _staffCalDurMin(durata);
+    const tipoR = String(tipoReale || 'partita').toLowerCase();
+    const hasPlayers = ['partita', 'lezione'].includes(tipoR);
+
+    const buildState = function (roster) {
+      staffCalPlayersState = {
+        isoDate: isoDate, campo: campoNum, ora: ora, dataIt: dataIt,
+        origIso: isoDate, origCampo: campoNum, origOra: ora, origDurMin: durMin,
+        tipoReale: tipoR, hasPlayers: hasPlayers,
+        mCampo: campoNum, mIso: isoDate, mOraIni: ora, mOraFin: _staffCalEndTime(ora, durMin),
+        roster: Array.isArray(roster) ? roster : [], remove: {}, add: [],
+        msg: null, box: null, busy: false,
+      };
+      const editor = svcAddMessage('system', '', 'flow');
+      const box = document.createElement('div');
+      editor.appendChild(box);
+      staffCalPlayersState.msg = editor;
+      staffCalPlayersState.box = box;
+      staffCalRenderPlayersEditor();
+    };
+
+    if (!hasPlayers) { buildState([]); return; }
+
     const loading = svcAddMessage('system', '⏳ Leggo i giocatori attuali su Matchpoint…');
     let _sec = 0;
-    const _timer = setInterval(function() {
+    const _timer = setInterval(function () {
       _sec += 1;
       const last = loading.querySelector(':scope > div:last-child');
       if (last) last.innerHTML = '⏳ Leggo i giocatori attuali su Matchpoint… (' + _sec + 's)';
@@ -34288,11 +34350,11 @@ Per confermare scrivi ELIMINA.`);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della partita');
       const _editReadCtrl = new AbortController();
-      const _editReadTo = setTimeout(function() { _editReadCtrl.abort(); }, 90000);
+      const _editReadTo = setTimeout(function () { _editReadCtrl.abort(); }, 90000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify({ campo: campo, data: isoDate, ora: ora, read: true }),
+        body: JSON.stringify({ campo: campoNum, data: isoDate, ora: ora, read: true }),
         signal: _editReadCtrl.signal,
       });
       const respText = await response.text();
@@ -34307,16 +34369,7 @@ Per confermare scrivi ELIMINA.`);
       }
       const roster = (data && data.worker && Array.isArray(data.worker.partecipantiFinali))
         ? data.worker.partecipantiFinali : [];
-      staffCalPlayersState = {
-        isoDate: isoDate, campo: campo, ora: ora, dataIt: dataIt,
-        roster: roster, remove: {}, add: [], msg: null, box: null, busy: false,
-      };
-      const editor = svcAddMessage('system', '', 'flow');
-      const box = document.createElement('div');
-      editor.appendChild(box);
-      staffCalPlayersState.msg = editor;
-      staffCalPlayersState.box = box;
-      staffCalRenderPlayersEditor();
+      buildState(roster);
     } catch (err) {
       clearInterval(_timer);
       if (err && err.name === 'AbortError') {
@@ -34334,92 +34387,147 @@ Per confermare scrivi ELIMINA.`);
     box.innerHTML = '';
 
     const title = document.createElement('div');
-    title.innerHTML = '👥 <strong>Giocatori partita</strong><br>📍 Campo ' + st.campo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.ora;
+    title.innerHTML = '📝 <strong>Modifica prenotazione</strong><br>📍 Campo ' + st.origCampo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.origOra + (st.hasPlayers ? '' : ' \xb7 ' + _staffCalTipoLabel(st.tipoReale));
     title.style.marginBottom = '8px';
     box.appendChild(title);
 
-    const curLbl = document.createElement('div');
-    curLbl.textContent = 'Attuali:';
-    curLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:6px 0 2px;';
-    box.appendChild(curLbl);
-    if (!st.roster.length) {
-      const none = document.createElement('div');
-      none.textContent = '(nessuno)';
-      none.style.cssText = 'font-size:.78rem;color:var(--text-muted);font-style:italic;';
-      box.appendChild(none);
-    }
-    st.roster.forEach(function(p) {
-      const marked = !!st.remove[p.idx];
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
-      const nm = document.createElement('span');
-      nm.textContent = p.nome;
-      nm.style.cssText = 'flex:1;font-size:.84rem;' + (marked ? 'text-decoration:line-through;opacity:.5;' : '');
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = marked ? '↩︎ ripristina' : '✕ rimuovi';
-      btn.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:' + (marked ? 'var(--surface2)' : 'rgba(220,38,38,.08)') + ';color:' + (marked ? 'var(--text)' : '#b91c1c') + ';cursor:pointer;';
-      btn.disabled = st.busy;
-      btn.addEventListener('click', function() {
-        if (st.busy) return;
-        if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
-        staffCalRenderPlayersEditor();
-      });
-      row.appendChild(nm);
-      row.appendChild(btn);
-      box.appendChild(row);
-    });
+    const mkLabel = function (t) { const s = document.createElement('span'); s.textContent = t; s.style.cssText = 'font-size:.72rem;color:var(--text-muted);'; return s; };
+    const selCss = 'font-size:.82rem;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);';
 
-    if (st.add.length) {
-      const addLbl = document.createElement('div');
-      addLbl.textContent = 'Da aggiungere:';
-      addLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:8px 0 2px;';
-      box.appendChild(addLbl);
-      st.add.forEach(function(p, i) {
+    const mvWrap = document.createElement('div');
+    mvWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 6px;';
+    mvWrap.appendChild(mkLabel('Campo'));
+    const campoSel = document.createElement('select');
+    campoSel.style.cssText = selCss; campoSel.disabled = st.busy;
+    [1, 2, 3, 4].forEach(function (n) { const o = document.createElement('option'); o.value = String(n); o.textContent = String(n); if (n === st.mCampo) o.selected = true; campoSel.appendChild(o); });
+    campoSel.addEventListener('change', function () { st.mCampo = Number(campoSel.value) || st.mCampo; staffCalRenderPlayersEditor(); });
+    mvWrap.appendChild(campoSel);
+    mvWrap.appendChild(mkLabel('Data'));
+    const dataInp = document.createElement('input');
+    dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.style.cssText = selCss; dataInp.disabled = st.busy;
+    dataInp.addEventListener('change', function () { if (dataInp.value) st.mIso = dataInp.value; staffCalRenderPlayersEditor(); });
+    mvWrap.appendChild(dataInp);
+    box.appendChild(mvWrap);
+
+    const orarioWrap = document.createElement('div');
+    orarioWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px;';
+    const slots = staffCalSlots();
+    orarioWrap.appendChild(mkLabel('Dalle'));
+    const iniSel = document.createElement('select');
+    iniSel.style.cssText = selCss; iniSel.disabled = st.busy;
+    slots.forEach(function (t) { const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraIni) o.selected = true; iniSel.appendChild(o); });
+    iniSel.addEventListener('change', function () {
+      st.mOraIni = iniSel.value;
+      if (_staffCalToMin(st.mOraFin) <= _staffCalToMin(st.mOraIni)) st.mOraFin = _staffCalEndTime(st.mOraIni, 30);
+      staffCalRenderPlayersEditor();
+    });
+    orarioWrap.appendChild(iniSel);
+    orarioWrap.appendChild(mkLabel('alle'));
+    const finSel = document.createElement('select');
+    finSel.style.cssText = selCss; finSel.disabled = st.busy;
+    const allFin = slots.concat([_staffCalEndTime(slots[slots.length - 1] || '22:00', 30)]);
+    allFin.forEach(function (t) { if (_staffCalToMin(t) <= _staffCalToMin(st.mOraIni)) return; const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraFin) o.selected = true; finSel.appendChild(o); });
+    finSel.addEventListener('change', function () { st.mOraFin = finSel.value; staffCalRenderPlayersEditor(); });
+    orarioWrap.appendChild(finSel);
+    const durMin = Math.max(0, _staffCalToMin(st.mOraFin) - _staffCalToMin(st.mOraIni));
+    const durHint = document.createElement('span');
+    durHint.textContent = '(' + durMin + ' min)';
+    durHint.style.cssText = 'font-size:.72rem;color:var(--text-muted);';
+    orarioWrap.appendChild(durHint);
+    box.appendChild(orarioWrap);
+
+    if (_staffCalEditorMoveChanged(st) && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
+      const warn = document.createElement('div');
+      warn.innerHTML = '⚠️ La destinazione (Campo ' + st.mCampo + ' \xb7 ' + st.mOraIni + '–' + st.mOraFin + ') sembra già occupata. Controlla prima di salvare.';
+      warn.style.cssText = 'font-size:.74rem;color:#b45309;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:4px 8px;margin:2px 0 6px;';
+      box.appendChild(warn);
+    }
+
+    if (st.hasPlayers) {
+      const curLbl = document.createElement('div');
+      curLbl.textContent = 'Giocatori attuali:';
+      curLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:6px 0 2px;';
+      box.appendChild(curLbl);
+      if (!st.roster.length) {
+        const none = document.createElement('div');
+        none.textContent = '(nessuno)';
+        none.style.cssText = 'font-size:.78rem;color:var(--text-muted);font-style:italic;';
+        box.appendChild(none);
+      }
+      st.roster.forEach(function (p) {
+        const marked = !!st.remove[p.idx];
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
         const nm = document.createElement('span');
-        const _codeShown = p.codice || p.codiceCliente || '';
-        nm.textContent = '➕ ' + p.nome + (_codeShown ? ' (' + _codeShown + ')' : ' (senza codice)');
-        nm.style.cssText = 'flex:1;font-size:.84rem;color:#15803d;';
-        const x = document.createElement('button');
-        x.type = 'button';
-        x.textContent = '✕';
-        x.title = 'Togli dalla lista';
-        x.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
-        x.disabled = st.busy;
-        x.addEventListener('click', function() { if (st.busy) return; st.add.splice(i, 1); staffCalRenderPlayersEditor(); });
+        nm.textContent = p.nome;
+        nm.style.cssText = 'flex:1;font-size:.84rem;' + (marked ? 'text-decoration:line-through;opacity:.5;' : '');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = marked ? '↩︎ ripristina' : '✕ rimuovi';
+        btn.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:' + (marked ? 'var(--surface2)' : 'rgba(220,38,38,.08)') + ';color:' + (marked ? 'var(--text)' : '#b91c1c') + ';cursor:pointer;';
+        btn.disabled = st.busy;
+        btn.addEventListener('click', function () {
+          if (st.busy) return;
+          if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+          staffCalRenderPlayersEditor();
+        });
         row.appendChild(nm);
-        row.appendChild(x);
+        row.appendChild(btn);
         box.appendChild(row);
       });
+      if (st.add.length) {
+        const addLbl = document.createElement('div');
+        addLbl.textContent = 'Da aggiungere:';
+        addLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:8px 0 2px;';
+        box.appendChild(addLbl);
+        st.add.forEach(function (p, i) {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
+          const nm = document.createElement('span');
+          const _codeShown = p.codice || p.codiceCliente || '';
+          nm.textContent = '➕ ' + p.nome + (_codeShown ? ' (' + _codeShown + ')' : ' (senza codice)');
+          nm.style.cssText = 'flex:1;font-size:.84rem;color:#15803d;';
+          const x = document.createElement('button');
+          x.type = 'button';
+          x.textContent = '✕';
+          x.title = 'Togli dalla lista';
+          x.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
+          x.disabled = st.busy;
+          x.addEventListener('click', function () { if (st.busy) return; st.add.splice(i, 1); staffCalRenderPlayersEditor(); });
+          row.appendChild(nm);
+          row.appendChild(x);
+          box.appendChild(row);
+        });
+      }
     }
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;';
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.textContent = '➕ Aggiungi giocatore';
-    addBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
-    addBtn.disabled = st.busy;
-    addBtn.addEventListener('click', function() { if (!st.busy) staffCalPlayersAdd(); });
+    if (st.hasPlayers) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.textContent = '➕ Aggiungi giocatore';
+      addBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
+      addBtn.disabled = st.busy;
+      addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
+      actions.appendChild(addBtn);
+    }
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.textContent = '✓ Salva';
     saveBtn.style.cssText = 'font-size:.78rem;padding:5px 12px;border-radius:8px;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;';
     saveBtn.disabled = st.busy;
-    saveBtn.addEventListener('click', function() { if (!st.busy) staffCalPlayersSave(); });
+    saveBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersSave(); });
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.textContent = '✗ Chiudi';
     closeBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;';
     closeBtn.disabled = st.busy;
-    closeBtn.addEventListener('click', function() {
+    closeBtn.addEventListener('click', function () {
       if (st.busy) return;
       staffCalPlayersState = null;
-      svcAddMessage('system', '👥 Modifica giocatori chiusa.');
+      svcAddMessage('system', '📝 Modifica chiusa.');
     });
-    actions.appendChild(addBtn);
     actions.appendChild(saveBtn);
     actions.appendChild(closeBtn);
     box.appendChild(actions);
@@ -34469,53 +34577,65 @@ Per confermare scrivi ELIMINA.`);
   async function staffCalPlayersSave() {
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
-    const remove = st.roster.filter(function(p) { return st.remove[p.idx]; }).map(function(p) { return p.nome; });
-    const add = st.add.map(function(p) {
-      const o = { nome: p.nome };
-      if (p.codice) o.codice = p.codice;
-      if (p.codiceCliente) o.codiceCliente = p.codiceCliente;
-      return o;
-    });
-    if (!add.length && !remove.length) {
-      svcAddMessage('system', 'ℹ️ Nessuna modifica ai giocatori.');
+
+    const moveChanged = _staffCalEditorMoveChanged(st);
+    const durMin = Math.max(0, _staffCalToMin(st.mOraFin) - _staffCalToMin(st.mOraIni));
+    if (moveChanged && durMin < STAFF_CAL_SLOT_MIN) {
+      svcAddMessage('system', '⚠️ Orario di fine non valido: deve essere dopo l\'inizio.', 'error');
       return;
     }
+    const remove = st.hasPlayers ? st.roster.filter(function (p) { return st.remove[p.idx]; }).map(function (p) { return p.nome; }) : [];
+    const addArr = st.hasPlayers ? st.add.map(function (p) { const o = { nome: p.nome }; if (p.codice) o.codice = p.codice; if (p.codiceCliente) o.codiceCliente = p.codiceCliente; return o; }) : [];
+    const playersChanged = addArr.length || remove.length;
+
+    if (!moveChanged && !playersChanged) {
+      svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
+      return;
+    }
+    if (moveChanged && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
+      const proceed = confirm('⚠️ La destinazione (Campo ' + st.mCampo + ' · ' + st.mOraIni + '–' + st.mOraFin + ' del ' + st.mIso.split('-').reverse().join('/') + ') sembra già occupata.\n\nProcedere comunque?');
+      if (!proceed) return;
+    }
+    const parts = [];
+    if (moveChanged) parts.push('Sposta → Campo ' + st.mCampo + ' · ' + st.mIso.split('-').reverse().join('/') + ' · ' + st.mOraIni + '–' + st.mOraFin);
+    if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
+    if (!confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
+
     st.busy = true;
     staffCalRenderPlayersEditor();
-    const inProgress = svcAddMessage('system', '⏳ Aggiorno i giocatori su Matchpoint…');
+    const inProgress = svcAddMessage('system', '⏳ Salvo le modifiche su Matchpoint…');
     let _sec = 0;
-    const _timer = setInterval(function() {
-      _sec += 1;
-      const last = inProgress.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '⏳ Aggiorno i giocatori su Matchpoint… (' + _sec + 's)';
-    }, 1000);
+    const _timer = setInterval(function () { _sec += 1; const last = inProgress.querySelector(':scope > div:last-child'); if (last) last.innerHTML = '⏳ Salvo le modifiche su Matchpoint… (' + _sec + 's)'; }, 1000);
+
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare i giocatori della partita');
-      const players = {};
-      if (add.length) players.add = add;
-      if (remove.length) players.remove = remove;
-      const _editSaveCtrl = new AbortController();
-      const _editSaveTo = setTimeout(function() { _editSaveCtrl.abort(); }, 200000);
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+      const payload = { campo: st.origCampo, data: st.origIso, ora: st.origOra };
+      if (moveChanged) payload.move = { campo: st.mCampo, data: st.mIso, oraInizio: st.mOraIni, oraFine: st.mOraFin };
+      if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
+
+      const _ctrl = new AbortController();
+      const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify({ campo: st.campo, data: st.isoDate, ora: st.ora, players: players }),
-        signal: _editSaveCtrl.signal,
+        body: JSON.stringify(payload),
+        signal: _ctrl.signal,
       });
       const respText = await response.text();
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       clearInterval(_timer);
-      clearTimeout(_editSaveTo);
+      clearTimeout(_to);
+
       if (response.ok && data && data.ok !== false) {
         const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-        const nomi = finalRoster ? finalRoster.map(function(p) { return p.nome; }).filter(Boolean).join(', ') : null;
-        if (nomi != null) staffCalUpdateLocalPlayers(st.isoDate, st.campo, st.ora, nomi);
-        svcAddMessage('system',
-          '✅ <strong>Giocatori aggiornati</strong>: Campo ' + st.campo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.ora +
-          (nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''),
-          'ok');
+        _staffCalApplyLocalEdit(st, moveChanged, durMin, finalRoster);
+        const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
+        const dest = moveChanged
+          ? ('Campo ' + st.mCampo + ' \xb7 ' + st.mIso.split('-').reverse().join('/') + ' \xb7 ' + st.mOraIni + '–' + st.mOraFin)
+          : ('Campo ' + st.origCampo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.origOra);
+        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + dest + (st.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
         staffCalPlayersState = null;
         renderStaffCalendar();
       } else {
