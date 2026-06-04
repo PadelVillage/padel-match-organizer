@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.630 — Chat: la scheda in testa risalta (barra accent a sinistra)
+- Nella colonna chat del Calendario la scheda più recente (in cima) ora si distingue nettamente dalle altre grazie a una barra accent a sinistra + un leggero sfondo accent. Realizzato in CSS puro su `#svcChatMessages > .svc-msg:first-child`, quindi l'evidenziazione si sposta da sola sulla nuova scheda quando arriva un messaggio. Non altera il colore-tipo delle schede (verde ok / ambra conferma / accent flusso), che resta visibile. Nessun JavaScript. Solo app.
+
 ## v5.629 — Editor giocatori: niente più blocco infinito (timeout + messaggio chiaro)
 - Le chiamate dell'editor 👥 (lettura e salvataggio giocatori partita) non avevano timeout: se il worker Matchpoint era lento o si piantava, l'interfaccia restava col contatore all'infinito e si era costretti a ricaricare. Aggiunto un timeout lato app: 90s sulla lettura, 200s sul salvataggio. Allo scadere l'editor si sblocca e mostra un messaggio dedicato; sul salvataggio avvisa che la modifica potrebbe essere già stata applicata (ricaricare e controllare prima di ritentare, per non duplicare). I 200s sono volutamente sopra il guardiano della coda del worker (180s), così l'eventuale errore reale del worker emerge invece di restare nascosto. Solo app; edge e worker invariati.
 
