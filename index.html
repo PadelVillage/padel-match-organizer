@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.642';
+    const APP_VERSION = '5.643';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34091,13 +34091,26 @@ Per confermare scrivi ELIMINA.`);
             edBtn.textContent = '📝';
             edBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalEditPlayers(_iso, _campo, _ora, _nome, _durata, _tipo); });
             hdr.appendChild(edBtn);
+          } else {
+            const _iso = isoDate, _campo = f, _ora = hour;
+            const vbtn = document.createElement('button');
+            vbtn.type = 'button';
+            vbtn.className = 'staff-cal-localdel-btn';
+            vbtn.title = 'Vedi giocatori da Matchpoint';
+            vbtn.textContent = '👁';
+            vbtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalViewMatchpointPlayers(_iso, _campo, _ora); });
+            hdr.appendChild(vbtn);
           }
           const timeDiv = document.createElement('div');
           timeDiv.className = 'booking-time';
           timeDiv.textContent = hour + ' – ' + _staffCalEndTime(hour, slot.durata);
           const playersDiv = document.createElement('div');
           playersDiv.className = 'booking-players';
-          playersDiv.textContent = slot.nome || '';
+          const _pl = isMatchpoint ? _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)] : null;
+          if (_pl && _pl.loading) playersDiv.textContent = '⏳ ' + (slot.nome || '');
+          else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join(', ') : (slot.nome || '(nessun giocatore)');
+          else if (_pl && _pl.error) playersDiv.textContent = (slot.nome || '') + ' ⚠️';
+          else playersDiv.textContent = slot.nome || '';
           block.appendChild(hdr);
           block.appendChild(timeDiv);
           if (hpx > 45) block.appendChild(playersDiv);
@@ -34168,7 +34181,11 @@ Per confermare scrivi ELIMINA.`);
         if (entry.nome) {
           const playersEl = document.createElement('div');
           playersEl.className = 'agenda-card-players';
-          playersEl.textContent = entry.nome;
+          const _plA = (entry.tipo !== 'staff-booking') ? _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])] : null;
+          if (_plA && _plA.loading) playersEl.textContent = '⏳ ' + entry.nome;
+          else if (_plA && Array.isArray(_plA.names)) playersEl.textContent = _plA.names.length ? _plA.names.join(', ') : (entry.nome || '(nessun giocatore)');
+          else if (_plA && _plA.error) playersEl.textContent = entry.nome + ' ⚠️';
+          else playersEl.textContent = entry.nome;
           card.appendChild(playersEl);
         }
         if (entry.tipo !== 'staff-booking') {
@@ -34176,6 +34193,14 @@ Per confermare scrivi ELIMINA.`);
           badge.className = 'agenda-card-mp-badge';
           badge.textContent = '🔒 Matchpoint · Sola lettura';
           card.appendChild(badge);
+          const _ivo = slots[si], _icp = entry.campo, _iis = isoDate;
+          const vbtn = document.createElement('button');
+          vbtn.type = 'button';
+          vbtn.className = 'staff-cal-localdel-btn';
+          vbtn.title = 'Vedi giocatori da Matchpoint';
+          vbtn.textContent = '👁 Giocatori';
+          vbtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalViewMatchpointPlayers(_iis, _icp, _ivo); });
+          card.appendChild(vbtn);
         } else {
           const delBtn = document.createElement('button');
           delBtn.type = 'button';
@@ -34310,6 +34335,47 @@ Per confermare scrivi ELIMINA.`);
       _staffCalAddSuppressed(st.origIso, st.origCampo, st.origOra);
       _staffCalClearSuppressed(st.mIso, st.mCampo, st.mOraIni);
     }
+  }
+
+  // ── Vedi giocatori delle prenotazioni Matchpoint (lettura a richiesta) ──────
+  // I dati sincronizzati portano solo l'intestatario; l'elenco completo sta nella
+  // scheda Matchpoint e va letto a richiesta (qualche secondo). Lo teniamo in cache
+  // in memoria (per la sessione) così la card lo mostra dopo il click su 👁.
+  const _staffCalMpPlayers = {};
+  function _staffCalMpKey(iso, campo, ora) {
+    return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
+  }
+  async function staffCalViewMatchpointPlayers(iso, campo, ora) {
+    const key = _staffCalMpKey(iso, campo, ora);
+    const cur = _staffCalMpPlayers[key];
+    if (cur && cur.loading) return;
+    _staffCalMpPlayers[key] = { loading: true };
+    renderStaffCalendar();
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della prenotazione');
+      const _ctrl = new AbortController();
+      const _to = setTimeout(function () { _ctrl.abort(); }, 90000);
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ campo: Number(String(campo).replace(/\D/g, '')) || campo, data: iso, ora: ora, read: true }),
+        signal: _ctrl.signal,
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      clearTimeout(_to);
+      if (response.ok && data && data.ok !== false) {
+        const roster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : [];
+        _staffCalMpPlayers[key] = { names: roster.map(function (p) { return p.nome; }).filter(Boolean) };
+      } else {
+        _staffCalMpPlayers[key] = { error: true };
+      }
+    } catch (err) {
+      _staffCalMpPlayers[key] = { error: true };
+    }
+    renderStaffCalendar();
   }
 
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
