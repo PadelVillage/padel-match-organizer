@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.631';
+    const APP_VERSION = '5.632';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34091,7 +34091,7 @@ Per confermare scrivi ELIMINA.`);
             mvBtn.textContent = '↔';
             mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
             hdr.appendChild(mvBtn);
-            if ((slot.tipoReale || 'partita') === 'partita') {
+            if (['partita', 'lezione'].includes(slot.tipoReale || 'partita')) {
               const pgBtn = document.createElement('button');
               pgBtn.type = 'button';
               pgBtn.className = 'staff-cal-localdel-btn';
@@ -34201,7 +34201,7 @@ Per confermare scrivi ELIMINA.`);
           mvBtn.textContent = '↔ Sposta';
           mvBtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalStartMove(_iso, _campo, _ora, _nome, _durata, _tipo); });
           card.appendChild(mvBtn);
-          if ((entry.tipoReale || 'partita') === 'partita') {
+          if (['partita', 'lezione'].includes(entry.tipoReale || 'partita')) {
             const pgBtn = document.createElement('button');
             pgBtn.type = 'button';
             pgBtn.className = 'staff-cal-localdel-btn';

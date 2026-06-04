@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.632 — Lezioni: abilitato il bottone 👥 per modificare gli allievi
+- Il bottone 👥 (aggiungi/rimuovi giocatori) ora compare anche sulle card delle lezioni, oltre che sulle partite, in entrambe le viste (griglia e agenda). Gli allievi sono gli stessi soci del DB. Le manutenzioni restano escluse (niente partecipanti). Richiede il supporto lezioni nel worker (già in produzione). Solo app.
+
 ## v5.631 — Giocatori: la scheda attiva torna in cima dopo la disambiguazione
 - Aggiungendo giocatori, quando un nome è ambiguo compare la scheda "Quale «…»?" in cima alla chat. Dopo la scelta, la scheda dello step attivo (la "Chi gioca?" in creazione, la card "Giocatori partita" nell'editor 👥) ora torna in cima invece di restare sotto la disambiguazione, così l'operatore continua a lavorare dall'alto. Vale per entrambi i flussi (creazione ed editor). Solo app.
 
