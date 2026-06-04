@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.634 — Editor giocatori: il chip "Da aggiungere" mostra il Codice cliente
+- Il chip di un giocatore in attesa di salvataggio nell'editor 👥 mostrava "(senza codice)" anche quando il Codice cliente (memberId, es. 000005) era presente, perché l'etichetta guardava solo l'id interno Matchpoint (matchpointIdInterno, quasi sempre vuoto). Ora mostra il primo codice disponibile — id interno o, in mancanza, Codice cliente — e tiene "(senza codice)" solo quando manca davvero ogni codice (socio creato in-app o testo libero). Solo etichetta: nessun cambio di logica, il codiceCliente era già passato al worker da v5.633. Solo app.
+
 ## v5.633
 - Editor giocatori: l'app passa al worker il Codice cliente (memberId, es. 000005) come `codiceCliente`, così Matchpoint identifica il socio dalla riga "Codice-Nome" della tendina ed evita gli omonimi. Additivo: se il Codice manca, resta l'aggiunta per nome come prima.
 
