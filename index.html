@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.646';
+    const APP_VERSION = '5.647';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34005,7 +34005,7 @@ Per confermare scrivi ELIMINA.`);
     } else {
       gridWrap.style.display = 'none';
       agendaWrap.style.display = '';
-      _staffCalBuildAgenda(isoDate);
+      _staffCalBuildMap(isoDate);
     }
   }
 
@@ -34270,6 +34270,159 @@ Per confermare scrivi ELIMINA.`);
       empty.innerHTML = 'Nessuna prenotazione.<br><span style="font-size:.78rem">Tutte le fasce sono libere.</span>';
       body.appendChild(empty);
     }
+  }
+
+  function _staffCalBuildMap(isoDate) {
+    const tabsEl = document.getElementById('staffCalAgendaTabs');
+    if (tabsEl) tabsEl.style.display = 'none';
+    const body = document.getElementById('staffCalAgendaBody');
+    if (!body) return;
+    body.innerHTML = '';
+
+    const FIELD_COLORS = ['#f87171', '#fbbf24', '#34d399', '#818cf8'];
+    const MAP_START = 480;  // 08:00 in minutes
+    const MAP_END = 1350;   // 22:30 in minutes
+    const ROW_H = 24;       // px per 30-min slot
+    const totalH = ((MAP_END - MAP_START) / 30) * ROW_H;
+
+    function _minToHHMM(m) {
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '00');
+    }
+    function _slotToMin(hhmm) {
+      const parts = hhmm.split(':');
+      return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || '0', 10);
+    }
+
+    // Build per-field booking data
+    const fieldSlots = { 1: [], 2: [], 3: [], 4: [] };
+    for (const s of staffCalGetSlots(isoDate)) {
+      const c = s.campo;
+      if (c < 1 || c > 4) continue;
+      const startMin = _slotToMin(s.ora);
+      const endMin = startMin + (s.durata || 90);
+      fieldSlots[c].push({ startMin, endMin, tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', ora: s.ora, durata: s.durata || 90 });
+    }
+
+    const TYPE_STYLE = {
+      partita:      { bg: '#dbeafe', tx: '#1e40af' },
+      lezione:      { bg: '#fde9c8', tx: '#854f0b' },
+      manutenzione: { bg: '#e5e9ee', tx: '#475569' },
+    };
+    function _typeStyle(t) { return TYPE_STYLE[String(t || '').toLowerCase()] || TYPE_STYLE.partita; }
+
+    // Outer grid
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:34px 1fr 1fr 1fr 1fr;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;';
+
+    // Header: corner + C1..C4
+    const corner = document.createElement('div');
+    corner.style.cssText = 'font-size:11px;font-weight:600;color:#64748b;padding:6px 0;border-bottom:1px solid #e2e8f0;background:#fafbfc;';
+    grid.appendChild(corner);
+    for (let c = 1; c <= 4; c++) {
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:11px;font-weight:600;color:#64748b;text-align:center;padding:6px 0;border-bottom:1px solid #e2e8f0;background:#fafbfc;border-left:1px solid #e2e8f0;';
+      const dot = document.createElement('span');
+      dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:middle;background:' + FIELD_COLORS[c - 1] + ';';
+      hdr.appendChild(dot);
+      hdr.appendChild(document.createTextNode('C' + c));
+      grid.appendChild(hdr);
+    }
+
+    // Time gutter
+    const gut = document.createElement('div');
+    gut.style.cssText = 'position:relative;height:' + totalH + 'px;border-right:1px solid #e2e8f0;';
+    for (let h = 8; h <= 22; h++) {
+      const top = ((h * 60 - MAP_START) / 30) * ROW_H;
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'position:absolute;left:0;right:0;font-size:9.5px;color:#94a3b8;text-align:right;padding-right:4px;transform:translateY(-6px);top:' + top + 'px;';
+      lbl.textContent = String(h).padStart(2, '0') + ':00';
+      gut.appendChild(lbl);
+    }
+    grid.appendChild(gut);
+
+    // Field columns
+    for (let c = 1; c <= 4; c++) {
+      const col = document.createElement('div');
+      col.style.cssText = 'position:relative;height:' + totalH + 'px;border-left:1px solid #e2e8f0;background:repeating-linear-gradient(#fff,#fff 23px,#eef1f4 23px,#eef1f4 24px);';
+
+      const booked = fieldSlots[c].slice().sort(function(a, b) { return a.startMin - b.startMin; });
+
+      // Render free intervals
+      let cursor = MAP_START;
+      for (const b of booked) {
+        const bs = Math.max(MAP_START, b.startMin);
+        if (bs > cursor) {
+          const top = ((cursor - MAP_START) / 30) * ROW_H;
+          const hgt = ((bs - cursor) / 30) * ROW_H - 2;
+          if (hgt >= 2) {
+            const seg = document.createElement('div');
+            seg.style.cssText = 'position:absolute;left:2px;right:2px;top:' + top + 'px;height:' + hgt + 'px;border-radius:5px;background:#dcfce7;color:#166534;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;cursor:pointer;';
+            if (hgt >= 36) seg.textContent = 'Libero';
+            (function(_iso, _campo, _ora) {
+              seg.addEventListener('click', function() { staffCalClickFree(_iso, _campo, _ora); });
+            })(isoDate, c, _minToHHMM(cursor));
+            col.appendChild(seg);
+          }
+        }
+        cursor = Math.max(cursor, b.endMin);
+      }
+      if (cursor < MAP_END) {
+        const top = ((cursor - MAP_START) / 30) * ROW_H;
+        const hgt = ((MAP_END - cursor) / 30) * ROW_H - 2;
+        if (hgt >= 2) {
+          const seg = document.createElement('div');
+          seg.style.cssText = 'position:absolute;left:2px;right:2px;top:' + top + 'px;height:' + hgt + 'px;border-radius:5px;background:#dcfce7;color:#166534;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;cursor:pointer;';
+          if (hgt >= 36) seg.textContent = 'Libero';
+          (function(_iso, _campo, _ora) {
+            seg.addEventListener('click', function() { staffCalClickFree(_iso, _campo, _ora); });
+          })(isoDate, c, _minToHHMM(cursor));
+          col.appendChild(seg);
+        }
+      }
+
+      // Render booked blocks
+      for (const b of booked) {
+        if (b.startMin >= MAP_END) continue;
+        const clampedStart = Math.max(MAP_START, b.startMin);
+        const clampedEnd = Math.min(b.endMin, MAP_END);
+        const top = ((clampedStart - MAP_START) / 30) * ROW_H;
+        const hgt = Math.max(16, ((clampedEnd - clampedStart) / 30) * ROW_H - 2);
+        const isMP = b.tipo !== 'staff-booking';
+        const tipoKey = isMP ? (b.tipo || 'partita') : (b.tipoReale || 'partita');
+        const cs = _typeStyle(tipoKey);
+        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo) + (isMP ? ' 🔒' : '');
+
+        const seg = document.createElement('div');
+        seg.style.cssText = 'position:absolute;left:2px;right:2px;top:' + top + 'px;height:' + hgt + 'px;border-radius:5px;overflow:hidden;cursor:pointer;background:' + cs.bg + ';color:' + cs.tx + ';display:flex;flex-direction:column;justify-content:center;padding:2px 5px;line-height:1.12;';
+        const bEl = document.createElement('b');
+        bEl.style.cssText = 'font-size:11px;font-weight:600;';
+        bEl.textContent = lbl;
+        seg.appendChild(bEl);
+        const smEl = document.createElement('small');
+        smEl.style.cssText = 'font-size:9px;opacity:.85;';
+        smEl.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata);
+        seg.appendChild(smEl);
+
+        (function(_iso, _campo, _ora, _nome, _durata, _tipo, _isMP) {
+          if (_isMP) {
+            seg.addEventListener('click', function() { staffCalViewMatchpointPlayers(_iso, _campo, _ora); });
+          } else {
+            seg.addEventListener('click', function() { staffCalEditPlayers(_iso, _campo, _ora, _nome, _durata, _tipo); });
+          }
+        })(isoDate, c, b.ora, b.nome, b.durata, b.tipoReale, isMP);
+
+        col.appendChild(seg);
+      }
+
+      grid.appendChild(col);
+    }
+
+    body.appendChild(grid);
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'font-size:11px;color:#94a3b8;margin:8px 2px 0;text-align:center;line-height:1.4;';
+    hint.textContent = "Tocca un blocco per i dettagli \xB7 tocca un’area verde per prenotare.";
+    body.appendChild(hint);
   }
 
   // ── Spostamento prenotazione STAFF dal calendario (solo card ✏️) ─────────────
