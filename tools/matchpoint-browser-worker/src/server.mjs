@@ -4352,6 +4352,13 @@ async function editBookingWithBrowser(input = {}) {
       fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
     ));
 
+    // Repeater partecipanti dipendente dal tipo scheda: partita = WUCUsuarioPartida,
+    // lezione = WUCUsuarioClase. Stessi soci, stessa ricerca per nome; cambia solo il
+    // contenitore in pagina. ADD_PFX = controllo "aggiungi" del tipo giusto.
+    const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
+    const ADD_PFX = `#CC_Datos_FormViewFicha_${RP}_Anyadir_`;
+    diagnostic.steps.push('repeater_mode:' + RP);
+
     // === LETTURA SOLA (read) — restituisce i partecipanti attuali senza modificare nulla ===
     if (readOnly) {
       diagnostic.steps.push('read_only_roster');
@@ -4359,16 +4366,16 @@ async function editBookingWithBrowser(input = {}) {
       let ridx = 0;
       while (true) {
         const nomeInput = page.locator(
-          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_TextBoxNombreValor_${ridx}"]`,
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxNombreValor_${ridx}"]`,
         );
         if (!(await nomeInput.count().catch(() => 0))) break;
         const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
         const idClienteInput = page.locator(
-          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_HiddenFieldIdCliente_${ridx}"]`,
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_HiddenFieldIdCliente_${ridx}"]`,
         );
         const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
         const costoInput = page.locator(
-          `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`,
+          `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`,
         );
         const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
         partecipantiLettura.push({ idx: String(ridx), nome, idCliente, costo });
@@ -4475,7 +4482,7 @@ async function editBookingWithBrowser(input = {}) {
           let idx = 0;
           while (true) {
             const nomeInput = page.locator(
-              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+              `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
             const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
@@ -4483,7 +4490,7 @@ async function editBookingWithBrowser(input = {}) {
             if (doRemove) {
               diagnostic.steps.push(`elimina:${nomeVal}`);
               const elimBtn = page.locator(
-                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_LinkButtonEliminar_${idx}`,
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_LinkButtonEliminar_${idx}`,
               );
               await elimBtn.first().click({ timeout: 8000 });
               await page.waitForTimeout(1200);
@@ -4506,7 +4513,7 @@ async function editBookingWithBrowser(input = {}) {
 
       // AGGIUNTE
       for (const p of (players.add || [])) {
-        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, undefined, p.codice);
+        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
@@ -4514,13 +4521,13 @@ async function editBookingWithBrowser(input = {}) {
           let idx = 0;
           while (true) {
             const nomeInput = page.locator(
-              `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+              `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
             const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
             if (nomeVal === p.nome.toLowerCase().trim()) {
               const costoField = page.locator(
-                `#CC_Datos_FormViewFicha_RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}`,
+                `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxCargoReserva_${idx}`,
               );
               if (await costoField.count().catch(() => 0)) {
                 await costoField.first().fill(String(p.costo), { timeout: 5000 });
@@ -4590,16 +4597,16 @@ async function editBookingWithBrowser(input = {}) {
     let idx = 0;
     while (true) {
       const nomeInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
       );
       if (!(await nomeInput.count().catch(() => 0))) break;
       const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
       const idClienteInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
       );
       const idCliente = (await idClienteInput.first().inputValue().catch(() => '')).trim();
       const costoInput = page.locator(
-        `input[id*="RepeaterParticipantes_WUCUsuarioPartida_Listado_${idx}_TextBoxCargoReserva_${idx}"]`,
+        `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxCargoReserva_${idx}"]`,
       );
       const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
       partecipantiFinali.push({ idx: String(idx), nome, idCliente, costo });
