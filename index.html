@@ -7037,7 +7037,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.643';
+    const APP_VERSION = '5.644';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34093,11 +34093,13 @@ Per confermare scrivi ELIMINA.`);
             hdr.appendChild(edBtn);
           } else {
             const _iso = isoDate, _campo = f, _ora = hour;
+            const _plBtn = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)];
             const vbtn = document.createElement('button');
             vbtn.type = 'button';
             vbtn.className = 'staff-cal-localdel-btn';
             vbtn.title = 'Vedi giocatori da Matchpoint';
-            vbtn.textContent = '👁';
+            vbtn.textContent = (_plBtn && _plBtn.loading) ? '⏳' : '👁';
+            vbtn.disabled = !!(_plBtn && _plBtn.loading);
             vbtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalViewMatchpointPlayers(_iso, _campo, _ora); });
             hdr.appendChild(vbtn);
           }
@@ -34113,7 +34115,7 @@ Per confermare scrivi ELIMINA.`);
           else playersDiv.textContent = slot.nome || '';
           block.appendChild(hdr);
           block.appendChild(timeDiv);
-          if (hpx > 45) block.appendChild(playersDiv);
+          if (hpx > 45 || (isMatchpoint && _pl)) block.appendChild(playersDiv);
           if (isMatchpoint && hpx > 65) {
             const badge = document.createElement('div');
             badge.className = 'lock-badge';
@@ -34178,7 +34180,7 @@ Per confermare scrivi ELIMINA.`);
         const lbl = _staffCalTipoLabel(entry.tipoReale || entry.tipo);
         typeEl.innerHTML = ico + '&nbsp;' + lbl;
         card.appendChild(typeEl);
-        if (entry.nome) {
+        if (entry.nome || (entry.tipo !== 'staff-booking' && _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])])) {
           const playersEl = document.createElement('div');
           playersEl.className = 'agenda-card-players';
           const _plA = (entry.tipo !== 'staff-booking') ? _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])] : null;
@@ -34194,11 +34196,13 @@ Per confermare scrivi ELIMINA.`);
           badge.textContent = '🔒 Matchpoint · Sola lettura';
           card.appendChild(badge);
           const _ivo = slots[si], _icp = entry.campo, _iis = isoDate;
+          const _plBtnA = _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])];
           const vbtn = document.createElement('button');
           vbtn.type = 'button';
           vbtn.className = 'staff-cal-localdel-btn';
           vbtn.title = 'Vedi giocatori da Matchpoint';
-          vbtn.textContent = '👁 Giocatori';
+          vbtn.textContent = (_plBtnA && _plBtnA.loading) ? '⏳ Lettura…' : '👁 Giocatori';
+          vbtn.disabled = !!(_plBtnA && _plBtnA.loading);
           vbtn.addEventListener('click', function(ev) { ev.stopPropagation(); staffCalViewMatchpointPlayers(_iis, _icp, _ivo); });
           card.appendChild(vbtn);
         } else {
