@@ -2649,14 +2649,14 @@
       border-left:1px solid var(--border); border-top:1px solid var(--border);
       height:var(--row-h); position:relative; transition:background .12s;
     }
-    #staffCalV36 .cell.free { cursor:pointer; }
+    #staffCalV36 .cell.free { cursor:pointer; background:#f0fdf4; }
     #staffCalV36 .cell.free::before {
       content:'+'; position:absolute; top:50%; left:50%;
       transform:translate(-50%,-50%); font-size:1.1rem;
-      color:var(--accent); opacity:.18; pointer-events:none;
+      color:#16a34a; opacity:.30; pointer-events:none;
     }
-    #staffCalV36 .cell.free:hover { background:var(--accent-light); }
-    #staffCalV36 .cell.free:hover::before { opacity:.72; }
+    #staffCalV36 .cell.free:hover { background:#dcfce7; }
+    #staffCalV36 .cell.free:hover::before { opacity:.75; }
     #staffCalV36 .cell.occupied { overflow:visible; z-index:2; }
     #staffCalV36 .booking {
       position:absolute; left:3px; right:3px; top:3px;
@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.653';
+    const APP_VERSION = '5.655';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33987,6 +33987,16 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // Palette UNICA per tipo (allineata alla mappa). Colore = tipo; icona 🔒/✏️ = origine.
+  function _staffCalTipoColors(t) {
+    switch (String(t || '').toLowerCase()) {
+      case 'lezione':      return { bg:'#fde9c8', border:'#d97706', text:'#854f0b' };
+      case 'manutenzione': return { bg:'#e5e9ee', border:'#64748b', text:'#475569' };
+      case 'libero':       return { bg:'#dcfce7', border:'#22c55e', text:'#166534' };
+      default:             return { bg:'#dbeafe', border:'#2563eb', text:'#1e40af' }; // partita/torneo
+    }
+  }
+
   // ── Slot annullati di recente (anti-"rinascita" della card) ────────────────
   // Dopo un annullamento riuscito, la cache di occupazione Matchpoint
   // (prenotazioniOccupazione) può restare "vecchia" finché non risincronizza, e la
@@ -34154,6 +34164,12 @@ Per confermare scrivi ELIMINA.`);
           const isMatchpoint = slot.tipo !== 'staff-booking';
           const block = document.createElement('div');
           block.className = 'booking ' + (isMatchpoint ? 'matchpoint' : 'staff');
+          (function(){
+            const tc = _staffCalTipoColors(slot.tipoReale || slot.tipo);
+            block.style.background = tc.bg;
+            block.style.borderColor = tc.border;
+            block.style.color = tc.text;
+          })();
           block.style.height = hpx + 'px';
           const hdr = document.createElement('div');
           hdr.className = 'booking-header';
@@ -36415,11 +36431,13 @@ Per confermare scrivi ELIMINA.`);
     const istruttore = svcFlowState.istruttore || '';
     const playerNames = players.map(function(p) { return (p && typeof p === 'object') ? p.nome : String(p || ''); });
     const allievi = playerNames.length ? playerNames.join(', ') : 'nessuno';
+    const _tcSum = _staffCalTipoColors(isLezione ? 'lezione' : 'partita');
+    const _dotSum = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + _tcSum.bg + ';border:1px solid ' + _tcSum.border + ';margin-right:6px;vertical-align:middle;"></span>';
     const detailRows = isLezione
-      ? '🎾 ' + tipoLabel + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
+      ? _dotSum + '🎾 ' + tipoLabel + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
         '👨‍🏫 Maestro: ' + istruttore + '<br>' +
         '👥 Allievi: ' + allievi + '<br><br>'
-      : '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
+      : _dotSum + '🎾 ' + tipo + ' &nbsp;\xb7&nbsp; ' + durata + "\'<br>" +
         '👥 ' + playerNames.join(', ') + '<br><br>';
     const div = svcAddMessage('system',
       '📋 <strong>Riepilogo prenotazione</strong><br><br>' +
