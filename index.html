@@ -7093,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.665';
+    const APP_VERSION = '5.666';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36285,8 +36285,8 @@ Per confermare scrivi ELIMINA.`);
 
     // Leggibilità: su mobile (<900px) testi/controlli un po' più grandi; desktop invariato.
     const M = (window.innerWidth || 999) < 900;
-    const FS  = { title:M?18:15, label:M?13.5:12, ctrl:M?15:14, btn:M?14.5:13, date:M?14:13, fine:M?13.5:12, chip:M?14:13, sugg:M?14:13, foot:M?15:14, x:M?19:16, plus:M?19:16 };
-    const PAD = { ctrl:M?'9px 11px':'6px 8px', pill:M?'7px 13px':'5px 11px', tipo:M?'8px 13px':'6px 11px', gioc:M?'9px 12px':'7px 10px', foot:M?'10px 16px':'8px 14px', sugg:M?'10px 12px':'8px 10px' };
+    const FS  = { title:M?36:15, label:M?27:12, ctrl:M?30:14, btn:M?29:13, date:M?28:13, fine:M?27:12, chip:M?28:13, sugg:M?28:13, foot:M?30:14, x:M?38:16, plus:M?38:16 };
+    const PAD = { ctrl:M?'12px 14px':'6px 8px', pill:M?'11px 18px':'5px 11px', tipo:M?'12px 18px':'6px 11px', gioc:M?'13px 16px':'7px 10px', foot:M?'15px 22px':'8px 14px', sugg:M?'14px 16px':'8px 10px' };
     const inSel = 'width:100%;font-size:'+FS.ctrl+'px;padding:'+PAD.ctrl+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
 
     const card = document.createElement('div');
@@ -36376,7 +36376,7 @@ Per confermare scrivi ELIMINA.`);
       svcFlowState.players.forEach(function(nm,idx){
         const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:'+FS.chip+'px;color:var(--text);';
         c.appendChild(document.createTextNode((nm && typeof nm==='object') ? nm.nome : nm));
-        const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;';
+        const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:'+(M?22:12)+'px;padding:0 2px;';
         x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
         c.appendChild(x); chips.appendChild(c);
       });
