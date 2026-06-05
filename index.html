@@ -7093,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.666';
+    const APP_VERSION = '5.667';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36417,8 +36417,8 @@ Per confermare scrivi ELIMINA.`);
     giocInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); hideSugg(); addPlayer(); } });
     giocInput.addEventListener('input', renderSuggestions);
     giocInput.addEventListener('blur', function(){ setTimeout(hideSugg, 180); });
-    xBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
-    annBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
+    xBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); svcCloseChat(); });
+    annBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); svcCloseChat(); });
     confBtn.addEventListener('click',function(){
       svcFlowState.ora=oraSel.value; svcFlowState.durata=parseInt(durSel.value,10);
       if (svcFlowState.tipoEngine==='lezione') svcFlowState.istruttore=maestroSel.value;
