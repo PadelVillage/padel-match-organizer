@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.652';
+    const APP_VERSION = '5.653';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36231,8 +36231,8 @@ Per confermare scrivi ELIMINA.`);
         if (tipo === 'Lezione Singola' || tipo === 'Lezione di Gruppo') {
           svcFlowState.tipoLabel = tipo;
           svcFlowState.tipoEngine = 'lezione';
-          svcFlowState.step = 'durata';
-          svcAskDurata(tipo);
+          svcFlowState.step = 'ora';
+          svcAskOraInizio();
           return;
         }
         if (tipo === 'Torneo') {
@@ -36242,12 +36242,54 @@ Per confermare scrivi ELIMINA.`);
           return;
         }
         svcFlowState.tipoEngine = 'partita';
-        svcFlowState.step = 'durata';
-        svcAskDurata(tipo);
+        svcFlowState.step = 'ora';
+        svcAskOraInizio();
       },
       function() { svcCancelFlow(div); }
     );
     div.appendChild(btns);
+    svcSetInputMode('flow-buttons');
+  }
+
+  // Step 1b — ora inizio (tra tipo e durata)
+  function svcAskOraInizio() {
+    svcFlowState.step = 'ora';
+    const slots = staffCalSlots();
+    const current = svcFlowState.ora;
+    const div = svcAddMessage('system',
+      '🕐 <strong>Ora di inizio?</strong><br>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">Predefinita: slot toccato (' + current + '). Modificala se serve.</span>',
+      'flow'
+    );
+    svcFlowState.stepMsg = div;
+    const wrap = document.createElement('div');
+    wrap.className = 'svc-step-buttons';
+    const sel = document.createElement('select');
+    sel.style.cssText = 'font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--border,#cbd5e1);width:100%;max-width:220px;margin-bottom:8px;';
+    if (!slots.includes(current)) {
+      const o = document.createElement('option'); o.value = current; o.textContent = current; o.selected = true; sel.appendChild(o);
+    }
+    slots.forEach(function(t) {
+      const o = document.createElement('option'); o.value = t; o.textContent = t;
+      if (t === current) o.selected = true;
+      sel.appendChild(o);
+    });
+    wrap.appendChild(sel);
+    const ok = document.createElement('button');
+    ok.className = 'svc-btn-step'; ok.type = 'button'; ok.textContent = 'Avanti ›';
+    ok.addEventListener('click', function() {
+      wrap.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+      sel.disabled = true;
+      svcFlowState.ora = sel.value;
+      svcFlowState.step = 'durata';
+      svcAskDurata(svcFlowState.tipo);
+    });
+    wrap.appendChild(ok);
+    const cancel = document.createElement('button');
+    cancel.className = 'svc-btn-step-cancel'; cancel.type = 'button'; cancel.textContent = '✕ Annulla';
+    cancel.addEventListener('click', function() { svcCancelFlow(div); });
+    wrap.appendChild(cancel);
+    div.appendChild(wrap);
     svcSetInputMode('flow-buttons');
   }
 
