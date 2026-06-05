@@ -7090,7 +7090,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.663';
+    const APP_VERSION = '5.664';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34553,11 +34553,6 @@ Per confermare scrivi ELIMINA.`);
     }
 
     body.appendChild(grid);
-
-    const hint = document.createElement('p');
-    hint.style.cssText = 'font-size:11px;color:#94a3b8;margin:8px 2px 0;text-align:center;line-height:1.4;';
-    hint.textContent = "Tocca un blocco per i dettagli \xB7 tocca un’area verde per prenotare.";
-    body.appendChild(hint);
   }
 
   // ── Spostamento prenotazione STAFF dal calendario (solo card ✏️) ─────────────
