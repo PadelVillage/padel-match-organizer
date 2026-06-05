@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.661';
+    const APP_VERSION = '5.662';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34713,7 +34713,7 @@ Per confermare scrivi ELIMINA.`);
         tipoReale: tipoR, hasPlayers: hasPlayers,
         mCampo: campoNum, mIso: isoDate, mOraIni: ora, mOraFin: _staffCalEndTime(ora, durMin),
         roster: Array.isArray(roster) ? roster : [], remove: {}, add: [],
-        msg: null, box: null, busy: false,
+        msg: null, box: null, busy: false, nome: nome,
       };
       const editor = svcAddMessage('system', '', 'flow');
       const box = document.createElement('div');
@@ -34916,6 +34916,13 @@ Per confermare scrivi ELIMINA.`);
     });
     actions.appendChild(saveBtn);
     actions.appendChild(closeBtn);
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.textContent = '🗑 Annulla prenotazione';
+    delBtn.disabled = st.busy;
+    delBtn.style.cssText = 'margin-top:6px;padding:8px 12px;border-radius:8px;border:1px solid #fecaca;background:#fff;color:#b91c1c;font-weight:600;cursor:pointer;width:100%;';
+    delBtn.addEventListener('click', function() { if (st.busy) return; staffCalAskCancel(st.origIso, st.origCampo, st.origOra, st.nome || ''); });
+    actions.appendChild(delBtn);
     box.appendChild(actions);
   }
 
