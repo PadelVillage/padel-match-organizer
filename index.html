@@ -2795,6 +2795,9 @@
       #staffCalV36 .svc-chat-header { order:0; }
       #staffCalV36 .svc-chat-messages { order:1; flex-direction:column-reverse; }
       #staffCalV36 .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
+      #staffCalV36 .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
+      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
+      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
       #staffCalV36 .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       #staffCalV36 .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
       #staffCalV36 .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
@@ -7090,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.664';
+    const APP_VERSION = '5.665';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36141,6 +36144,7 @@ Per confermare scrivi ELIMINA.`);
     const panel = document.getElementById('svcChatPanel');
     const overlay = document.getElementById('svcChatOverlay');
     if (panel) panel.classList.remove('svc-chat-open');
+    if (panel) panel.classList.remove('svc-card-mode');
     if (overlay) overlay.classList.remove('active');
   }
 
@@ -36149,6 +36153,8 @@ Per confermare scrivi ELIMINA.`);
     const send = document.getElementById('svcChatSend');
     const row = document.getElementById('svcChatInputRow');
     if (!input || !send || !row) return;
+    const panel = document.getElementById('svcChatPanel');
+    if (panel) panel.classList.toggle('svc-card-mode', mode === 'flow-summary');
     const locked = (mode === 'flow-buttons' || mode === 'flow-summary');
     input.disabled = locked;
     send.disabled = locked;
@@ -36270,38 +36276,43 @@ Per confermare scrivi ELIMINA.`);
     const ddmm = dateISO.split('-').slice(1).reverse().join('/');
     const FIELD_COLORS = ['#f87171','#fbbf24','#34d399','#818cf8'];
     const TIPI = [
-      { key:'Partita',           engine:'partita', tipo:'partita' },
-      { key:'Lezione Singola',   engine:'lezione', tipo:'lezione' },
-      { key:'Lezione di Gruppo', engine:'lezione', tipo:'lezione' },
-      { key:'Torneo',            engine:null,      tipo:null, disabled:true }
+      { key:'Partita',      engine:'partita', tipo:'partita' },
+      { key:'Lezione',      engine:'lezione', tipo:'lezione' },
+      { key:'Manutenzione', engine:null,      tipo:null, disabled:true },
+      { key:'Torneo',       engine:null,      tipo:null, disabled:true }
     ];
     const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
-    const inSel = 'width:100%;font-size:14px;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
+
+    // Leggibilità: su mobile (<900px) testi/controlli un po' più grandi; desktop invariato.
+    const M = (window.innerWidth || 999) < 900;
+    const FS  = { title:M?18:15, label:M?13.5:12, ctrl:M?15:14, btn:M?14.5:13, date:M?14:13, fine:M?13.5:12, chip:M?14:13, sugg:M?14:13, foot:M?15:14, x:M?19:16, plus:M?19:16 };
+    const PAD = { ctrl:M?'9px 11px':'6px 8px', pill:M?'7px 13px':'5px 11px', tipo:M?'8px 13px':'6px 11px', gioc:M?'9px 12px':'7px 10px', foot:M?'10px 16px':'8px 14px', sugg:M?'10px 12px':'8px 10px' };
+    const inSel = 'width:100%;font-size:'+FS.ctrl+'px;padding:'+PAD.ctrl+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
 
     const card = document.createElement('div');
     card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;';
 
     const head = document.createElement('div'); head.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px;';
     const dot = document.createElement('span'); dot.style.cssText='width:11px;height:11px;border-radius:50%;flex-shrink:0;';
-    const ttl = document.createElement('span'); ttl.style.cssText='font-size:15px;font-weight:700;color:var(--text);'; ttl.textContent='Nuova prenotazione';
-    const xBtn = document.createElement('button'); xBtn.type='button'; xBtn.textContent='✕'; xBtn.style.cssText='margin-left:auto;border:none;background:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:2px 6px;';
+    const ttl = document.createElement('span'); ttl.style.cssText='font-size:'+FS.title+'px;font-weight:700;color:var(--text);'; ttl.textContent='Nuova prenotazione';
+    const xBtn = document.createElement('button'); xBtn.type='button'; xBtn.textContent='✕'; xBtn.style.cssText='margin-left:auto;border:none;background:none;color:var(--text-muted);font-size:'+FS.x+'px;cursor:pointer;padding:2px 6px;';
     head.appendChild(dot); head.appendChild(ttl); head.appendChild(xBtn); card.appendChild(head);
 
-    function lbl(t){ const l=document.createElement('div'); l.textContent=t; l.style.cssText='font-size:12px;color:var(--text-muted);margin-bottom:5px;'; return l; }
+    function lbl(t){ const l=document.createElement('div'); l.textContent=t; l.style.cssText='font-size:'+FS.label+'px;color:var(--text-muted);margin-bottom:5px;'; return l; }
 
     const fCampo=document.createElement('div'); fCampo.style.marginBottom='12px'; fCampo.appendChild(lbl('Campo'));
     const campoRow=document.createElement('div'); campoRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center;';
     const campoBtns=[];
     for (let i=1;i<=4;i++){
       const b=document.createElement('button'); b.type='button';
-      b.style.cssText='display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
+      b.style.cssText='display:inline-flex;align-items:center;gap:6px;font-size:'+FS.btn+'px;padding:'+PAD.pill+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
       const d=document.createElement('span'); d.style.cssText='width:9px;height:9px;border-radius:50%;background:'+FIELD_COLORS[i-1]+';'; b.appendChild(d);
       b.appendChild(document.createTextNode(' '+i));
       const col=FIELD_COLORS[i-1], idx=i;
       b.addEventListener('click',function(){ svcFlowState.campo=idx; campoBtns.forEach(function(x){x.style.background='var(--surface)';x.style.borderColor='var(--border)';x.style.fontWeight='400';}); b.style.background='var(--surface2)'; b.style.borderColor=col; b.style.fontWeight='700'; });
       campoBtns.push(b); campoRow.appendChild(b);
     }
-    const dateSpan=document.createElement('span'); dateSpan.style.cssText='margin-left:auto;font-size:13px;color:var(--text-muted);'; dateSpan.textContent='📅 '+ddmm;
+    const dateSpan=document.createElement('span'); dateSpan.style.cssText='margin-left:auto;font-size:'+FS.date+'px;color:var(--text-muted);'; dateSpan.textContent='📅 '+ddmm;
     campoRow.appendChild(dateSpan); fCampo.appendChild(campoRow); card.appendChild(fCampo);
 
     const fTime=document.createElement('div'); fTime.style.cssText='display:flex;gap:12px;margin-bottom:6px;';
@@ -36313,13 +36324,13 @@ Per confermare scrivi ELIMINA.`);
     const colDur=document.createElement('div'); colDur.style.flex='1'; colDur.appendChild(lbl('Durata'));
     const durSel=document.createElement('select'); durSel.style.cssText=inSel; colDur.appendChild(durSel);
     fTime.appendChild(colOra); fTime.appendChild(colDur); card.appendChild(fTime);
-    const fineRow=document.createElement('div'); fineRow.style.cssText='font-size:12px;color:var(--text-muted);margin-bottom:14px;'; card.appendChild(fineRow);
+    const fineRow=document.createElement('div'); fineRow.style.cssText='font-size:'+FS.fine+'px;color:var(--text-muted);margin-bottom:14px;'; card.appendChild(fineRow);
 
     const fTipo=document.createElement('div'); fTipo.style.marginBottom='14px'; fTipo.appendChild(lbl('Tipo'));
     const tipoRow=document.createElement('div'); tipoRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;'; const tipoBtns=[];
     TIPI.forEach(function(tp){
       const b=document.createElement('button'); b.type='button'; b.textContent=tp.key;
-      b.style.cssText='font-size:13px;padding:6px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
+      b.style.cssText='font-size:'+FS.btn+'px;padding:'+PAD.tipo+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
       if(tp.disabled){ b.disabled=true; b.style.opacity='0.45'; b.style.cursor='not-allowed'; } else { b.addEventListener('click',function(){ selectTipo(tp); }); }
       tipoBtns.push({b:b,tp:tp}); tipoRow.appendChild(b);
     });
@@ -36332,15 +36343,15 @@ Per confermare scrivi ELIMINA.`);
 
     const fGioc=document.createElement('div'); fGioc.style.marginBottom='16px'; const giocLbl=lbl('Giocatori'); fGioc.appendChild(giocLbl);
     const giocRow=document.createElement('div'); giocRow.style.cssText='display:flex;gap:6px;';
-    const giocInput=document.createElement('input'); giocInput.type='text'; giocInput.placeholder='Aggiungi un nome…'; giocInput.style.cssText='flex:1;font-size:14px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
-    const giocAdd=document.createElement('button'); giocAdd.type='button'; giocAdd.textContent='+'; giocAdd.style.cssText='border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:var(--radius-sm);padding:0 12px;font-size:16px;cursor:pointer;';
+    const giocInput=document.createElement('input'); giocInput.type='text'; giocInput.placeholder='Aggiungi un nome…'; giocInput.style.cssText='flex:1;font-size:'+FS.ctrl+'px;padding:'+PAD.gioc+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
+    const giocAdd=document.createElement('button'); giocAdd.type='button'; giocAdd.textContent='+'; giocAdd.style.cssText='border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:var(--radius-sm);padding:0 12px;font-size:'+FS.plus+'px;cursor:pointer;';
     giocRow.appendChild(giocInput); giocRow.appendChild(giocAdd); fGioc.appendChild(giocRow);
     const sugg=document.createElement('div'); sugg.style.cssText='display:none;flex-direction:column;margin-top:6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);max-height:180px;overflow-y:auto;'; fGioc.appendChild(sugg);
     const chips=document.createElement('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;'; fGioc.appendChild(chips); card.appendChild(fGioc);
 
     const foot=document.createElement('div'); foot.style.cssText='display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);';
-    const annBtn=document.createElement('button'); annBtn.type='button'; annBtn.textContent='Annulla'; annBtn.style.cssText='border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer;font-size:14px;';
-    const confBtn=document.createElement('button'); confBtn.type='button'; confBtn.textContent='✓ Conferma prenotazione'; confBtn.style.cssText='flex:1;border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer;font-size:14px;font-weight:700;';
+    const annBtn=document.createElement('button'); annBtn.type='button'; annBtn.textContent='Annulla'; annBtn.style.cssText='border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:'+PAD.foot+';cursor:pointer;font-size:'+FS.foot+'px;';
+    const confBtn=document.createElement('button'); confBtn.type='button'; confBtn.textContent='✓ Conferma prenotazione'; confBtn.style.cssText='flex:1;border-radius:var(--radius-sm);padding:'+PAD.foot+';cursor:pointer;font-size:'+FS.foot+'px;font-weight:700;';
     foot.appendChild(annBtn); foot.appendChild(confBtn); card.appendChild(foot);
     cont.appendChild(card);
 
@@ -36363,7 +36374,7 @@ Per confermare scrivi ELIMINA.`);
     function renderChips(){
       chips.innerHTML='';
       svcFlowState.players.forEach(function(nm,idx){
-        const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:13px;color:var(--text);';
+        const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:'+FS.chip+'px;color:var(--text);';
         c.appendChild(document.createTextNode((nm && typeof nm==='object') ? nm.nome : nm));
         const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;';
         x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
@@ -36382,7 +36393,7 @@ Per confermare scrivi ELIMINA.`);
       list.forEach(function(it){
         const m=it.member;
         const r=document.createElement('button'); r.type='button';
-        r.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:none;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 10px;cursor:pointer;font-size:13px;width:100%;';
+        r.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:none;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text);padding:'+PAD.sugg+';cursor:pointer;font-size:'+FS.sugg+'px;width:100%;';
         const nmEl=document.createElement('span'); nmEl.style.fontWeight='600'; nmEl.textContent=((m.surname||'')+' '+(m.firstName||'')).trim()||(m.name||'');
         const mid=_staffCalPlayerCode(m); const cc=_staffCalClientCode(m);
         const meta=document.createElement('small'); meta.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;';
