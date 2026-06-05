@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.657';
+    const APP_VERSION = '5.658';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36353,8 +36353,16 @@ Per confermare scrivi ELIMINA.`);
         const r=document.createElement('button'); r.type='button';
         r.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:none;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 10px;cursor:pointer;font-size:13px;width:100%;';
         const nmEl=document.createElement('span'); nmEl.style.fontWeight='600'; nmEl.textContent=((m.surname||'')+' '+(m.firstName||'')).trim()||(m.name||'');
-        const lvEl=document.createElement('small'); lvEl.style.color='var(--text-muted)'; lvEl.textContent=(m.level!=null && m.level!=='')?('Liv. '+m.level):'';
-        r.appendChild(nmEl); r.appendChild(lvEl);
+        const mid=_staffCalPlayerCode(m); const cc=_staffCalClientCode(m);
+        const meta=document.createElement('small'); meta.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;';
+        const lvEl=document.createElement('span'); lvEl.style.color='var(--text-muted)'; lvEl.textContent=(m.level!=null && m.level!=='')?('Liv. '+m.level):'';
+        const idEl=document.createElement('span');
+        if (mid) { idEl.textContent='ID '+mid; idEl.style.color='#166534'; idEl.style.fontWeight='600'; }
+        else if (cc) { idEl.textContent='cod. '+cc; idEl.style.color='#166534'; }
+        else { idEl.textContent='⚠ senza ID'; idEl.style.color='#b45309'; idEl.style.fontWeight='600'; }
+        if (lvEl.textContent) meta.appendChild(lvEl);
+        meta.appendChild(idEl);
+        r.appendChild(nmEl); r.appendChild(meta);
         r.addEventListener('mousedown',function(e){ e.preventDefault(); addMember(m); });
         sugg.appendChild(r);
       });
