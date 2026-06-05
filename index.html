@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.651';
+    const APP_VERSION = '5.652';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34965,8 +34965,6 @@ Per confermare scrivi ELIMINA.`);
 
     // Chiudi la schedina: l'operatore torna libero immediatamente.
     staffCalPlayersState = null;
-    // OTTIMISTICO: applico SUBITO lo spostamento in locale così il tabellone si aggiorna all'istante.
-    // Se più sotto Matchpoint dà errore CERTO, la riporto indietro (_staffCalRevertMoveLocal).
     if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); renderStaffCalendar(); }
     const destTxt = moveChanged
       ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
@@ -36464,10 +36462,6 @@ Per confermare scrivi ELIMINA.`);
       svcSetInputMode('normal');
       return;
     }
-    // OTTIMISTICO: mostra SUBITO la card nel calendario, PRIMA di qualsiasi rete
-    // (lo slot è già verificato libero da staffCalFindConflict). In caso di errore la rimuovo.
-    staffCalSaveLocal(parsed);
-    renderStaffCalendar();
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -36497,25 +36491,12 @@ Per confermare scrivi ELIMINA.`);
         }
         renderStaffCalendar();
       } else if (result.status === 'error') {
-        // Creazione fallita davvero: rimuovo la card ottimistica appena inserita.
-        if (typeof safeLoad === 'function' && typeof save === 'function') {
-          const _ex = safeLoad('staffBookings', []);
-          const _f = _ex.filter(function (b) { return !(String(b.data).trim() === parsed.data && Number(String(b.campo).replace(/\D/g, '')) === parsed.campoNum && String(b.ora).trim() === parsed.ora); });
-          if (_f.length !== _ex.length) save('staffBookings', _f);
-        }
-        renderStaffCalendar();
-        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho tolto la prenotazione dal calendario.</span>');
+        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
       } else {
-        svcAddMessage('system', '⏳ Ci sta mettendo pi\xf9 del previsto: la prenotazione \xe8 gi\xe0 mostrata nel calendario ma <strong>non ancora confermata</strong>. Controlla su Matchpoint prima di rifarla (NON confermare due volte).');
+        svcAddMessage('system', '⚠️ Esito NON confermato (timeout). La prenotazione potrebbe NON essere su Matchpoint: controllala su Matchpoint prima di riprovare, per non rischiare doppioni.');
       }
     } catch (err) {
-      // Se è fallito prima/durante l'invio, tolgo la card ottimistica appena mostrata.
-      if (typeof safeLoad === 'function' && typeof save === 'function') {
-        const _ex = safeLoad('staffBookings', []);
-        const _f = _ex.filter(function (b) { return !(String(b.data).trim() === parsed.data && Number(String(b.campo).replace(/\D/g, '')) === parsed.campoNum && String(b.ora).trim() === parsed.ora); });
-        if (_f.length !== _ex.length) { save('staffBookings', _f); renderStaffCalendar(); }
-      }
-      svcAddMessage('system', '❌ Errore: ' + (err.message || err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho tolto la prenotazione dal calendario.</span>');
+      svcAddMessage('system', '❌ Errore: ' + (err.message || err));
     }
     svcFlowState = null;
     svcSetInputMode('normal');
