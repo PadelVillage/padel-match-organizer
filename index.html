@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.655';
+    const APP_VERSION = '5.656';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -35182,7 +35182,7 @@ Per confermare scrivi ELIMINA.`);
   function staffCalClickFree(isoDate, campo, ora) {
     if (staffCalMoveState) { staffCalDoMove(isoDate, campo, ora); return; }
     if (window.innerWidth < 900) svcOpenChat();
-    svcStartBookingFlow(campo, isoDate, ora);
+    svcOpenBookingCard(campo, isoDate, ora);
   }
 
   function staffCalAutoResize(el) {
@@ -36225,6 +36225,136 @@ Per confermare scrivi ELIMINA.`);
     svcFlowState = null;
     svcSetInputMode('normal');
     if (!silent) svcAddMessage('system', '↩️ Operazione annullata.');
+  }
+
+  // ── STEP A: schedina unica (sostituisce la chat a step). svcStartBookingFlow resta per rollback. ──
+  function svcOpenBookingCard(campo, dateISO, ora) {
+    const cont = document.getElementById('svcChatMessages');
+    if (!cont) return;
+    cont.innerHTML = '';
+    svcFlowState = { campo: campo, dateISO: dateISO, ora: ora, players: [], tipoEngine: 'partita', tipo: 'partita', tipoLabel: 'Partita', durata: 90, istruttore: '' };
+    svcSetInputMode('flow-summary');
+
+    const SLOTS = staffCalSlots();
+    const ddmm = dateISO.split('-').slice(1).reverse().join('/');
+    const FIELD_COLORS = ['#f87171','#fbbf24','#34d399','#818cf8'];
+    const TIPI = [
+      { key:'Partita',           engine:'partita', tipo:'partita' },
+      { key:'Lezione Singola',   engine:'lezione', tipo:'lezione' },
+      { key:'Lezione di Gruppo', engine:'lezione', tipo:'lezione' },
+      { key:'Torneo',            engine:null,      tipo:null, disabled:true }
+    ];
+    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
+    const inSel = 'width:100%;font-size:14px;padding:6px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;';
+
+    const head = document.createElement('div'); head.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px;';
+    const dot = document.createElement('span'); dot.style.cssText='width:11px;height:11px;border-radius:50%;flex-shrink:0;';
+    const ttl = document.createElement('span'); ttl.style.cssText='font-size:15px;font-weight:700;color:var(--text);'; ttl.textContent='Nuova prenotazione';
+    const xBtn = document.createElement('button'); xBtn.type='button'; xBtn.textContent='✕'; xBtn.style.cssText='margin-left:auto;border:none;background:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:2px 6px;';
+    head.appendChild(dot); head.appendChild(ttl); head.appendChild(xBtn); card.appendChild(head);
+
+    function lbl(t){ const l=document.createElement('div'); l.textContent=t; l.style.cssText='font-size:12px;color:var(--text-muted);margin-bottom:5px;'; return l; }
+
+    const fCampo=document.createElement('div'); fCampo.style.marginBottom='12px'; fCampo.appendChild(lbl('Campo'));
+    const campoRow=document.createElement('div'); campoRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center;';
+    const campoBtns=[];
+    for (let i=1;i<=4;i++){
+      const b=document.createElement('button'); b.type='button';
+      b.style.cssText='display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
+      const d=document.createElement('span'); d.style.cssText='width:9px;height:9px;border-radius:50%;background:'+FIELD_COLORS[i-1]+';'; b.appendChild(d);
+      b.appendChild(document.createTextNode(' '+i));
+      const col=FIELD_COLORS[i-1], idx=i;
+      b.addEventListener('click',function(){ svcFlowState.campo=idx; campoBtns.forEach(function(x){x.style.background='var(--surface)';x.style.borderColor='var(--border)';x.style.fontWeight='400';}); b.style.background='var(--surface2)'; b.style.borderColor=col; b.style.fontWeight='700'; });
+      campoBtns.push(b); campoRow.appendChild(b);
+    }
+    const dateSpan=document.createElement('span'); dateSpan.style.cssText='margin-left:auto;font-size:13px;color:var(--text-muted);'; dateSpan.textContent='📅 '+ddmm;
+    campoRow.appendChild(dateSpan); fCampo.appendChild(campoRow); card.appendChild(fCampo);
+
+    const fTime=document.createElement('div'); fTime.style.cssText='display:flex;gap:12px;margin-bottom:6px;';
+    const colOra=document.createElement('div'); colOra.style.flex='1'; colOra.appendChild(lbl('Ora inizio'));
+    const oraSel=document.createElement('select'); oraSel.style.cssText=inSel;
+    if (SLOTS.indexOf(ora)===-1){ const o=document.createElement('option'); o.value=ora;o.textContent=ora;o.selected=true; oraSel.appendChild(o); }
+    SLOTS.forEach(function(t){ const o=document.createElement('option'); o.value=t; o.textContent=t; if(t===ora)o.selected=true; oraSel.appendChild(o); });
+    colOra.appendChild(oraSel);
+    const colDur=document.createElement('div'); colDur.style.flex='1'; colDur.appendChild(lbl('Durata'));
+    const durSel=document.createElement('select'); durSel.style.cssText=inSel; colDur.appendChild(durSel);
+    fTime.appendChild(colOra); fTime.appendChild(colDur); card.appendChild(fTime);
+    const fineRow=document.createElement('div'); fineRow.style.cssText='font-size:12px;color:var(--text-muted);margin-bottom:14px;'; card.appendChild(fineRow);
+
+    const fTipo=document.createElement('div'); fTipo.style.marginBottom='14px'; fTipo.appendChild(lbl('Tipo'));
+    const tipoRow=document.createElement('div'); tipoRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;'; const tipoBtns=[];
+    TIPI.forEach(function(tp){
+      const b=document.createElement('button'); b.type='button'; b.textContent=tp.key;
+      b.style.cssText='font-size:13px;padding:6px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
+      if(tp.disabled){ b.disabled=true; b.style.opacity='0.45'; b.style.cursor='not-allowed'; } else { b.addEventListener('click',function(){ selectTipo(tp); }); }
+      tipoBtns.push({b:b,tp:tp}); tipoRow.appendChild(b);
+    });
+    fTipo.appendChild(tipoRow); card.appendChild(fTipo);
+
+    const fMaestro=document.createElement('div'); fMaestro.style.cssText='margin-bottom:14px;display:none;'; fMaestro.appendChild(lbl('Maestro'));
+    const maestroSel=document.createElement('select'); maestroSel.style.cssText=inSel;
+    maestri.forEach(function(m){ const o=document.createElement('option'); o.value=m; o.textContent=m; maestroSel.appendChild(o); });
+    fMaestro.appendChild(maestroSel); card.appendChild(fMaestro);
+
+    const fGioc=document.createElement('div'); fGioc.style.marginBottom='16px'; const giocLbl=lbl('Giocatori'); fGioc.appendChild(giocLbl);
+    const giocRow=document.createElement('div'); giocRow.style.cssText='display:flex;gap:6px;';
+    const giocInput=document.createElement('input'); giocInput.type='text'; giocInput.placeholder='Aggiungi un nome…'; giocInput.style.cssText='flex:1;font-size:14px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
+    const giocAdd=document.createElement('button'); giocAdd.type='button'; giocAdd.textContent='+'; giocAdd.style.cssText='border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:var(--radius-sm);padding:0 12px;font-size:16px;cursor:pointer;';
+    giocRow.appendChild(giocInput); giocRow.appendChild(giocAdd); fGioc.appendChild(giocRow);
+    const chips=document.createElement('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;'; fGioc.appendChild(chips); card.appendChild(fGioc);
+
+    const foot=document.createElement('div'); foot.style.cssText='display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);';
+    const annBtn=document.createElement('button'); annBtn.type='button'; annBtn.textContent='Annulla'; annBtn.style.cssText='border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer;font-size:14px;';
+    const confBtn=document.createElement('button'); confBtn.type='button'; confBtn.textContent='✓ Conferma prenotazione'; confBtn.style.cssText='flex:1;border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer;font-size:14px;font-weight:700;';
+    foot.appendChild(annBtn); foot.appendChild(confBtn); card.appendChild(foot);
+    cont.appendChild(card);
+
+    function rebuildDurata(tipoKey){
+      durSel.innerHTML=''; const list=(SVC_DURATE_PER_TIPO[tipoKey]||[60,90]);
+      list.forEach(function(m){ const o=document.createElement('option'); o.value=m; o.textContent=m+"'"; durSel.appendChild(o); });
+      if(list.indexOf(svcFlowState.durata)===-1) svcFlowState.durata=(list.indexOf(90)>=0?90:list[0]);
+      durSel.value=String(svcFlowState.durata);
+    }
+    function updateFine(){ fineRow.innerHTML='⏱ Fine prevista: <strong style="color:var(--text)">'+svcEndTime(oraSel.value, parseInt(durSel.value,10))+'</strong>'; }
+    function applyAccent(){ const tc=_staffCalTipoColors(svcFlowState.tipoEngine==='lezione'?'lezione':'partita'); dot.style.background=tc.text; confBtn.style.background=tc.bg; confBtn.style.color=tc.text; confBtn.style.border='1px solid '+tc.border; }
+    function selectTipo(tp){
+      svcFlowState.tipoEngine=tp.engine; svcFlowState.tipo=tp.tipo; svcFlowState.tipoLabel=tp.key;
+      tipoBtns.forEach(function(o){ if(o.tp.disabled) return;
+        if(o.tp===tp){ const tc=_staffCalTipoColors(tp.engine==='lezione'?'lezione':'partita'); o.b.style.background=tc.bg; o.b.style.color=tc.text; o.b.style.borderColor=tc.border; o.b.style.fontWeight='700'; }
+        else { o.b.style.background='var(--surface)'; o.b.style.color='var(--text)'; o.b.style.borderColor='var(--border)'; o.b.style.fontWeight='400'; } });
+      const isLez=tp.engine==='lezione'; fMaestro.style.display=isLez?'block':'none'; giocLbl.textContent=isLez?'Allievi':'Giocatori';
+      rebuildDurata(tp.key); updateFine(); applyAccent();
+    }
+    function renderChips(){
+      chips.innerHTML='';
+      svcFlowState.players.forEach(function(nm,idx){
+        const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:13px;color:var(--text);';
+        c.appendChild(document.createTextNode(nm));
+        const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;';
+        x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
+        c.appendChild(x); chips.appendChild(c);
+      });
+    }
+    function addPlayer(){ const v=giocInput.value.trim(); if(v){ svcFlowState.players.push(v); giocInput.value=''; renderChips(); giocInput.focus(); } }
+
+    oraSel.addEventListener('change',function(){ svcFlowState.ora=oraSel.value; updateFine(); });
+    durSel.addEventListener('change',function(){ svcFlowState.durata=parseInt(durSel.value,10); updateFine(); });
+    giocAdd.addEventListener('click',addPlayer);
+    giocInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addPlayer(); } });
+    xBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
+    annBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
+    confBtn.addEventListener('click',function(){
+      svcFlowState.ora=oraSel.value; svcFlowState.durata=parseInt(durSel.value,10);
+      if (svcFlowState.tipoEngine==='lezione') svcFlowState.istruttore=maestroSel.value;
+      confBtn.disabled=true; annBtn.disabled=true; confBtn.style.opacity='0.6';
+      svcConfirmBooking();
+    });
+
+    const initBtn=campoBtns[campo-1]; if(initBtn){ initBtn.style.background='var(--surface2)'; initBtn.style.borderColor=FIELD_COLORS[campo-1]; initBtn.style.fontWeight='700'; }
+    selectTipo(TIPI[0]);
   }
 
   // Step 1 — scelta tipo
