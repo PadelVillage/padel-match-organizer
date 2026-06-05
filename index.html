@@ -2825,6 +2825,8 @@
       .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
       .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
       #staffCalV36 .svc-chat-fab { display:none !important; }
+      /* HOTFIX: calendario a tutto schermo su mobile → nascondi la barra Menu globale solo qui */
+      body.dashboard-view .top-nav-bar { display:none !important; }
     }
 
     @media (max-width:1100px) {
@@ -7084,7 +7086,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.648';
+    const APP_VERSION = '5.649';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
