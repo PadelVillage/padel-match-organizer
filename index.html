@@ -5754,6 +5754,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div>
                 <h3>Calendario campi staff</h3>
                 <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
+                <span id="staffCalCloudStatus" style="font-size:11px;color:#999;margin-top:2px;display:none;">aggiorno…</span>
               </div>
               <div class="staff-cal-date-nav" style="margin-left:auto">
                 <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
@@ -7086,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.650';
+    const APP_VERSION = '5.651';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -9151,7 +9152,7 @@ Grazie.`
         requestAnimationFrame(() => {
           setTimeout(() => {
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
-            if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); }
+            if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
             if (tabName === 'members') displayMembers();
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
@@ -26001,6 +26002,7 @@ Per confermare scrivi ELIMINA.`);
       handleAssessmentPublicDeepLink();
 	      renderInitialDashboard();
 	      try { staffCalInit(); } catch (err) { console.warn('Calendario staff non inizializzato:', err); }
+	      if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud();
 	      renderPlayerAvailabilityPreview();
 	      renderPmoRoutineCenter();
 	      renderPmoAdministration();
@@ -33896,6 +33898,44 @@ Per confermare scrivi ELIMINA.`);
   function staffCalGoToday() {
     const input = document.getElementById('staffCalDate');
     if (input) { input.value = staffCalTodayIso(); renderStaffCalendar(); }
+  }
+
+  let _staffCalCloudRefreshAt = 0;
+  async function staffCalRefreshFromCloud(opts) {
+    try {
+      const force = opts && opts.force;
+      // Gate: only for Supabase-authenticated active staff
+      const supabaseSession = (typeof pmoReadSupabaseStaffSession === 'function') ? pmoReadSupabaseStaffSession() : null;
+      if (!supabaseSession) return;
+      if (!(typeof pmoIsSupabaseSessionFresh === 'function' && pmoIsSupabaseSessionFresh(supabaseSession))) return;
+      if (!(typeof pmoIsStaffProfileActive === 'function' && pmoIsStaffProfileActive(pmoStaffProfile))) return;
+      // Debounce: skip if last pull was less than 60s ago, unless force
+      const now = Date.now();
+      if (!force && now - _staffCalCloudRefreshAt < 60000) return;
+      _staffCalCloudRefreshAt = now;
+      // Show subtle non-blocking status in calendar header
+      const statusEl = document.getElementById('staffCalCloudStatus');
+      if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
+      // Pull-only from cloud (no worker/scrape)
+      const cloud = await pmoLoadMatchpointBookingsFromCloud();
+      // Guard: don't overwrite local data if cloud returns empty occupancy
+      if (!cloud.occupancyBookings.length && prenotazioniOccupazione.length) {
+        if (statusEl) statusEl.style.display = 'none';
+        return;
+      }
+      // Hydrate local arrays silently (direct assign, no alerts/diffs/UI noise)
+      if (cloud.occupancyBookings.length || cloud.bookings.length) {
+        prenotazioni = cloud.bookings;
+        prenotazioniOccupazione = cloud.occupancyBookings;
+        save('prenotazioni', prenotazioni);
+        save('prenotazioniOccupazione', prenotazioniOccupazione);
+        renderStaffCalendar();
+      }
+      if (statusEl) statusEl.style.display = 'none';
+    } catch (err) {
+      console.warn('staffCalRefreshFromCloud:', err);
+      try { const statusEl = document.getElementById('staffCalCloudStatus'); if (statusEl) statusEl.style.display = 'none'; } catch {}
+    }
   }
 
   // Sposta la data dell'input #staffCalDate di `delta` giorni.
