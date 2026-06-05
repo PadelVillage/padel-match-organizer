@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.660';
+    const APP_VERSION = '5.661';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -11268,7 +11268,7 @@ Grazie.`
 
     async function pmoLoadMatchpointBookingsFromCloud() {
       const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
-        p_record_types: ['booking', 'booking_occupancy', 'matchpoint_data'],
+        p_record_types: ['booking', 'booking_occupancy', 'matchpoint_data', 'staff_booking'],
         p_since: null
       }, 'cloud_sync', 'scaricare prenotazioni future Matchpoint dal cloud');
       const list = Array.isArray(rows) ? rows : [];
@@ -11280,7 +11280,13 @@ Grazie.`
         .filter(row => row?.record_type === 'booking_occupancy' && !row.deleted && row.payload)
         .map(row => ({ ...row.payload })));
       const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_bookings_auto_import_last')?.payload || null;
-      return { bookings, occupancyBookings, summary };
+      const staffBookings = list
+        .filter(row => row?.record_type === 'staff_booking' && !row.deleted && row.payload)
+        .map(row => {
+          const p = row.payload || {};
+          return { id: row.local_key || ('cloud-' + (p.data||'') + '-' + (p.campo||'') + '-' + (p.ora||'')), data: p.data, ora: p.ora, oraFine: p.ora_fine, campo: p.campo, nome: p.nome, durata: p.durata, tipo: p.tipo || 'partita', createdAt: row.updated_at || new Date().toISOString() };
+        });
+      return { bookings, occupancyBookings, staffBookings, summary };
     }
 
     async function importMatchpointBookingsAutomatic() {
@@ -33927,6 +33933,17 @@ Per confermare scrivi ELIMINA.`);
       if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
       // Pull-only from cloud (no worker/scrape)
       const cloud = await pmoLoadMatchpointBookingsFromCloud();
+      // Merge staff bookings dal cloud (visibilità cross-dispositivo) — additivo, non distruttivo
+      try {
+        if (Array.isArray(cloud.staffBookings) && cloud.staffBookings.length) {
+          const localSB = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+          const keyOf = b => `${b.data}|${b.campo}|${b.ora}`;
+          const seen = new Set(localSB.map(keyOf));
+          let added = 0;
+          cloud.staffBookings.forEach(b => { if (!seen.has(keyOf(b))) { localSB.push(b); seen.add(keyOf(b)); added++; } });
+          if (added && typeof save === 'function') { save('staffBookings', localSB); renderStaffCalendar(); }
+        }
+      } catch (e) { console.warn('staffCalRefreshFromCloud staffBookings:', e); }
       // Guard: don't overwrite local data if cloud returns empty occupancy
       if (!cloud.occupancyBookings.length && prenotazioniOccupazione.length) {
         if (statusEl) statusEl.style.display = 'none';
