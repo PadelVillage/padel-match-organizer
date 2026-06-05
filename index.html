@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.656';
+    const APP_VERSION = '5.657';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36304,6 +36304,7 @@ Per confermare scrivi ELIMINA.`);
     const giocInput=document.createElement('input'); giocInput.type='text'; giocInput.placeholder='Aggiungi un nome…'; giocInput.style.cssText='flex:1;font-size:14px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
     const giocAdd=document.createElement('button'); giocAdd.type='button'; giocAdd.textContent='+'; giocAdd.style.cssText='border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:var(--radius-sm);padding:0 12px;font-size:16px;cursor:pointer;';
     giocRow.appendChild(giocInput); giocRow.appendChild(giocAdd); fGioc.appendChild(giocRow);
+    const sugg=document.createElement('div'); sugg.style.cssText='display:none;flex-direction:column;margin-top:6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);max-height:180px;overflow-y:auto;'; fGioc.appendChild(sugg);
     const chips=document.createElement('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;'; fGioc.appendChild(chips); card.appendChild(fGioc);
 
     const foot=document.createElement('div'); foot.style.cssText='display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);';
@@ -36332,18 +36333,40 @@ Per confermare scrivi ELIMINA.`);
       chips.innerHTML='';
       svcFlowState.players.forEach(function(nm,idx){
         const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:13px;color:var(--text);';
-        c.appendChild(document.createTextNode(nm));
+        c.appendChild(document.createTextNode((nm && typeof nm==='object') ? nm.nome : nm));
         const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;';
         x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
         c.appendChild(x); chips.appendChild(c);
       });
     }
-    function addPlayer(){ const v=giocInput.value.trim(); if(v){ svcFlowState.players.push(v); giocInput.value=''; renderChips(); giocInput.focus(); } }
+    function hideSugg(){ sugg.style.display='none'; sugg.innerHTML=''; }
+    function addMember(m){ svcFlowState.players.push({ nome:_staffCalPlayerName(m, m.name||playerFullName(m)), codice:_staffCalPlayerCode(m), codiceCliente:_staffCalClientCode(m) }); giocInput.value=''; hideSugg(); renderChips(); giocInput.focus(); }
+    function addPlayer(){ const v=giocInput.value.trim(); if(v){ svcFlowState.players.push({ nome:v, codice:'' }); giocInput.value=''; hideSugg(); renderChips(); giocInput.focus(); } }
+    function renderSuggestions(){
+      const v=giocInput.value.trim();
+      if (v.length<2){ hideSugg(); return; }
+      let list=[]; try { list=findMemberNameSuggestions(v,6)||[]; } catch(e){ list=[]; }
+      if (!list.length){ hideSugg(); return; }
+      sugg.innerHTML='';
+      list.forEach(function(it){
+        const m=it.member;
+        const r=document.createElement('button'); r.type='button';
+        r.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:none;border-bottom:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 10px;cursor:pointer;font-size:13px;width:100%;';
+        const nmEl=document.createElement('span'); nmEl.style.fontWeight='600'; nmEl.textContent=((m.surname||'')+' '+(m.firstName||'')).trim()||(m.name||'');
+        const lvEl=document.createElement('small'); lvEl.style.color='var(--text-muted)'; lvEl.textContent=(m.level!=null && m.level!=='')?('Liv. '+m.level):'';
+        r.appendChild(nmEl); r.appendChild(lvEl);
+        r.addEventListener('mousedown',function(e){ e.preventDefault(); addMember(m); });
+        sugg.appendChild(r);
+      });
+      sugg.style.display='flex';
+    }
 
     oraSel.addEventListener('change',function(){ svcFlowState.ora=oraSel.value; updateFine(); });
     durSel.addEventListener('change',function(){ svcFlowState.durata=parseInt(durSel.value,10); updateFine(); });
     giocAdd.addEventListener('click',addPlayer);
-    giocInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addPlayer(); } });
+    giocInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); hideSugg(); addPlayer(); } });
+    giocInput.addEventListener('input', renderSuggestions);
+    giocInput.addEventListener('blur', function(){ setTimeout(hideSugg, 180); });
     xBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
     annBtn.addEventListener('click',function(){ cont.innerHTML=''; svcFlowState=null; svcSetInputMode('normal'); });
     confBtn.addEventListener('click',function(){
