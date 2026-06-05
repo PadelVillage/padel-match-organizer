@@ -7087,7 +7087,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.658';
+    const APP_VERSION = '5.659';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33913,6 +33913,15 @@ Per confermare scrivi ELIMINA.`);
       const now = Date.now();
       if (!force && now - _staffCalCloudRefreshAt < 60000) return;
       _staffCalCloudRefreshAt = now;
+      // Idrata i soci dal cloud SOLO se non presenti in memoria (caso mobile) → abilita la ricerca giocatori
+      try {
+        if ((force || !Array.isArray(giocatori) || !giocatori.length) && typeof pmoLoadMatchpointMembersFromCloud === 'function') {
+          const cloudM = await pmoLoadMatchpointMembersFromCloud();
+          if (cloudM && Array.isArray(cloudM.members) && cloudM.members.length && typeof applyMatchpointMembersToLocal === 'function') {
+            applyMatchpointMembersToLocal(cloudM.members, { source: 'automatic', message: 'Soci sincronizzati dal cloud (auto-pull calendario).' });
+          }
+        }
+      } catch (e) { console.warn('staffCalRefreshFromCloud members:', e); }
       // Show subtle non-blocking status in calendar header
       const statusEl = document.getElementById('staffCalCloudStatus');
       if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
