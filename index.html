@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.686';
+    const APP_VERSION = '5.687';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34258,7 +34258,21 @@ Per confermare scrivi ELIMINA.`);
     // Nascondi gli slot annullati di recente, anche se la cache di occupazione è vecchia.
     const _supp = _staffCalGetSuppressed();
     if (_supp.size) {
-      return result.filter(r => !_supp.has(_staffCalSuppressKey(isoDate, r.campo, r.ora)));
+      // Una prenotazione staff ATTIVA sullo slot ha la precedenza sulla soppressione: se lo
+      // slot è stato ri-prenotato dopo un annullamento, la soppressione condivisa
+      // (staff_suppress, TTL 30') NON deve nascondere la nuova prenotazione. Per gli slot
+      // soppressi senza prenotazione attiva (annullati) restano nascosti; su quelli
+      // ri-prenotati teniamo solo la card staff e scartiamo l'occupazione stantia. v5.687.
+      const _activeStaff = new Set(
+        result.filter(r => r.tipo === 'staff-booking')
+               .map(r => _staffCalSuppressKey(isoDate, r.campo, r.ora))
+      );
+      return result.filter(r => {
+        const k = _staffCalSuppressKey(isoDate, r.campo, r.ora);
+        if (!_supp.has(k)) return true;                 // slot non soppresso
+        if (_activeStaff.has(k)) return r.tipo === 'staff-booking'; // ri-prenotato: tieni la card staff
+        return false;                                   // soppresso e senza prenotazione: nascondi
+      });
     }
     return result;
   }
