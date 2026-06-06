@@ -7093,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.670';
+    const APP_VERSION = '5.671';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36540,7 +36540,7 @@ Per confermare scrivi ELIMINA.`);
         if (lvEl.textContent) meta.appendChild(lvEl);
         meta.appendChild(idEl);
         r.appendChild(nmEl); r.appendChild(meta);
-        r.addEventListener('mousedown',function(e){ e.preventDefault(); addMember(m); });
+        r.addEventListener('pointerdown',function(e){ e.preventDefault(); addMember(m); });
         sugg.appendChild(r);
       });
       sugg.style.display='flex';
