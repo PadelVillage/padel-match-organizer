@@ -2790,7 +2790,7 @@
       #staffCalV36 .svc-chat-overlay { display:none !important; }
     }
     @media (max-width:899px) {
-      #staffCalV36 .svc-chat-panel { position:fixed; bottom:0; left:0; right:0; height:75vh; max-height:75vh; border-top:2px solid var(--border); border-radius:8px 8px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+      #staffCalV36 .svc-chat-panel { position:fixed; bottom:0; left:0; right:0; height:auto; max-height:85vh; border-top:2px solid var(--border); border-radius:8px 8px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
       #staffCalV36 .svc-chat-panel.svc-chat-open { transform:translateY(0); }
       #staffCalV36 .svc-chat-header { order:0; }
       #staffCalV36 .svc-chat-messages { order:1; flex-direction:column-reverse; }
@@ -7093,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.672';
+    const APP_VERSION = '5.673';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -37116,11 +37116,6 @@ Per confermare scrivi ELIMINA.`);
     if (overlay) overlay.addEventListener('click', svcCloseChat);
     if (sendBtn) sendBtn.addEventListener('click', svcHandleSend);
     if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') svcHandleSend(); });
-    svcAddMessage('system',
-      '👋 <strong>Assistente prenotazioni</strong><br>' +
-      'Clicca una cella libera sul calendario per avviare il flusso guidato.<br>' +
-      '<small style="color:var(--text-muted)">Solo Partita \xe8 attiva in questa tappa (A3a).</small>'
-    );
   })();
 
   // ── Tappa 2: Mobile header + chat bar ──
