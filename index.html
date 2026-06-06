@@ -2795,6 +2795,8 @@
       #staffCalV36 .svc-chat-header { order:0; }
       #staffCalV36 .svc-chat-messages { order:1; flex-direction:column-reverse; }
       #staffCalV36 .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
+      #staffCalV36 .svc-chat-input-row { height:auto !important; min-height:56px; padding:10px 12px !important; }
+      #staffCalV36 .svc-chat-input, #staffCalV36 .svc-chat-send { font-size:21px !important; padding:10px 14px !important; }
       /* ✕ flottante in alto a destra sopra i messaggi: niente più barra-testata bianca */
       #staffCalV36 .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
       #staffCalV36 .svc-chat-header::before { display:none; }
@@ -7113,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.680';
+    const APP_VERSION = '5.681';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33933,6 +33935,21 @@ Per confermare scrivi ELIMINA.`);
   function staffCalGoToday() {
     const input = document.getElementById('staffCalDate');
     if (input) { input.value = staffCalTodayIso(); renderStaffCalendar(); }
+  }
+
+  // Auto-aggiornamento del calendario staff dal cloud: le prenotazioni fatte da un altro
+  // dispositivo compaiono senza ricaricare (periodico ogni 60s + al ritorno sulla scheda).
+  // staffCalRefreshFromCloud è già protetta (solo staff autenticato) e con debounce 60s.
+  if (typeof window !== 'undefined' && !window._staffCalAutoRefreshStarted) {
+    window._staffCalAutoRefreshStarted = true;
+    setInterval(function () {
+      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); } catch (e) {}
+    }, 60000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && typeof staffCalRefreshFromCloud === 'function') {
+        try { staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+      }
+    });
   }
 
   let _staffCalCloudRefreshAt = 0;
