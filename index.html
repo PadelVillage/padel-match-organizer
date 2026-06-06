@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.688';
+    const APP_VERSION = '5.689';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34043,7 +34043,7 @@ Per confermare scrivi ELIMINA.`);
         // (partita→lezione stesso slot) ha la stessa chiave ma contenuto diverso.
         // Confrontiamo anche tipo/istruttore/nome/durata così l'aggiornamento si
         // propaga e il calendario si ridisegna anche a parità di slot. v5.683.
-        const sig = list => (list || []).map(b => keyOf(b) + '#' + (b.tipo||'') + '#' + (b.istruttore||'') + '#' + (b.nome||'') + '#' + (b.durata||'')).sort().join(',');
+        const sig = list => (list || []).map(b => keyOf(b) + '#' + (b.tipo||'') + '#' + (b.istruttore||'') + '#' + (b.nome||'') + '#' + (b.durata||'') + '#' + (Array.isArray(b.giocatori) ? b.giocatori.map(g => ((g&&g.nome)||'') + ':' + ((g&&g.codice)||'')).sort().join('|') : '')).sort().join(',');
         const before = sig(localSB);
         // Il cloud è AUTOREVOLE per ogni slot che conosce (attivo o annullato):
         //  - slot attivi nel cloud  → vince il contenuto del cloud (sovrascrive il locale);
