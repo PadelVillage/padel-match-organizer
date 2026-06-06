@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.689';
+    const APP_VERSION = '5.690';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34438,7 +34438,10 @@ Per confermare scrivi ELIMINA.`);
           if (_pl && _pl.loading) playersDiv.textContent = '⏳ ' + (slot.nome || '');
           else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join(', ') : (slot.nome || '(nessun giocatore)');
           else if (_pl && _pl.error) playersDiv.textContent = (slot.nome || '') + ' ⚠️';
-          else playersDiv.textContent = slot.nome || '';
+          else {
+            const _gN = Array.isArray(slot.giocatori) ? slot.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean) : [];
+            playersDiv.textContent = _gN.length ? _gN.join(', ') : (slot.nome || '');
+          }
           block.appendChild(hdr);
           block.appendChild(timeDiv);
           if (hpx > 45 || _pl) block.appendChild(playersDiv);
@@ -34972,7 +34975,17 @@ Per confermare scrivi ELIMINA.`);
   function staffCalToggleStaffPlayers(iso, campo, ora, nome) {
     const key = _staffCalMpKey(iso, campo, ora);
     if (_staffCalMpPlayers[key]) { delete _staffCalMpPlayers[key]; }
-    else { _staffCalMpPlayers[key] = { names: String(nome || '').split(/\s*,\s*/).filter(Boolean) }; }
+    else {
+      let names = [];
+      try {
+        const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const wantCampo = Number(String(campo).replace(/\D/g, ''));
+        const b = (Array.isArray(list) ? list : []).find(function (x) { return x && String(x.data).trim() === String(iso).trim() && Number(String(x.campo).replace(/\D/g, '')) === wantCampo && String(x.ora).trim() === String(ora).trim(); });
+        if (b && Array.isArray(b.giocatori) && b.giocatori.length) names = b.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean);
+      } catch (e) {}
+      if (!names.length) names = String(nome || '').split(/\s*,\s*/).filter(Boolean);
+      _staffCalMpPlayers[key] = { names: names };
+    }
     renderStaffCalendar();
   }
 
@@ -35370,6 +35383,7 @@ Per confermare scrivi ELIMINA.`);
         // giocatori (senza spostamento) applico ora; e fisso i nomi alla posizione CORRENTE.
         if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
         if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
+        if (op.hasPlayers) staffCalApplyLocalGiocatori(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, addArr, remove);
         try { if (moveChanged) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
@@ -35407,6 +35421,40 @@ Per confermare scrivi ELIMINA.`);
     });
     if (changed) save('staffBookings', existing);
     _staffCalClearSuppressed(op.origIso, op.origCampo, op.origOra);
+  }
+
+  // Aggiorna l'array `giocatori` della prenotazione staff in locale applicando gli add/remove
+  // appena salvati dall'operatore. Non dipende dal roster del worker: garantisce che il device
+  // che esegue l'azione mostri subito i partecipanti e che il push cloud porti `giocatori` corretti.
+  function staffCalApplyLocalGiocatori(isoDate, campo, ora, addArr, removeArr) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function (b) {
+      if (String(b.data).trim() === String(isoDate).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        let g = Array.isArray(b.giocatori) ? b.giocatori.slice() : [];
+        if (Array.isArray(removeArr) && removeArr.length) {
+          const rm = new Set(removeArr.map(function (s) { return String(s).trim().toLowerCase(); }));
+          g = g.filter(function (x) { return !rm.has(String((x && x.nome) || '').trim().toLowerCase()); });
+        }
+        if (Array.isArray(addArr) && addArr.length) {
+          addArr.forEach(function (a) {
+            const nm = String((a && a.nome) || '').trim();
+            if (!nm) return;
+            if (!g.some(function (x) { return String((x && x.nome) || '').trim().toLowerCase() === nm.toLowerCase(); })) {
+              g.push({ nome: nm, codice: String((a && a.codice) || '') });
+            }
+          });
+        }
+        b.giocatori = g;
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
   }
 
   function staffCalUpdateLocalPlayers(isoDate, campo, ora, nomi) {
