@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.684';
+    const APP_VERSION = '5.685';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -11296,7 +11296,7 @@ Grazie.`
 
     async function pmoLoadMatchpointBookingsFromCloud() {
       const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
-        p_record_types: ['booking', 'booking_occupancy', 'matchpoint_data', 'staff_booking'],
+        p_record_types: ['booking', 'booking_occupancy', 'matchpoint_data', 'staff_booking', 'staff_suppress'],
         p_since: null
       }, 'cloud_sync', 'scaricare prenotazioni future Matchpoint dal cloud');
       const list = Array.isArray(rows) ? rows : [];
@@ -11317,7 +11317,12 @@ Grazie.`
       const staffBookingsDeletedKeys = list
         .filter(row => row?.record_type === 'staff_booking' && row.deleted && row.payload)
         .map(row => { const p = row.payload || {}; return `${p.data}|${Number(String(p.campo).replace(/\D/g,''))}|${p.ora}`; });
-      return { bookings, occupancyBookings, staffBookings, staffBookingsDeletedKeys, summary };
+      // Soppressioni condivise: slot annullati da QUALSIASI device. Servono a nascondere su
+      // tutti i device la copia "occupazione" Matchpoint finché lo scrape non si aggiorna.
+      const staffSuppressed = list
+        .filter(row => row?.record_type === 'staff_suppress' && !row.deleted && row.payload)
+        .map(row => { const p = row.payload || {}; return { key: `${p.data}|${Number(String(p.campo).replace(/\D/g,''))}|${p.ora}`, ts: Number(p.ts) || Date.parse(row.updated_at || '') || 0 }; });
+      return { bookings, occupancyBookings, staffBookings, staffBookingsDeletedKeys, staffSuppressed, summary };
     }
 
     async function importMatchpointBookingsAutomatic() {
@@ -23869,7 +23874,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoCloudState.lastSyncAt = new Date().toISOString();
 	      pmoCloudState.lastSyncCount = result.count || list.length;
 	      save('pmoCloudState', pmoCloudState);
-	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && r.record_type === 'staff_booking'; })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
+	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && (r.record_type === 'staff_booking' || r.record_type === 'staff_suppress'); })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
 	      return result;
 	    }
 	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
@@ -34024,6 +34029,8 @@ Per confermare scrivi ELIMINA.`);
       if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
       // Pull-only from cloud (no worker/scrape)
       const cloud = await pmoLoadMatchpointBookingsFromCloud();
+      // Soppressioni condivise dal cloud: nascondi subito gli slot annullati da altri device.
+      try { if (_staffCalMergeCloudSuppressed(cloud.staffSuppressed)) renderStaffCalendar(); } catch (e) { console.warn('staffCalRefreshFromCloud suppress:', e); }
       // Sync staff bookings col cloud (cross-dispositivo): aggiunge le nuove, rimuove le annullate altrove.
       // Le prenotazioni vecchie solo-locali (non presenti nel cloud) NON vengono toccate.
       try {
@@ -34150,6 +34157,26 @@ Per confermare scrivi ELIMINA.`);
     const next = list.filter(e => e && e.key !== key);
     next.push({ key: key, ts: Date.now() });
     if (typeof save === 'function') save('staffCalCancelled', next);
+  }
+  // Unisce nelle soppressioni LOCALI quelle arrivate dal cloud (annullamenti fatti da altri
+  // device), rispettando il TTL via ts. Così ogni dispositivo nasconde lo slot annullato
+  // finché l'occupazione Matchpoint non si aggiorna. Ritorna true se è cambiato qualcosa. v5.685.
+  function _staffCalMergeCloudSuppressed(cloudList) {
+    if (!Array.isArray(cloudList) || !cloudList.length) return false;
+    const now = Date.now();
+    const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
+    const map = new Map((Array.isArray(arr) ? arr : []).filter(e => e && e.key).map(e => [e.key, e.ts || 0]));
+    let changed = false;
+    cloudList.forEach(function (e) {
+      if (!e || !e.key) return;
+      const ts = e.ts || 0;
+      if (now - ts >= _STAFFCAL_SUPPRESS_TTL_MS) return;       // già scaduto, ignora
+      if ((map.get(e.key) || 0) < ts) { map.set(e.key, ts); changed = true; }
+    });
+    if (changed && typeof save === 'function') {
+      save('staffCalCancelled', Array.from(map, function (kv) { return { key: kv[0], ts: kv[1] }; }));
+    }
+    return changed;
   }
   function _staffCalClearSuppressed(data, campo, ora) {
     const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
@@ -36344,17 +36371,29 @@ Per confermare scrivi ELIMINA.`);
         const filtered = existing.filter((b) => !match(b));
         if (typeof save === 'function') save('staffBookings', filtered);
         _staffCalAddSuppressed(isoDate, campo, ora);
-        // Propaga l'annullamento al cloud (record staff_booking → deleted)
+        // Propaga l'annullamento al cloud: record staff_booking → deleted PIÙ un record
+        // 'staff_suppress' (con ts) che fa nascondere lo slot annullato su TUTTI i device
+        // finché lo scrape non aggiorna l'occupazione Matchpoint. Prima la soppressione era
+        // solo locale: l'altro device continuava a mostrare la copia "occupazione". Il push
+        // avviene SEMPRE (anche senza staff_booking locale, es. card 🔒 Matchpoint), così
+        // parte comunque il ping realtime verso gli altri device. v5.685.
         try {
           if (typeof pmoSyncCloudRecordsNow === 'function') {
-            const dels = removed.filter(b => b && b.id).map(b => ({
+            const _campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
+            const records = removed.filter(b => b && b.id).map(b => ({
               record_type: 'staff_booking', local_key: b.id,
               payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
               deleted: true
             }));
-            if (dels.length) pmoSyncCloudRecordsNow(dels, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud delete:', e); });
+            records.push({
+              record_type: 'staff_suppress',
+              local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + String(ora).trim(),
+              payload: { data: isoDate, campo: _campoNum, ora: String(ora).trim(), ts: Date.now() },
+              deleted: false
+            });
+            pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
           }
-        } catch (e) { console.warn('staff_booking cloud delete:', e); }
+        } catch (e) { console.warn('staff cancel cloud sync:', e); }
       };
       const _msgTxt = ((data && (data.message || data.error)) || '') + '';
       const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
