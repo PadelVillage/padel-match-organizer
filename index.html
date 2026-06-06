@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.685';
+    const APP_VERSION = '5.686';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34178,6 +34178,48 @@ Per confermare scrivi ELIMINA.`);
     }
     return changed;
   }
+  // Push al cloud di una prenotazione staff MODIFICATA sullo STESSO slot (giocatori/durata):
+  // ritrova la voce locale e la rispinge come record attivo (stesso id). Fa partire il ping
+  // realtime. Senza, la modifica non si propagava e il merge "cloud autorevole" la annullava
+  // al refresh. v5.686.
+  function staffCalCloudSyncEdit(iso, campo, ora) {
+    try {
+      if (typeof pmoSyncCloudRecordsNow !== 'function') return;
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const cn = Number(String(campo).replace(/\D/g, '')) || 0;
+      const b = list.find(function (x) { return x && String(x.data).trim() === String(iso).trim() && Number(String(x.campo).replace(/\D/g, '')) === cn && String(x.ora).trim() === String(ora).trim(); });
+      if (!b || !b.id) return;
+      pmoSyncCloudRecordsNow([{
+        record_type: 'staff_booking', local_key: b.id,
+        payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [] },
+        deleted: false
+      }], 'aggiornare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff edit cloud sync:', e); });
+    } catch (e) { console.warn('staff edit cloud sync:', e); }
+  }
+  // Push al cloud di uno SPOSTAMENTO staff. Modellato come "annulla origine + crea destinazione":
+  // alla voce spostata (già al nuovo slot in locale) assegna un id NUOVO, poi spinge il vecchio id
+  // come deleted (slot d'origine) + staff_suppress(origine) + il nuovo record attivo. Così su tutti
+  // i device sparisce dall'origine e compare a destinazione, senza doppioni. v5.686.
+  function staffCalCloudReassignAndSyncMove(fromIso, fromCampo, fromOra, toIso, toCampo, toOra) {
+    try {
+      if (typeof pmoSyncCloudRecordsNow !== 'function') return;
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const fCn = Number(String(fromCampo).replace(/\D/g, '')) || 0;
+      const tCn = Number(String(toCampo).replace(/\D/g, '')) || 0;
+      const fIso = String(fromIso).trim(), fOra = String(fromOra).trim();
+      const tIso = String(toIso).trim(), tOra = String(toOra).trim();
+      const entry = list.find(function (x) { return x && String(x.data).trim() === tIso && Number(String(x.campo).replace(/\D/g, '')) === tCn && String(x.ora).trim() === tOra; });
+      if (!entry || !entry.id) return;
+      const prevId = entry.id;
+      entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
+      if (typeof save === 'function') save('staffBookings', list);
+      pmoSyncCloudRecordsNow([
+        { record_type: 'staff_booking', local_key: prevId, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true },
+        { record_type: 'staff_suppress', local_key: 'supp|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra, ts: Date.now() }, deleted: false },
+        { record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false }
+      ], 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
+    } catch (e) { console.warn('staff move cloud sync:', e); }
+  }
   function _staffCalClearSuppressed(data, campo, ora) {
     const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
     const list = Array.isArray(arr) ? arr : [];
@@ -35314,6 +35356,7 @@ Per confermare scrivi ELIMINA.`);
         // giocatori (senza spostamento) applico ora; e fisso i nomi alla posizione CORRENTE.
         if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
         if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
+        try { if (moveChanged) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
@@ -35459,6 +35502,7 @@ Per confermare scrivi ELIMINA.`);
         if (typeof save === 'function') save('staffBookings', updated);
         _staffCalAddSuppressed(from.iso, from.campo, from.ora);
         _staffCalClearSuppressed(toIso, toCampoNum, toOra);
+        try { staffCalCloudReassignAndSyncMove(from.iso, from.campo, from.ora, toIso, toCampoNum, toOra); } catch (e) { console.warn('staff move cloud sync:', e); }
         svcAddMessage('system',
           '↔ <strong>Prenotazione spostata</strong>: Campo ' + from.campo + ' \xb7 ' + fromDataIt + ' \xb7 ' + from.ora +
           '  →  Campo ' + toCampoNum + ' \xb7 ' + toDataIt + ' \xb7 ' + toOra + '–' + toOraFine +
