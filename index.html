@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.683';
+    const APP_VERSION = '5.684';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -23869,6 +23869,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoCloudState.lastSyncAt = new Date().toISOString();
 	      pmoCloudState.lastSyncCount = result.count || list.length;
 	      save('pmoCloudState', pmoCloudState);
+	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && r.record_type === 'staff_booking'; })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
 	      return result;
 	    }
 	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
@@ -33952,6 +33953,49 @@ Per confermare scrivi ELIMINA.`);
     });
   }
 
+  // ── Realtime calendario staff (Supabase Broadcast) ──────────────────────────
+  // Push "entro il secondo" tra desktop e mobile: quando un device fa un'azione
+  // staff (prenota/annulla/modifica/sposta), pmoSyncCloudRecordsNow invia un ping
+  // sul canale; gli altri device in ascolto fanno subito un pull forzato dal cloud
+  // e ridisegnano. Il polling 60s resta come rete di sicurezza (device offline al
+  // momento dell'azione). Richiede sessione staff attiva su entrambi i device.
+  // Riusa il client Supabase UMD già caricato e la config cloud dei record. v5.684.
+  let _staffCalRtClient = null, _staffCalRtChannel = null, _staffCalRtStarted = false, _staffCalRtPullTimer = null;
+  function staffCalRtChannelName() {
+    return 'pv-staff-cal-' + ((typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test' : 'prod');
+  }
+  async function staffCalRtStart() {
+    if (_staffCalRtStarted) return;
+    if (typeof supabase === 'undefined' || !supabase.createClient) return;        // libreria non pronta
+    const sess = (typeof pmoReadSupabaseStaffSession === 'function') ? pmoReadSupabaseStaffSession() : null;
+    if (!sess) return;                                                            // solo con sessione staff
+    _staffCalRtStarted = true;                                                    // tenta una sola volta
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey);
+      _staffCalRtChannel = _staffCalRtClient
+        .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
+        .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
+        .subscribe();
+    } catch (e) {
+      _staffCalRtStarted = false;                                                 // riprova al prossimo refresh
+      console.warn('staff-cal realtime start:', e);
+    }
+  }
+  function staffCalRtOnRemoteChange() {
+    clearTimeout(_staffCalRtPullTimer);
+    _staffCalRtPullTimer = setTimeout(function () {                               // coalescenza raffiche, resta sotto il secondo
+      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+    }, 150);
+  }
+  function staffCalRtBroadcast() {
+    try {
+      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: Date.now() } });
+      }
+    } catch (e) { console.warn('staff-cal realtime broadcast:', e); }
+  }
+
   let _staffCalCloudRefreshAt = 0;
   async function staffCalRefreshFromCloud(opts) {
     try {
@@ -33961,6 +34005,7 @@ Per confermare scrivi ELIMINA.`);
       if (!supabaseSession) return;
       if (!(typeof pmoIsSupabaseSessionFresh === 'function' && pmoIsSupabaseSessionFresh(supabaseSession))) return;
       if (!(typeof pmoIsStaffProfileActive === 'function' && pmoIsStaffProfileActive(pmoStaffProfile))) return;
+      try { staffCalRtStart(); } catch (e) {}
       // Debounce: skip if last pull was less than 60s ago, unless force
       const now = Date.now();
       if (!force && now - _staffCalCloudRefreshAt < 60000) return;
