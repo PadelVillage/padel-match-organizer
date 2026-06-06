@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.682';
+    const APP_VERSION = '5.683';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -11312,7 +11312,7 @@ Grazie.`
         .filter(row => row?.record_type === 'staff_booking' && !row.deleted && row.payload)
         .map(row => {
           const p = row.payload || {};
-          return { id: row.local_key || ('cloud-' + (p.data||'') + '-' + (p.campo||'') + '-' + (p.ora||'')), data: p.data, ora: p.ora, oraFine: p.ora_fine, campo: p.campo, nome: p.nome, durata: p.durata, tipo: p.tipo || 'partita', createdAt: row.updated_at || new Date().toISOString() };
+          return { id: row.local_key || ('cloud-' + (p.data||'') + '-' + (p.campo||'') + '-' + (p.ora||'')), data: p.data, ora: p.ora, oraFine: p.ora_fine, campo: p.campo, nome: p.nome, durata: p.durata, tipo: p.tipo || 'partita', istruttore: p.istruttore || '', giocatori: Array.isArray(p.giocatori) ? p.giocatori : [], updatedAt: row.updated_at || '', createdAt: row.updated_at || new Date().toISOString() };
         });
       const staffBookingsDeletedKeys = list
         .filter(row => row?.record_type === 'staff_booking' && row.deleted && row.payload)
@@ -33987,13 +33987,19 @@ Per confermare scrivi ELIMINA.`);
         const keyOf = b => `${b.data}|${Number(String(b.campo).replace(/\D/g,''))}|${b.ora}`;
         const activeKeys = new Set(cloudSB.map(keyOf));
         let localSB = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        const before = localSB.map(keyOf).sort().join(',');
-        // 1) rimuovi le locali annullate altrove (deleted nel cloud e non ri-create)
-        localSB = localSB.filter(b => !(delKeys.has(keyOf(b)) && !activeKeys.has(keyOf(b))));
-        // 2) aggiungi le cloud attive non presenti in locale (create da altri dispositivi)
-        const seen = new Set(localSB.map(keyOf));
-        cloudSB.forEach(b => { if (!seen.has(keyOf(b))) { localSB.push(b); seen.add(keyOf(b)); } });
-        const after = localSB.map(keyOf).sort().join(',');
+        // Firma di CONTENUTO: lo slot da solo non basta, perché una riprenotazione
+        // (partita→lezione stesso slot) ha la stessa chiave ma contenuto diverso.
+        // Confrontiamo anche tipo/istruttore/nome/durata così l'aggiornamento si
+        // propaga e il calendario si ridisegna anche a parità di slot. v5.683.
+        const sig = list => (list || []).map(b => keyOf(b) + '#' + (b.tipo||'') + '#' + (b.istruttore||'') + '#' + (b.nome||'') + '#' + (b.durata||'')).sort().join(',');
+        const before = sig(localSB);
+        // Il cloud è AUTOREVOLE per ogni slot che conosce (attivo o annullato):
+        //  - slot attivi nel cloud  → vince il contenuto del cloud (sovrascrive il locale);
+        //  - slot annullati nel cloud e non ri-creati → rimossi dal locale;
+        //  - slot che il cloud NON conosce affatto → restano intatti (vecchie solo-locali).
+        const cloudKnows = new Set([...activeKeys, ...delKeys]);
+        localSB = localSB.filter(b => !cloudKnows.has(keyOf(b))).concat(cloudSB);
+        const after = sig(localSB);
         if (after !== before && typeof save === 'function') { save('staffBookings', localSB); renderStaffCalendar(); }
       } catch (e) { console.warn('staffCalRefreshFromCloud staffBookings:', e); }
       // Guard: don't overwrite local data if cloud returns empty occupancy
@@ -34133,7 +34139,7 @@ Per confermare scrivi ELIMINA.`);
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
-      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', durata: _staffCalDurMin(b.durata) });
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata) });
     }
     // Nascondi gli slot annullati di recente, anche se la cache di occupazione è vecchia.
     const _supp = _staffCalGetSuppressed();
@@ -34636,7 +34642,7 @@ Per confermare scrivi ELIMINA.`);
     for (const s of staffCalGetSlots(isoDate)) {
       const c = s.campo; if (c < 1 || c > 4) continue;
       const st = h2m(s.ora);
-      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', ora: s.ora, durata: s.durata || 90 });
+      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', istruttore: s.istruttore || '', ora: s.ora, durata: s.durata || 90 });
     }
 
     const frame = document.createElement('div');
@@ -34713,7 +34719,9 @@ Per confermare scrivi ELIMINA.`);
         blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:1px solid ' + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
         const t1 = document.createElement('div'); t1.style.cssText = 'font-size:12px;font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
         const t2 = document.createElement('div'); t2.style.cssText = 'font-size:10px;opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
-        if (b.nome) { const t3 = document.createElement('div'); t3.style.cssText = 'font-size:11px;opacity:.95;white-space:normal;'; t3.textContent = b.nome; blk.appendChild(t3); }
+        const _isLez = String(b.tipoReale || b.tipo || '').toLowerCase().includes('lez');
+        if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:11px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
+        if (b.nome && b.nome !== b.istruttore) { const t3 = document.createElement('div'); t3.style.cssText = 'font-size:11px;opacity:.95;white-space:normal;'; t3.textContent = b.nome; blk.appendChild(t3); }
         (function (iso, cc, oo, nm, du, tp, mp) {
           blk.addEventListener('click', function () {
             if (mp) staffCalViewMatchpointPlayers(iso, cc, oo);
@@ -36193,27 +36201,49 @@ Per confermare scrivi ELIMINA.`);
 
   function staffCalSaveLocal(parsed) {
     const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-    const conflict = existing.some(b => b.data === parsed.data && b.campo === parsed.campoNum && b.ora === parsed.ora);
-    if (conflict) return false;
+    // SOVRASCRITTURA SLOT: se esiste già una prenotazione locale sullo stesso slot
+    // (stessa data+campo+ora) la rimuoviamo dal locale e la marchiamo deleted sul
+    // cloud, poi salviamo la nuova. Prima la nuova veniva SCARTATA (return false): una
+    // lezione su uno slot dove restava una vecchia partita non veniva mai salvata né
+    // spinta al cloud (maestro perso, lezione invisibile). v5.683.
+    const sameSlot = b => b
+      && String(b.data).trim() === String(parsed.data).trim()
+      && Number(String(b.campo).replace(/\D/g, '')) === Number(parsed.campoNum)
+      && String(b.ora).trim() === String(parsed.ora).trim();
+    const superseded = existing.filter(sameSlot);
+    const kept = existing.filter(b => !sameSlot(b));
     const entry = {
       id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`,
       data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
       campo: parsed.campoNum, nome: parsed.nome, durata: parsed.durata,
       tipo: parsed.tipo || 'partita',
+      istruttore: parsed.istruttore || '',
+      giocatori: Array.isArray(parsed.giocatori) ? parsed.giocatori : [],
       createdAt: new Date().toISOString(),
     };
-    existing.push(entry);
-    if (typeof save === 'function') save('staffBookings', existing);
+    kept.push(entry);
+    if (typeof save === 'function') save('staffBookings', kept);
     _staffCalClearSuppressed(parsed.data, parsed.campoNum, parsed.ora);
     // Push al cloud per visibilità cross-dispositivo (fire-and-forget)
     try {
       if (typeof pmoSyncCloudRecordsNow === 'function') {
-        pmoSyncCloudRecordsNow([{
+        const records = [];
+        // 1) marca deleted le voci soppiantate sullo stesso slot (col loro local_key)
+        superseded.forEach(function(b){
+          if (b && b.id) records.push({
+            record_type: 'staff_booking', local_key: b.id,
+            payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '' },
+            deleted: true
+          });
+        });
+        // 2) la nuova prenotazione (con istruttore e giocatori)
+        records.push({
           record_type: 'staff_booking',
           local_key: entry.id,
-          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo },
+          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori },
           deleted: false
-        }], 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
+        });
+        pmoSyncCloudRecordsNow(records, 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
       }
     } catch (e) { console.warn('staff_booking cloud push:', e); }
     return true;
