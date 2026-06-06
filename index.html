@@ -2797,7 +2797,7 @@
       #staffCalV36 .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
       #staffCalV36 .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
       #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
-      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
+      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
       #staffCalV36 .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       #staffCalV36 .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
       #staffCalV36 .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
@@ -7093,7 +7093,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.673';
+    const APP_VERSION = '5.676';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
