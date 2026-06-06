@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.681';
+    const APP_VERSION = '5.682';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36545,6 +36545,7 @@ Per confermare scrivi ELIMINA.`);
 
     const fMaestro=document.createElement('div'); fMaestro.style.cssText='margin-bottom:14px;display:none;'; fMaestro.appendChild(lbl('Maestro'));
     const maestroSel=document.createElement('select'); maestroSel.style.cssText=inSel;
+    maestroSel.style.fontWeight = '700';
     maestri.forEach(function(m){ const o=document.createElement('option'); o.value=m; o.textContent=m; maestroSel.appendChild(o); });
     fMaestro.appendChild(maestroSel); card.appendChild(fMaestro);
 
@@ -36949,7 +36950,7 @@ Per confermare scrivi ELIMINA.`);
           const allievi = (players && players.length) ? nomeStr : '—';
           svcAddMessage('system',
             '✅ <strong>Lezione prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
-            '👨‍🏫 ' + istruttore + ' 👥 ' + allievi,
+            '👨‍🏫 <strong>' + istruttore + '</strong> 👥 ' + allievi,
             'ok'
           );
         } else {
