@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.687';
+    const APP_VERSION = '5.688';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -36474,11 +36474,58 @@ Per confermare scrivi ELIMINA.`);
         renderStaffCalendar();
       } else {
         const msg = _msgTxt || ('errore HTTP ' + response.status);
-        svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg);
+        const _gCampo = Number(String(campo).replace(/\D/g, '')) || 0;
+        const _gArgs = "'" + String(isoDate) + "','" + _gCampo + "','" + String(ora) + "'";
+        const _gBtn = '<button type="button" onclick="staffCalForceRemoveSlot(' + _gArgs + ')" style="margin-top:6px;padding:6px 10px;border:1px solid var(--color-border-secondary,#cbd5e1);border-radius:8px;background:#fff;color:inherit;cursor:pointer;font-size:.82rem;">🧹 Non è su Matchpoint: rimuovi comunque dal calendario</button>';
+        svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br>' + _gBtn);
       }
     } catch (err) {
       clearInterval(_timer);
       svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto'));
+    }
+  }
+
+  // Rimozione FORZATA di uno slot "fantasma" (prenotazione non presente su Matchpoint).
+  // NON chiama Matchpoint. Rimuove le copie locali, marca deleted nel cloud TUTTI i record
+  // staff_booking di quello slot (anche duplicati con local_key diverse: è il motivo per cui
+  // le card tornavano) e scrive staff_suppress per nascondere subito l'eventuale occupazione
+  // stantia su tutti i device. Da usare solo per dati fantasma. v5.688.
+  async function staffCalForceRemoveSlot(isoDate, campo, ora) {
+    const cn = Number(String(campo).replace(/\D/g, '')) || 0;
+    const oraN = String(ora).trim();
+    const isoN = String(isoDate).trim();
+    const dataIt = isoN.split('-').reverse().join('/');
+    if (!confirm('Rimuovere dal calendario la card di Campo ' + cn + ' \xb7 ' + dataIt + ' \xb7 ' + oraN + '?\n\nUsare SOLO se la prenotazione NON esiste su Matchpoint (dato fantasma). Questa azione non tocca Matchpoint.')) return;
+    try {
+      const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const match = function (b) { return b && String(b.data).trim() === isoN && Number(String(b.campo).replace(/\D/g, '')) === cn && String(b.ora).trim() === oraN; };
+      const removedLocal = existing.filter(match);
+      if (typeof save === 'function') save('staffBookings', existing.filter(function (b) { return !match(b); }));
+      if (typeof _staffCalAddSuppressed === 'function') _staffCalAddSuppressed(isoN, cn, oraN);
+      if (typeof pmoSyncCloudRecordsNow === 'function') {
+        let cloudRows = [];
+        try {
+          cloudRows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['staff_booking'], p_since: null }, 'cloud_sync', 'pulire una card fantasma dal cloud');
+        } catch (e) { cloudRows = []; console.warn('force remove read:', e); }
+        const keyMatch = function (p) { return p && String(p.data).trim() === isoN && Number(String(p.campo).replace(/\D/g, '')) === cn && String(p.ora).trim() === oraN; };
+        const recs = [];
+        (Array.isArray(cloudRows) ? cloudRows : []).forEach(function (row) {
+          if (row && row.record_type === 'staff_booking' && row.local_key && keyMatch(row.payload || {})) {
+            recs.push({ record_type: 'staff_booking', local_key: row.local_key, payload: row.payload || {}, deleted: true });
+          }
+        });
+        removedLocal.forEach(function (b) {
+          if (b && b.id && !recs.some(function (r) { return r.local_key === b.id; })) {
+            recs.push({ record_type: 'staff_booking', local_key: b.id, payload: { data: b.data, ora: b.ora, campo: b.campo }, deleted: true });
+          }
+        });
+        recs.push({ record_type: 'staff_suppress', local_key: 'supp|' + isoN + '|' + cn + '|' + oraN, payload: { data: isoN, campo: cn, ora: oraN, ts: Date.now() }, deleted: false });
+        pmoSyncCloudRecordsNow(recs, 'pulire la card fantasma sul cloud').catch(function (e) { console.warn('force remove cloud:', e); });
+      }
+      if (typeof svcAddMessage === 'function') svcAddMessage('system', '🧹 <strong>Card rimossa dal calendario</strong>: Campo ' + cn + ' \xb7 ' + dataIt + ' \xb7 ' + oraN, 'ok');
+      if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
+    } catch (e) {
+      if (typeof svcAddMessage === 'function') svcAddMessage('system', '❌ Rimozione non riuscita: ' + (e && e.message || e));
     }
   }
 
