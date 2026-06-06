@@ -2805,6 +2805,9 @@
       #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
       #staffCalV36 .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       #staffCalV36 .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
+      /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile */
+      #staffCalV36 .svc-chat-panel, #staffCalV36 .svc-chat-panel * { font-size:21px !important; }
+      #staffCalV36 .svc-chat-panel select, #staffCalV36 .svc-chat-panel input { padding:8px 10px !important; }
       /* Scheda "Modifica prenotazione": testi uniformi e in armonia con i messaggi (solo mobile) */
       #staffCalV36 .svc-edit-box, #staffCalV36 .svc-edit-box * { font-size:20px !important; }
       #staffCalV36 .svc-edit-box select, #staffCalV36 .svc-edit-box input { padding:7px 10px !important; }
@@ -7110,7 +7113,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.679';
+    const APP_VERSION = '5.680';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
