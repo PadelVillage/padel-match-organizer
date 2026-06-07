@@ -4840,6 +4840,22 @@ body.assessment-public-mode .assessment-public-only-card {
       color:#c8d7ec;
       opacity:1;
     }
+    .pmo-version-badge {
+      position: fixed;
+      bottom: 6px;
+      right: 8px;
+      z-index: 99999;
+      font-size: 11px;
+      line-height: 1;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.45);
+      color: #fff;
+      opacity: .7;
+      pointer-events: none;           /* non blocca i tap */
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: .3px;
+    }
     .side-nav-content {
       padding:10px 10px 36px;
     }
@@ -7115,7 +7131,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.693';
+    const APP_VERSION = '5.694';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -37496,5 +37512,6 @@ Per confermare scrivi ELIMINA.`);
   </script>
   <!-- ════ end Staff Calendar ════ -->
 
+  <div class="pmo-version-badge" data-app-version>v—</div>
 </body>
 </html>
