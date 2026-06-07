@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.707';
+    const APP_VERSION = '5.709';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35225,6 +35225,7 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
     if (typeof svcOpenChat === 'function') svcOpenChat();
+    svcClearLog();
     const dataIt = isoDate.split('-').reverse().join('/');
     const campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
     const durMin = _staffCalDurMin(durata);
@@ -35619,7 +35620,7 @@ Per confermare scrivi ELIMINA.`);
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
         renderStaffCalendar();
-        if (!staffCalPlayersState && !svcFlowState) svcAutoCloseIfMobile();
+        svcResetToNeutral(); svcAutoCloseIfMobile();
       } else {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
         if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
@@ -35808,7 +35809,7 @@ Per confermare scrivi ELIMINA.`);
           (from.nome ? '<br>👥 ' + from.nome : ''),
           'ok');
         renderStaffCalendar();
-        svcAutoCloseIfMobile();
+        svcResetToNeutral(); svcAutoCloseIfMobile();
       } else {
         const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
         svcAddMessage('system', '❌ Spostamento non riuscito: ' + msg);
@@ -36807,7 +36808,7 @@ Per confermare scrivi ELIMINA.`);
           'ok'
         );
         renderStaffCalendar();
-        svcAutoCloseIfMobile();
+        svcResetToNeutral(); svcAutoCloseIfMobile();
       } else if (notFoundOnMatchpoint) {
         // Non c'è più su Matchpoint (ghost locale rimasto dai test): pulisci comunque la card.
         removeLocalCopy();
@@ -36816,7 +36817,7 @@ Per confermare scrivi ELIMINA.`);
           'ok'
         );
         renderStaffCalendar();
-        svcAutoCloseIfMobile();
+        svcResetToNeutral(); svcAutoCloseIfMobile();
       } else {
         const msg = _msgTxt || ('errore HTTP ' + response.status);
         const _gCampo = Number(String(campo).replace(/\D/g, '')) || 0;
@@ -36911,6 +36912,21 @@ Per confermare scrivi ELIMINA.`);
     const overlay = document.getElementById('svcChatOverlay');
     if (panel) panel.classList.add('svc-chat-open');
     if (overlay) overlay.classList.add('active');
+  }
+
+  // Ripristina il pannello svc a stato neutro DOPO un'operazione conclusa con successo.
+  // NON pulisce il log: la ✅ dell'esito resta visibile. NON chiude il pannello.
+  function svcResetToNeutral() {
+    try { svcFlowState = null; } catch (e) {}
+    try { staffCalPlayersState = null; } catch (e) {}
+    try { if (staffCalMoveState) staffCalCancelMove(true); } catch (e) {}
+    try { svcSetInputMode('normal'); } catch (e) {}
+  }
+
+  // Svuota il log del pannello svc: chiamata all'apertura di una NUOVA azione.
+  function svcClearLog() {
+    const c = document.getElementById('svcChatMessages');
+    if (c) c.innerHTML = '';
   }
 
   function svcCloseChat() {
@@ -37535,12 +37551,7 @@ Per confermare scrivi ELIMINA.`);
           );
         }
         renderStaffCalendar();
-        // Mobile: il pannello svc-chat è un bottom-sheet. A evento caricato con successo,
-        // chiudilo da solo dopo un attimo (così resta visibile il ✅). Soglia < 900px,
-        // identica a quella con cui l'app apre il pannello su mobile.
-        if (window.innerWidth < 900 && typeof svcCloseChat === 'function') {
-          setTimeout(function () { svcCloseChat(); }, 700);
-        }
+        svcResetToNeutral(); svcAutoCloseIfMobile();
       } else if (result.status === 'error') {
         svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
       } else {
