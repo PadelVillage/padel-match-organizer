@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.690';
+    const APP_VERSION = '5.691';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -33981,7 +33981,12 @@ Per confermare scrivi ELIMINA.`);
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
-        .subscribe();
+        .subscribe(function (status, errObj) {
+          console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            _staffCalRtStarted = false;                                             // consenti retry al prossimo refresh
+          }
+        });
     } catch (e) {
       _staffCalRtStarted = false;                                                 // riprova al prossimo refresh
       console.warn('staff-cal realtime start:', e);
