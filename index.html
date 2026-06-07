@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.703';
+    const APP_VERSION = '5.704';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34001,12 +34001,26 @@ Per confermare scrivi ELIMINA.`);
   // staffCalRefreshFromCloud è già protetta (solo staff autenticato) e con debounce 60s.
   if (typeof window !== 'undefined' && !window._staffCalAutoRefreshStarted) {
     window._staffCalAutoRefreshStarted = true;
+    var _staffCalFastPullBusy = false;
     setInterval(function () {
-      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); } catch (e) {}
-    }, 60000);
+      try {
+        if (typeof staffCalRefreshFromCloud !== 'function') return;
+        // Scheda in background: rete di sicurezza lenta (debounce interno 60s).
+        if (document.hidden) { staffCalRefreshFromCloud(); return; }
+        // Scheda in primo piano: su mobile il push realtime può tardare (WebSocket strozzato dal
+        // browser), quindi facciamo da soli un pull forzato ravvicinato. È leggero: i soci non
+        // vengono ri-scaricati (vedi withMembers) e il calendario si ridisegna solo se qualcosa
+        // è davvero cambiato. Guardia anti-sovrapposizione se un pull è ancora in corso.
+        if (_staffCalFastPullBusy) return;
+        _staffCalFastPullBusy = true;
+        Promise.resolve(staffCalRefreshFromCloud({ force: true }))
+          .catch(function () {})
+          .finally(function () { _staffCalFastPullBusy = false; });
+      } catch (e) {}
+    }, 10000);
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && typeof staffCalRefreshFromCloud === 'function') {
-        try { staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+        try { staffCalRefreshFromCloud({ force: true, withMembers: true }); } catch (e) {}
       }
     });
   }
@@ -34030,7 +34044,9 @@ Per confermare scrivi ELIMINA.`);
     _staffCalRtStarted = true;                                                    // tenta una sola volta
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey);
+      _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
+        realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
+      });
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
@@ -34038,7 +34054,10 @@ Per confermare scrivi ELIMINA.`);
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (status === 'SUBSCRIBED') {
+            // (Ri)connessi: recupera subito eventuali cambiamenti persi mentre il socket era giù.
+            try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             _staffCalRtStarted = false;                                             // consenti retry al prossimo refresh
           }
         });
@@ -34164,7 +34183,7 @@ Per confermare scrivi ELIMINA.`);
       _staffCalCloudRefreshAt = now;
       // Idrata i soci dal cloud SOLO se non presenti in memoria (caso mobile) → abilita la ricerca giocatori
       try {
-        if ((force || !Array.isArray(giocatori) || !giocatori.length) && typeof pmoLoadMatchpointMembersFromCloud === 'function') {
+        if (((opts && opts.withMembers) || !Array.isArray(giocatori) || !giocatori.length) && typeof pmoLoadMatchpointMembersFromCloud === 'function') {
           const cloudM = await pmoLoadMatchpointMembersFromCloud();
           if (cloudM && Array.isArray(cloudM.members) && cloudM.members.length && typeof applyMatchpointMembersToLocal === 'function') {
             applyMatchpointMembersToLocal(cloudM.members, { source: 'automatic', message: 'Soci sincronizzati dal cloud (auto-pull calendario).' });
