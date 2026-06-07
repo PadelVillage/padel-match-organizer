@@ -54,11 +54,20 @@ function okResponse(body: JsonMap) {
   return json({ ok: true, ...body });
 }
 
-const STAFFCAL_RT_CHANNEL = 'pv-staff-cal-test';
+// Canale broadcast staff-cal: derivato dall'ambiente come fa l'app (pv-staff-cal-<env>).
+// Override via secret STAFFCAL_RT_CHANNEL; altrimenti dal project ref in SUPABASE_URL
+// (PROD => -prod, tutto il resto incl. TEST => -test). Su TEST resta 'pv-staff-cal-test'.
+function staffCalChannel(): string {
+  const explicit = (Deno.env.get('STAFFCAL_RT_CHANNEL') ?? '').trim();
+  if (explicit) return explicit;
+  const url = Deno.env.get('SUPABASE_URL') ?? '';
+  return url.includes('qqbfphyslczzkxoncgex') ? 'pv-staff-cal-prod' : 'pv-staff-cal-test';
+}
 
 // Broadcast realtime sul canale che l'app ascolta: sveglia gli altri device. Best-effort.
 // Stesso pattern di matchpoint-bookings-cancel (evento 'staff-changed', private:false).
 async function notifyStaffCalRealtime(supabaseUrl: string, supabaseKey: string, source: string, extra: JsonMap = {}) {
+  const channel = staffCalChannel();
   try {
     const res = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
       method: 'POST',
@@ -68,17 +77,17 @@ async function notifyStaffCalRealtime(supabaseUrl: string, supabaseKey: string, 
         'Authorization': `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({
-        messages: [{ topic: STAFFCAL_RT_CHANNEL, event: 'staff-changed', payload: { ts: Date.now(), source, ...extra }, private: false }],
+        messages: [{ topic: channel, event: 'staff-changed', payload: { ts: Date.now(), source, ...extra }, private: false }],
       }),
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      console.error(JSON.stringify({ event: 'realtime_broadcast_http_error', status: res.status, body: errBody.slice(0, 500) }));
+      console.error(JSON.stringify({ event: 'realtime_broadcast_http_error', channel, status: res.status, body: errBody.slice(0, 500) }));
     } else {
-      console.log(JSON.stringify({ event: 'realtime_broadcast_ok', status: res.status }));
+      console.log(JSON.stringify({ event: 'realtime_broadcast_ok', channel, status: res.status }));
     }
   } catch (e) {
-    console.error(JSON.stringify({ event: 'realtime_broadcast_failed', error: errorText(e) }));
+    console.error(JSON.stringify({ event: 'realtime_broadcast_failed', channel, error: errorText(e) }));
   }
 }
 
