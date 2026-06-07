@@ -20,23 +20,42 @@
   </main>
   <script>
     (async function loadTestPreview() {
+      const repo = 'PadelVillage/padel-match-organizer';
       const branch = 'test-preview';
-      const sourceUrl = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/index.html?cache=${Date.now()}`;
+      const errEl = document.getElementById('testLoaderError');
+      const showErr = function (m) { if (errEl) { errEl.hidden = false; errEl.textContent = 'TEST non caricato: ' + m; } };
+
+      async function fetchAppHtml() {
+        // 1) ISTANTANEO: ultimo commit del branch → file pinnato al SHA (raw-by-SHA è immutabile, niente cache 5 min)
+        try {
+          const shaResp = await fetch(
+            'https://api.github.com/repos/' + repo + '/commits/' + branch,
+            { cache: 'no-store', headers: { 'Accept': 'application/vnd.github.sha' } }
+          );
+          if (shaResp.ok) {
+            const sha = (await shaResp.text()).trim();
+            if (/^[0-9a-f]{7,40}$/i.test(sha)) {
+              const r = await fetch('https://raw.githubusercontent.com/' + repo + '/' + sha + '/index.html', { cache: 'no-store' });
+              if (r.ok) return await r.text();
+            }
+          }
+        } catch (e) { /* passa al fallback */ }
+        // 2) FALLBACK: branch raw (può avere la cache ~5 min, ma non si rompe mai — es. rate limit API)
+        const r2 = await fetch(
+          'https://raw.githubusercontent.com/' + repo + '/' + branch + '/index.html?cache=' + Date.now(),
+          { cache: 'no-store' }
+        );
+        if (!r2.ok) throw new Error('HTTP ' + r2.status);
+        return await r2.text();
+      }
+
       try {
-        const response = await fetch(sourceUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const html = await response.text();
+        const html = await fetchAppHtml();
         window.PMO_FORCE_ENV = 'test';
         window.PMO_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/test/';
-        document.open();
-        document.write(html);
-        document.close();
+        document.open(); document.write(html); document.close();
       } catch (err) {
-        const target = document.getElementById('testLoaderError');
-        if (target) {
-          target.hidden = false;
-          target.textContent = `TEST non caricato: ${err && err.message ? err.message : err}`;
-        }
+        showErr(err && err.message ? err.message : String(err));
       }
     })();
   </script>
