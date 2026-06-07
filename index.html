@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.698';
+    const APP_VERSION = '5.697';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34034,8 +34034,6 @@ Per confermare scrivi ELIMINA.`);
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
-        .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
-        .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -34059,71 +34057,6 @@ Per confermare scrivi ELIMINA.`);
         _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: Date.now() } });
       }
     } catch (e) { console.warn('staff-cal realtime broadcast:', e); }
-  }
-
-  // ── Ottimistico CROSS-DEVICE: card "⏳ in corso" anche sugli ALTRI device ──────
-  // Il device che prenota manda 'staff-pending' a T+0 coi dati; gli altri mostrano
-  // subito una card provvisoria. A fine job manda 'staff-resolved' {ok}: se ok un
-  // pull dal cloud sostituisce la provvisoria con quella reale, se no la rimuove.
-  // Safety: se 'staff-resolved' non arriva entro 30s, la provvisoria si auto-rimuove.
-  const _staffCalRemotePending = new Map();   // slotKey -> { optimId, timer }
-
-  function staffCalRtBroadcastPending(parsed, slotKey) {
-    try {
-      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
-        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-pending', payload: {
-          slot: slotKey, data: parsed.data, campoNum: parsed.campoNum, ora: parsed.ora,
-          oraFine: parsed.oraFine, nome: parsed.nome, tipo: parsed.tipo || 'partita', durata: parsed.durata
-        } });
-      }
-    } catch (e) { console.warn('staff-cal pending broadcast:', e); }
-  }
-
-  function staffCalRtBroadcastResolved(slotKey, ok) {
-    try {
-      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
-        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-resolved', payload: { slot: slotKey, ok: !!ok } });
-      }
-    } catch (e) { console.warn('staff-cal resolved broadcast:', e); }
-  }
-
-  function staffCalRtOnRemotePending(payload) {
-    try {
-      if (!payload || !payload.slot) return;
-      const slot = String(payload.slot);
-      if (_staffCalRemotePending.has(slot)) return;                              // dedupe
-      const parsedLike = {
-        data: payload.data, ora: payload.ora, oraFine: payload.oraFine,
-        campoNum: Number(String(payload.campoNum).replace(/\D/g, '')),
-        nome: payload.nome, durata: payload.durata, tipo: payload.tipo || 'partita', giocatori: []
-      };
-      const optimId = (typeof staffCalAddOptimistic === 'function') ? staffCalAddOptimistic(parsedLike) : null;
-      try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(slot); } catch (e) {}
-      const timer = setTimeout(function () { staffCalRtResolveRemote(slot, false); }, 30000);
-      _staffCalRemotePending.set(slot, { optimId: optimId, timer: timer });
-    } catch (e) { console.warn('staff-cal onRemotePending:', e); }
-  }
-
-  function staffCalRtOnRemoteResolved(payload) {
-    if (!payload || !payload.slot) return;
-    staffCalRtResolveRemote(String(payload.slot), !!payload.ok);
-  }
-
-  function staffCalRtResolveRemote(slot, ok) {
-    try {
-      const entry = _staffCalRemotePending.get(slot);
-      if (!entry) return;
-      clearTimeout(entry.timer);
-      _staffCalRemotePending.delete(slot);
-      try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.delete(slot); } catch (e) {}
-      if (ok) {
-        // il cloud avrà il record reale: due pull ravvicinati sostituiscono la card provvisoria
-        setTimeout(function () { try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {} }, 300);
-        setTimeout(function () { try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {} }, 1500);
-      } else {
-        if (typeof staffCalRemoveOptimistic === 'function') staffCalRemoveOptimistic(entry.optimId);
-      }
-    } catch (e) { console.warn('staff-cal resolveRemote:', e); }
   }
 
   let _staffCalCloudRefreshAt = 0;
@@ -36491,7 +36424,6 @@ Per confermare scrivi ELIMINA.`);
     const _optimKey = `${parsed.data}|${parsed.campoNum}|${parsed.ora}`;
     const _optimId = staffCalAddOptimistic(parsed);
     try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(_optimKey); } catch (e) {}
-    try { if (typeof staffCalRtBroadcastPending === 'function') staffCalRtBroadcastPending(parsed, _optimKey); } catch (e) {}
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -36503,22 +36435,18 @@ Per confermare scrivi ELIMINA.`);
         (sec) => staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint… (${sec}s)`, 'pending'));
       if (result.status === 'done') {
         staffCalSaveLocal(parsed);
-        try { if (typeof staffCalRtBroadcastResolved === 'function') staffCalRtBroadcastResolved(_optimKey, true); } catch (e) {}
         staffCalSetStatus(result.message ? `✓ ${result.message}` : `✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
         if (input) { input.value = ''; staffCalAutoResize(input); }
         if (parsed.data === isoDate) renderStaffCalendar();
       } else if (result.status === 'error') {
         staffCalRemoveOptimistic(_optimId);
-        try { if (typeof staffCalRtBroadcastResolved === 'function') staffCalRtBroadcastResolved(_optimKey, false); } catch (e) {}
         staffCalSetStatus(`❌ Prenotazione non riuscita: ${result.error || 'errore sconosciuto'}`, 'error');
       } else {
         staffCalRemoveOptimistic(_optimId);
-        try { if (typeof staffCalRtBroadcastResolved === 'function') staffCalRtBroadcastResolved(_optimKey, false); } catch (e) {}
         staffCalSetStatus(`⏳ Ci sta mettendo più del previsto. Controlla nel calendario tra poco; se non compare, riprova (NON premere Prenota due volte).`, 'pending');
       }
     } catch (err) {
       staffCalRemoveOptimistic(_optimId);
-      try { if (typeof staffCalRtBroadcastResolved === 'function') staffCalRtBroadcastResolved(_optimKey, false); } catch (e) {}
       staffCalSetStatus('Errore: ' + (err.message || err), 'error');
     } finally {
       try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
