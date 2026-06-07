@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.706';
+    const APP_VERSION = '5.707';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35251,45 +35251,81 @@ Per confermare scrivi ELIMINA.`);
 
     if (!hasPlayers) { buildState([]); return; }
 
-    const loading = svcAddMessage('system', '⏳ Leggo i giocatori attuali su Matchpoint…');
-    let _sec = 0;
-    const _timer = setInterval(function () {
-      _sec += 1;
-      const last = loading.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '⏳ Leggo i giocatori attuali su Matchpoint… (' + _sec + 's)';
-    }, 1000);
+    // Apri SUBITO la scheda con i giocatori già noti in locale (array `giocatori` della prenotazione
+    // staff): modifica e annullo restano usabili anche se il worker Matchpoint è lento o non risponde.
+    // La lettura "autorevole" dal worker parte in sottofondo e aggiorna la lista SOLO se la scheda è
+    // ancora aperta e non hai ancora toccato nulla. v5.707.
+    const _normRoster = function (arr) {
+      return (Array.isArray(arr) ? arr : [])
+        .map(function (p) { return (p && p.nome != null) ? p : null; })
+        .filter(Boolean)
+        .map(function (p, i) { return Object.assign({}, p, { idx: (p.idx != null ? p.idx : i), nome: String(p.nome).trim() }); });
+    };
+    let _localRoster = [];
     try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della partita');
-      const _editReadCtrl = new AbortController();
-      const _editReadTo = setTimeout(function () { _editReadCtrl.abort(); }, 90000);
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify({ campo: campoNum, data: isoDate, ora: ora, read: true }),
-        signal: _editReadCtrl.signal,
+      const _list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const _b = (Array.isArray(_list) ? _list : []).find(function (x) {
+        return x && String(x.data).trim() === String(isoDate).trim()
+          && Number(String(x.campo).replace(/\D/g, '')) === campoNum
+          && String(x.ora).trim() === String(ora).trim();
       });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
-      clearInterval(_timer);
-      clearTimeout(_editReadTo);
-      if (!response.ok || (data && data.ok === false)) {
-        const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-        svcAddMessage('system', '❌ Lettura giocatori non riuscita: ' + msg, 'error');
-        return;
-      }
-      const roster = (data && data.worker && Array.isArray(data.worker.partecipantiFinali))
-        ? data.worker.partecipantiFinali : [];
-      buildState(roster);
-    } catch (err) {
-      clearInterval(_timer);
-      if (err && err.name === 'AbortError') {
-        svcAddMessage('system', '⌛ <strong>Lettura troppo lenta</strong> (oltre 90s): il worker Matchpoint non ha risposto. Riprova tra poco; se capita spesso è un problema lato worker, non lato app.', 'error');
-      } else {
-        svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
-      }
-    }
+      if (_b && Array.isArray(_b.giocatori)) _localRoster = _normRoster(_b.giocatori);
+    } catch (e) {}
+    buildState(_localRoster);
+
+    // Lettura autorevole dei giocatori dal worker, in SOTTOFONDO (non blocca la scheda).
+    (function () {
+      const _stOpen = staffCalPlayersState;
+      const _note = svcAddMessage('system', '⏳ Aggiorno la lista giocatori da Matchpoint… (puoi già modificare)');
+      let _sec = 0;
+      const _timer = setInterval(function () {
+        _sec += 1;
+        const last = _note && _note.querySelector(':scope > div:last-child');
+        if (last) last.innerHTML = '⏳ Aggiorno la lista giocatori da Matchpoint… (' + _sec + 's · puoi già modificare)';
+      }, 1000);
+      (async function () {
+        const _setNote = function (html) {
+          const last = _note && _note.querySelector(':scope > div:last-child');
+          if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">' + html + '</span>';
+        };
+        try {
+          const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+          const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere i giocatori della partita');
+          const _ctrl = new AbortController();
+          const _to = setTimeout(function () { _ctrl.abort(); }, 60000);
+          const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+            body: JSON.stringify({ campo: campoNum, data: isoDate, ora: ora, read: true }),
+            signal: _ctrl.signal,
+          });
+          const respText = await response.text();
+          let data = null;
+          try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+          clearInterval(_timer); clearTimeout(_to);
+          const ok = response.ok && !(data && data.ok === false);
+          const roster = (ok && data && data.worker && Array.isArray(data.worker.partecipantiFinali))
+            ? _normRoster(data.worker.partecipantiFinali) : null;
+          const st = staffCalPlayersState;
+          const stillOpen = st && st === _stOpen && !st.busy;
+          const untouched = stillOpen && (!st.add || !st.add.length) && (!st.remove || !Object.keys(st.remove).length);
+          if (ok && roster && untouched) {
+            st.roster = roster;
+            staffCalRenderPlayersEditor();
+            _setNote('Lista giocatori aggiornata da Matchpoint.');
+          } else if (ok) {
+            _setNote(stillOpen ? 'Lista locale mantenuta (stavi già modificando).' : 'Lista aggiornata non applicata (scheda chiusa).');
+          } else {
+            _setNote('Lettura da Matchpoint non riuscita: uso i giocatori salvati in locale.');
+          }
+        } catch (err) {
+          clearInterval(_timer);
+          _setNote((err && err.name === 'AbortError')
+            ? 'Matchpoint lento: uso i giocatori salvati in locale (la scheda è già usabile).'
+            : 'Uso i giocatori salvati in locale.');
+        }
+      })();
+    })();
   }
 
   function staffCalRenderPlayersEditor() {
