@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.696';
+    const APP_VERSION = '5.697';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36420,6 +36420,10 @@ Per confermare scrivi ELIMINA.`);
     if (sendBtn) sendBtn.disabled = true;
     const tipoLabel = parsed.tipo === 'lezione' ? 'Lezione' : 'Partita';
     staffCalSetStatus(`Avvio prenotazione ${tipoLabel} ${parsed.campo} · ${parsed.data} · ${parsed.ora}–${parsed.oraFine}…`, 'pending');
+    // ── Rendering ottimistico: mostra SUBITO la prenotazione come "⏳ in corso" ──
+    const _optimKey = `${parsed.data}|${parsed.campoNum}|${parsed.ora}`;
+    const _optimId = staffCalAddOptimistic(parsed);
+    try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(_optimKey); } catch (e) {}
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -36435,15 +36439,59 @@ Per confermare scrivi ELIMINA.`);
         if (input) { input.value = ''; staffCalAutoResize(input); }
         if (parsed.data === isoDate) renderStaffCalendar();
       } else if (result.status === 'error') {
+        staffCalRemoveOptimistic(_optimId);
         staffCalSetStatus(`❌ Prenotazione non riuscita: ${result.error || 'errore sconosciuto'}`, 'error');
       } else {
+        staffCalRemoveOptimistic(_optimId);
         staffCalSetStatus(`⏳ Ci sta mettendo più del previsto. Controlla nel calendario tra poco; se non compare, riprova (NON premere Prenota due volte).`, 'pending');
       }
     } catch (err) {
+      staffCalRemoveOptimistic(_optimId);
       staffCalSetStatus('Errore: ' + (err.message || err), 'error');
     } finally {
+      try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
       if (sendBtn) sendBtn.disabled = false;
     }
+  }
+
+  // Aggiunge una prenotazione "ottimistica" (in attesa di conferma worker) e ridisegna subito.
+  // È solo locale (non spinta al cloud) finché il worker non conferma.
+  function staffCalAddOptimistic(parsed) {
+    try {
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const sameSlot = b => b
+        && String(b.data).trim() === String(parsed.data).trim()
+        && Number(String(b.campo).replace(/\D/g, '')) === Number(parsed.campoNum)
+        && String(b.ora).trim() === String(parsed.ora).trim();
+      const kept = list.filter(b => !sameSlot(b));
+      const optimId = `optim-${parsed.data}-${parsed.campoNum}-${parsed.ora}-${Date.now()}`;
+      kept.push({
+        id: optimId,
+        data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
+        campo: parsed.campoNum, nome: `⏳ ${parsed.nome || ''}`.trim(), durata: parsed.durata,
+        tipo: parsed.tipo || 'partita',
+        istruttore: parsed.istruttore || '',
+        giocatori: Array.isArray(parsed.giocatori) ? parsed.giocatori : [],
+        pending: true,
+        createdAt: new Date().toISOString(),
+      });
+      if (typeof save === 'function') save('staffBookings', kept);
+      if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
+      return optimId;
+    } catch (e) { console.warn('staffCalAddOptimistic:', e); return null; }
+  }
+
+  // Rimuove la prenotazione ottimistica (su errore/timeout): la card "⏳ in corso" sparisce.
+  function staffCalRemoveOptimistic(optimId) {
+    try {
+      if (!optimId) return;
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const kept = list.filter(b => !(b && b.id === optimId));
+      if (kept.length !== list.length) {
+        if (typeof save === 'function') save('staffBookings', kept);
+        if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
+      }
+    } catch (e) { console.warn('staffCalRemoveOptimistic:', e); }
   }
 
   function staffCalSaveLocal(parsed) {
@@ -36476,7 +36524,7 @@ Per confermare scrivi ELIMINA.`);
       if (typeof pmoSyncCloudRecordsNow === 'function') {
         const records = [];
         // 1) marca deleted le voci soppiantate sullo stesso slot (col loro local_key)
-        superseded.forEach(function(b){
+        superseded.filter(function(b){ return !(b && b.id && String(b.id).indexOf('optim-') === 0); }).forEach(function(b){
           if (b && b.id) records.push({
             record_type: 'staff_booking', local_key: b.id,
             payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '' },
