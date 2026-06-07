@@ -33946,6 +33946,7 @@ Per confermare scrivi ELIMINA.`);
   }
 
   function staffCalInit() {
+    _staffCalEnsureStaffBookingIds();
     const input = document.getElementById('staffCalDate');
     if (input && !input.value) input.value = staffCalTodayIso();
     renderStaffCalendar();
@@ -34197,6 +34198,8 @@ Per confermare scrivi ELIMINA.`);
       // Show subtle non-blocking status in calendar header
       const statusEl = document.getElementById('staffCalCloudStatus');
       if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
+      // Backfill id sulle prenotazioni legacy senza id, prima di qualsiasi sync che usa b.id.
+      try { _staffCalEnsureStaffBookingIds(); } catch (e) {}
       // Pull-only from cloud (no worker/scrape)
       const cloud = await pmoLoadMatchpointBookingsFromCloud();
       // Soppressioni condivise dal cloud: nascondi subito gli slot annullati da altri device.
@@ -34385,17 +34388,44 @@ Per confermare scrivi ELIMINA.`);
       const fIso = String(fromIso).trim(), fOra = String(fromOra).trim();
       const tIso = String(toIso).trim(), tOra = String(toOra).trim();
       const entry = list.find(function (x) { return x && String(x.data).trim() === tIso && Number(String(x.campo).replace(/\D/g, '')) === tCn && String(x.ora).trim() === tOra; });
-      if (!entry || !entry.id) return;
-      const prevId = entry.id;
-      entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
-      if (typeof save === 'function') save('staffBookings', list);
-      pmoSyncCloudRecordsNow([
-        { record_type: 'staff_booking', local_key: prevId, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true },
-        { record_type: 'staff_suppress', local_key: 'supp|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra, ts: Date.now() }, deleted: false },
-        { record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false }
-      ], 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
+      const records = [];
+      // Sempre: suppress origine — informa ogni altro device di nascondere lo slot sorgente.
+      records.push({ record_type: 'staff_suppress', local_key: 'supp|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra, ts: Date.now() }, deleted: false });
+      // Sempre: delete origine con chiave sintetica — il payload data|campo|ora entra in
+      // staffBookingsDeletedKeys su ogni altro device, così la card vecchio-campo viene rimossa.
+      records.push({ record_type: 'staff_booking', local_key: 'del|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true });
+      if (entry && entry.id) {
+        // Con id: delete anche col vecchio id (ripulisce il record cloud con id come local_key) +
+        // push destinazione col nuovo id.
+        const prevId = entry.id;
+        entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
+        if (typeof save === 'function') save('staffBookings', list);
+        records.push({ record_type: 'staff_booking', local_key: prevId, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true });
+        records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false });
+      } else if (entry) {
+        // Voce legacy senza id: assegna id ora, push destinazione attiva.
+        entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
+        if (typeof save === 'function') save('staffBookings', list);
+        records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false });
+      }
+      pmoSyncCloudRecordsNow(records, 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
     } catch (e) { console.warn('staff move cloud sync:', e); }
   }
+  function _staffCalEnsureStaffBookingIds() {
+    try {
+      if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+      const list = safeLoad('staffBookings', []);
+      let changed = false;
+      for (const b of list) {
+        if (b && !b.id) {
+          b.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+          changed = true;
+        }
+      }
+      if (changed) save('staffBookings', list);
+    } catch (e) { console.warn('_staffCalEnsureStaffBookingIds:', e); }
+  }
+
   function _staffCalClearSuppressed(data, campo, ora) {
     const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
     const list = Array.isArray(arr) ? arr : [];
