@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.692';
+    const APP_VERSION = '5.693';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34060,7 +34060,13 @@ Per confermare scrivi ELIMINA.`);
         //  - slot annullati nel cloud e non ri-creati → rimossi dal locale;
         //  - slot che il cloud NON conosce affatto → restano intatti (vecchie solo-locali).
         const cloudKnows = new Set([...activeKeys, ...delKeys]);
-        localSB = localSB.filter(b => !cloudKnows.has(keyOf(b))).concat(cloudSB);
+        // #1: non lasciare che il cloud sovrascriva uno slot con un edit IN CORSO: in quell'istante
+        // il cloud potrebbe non riflettere ancora la modifica appena fatta in locale (flicker giocatore).
+        // Per quegli slot teniamo il locale; alla fine dell'edit il pull successivo riconcilia col cloud.
+        const _pend = (typeof _staffCalPendingEdits !== 'undefined' && _staffCalPendingEdits) ? _staffCalPendingEdits : new Set();
+        const cloudKnowsKeep = new Set([...cloudKnows].filter(k => !_pend.has(k)));
+        const cloudSBKeep = cloudSB.filter(b => !_pend.has(keyOf(b)));
+        localSB = localSB.filter(b => !cloudKnowsKeep.has(keyOf(b))).concat(cloudSBKeep);
         const after = sig(localSB);
         if (after !== before && typeof save === 'function') { save('staffBookings', localSB); renderStaffCalendar(); }
       } catch (e) { console.warn('staffCalRefreshFromCloud staffBookings:', e); }
