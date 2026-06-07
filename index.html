@@ -7115,7 +7115,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.691';
+    const APP_VERSION = '5.692';
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -34013,7 +34013,12 @@ Per confermare scrivi ELIMINA.`);
       // Gate: only for Supabase-authenticated active staff
       const supabaseSession = (typeof pmoReadSupabaseStaffSession === 'function') ? pmoReadSupabaseStaffSession() : null;
       if (!supabaseSession) return;
-      if (!(typeof pmoIsSupabaseSessionFresh === 'function' && pmoIsSupabaseSessionFresh(supabaseSession))) return;
+      // Sessione scaduta? Prova a rinnovarla col refresh_token invece di arrenderti in silenzio.
+      if (!(typeof pmoIsSupabaseSessionFresh === 'function' && pmoIsSupabaseSessionFresh(supabaseSession))) {
+        let _refreshedToken = '';
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') _refreshedToken = await pmoGetSupabaseStaffAccessToken(); } catch (e) {}
+        if (!_refreshedToken) return;   // refresh fallito → solo qui ci si ferma
+      }
       if (!(typeof pmoIsStaffProfileActive === 'function' && pmoIsStaffProfileActive(pmoStaffProfile))) return;
       try { staffCalRtStart(); } catch (e) {}
       // Debounce: skip if last pull was less than 60s ago, unless force
