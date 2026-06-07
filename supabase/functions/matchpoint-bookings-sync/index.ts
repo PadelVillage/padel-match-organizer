@@ -604,7 +604,7 @@ async function logAudit(admin: any, actor: StaffActor | null, action: string, de
   });
 }
 
-const STAFF_RECONCILE_GRACE_MS = 10 * 60 * 1000; // 10 min: protegge card appena create / finestra worker (~8s) / ottimistico cross-device
+const STAFF_RECONCILE_GRACE_MS = 2 * 60 * 1000; // 120s: copre la finestra worker (~8s) per slot MAI confermati; gli slot gia confermati e poi spariti bypassano il grace
 
 function staffSlotKeyFromOccupancy(b: ParsedBooking) {
   const campoN = String(b?.campo || '').replace(/\D/g, '');
@@ -891,7 +891,14 @@ Deno.serve(async (req) => {
       const reconcileTo = clean(range.toDate || validation.toDate || '');
       const occupancySlotSet = new Set<string>();
       validation.occupancyBookings.forEach((b) => occupancySlotSet.add(staffSlotKeyFromOccupancy(b)));
+      // Slot con occupancy ATTIVA prima di questo sync: se ora spariti => cancellazione reale.
+      const existingOccupancySlotSet = new Set<string>();
+      for (const rec of existingRecords) {
+        if (clean(rec?.record_type || '') !== 'booking_occupancy') continue;
+        existingOccupancySlotSet.add(staffSlotKeyFromOccupancy(rec?.payload || {}));
+      }
       const nowMs = Date.now();
+      let bypassedGraceConfirmed = 0;
       const activeStaff = await loadActiveStaffBookings(admin);
       for (const row of activeStaff) {
         const p = row?.payload || {};
@@ -899,10 +906,17 @@ Deno.serve(async (req) => {
         if (!sData) continue;
         if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
         if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
-        if (occupancySlotSet.has(staffSlotKeyFromPayload(p))) continue;
-        const tsRaw = row?.updated_at || row?.synced_at || '';
-        const tsMs = tsRaw ? Date.parse(tsRaw) : 0;
-        if (tsMs && (nowMs - tsMs) < STAFF_RECONCILE_GRACE_MS) { skippedStaffFresh += 1; continue; }
+        const slotKey = staffSlotKeyFromPayload(p);
+        if (occupancySlotSet.has(slotKey)) continue;
+        // Bypass grace se lo slot era confermato (occupancy attiva prima del sync) ed e sparito.
+        const wasConfirmed = existingOccupancySlotSet.has(slotKey);
+        if (wasConfirmed) {
+          bypassedGraceConfirmed += 1;
+        } else {
+          const tsRaw = row?.updated_at || row?.synced_at || '';
+          const tsMs = tsRaw ? Date.parse(tsRaw) : 0;
+          if (tsMs && (nowMs - tsMs) < STAFF_RECONCILE_GRACE_MS) { skippedStaffFresh += 1; continue; }
+        }
         records.push({
           record_type: 'staff_booking',
           local_key: row.local_key,
@@ -913,7 +927,7 @@ Deno.serve(async (req) => {
         });
         deletedStaffBookings += 1;
       }
-      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, skippedStaffFresh, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
     } catch (staffErr) {
       console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
     }
