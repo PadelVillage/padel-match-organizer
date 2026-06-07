@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.709';
+    const APP_VERSION = '5.710';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36950,6 +36950,16 @@ Per confermare scrivi ELIMINA.`);
     try { svcFlowState = null; } catch (e) {}
     try { staffCalPlayersState = null; } catch (e) {}
     try { if (staffCalMoveState) staffCalCancelMove(true); } catch (e) {}
+    // Smonta dal DOM le schede interattive (form nuova prenotazione + editor), lasciando i messaggi/esito (es. ✅).
+    try {
+      const cont = document.getElementById('svcChatMessages');
+      if (cont) {
+        cont.querySelectorAll('.svc-flow-card').forEach(function (el) { el.remove(); });
+        cont.querySelectorAll('.svc-edit-box').forEach(function (el) {
+          const msg = el.closest('.svc-msg') || el; msg.remove();
+        });
+      }
+    } catch (e) {}
     try { svcSetInputMode('normal'); } catch (e) {}
   }
 
@@ -37117,6 +37127,7 @@ Per confermare scrivi ELIMINA.`);
     const inSel = 'width:100%;font-size:'+FS.ctrl+'px;padding:'+PAD.ctrl+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
 
     const card = document.createElement('div');
+    card.classList.add('svc-flow-card');
     card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;';
 
     const head = document.createElement('div'); head.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px;';
