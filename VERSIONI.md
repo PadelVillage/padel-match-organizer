@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.699 — Revert ottimistico cross-device (torna a comportamento 5.697)
+- Rimossa la propagazione broadcast pending/resolved (staffCalRtBroadcastPending, staffCalRtBroadcastResolved, staffCalRtOnRemotePending, staffCalRtOnRemoteResolved) introdotta nella 5.698. Si torna al comportamento della 5.697: ottimistico locale sul device che prenota + propagazione normale agli altri via `staff-changed` (desktop istantaneo, mobile ~10-12s). Solo app.
+
 ## v5.637 — Chat: tolta l'etichetta "Sistema" dalle schede
 - In cima alle schede della chat del Calendario non compare più l'etichetta "🤖 Sistema": le schede risultano più pulite. Il contenuto resta invariato (ha già le sue icone). L'etichetta "👤 Staff" sui messaggi dell'operatore resta. Solo CSS, nessun cambio di comportamento. Solo app.
 
