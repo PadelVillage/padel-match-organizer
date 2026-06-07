@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.704';
+    const APP_VERSION = '5.705';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35579,6 +35579,7 @@ Per confermare scrivi ELIMINA.`);
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
         renderStaffCalendar();
+        if (!staffCalPlayersState && !svcFlowState) svcAutoCloseIfMobile();
       } else {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
         if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
@@ -35761,6 +35762,7 @@ Per confermare scrivi ELIMINA.`);
           (from.nome ? '<br>👥 ' + from.nome : ''),
           'ok');
         renderStaffCalendar();
+        svcAutoCloseIfMobile();
       } else {
         const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
         svcAddMessage('system', '❌ Spostamento non riuscito: ' + msg);
@@ -36755,6 +36757,7 @@ Per confermare scrivi ELIMINA.`);
           'ok'
         );
         renderStaffCalendar();
+        svcAutoCloseIfMobile();
       } else if (notFoundOnMatchpoint) {
         // Non c'è più su Matchpoint (ghost locale rimasto dai test): pulisci comunque la card.
         removeLocalCopy();
@@ -36763,6 +36766,7 @@ Per confermare scrivi ELIMINA.`);
           'ok'
         );
         renderStaffCalendar();
+        svcAutoCloseIfMobile();
       } else {
         const msg = _msgTxt || ('errore HTTP ' + response.status);
         const _gCampo = Number(String(campo).replace(/\D/g, '')) || 0;
@@ -36863,6 +36867,14 @@ Per confermare scrivi ELIMINA.`);
     if (panel) panel.classList.remove('svc-chat-open');
     if (panel) panel.classList.remove('svc-card-mode');
     if (overlay) overlay.classList.remove('active');
+  }
+
+  // Mobile: a fine operazione (creazione/modifica/annulla/spostamento) chiudi il bottom-sheet
+  // svc dopo un attimo, così resta visibile l'esito. Soglia < 900px, come l'apertura su mobile.
+  function svcAutoCloseIfMobile() {
+    if (window.innerWidth < 900 && typeof svcCloseChat === 'function') {
+      setTimeout(function () { try { svcCloseChat(); } catch (e) {} }, 700);
+    }
   }
 
   function svcSetInputMode(mode) {
