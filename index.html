@@ -4852,9 +4852,25 @@ body.assessment-public-mode .assessment-public-only-card {
       background: rgba(0,0,0,.45);
       color: #fff;
       opacity: .7;
-      pointer-events: none;           /* non blocca i tap */
+      pointer-events: auto;
+      cursor: pointer;
       font-family: ui-monospace, Menlo, Consolas, monospace;
       letter-spacing: .3px;
+    }
+    .pmo-version-overlay {
+      position: fixed; inset: 0; z-index: 100000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.80);
+      padding: 24px; text-align: center;
+    }
+    .pmo-version-overlay.is-open { display: flex; }
+    .pmo-version-overlay-num {
+      color: #fff;
+      font-size: clamp(44px, 18vw, 120px);
+      font-weight: 900;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: 1px;
+      line-height: 1.1;
     }
     .side-nav-content {
       padding:10px 10px 36px;
@@ -5654,7 +5670,7 @@ body.assessment-public-mode .assessment-public-only-card {
     <aside id="sideNav" class="side-nav">
       <div class="side-nav-header">
         <div>
-          <div class="side-nav-title">🎾 Padel Village</div>
+          <div class="side-nav-title" onclick="pmoShowVersionOverlay()" style="cursor:pointer" title="Mostra versione">🎾 Padel Village</div>
         <div class="side-nav-subtitle">Match Organizer · <span data-app-version>v5.312</span><span class="pmo-env-badge" data-env-label hidden></span></div>
         </div>
         <div class="side-nav-header-actions">
@@ -7131,7 +7147,15 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.694';
+    const APP_VERSION = '5.695';
+    function pmoShowVersionOverlay() {
+      var o = document.getElementById('pmoVersionOverlay');
+      if (o) o.classList.add('is-open');
+    }
+    function pmoHideVersionOverlay() {
+      var o = document.getElementById('pmoVersionOverlay');
+      if (o) o.classList.remove('is-open');
+    }
     const PMO_PROD_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/';
     function pmoDetectPublicBaseUrl() {
       try {
@@ -37512,6 +37536,9 @@ Per confermare scrivi ELIMINA.`);
   </script>
   <!-- ════ end Staff Calendar ════ -->
 
-  <div class="pmo-version-badge" data-app-version>v—</div>
+  <div class="pmo-version-badge" data-app-version onclick="pmoShowVersionOverlay()">v—</div>
+  <div id="pmoVersionOverlay" class="pmo-version-overlay" onclick="pmoHideVersionOverlay()">
+    <div class="pmo-version-overlay-num" data-app-version>v—</div>
+  </div>
 </body>
 </html>
