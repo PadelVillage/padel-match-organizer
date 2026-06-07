@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.700';
+    const APP_VERSION = '5.701';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34407,6 +34407,20 @@ Per confermare scrivi ELIMINA.`);
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
       result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata) });
+    }
+    // v5.701 — Lo staff_booking e AUTOREVOLE per il suo slot: porta la lista completa dei
+    // giocatori. Se per la stessa terna (campo|ora) esiste ANCHE un'occupazione/booking Matchpoint
+    // (solo intestatario, senza array giocatori), va scartata: altrimenti, per via del "vince il
+    // primo" in staffCalBuildOccupancyMap / _staffCalBuildAgenda, la card mostrerebbe l'occupazione
+    // (un nome o vuoto) e i giocatori dello staff_booking sparirebbero dalla scheda.
+    {
+      const _staffSlotKeys = new Set(result.filter(function (r) { return r.tipo === 'staff-booking'; }).map(function (r) { return r.campo + '|' + r.ora; }));
+      if (_staffSlotKeys.size) {
+        for (let i = result.length - 1; i >= 0; i--) {
+          const r = result[i];
+          if (r.tipo !== 'staff-booking' && _staffSlotKeys.has(r.campo + '|' + r.ora)) result.splice(i, 1);
+        }
+      }
     }
     // Nascondi gli slot annullati di recente, anche se la cache di occupazione è vecchia.
     const _supp = _staffCalGetSuppressed();
