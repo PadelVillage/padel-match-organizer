@@ -54,6 +54,34 @@ function okResponse(body: JsonMap) {
   return json({ ok: true, ...body });
 }
 
+const STAFFCAL_RT_CHANNEL = 'pv-staff-cal-test';
+
+// Broadcast realtime sul canale che l'app ascolta: sveglia gli altri device. Best-effort.
+// Stesso pattern di matchpoint-bookings-cancel (evento 'staff-changed', private:false).
+async function notifyStaffCalRealtime(supabaseUrl: string, supabaseKey: string, source: string, extra: JsonMap = {}) {
+  try {
+    const res = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        messages: [{ topic: STAFFCAL_RT_CHANNEL, event: 'staff-changed', payload: { ts: Date.now(), source, ...extra }, private: false }],
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      console.error(JSON.stringify({ event: 'realtime_broadcast_http_error', status: res.status, body: errBody.slice(0, 500) }));
+    } else {
+      console.log(JSON.stringify({ event: 'realtime_broadcast_ok', status: res.status }));
+    }
+  } catch (e) {
+    console.error(JSON.stringify({ event: 'realtime_broadcast_failed', error: errorText(e) }));
+  }
+}
+
 function errorResponse(status: number, code: string, message: string, extra: JsonMap = {}) {
   return json({ ok: false, error: code, message: errorText(message), ...extra }, status);
 }
@@ -576,6 +604,35 @@ async function logAudit(admin: any, actor: StaffActor | null, action: string, de
   });
 }
 
+const STAFF_RECONCILE_GRACE_MS = 10 * 60 * 1000; // 10 min: protegge card appena create / finestra worker (~8s) / ottimistico cross-device
+
+function staffSlotKeyFromOccupancy(b: ParsedBooking) {
+  const campoN = String(b?.campo || '').replace(/\D/g, '');
+  return `${b?.data || ''}|${campoN}|${b?.ora || ''}`;
+}
+function staffSlotKeyFromPayload(p: any) {
+  const campoN = String(p?.campo ?? '').replace(/\D/g, '');
+  return `${p?.data || ''}|${campoN}|${p?.ora || ''}`;
+}
+
+// staff_booking ATTIVI (deleted=false). Il reconcile booking/occupancy NON li tocca.
+async function loadActiveStaffBookings(admin: any) {
+  const records: any[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('pmo_cloud_records')
+      .select('local_key,payload,updated_at,synced_at')
+      .eq('record_type', 'staff_booking')
+      .eq('deleted', false)
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = Array.isArray(data) ? data : [];
+    records.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return records;
+}
+
 async function loadExistingBookingRecords(admin: any) {
   const records: any[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -824,6 +881,43 @@ Deno.serve(async (req) => {
     const totalBookingsAfter = validation.bookings.length;
     const totalOccupanciesAfter = validation.occupancyBookings.length;
     const range = exported.range || {};
+
+    // --- Reconcile staff_booking sparite da Matchpoint (annullamenti DIRETTI) ---
+    let deletedStaffBookings = 0;
+    let skippedStaffFresh = 0;
+    let skippedStaffOutOfRange = 0;
+    try {
+      const reconcileFrom = clean(range.fromDate || validation.fromDate || '');
+      const reconcileTo = clean(range.toDate || validation.toDate || '');
+      const occupancySlotSet = new Set<string>();
+      validation.occupancyBookings.forEach((b) => occupancySlotSet.add(staffSlotKeyFromOccupancy(b)));
+      const nowMs = Date.now();
+      const activeStaff = await loadActiveStaffBookings(admin);
+      for (const row of activeStaff) {
+        const p = row?.payload || {};
+        const sData = clean(p?.data || '');
+        if (!sData) continue;
+        if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
+        if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
+        if (occupancySlotSet.has(staffSlotKeyFromPayload(p))) continue;
+        const tsRaw = row?.updated_at || row?.synced_at || '';
+        const tsMs = tsRaw ? Date.parse(tsRaw) : 0;
+        if (tsMs && (nowMs - tsMs) < STAFF_RECONCILE_GRACE_MS) { skippedStaffFresh += 1; continue; }
+        records.push({
+          record_type: 'staff_booking',
+          local_key: row.local_key,
+          payload: p,
+          payload_hash: null,
+          deleted: true,
+          synced_at: importedAt,
+        });
+        deletedStaffBookings += 1;
+      }
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, skippedStaffFresh, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+    } catch (staffErr) {
+      console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
+    }
+
     const summaryPayload = {
       id: 'matchpoint_bookings_auto_import_last',
       type: 'prenotazioni future',
@@ -892,6 +986,7 @@ Deno.serve(async (req) => {
       newOccupancyRows,
       changedOccupancyRows,
       deletedOccupancies,
+      deletedStaffBookings,
       skipped: validation.skipped,
       totalBookingsBefore,
       totalBookingsAfter,
@@ -900,6 +995,11 @@ Deno.serve(async (req) => {
       diagnosticFile,
       upserted: records.length,
     });
+
+    // Sveglia gli altri device se qualcosa e cambiato (incl. annullamenti diretti riconciliati).
+    if (newBookingRows || changedBookingRows || deletedBookings || newOccupancyRows || changedOccupancyRows || deletedOccupancies || deletedStaffBookings) {
+      await notifyStaffCalRealtime(supabaseUrl, serviceRoleKey, 'edge-bookings-sync', { deletedStaffBookings, deletedBookings, deletedOccupancies });
+    }
 
     const sortBookings = (items: ParsedBooking[]) => [...items].sort((a, b) => `${a.data || ''} ${a.ora || ''} ${a.campo || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''} ${b.campo || ''}`));
 
@@ -914,6 +1014,7 @@ Deno.serve(async (req) => {
         occupancyRows: validation.occupancyRows,
         deletedBookings,
         deletedOccupancies,
+        deletedStaffBookings,
         totalBookingsBefore,
         totalBookingsAfter,
         totalOccupanciesBefore,
