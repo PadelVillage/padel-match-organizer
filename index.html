@@ -37685,18 +37685,6 @@ Per confermare scrivi ELIMINA.`);
         nome: (players && players.length) ? nomeStr : istruttore,
         giocatori: giocatori
       };
-    } else {
-      parsed = {
-        campoNum: campo,
-        campo: 'Campo ' + campo,
-        data: dateISO,
-        ora: ora,
-        oraFine: svcEndTime(ora, durata),
-        durata: durata,
-        nome: nomeStr,
-        tipo: 'partita',
-        giocatori: giocatori
-      };
     } else if (tipoEngine === 'manutenzione') {
       parsed = {
         campoNum: campo,
@@ -37708,6 +37696,18 @@ Per confermare scrivi ELIMINA.`);
         nome: 'Manutenzione',
         tipo: 'manutenzione',
         giocatori: []
+      };
+    } else {
+      parsed = {
+        campoNum: campo,
+        campo: 'Campo ' + campo,
+        data: dateISO,
+        ora: ora,
+        oraFine: svcEndTime(ora, durata),
+        durata: durata,
+        nome: nomeStr,
+        tipo: 'partita',
+        giocatori: giocatori
       };
     }
     // Pre-check conflitto istantaneo
