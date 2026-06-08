@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.712';
+    const APP_VERSION = '5.713';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36058,6 +36058,7 @@ Per confermare scrivi ELIMINA.`);
         oraFine: parsed.oraFine, durata: parsed.durata,
         nome: parsed.nome, tipo: parsed.tipo || 'partita',
         istruttore: parsed.istruttore || undefined,
+        ...(options && options.sbId ? { sbId: options.sbId } : {}),
         ...(giocatoriPayload ? { giocatori: giocatoriPayload } : {}),
         ...(options.async ? { async: true } : {}),
       }),
@@ -36587,8 +36588,9 @@ Per confermare scrivi ELIMINA.`);
           const singleParsed = { ...parsed, data: dates[i] };
           staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
           try {
-            await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey);
-            staffCalSaveLocal(singleParsed);
+            const _sbId = _staffCalNewSbId();
+            await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey, { sbId: _sbId });
+            staffCalSaveLocal(singleParsed, _sbId);
             ok++;
           } catch (e) {
             fail++;
@@ -36633,14 +36635,15 @@ Per confermare scrivi ELIMINA.`);
     try {
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true });
+      const _sbId = _staffCalNewSbId();
+      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
       const jobId = submit && submit.jobId;
       if (!jobId) throw new Error('Avvio prenotazione non riuscito (nessun codice lavoro).');
       staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint…`, 'pending');
       const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey,
         (sec) => staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint… (${sec}s)`, 'pending'));
       if (result.status === 'done') {
-        staffCalSaveLocal(parsed);
+        staffCalSaveLocal(parsed, _sbId);
         try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
         staffCalSetStatus(result.message ? `✓ ${result.message}` : `✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
         if (input) { input.value = ''; staffCalAutoResize(input); }
@@ -36704,7 +36707,15 @@ Per confermare scrivi ELIMINA.`);
     } catch (e) { console.warn('staffCalRemoveOptimistic:', e); }
   }
 
-  function staffCalSaveLocal(parsed) {
+  // Genera un id stabile per la prenotazione staff (UUID). Usato come id locale E come
+  // local_key sul cloud, così client ed edge convergono sullo STESSO record. Tappa 32 Fase A.
+  function _staffCalNewSbId() {
+    return (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('sb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+  }
+
+  function staffCalSaveLocal(parsed, sbId) {
     const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     // SOVRASCRITTURA SLOT: se esiste già una prenotazione locale sullo stesso slot
     // (stessa data+campo+ora) la rimuoviamo dal locale e la marchiamo deleted sul
@@ -36718,7 +36729,7 @@ Per confermare scrivi ELIMINA.`);
     const superseded = existing.filter(sameSlot);
     const kept = existing.filter(b => !sameSlot(b));
     const entry = {
-      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`,
+      id: (sbId && String(sbId).trim()) || ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sb-${Date.now()}`),
       data: parsed.data, ora: parsed.ora, oraFine: parsed.oraFine,
       campo: parsed.campoNum, nome: parsed.nome, durata: parsed.durata,
       tipo: parsed.tipo || 'partita',
@@ -37571,7 +37582,8 @@ Per confermare scrivi ELIMINA.`);
       const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const inProgress = svcAddMessage('system', '⏳ Prenotazione in corso su Matchpoint…');
-      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true });
+      const _sbId = _staffCalNewSbId();
+      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
       const jobId = submit && submit.jobId;
       if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
       const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function(sec) {
@@ -37579,7 +37591,7 @@ Per confermare scrivi ELIMINA.`);
         if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)';
       });
       if (result.status === 'done') {
-        staffCalSaveLocal(parsed);
+        staffCalSaveLocal(parsed, _sbId);
         if (tipoEngine === 'lezione') {
           const allievi = (players && players.length) ? nomeStr : '—';
           svcAddMessage('system',
