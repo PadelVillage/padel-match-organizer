@@ -2829,6 +2829,7 @@
 
     /* ── Tappa 2: Mobile 3-panel layout (< 900px) ── */
     #staffCalMobileHead, #staffCalMobileChatBar { display:none; }
+    .smc-soci-overlay, .smc-soci-sheet { display:none; }
     @media (max-width:899px) {
       #pmoCalendarioStaffPanel { padding-bottom:0 !important; overflow:hidden; }
       #pmoCalendarioStaffPanel .admin-panel-head { display:none !important; }
@@ -2842,6 +2843,30 @@
       .smc-date-hidden { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
       .smc-oggi-btn { background:none; border:none; color:#2563eb; font-size:.82rem; font-weight:700; cursor:pointer; padding:4px 6px; white-space:nowrap; flex-shrink:0; }
       .smc-team-btn { background:none; border:none; font-size:1.25rem; cursor:pointer; padding:4px 6px; flex-shrink:0; line-height:1; }
+      /* Tappa 33 — bottom-sheet Soci (stile prenotazioni) */
+      .smc-soci-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
+      .smc-soci-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
+      .smc-soci-sheet { display:flex; flex-direction:column; position:fixed; left:0; right:0; bottom:0; max-height:85vh; background:var(--surface,#fff); border-top:2px solid var(--border,#d8d7d2); border-radius:14px 14px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+      .smc-soci-sheet.open { transform:translateY(0); }
+      .smc-soci-head { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border,#e5e7eb); flex:0 0 auto; }
+      .smc-soci-tabs { display:flex; gap:6px; flex:1; }
+      .smc-soci-tab { flex:1; background:#f1f5f9; border:1px solid var(--border,#d8d7d2); border-radius:20px; padding:9px 10px; font-size:15px; font-weight:700; color:var(--text-muted,#4b5563); font-family:inherit; cursor:pointer; }
+      .smc-soci-tab.active { background:var(--accent,#2563eb); border-color:var(--accent,#2563eb); color:#fff; }
+      .smc-soci-close { background:none; border:none; font-size:22px; line-height:1; color:var(--text-muted,#4b5563); cursor:pointer; padding:4px 8px; flex-shrink:0; }
+      .smc-soci-body { padding:12px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+      .smc-soci-input { width:100%; box-sizing:border-box; border:1.5px solid var(--border,#d1d5db); border-radius:12px; padding:11px 13px; font-size:17px; font-family:inherit; outline:none; background:#f9fafb; color:#111827; }
+      .smc-soci-input:focus { border-color:var(--accent,#2563eb); }
+      .smc-soci-results { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+      .smc-soci-result { display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; width:100%; background:#fff; border:1px solid var(--border,#e5e7eb); border-radius:12px; padding:11px 13px; cursor:pointer; font-family:inherit; }
+      .smc-soci-result:active { background:var(--accent-light,rgba(37,99,235,0.10)); }
+      .smc-soci-result-name { font-size:16px; font-weight:700; color:var(--text,#1f2430); }
+      .smc-soci-result-meta { font-size:13px; color:var(--text-muted,#6b7280); }
+      .smc-soci-hint { padding:18px 4px; text-align:center; font-size:15px; color:var(--text-muted,#6b7280); }
+      .smc-soci-form { display:flex; flex-direction:column; gap:10px; }
+      .smc-soci-row { display:flex; gap:10px; }
+      .smc-soci-row > * { flex:1; min-width:0; }
+      .smc-soci-save { margin-top:4px; background:var(--accent,#2563eb); border:none; color:#fff; border-radius:12px; padding:13px; font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; }
+      .smc-soci-save:active { background:var(--accent-hover,#1d4ed8); }
       .smc-team-wrap { position:relative; flex-shrink:0; }
       .smc-team-menu { position:absolute; top:calc(100% + 6px); right:0; z-index:1000; min-width:190px; background:var(--surface,#fff); border:1px solid var(--border,#d8d7d2); border-radius:12px; box-shadow:0 10px 28px rgba(15,23,42,0.20); padding:6px; display:flex; flex-direction:column; gap:2px; }
       .smc-team-menu[hidden] { display:none; }
@@ -5855,7 +5880,7 @@ body.assessment-public-mode .assessment-public-only-card {
                   <button class="smc-nav-btn" onclick="staffCalNextDay()">›</button>
                   <button id="staffCalMobileOggi" class="smc-oggi-btn" onclick="staffCalGoToday()">Oggi</button>
                   <div class="smc-team-wrap">
-                    <button type="button" class="smc-team-btn" aria-haspopup="true" aria-expanded="false" title="Soci" onclick="staffCalToggleTeamMenu(event)">👥</button>
+                    <button type="button" class="smc-team-btn" title="Soci" onclick="staffCalOpenSociSheet()">👥</button>
                     <div class="smc-team-menu" id="staffCalTeamMenu" role="menu" hidden>
                       <button type="button" class="smc-team-item" role="menuitem" onclick="staffCalTeamMenuAction('search')">🔍 Cerca socio</button>
                       <button type="button" class="smc-team-item" role="menuitem" onclick="staffCalTeamMenuAction('new')">➕ Nuovo socio</button>
@@ -5895,6 +5920,42 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="svc-chat-overlay" id="svcChatOverlay"></div>
               <button class="svc-chat-fab" id="svcChatFab" title="Assistente prenotazioni">💬<span class="svc-fab-badge" id="svcFabBadge"></span></button>
+              <!-- Tappa 33 — bottom-sheet Soci -->
+              <div class="smc-soci-overlay" id="staffCalSociOverlay" onclick="staffCalCloseSociSheet()"></div>
+              <div class="smc-soci-sheet" id="staffCalSociSheet" role="dialog" aria-label="Soci">
+                <div class="smc-soci-head">
+                  <div class="smc-soci-tabs">
+                    <button type="button" class="smc-soci-tab active" data-soci-tab="search" onclick="staffCalSociSheetTab('search')">🔍 Cerca</button>
+                    <button type="button" class="smc-soci-tab" data-soci-tab="new" onclick="staffCalSociSheetTab('new')">➕ Nuovo</button>
+                  </div>
+                  <button type="button" class="smc-soci-close" onclick="staffCalCloseSociSheet()" title="Chiudi">✕</button>
+                </div>
+                <div class="smc-soci-body">
+                  <div class="smc-soci-pane" data-soci-pane="search">
+                    <input type="text" id="staffCalSociSearch" class="smc-soci-input" placeholder="Cerca per nome, telefono, email o ID" autocomplete="off" oninput="staffCalRenderSociResults()">
+                    <div id="staffCalSociResults" class="smc-soci-results"></div>
+                  </div>
+                  <div class="smc-soci-pane" data-soci-pane="new" hidden>
+                    <div class="smc-soci-form">
+                      <div class="smc-soci-row">
+                        <input type="text" id="staffCalSociNewFirst" class="smc-soci-input" placeholder="Nome">
+                        <input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome">
+                      </div>
+                      <input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono">
+                      <input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email">
+                      <div class="smc-soci-row">
+                        <select id="staffCalSociNewGender" class="smc-soci-input">
+                          <option value="">Sesso…</option>
+                          <option value="M">Maschio</option>
+                          <option value="F">Femmina</option>
+                        </select>
+                        <input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="Livello (es. 3)" inputmode="decimal">
+                      </div>
+                      <button type="button" class="smc-soci-save" onclick="staffCalSociSheetSaveNew()">Salva socio</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -37841,6 +37902,93 @@ Per confermare scrivi ELIMINA.`);
     var mInput = document.getElementById('staffCalMobileDateInput');
     var realInput = document.getElementById('staffCalDate');
     if (mInput && realInput) { realInput.value = mInput.value; renderStaffCalendar(); }
+  }
+  function staffCalOpenSociSheet() {
+    var sheet = document.getElementById('staffCalSociSheet');
+    var ov = document.getElementById('staffCalSociOverlay');
+    if (!sheet || !ov) return;
+    staffCalSociSheetTab('search');
+    var s = document.getElementById('staffCalSociSearch');
+    if (s) s.value = '';
+    staffCalRenderSociResults();
+    ov.classList.add('active');
+    sheet.classList.add('open');
+    setTimeout(function () { var i = document.getElementById('staffCalSociSearch'); if (i) i.focus(); }, 140);
+  }
+  function staffCalCloseSociSheet() {
+    var sheet = document.getElementById('staffCalSociSheet');
+    var ov = document.getElementById('staffCalSociOverlay');
+    if (sheet) sheet.classList.remove('open');
+    if (ov) ov.classList.remove('active');
+  }
+  function staffCalSociSheetTab(which) {
+    document.querySelectorAll('.smc-soci-tab').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-soci-tab') === which);
+    });
+    document.querySelectorAll('.smc-soci-pane').forEach(function (p) {
+      if (p.getAttribute('data-soci-pane') === which) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+    if (which === 'search') {
+      setTimeout(function () { var s = document.getElementById('staffCalSociSearch'); if (s) s.focus(); }, 60);
+    } else {
+      setTimeout(function () { var f = document.getElementById('staffCalSociNewFirst'); if (f) f.focus(); }, 60);
+    }
+  }
+  function staffCalSociMatchList(q) {
+    var list = Array.isArray(giocatori) ? giocatori : [];
+    var nq = (typeof normalizeText === 'function') ? normalizeText(q) : String(q || '').toLowerCase().trim();
+    if (!nq) return [];
+    var norm = function (s) { return (typeof normalizeText === 'function') ? normalizeText(s) : String(s == null ? '' : s).toLowerCase(); };
+    return list.filter(function (g) {
+      var name = (typeof playerFullName === 'function') ? playerFullName(g) : (g.name || '');
+      return norm(name).indexOf(nq) >= 0
+        || norm(g.phone).indexOf(nq) >= 0
+        || norm(g.email).indexOf(nq) >= 0
+        || norm(g.memberId).indexOf(nq) >= 0;
+    }).slice(0, 40);
+  }
+  function staffCalRenderSociResults() {
+    var box = document.getElementById('staffCalSociResults');
+    if (!box) return;
+    var input = document.getElementById('staffCalSociSearch');
+    var q = input ? input.value : '';
+    if (!q || !q.trim()) { box.innerHTML = '<div class="smc-soci-hint">Scrivi per cercare un socio…</div>'; return; }
+    var rows = staffCalSociMatchList(q);
+    if (!rows.length) { box.innerHTML = '<div class="smc-soci-hint">Nessun socio trovato.</div>'; return; }
+    var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    box.innerHTML = rows.map(function (g) {
+      var name = (typeof playerFullName === 'function') ? playerFullName(g) : (g.name || '');
+      var meta = [g.memberId ? ('#' + g.memberId) : '', g.phone || '', (g.active === false ? 'inattivo' : '')].filter(Boolean).join(' · ');
+      return '<button type="button" class="smc-soci-result" data-soci-id="' + esc(String(g.id)) + '" onclick="staffCalSociOpenMember(this.dataset.sociId)">'
+        + '<span class="smc-soci-result-name">' + esc(name) + '</span>'
+        + '<span class="smc-soci-result-meta">' + esc(meta) + '</span></button>';
+    }).join('');
+  }
+  function staffCalSociOpenMember(id) {
+    staffCalCloseSociSheet();
+    setTimeout(function () { if (typeof openMemberCard === 'function') openMemberCard(id, { force: true }); }, 60);
+  }
+  function staffCalSociSheetSaveNew() {
+    var setVal = function (id, val) { var el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
+    var get = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+    setVal('firstName', get('staffCalSociNewFirst'));
+    setVal('surname', get('staffCalSociNewSurname'));
+    setVal('phone', get('staffCalSociNewPhone'));
+    setVal('email', get('staffCalSociNewEmail'));
+    setVal('manualGender', get('staffCalSociNewGender'));
+    setVal('level', get('staffCalSociNewLevel'));
+    ['prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
+    var created = (typeof addMember === 'function') ? addMember() : null;
+    if (created) {
+      ['staffCalSociNewFirst', 'staffCalSociNewSurname', 'staffCalSociNewPhone', 'staffCalSociNewEmail', 'staffCalSociNewLevel'].forEach(function (id) { setVal(id, ''); });
+      var gsel = document.getElementById('staffCalSociNewGender'); if (gsel) gsel.value = '';
+      staffCalCloseSociSheet();
+    } else {
+      ['firstName', 'surname', 'phone', 'email', 'prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
+      setVal('level', '0.5');
+      setVal('manualGender', 'NA');
+    }
   }
   function staffCalToggleTeamMenu(ev) {
     if (ev) ev.stopPropagation();
