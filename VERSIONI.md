@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.714 — Sync staff: reconcile PER-ID (Fase B riordino)
+- Il calendario staff ora riconcilia le prenotazioni col cloud confrontando l'`id` stabile (`sbId`) invece dello slot. Una prenotazione che cambia campo/data/ora è riconosciuta come la stessa voce e la card si SPOSTA su tutti i device, senza più "orfane" e senza tombstone. Mantenuto un ponte per slot per i record legacy e per gli annullamenti (chiavati per slot), così la transizione è liscia. Lo spostamento non ri-genera più l'id e non scrive tombstone sintetici; resta lo `staff_suppress` per nascondere l'occupazione Matchpoint sul vecchio slot. Solo app. (La edge `matchpoint-bookings-edit` verrà ripulita dei tombstone a parte, dopo l'aggiornamento dei device.)
+
 ## v5.713 — Sync staff: id prenotazione condiviso col cloud (Fase A riordino)
 - La creazione di una prenotazione staff genera ora un `sbId` (UUID) che il client passa alla edge `matchpoint-bookings-create` e usa anche come id locale. Così la edge e il client scrivono lo STESSO record cloud (chiave = `sbId`) invece di due record distinti (UUID lato client + stringa-slot lato edge). Nessun cambiamento visibile: è preparazione al reconcile-per-id (Fase B) e rimuove il doppio record alla radice. Richiede la edge `matchpoint-bookings-create` v17 (deployata a parte). Solo app.
 
