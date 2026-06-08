@@ -2781,6 +2781,10 @@
     #staffCalV36 .svc-chip-x { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:none; background:var(--accent-light); color:var(--accent); font-size:.85rem; line-height:1; cursor:pointer; padding:0; transition:background .12s; }
     #staffCalV36 .svc-chip-x:hover:not(:disabled) { background:var(--red-light); color:var(--red); }
     #staffCalV36 .svc-chip-x:disabled { opacity:.4; cursor:not-allowed; }
+    #staffCalV36 .svc-edit-label { font-size:.72rem; color:var(--text-muted); }
+    #staffCalV36 .svc-edit-field { font-size:.82rem; padding:4px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); }
+    #staffCalV36 .svc-edit-field:disabled { opacity:.5; cursor:not-allowed; }
+    #staffCalV36 .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     @media (min-width:900px) {
       #staffCalV36 .svc-layout { flex-direction:row; height:min(80vh, 860px); }
       #staffCalV36 .svc-grid-col { overflow:auto; }
@@ -2810,10 +2814,6 @@
       /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile */
       #staffCalV36 .svc-chat-panel, #staffCalV36 .svc-chat-panel * { font-size:21px !important; }
       #staffCalV36 .svc-chat-panel select, #staffCalV36 .svc-chat-panel input { padding:8px 10px !important; }
-      /* Scheda "Modifica prenotazione": testi uniformi e in armonia con i messaggi (solo mobile) */
-      #staffCalV36 .svc-edit-box, #staffCalV36 .svc-edit-box * { font-size:20px !important; }
-      #staffCalV36 .svc-edit-box select, #staffCalV36 .svc-edit-box input { padding:7px 10px !important; }
-      #staffCalV36 .svc-edit-box button { padding:8px 13px !important; }
       /* Equilibrio dimensioni: messaggi/azioni assistente in armonia con la schedina (solo mobile) */
       #staffCalV36 .svc-msg { font-size:21px; }
       #staffCalV36 .svc-msg-label { font-size:12px; }
@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.714';
+    const APP_VERSION = '5.715';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35382,30 +35382,29 @@ Per confermare scrivi ELIMINA.`);
     title.style.marginBottom = '8px';
     box.appendChild(title);
 
-    const mkLabel = function (t) { const s = document.createElement('span'); s.textContent = t; s.style.cssText = 'font-size:.72rem;color:var(--text-muted);'; return s; };
-    const selCss = 'font-size:.82rem;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);';
+    const mkLabel = function (t) { const s = document.createElement('span'); s.textContent = t; s.className = 'svc-edit-label'; return s; };
 
     const mvWrap = document.createElement('div');
-    mvWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 6px;';
+    mvWrap.className = 'svc-edit-row';
     mvWrap.appendChild(mkLabel('Campo'));
     const campoSel = document.createElement('select');
-    campoSel.style.cssText = selCss; campoSel.disabled = st.busy;
+    campoSel.className = 'svc-edit-field'; campoSel.disabled = st.busy;
     [1, 2, 3, 4].forEach(function (n) { const o = document.createElement('option'); o.value = String(n); o.textContent = String(n); if (n === st.mCampo) o.selected = true; campoSel.appendChild(o); });
     campoSel.addEventListener('change', function () { st.mCampo = Number(campoSel.value) || st.mCampo; staffCalRenderPlayersEditor(); });
     mvWrap.appendChild(campoSel);
     mvWrap.appendChild(mkLabel('Data'));
     const dataInp = document.createElement('input');
-    dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.style.cssText = selCss; dataInp.disabled = st.busy;
+    dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.className = 'svc-edit-field'; dataInp.disabled = st.busy;
     dataInp.addEventListener('change', function () { if (dataInp.value) st.mIso = dataInp.value; staffCalRenderPlayersEditor(); });
     mvWrap.appendChild(dataInp);
     box.appendChild(mvWrap);
 
     const orarioWrap = document.createElement('div');
-    orarioWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px;';
+    orarioWrap.className = 'svc-edit-row';
     const slots = staffCalSlots();
     orarioWrap.appendChild(mkLabel('Dalle'));
     const iniSel = document.createElement('select');
-    iniSel.style.cssText = selCss; iniSel.disabled = st.busy;
+    iniSel.className = 'svc-edit-field'; iniSel.disabled = st.busy;
     slots.forEach(function (t) { const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraIni) o.selected = true; iniSel.appendChild(o); });
     iniSel.addEventListener('change', function () {
       st.mOraIni = iniSel.value;
@@ -35415,7 +35414,7 @@ Per confermare scrivi ELIMINA.`);
     orarioWrap.appendChild(iniSel);
     orarioWrap.appendChild(mkLabel('alle'));
     const finSel = document.createElement('select');
-    finSel.style.cssText = selCss; finSel.disabled = st.busy;
+    finSel.className = 'svc-edit-field'; finSel.disabled = st.busy;
     const allFin = slots.concat([_staffCalEndTime(slots[slots.length - 1] || '22:00', 30)]);
     allFin.forEach(function (t) { if (_staffCalToMin(t) <= _staffCalToMin(st.mOraIni)) return; const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraFin) o.selected = true; finSel.appendChild(o); });
     finSel.addEventListener('change', function () { st.mOraFin = finSel.value; staffCalRenderPlayersEditor(); });
@@ -35423,7 +35422,7 @@ Per confermare scrivi ELIMINA.`);
     const durMin = Math.max(0, _staffCalToMin(st.mOraFin) - _staffCalToMin(st.mOraIni));
     const durHint = document.createElement('span');
     durHint.textContent = '(' + durMin + ' min)';
-    durHint.style.cssText = 'font-size:.72rem;color:var(--text-muted);';
+    durHint.className = 'svc-edit-label';
     orarioWrap.appendChild(durHint);
     box.appendChild(orarioWrap);
 
@@ -35437,85 +35436,93 @@ Per confermare scrivi ELIMINA.`);
     if (st.hasPlayers) {
       const curLbl = document.createElement('div');
       curLbl.textContent = 'Giocatori attuali:';
-      curLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:6px 0 2px;';
+      curLbl.className = 'svc-edit-label';
+      curLbl.style.cssText = 'margin:6px 0 2px;';
       box.appendChild(curLbl);
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
-        none.style.cssText = 'font-size:.78rem;color:var(--text-muted);font-style:italic;';
+        none.className = 'svc-players-empty';
         box.appendChild(none);
-      }
-      st.roster.forEach(function (p) {
-        const marked = !!st.remove[p.idx];
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
-        const nm = document.createElement('span');
-        nm.textContent = p.nome;
-        nm.style.cssText = 'flex:1;font-size:.84rem;' + (marked ? 'text-decoration:line-through;opacity:.5;' : '');
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = marked ? '↩︎ ripristina' : '✕ rimuovi';
-        btn.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:' + (marked ? 'var(--surface2)' : 'rgba(220,38,38,.08)') + ';color:' + (marked ? 'var(--text)' : '#b91c1c') + ';cursor:pointer;';
-        btn.disabled = st.busy;
-        btn.addEventListener('click', function () {
-          if (st.busy) return;
-          if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
-          staffCalRenderPlayersEditor();
+      } else {
+        const chipsWrap = document.createElement('div');
+        chipsWrap.className = 'svc-player-chips';
+        st.roster.forEach(function (p) {
+          const marked = !!st.remove[p.idx];
+          const chip = document.createElement('span');
+          chip.className = 'svc-player-chip';
+          if (marked) { chip.style.textDecoration = 'line-through'; chip.style.opacity = '.5'; }
+          chip.appendChild(document.createTextNode(p.nome));
+          const x = document.createElement('button');
+          x.type = 'button';
+          x.className = 'svc-chip-x';
+          x.textContent = '✕';
+          x.title = marked ? 'Ripristina' : 'Rimuovi';
+          x.disabled = st.busy;
+          x.addEventListener('click', function () {
+            if (st.busy) return;
+            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+            staffCalRenderPlayersEditor();
+          });
+          chip.appendChild(x);
+          chipsWrap.appendChild(chip);
         });
-        row.appendChild(nm);
-        row.appendChild(btn);
-        box.appendChild(row);
-      });
+        box.appendChild(chipsWrap);
+      }
       if (st.add.length) {
         const addLbl = document.createElement('div');
         addLbl.textContent = 'Da aggiungere:';
-        addLbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin:8px 0 2px;';
+        addLbl.className = 'svc-edit-label';
+        addLbl.style.cssText = 'margin:8px 0 2px;';
         box.appendChild(addLbl);
+        const addChips = document.createElement('div');
+        addChips.className = 'svc-player-chips';
         st.add.forEach(function (p, i) {
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;';
-          const nm = document.createElement('span');
           const _codeShown = p.codice || p.codiceCliente || '';
-          nm.textContent = '➕ ' + p.nome + (_codeShown ? ' (' + _codeShown + ')' : ' (senza codice)');
-          nm.style.cssText = 'flex:1;font-size:.84rem;color:#15803d;';
+          const chip = document.createElement('span');
+          chip.className = 'svc-player-chip';
+          const nm = document.createElement('span');
+          nm.textContent = p.nome + (_codeShown ? ' (' + _codeShown + ')' : ' (senza codice)');
+          nm.style.color = 'var(--green)';
+          chip.appendChild(nm);
           const x = document.createElement('button');
           x.type = 'button';
+          x.className = 'svc-chip-x';
           x.textContent = '✕';
           x.title = 'Togli dalla lista';
-          x.style.cssText = 'font-size:.72rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
           x.disabled = st.busy;
           x.addEventListener('click', function () { if (st.busy) return; st.add.splice(i, 1); staffCalRenderPlayersEditor(); });
-          row.appendChild(nm);
-          row.appendChild(x);
-          box.appendChild(row);
+          chip.appendChild(x);
+          addChips.appendChild(chip);
         });
+        box.appendChild(addChips);
       }
     }
 
     const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;';
+    actions.className = 'svc-step-buttons';
     if (st.hasPlayers) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.textContent = '➕ Aggiungi giocatore';
-      addBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;';
+      addBtn.className = 'svc-btn-step';
       addBtn.disabled = st.busy;
       addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
       actions.appendChild(addBtn);
       const _brk = document.createElement('div');
-      _brk.style.cssText = 'flex-basis:100%; height:0; margin:0;';
+      _brk.style.cssText = 'flex-basis:100%;height:0';
       actions.appendChild(_brk);
     }
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.textContent = '✓ Salva';
-    saveBtn.style.cssText = 'font-size:.78rem;padding:5px 12px;border-radius:8px;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;';
+    saveBtn.className = 'svc-btn-confirm svc-btn-yes';
     saveBtn.disabled = st.busy;
     saveBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersSave(); });
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.textContent = '✗ Chiudi';
-    closeBtn.style.cssText = 'font-size:.78rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;';
+    closeBtn.className = 'svc-btn-step-cancel';
     closeBtn.disabled = st.busy;
     closeBtn.addEventListener('click', function () {
       if (st.busy) return;
@@ -35527,8 +35534,9 @@ Per confermare scrivi ELIMINA.`);
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.textContent = '🗑 Annulla prenotazione';
+    delBtn.className = 'svc-btn-confirm svc-btn-no';
+    delBtn.style.width = '100%';
     delBtn.disabled = st.busy;
-    delBtn.style.cssText = 'margin-top:6px;padding:8px 12px;border-radius:8px;border:1px solid #fecaca;background:#fff;color:#b91c1c;font-weight:600;cursor:pointer;width:100%;';
     delBtn.addEventListener('click', function() { if (st.busy) return; staffCalAskCancel(st.origIso, st.origCampo, st.origOra, st.nome || ''); });
     actions.appendChild(delBtn);
     box.appendChild(actions);
