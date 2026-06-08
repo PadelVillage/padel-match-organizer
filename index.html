@@ -7233,7 +7233,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.716';
+    const APP_VERSION = '5.717';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36130,16 +36130,16 @@ Per confermare scrivi ELIMINA.`);
       const resolved = [];
       for (const nm of names) {
         const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
-        if (!matches.length) { resolved.push({ nome: nm, codice: '' }); continue; }
+        if (!matches.length) { resolved.push({ nome: nm, codice: '', codiceCliente: '' }); continue; }
         const best = matches[0].member;
         if (matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best) {
           const lista = matches.slice(0,5).map(m => `${playerFullName(m.member)} (${m.member.memberId || 'senza codice'})`).join(', ');
           throw new Error(`Più soci chiamati "${nm}": specifica meglio. Candidati: ${lista}`);
         }
         const nomeSocio = playerFullName(best) || best.name || nm;
-        const rawCode = String(best.memberId || '').trim();
-        const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';
-        resolved.push({ nome: nomeSocio, codice });
+        const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';          // id interno Matchpoint (se noto)
+        const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());  // codice cliente
+        resolved.push({ nome: nomeSocio, codice, codiceCliente });
       }
       if (resolved.length) giocatoriPayload = resolved;
     }
@@ -36233,16 +36233,18 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
     const nomeSocio = playerFullName(best) || best.name || socioName;
-    const rawCode = String(best.memberId || '').trim();
-    const codice = /^\d{1,7}$/.test(rawCode) ? rawCode : '';   // SOLO numerico; PMO-/vuoto => niente codice
+    const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';          // id interno Matchpoint (se noto)
+    const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());  // codice cliente
 
     const TEST_BOOKING = {
       campo: TEST_CAMPO, data: TEST_DATA, ora: TEST_ORA, oraFine: TEST_ORA_FINE, durata: TEST_DURATA,
       nome: nomeSocio, tipo: "partita", note: "TEST PV — CANCELLARE",
-      giocatori: [{ nome: nomeSocio, codice }],
+      giocatori: [{ nome: nomeSocio, codice, codiceCliente }],
     };
 
-    const codeMsg = codice ? `codice Matchpoint ${codice}` : 'NESSUN codice numerico → userò il nome (fallback)';
+    const codeMsg = codiceCliente
+      ? `codice cliente ${codiceCliente}${codice ? ` · id interno ${codice}` : ''}`
+      : (codice ? `id interno ${codice}` : 'NESSUN codice → userò il nome (fallback)');
     const confirmed = confirm(`Prova REALE in Matchpoint: Campo ${TEST_BOOKING.campo} · ${TEST_BOOKING.data} · ${TEST_BOOKING.ora}–${TEST_BOOKING.oraFine} · "${nomeSocio}" · ${codeMsg}. Procedere?`);
     if (!confirmed) return;
 
@@ -37634,7 +37636,7 @@ Per confermare scrivi ELIMINA.`);
   // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
     const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
-    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && (p.codice || p.codiceCliente)) || '', codiceCliente: (p && p.codiceCliente) || '' }; });
+    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '', codiceCliente: (p && p.codiceCliente) || '' }; });
     const nomeStr = giocatori.map(function(g) { return g.nome; }).join(', ');
     let parsed;
     if (tipoEngine === 'lezione') {
