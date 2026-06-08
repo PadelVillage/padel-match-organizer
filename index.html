@@ -37063,6 +37063,7 @@ Per confermare scrivi ELIMINA.`);
     'Lezione Singola':   [60, 90],
     'Lezione di Gruppo': [60, 90],
     'Torneo':            [90, 120, 180],
+    'Manutenzione':      [30, 60, 90, 120, 180],
   };
 
   let svcFlowState = null;
@@ -37253,7 +37254,7 @@ Per confermare scrivi ELIMINA.`);
     const TIPI = [
       { key:'Partita',      engine:'partita', tipo:'partita' },
       { key:'Lezione',      engine:'lezione', tipo:'lezione' },
-      { key:'Manutenzione', engine:null,      tipo:null, disabled:true },
+      { key:'Manutenzione', engine:'manutenzione', tipo:'manutenzione' },
       { key:'Torneo',       engine:null,      tipo:null, disabled:true }
     ];
     const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
@@ -37339,13 +37340,16 @@ Per confermare scrivi ELIMINA.`);
       durSel.value=String(svcFlowState.durata);
     }
     function updateFine(){ fineRow.innerHTML='⏱ Fine prevista: <strong style="color:var(--text)">'+svcEndTime(oraSel.value, parseInt(durSel.value,10))+'</strong>'; }
-    function applyAccent(){ const tc=_staffCalTipoColors(svcFlowState.tipoEngine==='lezione'?'lezione':'partita'); dot.style.background=tc.text; confBtn.style.background=tc.bg; confBtn.style.color=tc.text; confBtn.style.border='1px solid '+tc.border; }
+    function applyAccent(){ const _eng=svcFlowState.tipoEngine; const tc=_staffCalTipoColors(_eng==='lezione'?'lezione':_eng==='manutenzione'?'manutenzione':'partita'); dot.style.background=tc.text; confBtn.style.background=tc.bg; confBtn.style.color=tc.text; confBtn.style.border='1px solid '+tc.border; }
     function selectTipo(tp){
       svcFlowState.tipoEngine=tp.engine; svcFlowState.tipo=tp.tipo; svcFlowState.tipoLabel=tp.key;
       tipoBtns.forEach(function(o){ if(o.tp.disabled) return;
         if(o.tp===tp){ const tc=_staffCalTipoColors(tp.engine==='lezione'?'lezione':'partita'); o.b.style.background=tc.bg; o.b.style.color=tc.text; o.b.style.borderColor=tc.border; o.b.style.fontWeight='700'; }
         else { o.b.style.background='var(--surface)'; o.b.style.color='var(--text)'; o.b.style.borderColor='var(--border)'; o.b.style.fontWeight='400'; } });
-      const isLez=tp.engine==='lezione'; fMaestro.style.display=isLez?'block':'none'; giocLbl.textContent=isLez?'Allievi':'Giocatori';
+      const isLez=tp.engine==='lezione'; const isMan=tp.engine==='manutenzione';
+      fMaestro.style.display=isLez?'block':'none';
+      fGioc.style.display=isMan?'none':'';
+      giocLbl.textContent=isLez?'Allievi':'Giocatori';
       rebuildDurata(tp.key); updateFine(); applyAccent();
     }
     function renderChips(){
@@ -37692,6 +37696,18 @@ Per confermare scrivi ELIMINA.`);
         nome: nomeStr,
         tipo: 'partita',
         giocatori: giocatori
+      };
+    } else if (tipoEngine === 'manutenzione') {
+      parsed = {
+        campoNum: campo,
+        campo: 'Campo ' + campo,
+        data: dateISO,
+        ora: ora,
+        oraFine: svcEndTime(ora, durata),
+        durata: durata,
+        nome: 'Manutenzione',
+        tipo: 'manutenzione',
+        giocatori: []
       };
     }
     // Pre-check conflitto istantaneo

@@ -4141,11 +4141,31 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+      // Cattura idReserva dal tabellone subito dopo la creazione (lezione)
+      let _idReservaLezione = null;
+      try {
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await impostaDataTabellone(page, page, data, diagnostic);
+        diagnostic.steps.push('cerca_idreserva');
+        const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
+          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+          const eventi = [...document.querySelectorAll('div.evento')]
+            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+          return { id: hit ? hit.id : null };
+        }, { rec: recurso, oraStr: ora });
+        _idReservaLezione = _resEvLezione.id || null;
+        diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
+      } catch (err) {
+        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      }
+
       const resolvedPlayersLezione = playersResult
         .filter((r) => r.added && r.idPeople)
         .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
       return {
         ok: true,
+        idReserva: _idReservaLezione,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
         resolvedPlayers: resolvedPlayersLezione,
         diagnostic,
@@ -4218,8 +4238,29 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+
+      // Cattura idReserva dal tabellone subito dopo la creazione (manutenzione)
+      let _idReservaManutenzione = null;
+      try {
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await impostaDataTabellone(page, page, data, diagnostic);
+        diagnostic.steps.push('cerca_idreserva');
+        const _resEvMan = await page.evaluate(({ rec, oraStr }) => {
+          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+          const eventi = [...document.querySelectorAll('div.evento')]
+            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+          return { id: hit ? hit.id : null };
+        }, { rec: recurso, oraStr: ora });
+        _idReservaManutenzione = _resEvMan.id || null;
+        diagnostic.steps.push(`idReserva:${_idReservaManutenzione}`);
+      } catch (err) {
+        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      }
+
       return {
         ok: true,
+        idReserva: _idReservaManutenzione,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
         diagnostic,
       };
