@@ -3541,27 +3541,47 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
 
     // ⚠️ Sceglie SOLO un <li> che CONTIENE davvero il nome richiesto.
-    // Con expectedCode, itera TUTTI i candidati per nome e scarta quelli il cui
-    // HiddenFieldIdPeople non coincide col codice atteso (evita omonimi).
-    // NIENTE fallback al primo elemento: con un input spurio (es. "ok") nessun <li>
-    // combacia → non selezioniamo nulla → l'id non si aggancia → si aborta senza
-    // scrivere su Matchpoint. (È così che era finito il cliente 921.)
+    // Algoritmo di selezione (4 regole, in ordine di priorità):
+    // 1. Match primario per id interno (expectedCode): HiddenFieldIdPeople === expectedCode.
+    // 2. Fallback per codice cliente (expectedClientCode): confronto numerico col prefisso
+    //    dell'etichetta (es. "000005-Nome"). Se esattamente un'opzione combacia → seleziona.
+    //    NON confrontare expectedClientCode con HiddenFieldIdPeople (namespace diverso).
+    // 3. Rete di sicurezza: se nessuna etichetta espone un codice confrontabile E c'è un
+    //    solo risultato E il nome corrisponde → accetta.
+    // 4. Più candidati non confermabili → annulla (sicurezza preservata).
     const count = await li.count().catch(() => 0);
     let foundNameMatch = false;
     for (let i = 0; i < count; i++) {
-      const t = norm(await li.nth(i).innerText().catch(() => ''));
+      const rawLabel = await li.nth(i).innerText().catch(() => '');
+      const t = norm(rawLabel);
+      // Log diagnostico per ogni opzione visibile (utile per calibrare il formato etichetta)
+      diagnostic.steps.push(`player_option_label:${nome}:i=${i}:${rawLabel.replace(/\n/g, ' ').slice(0, 80)}`);
       if (!t.includes(norm(nome))) continue;
+
       // 🔒 Guardia anti-omonimia col CODICE CLIENTE: la riga è "000005-Nome Cognome".
       // Se l'app passa il codice atteso (memberId), scarta i candidati col codice
       // diverso PRIMA di cliccare. Confronto su onlyDigits (ignora gli zeri iniziali).
+      let clientCodeConfirmed = false;
       if (expectedClientCode) {
         const liCode = (t.match(/^\s*(\d+)\s*-/) || [])[1] || '';
-        if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
-          clientCodeChecked = true;
-          diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+        if (liCode) {
+          // L'etichetta espone un codice: confronto numerico
+          if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
+            clientCodeChecked = true;
+            diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+            continue;
+          }
+          clientCodeConfirmed = true; // confermato via etichetta (regola 2)
+        } else if (count !== 1) {
+          // Nessun codice nell'etichetta E più risultati: impossibile confermare → salta
+          diagnostic.steps.push(`player_no_label_code_multiresult:${nome}:i=${i}:count=${count}`);
           continue;
+        } else {
+          // Nessun codice nell'etichetta MA risultato unico: rete di sicurezza (regola 3)
+          diagnostic.steps.push(`player_single_result_net:${nome}:i=${i}`);
         }
       }
+
       foundNameMatch = true;
       await li.nth(i).click({ timeout: 4000 }).catch(() => {});
       // L'id si aggancia via callback async dell'autocomplete: attendi finché compare (fino a ~2.4s)
@@ -3573,7 +3593,9 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       }
       diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
       if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
-      if (expectedCode && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
+      // Verifica id interno SOLO per match primario (regola 1) e SOLO se il candidato
+      // non è già stato confermato via codice cliente dall'etichetta (regole 2/3).
+      if (expectedCode && !clientCodeConfirmed && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
         // Codice non combacia: pulisce il campo, ri-digita il nome e prova il prossimo candidato
         codeCheckFailed = true;
         await inputEl.first().click({ timeout: 5000 }).catch(() => {});
@@ -3587,7 +3609,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
         }
         continue;
       }
-      // Candidato valido (codice combacia o nessun codice richiesto)
+      // Candidato valido (codice combacia, confermato via etichetta, o nessun codice richiesto)
       lockedId = candidateId;
       codeCheckFailed = false;
       break outer;
@@ -3659,7 +3681,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   }
 
   diagnostic.steps.push('player_added:' + nome);
-  return { nome, added: true, idCliente: addedIdCliente };
+  return { nome, added: true, idCliente: addedIdCliente, idPeople: lockedId, codiceCliente: expectedClientCode };
 }
 
 // ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
@@ -4013,9 +4035,13 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(800);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+      const resolvedPlayers = playersResult
+        .filter((r) => r.added && r.idPeople)
+        .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
       return {
         ok: true,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        resolvedPlayers,
         diagnostic,
       };
     }
@@ -4094,9 +4120,13 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+      const resolvedPlayersLezione = playersResult
+        .filter((r) => r.added && r.idPeople)
+        .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
       return {
         ok: true,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        resolvedPlayers: resolvedPlayersLezione,
         diagnostic,
       };
     }
@@ -4486,6 +4516,7 @@ async function editBookingWithBrowser(input = {}) {
     }
 
     // === GIOCATORI ===
+    let addResults = [];
     if (players) {
       const removeNames = (players.remove || []).map((n) => n.toLowerCase().trim());
       const removeAll = players.removeAll === true;
@@ -4531,6 +4562,7 @@ async function editBookingWithBrowser(input = {}) {
       // AGGIUNTE
       for (const p of (players.add || [])) {
         const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
+        addResults.push(r);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
@@ -4651,7 +4683,10 @@ async function editBookingWithBrowser(input = {}) {
     }
 
     diagnostic.steps.push('done');
-    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, diagnostic };
+    const resolvedPlayersEdit = addResults
+      .filter((r) => r.added && r.idPeople)
+      .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
