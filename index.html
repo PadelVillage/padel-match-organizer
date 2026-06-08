@@ -7160,7 +7160,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.713';
+    const APP_VERSION = '5.714';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -11370,12 +11370,17 @@ Grazie.`
       const staffBookingsDeletedKeys = list
         .filter(row => row?.record_type === 'staff_booking' && row.deleted && row.payload)
         .map(row => { const p = row.payload || {}; return `${p.data}|${Number(String(p.campo).replace(/\D/g,''))}|${p.ora}`; });
+      // Fase B: id (local_key) dei record staff_booking ANNULLATI → rimozione per id nel reconcile.
+      const staffBookingsDeletedIds = list
+        .filter(row => row?.record_type === 'staff_booking' && row.deleted)
+        .map(row => row.local_key)
+        .filter(Boolean);
       // Soppressioni condivise: slot annullati da QUALSIASI device. Servono a nascondere su
       // tutti i device la copia "occupazione" Matchpoint finché lo scrape non si aggiorna.
       const staffSuppressed = list
         .filter(row => row?.record_type === 'staff_suppress' && !row.deleted && row.payload)
         .map(row => { const p = row.payload || {}; return { key: `${p.data}|${Number(String(p.campo).replace(/\D/g,''))}|${p.ora}`, ts: Number(p.ts) || Date.parse(row.updated_at || '') || 0 }; });
-      return { bookings, occupancyBookings, staffBookings, staffBookingsDeletedKeys, staffSuppressed, summary };
+      return { bookings, occupancyBookings, staffBookings, staffBookingsDeletedKeys, staffBookingsDeletedIds, staffSuppressed, summary };
     }
 
     async function importMatchpointBookingsAutomatic() {
@@ -34208,28 +34213,42 @@ Per confermare scrivi ELIMINA.`);
       // Le prenotazioni vecchie solo-locali (non presenti nel cloud) NON vengono toccate.
       try {
         const cloudSB = Array.isArray(cloud.staffBookings) ? cloud.staffBookings : [];
-        const delKeys = new Set(Array.isArray(cloud.staffBookingsDeletedKeys) ? cloud.staffBookingsDeletedKeys : []);
-        const keyOf = b => `${b.data}|${Number(String(b.campo).replace(/\D/g,''))}|${b.ora}`;
-        const activeKeys = new Set(cloudSB.map(keyOf));
+        // delIds = id (local_key) dei record ANNULLATI nel cloud → rimozione PER ID.
+        // delSlots = slot dei record annullati → ponte legacy / annullamenti chiavati per slot.
+        const delIds = new Set(Array.isArray(cloud.staffBookingsDeletedIds) ? cloud.staffBookingsDeletedIds : []);
+        const delSlots = new Set(Array.isArray(cloud.staffBookingsDeletedKeys) ? cloud.staffBookingsDeletedKeys : []);
+        const slotOf = b => `${b.data}|${Number(String(b.campo).replace(/\D/g,''))}|${b.ora}`;
+        const cloudActiveIds = new Set(cloudSB.map(b => b.id).filter(Boolean));
+        const cloudActiveSlots = new Set(cloudSB.map(slotOf));
         let localSB = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        // Firma di CONTENUTO: lo slot da solo non basta, perché una riprenotazione
-        // (partita→lezione stesso slot) ha la stessa chiave ma contenuto diverso.
-        // Confrontiamo anche tipo/istruttore/nome/durata così l'aggiornamento si
-        // propaga e il calendario si ridisegna anche a parità di slot. v5.683.
-        const sig = list => (list || []).map(b => keyOf(b) + '#' + (b.tipo||'') + '#' + (b.istruttore||'') + '#' + (b.nome||'') + '#' + (b.durata||'') + '#' + (Array.isArray(b.giocatori) ? b.giocatori.map(g => ((g&&g.nome)||'') + ':' + ((g&&g.codice)||'')).sort().join('|') : '')).sort().join(',');
+        // Firma di CONTENUTO (slot + tipo/istruttore/nome/durata/giocatori) → decide se ridisegnare.
+        const sig = list => (list || []).map(b => slotOf(b) + '#' + (b.tipo||'') + '#' + (b.istruttore||'') + '#' + (b.nome||'') + '#' + (b.durata||'') + '#' + (Array.isArray(b.giocatori) ? b.giocatori.map(g => ((g&&g.nome)||'') + ':' + ((g&&g.codice)||'')).sort().join('|') : '')).sort().join(',');
         const before = sig(localSB);
-        // Il cloud è AUTOREVOLE per ogni slot che conosce (attivo o annullato):
-        //  - slot attivi nel cloud  → vince il contenuto del cloud (sovrascrive il locale);
-        //  - slot annullati nel cloud e non ri-creati → rimossi dal locale;
-        //  - slot che il cloud NON conosce affatto → restano intatti (vecchie solo-locali).
-        const cloudKnows = new Set([...activeKeys, ...delKeys]);
-        // #1: non lasciare che il cloud sovrascriva uno slot con un edit IN CORSO: in quell'istante
-        // il cloud potrebbe non riflettere ancora la modifica appena fatta in locale (flicker giocatore).
-        // Per quegli slot teniamo il locale; alla fine dell'edit il pull successivo riconcilia col cloud.
+        // Reconcile PER ID (Fase B): il cloud è autorevole per ogni prenotazione di cui conosce l'id.
+        //  - id ATTIVO nel cloud   → vince il contenuto del cloud; se lo SLOT è cambiato, la card si SPOSTA (niente orfana);
+        //  - id ANNULLATO nel cloud → rimosso dal locale;
+        //  - id che il cloud NON conosce → tenuto (solo-locale).
+        // Ponte LEGACY: se una voce locale non è conosciuta per id ma il cloud conosce il suo SLOT
+        // (record vecchi chiavati per slot, o annullamenti per slot), il cloud resta autorevole.
+        // #1: edit IN CORSO (pending, per slot) → si tiene il locale; il pull successivo riconcilia.
         const _pend = (typeof _staffCalPendingEdits !== 'undefined' && _staffCalPendingEdits) ? _staffCalPendingEdits : new Set();
-        const cloudKnowsKeep = new Set([...cloudKnows].filter(k => !_pend.has(k)));
-        const cloudSBKeep = cloudSB.filter(b => !_pend.has(keyOf(b)));
-        localSB = localSB.filter(b => !cloudKnowsKeep.has(keyOf(b))).concat(cloudSBKeep);
+        const keptLocal = localSB.filter(b => {
+          const slot = slotOf(b);
+          if (_pend.has(slot)) return true;                                   // edit in corso → tieni il locale
+          const knownById   = b.id && (cloudActiveIds.has(b.id) || delIds.has(b.id));
+          const knownBySlot = cloudActiveSlots.has(slot) || delSlots.has(slot); // ponte legacy
+          return !(knownById || knownBySlot);                                 // tieni solo se il cloud non lo conosce
+        });
+        const cloudKeep = cloudSB.filter(b => !_pend.has(slotOf(b)));
+        let merged = keptLocal.concat(cloudKeep);
+        // Sicurezza: se per qualunque motivo restano DUE voci sullo STESSO slot, tieni la più recente.
+        const _bySlot = new Map();
+        for (const b of merged) {
+          const slot = slotOf(b);
+          const prev = _bySlot.get(slot);
+          if (!prev || String(b.updatedAt||'') > String(prev.updatedAt||'')) _bySlot.set(slot, b);
+        }
+        localSB = Array.from(_bySlot.values());
         const after = sig(localSB);
         if (after !== before && typeof save === 'function') { save('staffBookings', localSB); renderStaffCalendar(); }
       } catch (e) { console.warn('staffCalRefreshFromCloud staffBookings:', e); }
@@ -34389,23 +34408,16 @@ Per confermare scrivi ELIMINA.`);
       const tIso = String(toIso).trim(), tOra = String(toOra).trim();
       const entry = list.find(function (x) { return x && String(x.data).trim() === tIso && Number(String(x.campo).replace(/\D/g, '')) === tCn && String(x.ora).trim() === tOra; });
       const records = [];
-      // Sempre: suppress origine — informa ogni altro device di nascondere lo slot sorgente.
+      // Suppress origine: nasconde la copia "occupazione" Matchpoint scrapata sul vecchio slot su
+      // ogni device, finché lo scrape non si aggiorna. Resta necessaria (non riguarda staff_booking).
       records.push({ record_type: 'staff_suppress', local_key: 'supp|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra, ts: Date.now() }, deleted: false });
-      // Sempre: delete origine con chiave sintetica — il payload data|campo|ora entra in
-      // staffBookingsDeletedKeys su ogni altro device, così la card vecchio-campo viene rimossa.
-      records.push({ record_type: 'staff_booking', local_key: 'del|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true });
-      if (entry && entry.id) {
-        // Con id: delete anche col vecchio id (ripulisce il record cloud con id come local_key) +
-        // push destinazione col nuovo id.
-        const prevId = entry.id;
-        entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
-        if (typeof save === 'function') save('staffBookings', list);
-        records.push({ record_type: 'staff_booking', local_key: prevId, payload: { data: fIso, campo: fCn, ora: fOra }, deleted: true });
-        records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false });
-      } else if (entry) {
-        // Voce legacy senza id: assegna id ora, push destinazione attiva.
-        entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
-        if (typeof save === 'function') save('staffBookings', list);
+      // Fase B: NIENTE tombstone sul vecchio slot, NIENTE re-id. Si ri-spinge la stessa prenotazione
+      // (STESSO id) al nuovo slot: il reconcile-per-id la riconosce e SPOSTA la card su ogni device.
+      if (entry) {
+        if (!entry.id) {
+          entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
+          if (typeof save === 'function') save('staffBookings', list);
+        }
         records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [] }, deleted: false });
       }
       pmoSyncCloudRecordsNow(records, 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
