@@ -2842,6 +2842,11 @@
       .smc-date-hidden { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
       .smc-oggi-btn { background:none; border:none; color:#2563eb; font-size:.82rem; font-weight:700; cursor:pointer; padding:4px 6px; white-space:nowrap; flex-shrink:0; }
       .smc-team-btn { background:none; border:none; font-size:1.25rem; cursor:pointer; padding:4px 6px; flex-shrink:0; line-height:1; }
+      .smc-team-wrap { position:relative; flex-shrink:0; }
+      .smc-team-menu { position:absolute; top:calc(100% + 6px); right:0; z-index:1000; min-width:190px; background:var(--surface,#fff); border:1px solid var(--border,#d8d7d2); border-radius:12px; box-shadow:0 10px 28px rgba(15,23,42,0.20); padding:6px; display:flex; flex-direction:column; gap:2px; }
+      .smc-team-menu[hidden] { display:none; }
+      .smc-team-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:none; border:none; border-radius:8px; padding:10px 12px; font-size:.9rem; font-family:inherit; color:var(--text,#1f2430); cursor:pointer; white-space:nowrap; }
+      .smc-team-item:hover, .smc-team-item:focus { background:var(--accent-light,rgba(37,99,235,0.10)); outline:none; }
       #staffCalV36 > .svc-layout { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
       #staffCalV36 .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
       #staffCalV36 .agenda-wrap { flex:1 1 auto; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
@@ -5849,7 +5854,14 @@ body.assessment-public-mode .assessment-public-only-card {
                   </div>
                   <button class="smc-nav-btn" onclick="staffCalNextDay()">›</button>
                   <button id="staffCalMobileOggi" class="smc-oggi-btn" onclick="staffCalGoToday()">Oggi</button>
-                  <button class="smc-team-btn" onclick="alert('Anagrafica — in arrivo')">👥</button>
+                  <div class="smc-team-wrap">
+                    <button type="button" class="smc-team-btn" aria-haspopup="true" aria-expanded="false" title="Soci" onclick="staffCalToggleTeamMenu(event)">👥</button>
+                    <div class="smc-team-menu" id="staffCalTeamMenu" role="menu" hidden>
+                      <button type="button" class="smc-team-item" role="menuitem" onclick="staffCalTeamMenuAction('search')">🔍 Cerca socio</button>
+                      <button type="button" class="smc-team-item" role="menuitem" onclick="staffCalTeamMenuAction('new')">➕ Nuovo socio</button>
+                      <button type="button" class="smc-team-item" role="menuitem" onclick="staffCalTeamMenuAction('all')">👥 Vai all'anagrafica</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="svc-layout">
@@ -7160,7 +7172,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.715';
+    const APP_VERSION = '5.716';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37829,6 +37841,43 @@ Per confermare scrivi ELIMINA.`);
     var mInput = document.getElementById('staffCalMobileDateInput');
     var realInput = document.getElementById('staffCalDate');
     if (mInput && realInput) { realInput.value = mInput.value; renderStaffCalendar(); }
+  }
+  function staffCalToggleTeamMenu(ev) {
+    if (ev) ev.stopPropagation();
+    var menu = document.getElementById('staffCalTeamMenu');
+    if (!menu) return;
+    if (!menu.hasAttribute('hidden')) { staffCalCloseTeamMenu(); return; }
+    menu.removeAttribute('hidden');
+    var btn = menu.parentElement ? menu.parentElement.querySelector('.smc-team-btn') : null;
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    setTimeout(function () { document.addEventListener('click', staffCalTeamMenuOutside, true); }, 0);
+  }
+  function staffCalCloseTeamMenu() {
+    var menu = document.getElementById('staffCalTeamMenu');
+    if (!menu) return;
+    menu.setAttribute('hidden', '');
+    var btn = menu.parentElement ? menu.parentElement.querySelector('.smc-team-btn') : null;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', staffCalTeamMenuOutside, true);
+  }
+  function staffCalTeamMenuOutside(ev) {
+    var menu = document.getElementById('staffCalTeamMenu');
+    if (!menu) return;
+    var wrap = menu.closest ? menu.closest('.smc-team-wrap') : menu.parentElement;
+    if (wrap && wrap.contains(ev.target)) return;
+    staffCalCloseTeamMenu();
+  }
+  function staffCalTeamMenuAction(kind) {
+    staffCalCloseTeamMenu();
+    if (typeof switchTab === 'function') switchTab('members');
+    setTimeout(function () {
+      if (kind === 'new') {
+        if (typeof showAddMember === 'function') showAddMember();
+      } else if (kind === 'search') {
+        var s = document.getElementById('searchFilter');
+        if (s) { try { s.focus(); s.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { s.focus(); } }
+      }
+    }, 80);
   }
   function staffCalMobileUpdateHeader() {
     var realInput = document.getElementById('staffCalDate');
