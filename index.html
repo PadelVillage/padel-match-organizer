@@ -7233,7 +7233,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.718';
+    const APP_VERSION = '5.719';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35748,7 +35748,12 @@ Per confermare scrivi ELIMINA.`);
         if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
         if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
         if (op.hasPlayers) staffCalApplyLocalGiocatori(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, addArr, remove);
-        try { if (moveChanged) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
+        // Lo "slot" della prenotazione e identificato da campo + data + ora di INIZIO. Una modifica
+        // di sola durata (allunga/accorcia) NON cambia lo slot: NON va trattata come spostamento
+        // (che emetterebbe una soppressione sullo slot ancora occupato), ma come edit in place,
+        // lo stesso ramo che funziona per le modifiche giocatori.
+        var _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
+        try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
