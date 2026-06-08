@@ -7233,7 +7233,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.717';
+    const APP_VERSION = '5.718';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34081,6 +34081,7 @@ Per confermare scrivi ELIMINA.`);
   if (typeof window !== 'undefined' && !window._staffCalAutoRefreshStarted) {
     window._staffCalAutoRefreshStarted = true;
     var _staffCalFastPullBusy = false;
+    var _staffCalPullTick = 0;
     setInterval(function () {
       try {
         if (typeof staffCalRefreshFromCloud !== 'function') return;
@@ -34095,6 +34096,12 @@ Per confermare scrivi ELIMINA.`);
         // _staffCalPendingEdits): NON forzare il pull, altrimenti a metà operazione si rischia di
         // ripescare dal cloud lo slot d'origine come prenotazione attiva → doppione sul campo vecchio. v5.706.
         if (_staffCalPendingEdits && _staffCalPendingEdits.size > 0) return;
+        // Desktop (>=900px): il realtime fa il push entro ~150ms, quindi il pull forzato serve solo
+        // come rete di sicurezza RADA (~60s). Senza questo, la griglia si ridisegnava ogni 4s e
+        // diventava impossibile cliccare. Su mobile (<900px) il WebSocket realtime e spesso strozzato
+        // dal browser, quindi li il fast-pull a 4s resta invariato.
+        _staffCalPullTick++;
+        if (window.innerWidth >= 900 && (_staffCalPullTick % 15) !== 0) return;
         _staffCalFastPullBusy = true;
         Promise.resolve(staffCalRefreshFromCloud({ force: true }))
           .catch(function () {})
