@@ -35702,6 +35702,8 @@ Per confermare scrivi ELIMINA.`);
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
+    const _idReservaEdit = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
+    if (_idReservaEdit) payload.idReserva = _idReservaEdit;
     if (moveChanged) payload.move = { campo: op.mCampo, data: op.mIso, oraInizio: op.mOraIni, oraFine: op.mOraFin };
     if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
 
@@ -35911,6 +35913,7 @@ Per confermare scrivi ELIMINA.`);
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'spostare la prenotazione Matchpoint');
+      const _idReservaMove = _staffCalLookupIdReserva(from.iso, from.campo, from.ora);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: {
@@ -35918,10 +35921,11 @@ Per confermare scrivi ELIMINA.`);
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`,
         },
-        body: JSON.stringify({
-          campo: from.campo, data: from.iso, ora: from.ora,
-          move: { campo: toCampoNum, data: toIso, oraInizio: toOra, oraFine: toOraFine },
-        }),
+        body: JSON.stringify(Object.assign(
+          { campo: from.campo, data: from.iso, ora: from.ora,
+            move: { campo: toCampoNum, data: toIso, oraInizio: toOra, oraFine: toOraFine } },
+          _idReservaMove ? { idReserva: _idReservaMove } : {}
+        )),
       });
       const respText = await response.text();
       let data = null;
@@ -36195,7 +36199,7 @@ Per confermare scrivi ELIMINA.`);
         try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
       } catch { data = null; }
       if (!data) continue;
-      if (data.status === 'done') return { status: 'done', message: data.message };
+      if (data.status === 'done') return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null };
       if (data.status === 'error') return { status: 'error', error: data.error || data.message };
       // 'pending' → continua
     }
@@ -36696,8 +36700,8 @@ Per confermare scrivi ELIMINA.`);
           staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
           try {
             const _sbId = _staffCalNewSbId();
-            await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey, { sbId: _sbId });
-            staffCalSaveLocal(singleParsed, _sbId);
+            const _createRes = await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey, { sbId: _sbId });
+            staffCalSaveLocal(singleParsed, _sbId, (_createRes && _createRes.idReserva) ? String(_createRes.idReserva) : null);
             ok++;
           } catch (e) {
             fail++;
@@ -36750,7 +36754,7 @@ Per confermare scrivi ELIMINA.`);
       const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey,
         (sec) => staffCalSetStatus(`⏳ Prenotazione in corso su Matchpoint… (${sec}s)`, 'pending'));
       if (result.status === 'done') {
-        staffCalSaveLocal(parsed, _sbId);
+        staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
         try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
         staffCalSetStatus(result.message ? `✓ ${result.message}` : `✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
         if (input) { input.value = ''; staffCalAutoResize(input); }
@@ -36822,7 +36826,18 @@ Per confermare scrivi ELIMINA.`);
       : ('sb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
   }
 
-  function staffCalSaveLocal(parsed, sbId) {
+  // Helper v5.720: cerca l'idReserva Matchpoint di una prenotazione locale per slot (data+campo+ora).
+  function _staffCalLookupIdReserva(iso, campoNum, ora) {
+    const sb = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const b = sb.find(function(x) {
+      return String(x.data).trim() === String(iso).trim()
+        && Number(String(x.campo).replace(/\D/g, '')) === Number(String(campoNum).replace(/\D/g, ''))
+        && String(x.ora).trim() === String(ora).trim();
+    });
+    return (b && b.idReserva) ? String(b.idReserva) : null;
+  }
+
+  function staffCalSaveLocal(parsed, sbId, idReserva) {
     const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     // SOVRASCRITTURA SLOT: se esiste già una prenotazione locale sullo stesso slot
     // (stessa data+campo+ora) la rimuoviamo dal locale e la marchiamo deleted sul
@@ -36843,6 +36858,7 @@ Per confermare scrivi ELIMINA.`);
       istruttore: parsed.istruttore || '',
       giocatori: Array.isArray(parsed.giocatori) ? parsed.giocatori : [],
       createdAt: new Date().toISOString(),
+      idReserva: (idReserva && String(idReserva).trim()) || null,
     };
     kept.push(entry);
     if (typeof save === 'function') save('staffBookings', kept);
@@ -36894,6 +36910,7 @@ Per confermare scrivi ELIMINA.`);
     try {
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+      const _idReservaCancel = _staffCalLookupIdReserva(isoDate, campo, ora);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
         method: 'POST',
         headers: {
@@ -36901,7 +36918,7 @@ Per confermare scrivi ELIMINA.`);
           'apikey': supabaseKey,
           'Authorization': `Bearer ${staff.accessToken}`,
         },
-        body: JSON.stringify({ campo, data: isoDate, ora }),
+        body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
       });
       const respText = await response.text();
       let data = null;
@@ -37698,7 +37715,7 @@ Per confermare scrivi ELIMINA.`);
         if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)';
       });
       if (result.status === 'done') {
-        staffCalSaveLocal(parsed, _sbId);
+        staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
         if (tipoEngine === 'lezione') {
           const allievi = (players && players.length) ? nomeStr : '—';
           svcAddMessage('system',
