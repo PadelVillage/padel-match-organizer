@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.713 — Sync staff: id prenotazione condiviso col cloud (Fase A riordino)
+- La creazione di una prenotazione staff genera ora un `sbId` (UUID) che il client passa alla edge `matchpoint-bookings-create` e usa anche come id locale. Così la edge e il client scrivono lo STESSO record cloud (chiave = `sbId`) invece di due record distinti (UUID lato client + stringa-slot lato edge). Nessun cambiamento visibile: è preparazione al reconcile-per-id (Fase B) e rimuove il doppio record alla radice. Richiede la edge `matchpoint-bookings-create` v17 (deployata a parte). Solo app.
+
 ## v5.699 — Revert ottimistico cross-device (torna a comportamento 5.697)
 - Rimossa la propagazione broadcast pending/resolved (staffCalRtBroadcastPending, staffCalRtBroadcastResolved, staffCalRtOnRemotePending, staffCalRtOnRemoteResolved) introdotta nella 5.698. Si torna al comportamento della 5.697: ottimistico locale sul device che prenota + propagazione normale agli altri via `staff-changed` (desktop istantaneo, mobile ~10-12s). Solo app.
 
