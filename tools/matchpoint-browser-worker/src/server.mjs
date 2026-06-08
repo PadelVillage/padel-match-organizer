@@ -4863,14 +4863,7 @@ async function cancelBookingWithBrowser(input = {}) {
     //    innesca SOLO entrando dal tabellone (non dall'URL diretta ?modo=fancy usata dal worker)
     //    e tocca rimborsi/pagamenti. Falliamo SUBITO con un errore chiaro invece di tentare un
     //    flusso che non cancella nulla (vecchia "FIX B": ~30s di attesa inutile e poi 502).
-    const isManutenzione = fichaUrl.includes('Mantenimiento');
-    if (isManutenzione) {
-      throw fail('MANUTENZIONE_CANCEL_NON_SUPPORTATA',
-        'Cancellazione manutenzione non supportata dal worker: va eseguita a mano dal tabellone su Matchpoint.',
-        diagnostic);
-    }
-
-    // PARTITA / LEZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
+    // PARTITA / LEZIONE / MANUTENZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
     diagnostic.steps.push('click_annulla:partita/lezione');
     await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
     diagnostic.steps.push('attendi_dialogo');
