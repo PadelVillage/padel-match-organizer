@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.715 — Editor modifica prenotazione: stesso stile delle schede di prenotazione
+- L'editor che si apre modificando una prenotazione (giocatori + spostamento) ora usa lo stesso design delle schede di prenotazione: stessi bottoni (`.svc-btn-step`, conferma verde/rosso), chip giocatori (`.svc-player-chip` + ✕ tondo), etichette e campi coerenti coi token, e gli stessi caratteri (anche le misure su mobile). Eliminati gli stili inline ad-hoc e l'override `font-size:20px` dedicato. Solo presentazione: comportamento, handler e logica invariati. Solo app.
+
 ## v5.714 — Sync staff: reconcile PER-ID (Fase B riordino)
 - Il calendario staff ora riconcilia le prenotazioni col cloud confrontando l'`id` stabile (`sbId`) invece dello slot. Una prenotazione che cambia campo/data/ora è riconosciuta come la stessa voce e la card si SPOSTA su tutti i device, senza più "orfane" e senza tombstone. Mantenuto un ponte per slot per i record legacy e per gli annullamenti (chiavati per slot), così la transizione è liscia. Lo spostamento non ri-genera più l'id e non scrive tombstone sintetici; resta lo `staff_suppress` per nascondere l'occupazione Matchpoint sul vecchio slot. Solo app. (La edge `matchpoint-bookings-edit` verrà ripulita dei tombstone a parte, dopo l'aggiornamento dei device.)
 
