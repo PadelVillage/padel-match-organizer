@@ -2667,10 +2667,10 @@
     #staffCalV36 .booking.matchpoint { background:var(--mp-bg); border:1px solid var(--mp-border); color:var(--mp-text); cursor:not-allowed; }
     #staffCalV36 .booking.staff { background:var(--staff-bg); border:1px solid var(--staff-border); color:var(--staff-text); }
     #staffCalV36 .booking-header { display:flex; align-items:center; gap:4px; font-weight:600; }
-    #staffCalV36 .booking-icon { font-size:.80rem; flex-shrink:0; }
-    #staffCalV36 .booking-type { flex:1; font-size:.80rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #staffCalV36 .booking-time { font-size:.75rem; opacity:.8; font-variant-numeric:tabular-nums; }
-    #staffCalV36 .booking-players { font-size:.75rem; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .booking-icon { font-size:1.6rem; flex-shrink:0; }
+    #staffCalV36 .booking-type { flex:1; font-size:1.6rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .booking-time { font-size:1.5rem; opacity:.8; font-variant-numeric:tabular-nums; }
+    #staffCalV36 .booking-players { font-size:1.5rem; opacity:.9; white-space:pre-line; overflow:hidden; line-height:1.35; }
     #staffCalV36 .lock-badge {
       display:inline-flex; align-items:center; gap:2px; font-size:.6rem;
       background:rgba(0,0,0,.07); border-radius:3px; padding:1px 4px; margin-top:2px;
@@ -7347,7 +7347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.731';
+    const APP_VERSION = '5.732';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34661,7 +34661,7 @@ Per confermare scrivi ELIMINA.`);
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
-      const _nomeOcc = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join(', ') : (p.giocatore || '');
+      const _nomeOcc = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || '');
       result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, durata: _staffCalDurMin(p.durata) });
     }
     for (const p of bookings) {
@@ -34669,7 +34669,7 @@ Per confermare scrivi ELIMINA.`);
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       if (result.some(r => r.ora === p.ora && r.campo === campoNum)) continue;
-      const _nomeBook = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join(', ') : (p.giocatore || '');
+      const _nomeBook = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || '');
       result.push({ ora: p.ora, campo: campoNum, nome: _nomeBook, tipo: 'partita', durata: _staffCalDurMin(p.durata) });
     }
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
