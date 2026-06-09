@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.743';
+    const APP_VERSION = '5.744';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -11609,6 +11609,12 @@ Grazie.`
           `✅ Prenotazioni future Matchpoint aggiornate. Occupazioni future: ${localResult.totalOccupancies}. Righe file: ${rows.sourceRows || cloud.occupancyBookings.length}.`,
           'success'
         );
+        // v5.744 — Riconcilia SUBITO il calendario staff sullo STESSO device che ha lanciato
+        // l'aggiornamento. La sync edge può aver cancellato/demosso staff_booking nel cloud, ma qui
+        // in locale abbiamo aggiornato solo le occupancy: senza questo, le card staff obsolete restano
+        // visibili finché non si ricarica la pagina (il broadcast realtime è self:false, quindi questo
+        // device non lo riceve da sé). Force pull = riconciliazione per id, niente reload manuale.
+        try { if (typeof staffCalRefreshFromCloud === 'function') await staffCalRefreshFromCloud({ force: true }); } catch (e) { console.warn('staffCalRefreshFromCloud post-import:', e); }
       } catch (err) {
         const message = pmoFriendlyMatchpointAutoError(err);
         setDataActionStatus('bookings', 'error', message);
