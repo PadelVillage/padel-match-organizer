@@ -4677,9 +4677,13 @@ async function editBookingWithBrowser(input = {}) {
       await page.waitForTimeout(2500);
       moved = true;
 
-      // Ricarica Ficha pulita prima di toccare i giocatori e per la verifica
-      diagnostic.steps.push('reload_after_move');
-      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      // Ricarica Ficha pulita SOLO se seguono modifiche ai giocatori (per agganciare
+      // l'autocomplete in modo affidabile). Per uno spostamento puro è ridondante:
+      // subito dopo c'è verifica_reload che ricarica comunque la Ficha → si evita un reload.
+      if (players) {
+        diagnostic.steps.push('reload_after_move');
+        await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      }
     }
 
     // === GIOCATORI ===
