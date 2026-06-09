@@ -7347,7 +7347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.730';
+    const APP_VERSION = '5.731';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -7776,7 +7776,11 @@ Grazie.`
     }
     function pmoCompactBookingItem(item) {
       const row = item && typeof item === 'object' ? item : {};
-      return PMO_COMPACT_BOOKING_FIELDS.map(field => pmoStorageCleanCell(row[field] ?? ''));
+      const base = PMO_COMPACT_BOOKING_FIELDS.map(field => pmoStorageCleanCell(row[field] ?? ''));
+      if (Array.isArray(row.giocatori) && row.giocatori.length) {
+        base.push(row.giocatori.map(function(g){ return typeof g === 'string' ? g : (g && g.nome ? g.nome : ''); }).filter(Boolean));
+      }
+      return base;
     }
     function pmoExpandCompactBookingItem(row, fields=PMO_COMPACT_BOOKING_FIELDS) {
       if (row && typeof row === 'object' && !Array.isArray(row)) return row;
@@ -7786,6 +7790,10 @@ Grazie.`
         const value = pmoStorageCleanCell(row[index] ?? '');
         if (value) item[field] = value;
       });
+      const extraIdx = fields.length;
+      if (Array.isArray(row[extraIdx]) && row[extraIdx].length) {
+        item.giocatori = row[extraIdx].filter(Boolean);
+      }
       return item.data && item.ora && item.campo ? item : null;
     }
     function pmoEncodeForStorage(key, value) {
