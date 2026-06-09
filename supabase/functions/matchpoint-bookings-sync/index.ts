@@ -24,6 +24,7 @@ type MatchpointExport = {
 type ParsedBooking = {
   numero: string;
   giocatore: string;
+  giocatori?: string[];
   data: string;
   ora: string;
   durata: string;
@@ -459,6 +460,59 @@ function workerHealthUrl(rawUrl: string) {
   return `${workerBaseUrl(rawUrl)}/health`;
 }
 
+async function enrichBookingsWithTabellone(
+  bookings: ParsedBooking[],
+  workerUrl: string,
+  workerApiKey: string,
+  username: string,
+  password: string,
+  baseUrl: string,
+): Promise<void> {
+  // Raccoglie le date uniche future presenti nei booking
+  const today = todayIsoRome();
+  const dates = [...new Set(
+    bookings
+      .filter((b) => b.data && b.data >= today)
+      .map((b) => b.data),
+  )].sort();
+
+  if (!dates.length) return;
+
+  const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
+  let tabelloneData: Record<string, Array<{ campo: number; ora: string; giocatori: string[] }>> = {};
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${workerApiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ username, password, baseUrl, dates }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data?.ok && data?.result) tabelloneData = data.result;
+    }
+  } catch (err) {
+    console.warn(JSON.stringify({ event: 'tabellone_enrich_failed', error: String(err) }));
+    return; // non bloccante
+  }
+
+  // Arricchisce ogni booking con i giocatori dal tabellone
+  for (const booking of bookings) {
+    const dayData = tabelloneData[booking.data] || [];
+    const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
+    const match = dayData.find(
+      (ev) => ev.campo === campoNum && ev.ora === booking.ora,
+    );
+    if (match && match.giocatori.length) {
+      booking.giocatori = match.giocatori;
+    }
+  }
+}
+
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
@@ -814,6 +868,28 @@ Deno.serve(async (req) => {
         },
       });
       return errorResponse(422, validation.error, validation.message, { validation, diagnosticSaved });
+    }
+
+    // Arricchisci con giocatori completi dal tabellone (Tappa 38) — non bloccante.
+    // workerUrl/credenziali non sono in scope qui: si leggono dalle env var.
+    try {
+      const enrichWorkerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
+      const enrichWorkerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
+      const enrichUsername = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
+      const enrichPassword = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
+      const enrichBaseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+      if (enrichWorkerUrl && enrichWorkerApiKey && enrichUsername && enrichPassword) {
+        await enrichBookingsWithTabellone(
+          validation.occupancyBookings,
+          enrichWorkerUrl,
+          enrichWorkerApiKey,
+          enrichUsername,
+          enrichPassword,
+          enrichBaseUrl,
+        );
+      }
+    } catch (err) {
+      console.warn(JSON.stringify({ event: 'tabellone_enrich_error', error: String(err) }));
     }
 
     const existingRecords = await loadExistingBookingRecords(admin);

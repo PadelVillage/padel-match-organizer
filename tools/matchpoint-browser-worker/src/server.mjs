@@ -201,6 +201,12 @@ function parseIsoDate(value) {
   return '';
 }
 
+// Normalizza un'ora "H:MM"/"HH:MM" a "HH:MM" (zero-padded), per il match col tabellone.
+function padOraHHMM(value) {
+  const m = clean(value).match(/^(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : clean(value);
+}
+
 function todayIsoRome() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Rome',
@@ -3099,10 +3105,93 @@ async function handleSlotScheduleExport(req, res) {
   json(res, 200, result);
 }
 
+// ── readTabelloneWithBrowser: legge tutti gli eventi (con giocatori completi)
+//    di una o piu' date dal tabellone, una navigazione per data. ──
+async function readTabelloneWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint per read-tabellone.');
+  }
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const dates = (Array.isArray(options.dates) ? options.dates : [options.date])
+    .map((d) => parseIsoDate(clean(d)))
+    .filter(Boolean);
+  if (!dates.length) throw fail('INVALID_DATES', 'Nessuna data valida fornita per read-tabellone.');
+
+  const CAMPO_BY_RECURSO = { 13: 1, 14: 2, 15: 3, 16: 4 };
+  const diagnostic = {
+    mode: 'browser_worker_headless',
+    flow: 'read_tabellone',
+    baseUrl,
+    dates,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+  const result = {}; // { 'YYYY-MM-DD': [ { campo, ora, oraFine, giocatori: [] } ] }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
+
+    for (const isoDate of dates) {
+      diagnostic.steps.push(`read_tabellone:${isoDate}`);
+      try {
+        await impostaDataTabellone(tabCtx, page, isoDate, diagnostic);
+        const eventi = await tabCtx.evaluate(() => {
+          return [...document.querySelectorAll('div.evento')].map((e) => {
+            const testoEl = e.querySelector('.eventoTexto2');
+            const testo = testoEl ? testoEl.innerHTML : '';
+            const giocatori = testo
+              .split(/<br\s*\/?>/i)
+              .map((s) => s.replace(/<[^>]+>/g, '').trim())
+              .filter(Boolean);
+            return {
+              idrecurso: e.getAttribute('idrecurso') || '',
+              inicio: e.getAttribute('inicio') || '',
+              fin: e.getAttribute('fin') || '',
+              giocatori,
+            };
+          });
+        });
+        result[isoDate] = eventi
+          .map((ev) => ({
+            campo: CAMPO_BY_RECURSO[Number(ev.idrecurso)] || 0,
+            ora: padOraHHMM(ev.inicio),
+            oraFine: padOraHHMM(ev.fin),
+            giocatori: ev.giocatori,
+          }))
+          .filter((ev) => ev.campo > 0);
+      } catch (err) {
+        diagnostic.steps.push(`read_tabellone_error:${isoDate}:${err && err.message}`);
+        result[isoDate] = [];
+      }
+    }
+    diagnostic.finishedAt = new Date().toISOString();
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+
+  return { ok: true, result, diagnostic };
+}
+
 async function handleGetSlots(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
   const result = await getSlotsWithBrowser(body);
+  json(res, 200, result);
+}
+
+async function handleReadTabellone(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await readTabelloneWithBrowser(body);
   json(res, 200, result);
 }
 
@@ -5249,7 +5338,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
         routes: [
-          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
+          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
           '/create-booking', '/cancel-booking', '/edit-booking', '/create-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
@@ -5275,6 +5364,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/get-slots') {
       return await handleGetSlots(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/read-tabellone') {
+      return await handleReadTabellone(req, res);
     }
     if (req.method === 'POST' && req.url === '/export-slot-schedule') {
       return await handleSlotScheduleExport(req, res);
