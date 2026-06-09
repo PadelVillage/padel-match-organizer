@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.739';
+    const APP_VERSION = '5.740';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35272,10 +35272,10 @@ Per confermare scrivi ELIMINA.`);
         const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo) + (isMP ? ' 🔒' : '');
         const blk = document.createElement('div');
         blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:1px solid ' + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
-        const t1 = document.createElement('div'); t1.style.cssText = 'font-size:' + (isDesktop ? '15px' : '19px') + ';font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
-        const t2 = document.createElement('div'); t2.style.cssText = 'font-size:' + (isDesktop ? '9px' : '11px') + ';opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
+        const t1 = document.createElement('div'); t1.style.cssText = 'font-size:' + (isDesktop ? '13.5px' : '17px') + ';font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
+        const t2 = document.createElement('div'); t2.style.cssText = 'font-size:' + (isDesktop ? '8px' : '10px') + ';opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
         const _isLez = String(b.tipoReale || b.tipo || '').toLowerCase().includes('lez');
-        if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:11px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
+        if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:10px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
         // v5.736 — gestisce giocatori come array di stringhe O di oggetti {nome}, e nome con \n.
         // Ogni giocatore va su una riga separata (div). Font ingrandito.
         let _gNames = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean) : [];
@@ -35283,7 +35283,7 @@ Per confermare scrivi ELIMINA.`);
           _gNames = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
         }
         if (_gNames.length) {
-          const fontPx = isDesktop ? 13 : 14;
+          const fontPx = isDesktop ? 12 : 13;
           _gNames.forEach(function (nm) {
             const t3 = document.createElement('div');
             t3.style.cssText = 'font-size:' + fontPx + 'px;opacity:.95;white-space:normal;line-height:1.3;';
