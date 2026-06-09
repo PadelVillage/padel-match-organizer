@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.738';
+    const APP_VERSION = '5.739';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37002,15 +37002,31 @@ Per confermare scrivi ELIMINA.`);
       : ('sb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
   }
 
-  // Helper v5.720: cerca l'idReserva Matchpoint di una prenotazione locale per slot (data+campo+ora).
+  // Helper v5.720: cerca l'idReserva Matchpoint di una prenotazione per slot (data+campo+ora).
+  // Tappa 43: oltre a staffBookings (prenotazioni create dall'app) cerca anche in
+  // prenotazioniOccupazione (prenotazioni importate da Matchpoint, arricchite dalla edge sync),
+  // così edit/move/annulla/read NON costringono il worker a ripescare l'id dal tabellone (lento).
   function _staffCalLookupIdReserva(iso, campoNum, ora) {
-    const sb = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-    const b = sb.find(function(x) {
-      return String(x.data).trim() === String(iso).trim()
-        && Number(String(x.campo).replace(/\D/g, '')) === Number(String(campoNum).replace(/\D/g, ''))
-        && String(x.ora).trim() === String(ora).trim();
-    });
-    return (b && b.idReserva) ? String(b.idReserva) : null;
+    var wantData = String(iso).trim();
+    var wantCampo = Number(String(campoNum).replace(/\D/g, ''));
+    var wantOra = String(ora).trim();
+    var match = function(x) {
+      return x
+        && String(x.data).trim() === wantData
+        && Number(String(x.campo).replace(/\D/g, '')) === wantCampo
+        && String(x.ora).trim() === wantOra;
+    };
+    // 1) staffBookings (prenotazioni create dall'app)
+    var sb = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    var b = sb.find(match);
+    if (b && b.idReserva) return String(b.idReserva);
+    // 2) prenotazioniOccupazione (importate da Matchpoint via sync)
+    var occ = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione))
+      ? prenotazioniOccupazione
+      : ((typeof safeLoad === 'function') ? safeLoad('prenotazioniOccupazione', []) : []);
+    var o = (Array.isArray(occ) ? occ : []).find(match);
+    if (o && o.idReserva) return String(o.idReserva);
+    return null;
   }
 
   function staffCalSaveLocal(parsed, sbId, idReserva) {

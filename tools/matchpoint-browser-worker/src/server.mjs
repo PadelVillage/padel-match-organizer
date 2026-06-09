@@ -1487,8 +1487,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
 
   if (onSelectResult?.ok) {
     diagnostic.dateInputSelector = onSelectResult.method;
-    await page.waitForLoadState('networkidle', { timeout: 25000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(1200);
     return;
   }
 
@@ -1523,8 +1523,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
         const dayLoc = tabCtx.locator(`.ui-datepicker-calendar td a`).filter({ hasText: new RegExp(`^${parseInt(targetDay, 10)}$`) }).first();
         await dayLoc.click({ timeout: 5000 });
         diagnostic.dateInputSelector = 'datepicker_popup_click';
-        await page.waitForLoadState('networkidle', { timeout: 25000 }).catch(() => {});
-        await page.waitForTimeout(2000);
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(1200);
         return;
       }
     }
@@ -1600,8 +1600,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
     diagnostic.dateSetWarning = 'date_input_not_found_proceeding_with_current_date';
   }
 
-  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1200);
   diagnostic.afterDateUrl = page.url();
   // Registra anche l'URL del frame (più utile di page.url() per capire se c'è stato reload)
   diagnostic.afterDateFrameUrl = await tabCtx.evaluate(() => location.href).catch(() => '');
@@ -3150,6 +3150,7 @@ async function readTabelloneWithBrowser(options = {}) {
               .map((s) => s.replace(/<[^>]+>/g, '').trim())
               .filter(Boolean);
             return {
+              id: e.getAttribute('id') || e.id || '',
               idrecurso: e.getAttribute('idrecurso') || '',
               inicio: e.getAttribute('inicio') || '',
               fin: e.getAttribute('fin') || '',
@@ -3159,6 +3160,7 @@ async function readTabelloneWithBrowser(options = {}) {
         });
         result[isoDate] = eventi
           .map((ev) => ({
+            id: ev.id || '',
             campo: CAMPO_BY_RECURSO[Number(ev.idrecurso)] || 0,
             ora: padOraHHMM(ev.inicio),
             oraFine: padOraHHMM(ev.fin),
@@ -4549,8 +4551,8 @@ async function editBookingWithBrowser(input = {}) {
       `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
     ];
     for (const cand of fichaCandidates) {
-      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForTimeout(400);
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
       const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
       if (hasExtender) { fichaUrl = cand; break; }
     }
@@ -4928,8 +4930,8 @@ async function cancelBookingWithBrowser(input = {}) {
       `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
     ];
     for (const cand of fichaCandidates) {
-      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForTimeout(400);
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
       const valida = await page.evaluate(() =>
         !!document.querySelector('#CC_Datos_FormViewFicha_ButtonAnularReserva') ||
         !!document.querySelector('#CC_Datos_FormViewFicha_ButtonExtender') ||

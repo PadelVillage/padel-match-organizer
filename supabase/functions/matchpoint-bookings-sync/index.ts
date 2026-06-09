@@ -25,6 +25,7 @@ type ParsedBooking = {
   numero: string;
   giocatore: string;
   giocatori?: string[];
+  idReserva?: string;
   data: string;
   ora: string;
   durata: string;
@@ -479,7 +480,7 @@ async function enrichBookingsWithTabellone(
   if (!dates.length) return;
 
   const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
-  let tabelloneData: Record<string, Array<{ campo: number; ora: string; giocatori: string[] }>> = {};
+  let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[] }>> = {};
 
   try {
     const res = await fetch(endpoint, {
@@ -500,15 +501,16 @@ async function enrichBookingsWithTabellone(
     return; // non bloccante
   }
 
-  // Arricchisce ogni booking con i giocatori dal tabellone
+  // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
   for (const booking of bookings) {
     const dayData = tabelloneData[booking.data] || [];
     const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
     const match = dayData.find(
       (ev) => ev.campo === campoNum && ev.ora === booking.ora,
     );
-    if (match && match.giocatori.length) {
-      booking.giocatori = match.giocatori;
+    if (match) {
+      if (match.giocatori.length) booking.giocatori = match.giocatori;
+      if (match.id) booking.idReserva = String(match.id);
     }
   }
 }
