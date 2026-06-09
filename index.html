@@ -7347,7 +7347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.729';
+    const APP_VERSION = '5.730';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34653,14 +34653,16 @@ Per confermare scrivi ELIMINA.`);
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
-      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo, durata: _staffCalDurMin(p.durata) });
+      const _nomeOcc = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join(', ') : (p.giocatore || '');
+      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, durata: _staffCalDurMin(p.durata) });
     }
     for (const p of bookings) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
       if (result.some(r => r.ora === p.ora && r.campo === campoNum)) continue;
-      result.push({ ora: p.ora, campo: campoNum, nome: p.giocatore || '', tipo: 'partita', durata: _staffCalDurMin(p.durata) });
+      const _nomeBook = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join(', ') : (p.giocatore || '');
+      result.push({ ora: p.ora, campo: campoNum, nome: _nomeBook, tipo: 'partita', durata: _staffCalDurMin(p.durata) });
     }
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
