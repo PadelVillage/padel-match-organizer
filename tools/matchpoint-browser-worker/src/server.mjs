@@ -4720,7 +4720,9 @@ async function editBookingWithBrowser(input = {}) {
       // Dopo le RIMOZIONI il form ha subito postback: ricarica la Ficha pulita prima
       // delle AGGIUNTE, così l'autocomplete del giocatore si aggancia in modo affidabile
       // (senza, un add subito dopo un remove puo' lasciare HiddenFieldIdPeople vuoto).
-      if (removeAll || removeNames.length > 0) {
+      // NB: serve SOLO se seguono delle aggiunte. Per una rimozione pura il reload è
+      // un giro a vuoto (una ricarica completa di Ficha) → si salta e si va al salvataggio.
+      if ((removeAll || removeNames.length > 0) && (players.add || []).length > 0) {
         diagnostic.steps.push('reload_after_removals');
         await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
         await page.waitForTimeout(800);
