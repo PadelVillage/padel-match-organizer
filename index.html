@@ -2716,6 +2716,8 @@
     #staffCalV36 .agenda-card-type { font-size:.95rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; line-height:1.3; }
     #staffCalV36 .agenda-card-players { font-size:.82rem; color:var(--text-muted); margin-top:2px; }
     #staffCalV36 .agenda-card-mp-badge { font-size:.72rem; color:var(--mp-text); margin-top:4px; }
+    #staffCalV36 .staff-booking-note { font-size:11px; color:#6b7280; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .svc-note-input { width:100%; box-sizing:border-box; border:1px solid var(--border,#d1d5db); border-radius:8px; padding:8px 10px; font-size:14px; font-family:inherit; resize:none; background:#f9fafb; color:#111827; }
     #staffCalV36 .agenda-free {
       border-radius:var(--radius); padding:12px 14px; background:var(--surface);
       border:1.5px dashed var(--border); min-height:44px; display:flex;
@@ -7345,7 +7347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.724';
+    const APP_VERSION = '5.725';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34951,6 +34953,12 @@ Per confermare scrivi ELIMINA.`);
           else playersEl.textContent = entry.nome;
           card.appendChild(playersEl);
         }
+        if (entry.note) {
+          const noteEl = document.createElement('div');
+          noteEl.className = 'staff-booking-note';
+          noteEl.textContent = '📝 ' + entry.note;
+          card.appendChild(noteEl);
+        }
         if (entry.tipo !== 'staff-booking') {
           const badge = document.createElement('div');
           badge.className = 'agenda-card-mp-badge';
@@ -36281,6 +36289,7 @@ Per confermare scrivi ELIMINA.`);
         istruttore: parsed.istruttore || undefined,
         ...(options && options.sbId ? { sbId: options.sbId } : {}),
         ...(giocatoriPayload ? { giocatori: giocatoriPayload } : {}),
+        ...(parsed.note ? { note: parsed.note } : {}),
         ...(options.async ? { async: true } : {}),
       }),
     });
@@ -36969,6 +36978,7 @@ Per confermare scrivi ELIMINA.`);
       tipo: parsed.tipo || 'partita',
       istruttore: parsed.istruttore || '',
       giocatori: Array.isArray(parsed.giocatori) ? parsed.giocatori : [],
+      note: parsed.note || '',
       createdAt: new Date().toISOString(),
       idReserva: (idReserva && String(idReserva).trim()) || null,
     };
@@ -36991,7 +37001,7 @@ Per confermare scrivi ELIMINA.`);
         records.push({
           record_type: 'staff_booking',
           local_key: entry.id,
-          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori },
+          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori, note: entry.note || '' },
           deleted: false
         });
         pmoSyncCloudRecordsNow(records, 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
@@ -37357,7 +37367,7 @@ Per confermare scrivi ELIMINA.`);
     const cont = document.getElementById('svcChatMessages');
     if (!cont) return;
     cont.innerHTML = '';
-    svcFlowState = { campo: campo, dateISO: dateISO, ora: ora, players: [], tipoEngine: 'partita', tipo: 'partita', tipoLabel: 'Partita', durata: 90, istruttore: '' };
+    svcFlowState = { campo: campo, dateISO: dateISO, ora: ora, players: [], tipoEngine: 'partita', tipo: 'partita', tipoLabel: 'Partita', durata: 90, istruttore: '', note: '' };
     svcSetInputMode('flow-summary');
 
     const SLOTS = staffCalSlots();
@@ -37526,7 +37536,7 @@ Per confermare scrivi ELIMINA.`);
   // Step 1 — scelta tipo
   function svcStartBookingFlow(campo, dateISO, ora) {
     if (svcFlowState) svcCancelFlow(null, true);
-    svcFlowState = { step: 'tipo', campo: campo, dateISO: dateISO, ora: ora };
+    svcFlowState = { step: 'tipo', campo: campo, dateISO: dateISO, ora: ora, note: '' };
     const ddmm = dateISO.split('-').slice(1).reverse().join('/');
     const div = svcAddMessage('system',
       '➕ <strong>Nuova prenotazione</strong><br>' +
@@ -37771,6 +37781,22 @@ Per confermare scrivi ELIMINA.`);
       svcSetInputMode('normal');
       svcAddMessage('system', '↩️ Operazione annullata.');
     });
+    // Campo Note (Tappa 36)
+    const noteWrap = document.createElement('div');
+    noteWrap.style.cssText = 'margin-top:10px;margin-bottom:2px;';
+    const noteInput = document.createElement('textarea');
+    noteInput.id = 'svcNoteInput';
+    noteInput.className = 'svc-note-input';
+    noteInput.placeholder = 'Note (facoltativo)';
+    noteInput.rows = 2;
+    noteInput.maxLength = 300;
+    noteInput.value = svcFlowState.note || '';
+    noteInput.addEventListener('input', function() {
+      if (svcFlowState) svcFlowState.note = noteInput.value.trim();
+    });
+    noteWrap.appendChild(noteInput);
+    div.appendChild(noteWrap);
+
     btns.appendChild(btnY);
     btns.appendChild(btnBack);
     btns.appendChild(btnN);
@@ -37795,7 +37821,8 @@ Per confermare scrivi ELIMINA.`);
         tipo: 'lezione',
         istruttore: istruttore,
         nome: (players && players.length) ? nomeStr : istruttore,
-        giocatori: giocatori
+        giocatori: giocatori,
+        note: svcFlowState.note || ''
       };
     } else if (tipoEngine === 'manutenzione') {
       parsed = {
@@ -37807,7 +37834,8 @@ Per confermare scrivi ELIMINA.`);
         durata: durata,
         nome: 'Manutenzione',
         tipo: 'manutenzione',
-        giocatori: []
+        giocatori: [],
+        note: ''
       };
     } else {
       parsed = {
@@ -37819,7 +37847,8 @@ Per confermare scrivi ELIMINA.`);
         durata: durata,
         nome: nomeStr,
         tipo: 'partita',
-        giocatori: giocatori
+        giocatori: giocatori,
+        note: svcFlowState.note || ''
       };
     }
     // Pre-check conflitto istantaneo
