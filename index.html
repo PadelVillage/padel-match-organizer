@@ -2867,6 +2867,25 @@
       .smc-soci-row > * { flex:1; min-width:0; }
       .smc-soci-save { margin-top:4px; background:#1a4fa0; border:none; color:#fff; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
       .smc-soci-save:active { background:#163d80; }
+      .smc-soci-result { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:0.5px solid #e2e8f0; border-radius:10px; padding:11px 13px; font-family:inherit; }
+      .smc-soci-result-info { display:flex; flex-direction:column; gap:3px; flex:1; min-width:0; }
+      .smc-soci-result-row1 { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+      .smc-soci-result-name { font-size:14px; font-weight:500; color:#1e293b; }
+      .smc-soci-result-meta { font-size:11px; color:#64748b; }
+      .smc-soci-result-badges { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:2px; }
+      .smc-soci-badge { display:inline-flex; align-items:center; border-radius:20px; padding:2px 7px; font-size:11px; font-weight:700; }
+      .smc-soci-badge-m { background:#E6F1FB; color:#0C447C; }
+      .smc-soci-badge-f { background:#FBEAF0; color:#72243E; }
+      .smc-soci-badge-ok { background:#EAF3DE; color:#27500A; }
+      .smc-soci-badge-off { background:#FCEBEB; color:#791F1F; }
+      .smc-soci-badge-pos { background:#ede7f6; color:#4527a0; }
+      .smc-soci-badge-lv { background:#1a4fa0; color:#fff; border-radius:12px; padding:2px 8px; font-size:12px; font-weight:700; flex-shrink:0; }
+      .smc-soci-phone { font-size:12px; color:#64748b; }
+      .smc-soci-edit-btn { flex-shrink:0; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:7px 10px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+      .smc-soci-edit-idline { font-size:12px; color:#64748b; padding-bottom:4px; border-bottom:0.5px solid #e2e8f0; margin-bottom:2px; }
+      .smc-soci-active-row { display:flex; align-items:center; gap:8px; font-size:14px; color:#1e293b; cursor:pointer; padding:4px 0; }
+      .smc-soci-active-row input[type=checkbox] { width:17px; height:17px; accent-color:#1a4fa0; flex-shrink:0; }
+      .smc-soci-cancel-btn { flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#374151; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
       .smc-soci-titlebar { display:flex; align-items:center; justify-content:space-between; padding:12px 14px 10px; }
       .smc-soci-titlebar-left { display:flex; flex-direction:column; gap:1px; }
       .smc-soci-title { font-size:15px; font-weight:500; color:#1e293b; }
@@ -7329,7 +7348,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.722';
+    const APP_VERSION = '5.723';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38112,15 +38131,114 @@ Per confermare scrivi ELIMINA.`);
     var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
     box.innerHTML = rows.map(function (g) {
       var name = (typeof playerFullName === 'function') ? playerFullName(g) : (g.name || '');
-      var meta = [g.memberId ? ('#' + g.memberId) : '', g.phone || '', (g.active === false ? 'inattivo' : '')].filter(Boolean).join(' · ');
-      return '<button type="button" class="smc-soci-result" data-soci-id="' + esc(String(g.id)) + '" onclick="staffCalSociOpenMember(this.dataset.sociId)">'
-        + '<span class="smc-soci-result-name">' + esc(name) + '</span>'
-        + '<span class="smc-soci-result-meta">' + esc(meta) + '</span></button>';
+      var idLabel = (typeof formatMemberIdLabel === 'function') ? formatMemberIdLabel(g.memberId) : (g.memberId || '');
+      var age = g.age ? ' · ' + g.age + ' anni' : '';
+      var stateBadge = g.active !== false
+        ? '<span class="smc-soci-badge smc-soci-badge-ok">Attivo</span>'
+        : '<span class="smc-soci-badge smc-soci-badge-off">Inattivo</span>';
+      var gBadge = g.gender === 'M' ? '<span class="smc-soci-badge smc-soci-badge-m">M</span>'
+                 : g.gender === 'F' ? '<span class="smc-soci-badge smc-soci-badge-f">F</span>' : '';
+      var posBadge = g.playingPosition ? '<span class="smc-soci-badge smc-soci-badge-pos">'
+                    + (g.playingPosition === 'Destra' ? '▶ ' : '◀ ') + esc(g.playingPosition) + '</span>' : '';
+      var lvBadge = g.level != null ? '<span class="smc-soci-badge-lv">' + esc(String(g.level)) + '</span>' : '';
+      var phone = g.phone ? '<span class="smc-soci-phone">📞 ' + esc(g.phone) + '</span>' : '';
+      var id = esc(String(g.id));
+      return '<div class="smc-soci-result">'
+        + '<div class="smc-soci-result-info">'
+        + '<div class="smc-soci-result-row1"><span class="smc-soci-result-name">' + esc(name) + '</span>' + lvBadge + '</div>'
+        + '<span class="smc-soci-result-meta">' + esc(idLabel) + esc(age) + '</span>'
+        + '<div class="smc-soci-result-badges">' + gBadge + stateBadge + posBadge + phone + '</div>'
+        + '</div>'
+        + '<button type="button" class="smc-soci-edit-btn" onclick="staffCalSociOpenEdit(\'' + id + '\')">✏️</button>'
+        + '</div>';
     }).join('');
   }
   function staffCalSociOpenMember(id) {
     staffCalCloseSociSheet();
     setTimeout(function () { if (typeof openMemberCard === 'function') openMemberCard(id, { force: true }); }, 60);
+  }
+  function staffCalSociOpenEdit(id) {
+    var g = Array.isArray(giocatori) ? giocatori.find(function(m){ return String(m.id) === String(id); }) : null;
+    if (!g) return;
+    var esc = (typeof escapeHtml === 'function') ? escapeHtml : function(x){ return String(x == null ? '' : x); };
+    var lvOptions = ['0.5','1','1.5','2','2.5','3','3.5','4','4.5','5','5.5','6','6.5','7'].map(function(l){
+      return '<option value="' + l + '"' + (String(g.level) === l ? ' selected' : '') + '>' + l + '</option>';
+    }).join('');
+    var idLabel = (typeof formatMemberIdLabel === 'function') ? formatMemberIdLabel(g.memberId) : (g.memberId || '');
+    var editHtml = '<div class="smc-soci-form">'
+      + '<div class="smc-soci-edit-idline">' + esc(idLabel) + '</div>'
+      + '<div class="smc-soci-row">'
+      + '<input type="text" id="smeFirst" class="smc-soci-input" placeholder="Nome" value="' + esc(g.firstName || '') + '">'
+      + '<input type="text" id="smeSurname" class="smc-soci-input" placeholder="Cognome" value="' + esc(g.surname || '') + '">'
+      + '</div>'
+      + '<input type="tel" id="smePhone" class="smc-soci-input" placeholder="Telefono" value="' + esc(g.phone || '') + '">'
+      + '<input type="email" id="smeEmail" class="smc-soci-input" placeholder="Email" value="' + esc(g.email || '') + '">'
+      + '<div class="smc-soci-row">'
+      + '<select id="smeGender" class="smc-soci-input">'
+      + '<option value="">Sesso…</option>'
+      + '<option value="M"' + (g.gender === 'M' ? ' selected' : '') + '>Maschio</option>'
+      + '<option value="F"' + (g.gender === 'F' ? ' selected' : '') + '>Femmina</option>'
+      + '</select>'
+      + '<select id="smeLevel" class="smc-soci-input">' + lvOptions + '</select>'
+      + '</div>'
+      + '<select id="smePosition" class="smc-soci-input">'
+      + '<option value="">Posizione…</option>'
+      + '<option value="Destra"' + (g.playingPosition === 'Destra' ? ' selected' : '') + '>Destra</option>'
+      + '<option value="Sinistra"' + (g.playingPosition === 'Sinistra' ? ' selected' : '') + '>Sinistra</option>'
+      + '</select>'
+      + '<label class="smc-soci-active-row">'
+      + '<input type="checkbox" id="smeActive"' + (g.active !== false ? ' checked' : '') + '>'
+      + '<span>Socio attivo</span>'
+      + '</label>'
+      + '<div class="smc-soci-row">'
+      + '<button type="button" class="smc-soci-cancel-btn" onclick="staffCalSociCloseEdit()">Annulla</button>'
+      + '<button type="button" class="smc-soci-save" onclick="staffCalSociSaveEdit(\'' + esc(String(g.id)) + '\')">Salva modifiche</button>'
+      + '</div>'
+      + '</div>';
+    var searchPane = document.querySelector('[data-soci-pane="search"]');
+    if (!searchPane) return;
+    searchPane.setAttribute('hidden', '');
+    var editPane = document.getElementById('staffCalSociEditPane');
+    if (!editPane) {
+      editPane = document.createElement('div');
+      editPane.id = 'staffCalSociEditPane';
+      editPane.className = 'smc-soci-pane';
+      searchPane.parentNode.insertBefore(editPane, searchPane.nextSibling);
+    }
+    editPane.innerHTML = editHtml;
+    editPane.removeAttribute('hidden');
+    document.querySelectorAll('.smc-soci-tab').forEach(function(b){ b.classList.remove('active'); });
+  }
+  function staffCalSociCloseEdit() {
+    var editPane = document.getElementById('staffCalSociEditPane');
+    if (editPane) editPane.setAttribute('hidden', '');
+    var searchPane = document.querySelector('[data-soci-pane="search"]');
+    if (searchPane) searchPane.removeAttribute('hidden');
+    document.querySelectorAll('.smc-soci-tab').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-soci-tab') === 'search');
+    });
+  }
+  function staffCalSociSaveEdit(id) {
+    var g = Array.isArray(giocatori) ? giocatori.find(function(m){ return String(m.id) === String(id); }) : null;
+    if (!g) return;
+    var get = function(eid){ var el = document.getElementById(eid); return el ? el.value.trim() : ''; };
+    var firstName = get('smeFirst');
+    var surname = get('smeSurname');
+    if (!firstName || !surname) { alert('Nome e cognome obbligatori.'); return; }
+    g.firstName = firstName;
+    g.surname = surname;
+    g.name = firstName + ' ' + surname;
+    var ph = get('smePhone'); if (ph) g.phone = ph;
+    var em = get('smeEmail'); if (em) g.email = em;
+    var gv = get('smeGender'); if (gv) g.gender = gv;
+    var lv = get('smeLevel'); if (lv) g.level = parseFloat(lv);
+    var pos = get('smePosition'); if (pos) g.playingPosition = pos;
+    var activeEl = document.getElementById('smeActive');
+    if (activeEl) g.active = activeEl.checked;
+    if (typeof save === 'function') save('giocatori', giocatori);
+    if (typeof displayMembers === 'function') displayMembers();
+    staffCalSociCloseEdit();
+    staffCalRenderSociResults();
   }
   function staffCalSociSheetSaveNew() {
     var setVal = function (id, val) { var el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
