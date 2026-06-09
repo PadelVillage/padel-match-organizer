@@ -37426,7 +37426,7 @@ Per confermare scrivi ELIMINA.`);
     const fineRow=document.createElement('div'); fineRow.style.cssText='font-size:'+FS.fine+'px;color:var(--text-muted);margin-bottom:14px;'; card.appendChild(fineRow);
 
     const fTipo=document.createElement('div'); fTipo.style.marginBottom='14px'; fTipo.appendChild(lbl('Tipo'));
-    const tipoRow=document.createElement('div'); tipoRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;'; const tipoBtns=[];
+    const tipoRow=document.createElement('div'); tipoRow.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;'; const tipoBtns=[];
     TIPI.forEach(function(tp){
       const b=document.createElement('button'); b.type='button'; b.textContent=tp.key;
       b.style.cssText='font-size:'+FS.btn+'px;padding:'+PAD.tipo+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
@@ -37448,6 +37448,27 @@ Per confermare scrivi ELIMINA.`);
     giocRow.appendChild(giocInput); giocRow.appendChild(giocAdd); fGioc.appendChild(giocRow);
     const sugg=document.createElement('div'); sugg.style.cssText='display:none;flex-direction:column;margin-top:6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);max-height:180px;overflow-y:auto;'; fGioc.appendChild(sugg);
     const chips=document.createElement('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;'; fGioc.appendChild(chips); card.appendChild(fGioc);
+
+    // Campo Note — Tappa 36
+    const fNote=document.createElement('div');
+    fNote.style.cssText='padding:12px 0;border-top:1px solid var(--border);margin-top:4px;';
+    const noteLblRow=document.createElement('div');
+    noteLblRow.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px;';
+    const noteLblTxt=document.createElement('span');
+    noteLblTxt.style.cssText='font-size:'+FS.lbl+'px;color:var(--text-muted);font-weight:500;';
+    noteLblTxt.textContent='Note';
+    const noteHint=document.createElement('span');
+    noteHint.style.cssText='font-size:11px;color:var(--text-muted);opacity:0.7;';
+    noteHint.textContent='(facoltativo · max 300 caratteri)';
+    noteLblRow.appendChild(noteLblTxt); noteLblRow.appendChild(noteHint);
+    fNote.appendChild(noteLblRow);
+    const noteTA=document.createElement('textarea');
+    noteTA.placeholder='Osservazioni per Matchpoint...';
+    noteTA.rows=2; noteTA.maxLength=300;
+    noteTA.style.cssText='width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:'+FS.ctrl+'px;font-family:inherit;resize:none;background:var(--surface);color:var(--text);';
+    noteTA.addEventListener('input', function(){ if(svcFlowState) svcFlowState.note = noteTA.value.trim(); });
+    fNote.appendChild(noteTA);
+    card.appendChild(fNote);
 
     const foot=document.createElement('div'); foot.style.cssText='display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);';
     const annBtn=document.createElement('button'); annBtn.type='button'; annBtn.textContent='Annulla'; annBtn.style.cssText='border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--radius-sm);padding:'+PAD.foot+';cursor:pointer;font-size:'+FS.foot+'px;';
@@ -37525,6 +37546,7 @@ Per confermare scrivi ELIMINA.`);
     confBtn.addEventListener('click',function(){
       svcFlowState.ora=oraSel.value; svcFlowState.durata=parseInt(durSel.value,10);
       if (svcFlowState.tipoEngine==='lezione') svcFlowState.istruttore=maestroSel.value;
+      svcFlowState.note = noteTA.value.trim();
       confBtn.disabled=true; annBtn.disabled=true; confBtn.style.opacity='0.6';
       svcConfirmBooking();
     });
