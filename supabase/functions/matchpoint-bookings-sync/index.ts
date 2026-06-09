@@ -978,6 +978,12 @@ Deno.serve(async (req) => {
       const reconcileTo = clean(range.toDate || validation.toDate || '');
       const occupancySlotSet = new Set<string>();
       validation.occupancyBookings.forEach((b) => occupancySlotSet.add(staffSlotKeyFromOccupancy(b)));
+      // DEMOTE (Tappa 45): idReserva presenti nell'occupancy fresca. Una entry staff_booking
+      // "promoted" (creata dallo spostamento di un booking Matchpoint) il cui idReserva ricompare
+      // qui va eliminata: l'occupancy autorevole è di nuovo materializzata da Matchpoint.
+      const occupancyIdReservaSet = new Set<string>();
+      validation.occupancyBookings.forEach((b) => { const ir = clean((b as any).idReserva || ''); if (ir) occupancyIdReservaSet.add(ir); });
+      let demotedStaffBookings = 0;
       // Slot con occupancy ATTIVA prima di questo sync: se ora spariti => cancellazione reale.
       const existingOccupancySlotSet = new Set<string>();
       for (const rec of existingRecords) {
@@ -993,6 +999,16 @@ Deno.serve(async (req) => {
         if (!sData) continue;
         if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
         if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
+        // DEMOTE per idReserva: solo per le entry nate dal promote (promoted===true).
+        // Le prenotazioni/lezioni create dall'app NON sono promoted → restano intatte
+        // (così il maestro delle lezioni app non viene perso).
+        const sIdReserva = clean((p as any)?.id_reserva || '');
+        const sPromoted = (p as any)?.promoted === true;
+        if (sPromoted && sIdReserva && occupancyIdReservaSet.has(sIdReserva)) {
+          records.push({ record_type: 'staff_booking', local_key: row.local_key, payload: p, payload_hash: null, deleted: true, synced_at: importedAt });
+          demotedStaffBookings += 1;
+          continue;
+        }
         const slotKey = staffSlotKeyFromPayload(p);
         if (occupancySlotSet.has(slotKey)) continue;
         // Bypass grace se lo slot era confermato (occupancy attiva prima del sync) ed e sparito.
@@ -1014,7 +1030,7 @@ Deno.serve(async (req) => {
         });
         deletedStaffBookings += 1;
       }
-      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
     } catch (staffErr) {
       console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
     }
