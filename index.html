@@ -2580,7 +2580,7 @@
     .staff-cal-table thead th { background:#f1f5f9; color:#374151; font-weight:800; font-size:12px; padding:10px 8px; text-align:center; border-bottom:2px solid #cbd5e1; }
     .staff-cal-table thead th:first-child { width:56px; min-width:56px; text-align:right; border-right:1px solid #e2e8f0; background:#e8edf4; color:#64748b; }
     .staff-cal-time { color:#64748b; font-size:12px; font-weight:700; text-align:right; padding:0 8px 0 4px; border-right:1px solid #e2e8f0; white-space:nowrap; vertical-align:middle; background:#f8fafc; }
-    .staff-cal-cell { height:36px; border:1px solid #e2e8f0; vertical-align:top; padding:2px 4px; transition:background .15s; position:relative; }
+    .staff-cal-cell { min-height:36px; border:1px solid #e2e8f0; vertical-align:top; padding:2px 4px; transition:background .15s; position:relative; }
     .staff-cal-cell.libero { background:#fff; border:1px dashed #d1d5db; cursor:pointer; }
     .staff-cal-cell.libero:hover { background:#f0f9ff; }
     .staff-cal-cell.partita { background:#dbeafe; border-left:3px solid #2563eb; }
@@ -2668,9 +2668,9 @@
     #staffCalV36 .booking.staff { background:var(--staff-bg); border:1px solid var(--staff-border); color:var(--staff-text); }
     #staffCalV36 .booking-header { display:flex; align-items:center; gap:4px; font-weight:600; }
     #staffCalV36 .booking-icon { font-size:1.6rem; flex-shrink:0; }
-    #staffCalV36 .booking-type { flex:1; font-size:1.6rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #staffCalV36 .booking-time { font-size:1.5rem; opacity:.8; font-variant-numeric:tabular-nums; }
-    #staffCalV36 .booking-players { font-size:1.5rem; opacity:.9; white-space:pre-line; overflow:hidden; line-height:1.35; }
+    #staffCalV36 .booking-type { flex:1; font-size:1.6rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #staffCalV36 .booking-time { font-size:1.4rem; opacity:.8; font-variant-numeric:tabular-nums; }
+    #staffCalV36 .booking-players { font-size:1.4rem; opacity:.9; white-space:pre-line; overflow:visible; line-height:1.4; }
     #staffCalV36 .lock-badge {
       display:inline-flex; align-items:center; gap:2px; font-size:.6rem;
       background:rgba(0,0,0,.07); border-radius:3px; padding:1px 4px; margin-top:2px;
@@ -7347,7 +7347,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.732';
+    const APP_VERSION = '5.733';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34862,11 +34862,11 @@ Per confermare scrivi ELIMINA.`);
           const _pl = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)] || null;
           if (!_pl && slot.tipo !== 'staff-booking') { _staffCalMpAutoLoad(isoDate, f, hour); }
           if (_pl && _pl.loading) playersDiv.textContent = '⏳ ' + (slot.nome || '');
-          else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join(', ') : (slot.nome || '(nessun giocatore)');
+          else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join('\n') : (slot.nome || '(nessun giocatore)');
           else if (_pl && _pl.error) playersDiv.textContent = (slot.nome || '') + ' ⚠️';
           else {
             const _gN = Array.isArray(slot.giocatori) ? slot.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean) : [];
-            playersDiv.textContent = _gN.length ? _gN.join(', ') : (slot.nome || '');
+            playersDiv.textContent = _gN.length ? _gN.join('\n') : (slot.nome || '');
           }
           block.appendChild(hdr);
           block.appendChild(timeDiv);
