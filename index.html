@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.734';
+    const APP_VERSION = '5.735';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35411,6 +35411,22 @@ Per confermare scrivi ELIMINA.`);
         const b = (Array.isArray(list) ? list : []).find(function (x) { return x && String(x.data).trim() === String(iso).trim() && Number(String(x.campo).replace(/\D/g, '')) === wantCampo && String(x.ora).trim() === String(ora).trim(); });
         if (b && Array.isArray(b.giocatori) && b.giocatori.length) names = b.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean);
       } catch (e) {}
+      if (!names.length) {
+        try {
+          // Poi cerca in prenotazioniOccupazione (sync Matchpoint cloud)
+          const occ = (typeof safeLoad === 'function') ? safeLoad('prenotazioniOccupazione', []) : [];
+          const wantCampo = Number(String(campo).replace(/\D/g, ''));
+          const p = (Array.isArray(occ) ? occ : []).find(function (x) {
+            return x && String(x.data).trim() === String(iso).trim()
+              && Number(String(x.campo).replace(/\D/g, '')) === wantCampo
+              && String(x.ora).trim() === String(ora).trim();
+          });
+          if (p && Array.isArray(p.giocatori) && p.giocatori.length) {
+            names = p.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean);
+          }
+        } catch (e) {}
+      }
+      if (!names.length) names = String(nome || '').split('\n').filter(Boolean);
       if (!names.length) names = String(nome || '').split(/\s*,\s*/).filter(Boolean);
       _staffCalMpPlayers[key] = { names: names };
     }
