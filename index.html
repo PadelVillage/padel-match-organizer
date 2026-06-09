@@ -2857,31 +2857,28 @@
       .smc-soci-input { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:10px; padding:9px 12px; font-size:14px; font-family:inherit; outline:none; background:#f8fafc; color:#1e293b; }
       .smc-soci-input:focus { border-color:#1a4fa0; }
       .smc-soci-results { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
-      .smc-soci-result { display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; width:100%; background:#fff; border:1px solid var(--border,#e5e7eb); border-radius:12px; padding:11px 13px; cursor:pointer; font-family:inherit; }
-      .smc-soci-result:active { background:var(--accent-light,rgba(37,99,235,0.10)); }
-      .smc-soci-result-name { font-size:16px; font-weight:700; color:var(--text,#1f2430); }
-      .smc-soci-result-meta { font-size:13px; color:var(--text-muted,#6b7280); }
       .smc-soci-hint { padding:18px 4px; text-align:center; font-size:15px; color:var(--text-muted,#6b7280); }
       .smc-soci-form { display:flex; flex-direction:column; gap:10px; }
       .smc-soci-row { display:flex; gap:10px; }
       .smc-soci-row > * { flex:1; min-width:0; }
       .smc-soci-save { margin-top:4px; background:#1a4fa0; border:none; color:#fff; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
       .smc-soci-save:active { background:#163d80; }
-      .smc-soci-result { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:0.5px solid #e2e8f0; border-radius:10px; padding:11px 13px; font-family:inherit; }
-      .smc-soci-result-info { display:flex; flex-direction:column; gap:3px; flex:1; min-width:0; }
-      .smc-soci-result-row1 { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
-      .smc-soci-result-name { font-size:14px; font-weight:500; color:#1e293b; }
-      .smc-soci-result-meta { font-size:11px; color:#64748b; }
-      .smc-soci-result-badges { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:2px; }
-      .smc-soci-badge { display:inline-flex; align-items:center; border-radius:20px; padding:2px 7px; font-size:11px; font-weight:700; }
+      .smc-soci-result { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:0.5px solid #e2e8f0; border-radius:10px; padding:13px 14px; font-family:inherit; }
+      .smc-soci-result:active { background:#f0f7ff; }
+      .smc-soci-result-info { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+      .smc-soci-result-row1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+      .smc-soci-result-name { font-size:16px; font-weight:500; color:#1e293b; }
+      .smc-soci-result-meta { font-size:13px; color:#64748b; }
+      .smc-soci-result-badges { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:3px; }
+      .smc-soci-badge { display:inline-flex; align-items:center; border-radius:20px; padding:3px 9px; font-size:12px; font-weight:700; }
       .smc-soci-badge-m { background:#E6F1FB; color:#0C447C; }
       .smc-soci-badge-f { background:#FBEAF0; color:#72243E; }
       .smc-soci-badge-ok { background:#EAF3DE; color:#27500A; }
       .smc-soci-badge-off { background:#FCEBEB; color:#791F1F; }
       .smc-soci-badge-pos { background:#ede7f6; color:#4527a0; }
-      .smc-soci-badge-lv { background:#1a4fa0; color:#fff; border-radius:12px; padding:2px 8px; font-size:12px; font-weight:700; flex-shrink:0; }
-      .smc-soci-phone { font-size:12px; color:#64748b; }
-      .smc-soci-edit-btn { flex-shrink:0; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:7px 10px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+      .smc-soci-badge-lv { background:#1a4fa0; color:#fff; border-radius:12px; padding:3px 10px; font-size:13px; font-weight:700; flex-shrink:0; }
+      .smc-soci-phone { font-size:13px; color:#64748b; }
+      .smc-soci-edit-btn { flex-shrink:0; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:9px 13px; font-size:16px; color:#374151; cursor:pointer; font-family:inherit; }
       .smc-soci-edit-idline { font-size:12px; color:#64748b; padding-bottom:4px; border-bottom:0.5px solid #e2e8f0; margin-bottom:2px; }
       .smc-soci-active-row { display:flex; align-items:center; gap:8px; font-size:14px; color:#1e293b; cursor:pointer; padding:4px 0; }
       .smc-soci-active-row input[type=checkbox] { width:17px; height:17px; accent-color:#1a4fa0; flex-shrink:0; }
@@ -7348,7 +7345,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.723';
+    const APP_VERSION = '5.724';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
