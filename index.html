@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.735';
+    const APP_VERSION = '5.736';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35276,11 +35276,21 @@ Per confermare scrivi ELIMINA.`);
         const t2 = document.createElement('div'); t2.style.cssText = 'font-size:10px;opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
         const _isLez = String(b.tipoReale || b.tipo || '').toLowerCase().includes('lez');
         if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:11px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
-        // v5.702 — Disegna la lista giocatori dello staff_booking (prima NON veniva mai mostrata
-        // nel render orizzontale: la card cadeva sempre su `nome`). Fallback a `nome` se assente.
-        const _gNames = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean) : [];
-        if (_gNames.length) { const t3 = document.createElement('div'); t3.style.cssText = 'font-size:11px;opacity:.95;white-space:normal;'; t3.textContent = _gNames.join(', '); blk.appendChild(t3); }
-        else if (b.nome && b.nome !== b.istruttore) { const t3 = document.createElement('div'); t3.style.cssText = 'font-size:11px;opacity:.95;white-space:normal;'; t3.textContent = b.nome; blk.appendChild(t3); }
+        // v5.736 — gestisce giocatori come array di stringhe O di oggetti {nome}, e nome con \n.
+        // Ogni giocatore va su una riga separata (div). Font ingrandito.
+        let _gNames = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean) : [];
+        if (!_gNames.length && b.nome && b.nome !== b.istruttore) {
+          _gNames = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        if (_gNames.length) {
+          const fontPx = isDesktop ? 13 : 14;
+          _gNames.forEach(function (nm) {
+            const t3 = document.createElement('div');
+            t3.style.cssText = 'font-size:' + fontPx + 'px;opacity:.95;white-space:normal;line-height:1.3;';
+            t3.textContent = nm;
+            blk.appendChild(t3);
+          });
+        }
         (function (iso, cc, oo, nm, du, tp, mp) {
           blk.addEventListener('click', function () {
             if (mp) staffCalViewMatchpointPlayers(iso, cc, oo);
