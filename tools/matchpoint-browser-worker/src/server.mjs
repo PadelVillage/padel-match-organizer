@@ -4036,6 +4036,16 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
 
+      // Sonda idea 1: HiddenFieldIdReserva già popolato post-save? (ASP.NET postback)
+      // Se restituisce un id numerico, elimina il cerca_evento che segue (~10s risparmiati).
+      diagnostic.hiddenIdReservaPostSave = await page.evaluate(() => {
+        const el = document.getElementById('CC_Datos_FormViewFicha_WUCCabeceraReserva_HiddenFieldIdReserva');
+        return (el && el.value && /^\d+$/.test(el.value.trim())) ? el.value.trim() : '';
+      }).catch(() => '');
+      if (diagnostic.hiddenIdReservaPostSave) {
+        diagnostic.steps.push(`idReserva_from_hidden:${diagnostic.hiddenIdReservaPostSave}`);
+      }
+
       // Cattura idReserva dal tabellone subito dopo la creazione (una sola volta, non distruttivo)
       let _idReservaCreated = null;
       try {
