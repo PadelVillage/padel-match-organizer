@@ -2848,14 +2848,14 @@
       .smc-soci-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
       .smc-soci-sheet { display:flex; flex-direction:column; position:fixed; left:0; right:0; bottom:0; max-height:85vh; background:var(--surface,#fff); border-top:2px solid var(--border,#d8d7d2); border-radius:14px 14px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
       .smc-soci-sheet.open { transform:translateY(0); }
-      .smc-soci-head { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border,#e5e7eb); flex:0 0 auto; }
-      .smc-soci-tabs { display:flex; gap:6px; flex:1; }
-      .smc-soci-tab { flex:1; background:#f1f5f9; border:1px solid var(--border,#d8d7d2); border-radius:20px; padding:9px 10px; font-size:15px; font-weight:700; color:var(--text-muted,#4b5563); font-family:inherit; cursor:pointer; }
-      .smc-soci-tab.active { background:var(--accent,#2563eb); border-color:var(--accent,#2563eb); color:#fff; }
-      .smc-soci-close { background:none; border:none; font-size:22px; line-height:1; color:var(--text-muted,#4b5563); cursor:pointer; padding:4px 8px; flex-shrink:0; }
-      .smc-soci-body { padding:12px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-      .smc-soci-input { width:100%; box-sizing:border-box; border:1.5px solid var(--border,#d1d5db); border-radius:12px; padding:11px 13px; font-size:17px; font-family:inherit; outline:none; background:#f9fafb; color:#111827; }
-      .smc-soci-input:focus { border-color:var(--accent,#2563eb); }
+      .smc-soci-head { display:flex; flex-direction:column; gap:0; padding:0; border-bottom:1.5px solid #e2e8f0; flex:0 0 auto; background:#f1f5f9; border-radius:14px 14px 0 0; }
+      .smc-soci-tabs { display:flex; gap:6px; flex:1; padding:0 12px; }
+      .smc-soci-tab { flex:1; background:#e2e8f0; border:none; border-radius:20px 20px 0 0; padding:8px 10px; font-size:14px; font-weight:700; color:#64748b; font-family:inherit; cursor:pointer; }
+      .smc-soci-tab.active { background:#1a4fa0; border-color:#1a4fa0; color:#fff; }
+      .smc-soci-close { background:#e2e8f0; border:none; font-size:13px; font-weight:500; line-height:1; color:#475569; cursor:pointer; padding:5px 10px; border-radius:6px; flex-shrink:0; }
+      .smc-soci-body { padding:10px 12px 12px; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#fff; }
+      .smc-soci-input { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:10px; padding:9px 12px; font-size:14px; font-family:inherit; outline:none; background:#f8fafc; color:#1e293b; }
+      .smc-soci-input:focus { border-color:#1a4fa0; }
       .smc-soci-results { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
       .smc-soci-result { display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; width:100%; background:#fff; border:1px solid var(--border,#e5e7eb); border-radius:12px; padding:11px 13px; cursor:pointer; font-family:inherit; }
       .smc-soci-result:active { background:var(--accent-light,rgba(37,99,235,0.10)); }
@@ -2865,8 +2865,13 @@
       .smc-soci-form { display:flex; flex-direction:column; gap:10px; }
       .smc-soci-row { display:flex; gap:10px; }
       .smc-soci-row > * { flex:1; min-width:0; }
-      .smc-soci-save { margin-top:4px; background:var(--accent,#2563eb); border:none; color:#fff; border-radius:12px; padding:13px; font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; }
-      .smc-soci-save:active { background:var(--accent-hover,#1d4ed8); }
+      .smc-soci-save { margin-top:4px; background:#1a4fa0; border:none; color:#fff; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
+      .smc-soci-save:active { background:#163d80; }
+      .smc-soci-titlebar { display:flex; align-items:center; justify-content:space-between; padding:12px 14px 10px; }
+      .smc-soci-titlebar-left { display:flex; flex-direction:column; gap:1px; }
+      .smc-soci-title { font-size:15px; font-weight:500; color:#1e293b; }
+      .smc-soci-subtitle { font-size:12px; color:#64748b; }
+      .smc-soci-tabrow { display:flex; padding:0 12px; border-top:0.5px solid #e2e8f0; }
       .smc-team-wrap { position:relative; flex-shrink:0; }
       .smc-team-menu { position:absolute; top:calc(100% + 6px); right:0; z-index:1000; min-width:190px; background:var(--surface,#fff); border:1px solid var(--border,#d8d7d2); border-radius:12px; box-shadow:0 10px 28px rgba(15,23,42,0.20); padding:6px; display:flex; flex-direction:column; gap:2px; }
       .smc-team-menu[hidden] { display:none; }
@@ -6002,11 +6007,19 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="smc-soci-overlay" id="staffCalSociOverlay" onclick="staffCalCloseSociSheet()"></div>
               <div class="smc-soci-sheet" id="staffCalSociSheet" role="dialog" aria-label="Soci">
                 <div class="smc-soci-head">
-                  <div class="smc-soci-tabs">
-                    <button type="button" class="smc-soci-tab active" data-soci-tab="search" onclick="staffCalSociSheetTab('search')">🔍 Cerca</button>
-                    <button type="button" class="smc-soci-tab" data-soci-tab="new" onclick="staffCalSociSheetTab('new')">➕ Nuovo</button>
+                  <div class="smc-soci-titlebar">
+                    <div class="smc-soci-titlebar-left">
+                      <span class="smc-soci-title">Soci</span>
+                      <span class="smc-soci-subtitle" id="staffCalSociCount"></span>
+                    </div>
+                    <button type="button" class="smc-soci-close" onclick="staffCalCloseSociSheet()" title="Chiudi">✕ Chiudi</button>
                   </div>
-                  <button type="button" class="smc-soci-close" onclick="staffCalCloseSociSheet()" title="Chiudi">✕</button>
+                  <div class="smc-soci-tabrow">
+                    <div class="smc-soci-tabs">
+                      <button type="button" class="smc-soci-tab active" data-soci-tab="search" onclick="staffCalSociSheetTab('search')">🔍 Cerca</button>
+                      <button type="button" class="smc-soci-tab" data-soci-tab="new" onclick="staffCalSociSheetTab('new')">➕ Nuovo</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="smc-soci-body">
                   <div class="smc-soci-pane" data-soci-pane="search">
@@ -6029,6 +6042,11 @@ body.assessment-public-mode .assessment-public-only-card {
                         </select>
                         <input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="Livello (es. 3)" inputmode="decimal">
                       </div>
+                      <select id="staffCalSociNewPosition" class="smc-soci-input">
+                        <option value="">Posizione…</option>
+                        <option value="Destra">Destra</option>
+                        <option value="Sinistra">Sinistra</option>
+                      </select>
                       <button type="button" class="smc-soci-save" onclick="staffCalSociSheetSaveNew()">Salva socio</button>
                     </div>
                   </div>
@@ -7311,7 +7329,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.721';
+    const APP_VERSION = '5.722';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38029,6 +38047,11 @@ Per confermare scrivi ELIMINA.`);
     if (mInput && realInput) { realInput.value = mInput.value; renderStaffCalendar(); }
   }
   function staffCalOpenSociSheet() {
+    var countEl = document.getElementById('staffCalSociCount');
+    if (countEl) {
+      var total = Array.isArray(giocatori) ? giocatori.filter(function(g){ return g.active !== false; }).length : 0;
+      countEl.textContent = total + ' soci attivi';
+    }
     var sheet = document.getElementById('staffCalSociSheet');
     var ov = document.getElementById('staffCalSociOverlay');
     if (!sheet || !ov) return;
@@ -38074,6 +38097,11 @@ Per confermare scrivi ELIMINA.`);
     }).slice(0, 40);
   }
   function staffCalRenderSociResults() {
+    var countEl = document.getElementById('staffCalSociCount');
+    if (countEl) {
+      var total = Array.isArray(giocatori) ? giocatori.filter(function(g){ return g.active !== false; }).length : 0;
+      countEl.textContent = total + ' soci attivi';
+    }
     var box = document.getElementById('staffCalSociResults');
     if (!box) return;
     var input = document.getElementById('staffCalSociSearch');
@@ -38103,11 +38131,13 @@ Per confermare scrivi ELIMINA.`);
     setVal('email', get('staffCalSociNewEmail'));
     setVal('manualGender', get('staffCalSociNewGender'));
     setVal('level', get('staffCalSociNewLevel'));
+    setVal('playingPosition', get('staffCalSociNewPosition'));
     ['prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
     var created = (typeof addMember === 'function') ? addMember() : null;
     if (created) {
       ['staffCalSociNewFirst', 'staffCalSociNewSurname', 'staffCalSociNewPhone', 'staffCalSociNewEmail', 'staffCalSociNewLevel'].forEach(function (id) { setVal(id, ''); });
       var gsel = document.getElementById('staffCalSociNewGender'); if (gsel) gsel.value = '';
+      var psel = document.getElementById('staffCalSociNewPosition'); if (psel) psel.value = '';
       staffCalCloseSociSheet();
     } else {
       ['firstName', 'surname', 'phone', 'email', 'prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
