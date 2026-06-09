@@ -35481,7 +35481,7 @@ Per confermare scrivi ELIMINA.`);
         tipoReale: tipoR, hasPlayers: hasPlayers,
         mCampo: campoNum, mIso: isoDate, mOraIni: ora, mOraFin: _staffCalEndTime(ora, durMin),
         roster: Array.isArray(roster) ? roster : [], remove: {}, add: [],
-        msg: null, box: null, busy: false, nome: nome,
+        msg: null, box: null, busy: false, nome: nome, note: '',
       };
       const editor = svcAddMessage('system', '', 'flow');
       const box = document.createElement('div');
@@ -35585,44 +35585,49 @@ Per confermare scrivi ELIMINA.`);
     const mkLabel = function (t) { const s = document.createElement('span'); s.textContent = t; s.className = 'svc-edit-label'; return s; };
 
     const mvWrap = document.createElement('div');
-    mvWrap.className = 'svc-edit-row';
-    mvWrap.appendChild(mkLabel('Campo'));
+    mvWrap.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;';
+    const _mkField = function(lbl) {
+      const w = document.createElement('div');
+      const l = document.createElement('div'); l.textContent = lbl; l.className = 'svc-edit-label'; l.style.marginBottom = '3px';
+      w.appendChild(l); return w;
+    };
+    const campoWrap = _mkField('Campo');
     const campoSel = document.createElement('select');
-    campoSel.className = 'svc-edit-field'; campoSel.disabled = st.busy;
+    campoSel.className = 'svc-edit-field'; campoSel.style.width = '100%'; campoSel.disabled = st.busy;
     [1, 2, 3, 4].forEach(function (n) { const o = document.createElement('option'); o.value = String(n); o.textContent = String(n); if (n === st.mCampo) o.selected = true; campoSel.appendChild(o); });
     campoSel.addEventListener('change', function () { st.mCampo = Number(campoSel.value) || st.mCampo; staffCalRenderPlayersEditor(); });
-    mvWrap.appendChild(campoSel);
-    mvWrap.appendChild(mkLabel('Data'));
+    campoWrap.appendChild(campoSel); mvWrap.appendChild(campoWrap);
+    const dataWrap = _mkField('Data');
     const dataInp = document.createElement('input');
-    dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.className = 'svc-edit-field'; dataInp.disabled = st.busy;
+    dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.className = 'svc-edit-field'; dataInp.style.width = '100%'; dataInp.style.boxSizing = 'border-box'; dataInp.disabled = st.busy;
     dataInp.addEventListener('change', function () { if (dataInp.value) st.mIso = dataInp.value; staffCalRenderPlayersEditor(); });
-    mvWrap.appendChild(dataInp);
+    dataWrap.appendChild(dataInp); mvWrap.appendChild(dataWrap);
     box.appendChild(mvWrap);
 
     const orarioWrap = document.createElement('div');
-    orarioWrap.className = 'svc-edit-row';
-    const slots = staffCalSlots();
-    orarioWrap.appendChild(mkLabel('Dalle'));
+    orarioWrap.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin-bottom:8px;';
+    const iniWrap = _mkField('Dalle');
     const iniSel = document.createElement('select');
-    iniSel.className = 'svc-edit-field'; iniSel.disabled = st.busy;
+    iniSel.className = 'svc-edit-field'; iniSel.style.width = '100%'; iniSel.disabled = st.busy;
+    const slots = staffCalSlots();
     slots.forEach(function (t) { const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraIni) o.selected = true; iniSel.appendChild(o); });
     iniSel.addEventListener('change', function () {
       st.mOraIni = iniSel.value;
       if (_staffCalToMin(st.mOraFin) <= _staffCalToMin(st.mOraIni)) st.mOraFin = _staffCalEndTime(st.mOraIni, 30);
       staffCalRenderPlayersEditor();
     });
-    orarioWrap.appendChild(iniSel);
-    orarioWrap.appendChild(mkLabel('alle'));
+    iniWrap.appendChild(iniSel); orarioWrap.appendChild(iniWrap);
+    const finWrap = _mkField('Alle');
     const finSel = document.createElement('select');
-    finSel.className = 'svc-edit-field'; finSel.disabled = st.busy;
+    finSel.className = 'svc-edit-field'; finSel.style.width = '100%'; finSel.disabled = st.busy;
     const allFin = slots.concat([_staffCalEndTime(slots[slots.length - 1] || '22:00', 30)]);
     allFin.forEach(function (t) { if (_staffCalToMin(t) <= _staffCalToMin(st.mOraIni)) return; const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === st.mOraFin) o.selected = true; finSel.appendChild(o); });
     finSel.addEventListener('change', function () { st.mOraFin = finSel.value; staffCalRenderPlayersEditor(); });
-    orarioWrap.appendChild(finSel);
+    finWrap.appendChild(finSel); orarioWrap.appendChild(finWrap);
     const durMin = Math.max(0, _staffCalToMin(st.mOraFin) - _staffCalToMin(st.mOraIni));
-    const durHint = document.createElement('span');
-    durHint.textContent = '(' + durMin + ' min)';
-    durHint.className = 'svc-edit-label';
+    const durHint = document.createElement('div');
+    durHint.textContent = durMin + ' min'; durHint.className = 'svc-edit-label';
+    durHint.style.paddingBottom = '6px'; durHint.style.whiteSpace = 'nowrap';
     orarioWrap.appendChild(durHint);
     box.appendChild(orarioWrap);
 
@@ -35699,19 +35704,43 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
+    // Campo Note — scheda modifica (Tappa 36)
+    const editNoteWrap = document.createElement('div');
+    editNoteWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
+    const editNoteLbl = document.createElement('div');
+    editNoteLbl.className = 'svc-edit-label';
+    editNoteLbl.style.marginBottom = '4px';
+    editNoteLbl.textContent = 'Note (facoltativo · max 300 caratteri)';
+    const editNoteTA = document.createElement('textarea');
+    editNoteTA.rows = 2; editNoteTA.maxLength = 300;
+    editNoteTA.placeholder = 'Osservazioni per Matchpoint...';
+    editNoteTA.className = 'svc-edit-field';
+    editNoteTA.style.cssText = 'width:100%;box-sizing:border-box;resize:none;font-family:inherit;';
+    editNoteTA.value = st.note || '';
+    editNoteTA.addEventListener('input', function () { st.note = editNoteTA.value.trim(); });
+    editNoteWrap.appendChild(editNoteLbl);
+    editNoteWrap.appendChild(editNoteTA);
+    box.appendChild(editNoteWrap);
+
     const actions = document.createElement('div');
     actions.className = 'svc-step-buttons';
     if (st.hasPlayers) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
-      addBtn.textContent = '➕ Aggiungi giocatore';
+      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:3px;" aria-hidden="true"></i>Aggiungi';
       addBtn.className = 'svc-btn-step';
+      addBtn.style.cssText = 'border-radius:14px;padding:4px 10px;font-size:13px;';
       addBtn.disabled = st.busy;
       addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
-      actions.appendChild(addBtn);
-      const _brk = document.createElement('div');
-      _brk.style.cssText = 'flex-basis:100%;height:0';
-      actions.appendChild(_brk);
+      const _existingChips = box.querySelector('.svc-player-chips');
+      if (_existingChips) {
+        _existingChips.appendChild(addBtn);
+      } else {
+        const _newChipsWrap = document.createElement('div');
+        _newChipsWrap.className = 'svc-player-chips';
+        _newChipsWrap.appendChild(addBtn);
+        box.insertBefore(_newChipsWrap, editNoteWrap);
+      }
     }
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
@@ -35827,6 +35856,7 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) payload.move = { campo: op.mCampo, data: op.mIso, oraInizio: op.mOraIni, oraFine: op.mOraFin };
     if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
 
+    if (st && st.note) payload.note = st.note;
     const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
     _staffCalPendingEdits.add(pendKey);
 
