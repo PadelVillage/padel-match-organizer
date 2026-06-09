@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.741';
+    const APP_VERSION = '5.742';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -11562,7 +11562,7 @@ Grazie.`
         .filter(row => row?.record_type === 'staff_booking' && !row.deleted && row.payload)
         .map(row => {
           const p = row.payload || {};
-          return { id: row.local_key || ('cloud-' + (p.data||'') + '-' + (p.campo||'') + '-' + (p.ora||'')), data: p.data, ora: p.ora, oraFine: p.ora_fine, campo: p.campo, nome: p.nome, durata: p.durata, tipo: p.tipo || 'partita', istruttore: p.istruttore || '', giocatori: Array.isArray(p.giocatori) ? p.giocatori : [], updatedAt: row.updated_at || '', createdAt: row.updated_at || new Date().toISOString() };
+          return { id: row.local_key || ('cloud-' + (p.data||'') + '-' + (p.campo||'') + '-' + (p.ora||'')), data: p.data, ora: p.ora, oraFine: p.ora_fine, campo: p.campo, nome: p.nome, durata: p.durata, tipo: p.tipo || 'partita', istruttore: p.istruttore || '', giocatori: Array.isArray(p.giocatori) ? p.giocatori : [], idReserva: p.id_reserva || '', promoted: p.promoted === true, updatedAt: row.updated_at || '', createdAt: row.updated_at || new Date().toISOString() };
         });
       const staffBookingsDeletedKeys = list
         .filter(row => row?.record_type === 'staff_booking' && row.deleted && row.payload)
@@ -34693,7 +34693,7 @@ Per confermare scrivi ELIMINA.`);
       if (campoNum < 1 || campoNum > 4) continue;
       const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
       const _nomeOcc = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || '');
-      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, durata: _staffCalDurMin(p.durata) });
+      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : '') });
     }
     for (const p of bookings) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
@@ -34706,7 +34706,7 @@ Per confermare scrivi ELIMINA.`);
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
-      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata) });
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata), idReserva: (b.idReserva != null ? String(b.idReserva) : '') });
     }
     // v5.701 — Lo staff_booking e AUTOREVOLE per il suo slot: porta la lista completa dei
     // giocatori. Se per la stessa terna (campo|ora) esiste ANCHE un'occupazione/booking Matchpoint
@@ -34719,6 +34719,29 @@ Per confermare scrivi ELIMINA.`);
         for (let i = result.length - 1; i >= 0; i--) {
           const r = result[i];
           if (r.tipo !== 'staff-booking' && _staffSlotKeys.has(r.campo + '|' + r.ora)) result.splice(i, 1);
+        }
+      }
+    }
+    // v5.742 — FIX doppione cross-device. Una prenotazione Matchpoint PROMOSSA e poi SPOSTATA
+    // lascia, sui device che ricostruiscono dal cloud (es. mobile), la vecchia "occupancy" al
+    // vecchio slot: lo staff_booking si sposta correttamente, ma la copia occupancy stantia resta
+    // visibile perche' nessuno staff_suppress arriva cross-device. La nascondiamo per idReserva:
+    // se esiste uno staff_booking ATTIVO con lo stesso idReserva (su QUALSIASI slot), la occupancy
+    // con quell'idReserva e' una copia obsoleta e va scartata. Durevole: si appoggia allo
+    // staff_booking (che si propaga), non a staff_suppress. Alla prossima sync l'edge demota lo
+    // staff_booking quando la occupancy reale ricompare (per idReserva), quindi nessun nascondimento
+    // permanente.
+    {
+      const _staffIdReserva = new Set(
+        result.filter(function (r) { return r.tipo === 'staff-booking' && r.idReserva; })
+               .map(function (r) { return String(r.idReserva); })
+      );
+      if (_staffIdReserva.size) {
+        for (let i = result.length - 1; i >= 0; i--) {
+          const r = result[i];
+          if (r.tipo !== 'staff-booking' && r.idReserva && _staffIdReserva.has(String(r.idReserva))) {
+            result.splice(i, 1);
+          }
         }
       }
     }
