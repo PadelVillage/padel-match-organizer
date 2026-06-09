@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.742';
+    const APP_VERSION = '5.743';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34602,7 +34602,7 @@ Per confermare scrivi ELIMINA.`);
   // alla voce spostata (già al nuovo slot in locale) assegna un id NUOVO, poi spinge il vecchio id
   // come deleted (slot d'origine) + staff_suppress(origine) + il nuovo record attivo. Così su tutti
   // i device sparisce dall'origine e compare a destinazione, senza doppioni. v5.686.
-  function staffCalCloudReassignAndSyncMove(fromIso, fromCampo, fromOra, toIso, toCampo, toOra, toOraFine) {
+  async function staffCalCloudReassignAndSyncMove(fromIso, fromCampo, fromOra, toIso, toCampo, toOra, toOraFine) {
     try {
       if (typeof pmoSyncCloudRecordsNow !== 'function') return;
       const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
@@ -34612,16 +34612,20 @@ Per confermare scrivi ELIMINA.`);
       const tIso = String(toIso).trim(), tOra = String(toOra).trim();
       const entry = list.find(function (x) { return x && String(x.data).trim() === tIso && Number(String(x.campo).replace(/\D/g, '')) === tCn && String(x.ora).trim() === tOra; });
       const records = [];
+      let _destId = null;   // id del record portato al NUOVO slot (da NON marcare deleted)
       // Suppress origine: nasconde la copia "occupazione" Matchpoint scrapata sul vecchio slot su
       // ogni device, finché lo scrape non si aggiorna. Resta necessaria (non riguarda staff_booking).
       records.push({ record_type: 'staff_suppress', local_key: 'supp|' + fIso + '|' + fCn + '|' + fOra, payload: { data: fIso, campo: fCn, ora: fOra, ts: Date.now() }, deleted: false });
-      // Fase B: NIENTE tombstone sul vecchio slot, NIENTE re-id. Si ri-spinge la stessa prenotazione
-      // (STESSO id) al nuovo slot: il reconcile-per-id la riconosce e SPOSTA la card su ogni device.
+      // Si ri-spinge la prenotazione al NUOVO slot. Nel ramo if con lo STESSO id (l'upsert la sposta);
+      // nel ramo else (booking Matchpoint non ancora in staffBookings) con un id NUOVO. In ENTRAMBI i
+      // casi, sotto, marchiamo deleted gli eventuali staff_booking rimasti al VECCHIO slot nel cloud
+      // (orfani), tranne quello appena spostato (_destId): rimozione deterministica cross-device.
       if (entry) {
         if (!entry.id) {
           entry.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now());
           if (typeof save === 'function') save('staffBookings', list);
         }
+        _destId = entry.id;
         records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [], id_reserva: entry.idReserva || '', promoted: entry.promoted === true }, deleted: false });
       } else {
         // PROMOTE (Tappa 45): il booking spostato è Matchpoint (sta solo in prenotazioniOccupazione,
@@ -34648,10 +34652,32 @@ Per confermare scrivi ELIMINA.`);
             giocatori: _gioc, idReserva: String(src.idReserva), promoted: true,
             createdAt: new Date().toISOString(),
           };
+          _destId = newEntry.id;
           list.push(newEntry);
           if (typeof save === 'function') save('staffBookings', list);
           records.push({ record_type: 'staff_booking', local_key: newEntry.id, payload: { data: newEntry.data, ora: newEntry.ora, ora_fine: newEntry.oraFine, campo: newEntry.campo, nome: newEntry.nome, durata: newEntry.durata, tipo: newEntry.tipo, istruttore: '', giocatori: _gioc, id_reserva: newEntry.idReserva, promoted: true }, deleted: false });
         }
+      }
+      // v5.743 — TOMBSTONE del vecchio slot cross-device. Solo se abbiamo costruito un record al
+      // destino (_destId): leggiamo dal cloud gli staff_booking al VECCHIO slot e li marchiamo
+      // deleted, TRANNE quello appena spostato (local_key === _destId). Così l'eventuale orfano al
+      // vecchio slot sparisce su TUTTI i device (il reconcile rimuove per id via staffBookingsDeletedIds),
+      // senza dipendere dal staff_suppress. Se la lettura fallisce, procediamo comunque col push.
+      if (_destId && typeof pmoStaffRpcPaged === 'function') {
+        try {
+          const cloudRows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['staff_booking'], p_since: null }, 'cloud_sync', 'rimuovere la card al vecchio slot dal cloud');
+          const fromMatch = function (p) {
+            return p && String(p.data).trim() === fIso
+              && Number(String(p.campo).replace(/\D/g, '')) === fCn
+              && String(p.ora).trim() === fOra;
+          };
+          (Array.isArray(cloudRows) ? cloudRows : []).forEach(function (row) {
+            if (row && row.record_type === 'staff_booking' && !row.deleted && row.local_key
+                && row.local_key !== _destId && fromMatch(row.payload || {})) {
+              records.push({ record_type: 'staff_booking', local_key: row.local_key, payload: row.payload || {}, deleted: true });
+            }
+          });
+        } catch (e) { console.warn('staff move orphan cleanup read:', e); }
       }
       pmoSyncCloudRecordsNow(records, 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
     } catch (e) { console.warn('staff move cloud sync:', e); }
