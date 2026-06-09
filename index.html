@@ -2670,7 +2670,8 @@
     #staffCalV36 .booking-icon { font-size:1.6rem; flex-shrink:0; }
     #staffCalV36 .booking-type { flex:1; font-size:1.6rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #staffCalV36 .booking-time { font-size:1.4rem; opacity:.8; font-variant-numeric:tabular-nums; }
-    #staffCalV36 .booking-players { font-size:1.4rem; opacity:.9; white-space:pre-line; overflow:visible; line-height:1.4; }
+    #staffCalV36 .booking-players { font-size:1.4rem; opacity:.9; overflow:visible; line-height:1.5; }
+    #staffCalV36 .booking-players div { display:block; }
     #staffCalV36 .lock-badge {
       display:inline-flex; align-items:center; gap:2px; font-size:.6rem;
       background:rgba(0,0,0,.07); border-radius:3px; padding:1px 4px; margin-top:2px;
@@ -2714,7 +2715,8 @@
     #staffCalV36 .agenda-card.matchpoint { background:var(--mp-bg); border:1.5px solid var(--mp-border); border-left:3px solid var(--mp-border); }
     #staffCalV36 .agenda-card-time { font-size:.85rem; color:var(--text-muted); font-variant-numeric:tabular-nums; }
     #staffCalV36 .agenda-card-type { font-size:1rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; line-height:1.3; }
-    #staffCalV36 .agenda-card-players { font-size:.88rem; color:var(--text); margin-top:2px; line-height:1.35; white-space:normal; }
+    #staffCalV36 .agenda-card-players { font-size:1.1rem; color:var(--text); margin-top:4px; line-height:1.5; }
+    #staffCalV36 .agenda-card-players div { display:block; }
     #staffCalV36 .agenda-card-mp-badge { font-size:.72rem; color:var(--mp-text); margin-top:4px; }
     #staffCalV36 .staff-booking-note { font-size:11px; color:#6b7280; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #staffCalV36 .svc-note-input { width:100%; box-sizing:border-box; border:1px solid var(--border,#d1d5db); border-radius:8px; padding:8px 10px; font-size:14px; font-family:inherit; resize:none; background:#f9fafb; color:#111827; }
@@ -7347,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.733';
+    const APP_VERSION = '5.734';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34862,11 +34864,11 @@ Per confermare scrivi ELIMINA.`);
           const _pl = _staffCalMpPlayers[_staffCalMpKey(isoDate, f, hour)] || null;
           if (!_pl && slot.tipo !== 'staff-booking') { _staffCalMpAutoLoad(isoDate, f, hour); }
           if (_pl && _pl.loading) playersDiv.textContent = '⏳ ' + (slot.nome || '');
-          else if (_pl && Array.isArray(_pl.names)) playersDiv.textContent = _pl.names.length ? _pl.names.join('\n') : (slot.nome || '(nessun giocatore)');
+          else if (_pl && Array.isArray(_pl.names)) { if (_pl.names.length) { playersDiv.innerHTML = _pl.names.map(function(n){ return '<div>' + String(n).replace(/</g,'&lt;') + '</div>'; }).join(''); } else { playersDiv.textContent = slot.nome || '(nessun giocatore)'; } }
           else if (_pl && _pl.error) playersDiv.textContent = (slot.nome || '') + ' ⚠️';
           else {
             const _gN = Array.isArray(slot.giocatori) ? slot.giocatori.map(function (g) { return (g && g.nome) ? String(g.nome).trim() : ''; }).filter(Boolean) : [];
-            playersDiv.textContent = _gN.length ? _gN.join('\n') : (slot.nome || '');
+            if (_gN.length) { playersDiv.innerHTML = _gN.map(function(n){ return '<div>' + String(n).replace(/</g,'&lt;') + '</div>'; }).join(''); } else { playersDiv.textContent = slot.nome || ''; }
           }
           block.appendChild(hdr);
           block.appendChild(timeDiv);
@@ -34882,7 +34884,6 @@ Per confermare scrivi ELIMINA.`);
             block.style.minHeight = hpx + 'px';
             block.style.overflow = 'visible';
             block.style.zIndex = '30';
-            playersDiv.style.whiteSpace = 'normal';
             playersDiv.style.overflow = 'visible';
           }
           cell.appendChild(block);
@@ -34949,9 +34950,9 @@ Per confermare scrivi ELIMINA.`);
           const _plA = (entry.tipo !== 'staff-booking') ? _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])] : null;
           if (!_plA && entry.tipo !== 'staff-booking') { _staffCalMpAutoLoad(isoDate, entry.campo, slots[si]); }
           if (_plA && _plA.loading) playersEl.textContent = '⏳ ' + entry.nome;
-          else if (_plA && Array.isArray(_plA.names)) playersEl.textContent = _plA.names.length ? _plA.names.join(', ') : (entry.nome || '(nessun giocatore)');
+          else if (_plA && Array.isArray(_plA.names)) { if (_plA.names.length) { playersEl.innerHTML = _plA.names.map(function(n){ return '<div>' + String(n).replace(/</g,'&lt;') + '</div>'; }).join(''); } else { playersEl.textContent = entry.nome || '(nessun giocatore)'; } }
           else if (_plA && _plA.error) playersEl.textContent = entry.nome + ' ⚠️';
-          else playersEl.textContent = entry.nome;
+          else { const _nmA = typeof entry.nome === 'string' ? entry.nome.split('\n').filter(Boolean) : [entry.nome || '']; if (_nmA.length > 1) { playersEl.innerHTML = _nmA.map(function(n){ return '<div>' + String(n).replace(/</g,'&lt;') + '</div>'; }).join(''); } else { playersEl.textContent = entry.nome || ''; } }
           card.appendChild(playersEl);
         }
         if (entry.note) {
