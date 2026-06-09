@@ -3521,15 +3521,19 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   await page.waitForTimeout(500);
   diagnostic.steps.push(`player_form_settled:${nome}`);
 
+  // Preferisce codiceCliente come query di ricerca: risultato unico e immediato in Matchpoint.
+  // Fallback al nome se codiceCliente non disponibile.
+  const searchTerm = expectedClientCode || nome;
+
   let lockedId = '';
   let codeCheckFailed = false;
   let clientCodeChecked = false;
   outer: for (let attempt = 0; attempt < 3; attempt++) {
-    // Pulisce campo e digita nome con keystroke reali
+    // Pulisce campo e digita searchTerm (codiceCliente o nome) con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
     await page.keyboard.press('Control+A').catch(() => {});
     await page.keyboard.press('Delete').catch(() => {});
-    await inputEl.first().type(nome, { delay: 80 });
+    await inputEl.first().type(searchTerm, { delay: 80 });
 
     // Attende autocomplete (i <li> sono già filtrati per :visible → n>0 = tendina mostrata)
     let appeared = false;
@@ -3596,12 +3600,12 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       // Verifica id interno SOLO per match primario (regola 1) e SOLO se il candidato
       // non è già stato confermato via codice cliente dall'etichetta (regole 2/3).
       if (expectedCode && !clientCodeConfirmed && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
-        // Codice non combacia: pulisce il campo, ri-digita il nome e prova il prossimo candidato
+        // Codice non combacia: pulisce il campo, ri-digita e prova il prossimo candidato
         codeCheckFailed = true;
         await inputEl.first().click({ timeout: 5000 }).catch(() => {});
         await page.keyboard.press('Control+A').catch(() => {});
         await page.keyboard.press('Delete').catch(() => {});
-        await inputEl.first().type(nome, { delay: 80 });
+        await inputEl.first().type(searchTerm, { delay: 80 });
         for (let j = 0; j < 24; j++) {
           const n2 = await li.count().catch(() => 0);
           if (n2 > 0) break;
