@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.740';
+    const APP_VERSION = '5.741';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35164,7 +35164,7 @@ Per confermare scrivi ELIMINA.`);
         const isMP = b.tipo !== 'staff-booking';
         const tipoKey = isMP ? (b.tipo || 'partita') : (b.tipoReale || 'partita');
         const cs = _typeStyle(tipoKey);
-        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo) + (isMP ? ' 🔒' : '');
+        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo);
 
         const seg = document.createElement('div');
         seg.style.cssText = 'position:absolute;left:2px;right:2px;top:' + top + 'px;height:' + hgt + 'px;border-radius:5px;overflow:hidden;cursor:pointer;background:' + cs.bg + ';color:' + cs.tx + ';display:flex;flex-direction:column;justify-content:center;padding:2px 5px;line-height:1.12;';
@@ -35298,7 +35298,7 @@ Per confermare scrivi ELIMINA.`);
         const w = Math.max(28, ((e - s) / 30) * COLW - 3);
         const isMP = b.tipo !== 'staff-booking';
         const sty = ts(isMP ? (b.tipo || 'partita') : (b.tipoReale || 'partita'));
-        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo) + (isMP ? ' 🔒' : '');
+        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo);
         const blk = document.createElement('div');
         blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:1px solid ' + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
         const t1 = document.createElement('div'); t1.style.cssText = 'font-size:' + (isDesktop ? '13.5px' : '17px') + ';font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
@@ -35322,7 +35322,7 @@ Per confermare scrivi ELIMINA.`);
         }
         (function (iso, cc, oo, nm, du, tp, mp) {
           blk.addEventListener('click', function () {
-            if (mp) staffCalViewMatchpointPlayers(iso, cc, oo);
+            if (mp) staffCalPromoteAndEdit(iso, cc, oo, nm, du, tp);
             else staffCalEditPlayers(iso, cc, oo, nm, du, tp);
           });
         })(isoDate, c, b.ora, b.nome, b.durata, b.tipoReale, isMP);
@@ -35494,7 +35494,7 @@ Per confermare scrivi ELIMINA.`);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify({ campo: Number(String(campo).replace(/\D/g, '')) || campo, data: iso, ora: ora, read: true }),
+        body: JSON.stringify(Object.assign({ campo: Number(String(campo).replace(/\D/g, '')) || campo, data: iso, ora: ora, read: true }, (function () { try { var _ir = _staffCalLookupIdReserva(iso, Number(String(campo).replace(/\D/g, '')) || campo, ora); return _ir ? { idReserva: _ir } : {}; } catch (e) { return {}; } })())),
         signal: _ctrl.signal,
       });
       const respText = await response.text();
@@ -35511,6 +35511,61 @@ Per confermare scrivi ELIMINA.`);
       _staffCalMpPlayers[key] = { error: true };
     }
     renderStaffCalendar();
+  }
+
+  // Tappa 46 — Sblocco booking Matchpoint: "promote all'apertura".
+  // Materializza il booking Matchpoint (che vive solo in prenotazioniOccupazione) come
+  // staff_booking in-place, con idReserva + promoted:true, poi apre il pannello modifica.
+  // Il demote per idReserva (edge sync) rimuove la copia al sync successivo.
+  function staffCalPromoteAndEdit(iso, campo, ora, nome, durata, tipoReale) {
+    try {
+      const cn = Number(String(campo).replace(/\D/g, '')) || 0;
+      const wIso = String(iso).trim(), wOra = String(ora).trim();
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const exists = (Array.isArray(list) ? list : []).find(function (x) {
+        return x && String(x.data).trim() === wIso
+          && Number(String(x.campo).replace(/\D/g, '')) === cn
+          && String(x.ora).trim() === wOra;
+      });
+      if (!exists) {
+        // Recupera i dati dall'occupancy per quello slot
+        const occ = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) ? prenotazioniOccupazione : [];
+        const src = occ.find(function (x) {
+          return x && String(x.data).trim() === wIso
+            && Number(String(x.campo).replace(/\D/g, '')) === cn
+            && String(x.ora).trim() === wOra;
+        });
+        const _idr = (src && src.idReserva) ? String(src.idReserva) : null;
+        if (!_idr) {
+          // GUARDIA: senza idReserva non si promuove (creerebbe uno shadow permanente).
+          // Mostra la vista in sola lettura e avvisa di sincronizzare prima.
+          if (typeof svcOpenChat === 'function') svcOpenChat();
+          svcAddMessage('system', '🔒 Questa prenotazione Matchpoint non è ancora sincronizzata (manca l\'idReserva). Fai prima <strong>Aggiorna prenotazioni</strong>, poi potrai modificarla.', 'error');
+          if (typeof staffCalViewMatchpointPlayers === 'function') staffCalViewMatchpointPlayers(iso, campo, ora);
+          return;
+        }
+        const _dur = _staffCalDurMin(src && src.durata);
+        const _gioc = (src && Array.isArray(src.giocatori)) ? src.giocatori : [];
+        const _tipo = String((src && src.tipo) || tipoReale || 'partita').toLowerCase().includes('lez') ? 'lezione' : 'partita';
+        const entry = {
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now()),
+          data: wIso, ora: wOra, oraFine: _staffCalEndTime(wOra, _dur), campo: cn,
+          nome: (src && src.giocatore) || nome || '', durata: _dur, tipo: _tipo, istruttore: '',
+          giocatori: _gioc, idReserva: _idr, promoted: true, createdAt: new Date().toISOString(),
+        };
+        list.push(entry);
+        if (typeof save === 'function') save('staffBookings', list);
+        // Push cross-device: gli altri dispositivi vedono subito la prenotazione come staff_booking.
+        try {
+          if (typeof pmoSyncCloudRecordsNow === 'function') {
+            pmoSyncCloudRecordsNow([{ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: '', giocatori: _gioc, id_reserva: _idr, promoted: true }, deleted: false }], 'promuovere la prenotazione Matchpoint sul cloud').catch(function (e) { console.warn('promote MP:', e); });
+          }
+        } catch (e) { console.warn('promote MP push:', e); }
+        if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
+      }
+    } catch (e) { console.warn('staffCalPromoteAndEdit:', e); }
+    // Apre il pannello modifica: ora lo slot è uno staff_booking, tutto il flusso è quello standard.
+    staffCalEditPlayers(iso, campo, ora, nome, durata, tipoReale);
   }
 
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
@@ -35593,7 +35648,7 @@ Per confermare scrivi ELIMINA.`);
           const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-            body: JSON.stringify({ campo: campoNum, data: isoDate, ora: ora, read: true }),
+            body: JSON.stringify(Object.assign({ campo: campoNum, data: isoDate, ora: ora, read: true }, (function () { try { var _ir = _staffCalLookupIdReserva(isoDate, campoNum, ora); return _ir ? { idReserva: _ir } : {}; } catch (e) { return {}; } })())),
             signal: _ctrl.signal,
           });
           const respText = await response.text();
