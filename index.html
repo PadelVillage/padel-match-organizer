@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.745';
+    const APP_VERSION = '5.746';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -24135,7 +24135,16 @@ Per confermare scrivi ELIMINA.`);
 	      pmoCloudState.lastSyncAt = new Date().toISOString();
 	      pmoCloudState.lastSyncCount = result.count || list.length;
 	      save('pmoCloudState', pmoCloudState);
-	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && (r.record_type === 'staff_booking' || r.record_type === 'staff_suppress' || r.record_type === 'member'); })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
+	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && (r.record_type === 'staff_booking' || r.record_type === 'staff_suppress'); })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
+      try {
+        if (typeof staffCalRtBroadcastMemberChanged === 'function') {
+          list.forEach(function (r) {
+            if (r && r.record_type === 'member' && r.payload) {
+              staffCalRtBroadcastMemberChanged(r.payload);
+            }
+          });
+        }
+      } catch (e) { console.warn('staff-cal realtime member notify:', e); }
 	      return result;
 	    }
 	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
@@ -34272,6 +34281,7 @@ Per confermare scrivi ELIMINA.`);
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
         .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
+        .on('broadcast', { event: 'member-changed' }, function (msg) { staffCalRtOnRemoteMemberChanged(msg && msg.payload); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
           if (status === 'SUBSCRIBED') {
@@ -34289,8 +34299,37 @@ Per confermare scrivi ELIMINA.`);
   function staffCalRtOnRemoteChange() {
     clearTimeout(_staffCalRtPullTimer);
     _staffCalRtPullTimer = setTimeout(function () {                               // coalescenza raffiche, resta sotto il secondo
-      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true, withMembers: true }); } catch (e) {}
+      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
     }, 150);
+  }
+  function staffCalRtOnRemoteMemberChanged(payload) {
+    try {
+      if (!payload || !payload.member) return;
+      var m = payload.member;
+      if (!m.id && !m.memberId) return;
+      var idx = giocatori.findIndex(function (g) {
+        return (m.id && String(g.id) === String(m.id)) ||
+               (m.memberId && g.memberId && String(g.memberId) === String(m.memberId));
+      });
+      if (idx >= 0) {
+        giocatori[idx] = Object.assign({}, giocatori[idx], {
+          firstName: m.firstName || giocatori[idx].firstName,
+          surname:   m.surname   || giocatori[idx].surname,
+          name:      m.name      || giocatori[idx].name,
+          phone:     m.phone     !== undefined ? m.phone : giocatori[idx].phone,
+          email:     m.email     !== undefined ? m.email : giocatori[idx].email,
+          level:     m.level     !== undefined ? m.level : giocatori[idx].level,
+          gender:    m.gender    || giocatori[idx].gender,
+          updatedAt: m.updatedAt || giocatori[idx].updatedAt
+        });
+      } else {
+        // Socio non presente localmente: aggiungilo
+        giocatori.push(m);
+      }
+      save('giocatori', giocatori);
+      try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+      try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
+    } catch (e) { console.warn('staff-cal rt member-changed handler:', e); }
   }
   function staffCalRtBroadcast() {
     try {
@@ -34298,6 +34337,13 @@ Per confermare scrivi ELIMINA.`);
         _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: Date.now() } });
       }
     } catch (e) { console.warn('staff-cal realtime broadcast:', e); }
+  }
+  function staffCalRtBroadcastMemberChanged(memberPayload) {
+    try {
+      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function' && memberPayload) {
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'member-changed', payload: { member: memberPayload, ts: Date.now() } });
+      }
+    } catch (e) { console.warn('staff-cal rt member-changed broadcast:', e); }
   }
 
   // ── Cross-device ottimistico (v5.700) ───────────────────────────────────────
