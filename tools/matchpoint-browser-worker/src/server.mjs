@@ -201,6 +201,12 @@ function parseIsoDate(value) {
   return '';
 }
 
+// Normalizza un'ora "H:MM"/"HH:MM" a "HH:MM" (zero-padded), per il match col tabellone.
+function padOraHHMM(value) {
+  const m = clean(value).match(/^(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : clean(value);
+}
+
 function todayIsoRome() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Rome',
@@ -1481,8 +1487,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
 
   if (onSelectResult?.ok) {
     diagnostic.dateInputSelector = onSelectResult.method;
-    await page.waitForLoadState('networkidle', { timeout: 25000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(1200);
     return;
   }
 
@@ -1517,8 +1523,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
         const dayLoc = tabCtx.locator(`.ui-datepicker-calendar td a`).filter({ hasText: new RegExp(`^${parseInt(targetDay, 10)}$`) }).first();
         await dayLoc.click({ timeout: 5000 });
         diagnostic.dateInputSelector = 'datepicker_popup_click';
-        await page.waitForLoadState('networkidle', { timeout: 25000 }).catch(() => {});
-        await page.waitForTimeout(2000);
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(1200);
         return;
       }
     }
@@ -1594,8 +1600,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
     diagnostic.dateSetWarning = 'date_input_not_found_proceeding_with_current_date';
   }
 
-  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1200);
   diagnostic.afterDateUrl = page.url();
   // Registra anche l'URL del frame (più utile di page.url() per capire se c'è stato reload)
   diagnostic.afterDateFrameUrl = await tabCtx.evaluate(() => location.href).catch(() => '');
@@ -3099,10 +3105,95 @@ async function handleSlotScheduleExport(req, res) {
   json(res, 200, result);
 }
 
+// ── readTabelloneWithBrowser: legge tutti gli eventi (con giocatori completi)
+//    di una o piu' date dal tabellone, una navigazione per data. ──
+async function readTabelloneWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint per read-tabellone.');
+  }
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const dates = (Array.isArray(options.dates) ? options.dates : [options.date])
+    .map((d) => parseIsoDate(clean(d)))
+    .filter(Boolean);
+  if (!dates.length) throw fail('INVALID_DATES', 'Nessuna data valida fornita per read-tabellone.');
+
+  const CAMPO_BY_RECURSO = { 13: 1, 14: 2, 15: 3, 16: 4 };
+  const diagnostic = {
+    mode: 'browser_worker_headless',
+    flow: 'read_tabellone',
+    baseUrl,
+    dates,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+  const result = {}; // { 'YYYY-MM-DD': [ { campo, ora, oraFine, giocatori: [] } ] }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
+
+    for (const isoDate of dates) {
+      diagnostic.steps.push(`read_tabellone:${isoDate}`);
+      try {
+        await impostaDataTabellone(tabCtx, page, isoDate, diagnostic);
+        const eventi = await tabCtx.evaluate(() => {
+          return [...document.querySelectorAll('div.evento')].map((e) => {
+            const testoEl = e.querySelector('.eventoTexto2');
+            const testo = testoEl ? testoEl.innerHTML : '';
+            const giocatori = testo
+              .split(/<br\s*\/?>/i)
+              .map((s) => s.replace(/<[^>]+>/g, '').trim())
+              .filter(Boolean);
+            return {
+              id: e.getAttribute('id') || e.id || '',
+              idrecurso: e.getAttribute('idrecurso') || '',
+              inicio: e.getAttribute('inicio') || '',
+              fin: e.getAttribute('fin') || '',
+              giocatori,
+            };
+          });
+        });
+        result[isoDate] = eventi
+          .map((ev) => ({
+            id: ev.id || '',
+            campo: CAMPO_BY_RECURSO[Number(ev.idrecurso)] || 0,
+            ora: padOraHHMM(ev.inicio),
+            oraFine: padOraHHMM(ev.fin),
+            giocatori: ev.giocatori,
+          }))
+          .filter((ev) => ev.campo > 0);
+      } catch (err) {
+        diagnostic.steps.push(`read_tabellone_error:${isoDate}:${err && err.message}`);
+        result[isoDate] = [];
+      }
+    }
+    diagnostic.finishedAt = new Date().toISOString();
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+
+  return { ok: true, result, diagnostic };
+}
+
 async function handleGetSlots(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
   const result = await getSlotsWithBrowser(body);
+  json(res, 200, result);
+}
+
+async function handleReadTabellone(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await readTabelloneWithBrowser(body);
   json(res, 200, result);
 }
 
@@ -3521,15 +3612,19 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   await page.waitForTimeout(500);
   diagnostic.steps.push(`player_form_settled:${nome}`);
 
+  // Preferisce codiceCliente come query di ricerca: risultato unico e immediato in Matchpoint.
+  // Fallback al nome se codiceCliente non disponibile.
+  const searchTerm = expectedClientCode || nome;
+
   let lockedId = '';
   let codeCheckFailed = false;
   let clientCodeChecked = false;
   outer: for (let attempt = 0; attempt < 3; attempt++) {
-    // Pulisce campo e digita nome con keystroke reali
+    // Pulisce campo e digita searchTerm (codiceCliente o nome) con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
     await page.keyboard.press('Control+A').catch(() => {});
     await page.keyboard.press('Delete').catch(() => {});
-    await inputEl.first().type(nome, { delay: 80 });
+    await inputEl.first().type(searchTerm, { delay: 80 });
 
     // Attende autocomplete (i <li> sono già filtrati per :visible → n>0 = tendina mostrata)
     let appeared = false;
@@ -3541,27 +3636,47 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     if (!appeared) { diagnostic.steps.push(`player_option_not_found:${nome}:attempt${attempt}`); continue; }
 
     // ⚠️ Sceglie SOLO un <li> che CONTIENE davvero il nome richiesto.
-    // Con expectedCode, itera TUTTI i candidati per nome e scarta quelli il cui
-    // HiddenFieldIdPeople non coincide col codice atteso (evita omonimi).
-    // NIENTE fallback al primo elemento: con un input spurio (es. "ok") nessun <li>
-    // combacia → non selezioniamo nulla → l'id non si aggancia → si aborta senza
-    // scrivere su Matchpoint. (È così che era finito il cliente 921.)
+    // Algoritmo di selezione (4 regole, in ordine di priorità):
+    // 1. Match primario per id interno (expectedCode): HiddenFieldIdPeople === expectedCode.
+    // 2. Fallback per codice cliente (expectedClientCode): confronto numerico col prefisso
+    //    dell'etichetta (es. "000005-Nome"). Se esattamente un'opzione combacia → seleziona.
+    //    NON confrontare expectedClientCode con HiddenFieldIdPeople (namespace diverso).
+    // 3. Rete di sicurezza: se nessuna etichetta espone un codice confrontabile E c'è un
+    //    solo risultato E il nome corrisponde → accetta.
+    // 4. Più candidati non confermabili → annulla (sicurezza preservata).
     const count = await li.count().catch(() => 0);
     let foundNameMatch = false;
     for (let i = 0; i < count; i++) {
-      const t = norm(await li.nth(i).innerText().catch(() => ''));
+      const rawLabel = await li.nth(i).innerText().catch(() => '');
+      const t = norm(rawLabel);
+      // Log diagnostico per ogni opzione visibile (utile per calibrare il formato etichetta)
+      diagnostic.steps.push(`player_option_label:${nome}:i=${i}:${rawLabel.replace(/\n/g, ' ').slice(0, 80)}`);
       if (!t.includes(norm(nome))) continue;
+
       // 🔒 Guardia anti-omonimia col CODICE CLIENTE: la riga è "000005-Nome Cognome".
       // Se l'app passa il codice atteso (memberId), scarta i candidati col codice
       // diverso PRIMA di cliccare. Confronto su onlyDigits (ignora gli zeri iniziali).
+      let clientCodeConfirmed = false;
       if (expectedClientCode) {
         const liCode = (t.match(/^\s*(\d+)\s*-/) || [])[1] || '';
-        if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
-          clientCodeChecked = true;
-          diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+        if (liCode) {
+          // L'etichetta espone un codice: confronto numerico
+          if (onlyDigits(liCode) !== onlyDigits(expectedClientCode)) {
+            clientCodeChecked = true;
+            diagnostic.steps.push(`player_clientcode_skip:${nome}:li=${liCode}:exp=${expectedClientCode}`);
+            continue;
+          }
+          clientCodeConfirmed = true; // confermato via etichetta (regola 2)
+        } else if (count !== 1) {
+          // Nessun codice nell'etichetta E più risultati: impossibile confermare → salta
+          diagnostic.steps.push(`player_no_label_code_multiresult:${nome}:i=${i}:count=${count}`);
           continue;
+        } else {
+          // Nessun codice nell'etichetta MA risultato unico: rete di sicurezza (regola 3)
+          diagnostic.steps.push(`player_single_result_net:${nome}:i=${i}`);
         }
       }
+
       foundNameMatch = true;
       await li.nth(i).click({ timeout: 4000 }).catch(() => {});
       // L'id si aggancia via callback async dell'autocomplete: attendi finché compare (fino a ~2.4s)
@@ -3573,13 +3688,15 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       }
       diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
       if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
-      if (expectedCode && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
-        // Codice non combacia: pulisce il campo, ri-digita il nome e prova il prossimo candidato
+      // Verifica id interno SOLO per match primario (regola 1) e SOLO se il candidato
+      // non è già stato confermato via codice cliente dall'etichetta (regole 2/3).
+      if (expectedCode && !clientCodeConfirmed && onlyDigits(candidateId) !== onlyDigits(expectedCode)) {
+        // Codice non combacia: pulisce il campo, ri-digita e prova il prossimo candidato
         codeCheckFailed = true;
         await inputEl.first().click({ timeout: 5000 }).catch(() => {});
         await page.keyboard.press('Control+A').catch(() => {});
         await page.keyboard.press('Delete').catch(() => {});
-        await inputEl.first().type(nome, { delay: 80 });
+        await inputEl.first().type(searchTerm, { delay: 80 });
         for (let j = 0; j < 24; j++) {
           const n2 = await li.count().catch(() => 0);
           if (n2 > 0) break;
@@ -3587,7 +3704,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
         }
         continue;
       }
-      // Candidato valido (codice combacia o nessun codice richiesto)
+      // Candidato valido (codice combacia, confermato via etichetta, o nessun codice richiesto)
       lockedId = candidateId;
       codeCheckFailed = false;
       break outer;
@@ -3659,7 +3776,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   }
 
   diagnostic.steps.push('player_added:' + nome);
-  return { nome, added: true, idCliente: addedIdCliente };
+  return { nome, added: true, idCliente: addedIdCliente, idPeople: lockedId, codiceCliente: expectedClientCode };
 }
 
 // ── Helper: clicca il bottone di salvataggio ──────────────────────────────────
@@ -4013,9 +4130,44 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(800);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+
+      // Sonda idea 1: HiddenFieldIdReserva già popolato post-save? (ASP.NET postback)
+      // Se restituisce un id numerico, elimina il cerca_evento che segue (~10s risparmiati).
+      diagnostic.hiddenIdReservaPostSave = await page.evaluate(() => {
+        const el = document.getElementById('CC_Datos_FormViewFicha_WUCCabeceraReserva_HiddenFieldIdReserva');
+        return (el && el.value && /^\d+$/.test(el.value.trim())) ? el.value.trim() : '';
+      }).catch(() => '');
+      if (diagnostic.hiddenIdReservaPostSave) {
+        diagnostic.steps.push(`idReserva_from_hidden:${diagnostic.hiddenIdReservaPostSave}`);
+      }
+
+      // Cattura idReserva dal tabellone subito dopo la creazione (una sola volta, non distruttivo)
+      let _idReservaCreated = null;
+      try {
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await impostaDataTabellone(page, page, data, diagnostic);
+        diagnostic.steps.push('cerca_idreserva');
+        const _resEv = await page.evaluate(({ rec, oraStr }) => {
+          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+          const eventi = [...document.querySelectorAll('div.evento')]
+            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+          return { id: hit ? hit.id : null };
+        }, { rec: recurso, oraStr: ora });
+        _idReservaCreated = _resEv.id || null;
+        diagnostic.steps.push(`idReserva:${_idReservaCreated}`);
+      } catch (err) {
+        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      }
+
+      const resolvedPlayers = playersResult
+        .filter((r) => r.added && r.idPeople)
+        .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
       return {
         ok: true,
+        idReserva: _idReservaCreated,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        resolvedPlayers,
         diagnostic,
       };
     }
@@ -4094,9 +4246,33 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+      // Cattura idReserva dal tabellone subito dopo la creazione (lezione)
+      let _idReservaLezione = null;
+      try {
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await impostaDataTabellone(page, page, data, diagnostic);
+        diagnostic.steps.push('cerca_idreserva');
+        const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
+          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+          const eventi = [...document.querySelectorAll('div.evento')]
+            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+          return { id: hit ? hit.id : null };
+        }, { rec: recurso, oraStr: ora });
+        _idReservaLezione = _resEvLezione.id || null;
+        diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
+      } catch (err) {
+        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      }
+
+      const resolvedPlayersLezione = playersResult
+        .filter((r) => r.added && r.idPeople)
+        .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
       return {
         ok: true,
+        idReserva: _idReservaLezione,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
+        resolvedPlayers: resolvedPlayersLezione,
         diagnostic,
       };
     }
@@ -4167,8 +4343,29 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
+
+      // Cattura idReserva dal tabellone subito dopo la creazione (manutenzione)
+      let _idReservaManutenzione = null;
+      try {
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await impostaDataTabellone(page, page, data, diagnostic);
+        diagnostic.steps.push('cerca_idreserva');
+        const _resEvMan = await page.evaluate(({ rec, oraStr }) => {
+          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+          const eventi = [...document.querySelectorAll('div.evento')]
+            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+          return { id: hit ? hit.id : null };
+        }, { rec: recurso, oraStr: ora });
+        _idReservaManutenzione = _resEvMan.id || null;
+        diagnostic.steps.push(`idReserva:${_idReservaManutenzione}`);
+      } catch (err) {
+        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      }
+
       return {
         ok: true,
+        idReserva: _idReservaManutenzione,
         campo, data, ora, oraFine: oraFineCalc, nome, durata, tipo, istruttore,
         diagnostic,
       };
@@ -4354,8 +4551,8 @@ async function editBookingWithBrowser(input = {}) {
       `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
     ];
     for (const cand of fichaCandidates) {
-      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForTimeout(400);
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
       const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
       if (hasExtender) { fichaUrl = cand; break; }
     }
@@ -4480,12 +4677,17 @@ async function editBookingWithBrowser(input = {}) {
       await page.waitForTimeout(2500);
       moved = true;
 
-      // Ricarica Ficha pulita prima di toccare i giocatori e per la verifica
-      diagnostic.steps.push('reload_after_move');
-      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      // Ricarica Ficha pulita SOLO se seguono modifiche ai giocatori (per agganciare
+      // l'autocomplete in modo affidabile). Per uno spostamento puro è ridondante:
+      // subito dopo c'è verifica_reload che ricarica comunque la Ficha → si evita un reload.
+      if (players) {
+        diagnostic.steps.push('reload_after_move');
+        await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      }
     }
 
     // === GIOCATORI ===
+    let addResults = [];
     if (players) {
       const removeNames = (players.remove || []).map((n) => n.toLowerCase().trim());
       const removeAll = players.removeAll === true;
@@ -4522,7 +4724,9 @@ async function editBookingWithBrowser(input = {}) {
       // Dopo le RIMOZIONI il form ha subito postback: ricarica la Ficha pulita prima
       // delle AGGIUNTE, così l'autocomplete del giocatore si aggancia in modo affidabile
       // (senza, un add subito dopo un remove puo' lasciare HiddenFieldIdPeople vuoto).
-      if (removeAll || removeNames.length > 0) {
+      // NB: serve SOLO se seguono delle aggiunte. Per una rimozione pura il reload è
+      // un giro a vuoto (una ricarica completa di Ficha) → si salta e si va al salvataggio.
+      if ((removeAll || removeNames.length > 0) && (players.add || []).length > 0) {
         diagnostic.steps.push('reload_after_removals');
         await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
         await page.waitForTimeout(800);
@@ -4531,6 +4735,7 @@ async function editBookingWithBrowser(input = {}) {
       // AGGIUNTE
       for (const p of (players.add || [])) {
         const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
+        addResults.push(r);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
         // Imposta costo se fornito
@@ -4651,7 +4856,10 @@ async function editBookingWithBrowser(input = {}) {
     }
 
     diagnostic.steps.push('done');
-    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, diagnostic };
+    const resolvedPlayersEdit = addResults
+      .filter((r) => r.added && r.idPeople)
+      .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
@@ -4728,8 +4936,8 @@ async function cancelBookingWithBrowser(input = {}) {
       `${baseUrl}/Reservas/FichaReservaMantenimiento.aspx?modo=fancy&id=${idReserva}`,
     ];
     for (const cand of fichaCandidates) {
-      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForTimeout(400);
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
       const valida = await page.evaluate(() =>
         !!document.querySelector('#CC_Datos_FormViewFicha_ButtonAnularReserva') ||
         !!document.querySelector('#CC_Datos_FormViewFicha_ButtonExtender') ||
@@ -4766,14 +4974,7 @@ async function cancelBookingWithBrowser(input = {}) {
     //    innesca SOLO entrando dal tabellone (non dall'URL diretta ?modo=fancy usata dal worker)
     //    e tocca rimborsi/pagamenti. Falliamo SUBITO con un errore chiaro invece di tentare un
     //    flusso che non cancella nulla (vecchia "FIX B": ~30s di attesa inutile e poi 502).
-    const isManutenzione = fichaUrl.includes('Mantenimiento');
-    if (isManutenzione) {
-      throw fail('MANUTENZIONE_CANCEL_NON_SUPPORTATA',
-        'Cancellazione manutenzione non supportata dal worker: va eseguita a mano dal tabellone su Matchpoint.',
-        diagnostic);
-    }
-
-    // PARTITA / LEZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
+    // PARTITA / LEZIONE / MANUTENZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
     diagnostic.steps.push('click_annulla:partita/lezione');
     await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
     diagnostic.steps.push('attendi_dialogo');
@@ -5145,7 +5346,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
         routes: [
-          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule',
+          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
           '/create-booking', '/cancel-booking', '/edit-booking', '/create-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
@@ -5171,6 +5372,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/get-slots') {
       return await handleGetSlots(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/read-tabellone') {
+      return await handleReadTabellone(req, res);
     }
     if (req.method === 'POST' && req.url === '/export-slot-schedule') {
       return await handleSlotScheduleExport(req, res);
