@@ -3293,6 +3293,58 @@ async function debugFindClientWithBrowser(options = {}) {
       return out.slice(0, 60);
     }).catch(() => []);
 
+    // ── Passo 2: estrai idInterno dalla riga che matcha il codice e apri la scheda ──
+    let idInterno = '';
+    try {
+      for (const r of (diagnostic.rows || [])) {
+        if (codice && String(r.text || '').includes(codice)) {
+          for (const h of (r.hrefs || [])) {
+            const m = String(h).match(/gotoClient\((\d+)\)/);
+            if (m) { idInterno = m[1]; break; }
+          }
+        }
+        if (idInterno) break;
+      }
+      diagnostic.idInternoTrovato = idInterno;
+    } catch (e) { diagnostic.idInternoError = String(e && e.message || e); }
+
+    if (idInterno) {
+      diagnostic.steps.push('goto_ficha_modifica');
+      const fichaUrl = absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`);
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      diagnostic.fichaUrl = page.url();
+      diagnostic.fichaTitle = await page.title().catch(() => '');
+
+      diagnostic.fichaModifica = await page.evaluate(() => {
+        const fields = [];
+        document.querySelectorAll('input, select, textarea').forEach((el) => {
+          const entry = {
+            tag: el.tagName,
+            id: el.id || '',
+            name: el.getAttribute('name') || '',
+            type: el.getAttribute('type') || '',
+            value: (el.value || '').slice(0, 80),
+          };
+          if (el.tagName === 'SELECT') {
+            entry.options = Array.from(el.options).map((o) => ({ value: o.value, label: (o.textContent || '').trim().slice(0, 40), selected: o.selected })).slice(0, 30);
+          }
+          fields.push(entry);
+        });
+        const buttons = [];
+        document.querySelectorAll('input[type="submit"], input[type="button"], button, a[id], a[onclick]').forEach((el) => {
+          const label = (el.value || el.innerText || '').trim();
+          const idv = el.id || '';
+          if (/actualizar|guardar|salva|aggiorna|grabar|update/i.test(label + ' ' + idv)) {
+            buttons.push({ tag: el.tagName, id: idv, name: el.getAttribute('name') || '', label: label.slice(0, 40), onclick: (el.getAttribute('onclick') || '').slice(0, 120) });
+          }
+        });
+        return { fieldCount: fields.length, fields: fields.slice(0, 120), saveButtons: buttons.slice(0, 20) };
+      }).catch((e) => ({ error: String(e && e.message || e) }));
+    } else {
+      diagnostic.steps.push('idInterno_non_trovato');
+    }
+
     return { ok: true, diagnostic };
   } catch (error) {
     if (error && error.code && error.diagnostic) throw error;
