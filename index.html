@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.744';
+    const APP_VERSION = '5.747';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -24136,6 +24136,15 @@ Per confermare scrivi ELIMINA.`);
 	      pmoCloudState.lastSyncCount = result.count || list.length;
 	      save('pmoCloudState', pmoCloudState);
 	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && (r.record_type === 'staff_booking' || r.record_type === 'staff_suppress'); })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
+      try {
+        if (typeof staffCalRtBroadcastMemberChanged === 'function') {
+          list.forEach(function (r) {
+            if (r && r.record_type === 'member' && r.payload) {
+              staffCalRtBroadcastMemberChanged(r.payload);
+            }
+          });
+        }
+      } catch (e) { console.warn('staff-cal realtime member notify:', e); }
 	      return result;
 	    }
 	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
@@ -34253,8 +34262,19 @@ Per confermare scrivi ELIMINA.`);
   // momento dell'azione). Richiede sessione staff attiva su entrambi i device.
   // Riusa il client Supabase UMD già caricato e la config cloud dei record. v5.684.
   let _staffCalRtClient = null, _staffCalRtChannel = null, _staffCalRtStarted = false, _staffCalRtPullTimer = null;
+  let _staffCalRtRetryTimer = null, _staffCalRtRetryDelay = 0;
   function staffCalRtChannelName() {
     return 'pv-staff-cal-' + ((typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test' : 'prod');
+  }
+  function staffCalRtCleanupChannel() {
+    try {
+      if (_staffCalRtChannel && _staffCalRtClient && typeof _staffCalRtClient.removeChannel === 'function') {
+        _staffCalRtClient.removeChannel(_staffCalRtChannel);
+      } else if (_staffCalRtChannel && typeof _staffCalRtChannel.unsubscribe === 'function') {
+        _staffCalRtChannel.unsubscribe();
+      }
+    } catch (e) { console.warn('staff-cal rt cleanup channel:', e); }
+    _staffCalRtChannel = null;
   }
   async function staffCalRtStart() {
     if (_staffCalRtStarted) return;
@@ -34263,22 +34283,29 @@ Per confermare scrivi ELIMINA.`);
     if (!sess) return;                                                            // solo con sessione staff
     _staffCalRtStarted = true;                                                    // tenta una sola volta
     try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
-        realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
-      });
+      // Riusa un solo client per tutta la sessione (evita GoTrueClient multipli + leak socket).
+      if (!_staffCalRtClient) {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
+          realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
+        });
+      }
+      // Rimuovi un eventuale canale precedente prima di crearne uno nuovo.
+      staffCalRtCleanupChannel();
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
         .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
+        .on('broadcast', { event: 'member-changed' }, function (msg) { staffCalRtOnRemoteMemberChanged(msg && msg.payload); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
           if (status === 'SUBSCRIBED') {
+            _staffCalRtRetryDelay = 0;                                             // reset backoff
             // (Ri)connessi: recupera subito eventuali cambiamenti persi mentre il socket era giù.
             try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            _staffCalRtStarted = false;                                             // consenti retry al prossimo refresh
+            staffCalRtScheduleRetry();                                             // cleanup + retry con backoff
           }
         });
     } catch (e) {
@@ -34286,11 +34313,51 @@ Per confermare scrivi ELIMINA.`);
       console.warn('staff-cal realtime start:', e);
     }
   }
+
+  function staffCalRtScheduleRetry() {
+    // Rimuove il canale fallito ed evita retry a raffica con backoff esponenziale (max 60s).
+    staffCalRtCleanupChannel();
+    _staffCalRtStarted = false;
+    clearTimeout(_staffCalRtRetryTimer);
+    _staffCalRtRetryDelay = Math.min(_staffCalRtRetryDelay ? _staffCalRtRetryDelay * 2 : 3000, 60000);
+    _staffCalRtRetryTimer = setTimeout(function () {
+      try { staffCalRtStart(); } catch (e) {}
+    }, _staffCalRtRetryDelay);
+  }
   function staffCalRtOnRemoteChange() {
     clearTimeout(_staffCalRtPullTimer);
     _staffCalRtPullTimer = setTimeout(function () {                               // coalescenza raffiche, resta sotto il secondo
       try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
     }, 150);
+  }
+  function staffCalRtOnRemoteMemberChanged(payload) {
+    try {
+      if (!payload || !payload.member) return;
+      var m = payload.member;
+      if (!m.id && !m.memberId) return;
+      var idx = giocatori.findIndex(function (g) {
+        return (m.id && String(g.id) === String(m.id)) ||
+               (m.memberId && g.memberId && String(g.memberId) === String(m.memberId));
+      });
+      if (idx >= 0) {
+        giocatori[idx] = Object.assign({}, giocatori[idx], {
+          firstName: m.firstName || giocatori[idx].firstName,
+          surname:   m.surname   || giocatori[idx].surname,
+          name:      m.name      || giocatori[idx].name,
+          phone:     m.phone     !== undefined ? m.phone : giocatori[idx].phone,
+          email:     m.email     !== undefined ? m.email : giocatori[idx].email,
+          level:     m.level     !== undefined ? m.level : giocatori[idx].level,
+          gender:    m.gender    || giocatori[idx].gender,
+          updatedAt: m.updatedAt || giocatori[idx].updatedAt
+        });
+      } else {
+        // Socio non presente localmente: aggiungilo
+        giocatori.push(m);
+      }
+      save('giocatori', giocatori);
+      try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+      try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
+    } catch (e) { console.warn('staff-cal rt member-changed handler:', e); }
   }
   function staffCalRtBroadcast() {
     try {
@@ -34298,6 +34365,13 @@ Per confermare scrivi ELIMINA.`);
         _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: Date.now() } });
       }
     } catch (e) { console.warn('staff-cal realtime broadcast:', e); }
+  }
+  function staffCalRtBroadcastMemberChanged(memberPayload) {
+    try {
+      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function' && memberPayload) {
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'member-changed', payload: { member: memberPayload, ts: Date.now() } });
+      }
+    } catch (e) { console.warn('staff-cal rt member-changed broadcast:', e); }
   }
 
   // ── Cross-device ottimistico (v5.700) ───────────────────────────────────────
