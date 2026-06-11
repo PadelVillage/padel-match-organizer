@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.746';
+    const APP_VERSION = '5.747';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34262,8 +34262,19 @@ Per confermare scrivi ELIMINA.`);
   // momento dell'azione). Richiede sessione staff attiva su entrambi i device.
   // Riusa il client Supabase UMD già caricato e la config cloud dei record. v5.684.
   let _staffCalRtClient = null, _staffCalRtChannel = null, _staffCalRtStarted = false, _staffCalRtPullTimer = null;
+  let _staffCalRtRetryTimer = null, _staffCalRtRetryDelay = 0;
   function staffCalRtChannelName() {
     return 'pv-staff-cal-' + ((typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test' : 'prod');
+  }
+  function staffCalRtCleanupChannel() {
+    try {
+      if (_staffCalRtChannel && _staffCalRtClient && typeof _staffCalRtClient.removeChannel === 'function') {
+        _staffCalRtClient.removeChannel(_staffCalRtChannel);
+      } else if (_staffCalRtChannel && typeof _staffCalRtChannel.unsubscribe === 'function') {
+        _staffCalRtChannel.unsubscribe();
+      }
+    } catch (e) { console.warn('staff-cal rt cleanup channel:', e); }
+    _staffCalRtChannel = null;
   }
   async function staffCalRtStart() {
     if (_staffCalRtStarted) return;
@@ -34272,10 +34283,15 @@ Per confermare scrivi ELIMINA.`);
     if (!sess) return;                                                            // solo con sessione staff
     _staffCalRtStarted = true;                                                    // tenta una sola volta
     try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
-        realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
-      });
+      // Riusa un solo client per tutta la sessione (evita GoTrueClient multipli + leak socket).
+      if (!_staffCalRtClient) {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
+          realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
+        });
+      }
+      // Rimuovi un eventuale canale precedente prima di crearne uno nuovo.
+      staffCalRtCleanupChannel();
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
@@ -34285,16 +34301,28 @@ Per confermare scrivi ELIMINA.`);
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
           if (status === 'SUBSCRIBED') {
+            _staffCalRtRetryDelay = 0;                                             // reset backoff
             // (Ri)connessi: recupera subito eventuali cambiamenti persi mentre il socket era giù.
             try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            _staffCalRtStarted = false;                                             // consenti retry al prossimo refresh
+            staffCalRtScheduleRetry();                                             // cleanup + retry con backoff
           }
         });
     } catch (e) {
       _staffCalRtStarted = false;                                                 // riprova al prossimo refresh
       console.warn('staff-cal realtime start:', e);
     }
+  }
+
+  function staffCalRtScheduleRetry() {
+    // Rimuove il canale fallito ed evita retry a raffica con backoff esponenziale (max 60s).
+    staffCalRtCleanupChannel();
+    _staffCalRtStarted = false;
+    clearTimeout(_staffCalRtRetryTimer);
+    _staffCalRtRetryDelay = Math.min(_staffCalRtRetryDelay ? _staffCalRtRetryDelay * 2 : 3000, 60000);
+    _staffCalRtRetryTimer = setTimeout(function () {
+      try { staffCalRtStart(); } catch (e) {}
+    }, _staffCalRtRetryDelay);
   }
   function staffCalRtOnRemoteChange() {
     clearTimeout(_staffCalRtPullTimer);
