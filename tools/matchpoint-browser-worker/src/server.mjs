@@ -3225,6 +3225,90 @@ async function handleCreateClient(req, res) {
   json(res, 200, result);
 }
 
+async function debugFindClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  const codice = clean(options.codice || '');
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint.');
+  const diagnostic = { mode: 'debug_find_client', codice, baseUrl, steps: [] };
+
+  const browser = await chromium.launch({ headless: boolEnv('MATCHPOINT_HEADLESS', true), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  let page;
+  try {
+    const context = await browser.newContext({ acceptDownloads: false, locale: 'it-IT', timezoneId: 'Europe/Rome', viewport: { width: 1440, height: 900 }, userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36' });
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) { await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {}); }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    await maybeClickCashEnter(page, diagnostic);
+
+    diagnostic.steps.push('goto_listado');
+    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    diagnostic.listadoUrl = page.url();
+    diagnostic.listadoTitle = await page.title().catch(() => '');
+
+    diagnostic.controls = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('input, select, button, a[onclick]').forEach((el) => {
+        out.push({ tag: el.tagName, id: el.id || '', name: el.getAttribute('name') || '', type: el.getAttribute('type') || '', placeholder: el.getAttribute('placeholder') || '', text: (el.innerText || el.value || '').slice(0, 40) });
+      });
+      return out.slice(0, 200);
+    }).catch(() => []);
+
+    if (codice) {
+      const searchSel = 'input[id*="buscar" i], input[id*="filtro" i], input[id*="search" i], input[id*="codigo" i], input[id*="texto" i], input[name*="buscar" i], input[name*="filtro" i]';
+      const search = page.locator(searchSel).first();
+      if (await search.count().catch(() => 0)) {
+        diagnostic.steps.push('search_fill');
+        await search.fill(codice, { timeout: 8000 }).catch(() => {});
+        await search.press('Enter', { timeout: 5000 }).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        diagnostic.afterSearchUrl = page.url();
+      } else {
+        diagnostic.steps.push('search_field_not_found');
+      }
+    }
+
+    diagnostic.rows = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('table tr').forEach((tr) => {
+        const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+        if (!text) return;
+        const hrefs = Array.from(tr.querySelectorAll('a')).map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '').filter(Boolean);
+        out.push({ text: text.slice(0, 200), hrefs });
+      });
+      return out.slice(0, 60);
+    }).catch(() => []);
+
+    return { ok: true, diagnostic };
+  } catch (error) {
+    if (error && error.code && error.diagnostic) throw error;
+    throw fail('DEBUG_FIND_CLIENT_FAILED', (error && error.message) || String(error), diagnostic);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleDebugFindClient(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('debug', body), () => debugFindClientWithBrowser(body));
+  json(res, 200, result);
+}
+
 // ── createClientWithBrowser: crea un cliente in Matchpoint, legge il Codice e
 //    gli assegna un livello (default 0,5) cosi' compare nel report livelli. ──
 async function createClientWithBrowser(options = {}) {
@@ -5347,7 +5431,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/debug-find-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -5390,6 +5474,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/debug-find-client') {
+      return await handleDebugFindClient(req, res);
     }
     if (req.method === 'GET' && req.url === '/queue/status') {
       return handleQueueStatus(req, res);
