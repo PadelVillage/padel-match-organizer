@@ -3225,6 +3225,187 @@ async function handleCreateClient(req, res) {
   json(res, 200, result);
 }
 
+async function updateClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const client = options.client || {};
+  const codice = clean(client.codice || '');
+  if (!codice || !/^\d+$/.test(codice)) {
+    throw fail('UPDATE_CLIENT_MISSING_CODICE', 'Il codice Matchpoint è obbligatorio (stringa di cifre).', { codice });
+  }
+
+  const firstName = clean(client.firstName || '');
+  const surname = clean(client.surname || '');
+  const phone = clean(client.phone || '');
+  const email = clean(client.email || '');
+  const genderRaw = clean(client.gender || '');
+  const levelRaw = client.level;
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'update_client',
+    codice, firstName, surname, phone, email, gender: genderRaw, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  let page;
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    page = await context.newPage();
+    await page.addInitScript(() => { window.confirm = () => true; });
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    // ── Login ──
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+    await maybeClickCashEnter(page, diagnostic);
+
+    // ── Cerca cliente per codice ──
+    diagnostic.steps.push('search_cliente');
+    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda').first().fill(codice, { timeout: 10000 });
+    await page.keyboard.press('Enter');
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+
+    const idInterno = await page.evaluate((cod) => {
+      const rows = Array.from(document.querySelectorAll('tr'));
+      for (const row of rows) {
+        if (row.textContent && row.textContent.includes(cod)) {
+          const anchors = Array.from(row.querySelectorAll('a'));
+          for (const a of anchors) {
+            const href = a.getAttribute('href') || '';
+            const onclick = a.getAttribute('onclick') || '';
+            const m = (href + onclick).match(/gotoClient\((\d+)\)/);
+            if (m) return m[1];
+          }
+        }
+      }
+      return null;
+    }, codice);
+
+    if (!idInterno) {
+      diagnostic.bodySample = await page.evaluate(() =>
+        (document.body ? document.body.innerText : '').slice(0, 500)).catch(() => '');
+      throw fail('UPDATE_CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato su Matchpoint.`, diagnostic);
+    }
+    diagnostic.idInterno = idInterno;
+    diagnostic.steps.push('goto_ficha');
+
+    // ── Scheda cliente: aggiorna campi ──
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${idInterno}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.locator('#CC_Datos_FormViewFicha_WUCPeople_TextBoxNombre').first().waitFor({ state: 'visible', timeout: 12000 });
+
+    const P = '#CC_Datos_FormViewFicha_WUCPeople_';
+    if (firstName) {
+      await page.locator(P + 'TextBoxNombre').first().fill('');
+      await page.locator(P + 'TextBoxNombre').first().fill(firstName);
+    }
+    if (surname) {
+      await page.locator(P + 'TextBoxApellido1').first().fill('');
+      await page.locator(P + 'TextBoxApellido1').first().fill(surname);
+    }
+    if (phone) {
+      await page.locator(P + 'TextBoxMovil').first().fill('');
+      await page.locator(P + 'TextBoxMovil').first().fill(phone);
+    }
+    if (email) {
+      await page.locator(P + 'TextBoxEmail').first().fill('');
+      await page.locator(P + 'TextBoxEmail').first().fill(email);
+    }
+    if (genderRaw) {
+      const genderValue = genderRaw === 'F' ? 'mujer' : (genderRaw === 'M' ? 'hombre' : 'na');
+      await page.locator(P + 'DropDownListSexo').first().selectOption({ value: genderValue }, { timeout: 5000 }).catch(() => {});
+    }
+
+    diagnostic.steps.push('salva_ficha');
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    page.once('dialog', async (dialog) => {
+      diagnostic.dialogMessage = dialog.message();
+      diagnostic.dialogType = dialog.type();
+      await dialog.accept().catch(() => {});
+    });
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+      page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
+    ]);
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    diagnostic.afterSaveUrl = page.url();
+
+    // ── Livello (opzionale, non blocca l'operazione se fallisce) ──
+    const levelStr = (levelRaw === '' || levelRaw == null) ? '' : String(levelRaw).replace('.', ',');
+    if (levelStr) {
+      diagnostic.steps.push('update_nivel');
+      try {
+        const nivelPath = `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${idInterno}&cbf=callbackRefrescarPestanyaJuegoNivel&return_url=`;
+        await page.goto(absoluteUrl(baseUrl, nivelPath), { waitUntil: 'domcontentloaded', timeout: 20000 });
+        const nivelField = page.locator('#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_TextBoxNivelNumerico').first();
+        await nivelField.fill('', { timeout: 8000 });
+        await nivelField.fill(levelStr, { timeout: 8000 });
+        page.once('dialog', async (dialog) => { await dialog.accept().catch(() => {}); });
+        await Promise.all([
+          page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+          page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
+        ]);
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        diagnostic.steps.push('nivel_saved');
+      } catch (levelErr) {
+        diagnostic.levelError = levelErr instanceof Error ? levelErr.message : String(levelErr);
+      }
+    }
+
+    const updated = {};
+    if (firstName) updated.firstName = firstName;
+    if (surname) updated.surname = surname;
+    if (phone) updated.phone = phone;
+    if (email) updated.email = email;
+    if (genderRaw) updated.gender = genderRaw;
+    if (levelStr) updated.level = levelStr;
+
+    return { ok: true, idInterno, codice, updated, diagnostic };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleUpdateClient(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('client', body), () => updateClientWithBrowser(body));
+  json(res, 200, result);
+}
+
 async function debugFindClientWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -5483,7 +5664,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/debug-find-client',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/debug-find-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -5526,6 +5707,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/update-client') {
+      return await handleUpdateClient(req, res);
     }
     if (req.method === 'POST' && req.url === '/debug-find-client') {
       return await handleDebugFindClient(req, res);
