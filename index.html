@@ -7349,7 +7349,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.747';
+    const APP_VERSION = '5.748';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13175,6 +13175,7 @@ Grazie.`
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito la scheda socio su Supabase');
+      try { pmoPushMemberUpdateToMatchpoint(giocatori[idx]); } catch (e) { console.warn('push update Matchpoint:', e); }
       showAlert('✅ Scheda salvata', 'success');
     }
     function toggleMemberActive(memberId) {
@@ -24156,6 +24157,37 @@ Per confermare scrivi ELIMINA.`);
 	      const record = pmoBuildMemberCloudRecord(member);
 	      if (!record) return;
 	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
+	    }
+	    async function pmoPushMemberUpdateToMatchpoint(member) {
+	      try {
+	        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return;
+	        const codice = String(member.memberId || '').trim();
+	        if (!/^\d{4,6}$/.test(codice)) return;
+	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	        const staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare il socio su Matchpoint');
+	        const payload = { client: {
+	          codice,
+	          firstName: member.firstName || '',
+	          surname: member.surname || '',
+	          phone: member.phone || '',
+	          email: member.email || '',
+	          gender: member.gender === 'F' ? 'F' : (member.gender === 'M' ? 'M' : ''),
+	          level: (member.level === '' || member.level == null) ? '' : member.level,
+	        }};
+	        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-update`, {
+	          method: 'POST',
+	          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+	          body: JSON.stringify(payload),
+	        });
+	        const txt = await response.text();
+	        let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+	        if (!response.ok || (data && data.ok === false)) {
+	          console.warn('Matchpoint update non riuscito:', data && (data.message || data.error));
+	          if (typeof showAlert === 'function') showAlert('⚠️ Socio salvato localmente, ma aggiornamento su Matchpoint non riuscito.', 'warning');
+	        }
+	      } catch (e) {
+	        console.warn('pmoPushMemberUpdateToMatchpoint error:', e);
+	      }
 	    }
 	    function pmoQueueImmediateMemberCloudDelete(member, actionLabel='segnare subito il socio cancellato su Supabase') {
 	      const record = pmoBuildMemberCloudRecord(member, { deleted:true });
