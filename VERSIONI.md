@@ -1,18 +1,153 @@
 # Versioni
 
-## 2026-06-02 / worker (create-booking): ridotti tempi morti nel solo percorso prenotazione (networkidle login 8000→3000, pausa post-login 2500→1000, pausa post-save partita 2000→800). Altri flussi invariati.
+## v5.715 — Editor modifica prenotazione: stesso stile delle schede di prenotazione
+- L'editor che si apre modificando una prenotazione (giocatori + spostamento) ora usa lo stesso design delle schede di prenotazione: stessi bottoni (`.svc-btn-step`, conferma verde/rosso), chip giocatori (`.svc-player-chip` + ✕ tondo), etichette e campi coerenti coi token, e gli stessi caratteri (anche le misure su mobile). Eliminati gli stili inline ad-hoc e l'override `font-size:20px` dedicato. Solo presentazione: comportamento, handler e logica invariati. Solo app.
 
-- 2026-06-02 — worker — inserimento giocatore disambiguato per codice Matchpoint (retrocompatibile); PLAYER_CODE_MISMATCH se nessun candidato combacia col codice.
+## v5.714 — Sync staff: reconcile PER-ID (Fase B riordino)
+- Il calendario staff ora riconcilia le prenotazioni col cloud confrontando l'`id` stabile (`sbId`) invece dello slot. Una prenotazione che cambia campo/data/ora è riconosciuta come la stessa voce e la card si SPOSTA su tutti i device, senza più "orfane" e senza tombstone. Mantenuto un ponte per slot per i record legacy e per gli annullamenti (chiavati per slot), così la transizione è liscia. Lo spostamento non ri-genera più l'id e non scrive tombstone sintetici; resta lo `staff_suppress` per nascondere l'occupazione Matchpoint sul vecchio slot. Solo app. (La edge `matchpoint-bookings-edit` verrà ripulita dei tombstone a parte, dopo l'aggiornamento dei device.)
 
-- v5.582 — Socio di test identificato via email (aprea.maurizio@gmail.com) invece che via PMO-000948/000956.
+## v5.713 — Sync staff: id prenotazione condiviso col cloud (Fase A riordino)
+- La creazione di una prenotazione staff genera ora un `sbId` (UUID) che il client passa alla edge `matchpoint-bookings-create` e usa anche come id locale. Così la edge e il client scrivono lo STESSO record cloud (chiave = `sbId`) invece di due record distinti (UUID lato client + stringa-slot lato edge). Nessun cambiamento visibile: è preparazione al reconcile-per-id (Fase B) e rimuove il doppio record alla radice. Richiede la edge `matchpoint-bookings-create` v17 (deployata a parte). Solo app.
 
-- v5.581 — ID Matchpoint: il codice numerico sostituisce il segnaposto PMO- (sync + import app); etichetta "ID-MP-" a video nell'elenco e nella scheda socio.
+## v5.699 — Revert ottimistico cross-device (torna a comportamento 5.697)
+- Rimossa la propagazione broadcast pending/resolved (staffCalRtBroadcastPending, staffCalRtBroadcastResolved, staffCalRtOnRemotePending, staffCalRtOnRemoteResolved) introdotta nella 5.698. Si torna al comportamento della 5.697: ottimistico locale sul device che prenota + propagazione normale agli altri via `staff-changed` (desktop istantaneo, mobile ~10-12s). Solo app.
 
-## v5.580 / PROD: creazione socio app-first in Matchpoint
+## v5.637 — Chat: tolta l'etichetta "Sistema" dalle schede
+- In cima alle schede della chat del Calendario non compare più l'etichetta "🤖 Sistema": le schede risultano più pulite. Il contenuto resta invariato (ha già le sue icone). L'etichetta "👤 Staff" sui messaggi dell'operatore resta. Solo CSS, nessun cambio di comportamento. Solo app.
 
-- **Promozione TEST→PROD** del flusso "creazione socio app-first". Alla creazione di un nuovo socio non-guest (`addMember`) l'app crea il cliente anche in Matchpoint tramite la nuova Edge Function `matchpoint-clients-create` (chiamata fire-and-forget `pmoCreateMemberInMatchpoint`), poi adotta il Codice Matchpoint restituito come `memberId` (sovrascrive l'id provvisorio `PMO-XXXXXX`). In caso di errore il socio resta salvato in locale con banner di avviso.
-- **Email obbligatoria** per i soci non-guest in fase di creazione (richiesta da Matchpoint).
-- Nessun'altra modifica: parser, Tappa 3 bookings e affini restano fuori da PROD.
+## v5.636 — Chat: resta blu solo la scheda in cima, le card "flow" sotto sono grigie
+- Nella colonna chat del Calendario solo la scheda più recente (in cima) resta evidenziata in blu. Le schede di tipo "flow" (disambiguazione "Quale «…»?", card "Giocatori partita", "Quale maestro?") non hanno più lo sfondo/bordo blu fisso: una volta scorse sotto dopo l'uso appaiono grigie come le altre schede di sistema. La scheda in cima resta blu in ogni caso (regola first-child invariata, anche se è una "flow" attiva). Solo CSS, nessun cambio di comportamento. Solo app.
+
+## v5.635 — Creazione prenotazioni: anti-omonimia via Codice cliente
+- Anche in creazione (partita e lezione), quando si sceglie un socio l'app aggancia ora il Codice cliente (memberId, es. 000005) al giocatore e lo manda al worker come `codiceCliente`, così Matchpoint identifica la persona dalla riga "Codice-Nome" della tendina ed evita gli omonimi — come già avviene nell'editor delle prenotazioni esistenti. Additivo: per i soci senza Codice valido (creati in-app o testo libero) resta l'aggiunta per nome. Richiede il worker con anti-omonimia in creazione (già in produzione). Solo app.
+
+## v5.634 — Editor giocatori: il chip "Da aggiungere" mostra il Codice cliente
+- Il chip di un giocatore in attesa di salvataggio nell'editor 👥 mostrava "(senza codice)" anche quando il Codice cliente (memberId, es. 000005) era presente, perché l'etichetta guardava solo l'id interno Matchpoint (matchpointIdInterno, quasi sempre vuoto). Ora mostra il primo codice disponibile — id interno o, in mancanza, Codice cliente — e tiene "(senza codice)" solo quando manca davvero ogni codice (socio creato in-app o testo libero). Solo etichetta: nessun cambio di logica, il codiceCliente era già passato al worker da v5.633. Solo app.
+
+## v5.633
+- Editor giocatori: l'app passa al worker il Codice cliente (memberId, es. 000005) come `codiceCliente`, così Matchpoint identifica il socio dalla riga "Codice-Nome" della tendina ed evita gli omonimi. Additivo: se il Codice manca, resta l'aggiunta per nome come prima.
+
+## v5.632 — Lezioni: abilitato il bottone 👥 per modificare gli allievi
+- Il bottone 👥 (aggiungi/rimuovi giocatori) ora compare anche sulle card delle lezioni, oltre che sulle partite, in entrambe le viste (griglia e agenda). Gli allievi sono gli stessi soci del DB. Le manutenzioni restano escluse (niente partecipanti). Richiede il supporto lezioni nel worker (già in produzione). Solo app.
+
+## v5.631 — Giocatori: la scheda attiva torna in cima dopo la disambiguazione
+- Aggiungendo giocatori, quando un nome è ambiguo compare la scheda "Quale «…»?" in cima alla chat. Dopo la scelta, la scheda dello step attivo (la "Chi gioca?" in creazione, la card "Giocatori partita" nell'editor 👥) ora torna in cima invece di restare sotto la disambiguazione, così l'operatore continua a lavorare dall'alto. Vale per entrambi i flussi (creazione ed editor). Solo app.
+
+## v5.630 — Chat: la scheda in testa risalta (barra accent a sinistra)
+- Nella colonna chat del Calendario la scheda più recente (in cima) ora si distingue nettamente dalle altre grazie a una barra accent a sinistra + un leggero sfondo accent. Realizzato in CSS puro su `#svcChatMessages > .svc-msg:first-child`, quindi l'evidenziazione si sposta da sola sulla nuova scheda quando arriva un messaggio. Non altera il colore-tipo delle schede (verde ok / ambra conferma / accent flusso), che resta visibile. Nessun JavaScript. Solo app.
+
+## v5.629 — Editor giocatori: niente più blocco infinito (timeout + messaggio chiaro)
+- Le chiamate dell'editor 👥 (lettura e salvataggio giocatori partita) non avevano timeout: se il worker Matchpoint era lento o si piantava, l'interfaccia restava col contatore all'infinito e si era costretti a ricaricare. Aggiunto un timeout lato app: 90s sulla lettura, 200s sul salvataggio. Allo scadere l'editor si sblocca e mostra un messaggio dedicato; sul salvataggio avvisa che la modifica potrebbe essere già stata applicata (ricaricare e controllare prima di ritentare, per non duplicare). I 200s sono volutamente sopra il guardiano della coda del worker (180s), così l'eventuale errore reale del worker emerge invece di restare nascosto. Solo app; edge e worker invariati.
+
+## v5.628 — La prenotazione annullata non "rinasce" più nel calendario
+- Dopo un annullamento riuscito, lo slot veniva talvolta ridisegnato come 🔒 sola lettura perché la cache di occupazione Matchpoint (`prenotazioniOccupazione`) era ancora vecchia. Ora il calendario tiene una lista a scadenza (30 min) degli slot annullati di recente e li nasconde finché i dati non si aggiornano. La lista si pulisce da sola ed è azzerata quando si crea/sposta una prenotazione sullo stesso slot. Solo app; nessun dato principale cancellato; edge e worker invariati.
+
+## v5.627 — Rimosso il banner "Sincronizzazione automatica in corso"
+- Tolto il banner azzurro nel pannello Calendario e il relativo polling (ogni 4s). Effetto collaterale voluto: la riga di input della chat torna allineata in alto con l'intestazione dei campi. Solo app; edge e worker invariati.
+
+## v5.626 — Calendario: pannello più alto (chat non più tagliata)
+- L'altezza del blocco calendario+chat in desktop passa da 520px fissi a `min(80vh, 860px)` (adattiva all'altezza schermo, con tetto). I messaggi lunghi (es. editor giocatori) non restano più tagliati in basso e si vedono più ore nella griglia. Solo CSS; edge e worker invariati.
+
+## v5.625 — Giocatori: usare l'id interno Matchpoint (matchpointIdInterno) invece di memberId
+- Aggiungendo un giocatore (editor 👥 e creazione prenotazione) l'app passava `memberId` (codice/tessera) come codice atteso, ma il worker confronta con `HiddenFieldIdPeople` = id interno (`id_people`). Risultato: `PLAYER_CODE_MISMATCH` per i soci con id interno noto. Ora si passa `matchpointIdInterno` (l'id interno reale). Se assente, aggiunta per nome come prima. Solo app; edge e worker invariati.
+
+## v5.624 — Calendario: avvio indipendente (fix definitivo griglia vuota all'apertura)
+- La griglia restava vuota (data "gg/mm/aaaa") perché `staffCalInit` non veniva chiamato: nella sequenza di avvio `renderInitialDashboard()` non è protetta ed è subito prima di `staffCalInit`; un suo errore interrompeva l'avvio. Aggiunto `staffCalBootstrap`: un poller indipendente che inizializza il calendario appena il contenitore è pronto e si ferma quando la griglia è disegnata. Solo app; edge e worker invariati.
+
+## v5.623 — Calendario: fix griglia vuota all'apertura (ridisegno di sicurezza)
+- All'apertura del Calendario la griglia poteva restare vuota (data "gg/mm/aaaa") finché non si cliccava "Oggi": `staffCalInit` disegnava prima che il contenitore fosse pronto. Aggiunto `staffCalEnsureRendered`: per ~5s dopo l'apertura ridisegna appena la griglia è costruibile ma vuota e imposta la data di oggi. Si ferma da solo appena la griglia è piena. Solo app; edge e worker invariati.
+
+## v5.622 — Calendario: modifica giocatori sulle card partita (👥)
+- Sulle card partita staff (✏️) un nuovo pulsante 👥 apre un editor nel pannello chat: legge i partecipanti reali da Matchpoint (edge `matchpoint-bookings-edit` con `read`), permette di rimuovere i presenti e aggiungere nuovi soci tramite la ricerca clienti (che porta il codice → aggiunta a prova di omonimi). Al salvataggio chiama la edge col blocco `players`, aggiorna la card locale con la lista reale restituita dal worker e ridisegna. Compare solo sulle partite (non su lezione/manutenzione). Solo app; edge e worker già pronti.
+
+## v5.621 — Calendario: rimossa la legenda e la riga di suggerimento in alto
+- Tolta dalla testata del Calendario staff la legenda colorata (Partita / Lezione [STAFF] / Prenotazione staff / Libero) e la riga grigia di suggerimento ("Clicca su uno slot libero…"). Rimosse anche le regole CSS ormai inutilizzate (`.staff-cal-legend`, `.staff-cal-legend-dot`, `.staff-cal-hint`). Solo app; edge e worker invariati.
+
+## v5.620 — Calendario: card staff più chiare (tipo reale) + via il pulsante 🧹
+- Le card delle prenotazioni staff (✏️) mostrano ora il **tipo reale** scelto in prenotazione (Partita / Lezione / Manutenzione / Torneo) al posto della generica "Staff", sia in griglia desktop sia in agenda mobile. Il tipo è già salvato nel record; ora `staffCalGetSlots` lo porta come `tipoReale` e un helper `_staffCalTipoLabel` lo traduce in etichetta. Le card Matchpoint (🔒) restano invariate.
+- Rimosso il pulsante 🧹 "rimuovi solo dal calendario" da entrambe le viste e cancellata la funzione `staffCalRemoveLocalOnly` ormai inutilizzata. L'annullamento con 🗑 ripulisce già da solo le card "fantasma" non più presenti su Matchpoint. Solo app; edge e worker invariati.
+
+## v5.619 — Calendario: spostamento prenotazione dalla card (↔)
+- Sulle card staff (✏️) un pulsante "↔ Sposta" avvia lo spostamento: si clicca lo slot libero di destinazione (anche di un altro giorno) e l'app chiama l'edge `matchpoint-bookings-edit` col solo blocco move (campo/data/ora; durata invariata). Non tocca i giocatori. Conferma e feedback nel pannello chat; copia locale aggiornata.
+
+## v5.618 — Calendario: stato coda Matchpoint nel pannello chat
+- Il pannello "Assistente prenotazioni" mostra in tempo quasi-reale cosa sta facendo il worker e chi l'ha avviato (+ quanti job in coda), leggendo la edge `matchpoint-queue-status` ogni 4s mentre la tab Calendario è attiva. Sola lettura: nessun impatto sul flusso di prenotazione.
+
+## v5.617 — Pulizia: rimosso il codice morto del vecchio Tabellone Matchpoint (blocco <script> "Calendario Matchpoint" e regole CSS .cal-*), ormai inutilizzato dopo lo spostamento del Calendario staff (v5.616). Mantenuta la regola #dashboard { padding:0 } che stila la tab Calendario. Nessun cambio di comportamento. Solo app; edge e worker invariati. [Fase 2/2]
+
+## v5.616 — Calendario: la tab "Calendario" ora mostra il Calendario campi staff (spostato qui da Amministrazione) al posto del vecchio Tabellone Matchpoint. Riagganciati avvio (DOMContentLoaded) e apertura tab a staffCalInit; aggiornate le etichette ("Campi staff"); rimosso il link ridondante in Amministrazione. Il codice del vecchio tabellone resta presente ma inutilizzato (sarà rimosso in una versione successiva). Solo app; edge e worker invariati. [Fase 1/2]
+
+## v5.615 — Calendario staff: corretta la durata degli eventi. La durata importata da Matchpoint è in ore come stringa (es. '1.5'=90min); con parseInt diventava 1 → tutti gli eventi apparivano lunghi 1 minuto ("17:00–17:01") su un solo slot. Ora un helper converte correttamente ore→minuti (minuti già numerici invariati) per occupazione, prenotazioni e prenotazioni staff: card e orario di fine rispettano la durata reale. Solo app; edge e worker invariati.
+
+## v5.614 — Calendario staff: corrette le frecce ‹ › di navigazione giorno. Usavano toISOString() (UTC) per riformattare la data: in Italia (UTC+1/+2) la freccia avanti restava ferma e quella indietro saltava di 2 giorni. Ora lo spostamento usa i componenti di data locali, con base a mezzogiorno (robusto ai cambi ora legale/solare). Solo app; edge e worker invariati.
+
+## v5.613 — Calendario staff: nuovo pulsante 🧹 "rimuovi solo dal calendario" sulle card Staff (griglia + agenda), in grigio per distinguerlo dal 🗑. Rimuove la copia locale all'istante senza chiamare il worker (per i fantasmi già rimossi a mano su Matchpoint), con conferma che avvisa che NON tocca Matchpoint.
+
+## v5.612 — Calendario staff: il 🗑 ora rimuove davvero la card locale dopo l'annullamento (confronto campo come numero: alcune card vecchie lo avevano come stringa e non sparivano). Se la prenotazione non è più su Matchpoint, la card viene comunque ripulita invece di restare bloccata in errore.
+
+## v5.611 — TEST: modifica prenotazione anche per campo+data+ora. Edge matchpoint-bookings-edit accetta la terna (oltre all'idReserva) e la inoltra al worker (che la risolve dal tabellone). Pulsante 🧪 Modifica: idReserva vuoto → chiede campo,YYYY-MM-DD,HH:MM. Additivo e retrocompatibile.
+
+## v5.610 — Calendario staff: l'esito dell'annullamento dal 🗑 ora compare come bolla SISTEMA in cima alla colonna chat (⏳ in corso con contatore secondi → ✅/❌), coerente con la creazione prenotazione. Niente più riga di stato nascosta. Logica di cancellazione invariata.
+
+## v5.609 — Calendario staff: pulsante 🗑 sulle card ✏️ Staff (griglia desktop + agenda mobile) per annullare la prenotazione su Matchpoint via campo+data+ora (con conferma) e rimuovere la copia locale. Le card 🔒 Matchpoint restano sola lettura. Edge e worker invariati.
+
+## v5.608 — TEST: pulsante "🧪 Annulla prenotazione" ora accetta anche la terna campo+data+ora (formato campo,YYYY-MM-DD,HH:MM) oltre all'idReserva — per validare la cancellazione via tabellone prima di collegare il 🗑 al calendario. Solo pulsante di test; edge e worker invariati.
+
+## v5.607 — Calendario staff: disambiguazione giocatori/allievi con lista nomi completi quando un nome è ambiguo; i chip portano il codice socio scelto e vengono inviati codici esatti (partita e lezione) → niente più aggancio omonimo. Allievo obbligatorio per la lezione. (A3b+)
+
+## 2026-06-02 / DB: migrazione — aggiunto record_type 'booking_job' al vincolo di pmo_cloud_records (stato lavoro prenotazione asincrona). Già applicato a mano su TEST; il file lo rende permanente e lo porta in PROD.
+
+## 2026-06-02 / TEST (edge matchpoint-bookings-create): aggiunta modalità asincrona opzionale (flag async) + endpoint GET stato lavoro, riusando pmo_cloud_records (record_type booking_job). Retrocompatibile: senza async, comportamento invariato. Worker non toccato.
+
+## 2026-06-02 / TEST (edge matchpoint-bookings-create): rimosso il retry automatico (erano 3 tentativi) della chiamata al worker per create-booking — anti-doppione su prenotazioni lente. Una sola chiamata.
+
+## v5.603 — Assistente: controllo stato prenotazione più frequente (1,5s) per conferma più rapida.
+
+## v5.606 — Calendario staff: flusso Lezione collegato al motore reale (step maestro a pulsanti + istruttore). Singola/Gruppo inviate come 'lezione'. Allievi opzionali. (Tappa A3b)
+
+## v5.605 — Calendario staff: assistente a pulsanti in sidebar (come mockup v3.6), flusso Partita collegato al motore reale (prenotazione asincrona + conferma). Lezione/Torneo visibili ma non ancora attivi. (Tappa A3a)
+
+## v5.604 — Calendario staff: nuovo look griglia v3.6 (desktop) + agenda mobile, alimentato dai dati esistenti. Nessuna modifica al motore di prenotazione. (Tappa A1)
+
+## v5.602 — Assistente prenotazioni (ramo singolo): modalità asincrona — invia, mostra 'in corso…' e conferma 'prenotata ✓' a esito reale; gestiti errore e attesa troppo lunga. Ricorrenza invariata.
+
+## v5.601 — Assistente prenotazioni: controllo istantaneo 'slot già occupato' (anche sovrapposizioni parziali) prima di inviare al worker; messaggio di successo più onesto ('inviata a Matchpoint, controlla nel calendario').
+
+## v5.600 — Assistente prenotazioni: invio nome→codice Matchpoint (campo giocatori[]) alla edge per le partite; più giocatori; omonimi → 'specifica meglio'. Lezione invariata.
+
+## 2026-06-02 / TEST: il pulsante test prenotazione prenota una PARTITA su un socio per nome, risolvendo il codice Matchpoint dal DB locale (solo numerico; PMO-/vuoto -> nome). Valida la catena con disambiguazione per codice.
+
+## 2026-06-02 / TEST: rimossi gli ultimi riferimenti placeholder PMO-000948; i test (notifiche/follow-up/link autovalutazione/testValidare) puntano al socio di prova Maurizio Aprea via email/codice reale. Mantenuti gli override email/telefono di test.
+
+## 2026-06-02 / TEST: rimosso il trattamento segnaposto/test del socio Maurizio Aprea nell'audit soci e nei default del modulo autovalutazione; ora gestito come socio normale (codice Matchpoint 000004). Notifiche/email di test trattate a parte.
+
+## 2026-06-02 / TEST · Edge function `matchpoint-bookings-create` — giocatori con codice Matchpoint
+
+- edge `matchpoint-bookings-create` — accetta e inoltra al worker la lista giocatori con codice Matchpoint (retrocompatibile).
+
+## 2026-06-01 / TEST · Edge function `matchpoint-clients-sync` v45 + browser worker + guardrail PROD
+
+- **Solo ambiente TEST** (Supabase `cudiqnrrlbyqryrtaprd`; nessuna modifica a PROD). Modifiche a Edge Function `matchpoint-clients-sync` (versione 45) e al browser worker, non alla UI dell'app.
+- **ID Matchpoint nei soci**: la sync clienti scarica anche il report `Listadoclientes` (colonna `Codice`) e riempie `memberId` con il codice interno a 6 cifre (es. `000004`), abbinando per telefono/email. Collaudo: 982/983 soci agganciati; 1 segnalato per revisione manuale (Fabio De Luca).
+- **Login HTTP non operativo**: entrambi i report (livello + Codice) passano dal browser worker; il report Codice usa la modalita' `direct_clients`. La sync risulta piu' lenta (due chiamate al worker).
+- **Pulizia doppioni legacy**: i record non-Matchpoint (`PMO-xxxxxx`) con gemello Matchpoint vengono soft-deleted (`legacy_duplicate_superseded`), con due guardie (sopravvissuto Matchpoint + nessun dato curato); i doppioni con dati curati vengono solo segnalati. Collaudo: 1 eliminato (`PMO-000948`), 0 in revisione, 0 soci attivi con id `PMO-` residuo. **Supera la decisione v5.488** (vedi `docs/matchpoint.md`, nota TEST 2026-06-01).
+- **Guardrail PROD (su `main`)**: aggiunto workflow `guard-main` (`.github/workflows/guard-main-prs.yml`) + ruleset GitHub sul branch `main`. La verifica fallisce se una PR verso `main` proviene da `test-preview`, cancella file, o tocca piu' di 15 file; il ruleset blocca anche force-push e cancellazione del branch.
+
+## v5.596 / TEST: slot prova Matchpoint allineato a 90 min
+
+- **Solo ambiente TEST**: aggiornato il payload di prova del pulsante **🧪 Test prenotazione Matchpoint** da 60 a 90 minuti (`ora: "09:00"`, `oraFine: "10:30"`, `durata: 90`), allineando la prenotazione di test al default Matchpoint per le partite.
+
+## v5.595 / TEST: pulsante test prenotazione Matchpoint
+
+- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV` / `data-test-env-only`): aggiunto pulsante nascosto **🧪 Test prenotazione Matchpoint** nell'area dati Matchpoint, dopo il box "Backup dati". Permette allo staff con permesso `cloud_sync` di lanciare una singola prenotazione di prova reale (`Campo 1 · 2026-06-01 · 08:00–09:00 · "TEST PV — CANCELLARE"`) chiamando la edge function `matchpoint-bookings-create`. Il pulsante richiede conferma esplicita, mostra lo stato di avanzamento, disabilita il pulsante durante l'attesa e visualizza l'esito (successo o errore) in un riquadro colorato. In produzione non compare mai.
+
+## v5.594 / TEST: storico prenotazioni disattivato
+
+- **Solo ambiente TEST** (guard su `PMO_IS_TEST_ENV`): lo storico prenotazioni non viene più caricato, salvato in localStorage, né spinto sul cloud. Evita l'errore `setItem ... exceeded the quota` dovuto al localStorage di dominio condiviso con PROD, e non serve in TEST. Quattro guard: (a) `importMatchpointHistoryAutomatic()` no-op, (b) `save()` salta `storicoPrenotazioni`, (c) backup cloud non spinge `booking_history`, (d) restore non ripopola lo storico. **PROD invariato.**
+
+## v5.588 / Fix: Tab 2 INVALID_RULES
+
+- **Correzione INVALID_RULES nel Parser Config (Tab 2 "Genera Aggiornamento")**: Il pulsante "Approva e Aggiorna File" ritornava `INVALID_RULES`. Causa: il front-end inviava alla Edge Function `parser-rules-update` solo le `modifiche` e il frammento filtrato di regole mostrato in Tab 2, mentre la funzione valida lo schema completo delle regole. Ora il client costruisce il SET COMPLETO di regole applicando le modifiche all'intero `PARSER_RULES` e lo invia nel campo `regole` del payload. La Edge Function è stata irrobustita per accettare e validare l'oggetto `regole` completo (con fallback su `modifiche`), restituendo `INVALID_RULES` solo se mancano `intents` o `campi_obbligatori`.
 
 ## v5.538 / Scorciatoia di sincronizzazione nel lotto vuoto dell'Autovalutazione
 

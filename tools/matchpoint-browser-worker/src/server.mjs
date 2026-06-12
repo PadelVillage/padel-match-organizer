@@ -3225,180 +3225,6 @@ async function handleCreateClient(req, res) {
   json(res, 200, result);
 }
 
-async function updateClientWithBrowser(options = {}) {
-  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
-  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
-  if (!username || !password) {
-    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
-  }
-
-  const client = options.client || {};
-  const codice = clean(client.codice || '');
-  if (!codice || !/^\d+$/.test(codice)) {
-    throw fail('UPDATE_CLIENT_MISSING_CODICE', 'Il codice Matchpoint è obbligatorio (stringa di cifre).', { codice });
-  }
-
-  const firstName = clean(client.firstName || '');
-  const surname = clean(client.surname || '');
-  const phone = clean(client.phone || '');
-  const email = clean(client.email || '');
-  const genderRaw = clean(client.gender || '');
-  const levelRaw = client.level;
-
-  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
-  const diagnostic = {
-    mode: 'update_client',
-    codice, firstName, surname, phone, email, gender: genderRaw, baseUrl,
-    startedAt: new Date().toISOString(),
-    steps: [],
-  };
-
-  const browser = await chromium.launch({
-    headless: boolEnv('MATCHPOINT_HEADLESS', true),
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
-  let page;
-  try {
-    const context = await browser.newContext({
-      acceptDownloads: false,
-      locale: 'it-IT',
-      timezoneId: 'Europe/Rome',
-      viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-    });
-    page = await context.newPage();
-    await page.addInitScript(() => { window.confirm = () => true; });
-    page.setDefaultTimeout(12000);
-    page.setDefaultNavigationTimeout(20000);
-
-    // ── Login ──
-    diagnostic.steps.push('login');
-    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
-    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
-    const language = page.locator('select[name="ddlLenguaje"]');
-    if (await language.count().catch(() => 0)) {
-      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
-    }
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
-      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
-    ]);
-    await page.waitForTimeout(2500);
-    diagnostic.loginUrl = page.url();
-    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
-      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
-    }
-    await maybeClickCashEnter(page, diagnostic);
-
-    // ── Cerca cliente per codice ──
-    diagnostic.steps.push('search_cliente');
-    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda').first().fill(codice, { timeout: 10000 });
-    await page.keyboard.press('Enter');
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-
-    const idInterno = await page.evaluate((cod) => {
-      const rows = Array.from(document.querySelectorAll('tr'));
-      for (const row of rows) {
-        if (row.textContent && row.textContent.includes(cod)) {
-          const anchors = Array.from(row.querySelectorAll('a'));
-          for (const a of anchors) {
-            const href = a.getAttribute('href') || '';
-            const onclick = a.getAttribute('onclick') || '';
-            const m = (href + onclick).match(/gotoClient\((\d+)\)/);
-            if (m) return m[1];
-          }
-        }
-      }
-      return null;
-    }, codice);
-
-    if (!idInterno) {
-      diagnostic.bodySample = await page.evaluate(() =>
-        (document.body ? document.body.innerText : '').slice(0, 500)).catch(() => '');
-      throw fail('UPDATE_CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato su Matchpoint.`, diagnostic);
-    }
-    diagnostic.idInterno = idInterno;
-    diagnostic.steps.push('goto_ficha');
-
-    // ── Scheda cliente: aggiorna campi ──
-    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${idInterno}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.locator('#CC_Datos_FormViewFicha_WUCPeople_TextBoxNombre').first().waitFor({ state: 'visible', timeout: 12000 });
-
-    const P = '#CC_Datos_FormViewFicha_WUCPeople_';
-    if (firstName) {
-      await page.locator(P + 'TextBoxNombre').first().fill('');
-      await page.locator(P + 'TextBoxNombre').first().fill(firstName);
-    }
-    if (surname) {
-      await page.locator(P + 'TextBoxApellido1').first().fill('');
-      await page.locator(P + 'TextBoxApellido1').first().fill(surname);
-    }
-    if (phone) {
-      await page.locator(P + 'TextBoxMovil').first().fill('');
-      await page.locator(P + 'TextBoxMovil').first().fill(phone);
-    }
-    if (email) {
-      await page.locator(P + 'TextBoxEmail').first().fill('');
-      await page.locator(P + 'TextBoxEmail').first().fill(email);
-    }
-    if (genderRaw) {
-      const genderValue = genderRaw === 'F' ? 'mujer' : (genderRaw === 'M' ? 'hombre' : 'na');
-      await page.locator(P + 'DropDownListSexo').first().selectOption({ value: genderValue }, { timeout: 5000 }).catch(() => {});
-    }
-
-    diagnostic.steps.push('salva_ficha');
-    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
-    page.once('dialog', async (dialog) => {
-      diagnostic.dialogMessage = dialog.message();
-      diagnostic.dialogType = dialog.type();
-      await dialog.accept().catch(() => {});
-    });
-    await Promise.all([
-      page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
-      page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
-    ]);
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-    diagnostic.afterSaveUrl = page.url();
-
-    // ── Livello (opzionale, non blocca l'operazione se fallisce) ──
-    const levelStr = (levelRaw === '' || levelRaw == null) ? '' : String(levelRaw).replace('.', ',');
-    if (levelStr) {
-      diagnostic.steps.push('update_nivel');
-      try {
-        const nivelPath = `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${idInterno}&cbf=callbackRefrescarPestanyaJuegoNivel&return_url=`;
-        await page.goto(absoluteUrl(baseUrl, nivelPath), { waitUntil: 'domcontentloaded', timeout: 20000 });
-        const nivelField = page.locator('#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_TextBoxNivelNumerico').first();
-        await nivelField.fill('', { timeout: 8000 });
-        await nivelField.fill(levelStr, { timeout: 8000 });
-        page.once('dialog', async (dialog) => { await dialog.accept().catch(() => {}); });
-        await Promise.all([
-          page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
-          page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
-        ]);
-        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-        diagnostic.steps.push('nivel_saved');
-      } catch (levelErr) {
-        diagnostic.levelError = levelErr instanceof Error ? levelErr.message : String(levelErr);
-      }
-    }
-
-    const updated = {};
-    if (firstName) updated.firstName = firstName;
-    if (surname) updated.surname = surname;
-    if (phone) updated.phone = phone;
-    if (email) updated.email = email;
-    if (genderRaw) updated.gender = genderRaw;
-    if (levelStr) updated.level = levelStr;
-
-    return { ok: true, idInterno, codice, updated, diagnostic };
-  } finally {
-    await browser.close().catch(() => {});
-  }
-}
-
 async function handleUpdateClient(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
@@ -3473,58 +3299,6 @@ async function debugFindClientWithBrowser(options = {}) {
       });
       return out.slice(0, 60);
     }).catch(() => []);
-
-    // ── Passo 2: estrai idInterno dalla riga che matcha il codice e apri la scheda ──
-    let idInterno = '';
-    try {
-      for (const r of (diagnostic.rows || [])) {
-        if (codice && String(r.text || '').includes(codice)) {
-          for (const h of (r.hrefs || [])) {
-            const m = String(h).match(/gotoClient\((\d+)\)/);
-            if (m) { idInterno = m[1]; break; }
-          }
-        }
-        if (idInterno) break;
-      }
-      diagnostic.idInternoTrovato = idInterno;
-    } catch (e) { diagnostic.idInternoError = String(e && e.message || e); }
-
-    if (idInterno) {
-      diagnostic.steps.push('goto_ficha_modifica');
-      const fichaUrl = absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`);
-      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-      diagnostic.fichaUrl = page.url();
-      diagnostic.fichaTitle = await page.title().catch(() => '');
-
-      diagnostic.fichaModifica = await page.evaluate(() => {
-        const fields = [];
-        document.querySelectorAll('input, select, textarea').forEach((el) => {
-          const entry = {
-            tag: el.tagName,
-            id: el.id || '',
-            name: el.getAttribute('name') || '',
-            type: el.getAttribute('type') || '',
-            value: (el.value || '').slice(0, 80),
-          };
-          if (el.tagName === 'SELECT') {
-            entry.options = Array.from(el.options).map((o) => ({ value: o.value, label: (o.textContent || '').trim().slice(0, 40), selected: o.selected })).slice(0, 30);
-          }
-          fields.push(entry);
-        });
-        const buttons = [];
-        document.querySelectorAll('input[type="submit"], input[type="button"], button, a[id], a[onclick]').forEach((el) => {
-          const label = (el.value || el.innerText || '').trim();
-          const idv = el.id || '';
-          if (/actualizar|guardar|salva|aggiorna|grabar|update/i.test(label + ' ' + idv)) {
-            buttons.push({ tag: el.tagName, id: idv, name: el.getAttribute('name') || '', label: label.slice(0, 40), onclick: (el.getAttribute('onclick') || '').slice(0, 120) });
-          }
-        });
-        return { fieldCount: fields.length, fields: fields.slice(0, 120), saveButtons: buttons.slice(0, 20) };
-      }).catch((e) => ({ error: String(e && e.message || e) }));
-    } else {
-      diagnostic.steps.push('idInterno_non_trovato');
-    }
 
     return { ok: true, diagnostic };
   } catch (error) {
@@ -3790,6 +3564,336 @@ async function createClientWithBrowser(options = {}) {
   } catch (error) {
     if (error && error.code && error.diagnostic) throw error;
     throw fail('CLIENT_CREATE_FAILED', (error && error.message) || String(error), diagnostic);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+// ── updateClientWithBrowser: aggiorna i dati anagrafici di un cliente ESISTENTE
+//    su Matchpoint. Il payload porta il `codice` visibile (4-6 cifre, = memberId
+//    dell'app); va prima risolto nell'`id` interno usato dall'URL della Ficha.
+//    NON crea: se il cliente non esiste ritorna CLIENT_NOT_FOUND.
+//    I selettori del form di modifica usano lo stesso container FormView del
+//    create (`CC_Datos_FormViewFicha_`) ma un WUC diverso e non documentato:
+//    per questo si individuano i campi per SUFFISSO (TextBoxNombre, ...) invece
+//    di assumere il prefisso `WUCDatosAltaCliente_` del create. ──
+async function updateClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const client = options.client || {};
+  const codice = clean(client.codice || client.memberId || '');
+  if (!/^\d{3,6}$/.test(codice)) {
+    throw fail('INVALID_CLIENT_CODICE', 'Codice Matchpoint (4-6 cifre) richiesto per aggiornare il cliente.', { codice });
+  }
+  const nome = clean(client.nome || client.firstName || '');
+  const cognome = clean(client.cognome || client.surname || '');
+  const telefono = clean(client.telefono || client.phone || '');
+  const email = clean(client.email || '');
+  const sessoRaw = clean(client.sesso || client.gender || '');
+  const livelloRaw = (client.livello !== undefined ? client.livello : client.level);
+  const hasLivello = !(livelloRaw === undefined || livelloRaw === null || String(livelloRaw).trim() === '');
+  const livelloNum = hasLivello ? Number(livelloRaw) : NaN;
+  const livelloStr = hasLivello && Number.isFinite(livelloNum) ? String(livelloNum).replace('.', ',') : '';
+
+  // Sesso -> etichetta della select Matchpoint (vuoto = non toccare il campo).
+  let sessoLabel = '';
+  if (/^f|donna|female|mujer/i.test(sessoRaw)) sessoLabel = 'Donna';
+  else if (/^m|uomo|male|hombre/i.test(sessoRaw)) sessoLabel = 'Uomo';
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'update_client',
+    codice, nome, cognome, telefono, email, sessoLabel, livello: livelloStr, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [], updatedFields: [], skippedFields: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  let page;
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    page = await context.newPage();
+    await page.addInitScript(() => { window.confirm = () => true; });
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    // ── Login (stessa sequenza di createClientWithBrowser) ──
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+    await maybeClickCashEnter(page, diagnostic);
+
+    // ── Risoluzione codice -> id interno (riusa la ricerca lista clienti) ──
+    diagnostic.steps.push('goto_listado');
+    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    // La lista clienti Matchpoint NON e' cercabile per "Codice": il buscador ha solo
+    // Cliente / Telefono / E-mail / Carta. Cerco per email (univoca) o, in mancanza,
+    // per telefono o cognome, e poi identifico la riga giusta dal codice.
+    let buscarBy = 'Cliente';
+    let buscarVal = cognome || nome || '';
+    if (email) { buscarBy = 'E-mail'; buscarVal = email; }
+    else if (telefono) { buscarBy = 'Telefono cellulare'; buscarVal = telefono; }
+    diagnostic.buscar = { by: buscarBy, val: buscarVal };
+    const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+    if (await optSel.count().catch(() => 0)) {
+      await optSel.selectOption({ label: buscarBy }, { timeout: 5000 }).catch(() => {});
+    }
+    const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+    if ((await valBox.count().catch(() => 0)) && buscarVal) {
+      diagnostic.steps.push('search_fill');
+      await valBox.fill(String(buscarVal), { timeout: 8000 }).catch(() => {});
+      const btnBuscar = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
+      if (await btnBuscar.count().catch(() => 0)) {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          btnBuscar.click({ timeout: 8000 }).catch(() => {}),
+        ]);
+      } else {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          valBox.press('Enter', { timeout: 5000 }).catch(() => {}),
+        ]);
+      }
+      await page.waitForTimeout(1200);
+    } else {
+      diagnostic.steps.push('search_field_not_found');
+    }
+    diagnostic.afterSearchUrl = page.url();
+    diagnostic.searchState = await page.evaluate(() => {
+      const opt = document.querySelector('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda');
+      const box = document.querySelector('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda');
+      const html = document.documentElement.outerHTML;
+      const goto = Array.from(html.matchAll(/gotoClient\((\d+)\)/g)).map((m) => m[1]);
+      return {
+        optionSelected: opt ? `${opt.value}|${(opt.options[opt.selectedIndex] || {}).text || ''}` : null,
+        boxValue: box ? box.value : null,
+        gotoIds: [...new Set(goto)].slice(0, 25),
+        bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 500),
+      };
+    }).catch(() => null);
+
+    // La ricerca con risultato UNICO apre direttamente la scheda cliente (FichaCliente),
+    // senza passare da una lista. Riconosco il caso dall'URL o dal testo "Scheda cliente : <codice>".
+    const ss = diagnostic.searchState || {};
+    const schedaMatch = String(ss.bodySample || '').match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+    const onFichaNow = /FichaCliente\.aspx/i.test(page.url()) || !!schedaMatch;
+    let idInterno = '';
+
+    if (onFichaNow) {
+      const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+      idInterno = idm ? idm[1] : '';
+      diagnostic.idInterno = idInterno;
+      diagnostic.resolve = { how: 'direct_ficha', id: idInterno, codiceScheda: schedaMatch ? schedaMatch[1] : '' };
+      diagnostic.steps.push('ficha_diretta');
+      // Siamo gia' sulla scheda del cliente: nessuna navigazione necessaria.
+    } else {
+      const resolved = await page.evaluate((cod) => {
+        const codNorm = String(cod).replace(/^0+/, '');
+        const matchId = (str) => {
+          const s2 = decodeURIComponent(String(str || ''));
+          let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+          m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+          return '';
+        };
+        const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
+        const rows = [...document.querySelectorAll('table tr')];
+        const candidates = [];
+        for (const tr of rows) {
+          const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+          if (!text) continue;
+          let id = '';
+          for (const h of rowAnchors(tr)) { id = matchId(h); if (id) break; }
+          if (!id) continue;
+          const codeHit = text.split(' ').some((t) => {
+            const tn = t.replace(/\D/g, '');
+            return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm);
+          });
+          candidates.push({ id, codeHit });
+        }
+        const hit = candidates.find((c) => c.codeHit);
+        if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length };
+        const uniqueIds = [...new Set(candidates.map((c) => c.id))];
+        if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
+        return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
+      }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
+      idInterno = resolved.id;
+      diagnostic.idInterno = idInterno;
+      diagnostic.resolve = resolved;
+      if (!idInterno) {
+        throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (resolve=${resolved.how}, righe=${resolved.rows}).`, diagnostic);
+      }
+      diagnostic.steps.push('goto_ficha');
+      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    }
+    diagnostic.fichaUrl = page.url();
+
+    // Localizza un controllo per suffisso: prima dentro il FormView, poi globale.
+    const locateBySuffix = async (suffix) => {
+      const scoped = page.locator(`[id^="CC_Datos_FormViewFicha_"][id$="${suffix}"]`).first();
+      if (await scoped.count().catch(() => 0)) return scoped;
+      const loose = page.locator(`[id$="${suffix}"]`).first();
+      if (await loose.count().catch(() => 0)) return loose;
+      return null;
+    };
+    const fillSuffix = async (suffix, value, label) => {
+      if (value === '' || value == null) { diagnostic.skippedFields.push(label || suffix); return; }
+      const loc = await locateBySuffix(suffix);
+      if (!loc) { diagnostic.steps.push(`field_not_found:${suffix}`); return; }
+      try {
+        await loc.fill(String(value), { timeout: 10000 });
+      } catch {
+        // fallback: imposta il valore via DOM e notifica i listener ASP.NET
+        await loc.evaluate((el, v) => {
+          el.value = v;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, String(value)).catch(() => {});
+      }
+      diagnostic.updatedFields.push(label || suffix);
+    };
+
+    await fillSuffix('TextBoxNombre', nome, 'nome');
+    await fillSuffix('TextBoxApellido1', cognome, 'cognome');
+    await fillSuffix('TextBoxMovil', telefono, 'telefono');
+    await fillSuffix('TextBoxEmail', email, 'email');
+
+    if (sessoLabel) {
+      const sel = await locateBySuffix('DropDownListSexo');
+      if (sel) {
+        await sel.selectOption({ label: sessoLabel }, { timeout: 5000 }).catch(() => {});
+        diagnostic.updatedFields.push('sesso');
+      } else {
+        diagnostic.steps.push('field_not_found:DropDownListSexo');
+      }
+    } else {
+      diagnostic.skippedFields.push('sesso');
+    }
+
+    // Dump del form solo in caso di anomalia (nessun campo compilato): aiuta a
+    // diagnosticare selettori diversi senza appesantire le risposte normali.
+    if (!diagnostic.updatedFields.length) {
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+    }
+
+    // ── Salva (bottone Actualizar della Ficha) ──
+    diagnostic.steps.push('salva');
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    page.once('dialog', async (dialog) => {
+      diagnostic.dialogMessage = dialog.message();
+      diagnostic.dialogType = dialog.type();
+      await dialog.accept().catch(() => {});
+    });
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {}),
+      page.evaluate(() => {
+        const btn = document.getElementById('CC_Datos_FormViewFicha_ButtonActualizar')
+          || document.querySelector('[id$="ButtonActualizar"]');
+        if (btn && typeof btn.click === 'function') { btn.click(); return; }
+        if (typeof window.__doPostBack === 'function') {
+          window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$ButtonActualizar', '');
+        }
+      }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.afterSaveUrl = page.url();
+
+    // ── Verifica messaggi di validazione (errori dato) ──
+    const vmsgs = await page.evaluate(() => {
+      const sels = ['[id*="ValidationSummary"]', '.field-validation-error',
+        'span[style*="color:Red"]', 'span[style*="color:red"]'];
+      const out = [];
+      for (const s of sels) {
+        document.querySelectorAll(s).forEach((el) => {
+          const t = (el.textContent || '').trim();
+          if (t) out.push(t);
+        });
+      }
+      return out.slice(0, 20);
+    }).catch(() => []);
+    diagnostic.validationMessages = vmsgs;
+    const realErrors = vmsgs.filter((m) => m && m.replace(/\s+/g, '').length > 1);
+    if (realErrors.length) {
+      throw fail('CLIENT_UPDATE_VALIDATION', `Matchpoint ha rifiutato l'aggiornamento del cliente ${codice}.`, diagnostic);
+    }
+
+    // ── Aggiornamento livello (pagina separata, come nel create) ──
+    if (hasLivello && livelloStr) {
+      try {
+        diagnostic.steps.push('goto_livello');
+        const livelloUrl = absoluteUrl(baseUrl,
+          `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
+          + `&cbf=callbackRefrescarPestanyaJuegoNivel`
+          + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
+        await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
+        let lvlField = page.locator(L + 'TextBoxNivelNumerico').first();
+        if (!(await lvlField.count().catch(() => 0))) {
+          lvlField = page.locator('[id$="TextBoxNivelNumerico"]').first();
+        }
+        if (await lvlField.count().catch(() => 0)) {
+          await lvlField.fill(livelloStr, { timeout: 10000 });
+          diagnostic.steps.push('salva_livello');
+          await Promise.all([
+            page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+            page.locator('#CC_Datos_FormViewFicha_ButtonActualizar, [id$="ButtonActualizar"]').first().click({ timeout: 15000 }).catch(() => {}),
+          ]);
+          await page.waitForTimeout(1500);
+          diagnostic.updatedFields.push('livello');
+        } else {
+          diagnostic.steps.push('field_not_found:TextBoxNivelNumerico');
+        }
+      } catch (levelError) {
+        diagnostic.levelError = (levelError && levelError.message) || String(levelError);
+      }
+    }
+
+    return {
+      ok: true,
+      message: `Cliente ${codice} aggiornato su Matchpoint`,
+      codice,
+      idInterno,
+      nome,
+      cognome,
+      telefono,
+      email,
+      sesso: sessoLabel,
+      livello: livelloStr,
+      updatedFields: diagnostic.updatedFields,
+      diagnostic,
+    };
+  } catch (error) {
+    if (error && error.code && error.diagnostic) throw error;
+    throw fail('CLIENT_UPDATE_FAILED', (error && error.message) || String(error), diagnostic);
   } finally {
     await browser.close().catch(() => {});
   }
