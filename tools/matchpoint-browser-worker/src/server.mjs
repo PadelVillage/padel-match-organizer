@@ -3688,6 +3688,18 @@ async function updateClientWithBrowser(options = {}) {
       diagnostic.steps.push('search_field_not_found');
     }
     diagnostic.afterSearchUrl = page.url();
+    diagnostic.searchState = await page.evaluate(() => {
+      const opt = document.querySelector('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda');
+      const box = document.querySelector('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda');
+      const html = document.documentElement.outerHTML;
+      const goto = Array.from(html.matchAll(/gotoClient\((\d+)\)/g)).map((m) => m[1]);
+      return {
+        optionSelected: opt ? `${opt.value}|${(opt.options[opt.selectedIndex] || {}).text || ''}` : null,
+        boxValue: box ? box.value : null,
+        gotoIds: [...new Set(goto)].slice(0, 25),
+        bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 500),
+      };
+    }).catch(() => null);
 
     const resolved = await page.evaluate((cod) => {
       const codNorm = String(cod).replace(/^0+/, ''); // confronto ignorando gli zeri iniziali
