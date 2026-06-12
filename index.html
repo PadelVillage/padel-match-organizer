@@ -24196,20 +24196,40 @@ Per confermare scrivi ELIMINA.`);
 	          gender: member.gender === 'F' ? 'F' : (member.gender === 'M' ? 'M' : ''),
 	          level: (member.level === '' || member.level == null) ? '' : member.level,
 	        }};
-	        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-update`, {
-	          method: 'POST',
-	          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-	          body: JSON.stringify(payload),
-	        });
-	        const txt = await response.text();
-	        let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
-	        if (!response.ok || (data && data.ok === false)) {
+	        // Una singola chiamata all'edge → worker. Ritorna {ok, reason, retryable, data}.
+	        // L'edge mappa OGNI errore del worker su HTTP 502 (WORKER_ERROR): non si distingue
+	        // transitorio da logico dal solo status, quindi si guarda il codice nel messaggio.
+	        const NON_RETRYABLE = /CLIENT_NOT_FOUND|INVALID_CLIENT_CODICE|MATCHPOINT_WORKER_SECRETS_MISSING|CLIENT_CREATE_VALIDATION/i;
+	        const callEdgeOnce = async () => {
+	          const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-update`, {
+	            method: 'POST',
+	            headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+	            body: JSON.stringify(payload),
+	          });
+	          const txt = await response.text();
+	          let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+	          if (response.ok && !(data && data.ok === false)) return { ok: true, data };
 	          const reason = (data && (data.message || data.error)) || `HTTP ${response.status}`;
-	          console.warn('Matchpoint update non riuscito:', reason);
-	          laterAlert('⚠️ Socio salvato localmente, ma aggiornamento su Matchpoint non riuscito.', 'warning');
-	          return { status: 'error', reason };
+	          const retryable = (response.status >= 500 || response.status === 0) && !NON_RETRYABLE.test(String(reason));
+	          return { ok: false, reason, retryable, diagnostic: data && data.diagnostic };
+	        };
+	        // Il worker (browser serializzato in coda) fallisce a volte in modo transitorio: i log
+	        // mostrano 502 seguiti poco dopo da 200. Un secondo tentativo seriale di norma riesce.
+	        // Ritenta UNA volta solo sui transitori (mai su CLIENT_NOT_FOUND & co.).
+	        let last;
+	        for (let attempt = 1; attempt <= 2; attempt++) {
+	          try {
+	            last = await callEdgeOnce();
+	          } catch (netErr) {
+	            last = { ok: false, reason: (netErr && netErr.message) || String(netErr), retryable: true };
+	          }
+	          if (last.ok) return { status: 'ok', data: last.data };
+	          if (attempt < 2 && last.retryable) { await new Promise(r => setTimeout(r, 3000)); continue; }
+	          break;
 	        }
-	        return { status: 'ok', data };
+	        console.warn('Matchpoint update non riuscito:', last.reason, last.diagnostic || '');
+	        laterAlert(`⚠️ Socio salvato localmente, ma aggiornamento su Matchpoint non riuscito: ${String(last.reason).slice(0, 140)}`, 'warning');
+	        return { status: 'error', reason: last.reason };
 	      } catch (e) {
 	        console.warn('pmoPushMemberUpdateToMatchpoint error:', e);
 	        laterAlert('⚠️ Socio salvato localmente, ma sincronizzazione Matchpoint non riuscita.', 'warning');
