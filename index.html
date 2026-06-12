@@ -34322,6 +34322,7 @@ Per confermare scrivi ELIMINA.`);
   // Riusa il client Supabase UMD già caricato e la config cloud dei record. v5.684.
   let _staffCalRtClient = null, _staffCalRtChannel = null, _staffCalRtStarted = false, _staffCalRtPullTimer = null;
   let _staffCalRtRetryTimer = null, _staffCalRtRetryDelay = 0;
+  let _staffCalMemberBackstopAt = 0;   // throttle del backstop pull-based dei soci (vedi staffCalReconcileMembersFromCloud)
   function staffCalRtChannelName() {
     return 'pv-staff-cal-' + ((typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test' : 'prod');
   }
@@ -34560,6 +34561,65 @@ Per confermare scrivi ELIMINA.`);
   }
 
   let _staffCalCloudRefreshAt = 0;
+  // Backstop pull-based per le SCHEDE SOCIO (anagrafica) tra device. v5.7xx.
+  // Il push realtime 'member-changed' (staffCalRtBroadcastMemberChanged) è best-effort: su mobile
+  // il WebSocket è spesso strozzato dal browser e il broadcast può andare perso → l'altro device
+  // resta con la scheda vecchia. A differenza degli staff booking, finora i soci NON avevano alcuna
+  // rete di sicurezza pull (staffCalRefreshFromCloud li ri-scaricava solo se 'giocatori' era vuoto,
+  // e il path withMembers/applyMatchpointMembersToLocal fa "existing || imported" → non propaga MAI
+  // una modifica a un socio già presente). Questo è il gemello pull del broadcast handler
+  // staffCalRtOnRemoteMemberChanged: ripesca incrementalmente i soci dal cloud e applica
+  // gli aggiornamenti con regola updatedAt-wins, stessi campi del broadcast.
+  // SICUREZZA LIVELLO: nel cloud il Livello è SEMPRE app-curated — Matchpoint non lo scrive mai
+  // (l'edge matchpoint-clients-sync fa `level: existing.level || …`, preservando il valore già
+  // presente). Quindi applicare il livello qui non può mai introdurre il livello di Matchpoint.
+  async function staffCalReconcileMembersFromCloud() {
+    try {
+      if (!Array.isArray(giocatori) || typeof pmoStaffRpcPaged !== 'function') return;
+      const now = Date.now();
+      if (now - _staffCalMemberBackstopAt < 30000) return;   // throttle ~30s (il realtime copre l'istantaneo)
+      _staffCalMemberBackstopAt = now;
+      // Finestra scorrevole sovrapposta (~120s): gapless senza dover tracciare un watermark preciso.
+      // Riapplicare lo stesso record è un no-op (updatedAt-wins), quindi l'overlap è innocuo.
+      const since = new Date(now - 120000).toISOString();
+      const rows = await pmoStaffRpcPaged('pmo_get_records_admin',
+        { p_record_types: ['member'], p_since: since },
+        'cloud_sync', 'sincronizzare le schede socio dal cloud');
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length) return;
+      let changed = false;
+      list.forEach(function (row) {
+        if (!row || row.record_type !== 'member' || row.deleted) return;
+        const m = row.payload; if (!m) return;
+        const id = m.id || row.local_key;
+        const idx = giocatori.findIndex(function (g) {
+          return (id && String(g.id) === String(id)) ||
+                 (m.memberId && g.memberId && String(g.memberId) === String(m.memberId));
+        });
+        if (idx < 0) return;   // socio non presente in locale → lo gestisce l'idratazione/import, non il backstop
+        const cloudTs = String(m.updatedAt || '');
+        const localTs = String(giocatori[idx].updatedAt || '');
+        if (!cloudTs || !(cloudTs > localTs)) return;   // cloud non più recente → niente (evita churn col proprio record)
+        giocatori[idx] = Object.assign({}, giocatori[idx], {
+          firstName: m.firstName || giocatori[idx].firstName,
+          surname:   m.surname   || giocatori[idx].surname,
+          name:      m.name      || giocatori[idx].name,
+          phone:     m.phone     !== undefined ? m.phone : giocatori[idx].phone,
+          email:     m.email     !== undefined ? m.email : giocatori[idx].email,
+          level:     m.level     !== undefined ? m.level : giocatori[idx].level,
+          gender:    m.gender    || giocatori[idx].gender,
+          updatedAt: m.updatedAt || giocatori[idx].updatedAt
+        });
+        changed = true;
+      });
+      if (changed) {
+        save('giocatori', giocatori);
+        try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+        try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
+      }
+    } catch (e) { console.warn('staffCalReconcileMembersFromCloud:', e); }
+  }
+
   async function staffCalRefreshFromCloud(opts) {
     try {
       const force = opts && opts.force;
@@ -34587,6 +34647,9 @@ Per confermare scrivi ELIMINA.`);
           }
         }
       } catch (e) { console.warn('staffCalRefreshFromCloud members:', e); }
+      // Rete di sicurezza cross-device per le schede socio già presenti in locale: se il broadcast
+      // realtime 'member-changed' è andato perso, qui la modifica si auto-guarisce (throttle interno ~30s).
+      try { await staffCalReconcileMembersFromCloud(); } catch (e) { console.warn('staffCalRefreshFromCloud reconcile members:', e); }
       // Show subtle non-blocking status in calendar header
       const statusEl = document.getElementById('staffCalCloudStatus');
       if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
