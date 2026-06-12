@@ -13175,8 +13175,10 @@ Grazie.`
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito la scheda socio su Supabase');
-      try { pmoPushMemberUpdateToMatchpoint(giocatori[idx]); } catch (e) { console.warn('push update Matchpoint:', e); }
       showAlert('✅ Scheda salvata', 'success');
+      // Push verso Matchpoint in background: la funzione gestisce da sé i toast di esito
+      // (skip/errore), posticipati per non sovrascrivere "Scheda salvata".
+      Promise.resolve(pmoPushMemberUpdateToMatchpoint(giocatori[idx])).catch(e => console.warn('push update Matchpoint:', e));
     }
     function toggleMemberActive(memberId) {
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
@@ -24158,13 +24160,33 @@ Per confermare scrivi ELIMINA.`);
 	      if (!record) return;
 	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
 	    }
-	    async function pmoPushMemberUpdateToMatchpoint(member) {
+	    // Spinge la modifica del socio verso Matchpoint (via edge matchpoint-clients-update
+	    // → worker /update-client). Ritorna sempre uno stato ({status, reason}) e NON lancia.
+	    // L'aggiornamento su Matchpoint passa per Playwright e può durare decine di secondi:
+	    // per questo è fire-and-forget e i messaggi all'utente sono posticipati (laterAlert)
+	    // così non sovrascrivono il toast "✅ Scheda salvata" appena mostrato.
+	    async function pmoPushMemberUpdateToMatchpoint(member, opts = {}) {
+	      const notify = opts.notify !== false;
+	      const laterAlert = (msg, type) => {
+	        if (!notify || typeof showAlert !== 'function') return;
+	        setTimeout(() => { try { showAlert(msg, type); } catch (_) {} }, 3200);
+	      };
 	      try {
-	        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return;
+	        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return { status: 'guest' };
 	        const codice = String(member.memberId || '').trim();
-	        if (!/^\d{4,6}$/.test(codice)) return;
+	        if (!/^\d{4,6}$/.test(codice)) {
+	          laterAlert('ℹ️ Socio senza codice Matchpoint: salvato solo nell\'app, non sincronizzato col gestionale.', 'info');
+	          return { status: 'skipped', reason: 'no_matchpoint_code' };
+	        }
 	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-	        const staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare il socio su Matchpoint');
+	        let staff;
+	        try {
+	          staff = await pmoRequireStaffPermission('cloud_sync', 'aggiornare il socio su Matchpoint');
+	        } catch (permErr) {
+	          // Utente senza permesso cloud_sync: niente push e niente avviso rumoroso ad ogni salvataggio.
+	          console.warn('cloud_sync non disponibile, push Matchpoint saltato:', permErr);
+	          return { status: 'no_permission' };
+	        }
 	        const payload = { client: {
 	          codice,
 	          firstName: member.firstName || '',
@@ -24182,11 +24204,16 @@ Per confermare scrivi ELIMINA.`);
 	        const txt = await response.text();
 	        let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
 	        if (!response.ok || (data && data.ok === false)) {
-	          console.warn('Matchpoint update non riuscito:', data && (data.message || data.error));
-	          if (typeof showAlert === 'function') showAlert('⚠️ Socio salvato localmente, ma aggiornamento su Matchpoint non riuscito.', 'warning');
+	          const reason = (data && (data.message || data.error)) || `HTTP ${response.status}`;
+	          console.warn('Matchpoint update non riuscito:', reason);
+	          laterAlert('⚠️ Socio salvato localmente, ma aggiornamento su Matchpoint non riuscito.', 'warning');
+	          return { status: 'error', reason };
 	        }
+	        return { status: 'ok', data };
 	      } catch (e) {
 	        console.warn('pmoPushMemberUpdateToMatchpoint error:', e);
+	        laterAlert('⚠️ Socio salvato localmente, ma sincronizzazione Matchpoint non riuscita.', 'warning');
+	        return { status: 'error', reason: (e && e.message) || String(e) };
 	      }
 	    }
 	    function pmoQueueImmediateMemberCloudDelete(member, actionLabel='segnare subito il socio cancellato su Supabase') {
@@ -34330,6 +34357,7 @@ Per confermare scrivi ELIMINA.`);
         .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
         .on('broadcast', { event: 'member-changed' }, function (msg) { staffCalRtOnRemoteMemberChanged(msg && msg.payload); })
+        .on('broadcast', { event: 'member-mp-changed' }, function (msg) { staffCalRtApplyMatchpointMember(msg && msg.payload && msg.payload.member); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
           if (status === 'SUBSCRIBED') {
@@ -34390,6 +34418,49 @@ Per confermare scrivi ELIMINA.`);
       try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
       try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
     } catch (e) { console.warn('staff-cal rt member-changed handler:', e); }
+  }
+  // Direzione B (Matchpoint → app): applica una modifica anagrafica arrivata da Matchpoint via
+  // broadcast 'member-mp-changed' (inviato dall'edge matchpoint-clients-sync dopo l'import).
+  // DIFFERENZE rispetto a staffCalRtOnRemoteMemberChanged (app↔app):
+  //  - match robusto (memberId/codice → telefono/email/nome) per non duplicare soci con id locali diversi;
+  //  - sovrascrive SOLO i campi gestiti da Matchpoint (nome, cognome, telefono, email, sesso);
+  //  - NON tocca il Livello (curato nell'app) né gli altri campi operativi;
+  //  - NON ripusha verso Matchpoint (nessun loop).
+  function staffCalRtApplyMatchpointMember(m) {
+    try {
+      if (!m) return;
+      let idx = -1;
+      var code = String(m.memberId || '').trim();
+      if (/^\d{3,6}$/.test(code)) {
+        idx = giocatori.findIndex(function (g) { return g && g.memberId && String(g.memberId) === code; });
+      }
+      if (idx < 0 && typeof findMatchingMemberIndex === 'function') {
+        idx = findMatchingMemberIndex(m);
+      }
+      if (idx >= 0) {
+        var g = giocatori[idx];
+        var firstName = (m.firstName != null && String(m.firstName).trim()) ? m.firstName : g.firstName;
+        var surname = (m.surname != null && String(m.surname).trim()) ? m.surname : g.surname;
+        giocatori[idx] = Object.assign({}, g, {
+          firstName: firstName,
+          surname: surname,
+          name: (typeof compactSpaces === 'function') ? compactSpaces(firstName + ' ' + surname) : (firstName + ' ' + surname),
+          phone: (m.phone !== undefined && m.phone !== null) ? m.phone : g.phone,
+          email: (m.email !== undefined && m.email !== null) ? m.email : g.email,
+          gender: (m.gender && m.gender !== 'NA') ? m.gender : g.gender,
+          // memberId: adotta il codice Matchpoint se in locale manca o è un segnaposto PMO-
+          memberId: (/^\d{3,6}$/.test(code) && (!g.memberId || /^PMO-/i.test(String(g.memberId)))) ? code : g.memberId,
+          // Livello e campi operativi: invariati (curati nell'app)
+          updatedAt: m.updatedAt || new Date().toISOString()
+        });
+      } else {
+        // Socio non presente localmente: aggiungilo (con livello/segnaposti di Matchpoint)
+        giocatori.push((typeof ensureMemberId === 'function') ? ensureMemberId(Object.assign({}, m)) : m);
+      }
+      save('giocatori', giocatori);
+      try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+      try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
+    } catch (e) { console.warn('staff-cal rt member-mp-changed handler:', e); }
   }
   function staffCalRtBroadcast() {
     try {
