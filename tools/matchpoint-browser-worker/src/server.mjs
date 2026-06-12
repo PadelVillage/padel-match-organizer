@@ -3799,8 +3799,11 @@ async function updateClientWithBrowser(options = {}) {
       diagnostic.skippedFields.push('sesso');
     }
 
-    // Dump del form: serve come verifica A0 dei selettori al primo run reale.
-    try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+    // Dump del form solo in caso di anomalia (nessun campo compilato): aiuta a
+    // diagnosticare selettori diversi senza appesantire le risposte normali.
+    if (!diagnostic.updatedFields.length) {
+      try { diagnostic.formInputsDump = await dumpFormInputs(page); } catch {}
+    }
 
     // ── Salva (bottone Actualizar della Ficha) ──
     diagnostic.steps.push('salva');
