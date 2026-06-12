@@ -400,6 +400,113 @@ function mergeProtectedMember(existing: JsonMap, imported: ParsedMember, importe
   };
 }
 
+// Direzione B (Matchpoint → app): a differenza di mergeProtectedMember (che protegge i dati
+// curati nell'app), qui Matchpoint È autorevole sui campi anagrafici "di contatto": Nome,
+// Cognome, Telefono, Email, Sesso. Il Livello NON viene mai sovrascritto (resta curato nell'app
+// tramite l'autovalutazione). Ritorna anche `changed`: true se uno di quei campi è davvero
+// cambiato rispetto al payload memorizzato (confronto normalizzato, così differenze di sola
+// formattazione non generano falsi cambiamenti né broadcast inutili).
+function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, importedAt: string) {
+  const pickText = (imp: string, exi: string) => {
+    const i = clean(imp);
+    const e = clean(exi);
+    if (!i) return { value: e, changed: false };
+    if (normalizeKey(i) === normalizeKey(e)) return { value: e, changed: false };
+    return { value: i, changed: true };
+  };
+  let changed = false;
+  const fn = pickText(titleCaseNamePart(imported.firstName), existing.firstName);
+  if (fn.changed) changed = true;
+  const sn = pickText(titleCaseNamePart(imported.surname), existing.surname);
+  if (sn.changed) changed = true;
+
+  // Telefono: confronto sulle sole cifre normalizzate.
+  let phone = clean(existing.phone);
+  if (clean(imported.phone) && phoneDigits(imported.phone) !== phoneDigits(existing.phone)) {
+    phone = clean(imported.phone);
+    changed = true;
+  }
+  // Email: confronto su chiave normalizzata.
+  let email = clean(existing.email);
+  if (clean(imported.email) && emailKey(imported.email) !== emailKey(existing.email)) {
+    email = clean(imported.email);
+    changed = true;
+  }
+  // Sesso: sovrascrive solo se Matchpoint ha un valore reale (M/F) diverso.
+  let gender = existing.gender || 'NA';
+  if (imported.gender && imported.gender !== 'NA' && imported.gender !== existing.gender) {
+    gender = imported.gender;
+    changed = true;
+  }
+
+  const firstName = fn.value || titleCaseNamePart(existing.firstName || imported.firstName);
+  const surname = sn.value || titleCaseNamePart(existing.surname || imported.surname);
+  const importedAge = parseAgeValue(imported.age);
+  const existingAge = parseAgeValue(existing.age);
+  const payload: JsonMap = {
+    ...existing,
+    id: existing.id || imported.id,
+    memberId: chooseMemberId(existing.memberId, imported.memberId),
+    firstName,
+    surname,
+    name: compactSpaces(`${firstName} ${surname}`),
+    phone,
+    email,
+    gender,
+    birthDate: existing.birthDate || imported.birthDate || '',
+    age: importedAge !== null ? importedAge : (existingAge !== null ? existingAge : null),
+    city: existing.city || imported.city || '',
+    cap: existing.cap || imported.cap || '',
+    province: existing.province || imported.province || '',
+    address: existing.address || imported.address || '',
+    level: existing.level || imported.level || 0.5, // Livello: curato nell'app, mai sovrascritto da Matchpoint
+    playingPosition: existing.playingPosition || existing.position || imported.playingPosition || '',
+    active: existing.active !== false,
+    prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
+    prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : [],
+    source: existing.source || 'matchpoint_auto',
+    matchpointImportedAt: importedAt,
+    updatedAt: changed ? importedAt : (clean(existing.updatedAt) || importedAt),
+  };
+  return { payload, changed };
+}
+
+// Invia un broadcast Realtime "member-mp-changed" sul canale pv-staff-cal-{prod|test}, così i
+// device connessi applicano subito la modifica via staffCalRtApplyMatchpointMember (che preserva
+// il Livello curato in locale), senza refresh. Usa la REST API broadcast di Supabase Realtime
+// (canale pubblico → basta la apikey anon). Niente postgres_changes: pmo_cloud_records è RPC-only
+// (RLS senza policy), quindi i postgres_changes non verrebbero mai consegnati.
+async function broadcastMemberChanges(supabaseUrl: string, apiKey: string, members: JsonMap[]) {
+  const list = (Array.isArray(members) ? members : []).filter(Boolean);
+  if (!list.length) return { sent: 0, ok: true, skipped: true };
+  const env = supabaseUrl.includes('qqbfphyslczzkxoncgex') ? 'prod' : 'test';
+  const topic = `pv-staff-cal-${env}`;
+  const ts = Date.now();
+  const CAP = 200;
+  const capped = list.length > CAP;
+  const slice = list.slice(0, CAP);
+  const endpoint = `${supabaseUrl.replace(/\/+$/, '')}/realtime/v1/api/broadcast`;
+  let sent = 0;
+  let lastStatus = 0;
+  let okAll = true;
+  // Chunk da 50 messaggi per restare sotto i rate-limit del broadcast.
+  for (let i = 0; i < slice.length; i += 50) {
+    const messages = slice.slice(i, i + 50).map((m) => ({ topic, event: 'member-mp-changed', payload: { member: m, ts } }));
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey, Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ messages }),
+      });
+      lastStatus = res.status;
+      if (res.ok) sent += messages.length; else okAll = false;
+    } catch {
+      okAll = false;
+    }
+  }
+  return { sent, ok: okAll, status: lastStatus, capped, total: list.length };
+}
+
 function attr(tag: string, name: string) {
   const re = new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
   const match = tag.match(re);
@@ -1766,6 +1873,9 @@ Deno.serve(async (req) => {
 
     const existing = await loadExistingMemberRecords(admin);
     const records = [];
+    // Direzione B: soci la cui anagrafica di contatto è cambiata in Matchpoint (o nuovi),
+    // da propagare in realtime ai device connessi dopo l'upsert.
+    const broadcastMembers: JsonMap[] = [];
     const memberRecordKeys = new Set<string>();
     const duplicateDeletesByKey = new Map<string, any>();
     let added = 0;
@@ -1784,7 +1894,16 @@ Deno.serve(async (req) => {
       const localKey = clean((match && !shouldNormalizeMemberLocalKey(match) && match.local_key)
         ? match.local_key
         : (canonicalKey || match?.local_key || `member:${member.id}`));
-      const payload = match ? mergeProtectedMember(match.payload || {}, member, importedAt) : member;
+      let payload: JsonMap;
+      let memberChangedForBroadcast = false;
+      if (match) {
+        const applied = applyMatchpointContacts(match.payload || {}, member, importedAt);
+        payload = applied.payload;
+        memberChangedForBroadcast = applied.changed;
+      } else {
+        payload = member;
+        memberChangedForBroadcast = true; // socio nuovo: va mostrato subito sui device
+      }
       const memberRecordKey = `member|${localKey}`;
       if (memberRecordKeys.has(memberRecordKey)) {
         duplicateRows += 1;
@@ -1793,6 +1912,7 @@ Deno.serve(async (req) => {
       memberRecordKeys.add(memberRecordKey);
       if (match) updated += 1;
       else added += 1;
+      if (memberChangedForBroadcast) broadcastMembers.push(payload);
       records.push({
         record_type: 'member',
         local_key: localKey,
@@ -1908,6 +2028,10 @@ Deno.serve(async (req) => {
       .upsert(finalRecords, { onConflict: 'record_type,local_key' });
     if (upsertError) throw upsertError;
 
+    // Direzione B: propaga in realtime ai device connessi i soci cambiati/nuovi (no postgres_changes).
+    const broadcastResult = await broadcastMemberChanges(supabaseUrl, anonKey, broadcastMembers)
+      .catch((e) => ({ sent: 0, ok: false, error: errorText(e) }));
+
     await logAudit(admin, actor, 'matchpoint_clients_auto_import_success', {
       sourceRows: validation.sourceRows,
       importableRows: validation.importableRows,
@@ -1923,6 +2047,7 @@ Deno.serve(async (req) => {
       diagnosticFile,
       upserted: finalRecords.length,
       memberIdEnrichment,
+      broadcast: broadcastResult,
     });
 
     return okResponse({
@@ -1938,6 +2063,7 @@ Deno.serve(async (req) => {
         staleDeleted,
         added,
         updated,
+        broadcast: broadcastResult,
       },
     });
   } catch (error) {
