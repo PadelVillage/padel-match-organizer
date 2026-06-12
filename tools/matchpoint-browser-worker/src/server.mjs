@@ -3667,39 +3667,40 @@ async function updateClientWithBrowser(options = {}) {
     }
     diagnostic.afterSearchUrl = page.url();
 
-    const idInterno = await page.evaluate((cod) => {
-      const rows = [...document.querySelectorAll('table tr')];
-      const idFromHrefs = (tr) => {
-        const hrefs = [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
-        for (const h of hrefs) {
-          const m = decodeURIComponent(h).match(/[?&]id=(\d+)/i);
-          if (m) return m[1];
-        }
-        return '';
+    const resolved = await page.evaluate((cod) => {
+      const codNorm = String(cod).replace(/^0+/, ''); // confronto ignorando gli zeri iniziali
+      const matchId = (str) => {
+        const m = decodeURIComponent(String(str || '')).match(/[?&]id=(\d+)/i);
+        return m ? m[1] : '';
       };
-      // 1) riga il cui testo contiene il codice come token esatto
+      const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
+      const rows = [...document.querySelectorAll('table tr')];
+      const candidates = [];
       for (const tr of rows) {
-        const text = (tr.innerText || '').replace(/ /g, ' ').trim();
+        const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
         if (!text) continue;
-        const tokens = text.split(/\s+/);
-        if (tokens.includes(cod)) {
-          const id = idFromHrefs(tr);
-          if (id) return id;
-        }
+        let id = '';
+        for (const h of rowAnchors(tr)) { id = matchId(h); if (id) break; }
+        if (!id) continue;
+        // il codice combacia se un token (sole cifre) e' uguale al codice, anche ignorando gli zeri iniziali
+        const codeHit = text.split(' ').some((t) => {
+          const tn = t.replace(/\D/g, '');
+          return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm);
+        });
+        candidates.push({ id, codeHit });
       }
-      // 2) fallback: prima riga con un link FichaCliente
-      for (const tr of rows) {
-        const hrefs = [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
-        for (const h of hrefs) {
-          const m = decodeURIComponent(h).match(/FichaCliente\.aspx\?id=(\d+)/i);
-          if (m) return m[1];
-        }
-      }
-      return '';
-    }, codice).catch(() => '');
+      const hit = candidates.find((c) => c.codeHit);
+      if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length };
+      // Se la ricerca per codice ha lasciato un solo cliente, usalo (non ambiguo).
+      const uniqueIds = [...new Set(candidates.map((c) => c.id))];
+      if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
+      return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
+    }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
+    const idInterno = resolved.id;
     diagnostic.idInterno = idInterno;
+    diagnostic.resolve = resolved;
     if (!idInterno) {
-      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint.`, diagnostic);
+      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (resolve=${resolved.how}, righe=${resolved.rows}).`, diagnostic);
     }
 
     // ── Apri la Ficha del cliente ──
