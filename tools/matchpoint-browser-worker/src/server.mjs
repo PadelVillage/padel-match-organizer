@@ -3701,52 +3701,60 @@ async function updateClientWithBrowser(options = {}) {
       };
     }).catch(() => null);
 
-    const resolved = await page.evaluate((cod) => {
-      const codNorm = String(cod).replace(/^0+/, ''); // confronto ignorando gli zeri iniziali
-      const matchId = (str) => {
-        const s2 = decodeURIComponent(String(str || ''));
-        let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
-        m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
-        return '';
-      };
-      const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
-      const rows = [...document.querySelectorAll('table tr')];
-      const candidates = [];
-      for (const tr of rows) {
-        const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
-        if (!text) continue;
-        let id = '';
-        for (const h of rowAnchors(tr)) { id = matchId(h); if (id) break; }
-        if (!id) continue;
-        // il codice combacia se un token (sole cifre) e' uguale al codice, anche ignorando gli zeri iniziali
-        const codeHit = text.split(' ').some((t) => {
-          const tn = t.replace(/\D/g, '');
-          return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm);
-        });
-        candidates.push({ id, codeHit });
-      }
-      const sample = rows.slice(0, 6).map((tr) => ({
-        text: (tr.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160),
-        anchors: [...tr.querySelectorAll('a')].map((a) => `${a.getAttribute('href') || ''} | ${a.getAttribute('onclick') || ''}`).slice(0, 4),
-      }));
-      const hit = candidates.find((c) => c.codeHit);
-      if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length, sample };
-      // Se la ricerca ha lasciato un solo cliente, usalo (non ambiguo).
-      const uniqueIds = [...new Set(candidates.map((c) => c.id))];
-      if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length, sample };
-      return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length, sample };
-    }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
-    const idInterno = resolved.id;
-    diagnostic.idInterno = idInterno;
-    diagnostic.resolve = resolved;
-    if (!idInterno) {
-      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (resolve=${resolved.how}, righe=${resolved.rows}).`, diagnostic);
-    }
+    // La ricerca con risultato UNICO apre direttamente la scheda cliente (FichaCliente),
+    // senza passare da una lista. Riconosco il caso dall'URL o dal testo "Scheda cliente : <codice>".
+    const ss = diagnostic.searchState || {};
+    const schedaMatch = String(ss.bodySample || '').match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+    const onFichaNow = /FichaCliente\.aspx/i.test(page.url()) || !!schedaMatch;
+    let idInterno = '';
 
-    // ── Apri la Ficha del cliente ──
-    diagnostic.steps.push('goto_ficha');
-    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    if (onFichaNow) {
+      const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+      idInterno = idm ? idm[1] : '';
+      diagnostic.idInterno = idInterno;
+      diagnostic.resolve = { how: 'direct_ficha', id: idInterno, codiceScheda: schedaMatch ? schedaMatch[1] : '' };
+      diagnostic.steps.push('ficha_diretta');
+      // Siamo gia' sulla scheda del cliente: nessuna navigazione necessaria.
+    } else {
+      const resolved = await page.evaluate((cod) => {
+        const codNorm = String(cod).replace(/^0+/, '');
+        const matchId = (str) => {
+          const s2 = decodeURIComponent(String(str || ''));
+          let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+          m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+          return '';
+        };
+        const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
+        const rows = [...document.querySelectorAll('table tr')];
+        const candidates = [];
+        for (const tr of rows) {
+          const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+          if (!text) continue;
+          let id = '';
+          for (const h of rowAnchors(tr)) { id = matchId(h); if (id) break; }
+          if (!id) continue;
+          const codeHit = text.split(' ').some((t) => {
+            const tn = t.replace(/\D/g, '');
+            return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm);
+          });
+          candidates.push({ id, codeHit });
+        }
+        const hit = candidates.find((c) => c.codeHit);
+        if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length };
+        const uniqueIds = [...new Set(candidates.map((c) => c.id))];
+        if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
+        return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
+      }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
+      idInterno = resolved.id;
+      diagnostic.idInterno = idInterno;
+      diagnostic.resolve = resolved;
+      if (!idInterno) {
+        throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (resolve=${resolved.how}, righe=${resolved.rows}).`, diagnostic);
+      }
+      diagnostic.steps.push('goto_ficha');
+      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    }
     diagnostic.fichaUrl = page.url();
 
     // Localizza un controllo per suffisso: prima dentro il FormView, poi globale.
