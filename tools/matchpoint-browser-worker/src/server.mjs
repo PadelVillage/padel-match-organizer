@@ -3655,13 +3655,35 @@ async function updateClientWithBrowser(options = {}) {
     diagnostic.steps.push('goto_listado');
     await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-    const searchSel = 'input[id*="buscar" i], input[id*="filtro" i], input[id*="search" i], input[id*="codigo" i], input[id*="texto" i], input[name*="buscar" i], input[name*="filtro" i]';
-    const search = page.locator(searchSel).first();
-    if (await search.count().catch(() => 0)) {
+    // La lista clienti Matchpoint NON e' cercabile per "Codice": il buscador ha solo
+    // Cliente / Telefono / E-mail / Carta. Cerco per email (univoca) o, in mancanza,
+    // per telefono o cognome, e poi identifico la riga giusta dal codice.
+    let buscarBy = 'Cliente';
+    let buscarVal = cognome || nome || '';
+    if (email) { buscarBy = 'E-mail'; buscarVal = email; }
+    else if (telefono) { buscarBy = 'Telefono cellulare'; buscarVal = telefono; }
+    diagnostic.buscar = { by: buscarBy, val: buscarVal };
+    const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+    if (await optSel.count().catch(() => 0)) {
+      await optSel.selectOption({ label: buscarBy }, { timeout: 5000 }).catch(() => {});
+    }
+    const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+    if ((await valBox.count().catch(() => 0)) && buscarVal) {
       diagnostic.steps.push('search_fill');
-      await search.fill(codice, { timeout: 8000 }).catch(() => {});
-      await search.press('Enter', { timeout: 5000 }).catch(() => {});
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await valBox.fill(String(buscarVal), { timeout: 8000 }).catch(() => {});
+      const btnBuscar = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
+      if (await btnBuscar.count().catch(() => 0)) {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          btnBuscar.click({ timeout: 8000 }).catch(() => {}),
+        ]);
+      } else {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          valBox.press('Enter', { timeout: 5000 }).catch(() => {}),
+        ]);
+      }
+      await page.waitForTimeout(1200);
     } else {
       diagnostic.steps.push('search_field_not_found');
     }
@@ -3670,8 +3692,10 @@ async function updateClientWithBrowser(options = {}) {
     const resolved = await page.evaluate((cod) => {
       const codNorm = String(cod).replace(/^0+/, ''); // confronto ignorando gli zeri iniziali
       const matchId = (str) => {
-        const m = decodeURIComponent(String(str || '')).match(/[?&]id=(\d+)/i);
-        return m ? m[1] : '';
+        const s2 = decodeURIComponent(String(str || ''));
+        let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+        m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+        return '';
       };
       const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
       const rows = [...document.querySelectorAll('table tr')];
@@ -5717,7 +5741,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/debug-find-client',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/debug-find-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
