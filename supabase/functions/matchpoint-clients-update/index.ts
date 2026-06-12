@@ -74,17 +74,16 @@ async function getActor(req: Request): Promise<StaffActor | null> {
   };
 }
 
-async function callWorkerCreateClient(opts: {
+async function callWorkerUpdateClient(opts: {
   workerUrl: string;
   workerApiKey: string;
   username: string;
   password: string;
   baseUrl: string;
   client: JsonMap;
-  operatore?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, username, password, baseUrl, client, operatore } = opts;
-  const endpoint = `${workerUrl}/create-client`;
+  const { workerUrl, workerApiKey, username, password, baseUrl, client } = opts;
+  const endpoint = `${workerUrl}/update-client`;
 
   let res: Response;
   try {
@@ -94,7 +93,7 @@ async function callWorkerCreateClient(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ username, password, baseUrl, client, operatore: operatore ?? '' }),
+      body: JSON.stringify({ username, password, baseUrl, client }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error: ${errorText(netErr)}`);
@@ -104,7 +103,7 @@ async function callWorkerCreateClient(opts: {
   if (res.ok) return body as JsonMap;
 
   if (res.status === 501) {
-    throw new Error('WORKER_CREATE_CLIENT_NOT_IMPLEMENTED: Il worker non supporta /create-client. Aggiornare il worker.');
+    throw new Error('WORKER_UPDATE_CLIENT_NOT_IMPLEMENTED: Il worker non supporta /update-client. Aggiornare il worker.');
   }
 
   const workerError = new Error(
@@ -121,7 +120,7 @@ Deno.serve(async (req: Request) => {
   const actor = await getActor(req).catch(() => null);
   if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
   if (!hasPermission(actor, 'cloud_sync')) {
-    return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per creare clienti su Matchpoint.');
+    return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per aggiornare clienti su Matchpoint.');
   }
 
   let body: JsonMap;
@@ -132,19 +131,17 @@ Deno.serve(async (req: Request) => {
   }
 
   const c = (body.client && typeof body.client === 'object') ? body.client as JsonMap : body;
-  const nome = clean(c.nome ?? c.firstName);
-  const cognome = clean(c.cognome ?? c.surname);
-  if (!nome) return err(400, 'INVALID_NOME', 'Nome cliente richiesto.');
-  if (!cognome) return err(400, 'INVALID_COGNOME', 'Cognome cliente richiesto.');
+  const codice = clean(c.codice ?? '');
+  if (!codice) return err(400, 'INVALID_CODICE', 'Codice Matchpoint richiesto.');
 
   const client: JsonMap = {
-    nome,
-    cognome,
-    telefono: clean(c.telefono ?? c.phone ?? ''),
+    codice,
+    firstName: clean(c.firstName ?? ''),
+    surname: clean(c.surname ?? ''),
+    phone: clean(c.phone ?? ''),
     email: clean(c.email ?? ''),
-    sesso: clean(c.sesso ?? c.gender ?? ''),
-    dataNascita: clean(c.dataNascita ?? c.birthDate ?? ''),
-    livello: c.livello,
+    gender: clean(c.gender ?? ''),
+    level: c.level,
   };
 
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -162,15 +159,15 @@ Deno.serve(async (req: Request) => {
 
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client, operatore: actor.email });
+    workerResult = await callWorkerUpdateClient({ workerUrl, workerApiKey, username, password, baseUrl, client });
   } catch (workerErr) {
     const diagnostic = (workerErr as unknown as JsonMap)?.diagnostic;
     return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });
   }
 
-  const codice = clean((workerResult as JsonMap).codice);
+  const { firstName, surname } = client;
   return ok({
-    message: `Cliente creato: ${nome} ${cognome}${codice ? ' · codice ' + codice : ''}`,
+    message: `Socio aggiornato su Matchpoint: ${firstName} ${surname} (codice ${codice})`,
     client,
     worker: workerResult,
   });

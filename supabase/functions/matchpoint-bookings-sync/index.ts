@@ -24,6 +24,8 @@ type MatchpointExport = {
 type ParsedBooking = {
   numero: string;
   giocatore: string;
+  giocatori?: string[];
+  idReserva?: string;
   data: string;
   ora: string;
   durata: string;
@@ -52,6 +54,43 @@ function json(body: unknown, status = 200) {
 
 function okResponse(body: JsonMap) {
   return json({ ok: true, ...body });
+}
+
+// Canale broadcast staff-cal: derivato dall'ambiente come fa l'app (pv-staff-cal-<env>).
+// Override via secret STAFFCAL_RT_CHANNEL; altrimenti dal project ref in SUPABASE_URL
+// (PROD => -prod, tutto il resto incl. TEST => -test). Su TEST resta 'pv-staff-cal-test'.
+function staffCalChannel(): string {
+  const explicit = (Deno.env.get('STAFFCAL_RT_CHANNEL') ?? '').trim();
+  if (explicit) return explicit;
+  const url = Deno.env.get('SUPABASE_URL') ?? '';
+  return url.includes('qqbfphyslczzkxoncgex') ? 'pv-staff-cal-prod' : 'pv-staff-cal-test';
+}
+
+// Broadcast realtime sul canale che l'app ascolta: sveglia gli altri device. Best-effort.
+// Stesso pattern di matchpoint-bookings-cancel (evento 'staff-changed', private:false).
+async function notifyStaffCalRealtime(supabaseUrl: string, supabaseKey: string, source: string, extra: JsonMap = {}) {
+  const channel = staffCalChannel();
+  try {
+    const res = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        messages: [{ topic: channel, event: 'staff-changed', payload: { ts: Date.now(), source, ...extra }, private: false }],
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      console.error(JSON.stringify({ event: 'realtime_broadcast_http_error', channel, status: res.status, body: errBody.slice(0, 500) }));
+    } else {
+      console.log(JSON.stringify({ event: 'realtime_broadcast_ok', channel, status: res.status }));
+    }
+  } catch (e) {
+    console.error(JSON.stringify({ event: 'realtime_broadcast_failed', channel, error: errorText(e) }));
+  }
 }
 
 function errorResponse(status: number, code: string, message: string, extra: JsonMap = {}) {
@@ -422,6 +461,60 @@ function workerHealthUrl(rawUrl: string) {
   return `${workerBaseUrl(rawUrl)}/health`;
 }
 
+async function enrichBookingsWithTabellone(
+  bookings: ParsedBooking[],
+  workerUrl: string,
+  workerApiKey: string,
+  username: string,
+  password: string,
+  baseUrl: string,
+): Promise<void> {
+  // Raccoglie le date uniche future presenti nei booking
+  const today = todayIsoRome();
+  const dates = [...new Set(
+    bookings
+      .filter((b) => b.data && b.data >= today)
+      .map((b) => b.data),
+  )].sort();
+
+  if (!dates.length) return;
+
+  const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
+  let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[] }>> = {};
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${workerApiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ username, password, baseUrl, dates }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data?.ok && data?.result) tabelloneData = data.result;
+    }
+  } catch (err) {
+    console.warn(JSON.stringify({ event: 'tabellone_enrich_failed', error: String(err) }));
+    return; // non bloccante
+  }
+
+  // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
+  for (const booking of bookings) {
+    const dayData = tabelloneData[booking.data] || [];
+    const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
+    const match = dayData.find(
+      (ev) => ev.campo === campoNum && ev.ora === booking.ora,
+    );
+    if (match) {
+      if (match.giocatori.length) booking.giocatori = match.giocatori;
+      if (match.id) booking.idReserva = String(match.id);
+    }
+  }
+}
+
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
@@ -574,6 +667,35 @@ async function logAudit(admin: any, actor: StaffActor | null, action: string, de
     action,
     detail,
   });
+}
+
+const STAFF_RECONCILE_GRACE_MS = 2 * 60 * 1000; // 120s: copre la finestra worker (~8s) per slot MAI confermati; gli slot gia confermati e poi spariti bypassano il grace
+
+function staffSlotKeyFromOccupancy(b: ParsedBooking) {
+  const campoN = String(b?.campo || '').replace(/\D/g, '');
+  return `${b?.data || ''}|${campoN}|${b?.ora || ''}`;
+}
+function staffSlotKeyFromPayload(p: any) {
+  const campoN = String(p?.campo ?? '').replace(/\D/g, '');
+  return `${p?.data || ''}|${campoN}|${p?.ora || ''}`;
+}
+
+// staff_booking ATTIVI (deleted=false). Il reconcile booking/occupancy NON li tocca.
+async function loadActiveStaffBookings(admin: any) {
+  const records: any[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('pmo_cloud_records')
+      .select('local_key,payload,updated_at,synced_at')
+      .eq('record_type', 'staff_booking')
+      .eq('deleted', false)
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = Array.isArray(data) ? data : [];
+    records.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return records;
 }
 
 async function loadExistingBookingRecords(admin: any) {
@@ -750,6 +872,28 @@ Deno.serve(async (req) => {
       return errorResponse(422, validation.error, validation.message, { validation, diagnosticSaved });
     }
 
+    // Arricchisci con giocatori completi dal tabellone (Tappa 38) — non bloccante.
+    // workerUrl/credenziali non sono in scope qui: si leggono dalle env var.
+    try {
+      const enrichWorkerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
+      const enrichWorkerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
+      const enrichUsername = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
+      const enrichPassword = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
+      const enrichBaseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+      if (enrichWorkerUrl && enrichWorkerApiKey && enrichUsername && enrichPassword) {
+        await enrichBookingsWithTabellone(
+          validation.occupancyBookings,
+          enrichWorkerUrl,
+          enrichWorkerApiKey,
+          enrichUsername,
+          enrichPassword,
+          enrichBaseUrl,
+        );
+      }
+    } catch (err) {
+      console.warn(JSON.stringify({ event: 'tabellone_enrich_error', error: String(err) }));
+    }
+
     const existingRecords = await loadExistingBookingRecords(admin);
     const existingPayloadByTypedKey = new Map<string, any>();
     for (const record of existingRecords) {
@@ -824,6 +968,73 @@ Deno.serve(async (req) => {
     const totalBookingsAfter = validation.bookings.length;
     const totalOccupanciesAfter = validation.occupancyBookings.length;
     const range = exported.range || {};
+
+    // --- Reconcile staff_booking sparite da Matchpoint (annullamenti DIRETTI) ---
+    let deletedStaffBookings = 0;
+    let skippedStaffFresh = 0;
+    let skippedStaffOutOfRange = 0;
+    try {
+      const reconcileFrom = clean(range.fromDate || validation.fromDate || '');
+      const reconcileTo = clean(range.toDate || validation.toDate || '');
+      const occupancySlotSet = new Set<string>();
+      validation.occupancyBookings.forEach((b) => occupancySlotSet.add(staffSlotKeyFromOccupancy(b)));
+      // DEMOTE (Tappa 45): idReserva presenti nell'occupancy fresca. Una entry staff_booking
+      // "promoted" (creata dallo spostamento di un booking Matchpoint) il cui idReserva ricompare
+      // qui va eliminata: l'occupancy autorevole è di nuovo materializzata da Matchpoint.
+      const occupancyIdReservaSet = new Set<string>();
+      validation.occupancyBookings.forEach((b) => { const ir = clean((b as any).idReserva || ''); if (ir) occupancyIdReservaSet.add(ir); });
+      let demotedStaffBookings = 0;
+      // Slot con occupancy ATTIVA prima di questo sync: se ora spariti => cancellazione reale.
+      const existingOccupancySlotSet = new Set<string>();
+      for (const rec of existingRecords) {
+        if (clean(rec?.record_type || '') !== 'booking_occupancy') continue;
+        existingOccupancySlotSet.add(staffSlotKeyFromOccupancy(rec?.payload || {}));
+      }
+      const nowMs = Date.now();
+      let bypassedGraceConfirmed = 0;
+      const activeStaff = await loadActiveStaffBookings(admin);
+      for (const row of activeStaff) {
+        const p = row?.payload || {};
+        const sData = clean(p?.data || '');
+        if (!sData) continue;
+        if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
+        if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
+        // DEMOTE per idReserva: solo per le entry nate dal promote (promoted===true).
+        // Le prenotazioni/lezioni create dall'app NON sono promoted → restano intatte
+        // (così il maestro delle lezioni app non viene perso).
+        const sIdReserva = clean((p as any)?.id_reserva || '');
+        const sPromoted = (p as any)?.promoted === true;
+        if (sPromoted && sIdReserva && occupancyIdReservaSet.has(sIdReserva)) {
+          records.push({ record_type: 'staff_booking', local_key: row.local_key, payload: p, payload_hash: null, deleted: true, synced_at: importedAt });
+          demotedStaffBookings += 1;
+          continue;
+        }
+        const slotKey = staffSlotKeyFromPayload(p);
+        if (occupancySlotSet.has(slotKey)) continue;
+        // Bypass grace se lo slot era confermato (occupancy attiva prima del sync) ed e sparito.
+        const wasConfirmed = existingOccupancySlotSet.has(slotKey);
+        if (wasConfirmed) {
+          bypassedGraceConfirmed += 1;
+        } else {
+          const tsRaw = row?.updated_at || row?.synced_at || '';
+          const tsMs = tsRaw ? Date.parse(tsRaw) : 0;
+          if (tsMs && (nowMs - tsMs) < STAFF_RECONCILE_GRACE_MS) { skippedStaffFresh += 1; continue; }
+        }
+        records.push({
+          record_type: 'staff_booking',
+          local_key: row.local_key,
+          payload: p,
+          payload_hash: null,
+          deleted: true,
+          synced_at: importedAt,
+        });
+        deletedStaffBookings += 1;
+      }
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+    } catch (staffErr) {
+      console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
+    }
+
     const summaryPayload = {
       id: 'matchpoint_bookings_auto_import_last',
       type: 'prenotazioni future',
@@ -892,6 +1103,7 @@ Deno.serve(async (req) => {
       newOccupancyRows,
       changedOccupancyRows,
       deletedOccupancies,
+      deletedStaffBookings,
       skipped: validation.skipped,
       totalBookingsBefore,
       totalBookingsAfter,
@@ -900,6 +1112,11 @@ Deno.serve(async (req) => {
       diagnosticFile,
       upserted: records.length,
     });
+
+    // Sveglia gli altri device se qualcosa e cambiato (incl. annullamenti diretti riconciliati).
+    if (newBookingRows || changedBookingRows || deletedBookings || newOccupancyRows || changedOccupancyRows || deletedOccupancies || deletedStaffBookings) {
+      await notifyStaffCalRealtime(supabaseUrl, serviceRoleKey, 'edge-bookings-sync', { deletedStaffBookings, deletedBookings, deletedOccupancies });
+    }
 
     const sortBookings = (items: ParsedBooking[]) => [...items].sort((a, b) => `${a.data || ''} ${a.ora || ''} ${a.campo || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''} ${b.campo || ''}`));
 
@@ -914,6 +1131,7 @@ Deno.serve(async (req) => {
         occupancyRows: validation.occupancyRows,
         deletedBookings,
         deletedOccupancies,
+        deletedStaffBookings,
         totalBookingsBefore,
         totalBookingsAfter,
         totalOccupanciesBefore,
