@@ -3713,12 +3713,16 @@ async function updateClientWithBrowser(options = {}) {
         });
         candidates.push({ id, codeHit });
       }
+      const sample = rows.slice(0, 6).map((tr) => ({
+        text: (tr.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        anchors: [...tr.querySelectorAll('a')].map((a) => `${a.getAttribute('href') || ''} | ${a.getAttribute('onclick') || ''}`).slice(0, 4),
+      }));
       const hit = candidates.find((c) => c.codeHit);
-      if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length };
-      // Se la ricerca per codice ha lasciato un solo cliente, usalo (non ambiguo).
+      if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length, sample };
+      // Se la ricerca ha lasciato un solo cliente, usalo (non ambiguo).
       const uniqueIds = [...new Set(candidates.map((c) => c.id))];
-      if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
-      return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
+      if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length, sample };
+      return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length, sample };
     }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
     const idInterno = resolved.id;
     diagnostic.idInterno = idInterno;
