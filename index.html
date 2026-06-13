@@ -7362,7 +7362,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.752';
+    const APP_VERSION = '5.753';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9492,6 +9492,12 @@ Grazie.`
     // Gating lato interfaccia (UX): nasconde le voci di menu non consentite al
     // profilo. Non è una barriera di sicurezza: l'enforcement reale delle azioni
     // resta sulle RPC SECURITY DEFINER (pmo_staff_permission_ok).
+    // Congelamento operativo della sezione Autovalutazione (2026-06-13): il flusso
+    // staff non è ancora utilizzabile, quindi nascondiamo il tab a TUTTI (owner incluso)
+    // finché non verrà rivisitato. NON è una cancellazione: per riattivarlo basta
+    // rimettere questo flag a false. Non tocca l'autovalutazione PUBBLICA dei soci
+    // (modalità assessment-public-mode / autovalutazione.html), che resta attiva.
+    const PMO_ASSESSMENT_PARKED = true;
     const PMO_SECTION_TREE = [
       { key:'view_dashboard', tab:'dashboard', label:'Calendario' },
       { key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
@@ -9533,6 +9539,9 @@ Grazie.`
       return !!perms && pmoAllViewKeys().some(key => key in perms);
     }
     function pmoSectionVisibleFor(tabName, profile) {
+      // Sezione Autovalutazione congelata operativamente: nascosta a tutti tranne
+      // che in modalità pubblica (form di autovalutazione compilato dai soci).
+      if (PMO_ASSESSMENT_PARKED && tabName === 'assessment' && !pmoIsPublicAccessMode()) return false;
       profile = pmoResolveVisibilityProfile(profile);
       if (!profile) return true;                                   // pre-login / pubblico
       if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
@@ -24590,9 +24599,28 @@ Per confermare scrivi ELIMINA.`);
 	          </div>
 	        </div>
 	        <div id="pmoAdminStatus" class="info-box" style="margin-top:12px;" hidden></div>
+	        <div id="pmoUsersGmailBox" class="admin-users-gmail-box" style="margin-top:12px;"></div>
 	        <div id="pmoStaffUsersTable"></div>
 	      `;
 	      pmoSetStaffFormMode('none');
+	      pmoRenderUsersGmailCheck();
+	    }
+	    // Card "Gmail Padel Village" spostata qui da Autovalutazione → Strumenti tecnici
+	    // (la sezione Autovalutazione è congelata, vedi PMO_ASSESSMENT_PARKED): l'account
+	    // mittente serve per gli inviti staff e le email automatiche.
+	    function pmoRenderUsersGmailCheck() {
+	      const box = document.getElementById('pmoUsersGmailBox');
+	      if (!box) return;
+	      box.innerHTML = `
+	        <div class="admin-table-toolbar admin-users-toolbar">
+	          <div>
+	            <strong>Gmail Padel Village</strong>
+	            <div class="routine-mini">Account mittente per inviti staff ed email automatiche.</div>
+	          </div>
+	          <div class="staff-access-toolbar">${assessmentGmailCheckButtonHtml()}</div>
+	        </div>
+	        ${assessmentGmailCheckPanelHtml()}
+	      `;
 	    }
 	    function pmoSetStaffFormMode(mode='none', email='') {
 	      const normalized = ['new', 'edit', 'delete'].includes(mode) ? mode : 'none';
@@ -25039,6 +25067,7 @@ Per confermare scrivi ELIMINA.`);
 	    function renderPmoAdministration() {
 	      pmoApplyAdminSectionVisibility();
 	      pmoRenderStaffAccessPanel();
+	      pmoRenderUsersGmailCheck();
 	      pmoRenderAdminAccountStrip();
 	      pmoRenderAdminSessionPanel();
 	      pmoRenderStaffNotificationsPanel();
@@ -25492,7 +25521,7 @@ Per confermare scrivi ELIMINA.`);
 	        const raw = String(err?.message || err || '');
 	        const isGmail = /GMAIL_TOKEN|GMAIL_SECRETS|GMAIL_SEND|invalid_grant|expired|revoked/i.test(raw);
 	        const friendly = isGmail
-	          ? 'Gmail del progetto non collegato o token scaduto. Vai in Autovalutazione → Strumenti tecnici → "Verifica Gmail" e ricollega l\'account mittente, poi riprova.'
+	          ? 'Gmail del progetto non collegato o token scaduto. Vai in Amministrazione → Utenti → "Verifica Gmail" e ricollega l\'account mittente, poi riprova.'
 	          : raw;
 	        pmoSetAdminStatus('❌ Invito non inviato: ' + friendly, 'danger');
 	      }
@@ -29111,11 +29140,13 @@ Per confermare scrivi ELIMINA.`);
     function assessmentShowGmailReconnectGuide() {
       assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), showGuide:true });
       renderAssessmentEmailPanels();
+      pmoRenderUsersGmailCheck();
       showAlert('La riattivazione Gmail richiede login Google e aggiornamento sicuro del secret in Supabase.', 'warning');
     }
     async function assessmentRunGmailCheck() {
       assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false, visibleUntil:0 });
       renderAssessmentEmailPanels();
+      pmoRenderUsersGmailCheck();
       try {
         const result = await pmoInvokeAssessmentEmail({ action:'gmail-check' });
         const ok = result?.ok === true && result?.gmailConnected === true;
@@ -29130,7 +29161,8 @@ Per confermare scrivi ELIMINA.`);
           visibleUntil: ok ? Date.now() + 3500 : 0
         });
         renderAssessmentEmailPanels();
-        if (ok) setTimeout(() => renderAssessmentEmailPanels(), 3700);
+        pmoRenderUsersGmailCheck();
+        if (ok) setTimeout(() => { renderAssessmentEmailPanels(); pmoRenderUsersGmailCheck(); }, 3700);
         showAlert(state.message, ok ? 'success' : 'danger');
       } catch (err) {
         const message = pmoFriendlyAssessmentEmailError(err, 'verificare il collegamento Gmail');
@@ -29145,6 +29177,7 @@ Per confermare scrivi ELIMINA.`);
           visibleUntil:0
         });
         renderAssessmentEmailPanels();
+        pmoRenderUsersGmailCheck();
         showAlert(message, 'danger');
       }
     }
@@ -29182,7 +29215,6 @@ Per confermare scrivi ELIMINA.`);
       if (batch && rows.length && (status === 'sent' || status === 'sent_with_errors' || rows.some(row => row.sent))) {
         buttons.push(`<span class="assessment-email-action-state">${escapeHtml(assessmentManualBatchStatusText(batch))}</span>`);
       }
-      buttons.push(assessmentGmailCheckButtonHtml());
       return buttons.join('');
     }
     function assessmentManualBatchRowHtml(row) {
@@ -29576,8 +29608,7 @@ Per confermare scrivi ELIMINA.`);
           ? `<div class="assessment-email-table-wrap assessment-process-table-wrap"><div class="assessment-process-table-title"><h4>Processo utenti</h4><span>${escapeHtml(String(visibleRows.length))} righe visibili${targetRows.length !== visibleRows.length ? ` su ${escapeHtml(String(targetRows.length))}` : ''}</span></div><table class="assessment-email-table assessment-process-table"><thead><tr><th>Socio</th><th>Routine</th><th>Fase</th><th>Ultimo invio</th><th>Prossimo step</th><th>Prossima finestra</th><th>Stop / Alert</th><th>Azioni</th></tr></thead><tbody>${visibleRows.map(assessmentProcessRowHtml).join('')}</tbody></table></div>${moreHtml}`
           : emptyHtml;
         
-        box.innerHTML = `${assessmentGmailCheckPanelHtml()}
-          ${manualBatchHtml}
+        box.innerHTML = `${manualBatchHtml}
           ${searchHtml}
           ${activeSearchHtml}
           ${testNoticeHtml}
@@ -29693,7 +29724,6 @@ Per confermare scrivi ELIMINA.`);
         }
         
         box.innerHTML = `
-          ${assessmentGmailCheckPanelHtml()}
           ${searchHtml}
           ${activeSearchHtml}
           ${testNoticeHtml}
