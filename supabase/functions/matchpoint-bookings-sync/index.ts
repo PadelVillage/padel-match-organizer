@@ -584,7 +584,17 @@ async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport>
 
     if (response?.ok && payload.ok === true && payload.base64) break;
     if (attempt >= 3) throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
-    const retryable = !response || response.status === 0 || [502, 503, 504].includes(response.status);
+    // Il worker ritorna HTTP 500 per i suoi fail() interni (navigazione finita per
+    // sbaglio sulla home invece che sul report, pulsante export non trovato, login
+    // glitch, download vuoto…): sono per lo più TRANSITORI (Matchpoint lento/redirect
+    // occasionale) e un ritentativo con backoff di norma riesce — confermato sul campo.
+    // Prima si ritentava solo su 502/503/504, quindi un singolo 500 transitorio emergeva
+    // subito come errore. Ora si ritenta anche sul 500 con codice worker transitorio; NON
+    // sugli errori logici (secret/credenziali mancanti, che un retry non risolverebbe).
+    const workerCode = String(payload.error || '');
+    const transientWorkerCode = !!workerCode && !/SECRETS_MISSING|CREDENTIALS_MISSING/i.test(workerCode);
+    const retryable = !response || response.status === 0 || [502, 503, 504].includes(response.status)
+      || (response.status === 500 && transientWorkerCode);
     if (!retryable) throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
   }
 
