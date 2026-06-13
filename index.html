@@ -24220,7 +24220,12 @@ Per confermare scrivi ELIMINA.`);
 	          let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
 	          if (response.ok && !(data && data.ok === false)) return { ok: true, data };
 	          const reason = (data && (data.message || data.error)) || `HTTP ${response.status}`;
-	          const retryable = (response.status >= 500 || response.status === 0) && !NON_RETRYABLE.test(String(reason));
+	          // L'edge ora espone un booleano ESPLICITO `retryable` (classificato per codice
+	          // worker): lo si usa quando presente. Fallback (edge vecchio): status 5xx/rete +
+	          // messaggio non in NON_RETRYABLE.
+	          const retryable = (data && typeof data.retryable === 'boolean')
+	            ? data.retryable
+	            : ((response.status >= 500 || response.status === 0) && !NON_RETRYABLE.test(String(reason)));
 	          return { ok: false, reason, retryable, diagnostic: data && data.diagnostic };
 	        };
 	        // Il worker (browser serializzato in coda) fallisce a volte in modo transitorio: i log

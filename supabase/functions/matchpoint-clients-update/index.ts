@@ -43,6 +43,31 @@ function errorText(value: unknown) {
   try { return JSON.stringify(value); } catch { return String(value); }
 }
 
+// Errori LOGICI: ritentare NON aiuta (richiesta/dato non valido, cliente inesistente,
+// config mancante). Tutto il resto (login glitch, form non trovato, timeout/crash
+// Playwright, rete verso il worker) è TRANSITORIO → ritentabile. Sconosciuto = transitorio.
+const NON_RETRYABLE_CODES = new Set([
+  'CLIENT_NOT_FOUND', 'INVALID_CLIENT_CODICE', 'INVALID_CODICE', 'INVALID_CLIENT_NAME',
+  'CLIENT_CREATE_MISSING_REQUIRED', 'CLIENT_CREATE_VALIDATION', 'CLIENT_UPDATE_VALIDATION',
+  'CLIENT_CREATE_NO_CODICE', 'MATCHPOINT_WORKER_SECRETS_MISSING', 'MATCHPOINT_CREDENTIALS_MISSING',
+  'WORKER_NOT_CONFIGURED', 'WORKER_UPDATE_CLIENT_NOT_IMPLEMENTED',
+]);
+
+function isRetryableCode(code: string): boolean {
+  if (!code) return true;
+  return !NON_RETRYABLE_CODES.has(code);
+}
+
+// Errore del worker che PRESERVA il codice originale (per la classificazione retry).
+type WorkerError = Error & { code: string; retryable: boolean; diagnostic?: unknown };
+function workerFail(code: string, message: string, diagnostic?: unknown): WorkerError {
+  const e = new Error(message) as WorkerError;
+  e.code = code;
+  e.retryable = isRetryableCode(code);
+  e.diagnostic = diagnostic;
+  return e;
+}
+
 function hasPermission(actor: StaffActor, perm: string) {
   if (['owner', 'admin'].includes(actor.role)) return true;
   return actor.permissions?.[perm] === true;
@@ -96,21 +121,22 @@ async function callWorkerUpdateClient(opts: {
       body: JSON.stringify({ username, password, baseUrl, client }),
     });
   } catch (netErr) {
-    throw new Error(`Worker network error: ${errorText(netErr)}`);
+    // Rete verso il worker irraggiungibile = transitorio (worker in restart/coda).
+    throw workerFail('WORKER_NETWORK_ERROR', `Worker network error: ${errorText(netErr)}`);
   }
 
   const body = await res.json().catch(() => ({}));
   if (res.ok) return body as JsonMap;
 
   if (res.status === 501) {
-    throw new Error('WORKER_UPDATE_CLIENT_NOT_IMPLEMENTED: Il worker non supporta /update-client. Aggiornare il worker.');
+    throw workerFail('WORKER_UPDATE_CLIENT_NOT_IMPLEMENTED', 'Il worker non supporta /update-client. Aggiornare il worker.');
   }
 
-  const workerError = new Error(
-    `Worker error ${res.status}: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-  );
-  (workerError as unknown as JsonMap).diagnostic = (body as JsonMap).diagnostic;
-  throw workerError;
+  // Il worker mette SEMPRE il codice logico in body.error (es. CLIENT_NOT_FOUND): lo
+  // preservo per la classificazione retryable invece di appiattirlo in 502 generico.
+  const code = clean((body as JsonMap).error) || 'WORKER_ERROR';
+  const message = errorText((body as JsonMap).message || (body as JsonMap).error || `Worker error ${res.status}`);
+  throw workerFail(code, message, (body as JsonMap).diagnostic);
 }
 
 Deno.serve(async (req: Request) => {
@@ -163,18 +189,24 @@ Deno.serve(async (req: Request) => {
   const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
 
   if (!workerUrl || !workerApiKey) {
-    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
+    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).', { retryable: false });
   }
   if (!username || !password) {
-    return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
+    return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.', { retryable: false });
   }
 
   let workerResult: JsonMap;
   try {
     workerResult = await callWorkerUpdateClient({ workerUrl, workerApiKey, username, password, baseUrl, client });
   } catch (workerErr) {
-    const diagnostic = (workerErr as unknown as JsonMap)?.diagnostic;
-    return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });
+    const we = workerErr as Partial<WorkerError>;
+    const code = clean(we?.code) || 'WORKER_ERROR';
+    const retryable = typeof we?.retryable === 'boolean' ? we.retryable : isRetryableCode(code);
+    const diagnostic = we?.diagnostic;
+    // Stato HTTP granulare: 502 = transitorio (l'app può ritentare), 422 = logico
+    // (ritentare non aiuta). L'app legge comunque il booleano esplicito `retryable`.
+    const status = retryable ? 502 : 422;
+    return err(status, code, errorText(workerErr), { client, retryable, ...(diagnostic ? { diagnostic } : {}) });
   }
 
   const { firstName, surname } = client;
