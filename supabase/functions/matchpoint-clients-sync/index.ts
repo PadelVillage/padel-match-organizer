@@ -1292,7 +1292,14 @@ async function exportClientsViaBrowserWorker(
     if (attempt >= 3) {
       throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
     }
-    const retryable = !response || response.status === 0 || [502, 503, 504].includes(response.status);
+    // Il worker ritorna HTTP 500 per i suoi fail() interni (navigazione, pulsante export
+    // non trovato, login glitch, download vuoto…): per lo più TRANSITORI, un retry con
+    // backoff di norma riesce. Prima si ritentava solo su 502/503/504; ora anche sul 500
+    // con codice worker transitorio, NON sugli errori logici (secret/credenziali mancanti).
+    const workerCode = String(payload.error || '');
+    const transientWorkerCode = !!workerCode && !/SECRETS_MISSING|CREDENTIALS_MISSING/i.test(workerCode);
+    const retryable = !response || response.status === 0 || [502, 503, 504].includes(response.status)
+      || (response.status === 500 && transientWorkerCode);
     if (!retryable) {
       throw errorWithDiagnostic('MATCHPOINT_BROWSER_WORKER_FAILED', lastDiagnostic);
     }
