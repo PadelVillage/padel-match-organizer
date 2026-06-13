@@ -3771,22 +3771,48 @@ async function updateClientWithBrowser(options = {}) {
     diagnostic.attempts = [];
     let idInterno = '';
     let onFichaNow = false;
+    let resolvedOk = false;
     for (const a of attempts) {
       const r = await trySearch(a.by, a.val, a.acceptSingle);
       diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '' });
-      if (r.id) { idInterno = r.id; onFichaNow = r.onFicha; diagnostic.resolve = { how: r.how, by: a.by, id: r.id }; break; }
+      // Successo = id risolto OPPURE gia' atterrati sulla ficha giusta (codice gia'
+      // verificato in trySearch). Il caso onFicha senza id in URL e' valido: si resta
+      // sulla scheda aperta e si compila li' (come faceva il vecchio percorso diretto).
+      if (r.id || r.onFicha) {
+        idInterno = r.id || '';
+        onFichaNow = r.onFicha;
+        resolvedOk = true;
+        diagnostic.resolve = { how: r.how, by: a.by, id: idInterno };
+        break;
+      }
     }
     diagnostic.idInterno = idInterno;
     diagnostic.afterSearchUrl = page.url();
-    if (!idInterno) {
+    if (!resolvedOk) {
       throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (tentativi=${diagnostic.attempts.length}).`, diagnostic);
     }
-    if (!onFichaNow) {
+    if (!onFichaNow && idInterno) {
       diagnostic.steps.push('goto_ficha');
       await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     }
     diagnostic.fichaUrl = page.url();
+
+    // ── Verifica DEFINITIVA del codice sulla scheda aperta, prima di scrivere ──
+    // Rete di sicurezza anti-omonimo valida per OGNI percorso di risoluzione (anche
+    // single_candidate su email/telefono NUOVI, che potrebbero appartenere a un ALTRO
+    // cliente gia' esistente in Matchpoint): leggo "Scheda cliente : <codice>" dalla
+    // ficha e confronto. Se il codice e' leggibile e NON coincide, rifiuto la scrittura.
+    // Se non e' leggibile (locale/markup diverso) procedo (best-effort, come prima).
+    const fichaCod = await page.evaluate(() => {
+      const t = (document.body ? document.body.innerText : '');
+      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      return m ? m[1] : '';
+    }).catch(() => '');
+    diagnostic.fichaCodice = fichaCod;
+    if (fichaCod && fichaCod.replace(/^0+/, '') !== String(codice).replace(/^0+/, '')) {
+      throw fail('CLIENT_NOT_FOUND', `Scheda trovata ma con codice diverso (${fichaCod} != ${codice}): nessuna scrittura per non aggiornare un omonimo.`, diagnostic);
+    }
 
     // Localizza un controllo per suffisso: prima dentro il FormView, poi globale.
     const locateBySuffix = async (suffix) => {
