@@ -144,6 +144,18 @@ Deno.serve(async (req: Request) => {
     level: c.level,
   };
 
+  // Valori PRE-modifica (opzionali): se l'utente ha cambiato email/telefono nello
+  // stesso salvataggio, il worker li usa come fallback di ricerca per ritrovare la
+  // scheda (il valore nuovo non esiste ancora su Matchpoint). Vedi /update-client.
+  const prevRaw = (c.prev && typeof c.prev === 'object') ? c.prev as JsonMap : null;
+  if (prevRaw) {
+    client.prev = {
+      surname: clean(prevRaw.surname ?? ''),
+      phone: clean(prevRaw.phone ?? ''),
+      email: clean(prevRaw.email ?? ''),
+    };
+  }
+
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
