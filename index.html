@@ -7362,7 +7362,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.750';
+    const APP_VERSION = '5.751';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -7930,6 +7930,18 @@ Grazie.`
         const focusTarget = nextMode === 'signup' && emailInput?.value ? passwordInput : emailInput;
         if (focusTarget) focusTarget.focus();
       }, 0);
+    }
+    function pmoConsumeStaffInviteParam() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const inviteEmail = cleanCell(params.get('invite') || '').toLowerCase();
+        if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail)) return;
+        if (typeof isStaffSessionValid === 'function' && isStaffSessionValid()) return; // già loggato
+        const emailInput = document.getElementById('pmoStaffEmail');
+        if (emailInput) emailInput.value = inviteEmail;
+        pmoSetLoginMode('signup', { keepMessage:true });
+        pmoSetLoginMessage(`Benvenuto/a! Crea il tuo accesso scegliendo una password per ${inviteEmail}.`, 'info');
+      } catch (err) { console.warn('pmoConsumeStaffInviteParam', err); }
     }
     function pmoTogglePasswordVisibility(inputId, button) {
       const input = document.getElementById(inputId);
@@ -25439,6 +25451,47 @@ Per confermare scrivi ELIMINA.`);
 	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
 	      }
 	    }
+	    function pmoStaffInviteUrl(email) {
+	      const base = pmoStaffAuthRedirectUrl();
+	      const sep = base.includes('?') ? '&' : '?';
+	      return `${base}${sep}invite=${encodeURIComponent(cleanCell(email || '').toLowerCase())}`;
+	    }
+	    async function pmoSendStaffInvite(email) {
+	      const cleanEmail = cleanCell(email || '').toLowerCase();
+	      const user = (pmoAdminState.staffUsers || []).find(u => cleanCell(u.email || '').toLowerCase() === cleanEmail);
+	      if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+	        pmoSetAdminStatus('Email non valida per l\'invito.', 'warning');
+	        return;
+	      }
+	      try {
+	        pmoSetAdminStatus(`Invio invito a ${cleanEmail}...`, 'info');
+	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	        const staff = await pmoRequireStaffPermission('manage_users', 'inviare un invito staff');
+	        const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
+	          method: 'POST',
+	          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${staff.accessToken}` },
+	          body: JSON.stringify({
+	            action: 'staff_invite',
+	            email: cleanEmail,
+	            full_name: user?.full_name || '',
+	            role: user?.role || '',
+	            inviteUrl: pmoStaffInviteUrl(cleanEmail),
+	            appVersion: APP_VERSION,
+	            runtimeEnv: PMO_RUNTIME_ENV
+	          })
+	        });
+	        const data = await response.json().catch(() => ({}));
+	        if (!response.ok || data?.ok === false) {
+	          throw new Error(pmoFriendlyCloudError(data?.message || data?.error || `HTTP ${response.status}`, 'inviare un invito staff'));
+	        }
+	        const note = data.testMode
+	          ? `✅ Invito generato in MODALITA TEST: inviato alla casella di prova (${escapeHtml(data.actualRecipient || '')}), non a ${cleanEmail}.`
+	          : `✅ Invito inviato a ${cleanEmail}.`;
+	        pmoSetAdminStatus(note, 'success');
+	      } catch (err) {
+	        pmoSetAdminStatus('❌ Invito non inviato: ' + (err.message || err), 'danger');
+	      }
+	    }
 	    async function pmoDeleteStaffUser(email) {
 	      const cleanEmail = cleanCell(email || '').toLowerCase();
 	      const user = (pmoAdminState.staffUsers || []).find(u => cleanCell(u.email || '').toLowerCase() === cleanEmail);
@@ -25503,6 +25556,7 @@ Per confermare scrivi ELIMINA.`);
 	          <td>${escapeHtml(pmoFormatDateTime(user.last_seen_at || user.updated_at))}</td>
 	          <td><div class="admin-row-actions">
 	            <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoOpenEditStaffUser('${escapeJs(email)}')">Modifica</button>
+	            ${isOwner ? '' : `<button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoSendStaffInvite('${escapeJs(email)}')">Invia invito</button>`}
 	            ${deleteButton}
 	          </div></td>
 	        </tr>${detailRow}`;
@@ -26547,6 +26601,7 @@ Per confermare scrivi ELIMINA.`);
       pmoInitPasswordToggleIcons();
       initStaffAccessGate();
       pmoConsumeSupabaseAuthRedirect();
+      pmoConsumeStaffInviteParam();
       initSidebarNavigation();
       migrateMemberIds();
       pruneHistoricalBookings(false);
