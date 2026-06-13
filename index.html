@@ -7362,7 +7362,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.749';
+    const APP_VERSION = '5.750';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -24537,10 +24537,10 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoDefaultPermissionsForRole(role) {
 	      const views = pmoDefaultViewPermissions();
-	      const all = { manage_users:true, cloud_sync:true, routines:true, members_write:true, matches_write:true, messages_write:true, data_export:true, read_all:true, ...views };
+	      const all = { manage_users:true, cloud_sync:true, routines:true, ...views };
 	      if (role === 'owner' || role === 'admin') return all;
-	      if (role === 'staff') return { manage_users:false, cloud_sync:false, routines:false, members_write:true, matches_write:true, messages_write:true, data_export:false, read_all:true, ...views };
-	      return { manage_users:false, cloud_sync:false, routines:false, members_write:false, matches_write:false, messages_write:false, data_export:false, read_all:true, ...views };
+	      // staff/readonly: nessun permesso operativo "forte"; le sezioni visibili sono gestite dall'albero view_*
+	      return { manage_users:false, cloud_sync:false, routines:false, ...views };
 	    }
 	    function pmoRoleLabel(role) {
 	      return ({ owner:'Proprietario', admin:'Admin', staff:'Staff', readonly:'Solo lettura' })[role] || role || '-';
@@ -24552,24 +24552,14 @@ Per confermare scrivi ELIMINA.`);
 	      return ({
 	        manage_users:'Gestione utenti',
 	        cloud_sync:'Sincronizzazione dati cloud',
-	        routines:'Routine',
-	        members_write:'Modifica soci',
-	        matches_write:'Modifica partite',
-	        messages_write:'Messaggi WhatsApp',
-	        data_export:'Esportazione/importazione dati',
-	        read_all:'Solo consultazione'
+	        routines:'Routine'
 	      })[permission] || String(permission || '').replace(/_/g, ' ');
 	    }
 	    function pmoStaffPermissionCheckboxesHtml(selectedPermissions=null) {
 	      const items = [
 	        ['manage_users', 'Gestione utenti'],
 	        ['cloud_sync', 'Sincronizzazione dati cloud'],
-	        ['routines', 'Routine'],
-	        ['members_write', 'Modifica soci'],
-	        ['matches_write', 'Modifica partite'],
-	        ['messages_write', 'Messaggi WhatsApp'],
-	        ['data_export', 'Esportazione/importazione dati'],
-	        ['read_all', 'Solo consultazione']
+	        ['routines', 'Routine']
 	      ];
 	      const selected = selectedPermissions && typeof selectedPermissions === 'object' ? selectedPermissions : {};
 	      return items.map(([key, label]) => `<label><input type="checkbox" data-admin-permission="${escapeHtml(key)}" ${selected[key] ? 'checked' : ''} onchange="pmoRenderStaffRoleSummary()" /> ${escapeHtml(label)}</label>`).join('');
