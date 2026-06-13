@@ -13178,7 +13178,7 @@ Grazie.`
       showAlert('✅ Scheda salvata', 'success');
       // Push verso Matchpoint in background: la funzione gestisce da sé i toast di esito
       // (skip/errore), posticipati per non sovrascrivere "Scheda salvata".
-      Promise.resolve(pmoPushMemberUpdateToMatchpoint(giocatori[idx])).catch(e => console.warn('push update Matchpoint:', e));
+      Promise.resolve(pmoPushMemberUpdateToMatchpoint(giocatori[idx], { prev: { surname: currentEditable.surname, phone: currentEditable.phone, email: currentEditable.email } })).catch(e => console.warn('push update Matchpoint:', e));
     }
     function toggleMemberActive(memberId) {
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
@@ -24196,6 +24196,16 @@ Per confermare scrivi ELIMINA.`);
 	          gender: member.gender === 'F' ? 'F' : (member.gender === 'M' ? 'M' : ''),
 	          level: (member.level === '' || member.level == null) ? '' : member.level,
 	        }};
+	        // Valori PRE-modifica: se contatti (email/telefono) o cognome sono cambiati nello
+	        // stesso salvataggio, il worker li usa come fallback per ritrovare la scheda su
+	        // Matchpoint (la ricerca col valore NUOVO fallirebbe → CLIENT_NOT_FOUND).
+	        const prev = opts.prev || {};
+	        const prevSurname = String(prev.surname || '').trim();
+	        const prevPhone = String(prev.phone || '').trim();
+	        const prevEmail = String(prev.email || '').trim();
+	        if (prevSurname || prevPhone || prevEmail) {
+	          payload.client.prev = { surname: prevSurname, phone: prevPhone, email: prevEmail };
+	        }
 	        // Una singola chiamata all'edge → worker. Ritorna {ok, reason, retryable, data}.
 	        // L'edge mappa OGNI errore del worker su HTTP 502 (WORKER_ERROR): non si distingue
 	        // transitorio da logico dal solo status, quindi si guarda il codice nel messaggio.

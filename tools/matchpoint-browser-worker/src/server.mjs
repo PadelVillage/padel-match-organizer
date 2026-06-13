@@ -3652,25 +3652,51 @@ async function updateClientWithBrowser(options = {}) {
     await maybeClickCashEnter(page, diagnostic);
 
     // ── Risoluzione codice -> id interno (riusa la ricerca lista clienti) ──
-    diagnostic.steps.push('goto_listado');
-    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-    // La lista clienti Matchpoint NON e' cercabile per "Codice": il buscador ha solo
-    // Cliente / Telefono / E-mail / Carta. Cerco per email (univoca) o, in mancanza,
-    // per telefono o cognome, e poi identifico la riga giusta dal codice.
-    let buscarBy = 'Cliente';
-    let buscarVal = cognome || nome || '';
-    if (email) { buscarBy = 'E-mail'; buscarVal = email; }
-    else if (telefono) { buscarBy = 'Telefono cellulare'; buscarVal = telefono; }
-    diagnostic.buscar = { by: buscarBy, val: buscarVal };
-    const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
-    if (await optSel.count().catch(() => 0)) {
-      await optSel.selectOption({ label: buscarBy }, { timeout: 5000 }).catch(() => {});
+    // Il buscador Matchpoint NON cerca per "Codice" (solo Cliente / Telefono /
+    // E-mail / Carta). Cerco quindi per un valore noto e identifico la riga giusta
+    // dal CODICE. Se l'utente ha appena cambiato email/telefono, il valore NUOVO non
+    // esiste ancora su Matchpoint: provo una CASCATA di termini (anche i valori
+    // VECCHI, passati da client.prev) finche' uno fa comparire la riga col codice.
+    const prev = (client.prev && typeof client.prev === 'object') ? client.prev : {};
+    const prevEmail = clean(prev.email || '');
+    const prevTelefono = clean(prev.telefono || prev.phone || '');
+    const prevCognome = clean(prev.cognome || prev.surname || '');
+
+    // Termini in ordine di affidabilita': email/telefono danno risultato UNICO (match
+    // sicuro anche senza codice visibile) -> acceptSingle. Cognome/nome possono dare
+    // omonimi -> accetto solo il match esatto sul codice (code_token).
+    const searchPlan = [
+      { by: 'E-mail', val: email, acceptSingle: true },
+      { by: 'Telefono cellulare', val: telefono, acceptSingle: true },
+      { by: 'E-mail', val: prevEmail, acceptSingle: true },
+      { by: 'Telefono cellulare', val: prevTelefono, acceptSingle: true },
+      { by: 'Cliente', val: cognome || nome, acceptSingle: false },
+      { by: 'Cliente', val: prevCognome, acceptSingle: false },
+    ];
+    // Dedup (stesso by+val) e scarta i termini vuoti.
+    const seenTerms = new Set();
+    const attempts = [];
+    for (const a of searchPlan) {
+      const v = clean(a.val);
+      if (!v) continue;
+      const key = `${a.by}|${v.toLowerCase()}`;
+      if (seenTerms.has(key)) continue;
+      seenTerms.add(key);
+      attempts.push({ by: a.by, val: v, acceptSingle: a.acceptSingle });
     }
-    const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
-    if ((await valBox.count().catch(() => 0)) && buscarVal) {
-      diagnostic.steps.push('search_fill');
-      await valBox.fill(String(buscarVal), { timeout: 8000 }).catch(() => {});
+
+    // Esegue UNA ricerca e prova a risolvere l'id interno dal codice. Non lancia.
+    // Ritorna { id, onFicha, how }: id='' se questo termine non individua il cliente.
+    const trySearch = async (by, val, acceptSingle) => {
+      await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+      if (await optSel.count().catch(() => 0)) {
+        await optSel.selectOption({ label: by }, { timeout: 5000 }).catch(() => {});
+      }
+      const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+      if (!(await valBox.count().catch(() => 0))) return { id: '', onFicha: false, how: 'search_field_not_found' };
+      await valBox.fill(String(val), { timeout: 8000 }).catch(() => {});
       const btnBuscar = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
       if (await btnBuscar.count().catch(() => 0)) {
         await Promise.all([
@@ -3684,38 +3710,25 @@ async function updateClientWithBrowser(options = {}) {
         ]);
       }
       await page.waitForTimeout(1200);
-    } else {
-      diagnostic.steps.push('search_field_not_found');
-    }
-    diagnostic.afterSearchUrl = page.url();
-    diagnostic.searchState = await page.evaluate(() => {
-      const opt = document.querySelector('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda');
-      const box = document.querySelector('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda');
-      const html = document.documentElement.outerHTML;
-      const goto = Array.from(html.matchAll(/gotoClient\((\d+)\)/g)).map((m) => m[1]);
-      return {
-        optionSelected: opt ? `${opt.value}|${(opt.options[opt.selectedIndex] || {}).text || ''}` : null,
-        boxValue: box ? box.value : null,
-        gotoIds: [...new Set(goto)].slice(0, 25),
-        bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 500),
-      };
-    }).catch(() => null);
 
-    // La ricerca con risultato UNICO apre direttamente la scheda cliente (FichaCliente),
-    // senza passare da una lista. Riconosco il caso dall'URL o dal testo "Scheda cliente : <codice>".
-    const ss = diagnostic.searchState || {};
-    const schedaMatch = String(ss.bodySample || '').match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
-    const onFichaNow = /FichaCliente\.aspx/i.test(page.url()) || !!schedaMatch;
-    let idInterno = '';
+      const ss = await page.evaluate(() => ({
+        bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+      })).catch(() => ({ bodySample: '' }));
 
-    if (onFichaNow) {
-      const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
-      idInterno = idm ? idm[1] : '';
-      diagnostic.idInterno = idInterno;
-      diagnostic.resolve = { how: 'direct_ficha', id: idInterno, codiceScheda: schedaMatch ? schedaMatch[1] : '' };
-      diagnostic.steps.push('ficha_diretta');
-      // Siamo gia' sulla scheda del cliente: nessuna navigazione necessaria.
-    } else {
+      // Risultato UNICO -> Matchpoint apre direttamente la FichaCliente. Verifico che
+      // il codice della scheda coincida (evita di aggiornare un omonimo).
+      const codNorm = String(codice).replace(/^0+/, '');
+      const schedaMatch = String(ss.bodySample || '').match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      const onFichaNow = /FichaCliente\.aspx/i.test(page.url()) || !!schedaMatch;
+      if (onFichaNow) {
+        const schedaCod = schedaMatch ? schedaMatch[1].replace(/^0+/, '') : '';
+        if (schedaCod && schedaCod !== codNorm) {
+          return { id: '', onFicha: false, how: `ficha_codice_mismatch(${schedaMatch[1]})` };
+        }
+        const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+        return { id: idm ? idm[1] : '', onFicha: true, how: 'direct_ficha' };
+      }
+
       const resolved = await page.evaluate((cod) => {
         const codNorm = String(cod).replace(/^0+/, '');
         const matchId = (str) => {
@@ -3745,17 +3758,61 @@ async function updateClientWithBrowser(options = {}) {
         if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
         return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
       }, codice).catch(() => ({ id: '', how: 'eval_error', rows: 0, candidates: 0 }));
-      idInterno = resolved.id;
-      diagnostic.idInterno = idInterno;
-      diagnostic.resolve = resolved;
-      if (!idInterno) {
-        throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (resolve=${resolved.how}, righe=${resolved.rows}).`, diagnostic);
+
+      // code_token = match esatto sul codice -> sempre valido. single_candidate
+      // (risultato unico senza codice visibile) accettato solo per termini univoci
+      // (email/telefono); per cognome/nome verrebbe scartato per evitare omonimi.
+      if (resolved.how === 'code_token') return { id: resolved.id, onFicha: false, how: resolved.how };
+      if (resolved.how === 'single_candidate' && acceptSingle) return { id: resolved.id, onFicha: false, how: resolved.how };
+      return { id: '', onFicha: false, how: resolved.how };
+    };
+
+    diagnostic.steps.push('resolve_codice');
+    diagnostic.attempts = [];
+    let idInterno = '';
+    let onFichaNow = false;
+    let resolvedOk = false;
+    for (const a of attempts) {
+      const r = await trySearch(a.by, a.val, a.acceptSingle);
+      diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '' });
+      // Successo = id risolto OPPURE gia' atterrati sulla ficha giusta (codice gia'
+      // verificato in trySearch). Il caso onFicha senza id in URL e' valido: si resta
+      // sulla scheda aperta e si compila li' (come faceva il vecchio percorso diretto).
+      if (r.id || r.onFicha) {
+        idInterno = r.id || '';
+        onFichaNow = r.onFicha;
+        resolvedOk = true;
+        diagnostic.resolve = { how: r.how, by: a.by, id: idInterno };
+        break;
       }
+    }
+    diagnostic.idInterno = idInterno;
+    diagnostic.afterSearchUrl = page.url();
+    if (!resolvedOk) {
+      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (tentativi=${diagnostic.attempts.length}).`, diagnostic);
+    }
+    if (!onFichaNow && idInterno) {
       diagnostic.steps.push('goto_ficha');
       await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     }
     diagnostic.fichaUrl = page.url();
+
+    // ── Verifica DEFINITIVA del codice sulla scheda aperta, prima di scrivere ──
+    // Rete di sicurezza anti-omonimo valida per OGNI percorso di risoluzione (anche
+    // single_candidate su email/telefono NUOVI, che potrebbero appartenere a un ALTRO
+    // cliente gia' esistente in Matchpoint): leggo "Scheda cliente : <codice>" dalla
+    // ficha e confronto. Se il codice e' leggibile e NON coincide, rifiuto la scrittura.
+    // Se non e' leggibile (locale/markup diverso) procedo (best-effort, come prima).
+    const fichaCod = await page.evaluate(() => {
+      const t = (document.body ? document.body.innerText : '');
+      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      return m ? m[1] : '';
+    }).catch(() => '');
+    diagnostic.fichaCodice = fichaCod;
+    if (fichaCod && fichaCod.replace(/^0+/, '') !== String(codice).replace(/^0+/, '')) {
+      throw fail('CLIENT_NOT_FOUND', `Scheda trovata ma con codice diverso (${fichaCod} != ${codice}): nessuna scrittura per non aggiornare un omonimo.`, diagnostic);
+    }
 
     // Localizza un controllo per suffisso: prima dentro il FormView, poi globale.
     const locateBySuffix = async (suffix) => {
