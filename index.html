@@ -227,6 +227,19 @@
     .admin-section-tabs { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin:12px 0 14px; }
     .admin-section-tab { display:flex; align-items:center; justify-content:flex-start; min-height:44px; border:1px solid #dfe8f3; border-radius:8px; background:#fff; color:#344054; padding:10px 12px; font-weight:900; text-align:left; }
     .admin-section-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(35,79,145,.16); }
+    .pmo-section-tree { border:1px solid #e3e9f2; border-radius:10px; overflow:hidden; margin-top:6px; background:#fff; }
+    .pmo-sect-hint { font-size:12px; color:#667085; padding:8px 12px; background:#f6f9fd; border-bottom:1px solid #eef2f7; line-height:1.4; }
+    .pmo-sect-row { display:flex; align-items:center; gap:10px; padding:10px 12px; margin:0; border-bottom:1px solid #eef2f7; font-weight:700; color:#344054; cursor:pointer; }
+    .pmo-section-tree > .pmo-sect-row:last-child, .pmo-section-tree > .pmo-sect-group:last-child > summary { border-bottom:0; }
+    .pmo-sect-row input[type="checkbox"] { width:16px; height:16px; margin:0; flex:0 0 auto; }
+    .pmo-sect-group > summary { list-style:none; }
+    .pmo-sect-group > summary::-webkit-details-marker { display:none; }
+    .pmo-sect-parent::before { content:'▸'; color:#98a2b3; font-size:11px; width:12px; display:inline-block; flex:0 0 auto; }
+    .pmo-sect-group[open] > .pmo-sect-parent::before { content:'▾'; }
+    .pmo-sect-count { margin-left:auto; font-size:12px; color:#98a2b3; font-weight:700; }
+    .pmo-sect-children { background:#fafbfd; }
+    .pmo-sect-child { padding-left:42px; font-weight:600; font-size:13px; }
+    .pmo-sect-row.is-off { opacity:.45; }
     .admin-section-panel[hidden] { display:none !important; }
     .admin-notification-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; align-items:start; }
     .admin-box { border:1px solid #dfe8f3; border-radius:8px; background:#fff; overflow:hidden; min-width:0; }
@@ -5825,44 +5838,44 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
       <div class="side-nav-content">
         <div class="side-nav-section-label">Capitoli</div>
-        <button class="tab-button side-nav-main-item" onclick="switchTab('dashboard', this)">
+        <button class="tab-button side-nav-main-item" data-section-key="dashboard" onclick="switchTab('dashboard', this)">
           <span class="nav-order">0</span>
           <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Campi staff</span></span>
         </button>
 
-        <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
+        <button class="side-nav-parent side-nav-main-item" data-section-key="assessment" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
           <span class="nav-order">1</span>
           <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
           <span class="nav-caret">▾</span>
         </button>
-        <div id="subAssessment" class="side-submenu">
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Cruscotto mattutino')">Flusso</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Testi')">Testi</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
-          <button class="side-sub-link" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
-          <button class="side-sub-link" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
+        <div id="subAssessment" class="side-submenu" data-section-key="assessment">
+          <button class="side-sub-link" data-subsection-key="view_assessment_flusso" data-parent-tab="assessment" onclick="goToTabSection('assessment','Cruscotto mattutino')">Flusso</button>
+          <button class="side-sub-link" data-subsection-key="view_assessment_testi" data-parent-tab="assessment" onclick="goToTabSection('assessment','Testi')">Testi</button>
+          <button class="side-sub-link" data-subsection-key="view_assessment_scheda" data-parent-tab="assessment" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
+          <button class="side-sub-link" data-subsection-key="view_assessment_strumenti" data-parent-tab="assessment" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
+          <button class="side-sub-link" data-subsection-key="view_assessment_excel" data-parent-tab="assessment" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
         </div>
 
-        <button class="tab-button side-nav-main-item" onclick="switchTab('members', this)">
+        <button class="tab-button side-nav-main-item" data-section-key="members" onclick="switchTab('members', this)">
           <span class="nav-order">2</span>
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
-        <button class="tab-button side-nav-main-item" onclick="switchTab('contact', this)">
+        <button class="tab-button side-nav-main-item" data-section-key="contact" onclick="switchTab('contact', this)">
           <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
         </button>
 
-        <button class="side-nav-parent side-nav-main-item" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
+        <button class="side-nav-parent side-nav-main-item" data-section-key="administration" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
           <span class="nav-order">4</span>
           <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti, dati e controlli</span></span>
           <span class="nav-caret">▾</span>
         </button>
-        <div id="subAdministration" class="side-submenu">
-          <button class="side-sub-link" onclick="goToTabSection('administration','Utenti')">Utenti</button>
-          <button class="side-sub-link" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
-          <button class="side-sub-link" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
-          <button class="side-sub-link" onclick="goToTabSection('administration','Supabase')">Supabase</button>
+        <div id="subAdministration" class="side-submenu" data-section-key="administration">
+          <button class="side-sub-link" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
 
       </div>
@@ -7349,7 +7362,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.748';
+    const APP_VERSION = '5.749';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -7968,6 +7981,7 @@ Grazie.`
       document.body.classList.toggle('pmo-auth-locked', !unlocked);
       const overlay = document.getElementById('pmoLoginOverlay');
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
+      try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
       if (!unlocked) {
         pmoResetLoginActionButtons();
         setTimeout(() => {
@@ -8096,6 +8110,7 @@ Grazie.`
       pmoStaffProfile = profile || null;
       if (pmoStaffProfile) localStorage.setItem(PMO_STAFF_PROFILE_KEY, JSON.stringify(pmoStaffProfile));
       else localStorage.removeItem(PMO_STAFF_PROFILE_KEY);
+      try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
     }
     function pmoClearSupabaseStaffSession() {
       try { localStorage.removeItem(PMO_STAFF_SUPABASE_SESSION_KEY); } catch {}
@@ -9405,6 +9420,10 @@ Grazie.`
         if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('supabase', { silent:true });
         tabName = 'administration';
       }
+      if (typeof pmoSectionVisibleFor === 'function' && !pmoSectionVisibleFor(tabName)) {
+        const allowedTab = pmoFirstAllowedSection();
+        if (allowedTab && allowedTab !== tabName) { switchTab(allowedTab, btn, options); return; }
+      }
       const renderId = ++tabSwitchRenderId;
       const shouldScrollTop = !(options && options.scrollTop === false);
       if (tabName !== 'fillSlots') cancelFillSlotsPendingWork();
@@ -9455,6 +9474,144 @@ Grazie.`
       if (shouldScrollTop && tab) {
         requestAnimationFrame(() => setTimeout(() => scrollMainContentToTop('smooth'), 60));
       }
+    }
+
+    // ── Visibilità sezioni/sottosezioni per ruolo staff ──────────────────────
+    // Gating lato interfaccia (UX): nasconde le voci di menu non consentite al
+    // profilo. Non è una barriera di sicurezza: l'enforcement reale delle azioni
+    // resta sulle RPC SECURITY DEFINER (pmo_staff_permission_ok).
+    const PMO_SECTION_TREE = [
+      { key:'view_dashboard', tab:'dashboard', label:'Calendario' },
+      { key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
+        { key:'view_assessment_flusso', label:'Flusso' },
+        { key:'view_assessment_testi', label:'Testi' },
+        { key:'view_assessment_scheda', label:'Scheda pubblica' },
+        { key:'view_assessment_strumenti', label:'Strumenti tecnici' },
+        { key:'view_assessment_excel', label:'Import livelli Excel' },
+      ]},
+      { key:'view_members', tab:'members', label:'Anagrafica soci' },
+      { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
+      { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
+        { key:'view_admin_utenti', label:'Utenti', adminSection:'users' },
+        { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
+        { key:'view_admin_matchpoint', label:'Dati Matchpoint', adminSection:'matchpoint-data' },
+        { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
+      ]},
+    ];
+    const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', contact:'view_contact', administration:'view_administration' };
+    const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'contact', 'administration'];
+    const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
+
+    function pmoAllViewKeys() {
+      const out = [];
+      PMO_SECTION_TREE.forEach(node => { out.push(node.key); (node.children || []).forEach(child => out.push(child.key)); });
+      return out;
+    }
+    function pmoDefaultViewPermissions() {
+      const views = {};
+      pmoAllViewKeys().forEach(key => { views[key] = true; });
+      return views;
+    }
+    function pmoResolveVisibilityProfile(profile) {
+      if (profile !== undefined) return profile;
+      return pmoIsStaffProfileActive(pmoStaffProfile) ? pmoStaffProfile : null;
+    }
+    function pmoStaffHasViewConfig(profile) {
+      const perms = profile && profile.permissions;
+      return !!perms && pmoAllViewKeys().some(key => key in perms);
+    }
+    function pmoSectionVisibleFor(tabName, profile) {
+      profile = pmoResolveVisibilityProfile(profile);
+      if (!profile) return true;                                   // pre-login / pubblico
+      if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
+      if (!pmoStaffHasViewConfig(profile)) return true;            // retrocompat: nessun flag = vede tutto
+      const key = PMO_TAB_VIEW_KEY[tabName];
+      if (!key) return true;                                       // tab non mappato = visibile
+      return profile.permissions[key] !== false;
+    }
+    function pmoSubsectionVisibleFor(subKey, parentTab, profile) {
+      profile = pmoResolveVisibilityProfile(profile);
+      if (!pmoSectionVisibleFor(parentTab, profile)) return false;
+      if (!profile) return true;
+      if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
+      if (!pmoStaffHasViewConfig(profile)) return true;
+      if (!subKey) return true;
+      return profile.permissions[subKey] !== false;
+    }
+    function pmoFirstAllowedSection(profile) {
+      profile = pmoResolveVisibilityProfile(profile);
+      return PMO_SECTION_ORDER.find(tab => pmoSectionVisibleFor(tab, profile)) || 'dashboard';
+    }
+    function pmoAdminSectionViewAllowed(sectionKey, profile) {
+      const subKey = PMO_ADMIN_SECTION_VIEW_KEY[sectionKey];
+      if (!subKey) return pmoSectionVisibleFor('administration', profile); // calendario-staff ecc.
+      return pmoSubsectionVisibleFor(subKey, 'administration', profile);
+    }
+    function pmoFirstAllowedAdminSection(profile) {
+      const order = ['users', 'notifications', 'matchpoint-data', 'supabase'];
+      return order.find(section => pmoAdminSectionViewAllowed(section, profile)) || 'users';
+    }
+    function pmoApplyTabVisibility() {
+      try {
+        const profile = pmoIsStaffProfileActive(pmoStaffProfile) ? pmoStaffProfile : null;
+        document.querySelectorAll('[data-section-key]').forEach(el => {
+          el.hidden = !pmoSectionVisibleFor(el.getAttribute('data-section-key'), profile);
+        });
+        document.querySelectorAll('[data-subsection-key]').forEach(el => {
+          el.hidden = !pmoSubsectionVisibleFor(el.getAttribute('data-subsection-key'), el.getAttribute('data-parent-tab'), profile);
+        });
+        const active = document.querySelector('.tab-content.active');
+        if (active && active.id && !pmoSectionVisibleFor(active.id, profile)) {
+          const landing = pmoFirstAllowedSection(profile);
+          if (landing && landing !== active.id) switchTab(landing, null);
+        } else if (active && active.id === 'administration' && profile) {
+          const current = (typeof pmoAdminSectionKey === 'function') ? pmoAdminSectionKey(pmoAdminState.activeSection || 'users') : 'users';
+          if (!pmoAdminSectionViewAllowed(current, profile) && typeof pmoSetAdminSection === 'function') {
+            pmoSetAdminSection(pmoFirstAllowedAdminSection(profile));
+          }
+        }
+      } catch (err) { console.warn('pmoApplyTabVisibility', err); }
+    }
+    function pmoSectionTreeHtml(selectedPermissions=null) {
+      const sel = selectedPermissions && typeof selectedPermissions === 'object' ? selectedPermissions : {};
+      const checked = key => (sel[key] !== false);                // fail-open: chiave assente = spuntata
+      const rows = PMO_SECTION_TREE.map(node => {
+        if (!node.children) {
+          return `<label class="pmo-sect-row"><input type="checkbox" data-admin-permission="${escapeHtml(node.key)}" ${checked(node.key) ? 'checked' : ''} onchange="pmoUpdateSectionTree()" /><span>${escapeHtml(node.label)}</span></label>`;
+        }
+        const kids = node.children.map(child =>
+          `<label class="pmo-sect-row pmo-sect-child"><input type="checkbox" data-admin-permission="${escapeHtml(child.key)}" data-parent-key="${escapeHtml(node.key)}" ${checked(child.key) ? 'checked' : ''} onchange="pmoUpdateSectionTree()" /><span>${escapeHtml(child.label)}</span></label>`
+        ).join('');
+        return `<details class="pmo-sect-group">
+          <summary class="pmo-sect-row pmo-sect-parent">
+            <input type="checkbox" data-admin-permission="${escapeHtml(node.key)}" data-group-key="${escapeHtml(node.key)}" ${checked(node.key) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="pmoUpdateSectionTree()" />
+            <span class="pmo-sect-label">${escapeHtml(node.label)}</span>
+            <span class="pmo-sect-count" data-count-for="${escapeHtml(node.key)}"></span>
+          </summary>
+          <div class="pmo-sect-children">${kids}</div>
+        </details>`;
+      }).join('');
+      return `<div class="pmo-section-tree" id="pmoSectionTree">
+        <div class="pmo-sect-hint">Spunta cosa può vedere l'utente. Nessuna spunta su tutto l'albero = vede tutto (default). Proprietario e Admin vedono sempre tutto.</div>
+        ${rows}
+      </div>`;
+    }
+    function pmoUpdateSectionTree() {
+      const tree = document.getElementById('pmoSectionTree');
+      if (!tree) return;
+      tree.querySelectorAll('input[data-group-key]').forEach(parent => {
+        const groupKey = parent.dataset.groupKey;
+        const kids = Array.from(tree.querySelectorAll(`input[data-parent-key="${groupKey}"]`));
+        const checkedKids = kids.filter(k => k.checked).length;
+        const counter = tree.querySelector(`[data-count-for="${groupKey}"]`);
+        if (counter) counter.textContent = `${checkedKids} / ${kids.length}`;
+        const off = !parent.checked;
+        kids.forEach(k => {
+          k.disabled = off;
+          const row = k.closest('.pmo-sect-row');
+          if (row) row.classList.toggle('is-off', off);
+        });
+      });
     }
     function getMatchpointCell(row, possibleNames) {
       const keys = Object.keys(row || {});
@@ -24379,10 +24536,11 @@ Per confermare scrivi ELIMINA.`);
 	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Routine</th><th>Stato</th><th>Anticipo</th><th>Ultimo controllo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 	    }
 	    function pmoDefaultPermissionsForRole(role) {
-	      const all = { manage_users:true, cloud_sync:true, routines:true, members_write:true, matches_write:true, messages_write:true, data_export:true, read_all:true };
+	      const views = pmoDefaultViewPermissions();
+	      const all = { manage_users:true, cloud_sync:true, routines:true, members_write:true, matches_write:true, messages_write:true, data_export:true, read_all:true, ...views };
 	      if (role === 'owner' || role === 'admin') return all;
-	      if (role === 'staff') return { manage_users:false, cloud_sync:false, routines:false, members_write:true, matches_write:true, messages_write:true, data_export:false, read_all:true };
-	      return { manage_users:false, cloud_sync:false, routines:false, members_write:false, matches_write:false, messages_write:false, data_export:false, read_all:true };
+	      if (role === 'staff') return { manage_users:false, cloud_sync:false, routines:false, members_write:true, matches_write:true, messages_write:true, data_export:false, read_all:true, ...views };
+	      return { manage_users:false, cloud_sync:false, routines:false, members_write:false, matches_write:false, messages_write:false, data_export:false, read_all:true, ...views };
 	    }
 	    function pmoRoleLabel(role) {
 	      return ({ owner:'Proprietario', admin:'Admin', staff:'Staff', readonly:'Solo lettura' })[role] || role || '-';
@@ -24480,7 +24638,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
 	      const permissions = pmoCollectAdminPermissions();
-	      const active = Object.entries(permissions).filter(([, value]) => !!value).map(([key]) => key);
+	      const active = Object.entries(permissions).filter(([key, value]) => !!value && !String(key).startsWith('view_')).map(([key]) => key);
 	      const chips = active.length
 	        ? active.map(key => `<span class="staff-permission-chip">${escapeHtml(pmoPermissionLabel(key))}</span>`).join('')
 	        : '<span class="staff-permission-chip staff-permission-chip-muted">Nessun permesso operativo</span>';
@@ -24620,7 +24778,11 @@ Per confermare scrivi ELIMINA.`);
 	      return 'users';
 	    }
 	    function pmoSetAdminSection(section='users', options={}) {
-	      pmoAdminState.activeSection = pmoAdminSectionKey(section);
+	      let pmoSectionTarget = pmoAdminSectionKey(section);
+	      if (typeof pmoAdminSectionViewAllowed === 'function' && !pmoAdminSectionViewAllowed(pmoSectionTarget)) {
+	        pmoSectionTarget = pmoFirstAllowedAdminSection();
+	      }
+	      pmoAdminState.activeSection = pmoSectionTarget;
 	      save('pmoAdminState', pmoAdminState);
 	      if (!options?.silent) renderPmoAdministration();
 	      if (pmoAdminState.activeSection === 'matchpoint-data') {
@@ -24890,7 +25052,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const session = pmoCurrentSessionSummary();
 	      const permissions = session.profile?.permissions || {};
-	      const permissionLabels = Object.entries(permissions).filter(([,value]) => !!value).map(([key]) => pmoPermissionLabel(key));
+	      const permissionLabels = Object.entries(permissions).filter(([key,value]) => !!value && !String(key).startsWith('view_')).map(([key]) => pmoPermissionLabel(key));
 	      const permissionText = permissionLabels.length ? permissionLabels.join(', ') : 'Permessi non caricati';
 	      target.innerHTML = `
 	        <div class="admin-account-strip">
@@ -25102,6 +25264,7 @@ Per confermare scrivi ELIMINA.`);
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        input.checked = !!defaults[input.dataset.adminPermission];
 	      });
+	      if (typeof pmoUpdateSectionTree === 'function') pmoUpdateSectionTree();
 	      pmoRenderStaffRoleSummary();
 	    }
 	    function pmoCollectAdminPermissions() {
@@ -25154,6 +25317,8 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-permission-grid">
 	          ${pmoStaffPermissionCheckboxesHtml(permissions)}
 	        </div>
+	        <div class="staff-permissions-copy"><strong>Sezioni visibili</strong></div>
+	        ${pmoSectionTreeHtml(permissions)}
 	        <div class="admin-user-form-note">${escapeHtml(help)}</div>
 	        <div class="admin-inline-actions">
 	          <button id="pmoStaffFormSaveButton" class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">${editing ? 'Salva modifiche' : 'Autorizza email'}</button>
@@ -25194,6 +25359,7 @@ Per confermare scrivi ELIMINA.`);
 	      pmoSetStaffFormMode('edit', cleanEmail);
 	      pmoRenderStaffUsersTable();
 	      requestAnimationFrame(() => {
+	        if (typeof pmoUpdateSectionTree === 'function') pmoUpdateSectionTree();
 	        pmoRenderStaffRoleSummary();
 	        const target = document.getElementById('pmoStaffUserName') || document.getElementById('pmoStaffUserEmail');
 	        if (target && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(target, { block:'center' });
@@ -26414,6 +26580,7 @@ Per confermare scrivi ELIMINA.`);
 	      renderPmoRoutineCenter();
 	      renderPmoAdministration();
 	      pmoApplyRolePermissions();
+	      try { pmoApplyTabVisibility(); } catch (err) { console.warn('pmoApplyTabVisibility boot', err); }
 	      refreshAssistantGroupsCountBadge();
       checkLocalDataSafetyOnStartup();
       if (assessmentMatchpointDemoEnabled()) {
