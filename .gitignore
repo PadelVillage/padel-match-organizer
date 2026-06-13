@@ -22,3 +22,6 @@ padel_match_organizer_v5_*.html
 # Chiavi SSH di deploy Hetzner
 pmo_deploy_key
 pmo_deploy_key.pub
+
+# Config locale editor/agent (non versionata)
+.claude/
