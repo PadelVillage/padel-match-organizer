@@ -35091,6 +35091,7 @@ Per confermare scrivi ELIMINA.`);
 
   let _staffCalAgendaField = 1;
   let _staffCalResizeInited = false;
+  let _staffCalLastScrollIso = null; // ultima giornata renderizzata, per preservare lo scroll orizzontale sui re-render
   let _staffCalResizeTimer = null;
 
   function renderStaffCalendar() {
@@ -35546,6 +35547,12 @@ Per confermare scrivi ELIMINA.`);
     const tabs = document.getElementById('staffCalAgendaTabs');
     if (tabs && !isDesktop) tabs.style.display = 'none';
     body.style.display = 'block';
+    // Preserva lo scroll orizzontale dell'utente sui re-render della STESSA giornata
+    // (es. refresh di background dal polling cloud): catturo la posizione corrente dal
+    // container ancora in DOM prima di azzerarlo. Vedi blocco auto-scroll in fondo.
+    const _prevSc = body.querySelector('[data-staffcal-scroll]');
+    const _keepScroll = (_staffCalLastScrollIso === isoDate) && _prevSc;
+    const _prevScrollLeft = _prevSc ? _prevSc.scrollLeft : 0;
     body.innerHTML = '';
 
     const rectTop = body.getBoundingClientRect().top;
@@ -35581,6 +35588,7 @@ Per confermare scrivi ELIMINA.`);
     // Scroller (header ore + corsie) — scorre in orizzontale
     const sc = document.createElement('div');
     sc.style.cssText = 'flex:1;overflow-x:auto;overflow-y:hidden;';
+    sc.setAttribute('data-staffcal-scroll', '1'); // marcatore per ritrovare lo scrollLeft al prossimo render
     const content = document.createElement('div');
     content.style.cssText = 'width:' + totalW + 'px;position:relative;';
     const hdr = document.createElement('div');
@@ -35664,15 +35672,22 @@ Per confermare scrivi ELIMINA.`);
     frame.appendChild(sc);
     body.appendChild(frame);
 
-    // Auto-scroll: all'ora attuale se è oggi, altrimenti alla prima prenotazione
-    let firstMin = 540;
-    for (let c = 1; c <= 4; c++) for (const b of fs[c]) firstMin = Math.min(firstMin, b.st);
-    let scrollMin = firstMin;
-    try {
-      const today = (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : null;
-      if (today && isoDate === today) { const d = new Date(); scrollMin = Math.min(END, Math.max(START, d.getHours() * 60 + d.getMinutes())); }
-    } catch (e) {}
-    sc.scrollLeft = Math.max(0, ((scrollMin - START) / 30) * COLW - COLW);
+    // Auto-scroll orizzontale. Sui RE-render della stessa giornata (es. refresh di
+    // background dal polling cloud) preserva la posizione scelta dall'utente; centra
+    // su "adesso" (o sulla prima prenotazione) SOLO al primo render o al cambio data.
+    if (_keepScroll) {
+      sc.scrollLeft = _prevScrollLeft;
+    } else {
+      let firstMin = 540;
+      for (let c = 1; c <= 4; c++) for (const b of fs[c]) firstMin = Math.min(firstMin, b.st);
+      let scrollMin = firstMin;
+      try {
+        const today = (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : null;
+        if (today && isoDate === today) { const d = new Date(); scrollMin = Math.min(END, Math.max(START, d.getHours() * 60 + d.getMinutes())); }
+      } catch (e) {}
+      sc.scrollLeft = Math.max(0, ((scrollMin - START) / 30) * COLW - COLW);
+    }
+    _staffCalLastScrollIso = isoDate;
   }
 
   // ── Spostamento prenotazione STAFF dal calendario (solo card ✏️) ─────────────
