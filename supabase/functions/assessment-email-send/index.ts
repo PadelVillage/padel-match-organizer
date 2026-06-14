@@ -19,6 +19,10 @@ const CORS_HEADERS = {
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
 const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
+const LOGO_URL = 'https://app.padelvillage.club/logo-padel-village.jpeg';
+const emailLogoHeaderHtml = () => `<div style="text-align:center;margin:0 0 18px;">
+      <img src="${LOGO_URL}" alt="Padel Village" width="120" style="width:120px;height:auto;display:inline-block;" />
+    </div>`;
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
 const ASSESSMENT_SUPPORT_WHATSAPP_URL = ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL;
@@ -319,6 +323,7 @@ function buildHtmlBody(params: {
   <body style="margin:0;padding:0;background:#f4f7fb;">
     <div style="max-width:620px;margin:0 auto;padding:24px 14px;">
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:26px 22px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;line-height:1.55;">
+        ${emailLogoHeaderHtml()}
         ${testBox}
         ${bodyHtml}
       </div>
@@ -2404,6 +2409,7 @@ function buildStaffInviteHtml(params: { greeting: string; inviteUrl: string; inv
   const testBox = params.testMode ? `<p style="margin:0 0 16px;color:#475569;font-size:13px;">[TEST INTERNO PMO] Invito staff in modalita prova. Destinatario reale: ${escapeHtml(params.inviteEmail)}</p>` : '';
   return `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff;">
   <div style="max-width:600px;margin:0 auto;padding:20px 16px;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:15px;line-height:1.55;">
+    ${emailLogoHeaderHtml()}
     ${testBox}
     <p style="margin:0 0 14px;">${escapeHtml(params.greeting)}</p>
     <p style="margin:0 0 14px;">Hai ricevuto questa email perche lo staff di ${escapeHtml(params.fromName)} ti ha aggiunto come collaboratore al gestionale interno.</p>
