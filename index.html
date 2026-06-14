@@ -7414,7 +7414,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.759';
+    const APP_VERSION = '5.760';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8304,10 +8304,12 @@ Grazie.`
         try { last = Number(localStorage.getItem('pmoStaffProfileRefreshAt') || 0) || 0; } catch {}
         if (!force && now - last < 180000) return;
         _pmoProfileRefreshInFlight = true;
-        try { localStorage.setItem('pmoStaffProfileRefreshAt', String(now)); } catch {}
         const sig = p => p ? JSON.stringify({ s: p.status, r: p.role, p: p.permissions || {} }) : '';
         const before = sig(pmoStaffProfile);
-        const fresh = await pmoLoadMyStaffProfile();   // aggiorna cache + applica visibilità tab
+        const fresh = await pmoLoadMyStaffProfile();   // aggiorna cache + applica visibilità tab; scrive 1 record di audit
+        // Throttle scritto SOLO dopo una chiamata riuscita: un fallimento transitorio (rete/token)
+        // non consuma la finestra di 3 min, così il reload successivo riprova subito.
+        try { localStorage.setItem('pmoStaffProfileRefreshAt', String(now)); } catch {}
         if (fresh && sig(fresh) !== before) {
           try { if (typeof pmoApplyRolePermissions === 'function') pmoApplyRolePermissions(); } catch {}
           try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch {}
@@ -36219,9 +36221,13 @@ Per confermare scrivi ELIMINA.`);
         const roster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : [];
         const liveNames = roster.map(function (p) { return p.nome; }).filter(Boolean);
         const storedNames = _staffCalStoredRosterNames(iso, campo, ora);
-        // Se la lettura live torna parziale (es. 1 solo nome) ma il roster sincronizzato dal
-        // tabellone ne ha di più, vince il più completo: i giocatori non spariscono dalla card.
-        _staffCalMpPlayers[key] = { names: (liveNames.length >= storedNames.length) ? liveNames : storedNames };
+        // La lettura live è la più fresca ma a volte torna troncata (bug noto: "1 solo nome").
+        // Ci fidiamo del live appena ha un roster plausibile (>=2 nomi); ricadiamo sullo stored solo
+        // quando il live è degenere (0/1 nome) e lo stored ne ha di più. Così i giocatori non
+        // spariscono dalla card, ma una vera rimozione (es. 4->2) non resta mascherata dal roster
+        // sincronizzato non ancora aggiornato.
+        const liveLooksTruncated = liveNames.length <= 1 && storedNames.length > liveNames.length;
+        _staffCalMpPlayers[key] = { names: liveLooksTruncated ? storedNames : liveNames };
       } else {
         const storedNames = _staffCalStoredRosterNames(iso, campo, ora);
         _staffCalMpPlayers[key] = storedNames.length ? { names: storedNames } : { error: true };
