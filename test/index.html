@@ -52,7 +52,7 @@
       try {
         const html = await fetchAppHtml();
         window.PMO_FORCE_ENV = 'test';
-        window.PMO_PUBLIC_BASE_URL = 'https://padelvillage.github.io/padel-match-organizer/test/';
+        window.PMO_PUBLIC_BASE_URL = 'https://app.padelvillage.club/test/';
         document.open(); document.write(html); document.close();
       } catch (err) {
         showErr(err && err.message ? err.message : String(err));
