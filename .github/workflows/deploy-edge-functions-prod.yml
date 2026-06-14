@@ -57,6 +57,10 @@ jobs:
               echo "::warning::Cartella supabase/functions/$fn non trovata, salto"
               continue
             fi
+            if [ ! -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::warning::supabase/functions/$fn senza index.ts (es. asset-only come parser-rules), salto"
+              continue
+            fi
             echo "::group::Deploy $fn → PROD ($SUPABASE_PROJECT_REF)"
             npx supabase@latest functions deploy "$fn" \
               --project-ref "$SUPABASE_PROJECT_REF" \
