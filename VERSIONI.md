@@ -1,5 +1,8 @@
 # Versioni
 
+## v5.759 — Permessi: rilettura profilo dal cloud al reload (non solo al login)
+- Un cambio di permessi/ruolo fatto dall'admin ora si propaga al **semplice reload** della pagina, senza bisogno di logout/login. All'avvio, se la sessione è valida, l'app rilegge in background il profilo dal cloud (`pmoRefreshStaffProfileFromCloud`) con throttle persistente di 3 minuti (perché `pmo_get_my_staff_profile` scrive un record di audit ad ogni chiamata). Se rileva un cambiamento riapplica la visibilità sezioni (`pmoApplyRolePermissions`) e forza il pull del calendario. Caso tipico risolto: utente "solo Calendario" a cui viene attivato `cloud_sync` ora vede partite/lezioni dopo un reload, senza attendere il polling né rifare il login. Solo app.
+
 ## v5.715 — Editor modifica prenotazione: stesso stile delle schede di prenotazione
 - L'editor che si apre modificando una prenotazione (giocatori + spostamento) ora usa lo stesso design delle schede di prenotazione: stessi bottoni (`.svc-btn-step`, conferma verde/rosso), chip giocatori (`.svc-player-chip` + ✕ tondo), etichette e campi coerenti coi token, e gli stessi caratteri (anche le misure su mobile). Eliminati gli stili inline ad-hoc e l'override `font-size:20px` dedicato. Solo presentazione: comportamento, handler e logica invariati. Solo app.
 

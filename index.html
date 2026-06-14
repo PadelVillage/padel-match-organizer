@@ -7414,7 +7414,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.758';
+    const APP_VERSION = '5.759';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8287,6 +8287,36 @@ Grazie.`
       const profile = Array.isArray(rows) ? rows[0] : rows;
       pmoStoreStaffProfile(profile || null);
       return profile || null;
+    }
+    // Rilegge il profilo (ruolo/permessi) dal cloud anche SENZA nuovo login: al reload
+    // l'app usa il profilo in cache (isStaffSessionValid), quindi un cambio permessi fatto
+    // dall'admin non si vedrebbe finché l'utente non rifà logout/login. Qui lo riallineiamo
+    // in background. Throttle persistente (3 min) perché pmo_get_my_staff_profile scrive un
+    // record di audit ad ogni chiamata: evita spam su reload ripetuti.
+    let _pmoProfileRefreshInFlight = false;
+    async function pmoRefreshStaffProfileFromCloud(opts) {
+      const force = opts && opts.force;
+      if (_pmoProfileRefreshInFlight) return;
+      try {
+        if (typeof isStaffSessionValid !== 'function' || !isStaffSessionValid()) return;
+        const now = Date.now();
+        let last = 0;
+        try { last = Number(localStorage.getItem('pmoStaffProfileRefreshAt') || 0) || 0; } catch {}
+        if (!force && now - last < 180000) return;
+        _pmoProfileRefreshInFlight = true;
+        try { localStorage.setItem('pmoStaffProfileRefreshAt', String(now)); } catch {}
+        const sig = p => p ? JSON.stringify({ s: p.status, r: p.role, p: p.permissions || {} }) : '';
+        const before = sig(pmoStaffProfile);
+        const fresh = await pmoLoadMyStaffProfile();   // aggiorna cache + applica visibilità tab
+        if (fresh && sig(fresh) !== before) {
+          try { if (typeof pmoApplyRolePermissions === 'function') pmoApplyRolePermissions(); } catch {}
+          try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch {}
+        }
+      } catch (e) {
+        console.warn('pmoRefreshStaffProfileFromCloud:', e);
+      } finally {
+        _pmoProfileRefreshInFlight = false;
+      }
     }
     async function pmoHandleStaffEmailLogin(email, password) {
       const message = document.getElementById('pmoLoginMessage');
@@ -26726,6 +26756,9 @@ Per confermare scrivi ELIMINA.`);
 	      renderPmoAdministration();
 	      pmoApplyRolePermissions();
 	      try { pmoApplyTabVisibility(); } catch (err) { console.warn('pmoApplyTabVisibility boot', err); }
+	      // Riallinea ruolo/permessi dal cloud al reload (non solo al login): un cambio permessi
+	      // dell'admin si propaga senza logout. Fire-and-forget, con throttle interno.
+	      try { if (typeof pmoRefreshStaffProfileFromCloud === 'function') pmoRefreshStaffProfileFromCloud(); } catch (err) { console.warn('pmoRefreshStaffProfileFromCloud boot', err); }
 	      refreshAssistantGroupsCountBadge();
       checkLocalDataSafetyOnStartup();
       if (assessmentMatchpointDemoEnabled()) {
