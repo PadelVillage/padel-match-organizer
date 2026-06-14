@@ -1,5 +1,9 @@
 # Versioni
 
+## v5.760 — Robustezza: throttle profilo solo su successo + roster calendario meno aggressivo
+- **Rilettura profilo (`pmoRefreshStaffProfileFromCloud`)**: il throttle persistente di 3 minuti ora viene scritto **solo dopo** una chiamata a `pmo_get_my_staff_profile` andata a buon fine. Prima veniva scritto *prima* della RPC: un errore transitorio (rete/token) "consumava" la finestra e per 3 minuti i reload successivi saltavano la rilettura, ritardando la propagazione di un cambio permessi dell'admin. Ora un fallimento non blocca il retry al reload successivo. (Audit invariato: si scrive un solo record per chiamata riuscita.)
+- **Roster card calendario staff (`staffCalViewMatchpointPlayers`)**: la scelta tra lettura live e roster sincronizzato non è più basata solo sul numero di nomi. Ci si fida del live appena ha un roster plausibile (≥2 nomi) e si ricade sullo stored solo quando il live è degenere (0/1 nome) e lo stored ne ha di più. Mantiene la protezione contro la lettura troncata ("1 solo nome") ma non maschera più una rimozione reale di giocatori (es. 4→2) quando il roster sincronizzato non è ancora aggiornato. Solo app.
+
 ## v5.759 — Permessi: rilettura profilo dal cloud al reload (non solo al login)
 - Un cambio di permessi/ruolo fatto dall'admin ora si propaga al **semplice reload** della pagina, senza bisogno di logout/login. All'avvio, se la sessione è valida, l'app rilegge in background il profilo dal cloud (`pmoRefreshStaffProfileFromCloud`) con throttle persistente di 3 minuti (perché `pmo_get_my_staff_profile` scrive un record di audit ad ogni chiamata). Se rileva un cambiamento riapplica la visibilità sezioni (`pmoApplyRolePermissions`) e forza il pull del calendario. Caso tipico risolto: utente "solo Calendario" a cui viene attivato `cloud_sync` ora vede partite/lezioni dopo un reload, senza attendere il polling né rifare il login. Solo app.
 
