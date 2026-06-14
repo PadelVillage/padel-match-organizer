@@ -949,9 +949,9 @@ function assessmentPublicBaseUrl(supabaseUrl: string) {
   const configured = clean(Deno.env.get('ASSESSMENT_PUBLIC_BASE_URL'));
   if (configured) return configured;
   if (supabaseUrl.includes('cudiqnrrlbyqryrtaprd')) {
-    return 'https://padelvillage.github.io/padel-match-organizer/test/autovalutazione.html?env=test';
+    return 'https://app.padelvillage.club/test/autovalutazione.html?env=test';
   }
-  return 'https://padelvillage.github.io/padel-match-organizer/autovalutazione.html';
+  return 'https://app.padelvillage.club/autovalutazione.html';
 }
 
 function assessmentPublicLink(supabaseUrl: string, token: string, member: JsonMap) {
