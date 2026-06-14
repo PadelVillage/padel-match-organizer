@@ -14,6 +14,14 @@
   <meta name="twitter:title" content="Padel Match Organizer" />
   <meta name="twitter:description" content="Padel Village" />
   <meta name="twitter:image" content="https://app.padelvillage.club/logo-padel-village.jpeg" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Padel Village" />
   <script>
     (function markPublicAccessBoot() {
       try {
@@ -5321,11 +5329,43 @@ body.assessment-public-mode .assessment-public-only-card {
       box-shadow:0 24px 70px rgba(0,0,0,.28);
       padding:26px;
     }
+    .pmo-login-logo {
+      display:block;
+      width:96px;
+      height:auto;
+      margin:0 auto 16px;
+    }
     .pmo-login-card h1 {
       margin:0;
       color:var(--primary);
       font-size:30px;
       line-height:1.12;
+      text-align:center;
+    }
+    .pmo-topbar-logo {
+      height:28px;
+      width:auto;
+      border-radius:4px;
+      flex:0 0 auto;
+    }
+    .side-nav-brand {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      min-width:0;
+    }
+    .pmo-sidenav-logo-chip {
+      display:inline-flex;
+      flex:0 0 auto;
+      background:#fff;
+      border-radius:8px;
+      padding:3px;
+      line-height:0;
+    }
+    .pmo-sidenav-logo-chip img {
+      height:30px;
+      width:auto;
+      display:block;
     }
     .pmo-login-card p {
       margin:8px 0 0;
@@ -5772,6 +5812,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
   <div id="pmoLoginOverlay" class="pmo-login-overlay" role="dialog" aria-modal="true" aria-labelledby="pmoLoginTitle">
     <form id="pmoLoginCard" class="pmo-login-card" data-pmo-login-mode="login" onsubmit="return handleStaffLoginSubmit(event)">
+      <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village" class="pmo-login-logo" />
       <h1 id="pmoLoginTitle">Padel Match Organizer</h1>
       <p id="pmoLoginIntro">Accedi con l'email autorizzata in Amministrazione e la password personale. Se non hai ancora creato l'accesso, registrati.</p>
       <div id="pmoLoginModeName" class="pmo-login-mode-name">Accesso</div>
@@ -5827,9 +5868,12 @@ body.assessment-public-mode .assessment-public-only-card {
   <div class="app-shell">
     <aside id="sideNav" class="side-nav">
       <div class="side-nav-header">
+        <div class="side-nav-brand">
+        <span class="pmo-sidenav-logo-chip"><img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village" /></span>
         <div>
-          <div class="side-nav-title" onclick="pmoShowVersionOverlay()" style="cursor:pointer" title="Mostra versione">🎾 Padel Village</div>
+          <div class="side-nav-title" onclick="pmoShowVersionOverlay()" style="cursor:pointer" title="Mostra versione">Padel Village</div>
         <div class="side-nav-subtitle">Match Organizer · <span data-app-version>v5.312</span><span class="pmo-env-badge" data-env-label hidden></span></div>
+        </div>
         </div>
         <div class="side-nav-header-actions">
           <button class="side-nav-auth-logout" onclick="staffLogout()">Esci</button>
@@ -5886,6 +5930,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     <div class="top-nav-bar">
       <div class="top-nav-left">
+        <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village" class="pmo-topbar-logo" />
         <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
         <span class="pmo-topbar-version" data-app-version title="Versione app">v—</span>
         <span id="currentSectionLabel" class="current-section">📅 Calendario campi staff</span>
