@@ -36128,6 +36128,24 @@ Per confermare scrivi ELIMINA.`);
     renderStaffCalendar();
   }
 
+  // Roster AUTOREVOLE già sincronizzato dal tabellone Matchpoint (prenotazioniOccupazione.giocatori).
+  // Usato come rete di sicurezza: la lettura LIVE del repeater può tornare parziale (a volte 1 solo nome).
+  function _staffCalStoredRosterNames(iso, campo, ora) {
+    try {
+      const occ = (typeof safeLoad === 'function') ? safeLoad('prenotazioniOccupazione', []) : [];
+      const wantCampo = Number(String(campo).replace(/\D/g, ''));
+      const p = (Array.isArray(occ) ? occ : []).find(function (x) {
+        return x && String(x.data).trim() === String(iso).trim()
+          && Number(String(x.campo).replace(/\D/g, '')) === wantCampo
+          && String(x.ora).trim() === String(ora).trim();
+      });
+      if (p && Array.isArray(p.giocatori) && p.giocatori.length) {
+        return p.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean);
+      }
+    } catch (e) {}
+    return [];
+  }
+
   function _staffCalMpAutoLoad(iso, campo, ora) {
     const key = _staffCalMpKey(iso, campo, ora);
     const cur = _staffCalMpPlayers[key];
@@ -36159,12 +36177,18 @@ Per confermare scrivi ELIMINA.`);
       clearTimeout(_to);
       if (response.ok && data && data.ok !== false) {
         const roster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : [];
-        _staffCalMpPlayers[key] = { names: roster.map(function (p) { return p.nome; }).filter(Boolean) };
+        const liveNames = roster.map(function (p) { return p.nome; }).filter(Boolean);
+        const storedNames = _staffCalStoredRosterNames(iso, campo, ora);
+        // Se la lettura live torna parziale (es. 1 solo nome) ma il roster sincronizzato dal
+        // tabellone ne ha di più, vince il più completo: i giocatori non spariscono dalla card.
+        _staffCalMpPlayers[key] = { names: (liveNames.length >= storedNames.length) ? liveNames : storedNames };
       } else {
-        _staffCalMpPlayers[key] = { error: true };
+        const storedNames = _staffCalStoredRosterNames(iso, campo, ora);
+        _staffCalMpPlayers[key] = storedNames.length ? { names: storedNames } : { error: true };
       }
     } catch (err) {
-      _staffCalMpPlayers[key] = { error: true };
+      const storedNames = _staffCalStoredRosterNames(iso, campo, ora);
+      _staffCalMpPlayers[key] = storedNames.length ? { names: storedNames } : { error: true };
     }
     renderStaffCalendar();
   }
