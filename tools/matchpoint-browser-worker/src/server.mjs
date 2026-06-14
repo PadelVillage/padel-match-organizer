@@ -3131,33 +3131,128 @@ async function readTabelloneWithBrowser(options = {}) {
   };
   const result = {}; // { 'YYYY-MM-DD': [ { campo, ora, oraFine, giocatori: [] } ] }
 
+  // ── DIAGNOSTICA opt-in (Fase 0): quantifica la (non)determinatezza del roster.
+  //    Attiva SOLO se options.debugStability > 0 → il percorso del cron è invariato.
+  const debugStability = Math.max(0, Math.min(20, Number(options.debugStability) || 0));
+  const stabilityGapMs = Math.max(150, Math.min(3000, Number(options.stabilityGapMs) || 500));
+
+  // ── SETTLE deterministico (fix causa #1): dopo il cambio data l'attesa fissa di
+  //    impostaDataTabellone (networkidle + 1200ms) basta su macchine veloci ma sul
+  //    box condiviso lento a volte legge la griglia a render incompleto → roster
+  //    parziale per alcune date. Qui, prima di leggere, attendiamo che lo snapshot
+  //    degli eventi sia STABILE (firma roster invariata per N poll) e che ogni
+  //    evento prenotato abbia almeno un nome; in più fondiamo gli snapshot con
+  //    "fullest-wins" (per ogni evento si tiene il roster più completo osservato),
+  //    così anche senza stabilità perfetta non si restituisce mai un roster parziale.
+  const settleMaxMs = Math.max(800, Math.min(20000, Number(options.settleMaxMs) || Number(env('MATCHPOINT_TAB_SETTLE_MAX_MS', '7000'))));
+  const settlePollMs = Math.max(120, Math.min(2000, Number(options.settlePollMs) || Number(env('MATCHPOINT_TAB_SETTLE_POLL_MS', '300'))));
+  const settleStableHits = Math.max(2, Math.min(6, Number(options.settleStableHits) || Number(env('MATCHPOINT_TAB_SETTLE_STABLE_HITS', '2'))));
+
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
   const page = acq.page;
   let _opFailed = false;
   try {
     const tabCtx = await navigaFinoAlTabellone(page, diagnostic, baseUrl);
 
+    // Estrae lo snapshot grezzo degli eventi (div.evento + roster da .eventoTexto2).
+    // Identico all'estrazione inline storica: usato sia dal read normale sia dalla
+    // diagnostica di stabilità, così misuriamo esattamente ciò che il cron legge.
+    const snapshotEventi = () => tabCtx.evaluate(() => {
+      return [...document.querySelectorAll('div.evento')].map((e) => {
+        const testoEl = e.querySelector('.eventoTexto2');
+        const testo = testoEl ? testoEl.innerHTML : '';
+        const giocatori = testo
+          .split(/<br\s*\/?>/i)
+          .map((s) => s.replace(/<[^>]+>/g, '').trim())
+          .filter(Boolean);
+        return {
+          id: e.getAttribute('id') || e.id || '',
+          idrecurso: e.getAttribute('idrecurso') || '',
+          inicio: e.getAttribute('inicio') || '',
+          fin: e.getAttribute('fin') || '',
+          giocatori,
+        };
+      });
+    });
+    const isRosterEv = (ev) => CAMPO_BY_RECURSO[Number(ev.idrecurso)] > 0;
+    const evKey = (ev) => ev.id || `${ev.idrecurso}|${ev.inicio}|${ev.fin}`;
+
+    // Legge gli eventi attendendo che il roster sia assestato, fondendo gli snapshot
+    // con "fullest-wins". Ritorna la lista eventi più completa osservata nella finestra.
+    const readEventiStable = async (isoDate) => {
+      const best = new Map(); // key -> ev (con il roster più ricco visto)
+      let lastSig = null;
+      let stable = 0;
+      let polls = 0;
+      let improvedByMerge = 0;
+      const t0 = Date.now();
+      while (Date.now() - t0 < settleMaxMs) {
+        const snap = await snapshotEventi().catch(() => []);
+        polls++;
+        for (const ev of snap) {
+          const k = evKey(ev);
+          const prev = best.get(k);
+          if (!prev || ev.giocatori.length > prev.giocatori.length) {
+            if (prev) improvedByMerge++;
+            best.set(k, ev);
+          }
+        }
+        const booked = snap.filter(isRosterEv);
+        const sig = booked.map((ev) => `${evKey(ev)}:${ev.giocatori.length}`).sort().join('|');
+        const allHaveRoster = booked.every((ev) => ev.giocatori.length >= 1);
+        if (sig === lastSig) stable++; else { stable = 0; lastSig = sig; }
+        // Esce presto quando la firma è stabile e ogni prenotazione ha un roster.
+        if (booked.length > 0 && stable >= settleStableHits - 1 && allHaveRoster) break;
+        // Esce comunque se la firma è molto stabile (giornata vuota o blocchi senza nomi).
+        if (stable >= settleStableHits + 1) break;
+        await page.waitForTimeout(settlePollMs);
+      }
+      const merged = [...best.values()];
+      diagnostic.settle = diagnostic.settle || {};
+      diagnostic.settle[isoDate] = {
+        polls,
+        ms: Date.now() - t0,
+        stabilized: stable >= settleStableHits - 1,
+        improvedByMerge,
+        bookedEvents: merged.filter(isRosterEv).length,
+      };
+      return merged;
+    };
+
     for (const isoDate of dates) {
       diagnostic.steps.push(`read_tabellone:${isoDate}`);
       try {
         await impostaDataTabellone(tabCtx, page, isoDate, diagnostic);
-        const eventi = await tabCtx.evaluate(() => {
-          return [...document.querySelectorAll('div.evento')].map((e) => {
-            const testoEl = e.querySelector('.eventoTexto2');
-            const testo = testoEl ? testoEl.innerHTML : '';
-            const giocatori = testo
-              .split(/<br\s*\/?>/i)
-              .map((s) => s.replace(/<[^>]+>/g, '').trim())
-              .filter(Boolean);
-            return {
-              id: e.getAttribute('id') || e.id || '',
-              idrecurso: e.getAttribute('idrecurso') || '',
-              inicio: e.getAttribute('inicio') || '',
-              fin: e.getAttribute('fin') || '',
-              giocatori,
-            };
-          });
-        });
+
+        if (debugStability > 0) {
+          const samples = [];
+          for (let s = 0; s < debugStability; s++) {
+            samples.push(await snapshotEventi().catch(() => []));
+            if (s < debugStability - 1) await page.waitForTimeout(stabilityGapMs);
+          }
+          // Traccia, per ogni evento prenotato, il numero di nomi visto in ciascun sample.
+          const byKey = {};
+          for (const snap of samples) {
+            for (const ev of snap) {
+              if (!isRosterEv(ev)) continue;
+              const k = ev.id || `${ev.idrecurso}|${ev.inicio}`;
+              (byKey[k] = byKey[k] || []).push(ev.giocatori.length);
+            }
+          }
+          const changed = Object.entries(byKey).filter(([, ns]) => new Set(ns).size > 1);
+          diagnostic.stability = diagnostic.stability || {};
+          diagnostic.stability[isoDate] = {
+            samples: samples.length,
+            gapMs: stabilityGapMs,
+            perSampleEventCount: samples.map((s) => s.filter(isRosterEv).length),
+            perSampleTotalNames: samples.map((s) => s.reduce((a, ev) => a + (isRosterEv(ev) ? ev.giocatori.length : 0), 0)),
+            eventsTracked: Object.keys(byKey).length,
+            eventsRosterChanged: changed.length,
+            changedSample: changed.slice(0, 25).map(([k, ns]) => ({ key: k, rosterCounts: ns })),
+          };
+        }
+
+        const eventi = await readEventiStable(isoDate);
         result[isoDate] = eventi
           .map((ev) => ({
             id: ev.id || '',
@@ -3193,7 +3288,12 @@ async function handleGetSlots(req, res) {
 async function handleReadTabellone(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await readTabelloneWithBrowser(body);
+  // Serializzato come le altre operazioni browser: /read-tabellone usa la stessa
+  // sessione warm condivisa (_mpWarm.page); senza coda, due read sovrapposti (o un
+  // read + poller/edit) pilotano la stessa pagina insieme → cambi data incrociati e
+  // roster parziali/scambiati (causa #1 del "lampeggio" dei nomi). La coda con
+  // concorrenza 1 garantisce che un read non condivida mai la pagina con un'altra op.
+  const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => readTabelloneWithBrowser(body));
   json(res, 200, result);
 }
 
