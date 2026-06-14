@@ -5077,6 +5077,13 @@ body.assessment-public-mode .assessment-public-only-card {
       border-color:#fff;
       box-shadow:0 2px 10px rgba(0,0,0,.16);
     }
+    /* Le sezioni nascoste dal gating ruoli (pmoApplyTabVisibility) devono sparire
+       davvero: le regole display:flex/block d'autore battono l'UA [hidden]. */
+    .side-nav-main-item[hidden],
+    .side-nav .tab-button[hidden],
+    .side-nav-parent[hidden],
+    .side-submenu[hidden],
+    .side-sub-link[hidden] { display: none !important; }
     .nav-order {
       flex:0 0 28px;
       width:28px;
@@ -7407,7 +7414,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.757';
+    const APP_VERSION = '5.758';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
