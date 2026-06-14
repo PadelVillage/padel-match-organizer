@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const ASSESSMENT_SUPPORT_PHONE_DISPLAY = '+39 379 115 1472';
 const ASSESSMENT_SUPPORT_WHATSAPP_BASE_URL = 'https://wa.me/393791151472';
@@ -2400,6 +2400,79 @@ async function runAssessmentRoutineCancel(admin: any, actor: StaffActor, body: J
 }
 
 
+function buildStaffInviteHtml(params: { greeting: string; inviteUrl: string; inviteEmail: string; fromName: string; testMode: boolean; }) {
+  const testBox = params.testMode ? `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-left:4px solid #1f4f9a;background:#f8fbff;border-radius:8px;color:#334155;font-size:14px;line-height:1.45;"><strong style="display:block;color:#1f4f9a;margin-bottom:4px;">TEST INTERNO PMO</strong>Invito staff in modalita prova.<br>Destinatario reale: ${escapeHtml(params.inviteEmail)}</div>` : '';
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f7fb;">
+  <div style="max-width:620px;margin:0 auto;padding:24px 14px;">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:26px 22px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;line-height:1.55;">
+      ${testBox}
+      <p style="margin:0 0 16px;">${escapeHtml(params.greeting)}</p>
+      <p style="margin:0 0 16px;">Sei stato abilitato come staff su <strong>Padel Village Match Organizer</strong>. Crea il tuo accesso personale in pochi passaggi.</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="${escapeHtml(params.inviteUrl)}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;">Crea il mio accesso</a></p>
+      <p style="margin:0 0 8px;color:#475569;font-size:14px;">Se il pulsante non funziona, apri questo link:<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1f4f9a;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></p>
+      <ol style="margin:14px 0 0;padding-left:20px;color:#334155;font-size:14px;line-height:1.6;">
+        <li>Apri il link e clicca <strong>"Crea accesso"</strong>.</li>
+        <li>Inserisci questa email: <strong>${escapeHtml(params.inviteEmail)}</strong></li>
+        <li>Scegli una password e conferma l'email che riceverai.</li>
+      </ol>
+      <p style="margin:18px 0 0;color:#64748b;font-size:13px;">A presto,<br>${escapeHtml(params.fromName)}</p>
+    </div>
+  </div></body></html>`;
+}
+
+async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonMap) {
+  const inviteEmail = clean(params.email).toLocaleLowerCase('it-IT');
+  const fullName = clean(params.full_name || params.fullName || '');
+  const inviteUrl = clean(params.inviteUrl || '');
+  if (!isValidEmail(inviteEmail)) throw new Error('INVALID_INVITE_EMAIL');
+  if (!/^https?:\/\//i.test(inviteUrl)) throw new Error('INVALID_INVITE_URL');
+
+  const forceTestRecipients = clean(Deno.env.get('ASSESSMENT_EMAIL_FORCE_TEST_RECIPIENTS')).toLocaleLowerCase('it-IT') !== 'false';
+  const configuredTestTo = clean(Deno.env.get('ASSESSMENT_EMAIL_TEST_TO'));
+  const actualRecipient = forceTestRecipients ? (configuredTestTo || actor.email) : inviteEmail;
+  if (!isValidEmail(actualRecipient)) throw new Error('TEST_RECIPIENT_MISSING');
+
+  const fromName = clean(Deno.env.get('ASSESSMENT_EMAIL_FROM_NAME')) || 'Padel Village';
+  const fromEmail = clean(Deno.env.get('GMAIL_SENDER_EMAIL'));
+  const replyTo = clean(Deno.env.get('ASSESSMENT_EMAIL_REPLY_TO')) || fromEmail;
+  if (!isValidEmail(fromEmail)) throw new Error('GMAIL_SENDER_EMAIL_MISSING');
+
+  const greeting = fullName ? `Ciao ${fullName},` : 'Ciao,';
+  const subjectBase = 'Il tuo accesso allo staff di Padel Village';
+  const subject = forceTestRecipients ? `[TEST] ${subjectBase}` : subjectBase;
+  const textCore = `${greeting}\n\nSei stato abilitato come staff su Padel Village Match Organizer.\n\nCrea il tuo accesso:\n1) Apri ${inviteUrl}\n2) Clicca "Crea accesso"\n3) Inserisci questa email (${inviteEmail}) e scegli una password\n4) Conferma l'email che riceverai\n\nA presto,\n${fromName}`;
+  const textBody = forceTestRecipients ? `[TEST INTERNO PMO]\nInvito staff in modalita prova. Destinatario reale: ${inviteEmail}\n\n---\n\n${textCore}` : textCore;
+  const htmlBody = buildStaffInviteHtml({ greeting, inviteUrl, inviteEmail, fromName, testMode: forceTestRecipients });
+
+  const accessToken = await getGmailAccessToken();
+  const rawMessage = buildMimeMessage({ to: actualRecipient, subject, textBody, htmlBody, fromName, fromEmail, replyTo });
+  const gmail = await sendGmailMessage(accessToken, rawMessage);
+  const messageId = clean(gmail.id || '');
+
+  try {
+    await logAudit(admin, actor, 'staff_invite_email', {
+      invitedEmail: inviteEmail,
+      actualRecipient,
+      testMode: forceTestRecipients,
+      inviteUrl,
+      gmailMessageId: messageId,
+      appVersion: clean(params.appVersion || ''),
+      runtimeEnv: clean(params.runtimeEnv || ''),
+    });
+  } catch (logErr) {
+    console.error('STAFF_INVITE_LOG_FAILED', errorText(logErr));
+  }
+
+  return {
+    action: 'staff_invite',
+    ok: true,
+    invitedEmail: inviteEmail,
+    actualRecipient,
+    testMode: forceTestRecipients,
+    gmailMessageId: messageId,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Usa POST per inviare email autovalutazione.');
@@ -2415,13 +2488,21 @@ Deno.serve(async (req) => {
 
   try {
     const actor = await authenticateStaffOrRoutine(req, supabaseUrl, anonKey, admin);
-    if (!hasPermission(actor, 'cloud_sync')) {
-      return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
-    }
 
     const body = await req.json().catch(() => ({}));
     const action = clean(body.action || 'send');
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
+
+    // L'invito staff richiede manage_users; tutte le altre azioni richiedono cloud_sync.
+    const requiredPermission = action === 'staff_invite' ? 'manage_users' : 'cloud_sync';
+    if (!hasPermission(actor, requiredPermission)) {
+      return errorResponse(403, 'PERMISSION_DENIED', `Il profilo staff non ha il permesso ${requiredPermission}.`);
+    }
+
+    if (action === 'staff_invite') {
+      const result = await sendStaffInviteEmail(admin, actor, body);
+      return okResponse(result);
+    }
 
     if (action === 'config-check') {
       return json(assessmentEmailConfigCheck(supabaseUrl, body));
@@ -2514,6 +2595,9 @@ Deno.serve(async (req) => {
     if (message.includes('AUTH_REQUIRED')) return errorResponse(401, 'AUTH_REQUIRED', 'Accesso staff richiesto.');
     if (message.includes('GMAIL_SECRETS_MISSING')) return errorResponse(500, 'GMAIL_SECRETS_MISSING', 'Segreti Gmail non configurati nella Edge Function.');
     if (message.includes('GMAIL_SENDER_EMAIL_MISSING')) return errorResponse(500, 'GMAIL_SENDER_EMAIL_MISSING', 'Email mittente Gmail non configurata.');
+    if (message.includes('INVALID_INVITE_EMAIL')) return errorResponse(400, 'INVALID_INVITE_EMAIL', 'Email invito non valida.');
+    if (message.includes('INVALID_INVITE_URL')) return errorResponse(400, 'INVALID_INVITE_URL', 'Link invito non valido.');
+    if (message.includes('TEST_RECIPIENT_MISSING')) return errorResponse(500, 'TEST_RECIPIENT_MISSING', 'Destinatario di test non configurato (ASSESSMENT_EMAIL_TEST_TO).');
     if (message.includes('GMAIL_TOKEN_FAILED')) return errorResponse(502, 'GMAIL_TOKEN_FAILED', message);
     if (message.includes('GMAIL_SEND_FAILED')) return errorResponse(502, 'GMAIL_SEND_FAILED', message);
     if (message.includes('GMAIL_READ_FAILED')) return errorResponse(502, 'GMAIL_READ_FAILED', message);
