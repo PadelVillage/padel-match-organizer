@@ -2401,22 +2401,21 @@ async function runAssessmentRoutineCancel(admin: any, actor: StaffActor, body: J
 
 
 function buildStaffInviteHtml(params: { greeting: string; inviteUrl: string; inviteEmail: string; fromName: string; testMode: boolean; }) {
-  const testBox = params.testMode ? `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-left:4px solid #1f4f9a;background:#f8fbff;border-radius:8px;color:#334155;font-size:14px;line-height:1.45;"><strong style="display:block;color:#1f4f9a;margin-bottom:4px;">TEST INTERNO PMO</strong>Invito staff in modalita prova.<br>Destinatario reale: ${escapeHtml(params.inviteEmail)}</div>` : '';
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f7fb;">
-  <div style="max-width:620px;margin:0 auto;padding:24px 14px;">
-    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:26px 22px;font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:16px;line-height:1.55;">
-      ${testBox}
-      <p style="margin:0 0 16px;">${escapeHtml(params.greeting)}</p>
-      <p style="margin:0 0 16px;">Sei stato abilitato come staff su <strong>Padel Village Match Organizer</strong>. Crea il tuo accesso personale in pochi passaggi.</p>
-      <p style="margin:0 0 22px;text-align:center;"><a href="${escapeHtml(params.inviteUrl)}" style="display:inline-block;background:#1f4f9a;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;">Crea il mio accesso</a></p>
-      <p style="margin:0 0 8px;color:#475569;font-size:14px;">Se il pulsante non funziona, apri questo link:<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1f4f9a;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></p>
-      <ol style="margin:14px 0 0;padding-left:20px;color:#334155;font-size:14px;line-height:1.6;">
-        <li>Apri il link e clicca <strong>"Crea accesso"</strong>.</li>
-        <li>Inserisci questa email: <strong>${escapeHtml(params.inviteEmail)}</strong></li>
-        <li>Scegli una password e conferma l'email che riceverai.</li>
-      </ol>
-      <p style="margin:18px 0 0;color:#64748b;font-size:13px;">A presto,<br>${escapeHtml(params.fromName)}</p>
-    </div>
+  const testBox = params.testMode ? `<p style="margin:0 0 16px;color:#475569;font-size:13px;">[TEST INTERNO PMO] Invito staff in modalita prova. Destinatario reale: ${escapeHtml(params.inviteEmail)}</p>` : '';
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:20px 16px;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:15px;line-height:1.55;">
+    ${testBox}
+    <p style="margin:0 0 14px;">${escapeHtml(params.greeting)}</p>
+    <p style="margin:0 0 14px;">Hai ricevuto questa email perche lo staff di ${escapeHtml(params.fromName)} ti ha aggiunto come collaboratore al gestionale interno.</p>
+    <p style="margin:0 0 8px;">Per attivare il tuo accesso personale:</p>
+    <ol style="margin:0 0 14px;padding-left:20px;line-height:1.6;">
+      <li>Apri questo link:<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1a56b0;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></li>
+      <li>Clicca "Crea accesso".</li>
+      <li>Inserisci la tua email (${escapeHtml(params.inviteEmail)}) e scegli una password.</li>
+      <li>Conferma l'email di verifica che riceverai.</li>
+    </ol>
+    <p style="margin:0 0 14px;color:#666666;font-size:14px;">Se non ti aspettavi questo messaggio puoi ignorarlo.</p>
+    <p style="margin:0;">A presto,<br>${escapeHtml(params.fromName)}</p>
   </div></body></html>`;
 }
 
@@ -2438,9 +2437,9 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
   if (!isValidEmail(fromEmail)) throw new Error('GMAIL_SENDER_EMAIL_MISSING');
 
   const greeting = fullName ? `Ciao ${fullName},` : 'Ciao,';
-  const subjectBase = 'Il tuo accesso allo staff di Padel Village';
+  const subjectBase = 'Attiva il tuo accesso staff - Padel Village';
   const subject = forceTestRecipients ? `[TEST] ${subjectBase}` : subjectBase;
-  const textCore = `${greeting}\n\nSei stato abilitato come staff su Padel Village Match Organizer.\n\nCrea il tuo accesso:\n1) Apri ${inviteUrl}\n2) Clicca "Crea accesso"\n3) Inserisci questa email (${inviteEmail}) e scegli una password\n4) Conferma l'email che riceverai\n\nA presto,\n${fromName}`;
+  const textCore = `${greeting}\n\nHai ricevuto questa email perche lo staff di ${fromName} ti ha aggiunto come collaboratore al gestionale interno.\n\nPer attivare il tuo accesso personale:\n1) Apri questo link: ${inviteUrl}\n2) Clicca "Crea accesso"\n3) Inserisci la tua email (${inviteEmail}) e scegli una password\n4) Conferma l'email di verifica che riceverai\n\nSe non ti aspettavi questo messaggio puoi ignorarlo.\n\nA presto,\n${fromName}`;
   const textBody = forceTestRecipients ? `[TEST INTERNO PMO]\nInvito staff in modalita prova. Destinatario reale: ${inviteEmail}\n\n---\n\n${textCore}` : textCore;
   const htmlBody = buildStaffInviteHtml({ greeting, inviteUrl, inviteEmail, fromName, testMode: forceTestRecipients });
 
