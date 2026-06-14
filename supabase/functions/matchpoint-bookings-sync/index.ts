@@ -950,7 +950,24 @@ Deno.serve(async (req) => {
       addSnapshotRecord('booking', bookingCloudKey(booking, index, 'booking'), booking);
     });
     validation.occupancyBookings.forEach((booking, index) => {
-      addSnapshotRecord('booking_occupancy', bookingCloudKey(booking, index, 'occupancy'), booking);
+      const occKey = bookingCloudKey(booking, index, 'occupancy');
+      // STICKY ROSTER: l'arricchimento giocatori dal tabellone (/read-tabellone) è
+      // non-deterministico — ad ogni run riempie solo un sottoinsieme degli slot e per gli altri
+      // resta solo l'intestatario. Senza questa protezione ogni sync SOVRASCRIVE l'occupazione con
+      // quel roster parziale, facendo "lampeggiare" i giocatori sulla card. Qui: se il roster appena
+      // letto è degenere (0/1 nome) ma quello già salvato in cloud per lo stesso slot era completo
+      // (>=2), si tiene il completo. Se il nuovo ha >=2 nomi ci si fida (così una vera rimozione
+      // 4->2 passa comunque). Idem per idReserva, che l'enrich riempie in modo altrettanto flaky.
+      const prevOcc = existingPayloadByTypedKey.get(`booking_occupancy|${occKey}`) as JsonMap | undefined;
+      if (prevOcc) {
+        const freshG = Array.isArray(booking.giocatori) ? booking.giocatori : [];
+        const prevG = Array.isArray(prevOcc.giocatori) ? prevOcc.giocatori : [];
+        if (freshG.length <= 1 && prevG.length >= 2) booking.giocatori = prevG as string[];
+        if (!clean((booking as JsonMap).idReserva) && clean(prevOcc.idReserva)) {
+          booking.idReserva = String(prevOcc.idReserva);
+        }
+      }
+      addSnapshotRecord('booking_occupancy', occKey, booking);
     });
 
     let deletedBookings = 0;
