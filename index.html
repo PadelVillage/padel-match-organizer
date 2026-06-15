@@ -3391,6 +3391,11 @@
       --radius:8px; --radius-sm:5px; --bar2-h:44px;
     }
     @media (min-width:900px) {
+      /* 0) La barra "≡ Menu / versione / nome sezione" è ridondante su desktop (nome sezione già
+         nell'header sticky, versione nell'intestazione sidebar, navigazione nella barra capitoli):
+         la nascondiamo in TUTTE le sezioni. Su mobile (<900px) resta: lì il ≡ Menu apre il drawer. */
+      .top-nav-bar { display:none !important; }
+
       /* 1) Sidebar: solo la chat. Calendario e gli altri capitoli vivono nella barra in alto,
          quindi nascondiamo anche la voce Calendario qui (resta nel drawer su mobile <900px). */
       .side-nav-chapters { display:none; }
@@ -7520,7 +7525,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.765';
+    const APP_VERSION = '5.766';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
