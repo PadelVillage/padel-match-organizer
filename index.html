@@ -3391,16 +3391,20 @@
       --radius:8px; --radius-sm:5px; --bar2-h:44px;
     }
     @media (min-width:900px) {
-      /* 1) Sidebar: nascondi i capitoli verticali e la chat "esplode" sotto Calendario */
+      /* 1) Sidebar: solo la chat. Calendario e gli altri capitoli vivono nella barra in alto,
+         quindi nascondiamo anche la voce Calendario qui (resta nel drawer su mobile <900px). */
       .side-nav-chapters { display:none; }
       .side-nav .side-nav-section-label { display:none; }
+      .side-nav .side-nav-main-item[data-section-key="dashboard"] { display:none; }
       .side-nav { display:flex; flex-direction:column; }
       body:not(.sidebar-collapsed) .side-nav { overflow:hidden !important; }
       .side-nav-content { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
       body:not(.sidebar-collapsed) .side-nav-content { min-height:0; padding-bottom:12px; }
       .side-nav-chat-host { flex:1 1 auto; min-height:0; display:flex; margin-top:8px; }
       .side-nav-chat-host .svc-chat-panel { flex:1 1 auto; min-height:0; width:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.22); overflow:hidden; border-top:1px solid var(--border); }
-      .side-nav-chat-host .svc-chat-input-row { border-radius:14px 14px 0 0; }
+      /* Chat stile WhatsApp: messaggi sopra (ultimo in fondo, autoscroll), input in basso */
+      .side-nav-chat-host .svc-chat-messages { order:0; flex:1 1 auto; min-height:0; flex-direction:column-reverse; }
+      .side-nav-chat-host .svc-chat-input-row { order:1; border-top:1px solid var(--border); border-bottom:none; border-radius:0; }
       /* Anti-flash / fallback: finché la chat non è stata spostata nella sidebar (o se il JS
          fallisce) non mostrarla come colonna dentro al calendario. */
       .svc-layout > .svc-chat-panel { display:none; }
@@ -6006,6 +6010,7 @@ body.assessment-public-mode .assessment-public-only-card {
          (switchTab / goToTabSection). data-section-key / data-subsection-key fanno sì che
          il gating ruoli (pmoApplyTabVisibility) nasconda le voci non consentite. -->
     <nav class="pmo-chapter-bar" id="pmoChapterBar">
+      <button type="button" class="pmo-chapter-item" data-section-key="dashboard" onclick="switchTab('dashboard', this)">Calendario</button>
       <div class="pmo-chapter-group" data-section-key="assessment">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="assessment" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Autovalutazione <span class="pmo-chapter-caret">▾</span></button>
         <div class="pmo-chapter-dropdown">
@@ -7494,7 +7499,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.763';
+    const APP_VERSION = '5.764';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34071,7 +34076,8 @@ Per confermare scrivi ELIMINA.`);
         btnAI.setAttribute('data-section-key', 'assistanteAI');
         btnAI.setAttribute('onclick', "switchTab('assistanteAI', this)");
         btnAI.textContent = 'Assistente AI';
-        chapterBar.insertBefore(btnAI, chapterBar.firstChild);
+        const calItem = chapterBar.querySelector('.pmo-chapter-item[data-section-key="dashboard"]');
+        chapterBar.insertBefore(btnAI, calItem ? calItem.nextSibling : chapterBar.firstChild);
       }
 
       const waDashboard = document.getElementById('waInboundDashboard');
