@@ -7494,7 +7494,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.762';
+    const APP_VERSION = '5.763';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34055,47 +34055,23 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // ── TEST ENV — Assistente AI Desktop Layout ───────────────────────
-    // Solo in ambiente test + schermo ≥ 900px:
-    //   1. Riordina sidebar 0-5: Dashboard / Assistente AI / WA / Anagrafica / Autoval / Ammin
-    //   2. Sposta il WA dashboard nel nuovo tab #assistanteAI
-    // Apri/Chiudi Partite restano visibili in ogni ambiente.
-    // Mobile e produzione non vengono toccati.
+    // Nuovo layout (v5.762+): i capitoli vivono nella barra orizzontale (#pmoChapterBar),
+    // mentre la sidebar ospita la chat. Quindi qui NON rimettiamo più i capitoli nella
+    // sidebar (creavano un doppione e impedivano alla chat di allungarsi): aggiungiamo
+    // solo la voce "Assistente AI" alla barra in alto (tab esclusivo del TEST) e spostiamo
+    // il pannello WA nel relativo tab. Mobile e produzione non vengono toccati.
     if (isTestEnv() && window.innerWidth >= 900) {
 
-      const navContent = document.querySelector('.side-nav-content');
-      if (navContent) {
-        const sLabel  = navContent.querySelector('.side-nav-section-label');
-        const allBtns = Array.from(navContent.querySelectorAll('.side-nav-main-item'));
-        const byLabel = txt => allBtns.find(b => b.querySelector('.nav-main')?.textContent === txt);
-
-        const dash       = byLabel('Dashboard');
-        const contactBtn = byLabel('Messaggi WhatsApp');
-        const membersBtn = byLabel('Anagrafica soci');
-        const assessP    = byLabel('Autovalutazione');
-        const admP       = byLabel('Amministrazione');
-        const assessSub  = document.getElementById('subAssessment');
-        const admSub     = document.getElementById('subAdministration');
-
+      const chapterBar = document.getElementById('pmoChapterBar');
+      if (chapterBar && !document.getElementById('pmoChapterItemAI')) {
         const btnAI = document.createElement('button');
-        btnAI.className = 'tab-button side-nav-main-item';
+        btnAI.type = 'button';
+        btnAI.id = 'pmoChapterItemAI';
+        btnAI.className = 'pmo-chapter-item';
+        btnAI.setAttribute('data-section-key', 'assistanteAI');
         btnAI.setAttribute('onclick', "switchTab('assistanteAI', this)");
-        btnAI.innerHTML =
-          '<span class="nav-order">1</span>' +
-          '<span class="nav-copy">' +
-            '<span class="nav-main">Assistente AI</span>' +
-            '<span class="nav-sub">Messaggi, varianti e bot</span>' +
-          '</span>';
-
-        const setNum = (el, n) => { if (el) { const o = el.querySelector('.nav-order'); if (o) o.textContent = n; } };
-        setNum(dash,       0);
-        setNum(contactBtn, 2);
-        setNum(membersBtn, 3);
-        setNum(assessP,    4);
-        setNum(admP,       5);
-
-        [sLabel, dash, btnAI, contactBtn, membersBtn, assessP, assessSub, admP, admSub]
-          .filter(Boolean)
-          .forEach(el => navContent.appendChild(el));
+        btnAI.textContent = 'Assistente AI';
+        chapterBar.insertBefore(btnAI, chapterBar.firstChild);
       }
 
       const waDashboard = document.getElementById('waInboundDashboard');
