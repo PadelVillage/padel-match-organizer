@@ -5155,7 +5155,10 @@ body.assessment-public-mode .assessment-public-only-card {
     .side-nav .tab-button[hidden],
     .side-nav-parent[hidden],
     .side-submenu[hidden],
-    .side-sub-link[hidden] { display: none !important; }
+    .side-sub-link[hidden],
+    .pmo-chapter-item[hidden],
+    .pmo-chapter-group[hidden],
+    .pmo-chapter-dropdown button[hidden] { display: none !important; }
     .nav-order {
       flex:0 0 28px;
       width:28px;
@@ -7537,7 +7540,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.768';
+    const APP_VERSION = '5.771';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8414,8 +8417,12 @@ Grazie.`
     // Rilegge il profilo (ruolo/permessi) dal cloud anche SENZA nuovo login: al reload
     // l'app usa il profilo in cache (isStaffSessionValid), quindi un cambio permessi fatto
     // dall'admin non si vedrebbe finché l'utente non rifà logout/login. Qui lo riallineiamo
-    // in background. Throttle persistente (3 min) perché pmo_get_my_staff_profile scrive un
-    // record di audit ad ogni chiamata: evita spam su reload ripetuti.
+    // in background. Throttle persistente breve (20s) perché pmo_get_my_staff_profile scrive
+    // un record di audit ('staff_login') ad ogni chiamata: la finestra corta de-duplica i
+    // reload ravvicinati ma fa propagare un cambio permessi al primo reload "normale"
+    // (prima erano 3 min → un permesso appena assegnato non compariva finché non scadeva la
+    //  finestra o l'utente rifaceva login: vedi caso "Assistente AI" non visibile a Lidia).
+    const PMO_PROFILE_REFRESH_THROTTLE_MS = 20000;
     let _pmoProfileRefreshInFlight = false;
     async function pmoRefreshStaffProfileFromCloud(opts) {
       const force = opts && opts.force;
@@ -8425,7 +8432,7 @@ Grazie.`
         const now = Date.now();
         let last = 0;
         try { last = Number(localStorage.getItem('pmoStaffProfileRefreshAt') || 0) || 0; } catch {}
-        if (!force && now - last < 180000) return;
+        if (!force && now - last < PMO_PROFILE_REFRESH_THROTTLE_MS) return;
         _pmoProfileRefreshInFlight = true;
         const sig = p => p ? JSON.stringify({ s: p.status, r: p.role, p: p.permissions || {} }) : '';
         const before = sig(pmoStaffProfile);
@@ -9782,6 +9789,14 @@ Grazie.`
     const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', contact:'view_contact', administration:'view_administration' };
     const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'contact', 'administration'];
     const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
+    // Assistente AI è un capitolo solo-TEST (iniettato a runtime su desktop):
+    // rendiamolo gateabile e mostriamolo nell'albero permessi solo lì.
+    // PMO_IS_TEST_ENV è già definito sopra (riga ~7578) in questo stesso script.
+    if (PMO_IS_TEST_ENV) {
+      // dopo "Calendario", per rispecchiare l'ordine della barra capitoli
+      PMO_SECTION_TREE.splice(1, 0, { key:'view_assistante_ai', tab:'assistanteAI', label:'Assistente AI' });
+      PMO_TAB_VIEW_KEY.assistanteAI = 'view_assistante_ai';
+    }
 
     function pmoAllViewKeys() {
       const out = [];
@@ -34099,12 +34114,16 @@ Per confermare scrivi ELIMINA.`);
 
     // ── TEST ENV — Assistente AI Desktop Layout ───────────────────────
     // Nuovo layout (v5.762+): i capitoli vivono nella barra orizzontale (#pmoChapterBar),
-    // mentre la sidebar ospita la chat. Quindi qui NON rimettiamo più i capitoli nella
-    // sidebar (creavano un doppione e impedivano alla chat di allungarsi): aggiungiamo
-    // solo la voce "Assistente AI" alla barra in alto (tab esclusivo del TEST) e spostiamo
-    // il pannello WA nel relativo tab. Mobile e produzione non vengono toccati.
-    if (isTestEnv() && window.innerWidth >= 900) {
+    // mentre la sidebar ospita la chat. Aggiungiamo la voce "Assistente AI" alla barra in
+    // alto (tab esclusivo del TEST) e spostiamo il pannello WA nel relativo tab.
+    // Mobile e produzione non vengono toccati.
+    if (isTestEnv()) {
 
+      // Iniettiamo la voce SENZA gate sulla larghezza: la barra capitoli è display:none
+      // sotto i 900px, quindi su mobile resta invisibile; così, però, se la finestra viene
+      // allargata DOPO il load (mobile→desktop) la voce è già presente e compare con la barra
+      // (prima l'iniezione era one-time a innerWidth>=900: su finestra stretta non avveniva
+      //  mai e la sezione restava irraggiungibile anche con view_assistante_ai=true).
       const chapterBar = document.getElementById('pmoChapterBar');
       if (chapterBar && !document.getElementById('pmoChapterItemAI')) {
         const btnAI = document.createElement('button');
@@ -34118,9 +34137,29 @@ Per confermare scrivi ELIMINA.`);
         chapterBar.insertBefore(btnAI, calItem ? calItem.nextSibling : chapterBar.firstChild);
       }
 
-      const waDashboard = document.getElementById('waInboundDashboard');
-      const aiTab       = document.getElementById('assistanteAI');
-      if (waDashboard && aiTab) aiTab.appendChild(waDashboard);
+      // Lo SPOSTAMENTO del pannello WA nel tab AI resta solo desktop (≥900px): sposta
+      // contenuto reale e su mobile la WA dashboard deve restare in "Messaggi WhatsApp".
+      // Idempotente (guard su parentElement) e ri-eseguibile al passaggio mobile↔desktop.
+      const pmoPlaceAiDesktop = function () {
+        if (window.innerWidth < 900) return;
+        const waDashboard = document.getElementById('waInboundDashboard');
+        const aiTab       = document.getElementById('assistanteAI');
+        if (waDashboard && aiTab && waDashboard.parentElement !== aiTab) aiTab.appendChild(waDashboard);
+      };
+      pmoPlaceAiDesktop();
+      try {
+        const _aiMq = window.matchMedia('(min-width:900px)');
+        const _aiOnChange = function () { pmoPlaceAiDesktop(); try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {} };
+        if (_aiMq.addEventListener) _aiMq.addEventListener('change', _aiOnChange);
+        else if (_aiMq.addListener) _aiMq.addListener(_aiOnChange);
+      } catch {}
+
+      // La voce "Assistente AI" è iniettata QUI (script successivo), DOPO il gate di boot
+      // `pmoApplyTabVisibility()` (~riga 26946, in uno <script> precedente): senza un nuovo
+      // gate resterebbe sempre visibile anche per staff con view_assistante_ai=false (gli
+      // altri capitoli, statici, vengono nascosti correttamente al boot). Il profilo in cache
+      // è già caricato a questo punto, quindi ri-applichiamo ora il gating.
+      try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
     }
 
   })();
