@@ -2740,7 +2740,7 @@
     #staffCalV36 .agenda-card-players div { display:block; }
     #staffCalV36 .agenda-card-mp-badge { font-size:.72rem; color:var(--mp-text); margin-top:4px; }
     #staffCalV36 .staff-booking-note { font-size:11px; color:#6b7280; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #staffCalV36 .svc-note-input { width:100%; box-sizing:border-box; border:1px solid var(--border,#d1d5db); border-radius:8px; padding:8px 10px; font-size:14px; font-family:inherit; resize:none; background:#f9fafb; color:#111827; }
+    .svc-note-input { width:100%; box-sizing:border-box; border:1px solid var(--border,#d1d5db); border-radius:8px; padding:8px 10px; font-size:14px; font-family:inherit; resize:none; background:#f9fafb; color:#111827; }
     #staffCalV36 .agenda-free {
       border-radius:var(--radius); padding:12px 14px; background:var(--surface);
       border:1.5px dashed var(--border); min-height:44px; display:flex;
@@ -2753,103 +2753,103 @@
     #staffCalV36 .agenda-free-cta { font-size:.8rem; color:var(--accent); font-weight:700; white-space:nowrap; flex-shrink:0; }
     #staffCalV36 .agenda-empty { padding:32px 16px; text-align:center; color:var(--text-muted); font-size:.85rem; line-height:1.6; }
     /* ── svc layout (Tappa A3a) ─────────────────────────────────── */
-    #staffCalV36 .svc-layout { display:flex; flex-direction:column; }
-    #staffCalV36 .svc-grid-col { flex:1; min-width:0; overflow:hidden; }
-    #staffCalV36 .svc-chat-panel { background:var(--surface); display:flex; flex-direction:column; overflow:hidden; min-height:0; border-top:1px solid var(--border); }
-    #staffCalV36 .svc-chat-header { padding:8px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; justify-content:flex-end; }
-    #staffCalV36 .svc-chat-close-btn { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted); padding:2px 6px; border-radius:var(--radius-sm); line-height:1; transition:color .15s; }
-    #staffCalV36 .svc-chat-close-btn:hover { color:var(--text); }
-    #staffCalV36 .svc-chat-input-row { padding:0 12px; height:var(--bar2-h); display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface2); transition:background .2s; }
-    #staffCalV36 .svc-chat-input-row.svc-flow-locked { opacity:.7; }
-    #staffCalV36 .svc-chat-input { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:6px 10px; font-size:.82rem; font-family:inherit; outline:none; transition:border-color .15s,opacity .15s; min-width:0; }
-    #staffCalV36 .svc-chat-input::placeholder { color:var(--text-muted); }
-    #staffCalV36 .svc-chat-input:focus { border-color:var(--accent); }
-    #staffCalV36 .svc-chat-input:disabled { opacity:.5; cursor:not-allowed; background:var(--surface2); }
-    #staffCalV36 .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:var(--radius-sm); padding:6px 12px; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s,opacity .15s; white-space:nowrap; flex-shrink:0; }
-    #staffCalV36 .svc-chat-send:hover:not(:disabled) { background:var(--accent-hover); }
-    #staffCalV36 .svc-chat-send:disabled { opacity:.45; cursor:not-allowed; }
-    #staffCalV36 .svc-chat-messages { flex:1; overflow-y:auto; min-height:0; padding:10px 16px; display:flex; flex-direction:column; gap:8px; }
-    #staffCalV36 .svc-msg { max-width:85%; border-radius:var(--radius); padding:8px 12px; font-size:.82rem; line-height:1.45; }
-    #staffCalV36 .svc-msg.staff { background:var(--accent-light); border:1px solid var(--accent); color:var(--text); align-self:flex-end; border-bottom-right-radius:2px; }
-    #staffCalV36 .svc-msg.system { background:var(--surface2); border:1px solid var(--border); color:var(--text); align-self:flex-start; border-bottom-left-radius:2px; }
-    #staffCalV36 .svc-msg.system.ok { border-color:var(--green); }
-    #staffCalV36 .svc-msg.system.confirm { border-color:#b45309; }
-    #staffCalV36 .svc-msg.system.flow { max-width:95%; }
-    #staffCalV36 .svc-msg-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
-    #staffCalV36 .svc-msg.staff .svc-msg-label { color:var(--accent); }
-    #staffCalV36 .svc-msg.system .svc-msg-label { color:var(--text-muted); display:none; }
-    #staffCalV36 .svc-msg.system.ok .svc-msg-label { color:var(--green); }
-    #staffCalV36 .svc-msg.system.confirm .svc-msg-label { color:#b45309; }
-    #staffCalV36 .svc-msg.system.flow .svc-msg-label { color:var(--accent); }
-    #staffCalV36 #svcChatMessages > .svc-msg:first-child { box-shadow: inset 4px 0 0 var(--accent); background: var(--accent-light); }
-    #staffCalV36 .svc-confirm-buttons { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-    #staffCalV36 .svc-btn-confirm { padding:4px 14px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
-    #staffCalV36 .svc-btn-yes { background:var(--green-light); border-color:var(--green); color:var(--green); }
-    #staffCalV36 .svc-btn-yes:hover:not(:disabled) { background:rgba(22,163,74,.22); }
-    #staffCalV36 .svc-btn-yes:disabled { opacity:.5; cursor:not-allowed; }
-    #staffCalV36 .svc-btn-no { background:var(--red-light); border-color:var(--red); color:var(--red); }
-    #staffCalV36 .svc-btn-no:hover { background:rgba(220,38,38,.18); }
-    #staffCalV36 .svc-btn-rewrite { background:var(--surface2); border-color:var(--border); color:var(--text-muted); }
-    #staffCalV36 .svc-btn-rewrite:hover { border-color:var(--text-muted); color:var(--text); }
-    #staffCalV36 .svc-step-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-    #staffCalV36 .svc-btn-step { padding:5px 12px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid var(--accent); background:var(--surface); color:var(--accent); transition:all .15s; white-space:nowrap; user-select:none; }
-    #staffCalV36 .svc-btn-step:hover:not(:disabled) { background:var(--accent-light); }
-    #staffCalV36 .svc-btn-step.selected { background:var(--accent); color:#fff; cursor:default; }
-    #staffCalV36 .svc-btn-step.selected:disabled { opacity:1; }
-    #staffCalV36 .svc-btn-step:disabled:not(.selected) { opacity:.38; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
-    #staffCalV36 .svc-btn-step-cancel { padding:5px 10px; border-radius:var(--radius-sm); font-size:.75rem; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); transition:all .15s; white-space:nowrap; }
-    #staffCalV36 .svc-btn-step-cancel:hover:not(:disabled) { border-color:var(--red); color:var(--red); }
-    #staffCalV36 .svc-btn-step-cancel:disabled { opacity:.3; cursor:not-allowed; }
-    #staffCalV36 .svc-player-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-    #staffCalV36 .svc-players-empty { margin-top:8px; font-size:.72rem; color:var(--text-muted); font-style:italic; }
-    #staffCalV36 .svc-player-chip { display:inline-flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--accent); color:var(--accent); border-radius:14px; padding:3px 6px 3px 10px; font-size:.76rem; font-weight:600; }
-    #staffCalV36 .svc-chip-x { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:none; background:var(--accent-light); color:var(--accent); font-size:.85rem; line-height:1; cursor:pointer; padding:0; transition:background .12s; }
-    #staffCalV36 .svc-chip-x:hover:not(:disabled) { background:var(--red-light); color:var(--red); }
-    #staffCalV36 .svc-chip-x:disabled { opacity:.4; cursor:not-allowed; }
-    #staffCalV36 .svc-edit-label { font-size:.72rem; color:var(--text-muted); }
-    #staffCalV36 .svc-edit-field { font-size:.82rem; padding:4px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); }
-    #staffCalV36 .svc-edit-field:disabled { opacity:.5; cursor:not-allowed; }
-    #staffCalV36 .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
+    .svc-layout { display:flex; flex-direction:column; }
+    .svc-grid-col { flex:1; min-width:0; overflow:hidden; }
+    .svc-chat-panel { background:var(--surface); display:flex; flex-direction:column; overflow:hidden; min-height:0; border-top:1px solid var(--border); }
+    .svc-chat-header { padding:8px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; justify-content:flex-end; }
+    .svc-chat-close-btn { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted); padding:2px 6px; border-radius:var(--radius-sm); line-height:1; transition:color .15s; }
+    .svc-chat-close-btn:hover { color:var(--text); }
+    .svc-chat-input-row { padding:0 12px; height:var(--bar2-h); display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface2); transition:background .2s; }
+    .svc-chat-input-row.svc-flow-locked { opacity:.7; }
+    .svc-chat-input { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:6px 10px; font-size:.82rem; font-family:inherit; outline:none; transition:border-color .15s,opacity .15s; min-width:0; }
+    .svc-chat-input::placeholder { color:var(--text-muted); }
+    .svc-chat-input:focus { border-color:var(--accent); }
+    .svc-chat-input:disabled { opacity:.5; cursor:not-allowed; background:var(--surface2); }
+    .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:var(--radius-sm); padding:6px 12px; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s,opacity .15s; white-space:nowrap; flex-shrink:0; }
+    .svc-chat-send:hover:not(:disabled) { background:var(--accent-hover); }
+    .svc-chat-send:disabled { opacity:.45; cursor:not-allowed; }
+    .svc-chat-messages { flex:1; overflow-y:auto; min-height:0; padding:10px 16px; display:flex; flex-direction:column; gap:8px; }
+    .svc-msg { max-width:85%; border-radius:var(--radius); padding:8px 12px; font-size:.82rem; line-height:1.45; }
+    .svc-msg.staff { background:var(--accent-light); border:1px solid var(--accent); color:var(--text); align-self:flex-end; border-bottom-right-radius:2px; }
+    .svc-msg.system { background:var(--surface2); border:1px solid var(--border); color:var(--text); align-self:flex-start; border-bottom-left-radius:2px; }
+    .svc-msg.system.ok { border-color:var(--green); }
+    .svc-msg.system.confirm { border-color:#b45309; }
+    .svc-msg.system.flow { max-width:95%; }
+    .svc-msg-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+    .svc-msg.staff .svc-msg-label { color:var(--accent); }
+    .svc-msg.system .svc-msg-label { color:var(--text-muted); display:none; }
+    .svc-msg.system.ok .svc-msg-label { color:var(--green); }
+    .svc-msg.system.confirm .svc-msg-label { color:#b45309; }
+    .svc-msg.system.flow .svc-msg-label { color:var(--accent); }
+    #svcChatMessages > .svc-msg:first-child { box-shadow: inset 4px 0 0 var(--accent); background: var(--accent-light); }
+    .svc-confirm-buttons { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    .svc-btn-confirm { padding:4px 14px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid; transition:all .15s; }
+    .svc-btn-yes { background:var(--green-light); border-color:var(--green); color:var(--green); }
+    .svc-btn-yes:hover:not(:disabled) { background:rgba(22,163,74,.22); }
+    .svc-btn-yes:disabled { opacity:.5; cursor:not-allowed; }
+    .svc-btn-no { background:var(--red-light); border-color:var(--red); color:var(--red); }
+    .svc-btn-no:hover { background:rgba(220,38,38,.18); }
+    .svc-btn-rewrite { background:var(--surface2); border-color:var(--border); color:var(--text-muted); }
+    .svc-btn-rewrite:hover { border-color:var(--text-muted); color:var(--text); }
+    .svc-step-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .svc-btn-step { padding:5px 12px; border-radius:var(--radius-sm); font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid var(--accent); background:var(--surface); color:var(--accent); transition:all .15s; white-space:nowrap; user-select:none; }
+    .svc-btn-step:hover:not(:disabled) { background:var(--accent-light); }
+    .svc-btn-step.selected { background:var(--accent); color:#fff; cursor:default; }
+    .svc-btn-step.selected:disabled { opacity:1; }
+    .svc-btn-step:disabled:not(.selected) { opacity:.38; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
+    .svc-btn-step-cancel { padding:5px 10px; border-radius:var(--radius-sm); font-size:.75rem; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); transition:all .15s; white-space:nowrap; }
+    .svc-btn-step-cancel:hover:not(:disabled) { border-color:var(--red); color:var(--red); }
+    .svc-btn-step-cancel:disabled { opacity:.3; cursor:not-allowed; }
+    .svc-player-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .svc-players-empty { margin-top:8px; font-size:.72rem; color:var(--text-muted); font-style:italic; }
+    .svc-player-chip { display:inline-flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--accent); color:var(--accent); border-radius:14px; padding:3px 6px 3px 10px; font-size:.76rem; font-weight:600; }
+    .svc-chip-x { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:none; background:var(--accent-light); color:var(--accent); font-size:.85rem; line-height:1; cursor:pointer; padding:0; transition:background .12s; }
+    .svc-chip-x:hover:not(:disabled) { background:var(--red-light); color:var(--red); }
+    .svc-chip-x:disabled { opacity:.4; cursor:not-allowed; }
+    .svc-edit-label { font-size:.72rem; color:var(--text-muted); }
+    .svc-edit-field { font-size:.82rem; padding:4px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); }
+    .svc-edit-field:disabled { opacity:.5; cursor:not-allowed; }
+    .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     @media (min-width:900px) {
-      #staffCalV36 .svc-layout { flex-direction:row; height:min(80vh, 860px); }
-      #staffCalV36 .svc-grid-col { overflow:auto; }
-      #staffCalV36 .svc-chat-panel { width:var(--chat-w); flex-shrink:0; border-left:2px solid var(--border); border-top:none; }
-      #staffCalV36 .svc-chat-header { display:none !important; }
-      #staffCalV36 .svc-chat-fab { display:none !important; }
-      #staffCalV36 .svc-chat-overlay { display:none !important; }
+      .svc-layout { flex-direction:row; height:min(80vh, 860px); }
+      .svc-grid-col { overflow:auto; }
+      /* La chat NON è più una colonna a destra: su desktop vive nella sidebar (#sideNavChatHost). */
+      .svc-chat-header { display:none !important; }
+      .svc-chat-fab { display:none !important; }
+      .svc-chat-overlay { display:none !important; }
     }
     @media (max-width:899px) {
-      #staffCalV36 .svc-chat-panel { position:fixed; bottom:0; left:0; right:0; height:auto; max-height:85vh; border-top:2px solid var(--border); border-radius:8px 8px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
-      #staffCalV36 .svc-chat-panel.svc-chat-open { transform:translateY(0); }
-      #staffCalV36 .svc-chat-header { order:0; }
-      #staffCalV36 .svc-chat-messages { order:1; flex-direction:column-reverse; }
-      #staffCalV36 .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
-      #staffCalV36 .svc-chat-input-row { height:auto !important; min-height:56px; padding:10px 12px !important; }
-      #staffCalV36 .svc-chat-input, #staffCalV36 .svc-chat-send { font-size:21px !important; padding:10px 14px !important; }
+      .svc-chat-panel { position:fixed; bottom:0; left:0; right:0; height:auto; max-height:85vh; border-top:2px solid var(--border); border-radius:8px 8px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.18); z-index:300; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); }
+      .svc-chat-panel.svc-chat-open { transform:translateY(0); }
+      .svc-chat-header { order:0; }
+      .svc-chat-messages { order:1; flex-direction:column-reverse; }
+      .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
+      .svc-chat-input-row { height:auto !important; min-height:56px; padding:10px 12px !important; }
+      .svc-chat-input, .svc-chat-send { font-size:21px !important; padding:10px 14px !important; }
       /* ✕ flottante in alto a destra sopra i messaggi: niente più barra-testata bianca */
-      #staffCalV36 .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
-      #staffCalV36 .svc-chat-header::before { display:none; }
-      #staffCalV36 .svc-chat-close-btn { background:rgba(241,245,249,.9); border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; }
-      #staffCalV36 .svc-chat-panel:not(.svc-card-mode) .svc-chat-messages { padding-top:30px; }
-      #staffCalV36 .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
-      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
-      #staffCalV36 .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
-      #staffCalV36 .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
-      #staffCalV36 .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
+      .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
+      .svc-chat-header::before { display:none; }
+      .svc-chat-close-btn { background:rgba(241,245,249,.9); border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; }
+      .svc-chat-panel:not(.svc-card-mode) .svc-chat-messages { padding-top:30px; }
+      .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
+      .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
+      .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
+      .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
+      .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
       /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile */
-      #staffCalV36 .svc-chat-panel, #staffCalV36 .svc-chat-panel * { font-size:21px !important; }
-      #staffCalV36 .svc-chat-panel select, #staffCalV36 .svc-chat-panel input { padding:8px 10px !important; }
+      .svc-chat-panel, .svc-chat-panel * { font-size:21px !important; }
+      .svc-chat-panel select, .svc-chat-panel input { padding:8px 10px !important; }
       /* Equilibrio dimensioni: messaggi/azioni assistente in armonia con la schedina (solo mobile) */
-      #staffCalV36 .svc-msg { font-size:21px; }
-      #staffCalV36 .svc-msg-label { font-size:12px; }
-      #staffCalV36 .svc-btn-step,
-      #staffCalV36 .svc-btn-confirm,
-      #staffCalV36 .svc-btn-step-cancel { font-size:18px; }
-      #staffCalV36 .svc-player-chip { font-size:17px; }
-      #staffCalV36 .svc-players-empty { font-size:15px; }
-      #staffCalV36 .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
-      #staffCalV36 .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
-      #staffCalV36 .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+      .svc-msg { font-size:21px; }
+      .svc-msg-label { font-size:12px; }
+      .svc-btn-step,
+      .svc-btn-confirm,
+      .svc-btn-step-cancel { font-size:18px; }
+      .svc-player-chip { font-size:17px; }
+      .svc-players-empty { font-size:15px; }
+      .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
+      .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
+      .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
     }
 
     /* ── Tappa 2: Mobile 3-panel layout (< 900px) ── */
@@ -2919,7 +2919,7 @@
       .smc-team-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:none; border:none; border-radius:8px; padding:10px 12px; font-size:.9rem; font-family:inherit; color:var(--text,#1f2430); cursor:pointer; white-space:nowrap; }
       .smc-team-item:hover, .smc-team-item:focus { background:var(--accent-light,rgba(37,99,235,0.10)); outline:none; }
       #staffCalV36 > .svc-layout { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
-      #staffCalV36 .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+      .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
       #staffCalV36 .agenda-wrap { flex:1 1 auto; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
       #staffCalMobileChatBar { display:flex; flex:0 0 auto; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-top:1px solid #e5e7eb; box-shadow:0 -2px 8px rgba(0,0,0,.06); }
       .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:19px; padding:7px 14px; font-size:.88rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:38px; transition:border-color .15s; }
@@ -2928,7 +2928,7 @@
       .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:19px; padding:0 18px; height:38px; font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
       .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
       .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
-      #staffCalV36 .svc-chat-fab { display:none !important; }
+      .svc-chat-fab { display:none !important; }
       /* HOTFIX: calendario a tutto schermo su mobile → nascondi la barra Menu globale solo qui */
       body.dashboard-view .top-nav-bar { display:none !important; }
     }
@@ -3373,6 +3373,51 @@
       body:not(.sidebar-collapsed) .side-nav { z-index:2500; overflow-y:scroll !important; min-height:0; }
       body:not(.sidebar-collapsed) .side-nav-content { min-height:max-content; padding-bottom:96px; }
       body:not(.sidebar-collapsed) #fillSlots .fill-calendar-stage .fill-detail-panel { inset:28px 36px 28px 328px; }
+    }
+
+    /* ── Riorganizzazione layout: chat nella sidebar + capitoli in barra orizzontale ──
+       Solo desktop (≥900px). Sotto i 900px tutto resta com'era (drawer + chat bottom-sheet). */
+    .pmo-chapter-bar { display:none; }
+    .pmo-chapter-dropdown { display:none; }
+    /* Le variabili-tema della chat sono definite su #staffCalV36 (--surface, --accent, …).
+       Spostando il pannello nella sidebar non verrebbero più risolte (sfondo trasparente,
+       colori rotti): le ridefiniamo sul pannello stesso così è autosufficiente ovunque. */
+    .svc-chat-panel {
+      --accent:#2563eb; --accent-light:rgba(37,99,235,0.10); --accent-hover:#1d4ed8;
+      --surface:#ffffff; --surface2:#f0eeea;
+      --border:#d8d7d2; --text:#1f2430; --text-muted:#4b5563;
+      --green:#16a34a; --green-light:rgba(22,163,74,0.10);
+      --red:#dc2626; --red-light:rgba(220,38,38,0.08);
+      --radius:8px; --radius-sm:5px; --bar2-h:44px;
+    }
+    @media (min-width:900px) {
+      /* 1) Sidebar: nascondi i capitoli verticali e la chat "esplode" sotto Calendario */
+      .side-nav-chapters { display:none; }
+      .side-nav .side-nav-section-label { display:none; }
+      .side-nav { display:flex; flex-direction:column; }
+      body:not(.sidebar-collapsed) .side-nav { overflow:hidden !important; }
+      .side-nav-content { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
+      body:not(.sidebar-collapsed) .side-nav-content { min-height:0; padding-bottom:12px; }
+      .side-nav-chat-host { flex:1 1 auto; min-height:0; display:flex; margin-top:8px; }
+      .side-nav-chat-host .svc-chat-panel { flex:1 1 auto; min-height:0; width:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.22); overflow:hidden; border-top:1px solid var(--border); }
+      .side-nav-chat-host .svc-chat-input-row { border-radius:14px 14px 0 0; }
+      /* Anti-flash / fallback: finché la chat non è stata spostata nella sidebar (o se il JS
+         fallisce) non mostrarla come colonna dentro al calendario. */
+      .svc-layout > .svc-chat-panel { display:none; }
+
+      /* 2) Barra capitoli orizzontale sopra il calendario */
+      .pmo-chapter-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 16px; padding:8px 10px; background:#eef2f7; border:1px solid #e1e7ef; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+      .pmo-chapter-group { position:relative; }
+      .pmo-chapter-item { border:1px solid transparent; border-radius:9px; padding:9px 14px; background:transparent; color:#274060; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; line-height:1; }
+      .pmo-chapter-item:hover { background:rgba(31,71,136,.08); }
+      .pmo-chapter-item.active { background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(31,71,136,.25); }
+      .pmo-chapter-caret { font-size:11px; opacity:.8; transition:transform .15s; }
+      .pmo-chapter-group.open .pmo-chapter-caret { transform:rotate(180deg); }
+      .pmo-chapter-group.open .pmo-chapter-item.has-dropdown { background:rgba(31,71,136,.10); }
+      .pmo-chapter-dropdown { position:absolute; top:calc(100% + 6px); left:0; min-width:210px; background:#fff; border:1px solid #e1e7ef; border-radius:12px; box-shadow:0 8px 28px rgba(15,23,42,.16); padding:6px; z-index:400; flex-direction:column; gap:2px; }
+      .pmo-chapter-group.open .pmo-chapter-dropdown { display:flex; }
+      .pmo-chapter-dropdown button { display:block; width:100%; text-align:left; border:0; background:transparent; border-radius:8px; padding:9px 12px; font-size:13px; font-weight:600; color:#33425a; cursor:pointer; white-space:nowrap; }
+      .pmo-chapter-dropdown button:hover { background:rgba(31,71,136,.08); color:var(--primary); }
     }
 
 
@@ -5894,6 +5939,13 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Campi staff</span></span>
         </button>
 
+        <!-- Desktop (≥900px): la chat assistente "esplode" qui sotto la voce Calendario.
+             Su mobile/narrow resta vuoto (la chat è il bottom-sheet dentro #staffCalV36). -->
+        <div id="sideNavChatHost" class="side-nav-chat-host"></div>
+
+        <!-- Gli altri capitoli: su desktop ≥900px sono nascosti qui e mostrati nella barra
+             orizzontale (.pmo-chapter-bar). Su mobile restano la navigazione del drawer. -->
+        <div class="side-nav-chapters">
         <button class="side-nav-parent side-nav-main-item" data-section-key="assessment" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
           <span class="nav-order">1</span>
           <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
@@ -5928,6 +5980,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
           <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
+        </div><!-- /.side-nav-chapters -->
 
       </div>
     </aside>
@@ -5948,6 +6001,33 @@ body.assessment-public-mode .assessment-public-only-card {
         <button id="fillSlotSavedRequestsTopButton" class="top-nav-action-btn saved-requests" onclick="setActionAnchor(this); openFillSlotSavedRequestsModal()">Richieste salvate 0</button>
       </div>
     </div>
+
+    <!-- Barra capitoli orizzontale (solo desktop ≥900px). Riusa gli handler esistenti
+         (switchTab / goToTabSection). data-section-key / data-subsection-key fanno sì che
+         il gating ruoli (pmoApplyTabVisibility) nasconda le voci non consentite. -->
+    <nav class="pmo-chapter-bar" id="pmoChapterBar">
+      <div class="pmo-chapter-group" data-section-key="assessment">
+        <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="assessment" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Autovalutazione <span class="pmo-chapter-caret">▾</span></button>
+        <div class="pmo-chapter-dropdown">
+          <button type="button" data-subsection-key="view_assessment_flusso" data-parent-tab="assessment" onclick="goToTabSection('assessment','Cruscotto mattutino')">Flusso</button>
+          <button type="button" data-subsection-key="view_assessment_testi" data-parent-tab="assessment" onclick="goToTabSection('assessment','Testi')">Testi</button>
+          <button type="button" data-subsection-key="view_assessment_scheda" data-parent-tab="assessment" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
+          <button type="button" data-subsection-key="view_assessment_strumenti" data-parent-tab="assessment" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
+          <button type="button" data-subsection-key="view_assessment_excel" data-parent-tab="assessment" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
+        </div>
+      </div>
+      <button type="button" class="pmo-chapter-item" data-section-key="members" onclick="switchTab('members', this)">Anagrafica soci</button>
+      <button type="button" class="pmo-chapter-item" data-section-key="contact" onclick="switchTab('contact', this)">Messaggi WhatsApp</button>
+      <div class="pmo-chapter-group" data-section-key="administration">
+        <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="administration" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Amministrazione <span class="pmo-chapter-caret">▾</span></button>
+        <div class="pmo-chapter-dropdown">
+          <button type="button" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti</button>
+          <button type="button" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
+          <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button type="button" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
+        </div>
+      </div>
+    </nav>
 
     <div id="globalAlerts"></div>
 
@@ -7414,7 +7494,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.761';
+    const APP_VERSION = '5.762';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9175,12 +9255,63 @@ Grazie.`
       if (submenuId) setSidebarSubmenuOpen(submenuId, true);
     }
 
+    // ── Riorganizzazione layout (desktop ≥900px) ──────────────────────────────
+    // Chat assistente: su desktop "esplode" nella sidebar (#sideNavChatHost), su
+    // mobile resta il bottom-sheet dentro #staffCalV36. Spostiamo il NODO (gli ID
+    // restano, quindi la logica JS della chat non cambia).
+    const PMO_DESKTOP_MQ = window.matchMedia('(min-width:900px)');
+    function pmoRelocateChat() {
+      const panel = document.getElementById('svcChatPanel');
+      if (!panel) return;
+      if (PMO_DESKTOP_MQ.matches) {
+        const host = document.getElementById('sideNavChatHost');
+        if (host && panel.parentElement !== host) host.appendChild(panel);
+      } else {
+        const layout = document.querySelector('#staffCalV36 .svc-layout');
+        if (layout && panel.parentElement !== layout) layout.appendChild(panel);
+      }
+    }
+    function pmoInitChatRelocation() {
+      pmoRelocateChat();
+      try { PMO_DESKTOP_MQ.addEventListener('change', pmoRelocateChat); }
+      catch (_) { PMO_DESKTOP_MQ.addListener(pmoRelocateChat); } // Safari datati
+    }
+
+    // Barra capitoli orizzontale: dropdown per i capitoli con sotto-voci.
+    function pmoCloseChapterDropdowns() {
+      document.querySelectorAll('.pmo-chapter-group.open').forEach(g => {
+        g.classList.remove('open');
+        const t = g.querySelector('.pmo-chapter-item.has-dropdown');
+        if (t) t.setAttribute('aria-expanded', 'false');
+      });
+    }
+    function pmoToggleChapterDropdown(btn, event) {
+      if (event) event.stopPropagation();
+      const group = btn.closest('.pmo-chapter-group');
+      if (!group) return;
+      const willOpen = !group.classList.contains('open');
+      pmoCloseChapterDropdowns();
+      group.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    }
+    // Chiudi i dropdown cliccando fuori dal trigger (anche scegliendo una sotto-voce,
+    // che propaga fin qui dopo aver eseguito goToTabSection).
+    document.addEventListener('click', pmoCloseChapterDropdowns);
+
+    // Evidenzia nella barra capitoli la sezione attiva.
+    function pmoSyncChapterBar(tabName) {
+      document.querySelectorAll('#pmoChapterBar .pmo-chapter-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-section-key') === tabName);
+      });
+    }
+
     function updateCurrentSectionLabel(tabName) {
       const label = document.getElementById('currentSectionLabel');
       const updateBadge = document.getElementById('dashboardTopUpdate');
       const assessmentSyncBtn = document.getElementById('assessmentSyncTopButton');
       document.body.classList.toggle('dashboard-view', tabName === 'dashboard');
       document.body.classList.toggle('assessment-view', tabName === 'assessment');
+      pmoSyncChapterBar(tabName);
       if (tabName === 'dashboard' && window.innerWidth > 800 && document.body.classList.contains('sidebar-collapsed')) {
         document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('pmoSidebarCollapsed', '0');
@@ -26735,6 +26866,7 @@ Per confermare scrivi ELIMINA.`);
       pmoConsumeSupabaseAuthRedirect();
       pmoConsumeStaffInviteParam();
       initSidebarNavigation();
+      try { pmoInitChatRelocation(); } catch (err) { console.warn('pmoInitChatRelocation boot', err); }
       migrateMemberIds();
       pruneHistoricalBookings(false);
       potentialSlotSchedule = normalizePotentialSlotSchedule(potentialSlotSchedule || DEFAULT_POTENTIAL_SLOT_SCHEDULE);
