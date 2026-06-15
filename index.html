@@ -3424,6 +3424,24 @@
       .pmo-chapter-dropdown button:hover { background:rgba(31,71,136,.08); color:var(--primary); }
     }
 
+    /* Header di sezione OMOGENEO e "sticky" (come Anagrafica soci) per i capitoli
+       Assistente AI / Messaggi WhatsApp / Amministrazione. Calendario escluso.
+       Resta fisso in alto durante lo scroll verticale di .main-content. */
+    .pmo-section-head {
+      position:sticky; top:0; z-index:15;
+      display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; align-items:flex-end;
+      margin:0 0 16px; padding:12px 18px 10px;
+      background:rgba(246,248,251,.96); border-bottom:1px solid #dce5f2;
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    }
+    .pmo-section-head > div { min-width:0; }
+    .pmo-section-head h2 { margin:0; color:#1f4788; font-size:25px; line-height:1.05; letter-spacing:0; }
+    .pmo-section-head p { margin:2px 0 0; color:#667085; font-size:12px; max-width:780px; line-height:1.25; }
+    /* #contact genera già un titolo "Messaggi WhatsApp" (.whatsapp-template-head): lo nascondiamo
+       per non duplicarlo con l'header sticky statico aggiunto in cima alla sezione. */
+    #contact .whatsapp-template-head { display:none; }
+    @media (max-width:760px) { .pmo-section-head { align-items:flex-start; flex-direction:column; padding:14px; } }
+
 
 
 
@@ -6899,6 +6917,7 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <div id="contact" class="tab-content">
+      <div class="pmo-section-head"><div><h2>Messaggi WhatsApp</h2><p>Libreria testi e template.</p></div></div>
 
       <!-- ════ WA Inbound Dashboard (solo env TEST) ════ -->
       <div id="waInboundDashboard" class="section" style="display:none;">
@@ -7041,7 +7060,9 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <!-- Assistente AI tab — contenuto spostato qui a runtime in test env desktop -->
-    <div id="assistanteAI" class="tab-content"></div>
+    <div id="assistanteAI" class="tab-content">
+      <div class="pmo-section-head"><div><h2>Assistente AI</h2><p>Messaggi, varianti e bot.</p></div></div>
+    </div>
 
     <!-- WA reply modal -->
     <div id="waReplyModal" class="whatsapp-composer-overlay">
@@ -7115,7 +7136,7 @@ body.assessment-public-mode .assessment-public-only-card {
 
     <div id="administration" class="tab-content">
       <div class="section">
-        <div class="dashboard-page-title">
+        <div class="dashboard-page-title pmo-section-head">
           <h2>Amministrazione</h2>
           <p>Utenti, notifiche staff, dati Matchpoint e controlli tecnici separati.</p>
         </div>
@@ -7499,7 +7520,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.764';
+    const APP_VERSION = '5.765';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
