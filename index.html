@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.784';
+    const APP_VERSION = '5.785';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38126,7 +38126,14 @@ Per confermare scrivi ELIMINA.`);
     const chi = nome ? ` di ${nome}` : '';
     const confirmed = confirm(`Annullare su Matchpoint la prenotazione${chi}?\nCampo ${campo} · ${dataIt} · ${ora}\n\nL'operazione è irreversibile.`);
     if (!confirmed) return;
+    return staffCalDoCancel(isoDate, campo, ora, nome);
+  }
 
+  // Esegue l'annullamento su Matchpoint SENZA confirm() nativo: la conferma è già
+  // avvenuta a monte (dialog a pulsanti del calendario, oppure dialogo in chat
+  // dell'assistente AI). Estratto da staffCalAskCancel per riuso. v5.785.
+  async function staffCalDoCancel(isoDate, campo, ora, nome) {
+    const dataIt = isoDate.split('-').reverse().join('/');
     const inProgress = svcAddMessage('system', '⏳ Annullamento in corso su Matchpoint…');
     let _sec = 0;
     const _timer = setInterval(function() {
@@ -39397,9 +39404,13 @@ Per confermare scrivi ELIMINA.`);
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
-      // Se c'è una prenotazione in corso (slot mancanti o attesa conferma), il testo è la
-      // risposta al dialogo, non un nuovo comando.
+      // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
+      // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
+        if ((aiFlowState.kind || 'prenota') === 'cancella') {
+          if (aiFlowState.stage === 'confirm') return _confirmCancellaAnswer(t);
+          return _continueCancella(t);
+        }
         if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
         if (aiFlowState.stage === 'await') return _continuePrenota(t);
       }
@@ -39408,7 +39419,7 @@ Per confermare scrivi ELIMINA.`);
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
-        case 'CANCELLA': return _stub('annullare una prenotazione');
+        case 'CANCELLA': return _startCancella(res, t);
         case 'CORREGGI': return _stub('modificare una prenotazione');
         case 'ANAGRAFICA': return _stub('gestire l’anagrafica giocatori');
         case 'SUGGERISCI': return _stub('i suggerimenti');
@@ -39638,7 +39649,7 @@ Per confermare scrivi ELIMINA.`);
       const need = [];
       if (!draft.campoNum) need.push('court');
       if (!draft.ora) need.push('time');
-      if (need.length) { aiFlowState = { stage: 'await', draft: draft, need: need }; return _askNext(); }
+      if (need.length) { aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: need }; return _askNext(); }
       aiFlowState = null;
       _showSummary(draft);
     }
@@ -39686,7 +39697,7 @@ Per confermare scrivi ELIMINA.`);
     function _showSummary(draft) {
       if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
       draft.nome = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Staff');
-      aiFlowState = { stage: 'confirm', draft: draft };
+      aiFlowState = { kind: 'prenota', stage: 'confirm', draft: draft };
       let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
       if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
       html += '<br><span style="color:#98a2b3;font-size:12px">Confermi? Verrà scritta <strong>davvero</strong> su Matchpoint.</span>';
@@ -39785,6 +39796,178 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // CANCELLA — Step 3: annullo conversazionale con riepilogo + conferma in chat
+    // (NIENTE confirm() nativo). Trova la prenotazione fra gli slot del giorno
+    // (staffCalGetSlots), disambigua se ce n'è più d'una, poi esegue via
+    // staffCalDoCancel (stessa rete/cleanup del pulsante calendario).
+    // ════════════════════════════════════════════════════════════════════════
+    function _cancelTipoLabel(r) {
+      const t = String(r.tipoReale || r.tipo || '').toLowerCase();
+      if (t.indexOf('lez') >= 0) return '📚 lezione' + (r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '');
+      if (t.indexOf('manut') >= 0) return '🔧 manutenzione';
+      return '🎾 partita';
+    }
+    // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
+    function _cancelCandidates(iso, court, time, who) {
+      const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+      // Dedup per campo|ora: preferisci la card staff-booking (porta la lista giocatori).
+      const byKey = {};
+      rows.forEach(function (r) {
+        if (!r || !r.ora || !r.campo) return;
+        const k = r.campo + '|' + r.ora;
+        if (!byKey[k] || r.tipo === 'staff-booking') byKey[k] = r;
+      });
+      let cands = Object.keys(byKey).map(function (k) { return byKey[k]; });
+      if (court) cands = cands.filter(function (r) { return Number(r.campo) === Number(court); });
+      if (time) cands = cands.filter(function (r) { return String(r.ora) === String(time); });
+      if (who) {
+        const wn = _norm(who);
+        cands = cands.filter(function (r) {
+          return _norm(String(r.nome || '').replace(/\n/g, ' ')).indexOf(wn) >= 0
+            || (r.istruttore && _norm(r.istruttore).indexOf(wn) >= 0);
+        });
+      }
+      cands.sort(function (a, b) { return String(a.ora).localeCompare(String(b.ora)) || (a.campo - b.campo); });
+      return cands;
+    }
+    // Nome da un comando di annullo (es. "annulla la partita di Fabio domani" → "fabio"):
+    // staffCalParseBookingText non lo estrae senza campo/ora. Toglie verbi/articoli/nomi-comuni/
+    // date/orari e tiene il resto come query nome (poi filtrata contro le prenotazioni reali).
+    const _CANCEL_STOP = (function () {
+      const w = ('annulla annullare annullami annullale annullala cancella cancellare cancellami cancellala ' +
+        'elimina eliminare disdici disdire togli togliere rimuovi rimuovere ' +
+        'la il lo le i gli l un una uno di del dello della dei degli delle da dal dallo dalla ' +
+        'al alla alle allo ai agli a in nel nella sul sulla e ed con per su tra fra ' +
+        'partita partite lezione lezioni prenotazione prenotazioni prenota match slot campo campi ' +
+        'manutenzione appuntamento giocatore giocatori ' +
+        'oggi domani dopodomani ieri lunedi martedi mercoledi giovedi venerdi sabato domenica giorno ' +
+        'tutto tutta tutti tutte ogni qualche ' +
+        'alle ore ora h mattina pomeriggio sera mezzogiorno mezzanotte stamattina stasera stanotte').split(/\s+/);
+      const s = {}; w.forEach(function (x) { if (x) s[x] = 1; }); return s;
+    })();
+    function _extractCancelWho(text) {
+      let n = _norm(text);
+      n = n.replace(/\bcampo\s*[1-4]\b/g, ' ');
+      n = n.replace(/\b\d{1,2}[:.]?\d{0,2}\s*[-–]\s*\d{1,2}[:.]?\d{0,2}\b/g, ' ');
+      n = n.replace(/\b\d{1,2}[:.]\d{2}\b/g, ' ');
+      n = n.replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ');
+      n = n.replace(/\b\d{1,2}\b/g, ' ');
+      const toks = n.split(/\s+/).filter(function (x) { return x && x.length >= 2 && !_CANCEL_STOP[x]; });
+      return toks.join(' ').trim();
+    }
+    function _startCancella(res, text) {
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const iso = slots.date || p.data || _todayIso();
+      const court = slots.court || p.campoNum || 0;
+      const time = slots.time || p.ora || '';
+      let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      const dl = _dayLabel(iso);
+      let cands = _cancelCandidates(iso, court, time, who);
+      // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
+      // (o quel nome non è prenotato): mostra comunque l'elenco (ignora il filtro nome).
+      if (!cands.length && who) {
+        const base = _cancelCandidates(iso, court, time, '');
+        if (base.length) { cands = base; who = ''; }
+      }
+      if (!cands.length) {
+        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (who ? ' · ' + _escapeHtml(who) : '');
+        return _say('🔍 Non trovo prenotazioni da annullare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
+      }
+      if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
+      aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
+      const items = cands.map(function (r, i) {
+        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
+      });
+      return _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. Quale vuoi annullare? Rispondi col <strong>numero</strong> (oppure “annulla” per uscire):<br>' + items.join('<br>'));
+    }
+    function _showCancelSummary(iso, slot) {
+      const durata = slot.durata || 90;
+      const oraFine = _endTime(slot.ora, durata);
+      const nome = (slot.nome || '').replace(/\n/g, ', ');
+      const draft = { iso: iso, campo: slot.campo, ora: slot.ora, durata: durata, nome: nome, istruttore: slot.istruttore || '', tipoLabel: _cancelTipoLabel(slot) };
+      aiFlowState = { kind: 'cancella', stage: 'confirm', draft: draft };
+      const lines = [
+        '🗑️ <strong>Annullare questa prenotazione?</strong>',
+        '📍 Campo ' + slot.campo,
+        '📅 ' + _dayLabel(iso),
+        '🕐 ' + slot.ora + '–' + oraFine + ' (' + durata + '′)',
+        '👥 ' + (_escapeHtml(nome) || '<em>—</em>') + ' · ' + draft.tipoLabel
+      ];
+      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">Verrà annullata <strong>davvero</strong> su Matchpoint. L’operazione è irreversibile.</span>';
+      const div = _say(html);
+      _appendCancelButtons(div, draft);
+    }
+    function _appendCancelButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '🗑️ Sì, annulla';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ No, lascia';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        aiFlowState = null;
+        _executeCancella(draft);
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true;
+        aiFlowState = null;
+        _say('👍 Ok, non ho annullato nulla.');
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
+    }
+    // Risposta quando ci sono più candidati (stage 'pick'): numero o campo+ora.
+    function _continueCancella(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      if (!aiFlowState || aiFlowState.stage !== 'pick') { aiFlowState = null; return _say('Dimmi pure cosa vuoi annullare.'); }
+      const list = aiFlowState.list || [];
+      const iso = aiFlowState.iso;
+      let pick = null;
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < list.length) pick = list[i]; }
+      if (!pick) {
+        const c = _extractCampo(_norm(text)); const tm = _extractTime(text);
+        let f = list.slice();
+        if (c) f = f.filter(function (r) { return Number(r.campo) === Number(c); });
+        if (tm) f = f.filter(function (r) { return r.ora === tm; });
+        if (f.length === 1) pick = f[0];
+      }
+      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      aiFlowState = null;
+      return _showCancelSummary(iso, pick);
+    }
+    // Conferma via testo (fallback ai pulsanti). NB: qui “annulla” NON è una parola di
+    // uscita (sarebbe ambigua: è il verbo dell'azione). Per uscire: “no/lascia/stop”.
+    function _confirmCancellaAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | lascia\w* | stop | niente | nessun\w* )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho annullato nulla.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | elimina | disdici | togli )/.test(n)) {
+        const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
+      }
+      _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
+    }
+    // Annullamento reale su Matchpoint (riusa staffCalDoCancel: rete + cleanup locale/cloud).
+    async function _executeCancella(draft) {
+      if (!draft || draft.__started) return;
+      draft.__started = true;
+      try {
+        if (typeof staffCalDoCancel === 'function') {
+          await staffCalDoCancel(draft.iso, draft.campo, draft.ora, draft.nome);
+        } else {
+          _say('❌ Funzione di annullamento non disponibile.');
+        }
+      } catch (err) {
+        _say('❌ Errore durante l’annullamento: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
+      }
+    }
+
     function _capabilitiesShort() {
       return 'Per ora posso rispondere a domande tipo “<em>campi liberi sabato pomeriggio</em>”, “<em>chi gioca domani alle 18</em>”, “<em>prenotazioni di oggi sul campo 2</em>”.';
     }
@@ -39822,7 +40005,8 @@ Per confermare scrivi ELIMINA.`);
       el.innerHTML = [
         '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
         '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
-        '<li class="soon"><strong>Modifica</strong> / <strong>Annulla</strong> prenotazione — in arrivo</li>',
+        '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
+        '<li class="soon"><strong>Modifica</strong> prenotazione (giocatori / orario) — in arrivo</li>',
         '<li class="soon"><strong>Anagrafica</strong> giocatori — in arrivo</li>',
         '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
       ].join('');
