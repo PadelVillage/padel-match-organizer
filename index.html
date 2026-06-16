@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.787';
+    const APP_VERSION = '5.788';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39433,10 +39433,12 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        if ((aiFlowState.kind || 'prenota') === 'cancella') {
+        const _k = aiFlowState.kind || 'prenota';
+        if (_k === 'cancella') {
           if (aiFlowState.stage === 'confirm') return _confirmCancellaAnswer(t);
           return _continueCancella(t);
         }
+        if (_k === 'modifica') return _continueModifica(t);
         if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
         if (aiFlowState.stage === 'await') return _continuePrenota(t);
       }
@@ -39446,7 +39448,7 @@ Per confermare scrivi ELIMINA.`);
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
         case 'CANCELLA': return _startCancella(res, t);
-        case 'CORREGGI': return _stub('modificare una prenotazione');
+        case 'CORREGGI': return _startModifica(res, t);
         case 'ANAGRAFICA': return _stub('gestire l’anagrafica giocatori');
         case 'SUGGERISCI': return _stub('i suggerimenti');
         default: return _handleUnknown(t, res);
@@ -39872,6 +39874,8 @@ Per confermare scrivi ELIMINA.`);
     const _CANCEL_STOP = (function () {
       const w = ('annulla annullare annullami annullale annullala cancella cancellare cancellami cancellala ' +
         'elimina eliminare disdici disdire togli togliere rimuovi rimuovere ' +
+        'modifica modificare modificami modificala cambia cambiare cambiami correggi correggere ' +
+        'sposta spostare spostami rinomina aggiorna aggiornare aggiungi ' +
         'la il lo le i gli l un una uno di del dello della dei degli delle da dal dallo dalla ' +
         'al alla alle allo ai agli a in nel nella sul sulla e ed con per su tra fra ' +
         'partita partite lezione lezioni prenotazione prenotazioni prenota match slot campo campi ' +
@@ -40003,6 +40007,66 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // CORREGGI — Step 3b: modifica prenotazione. L'AI TROVA la prenotazione (stesso
+    // finder dell'annullo) e APRE l'editor esistente staffCalEditPlayers (collaudato
+    // in PROD: aggiungi/togli giocatori + sposta data/campo/ora, partite e lezioni).
+    // La modifica vera avviene nell'editor (ha il suo riepilogo+conferma). La modifica
+    // "a voce pura" (capire il cambiamento dal testo) è comprensione → fase successiva.
+    // ════════════════════════════════════════════════════════════════════════
+    function _openEditor(iso, slot) {
+      aiFlowState = null;
+      const tipoR = slot.tipoReale || (String(slot.tipo || '').indexOf('lez') >= 0 ? 'lezione' : 'partita');
+      const nome = (slot.nome || '').replace(/\n/g, ', ');
+      try {
+        if (typeof staffCalEditPlayers === 'function') staffCalEditPlayers(iso, slot.campo, slot.ora, nome, slot.durata, tipoR);
+        else _say('❌ Editor di modifica non disponibile.');
+      } catch (e) { _say('❌ Non riesco ad aprire l’editor di modifica: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+    }
+    function _startModifica(res, text) {
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const iso = slots.date || p.data || _todayIso();
+      const court = slots.court || p.campoNum || 0;
+      const time = slots.time || p.ora || '';
+      let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      const dl = _dayLabel(iso);
+      let cands = _cancelCandidates(iso, court, time, who);
+      if (!cands.length && who) {
+        const base = _cancelCandidates(iso, court, time, '');
+        if (base.length) { cands = base; who = ''; }
+      }
+      if (!cands.length) {
+        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (who ? ' · ' + _escapeHtml(who) : '');
+        return _say('🔍 Non trovo prenotazioni da modificare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
+      }
+      if (cands.length === 1) return _openEditor(iso, cands[0]);
+      aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands };
+      const items = cands.map(function (r, i) {
+        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
+      });
+      return _say('❓ Quale prenotazione vuoi <strong>modificare</strong>? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+    }
+    function _continueModifica(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      if (!aiFlowState || aiFlowState.stage !== 'pick') { aiFlowState = null; return _say('Dimmi pure cosa vuoi modificare.'); }
+      const list = aiFlowState.list || [];
+      const iso = aiFlowState.iso;
+      let pick = null;
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < list.length) pick = list[i]; }
+      if (!pick) {
+        const c = _extractCampo(_norm(text)); const tm = _extractTime(text);
+        let f = list.slice();
+        if (c) f = f.filter(function (r) { return Number(r.campo) === Number(c); });
+        if (tm) f = f.filter(function (r) { return r.ora === tm; });
+        if (f.length === 1) pick = f[0];
+      }
+      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      return _openEditor(iso, pick);
+    }
+
     function _capabilitiesShort() {
       return 'Per ora posso rispondere a domande tipo “<em>campi liberi sabato pomeriggio</em>”, “<em>chi gioca domani alle 18</em>”, “<em>prenotazioni di oggi sul campo 2</em>”.';
     }
@@ -40041,7 +40105,7 @@ Per confermare scrivi ELIMINA.`);
         '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
         '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
         '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
-        '<li class="soon"><strong>Modifica</strong> prenotazione (giocatori / orario) — in arrivo</li>',
+        '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
         '<li class="soon"><strong>Anagrafica</strong> giocatori — in arrivo</li>',
         '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
       ].join('');
