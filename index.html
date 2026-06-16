@@ -2931,12 +2931,18 @@
       .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
       #staffCalV36 .agenda-wrap { flex:1 1 auto; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
       #staffCalMobileChatBar { display:flex; flex:0 0 auto; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-top:1px solid #e5e7eb; box-shadow:0 -2px 8px rgba(0,0,0,.06); }
-      .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:19px; padding:7px 14px; font-size:.88rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:38px; transition:border-color .15s; }
+      /* Testo leggibile (1.05rem ≈ 17px) e box più alto: la barra è l'accesso all'assistente */
+      .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:21px; padding:8px 16px; font-size:1.05rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:42px; transition:border-color .15s; }
       .smc-input:focus { border-color:#2563eb; }
       .smc-input:disabled { opacity:.5; cursor:not-allowed; }
-      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:19px; padding:0 18px; height:38px; font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
+      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:21px; padding:0 18px; height:42px; font-size:.95rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
       .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
       .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
+      /* Microfono nella barra (stile coerente col mic del pannello): tondo, a linea blu */
+      .smc-mic-btn { width:42px; height:42px; flex-shrink:0; border:1.5px solid #d1d5db; background:#f9fafb; color:#2563eb; border-radius:50%; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s,color .15s; }
+      .smc-mic-btn svg { width:21px; height:21px; display:block; }
+      .smc-mic-btn:hover { background:#eef2ff; }
+      .smc-mic-btn.recording { background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:svcMicPulse 1.3s ease-in-out infinite; }
       .svc-chat-fab { display:none !important; }
       /* HOTFIX: calendario a tutto schermo su mobile → nascondi la barra Menu globale solo qui */
       body.dashboard-view .top-nav-bar { display:none !important; }
@@ -6239,6 +6245,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <!-- ── Tappa 2: barra chat mobile ── -->
               <div id="staffCalMobileChatBar">
                 <input id="staffCalMobileInput" class="smc-input" type="text" placeholder="Clicca uno slot per prenotare ↑">
+                <button id="staffCalMobileMic" class="smc-mic-btn" type="button" title="Detta un comando" aria-label="Detta un comando" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
                 <button id="staffCalMobileSend" class="smc-send-btn">Invia</button>
               </div>
               <div class="svc-chat-overlay" id="svcChatOverlay"></div>
@@ -7594,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.780';
+    const APP_VERSION = '5.781';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39877,6 +39884,17 @@ Per confermare scrivi ELIMINA.`);
       // modalità AI) e imposta lo stato iniziale del tasto (mic se vuoto).
       if (typeof svcChatBindComposer === 'function') svcChatBindComposer();
       if (typeof svcChatRefreshComposer === 'function') svcChatRefreshComposer();
+      // Barra mobile (<900px): con assistente attivo diventa il "launcher" del pannello —
+      // placeholder coerente, microfono visibile, niente "Invia" (l'invio avviene nel
+      // pannello aperto). readonly così il tap apre il pannello invece della tastiera locale.
+      try {
+        const mInp = document.getElementById('staffCalMobileInput');
+        const mMic = document.getElementById('staffCalMobileMic');
+        const mSnd = document.getElementById('staffCalMobileSend');
+        if (mInp) { mInp.placeholder = '💬 Scrivi o detta…'; mInp.readOnly = true; mInp.disabled = false; }
+        if (mMic) mMic.style.display = 'flex';
+        if (mSnd) mSnd.style.display = 'none';
+      } catch (e) {}
       if (!_welcomed) {
         _welcomed = true;
         _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“campi liberi sabato”</em>, <em>“chi gioca domani alle 18?”</em> oppure <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
@@ -40211,25 +40229,51 @@ Per confermare scrivi ELIMINA.`);
   (function staffCalMobileChatInit() {
     var mInput = document.getElementById('staffCalMobileInput');
     var mSend = document.getElementById('staffCalMobileSend');
+    var mMic = document.getElementById('staffCalMobileMic');
     var realInput = document.getElementById('svcChatInput');
     var realSend = document.getElementById('svcChatSend');
+    function aiOn() { try { return !!(window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()); } catch (e) { return false; } }
+    // Apre il pannello assistente completo (il composer del desktop: mic, testo grande,
+    // a-capo e messaggi visibili) e sposta lì il focus, così la conversazione si vede.
+    function openAssistant() {
+      try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {}
+      var ri = document.getElementById('svcChatInput');
+      setTimeout(function () { try { if (ri && !ri.disabled) ri.focus(); } catch (e) {} }, 40);
+    }
     if (mInput && realInput) {
-      mInput.addEventListener('input', function() { realInput.value = mInput.value; });
-      var obs = new MutationObserver(function() {
-        mInput.disabled = realInput.disabled;
+      mInput.addEventListener('input', function () { realInput.value = mInput.value; });
+      // Con assistente attivo la barra è un "launcher": toccarla apre il pannello pieno.
+      // Senza assistente (PROD / niente permesso) resta la quick-bar prenotazioni invariata.
+      mInput.addEventListener('click', function () { if (aiOn()) openAssistant(); });
+      mInput.addEventListener('focus', function () { if (aiOn()) openAssistant(); });
+      var obs = new MutationObserver(function () {
+        var d = realInput.disabled;
+        if (!aiOn()) mInput.disabled = d;   // in modalità AI l'input è readonly-launcher, non disabled
         if (mSend) mSend.disabled = realSend ? realSend.disabled : false;
+        if (mMic) mMic.disabled = d;
       });
       obs.observe(realInput, { attributes: true, attributeFilter: ['disabled'] });
-      mInput.disabled = realInput.disabled;
+      if (!aiOn()) mInput.disabled = realInput.disabled;
       if (mSend && realSend) mSend.disabled = realSend.disabled;
     }
+    if (mMic) {
+      // Mic della barra → apre il pannello e avvia la dettatura (la trascrizione compare
+      // nel composer del pannello, col mic come "stop").
+      mMic.addEventListener('click', function () {
+        if (!aiOn()) return;
+        openAssistant();
+        setTimeout(function () { try { PMOAi.toggleDictation(); } catch (e) {} }, 120);
+      });
+    }
     if (mSend) {
-      mSend.addEventListener('click', function() {
+      mSend.addEventListener('click', function () {
         var ri = document.getElementById('svcChatInput');
         if (!ri || ri.disabled) return;
         ri.value = mInput ? mInput.value : '';
         if (typeof svcHandleSend === 'function') svcHandleSend();
         if (mInput) mInput.value = '';
+        // Mostra la conversazione (e la risposta) anche se inviato dalla barra compatta.
+        if (aiOn()) { try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {} }
       });
     }
   })();
