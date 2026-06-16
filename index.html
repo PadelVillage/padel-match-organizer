@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.795';
+    const APP_VERSION = '5.796';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39542,6 +39542,18 @@ Per confermare scrivi ELIMINA.`);
       return { intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed };
     }
 
+    // Riconosce un comando chiaramente NUOVO (verbo d'azione iniziale), per non farlo
+    // scambiare con la risposta a un flusso in sospeso (es. "aggiorna Anna livello 4"
+    // mentre una prenotazione chiedeva il campo → "quattro" diventava campo 4).
+    // Volutamente NON include "annulla/stop" (= annulla il flusso) né "cambia/sposta"
+    // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
+    function _looksLikeNewCommand(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
+      return false;
+    }
+
     // ── Handler conversazionale ────────────────────────────────────────────────
     async function handle(text) {
       const t = String(text || '').trim();
@@ -39550,20 +39562,27 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        const _k = aiFlowState.kind || 'prenota';
-        if (_k === 'cancella') {
-          if (aiFlowState.stage === 'confirm') return _confirmCancellaAnswer(t);
-          return _continueCancella(t);
+        const _stage = aiFlowState.stage;
+        // Un comando chiaramente NUOVO durante la raccolta dati (await) o la scelta (pick)
+        // abbandona il flusso in sospeso, così non viene scambiato per una risposta.
+        if ((_stage === 'await' || _stage === 'pick') && _looksLikeNewCommand(t)) {
+          aiFlowState = null;
+        } else {
+          const _k = aiFlowState.kind || 'prenota';
+          if (_k === 'cancella') {
+            if (aiFlowState.stage === 'confirm') return _confirmCancellaAnswer(t);
+            return _continueCancella(t);
+          }
+          if (_k === 'modifica') return _continueModifica(t);
+          if (_k === 'anagrafica') {
+            if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
+            if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
+            if (aiFlowState.stage === 'changes') return _continueAnaChanges(t);
+            return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
+          }
+          if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
+          if (aiFlowState.stage === 'await') return _continuePrenota(t);
         }
-        if (_k === 'modifica') return _continueModifica(t);
-        if (_k === 'anagrafica') {
-          if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
-          if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
-          if (aiFlowState.stage === 'changes') return _continueAnaChanges(t);
-          return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
-        }
-        if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
-        if (aiFlowState.stage === 'await') return _continuePrenota(t);
       }
       const res = await _parseWithAi(t);
       _logInteraction(t, res);
