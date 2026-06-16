@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.782';
+    const APP_VERSION = '5.783';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39844,11 +39844,37 @@ Per confermare scrivi ELIMINA.`);
       if (_dictating) { try { _rec && _rec.stop(); } catch (e) {} _dictStop(btn); return; }
       // mantieni l'eventuale testo già presente e accoda la dettatura
       const base = (input && input.value) ? (input.value.replace(/\s+$/, '') + ' ') : '';
-      _rec = new SR(); _rec.lang = 'it-IT'; _rec.continuous = true; _rec.interimResults = true;
+      try { _rec && _rec.abort(); } catch (e) {}   // niente recognizer "fantasma" residuo
+      _rec = new SR(); _rec.lang = 'it-IT';
+      // Su mobile (Android) continuous=true ri-emette i risultati finali e il testo si
+      // DUPLICA a valanga: usiamo singola utterance su mobile + accumulo per indice
+      // (ogni segmento finale aggiunto UNA sola volta) per evitare le ripetizioni.
+      const _isMobile = (typeof window.matchMedia === 'function') && window.matchMedia('(max-width: 899px)').matches;
+      _rec.continuous = !_isMobile;
+      _rec.interimResults = true;
+      let _finalTr = '';
+      let _lastFinalIdx = -1;
       _rec.onresult = function (e) {
-        const tr = Array.from(e.results).map(function (r) { return r[0].transcript; }).join('');
-        const i = document.getElementById('svcChatInput');
-        if (i) { i.value = base + tr; try { svcChatRefreshComposer(); } catch (e) {} }   // fa crescere il box mentre detti
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const seg = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            if (i > _lastFinalIdx) {
+              const t = seg.trim();
+              const prev = _finalTr.trim();
+              // Se il nuovo finale CONTIENE già tutto l'accumulato è la frase intera
+              // re-riconosciuta (bug Android): sostituisci, non accodare. Altrimenti
+              // è un nuovo segmento: accodalo con uno spazio.
+              if (prev && t.toLowerCase().indexOf(prev.toLowerCase()) === 0) _finalTr = t;
+              else _finalTr += (_finalTr && !/\s$/.test(_finalTr) ? ' ' : '') + t;
+              _lastFinalIdx = i;
+            }
+          } else {
+            interim += seg;
+          }
+        }
+        const i2 = document.getElementById('svcChatInput');
+        if (i2) { i2.value = (base + _finalTr + (interim ? (_finalTr ? ' ' : '') + interim : '')).replace(/\s{2,}/g, ' '); try { svcChatRefreshComposer(); } catch (e) {} }
       };
       _rec.onerror = function () { _dictStop(btn); };
       _rec.onend = function () { _dictStop(btn); };
