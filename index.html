@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.797';
+    const APP_VERSION = '5.798';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39770,8 +39770,16 @@ Per confermare scrivi ELIMINA.`);
     }
     // Risolve i nomi liberi in soci (codice interno + codice cliente) come fa
     // staffCalSubmitSingle. Su omonimia sceglie il migliore e annota un avviso.
+    // Parole vuote da scartare token-per-token prima di cercare il nome in anagrafica:
+    // articoli/preposizioni/connettori e termini di dominio (allievo, maestro, lezione…).
+    // Senza questo filtro un residuo come "una" faceva match per sottostringa su "fortUNAto"
+    // → inseriva un socio mai nominato (es. Loris Fortunato Salgarella).
+    const _PLAYER_STOPWORDS = new Set(['e', 'ed', 'o', 'con', 'per', 'un', 'uno', 'una', 'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'da', 'a', 'al', 'allo', 'alla', 'come', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'che', 'mi', 'poi', 'allievo', 'allieva', 'allievi', 'allieve', 'maestro', 'maestra', 'maestri', 'lezione', 'lezioni', 'insegnante', 'partita', 'match']);
+    function _stripPlayerStopwords(s) {
+      return String(s || '').split(/\s+/).filter(function (w) { return w && !_PLAYER_STOPWORDS.has(w.toLowerCase()); }).join(' ').trim();
+    }
     function _resolvePlayers(rawStr) {
-      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(function (s) { return s.trim(); }).filter(Boolean);
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
