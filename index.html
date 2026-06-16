@@ -7589,7 +7589,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.776';
+    const APP_VERSION = '5.777';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39221,6 +39221,11 @@ Per confermare scrivi ELIMINA.`);
   window.PMOAi = (function () {
     let _welcomed = false;
     const _convLog = [];
+    // Stato conversazionale PARALLELO a svcFlowState (il flow guidato del calendario).
+    // NON tocchiamo svcFlowState: questo gestisce solo il dialogo dell'assistente.
+    //   { stage:'await', draft, need:['court','time',…] }  → mancano slot, sto chiedendo
+    //   { stage:'confirm', draft }                          → riepilogo mostrato, attendo OK
+    let aiFlowState = null;
 
     function _rules() {
       return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
@@ -39234,7 +39239,7 @@ Per confermare scrivi ELIMINA.`);
         return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
       });
     }
-    function _say(html, cls) { try { svcAddMessage('system', html, cls); } catch (e) {} }
+    function _say(html, cls) { try { return svcAddMessage('system', html, cls); } catch (e) { return null; } }
 
     // ── Gating: TEST + permesso view_assistante_ai (owner/admin sempre) ──────────
     function isEnabled() {
@@ -39380,11 +39385,17 @@ Per confermare scrivi ELIMINA.`);
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      // Se c'è una prenotazione in corso (slot mancanti o attesa conferma), il testo è la
+      // risposta al dialogo, non un nuovo comando.
+      if (aiFlowState) {
+        if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
+        if (aiFlowState.stage === 'await') return _continuePrenota(t);
+      }
       const res = parse(t);
       _logInteraction(t, res);
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
-        case 'PRENOTA': return _previewPrenota(res);
+        case 'PRENOTA': return _startPrenota(res, t);
         case 'CANCELLA': return _stub('annullare una prenotazione');
         case 'CORREGGI': return _stub('modificare una prenotazione');
         case 'ANAGRAFICA': return _stub('gestire l’anagrafica giocatori');
@@ -39475,16 +39486,291 @@ Per confermare scrivi ELIMINA.`);
       return _say('📋 Prenotazioni ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + (slots.time ? ' · ' + slots.time : '') + ':<br>' + items.join('<br>'));
     }
 
-    // ── PRENOTA: per ora SOLO anteprima (esecuzione = step successivo) ──────────
-    function _previewPrenota(res) {
-      const p = res.parsed;
-      if (!p || !p.campoNum || !p.ora) {
-        return _say('Per prenotare mi servono almeno <strong>campo</strong> e <strong>orario</strong>. Es: <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
+    // ════════════════════════════════════════════════════════════════════════
+    // PRENOTA — Step 2: dialogo reale con riepilogo + conferma e scrittura su
+    // Matchpoint. Riusa l'infrastruttura esistente del calendario staff
+    // (staffCalFindConflict / staffCalSubmitSingle / staffCalPollJob /
+    // staffCalSaveLocal), mantenendo uno stato parallelo (aiFlowState).
+    // ════════════════════════════════════════════════════════════════════════
+    function _maestri() {
+      try {
+        const v = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali &&
+          PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi);
+        if (Array.isArray(v) && v.length) return v;
+      } catch (e) {}
+      return ['Santiago', 'LoZio', 'Spinazze'];
+    }
+    function _detectTipo(n) {
+      let kw = ['lezione', 'lesson'];
+      try { const k = _rules().campi_opzionali && _rules().campi_opzionali.tipo && _rules().campi_opzionali.tipo.keywords_lezione; if (Array.isArray(k) && k.length) kw = k; } catch (e) {}
+      for (let i = 0; i < kw.length; i++) { if (_wordHit(n, _norm(kw[i]))) return 'lezione'; }
+      return 'partita';
+    }
+    function _detectIstruttore(text, n) {
+      const list = _maestri();
+      for (let i = 0; i < list.length; i++) { if (_wordHit(n, _norm(list[i]))) return list[i]; }
+      try {
+        const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
+        for (const k in fuzzy) { if (_wordHit(n, _norm(k))) return fuzzy[k]; }
+      } catch (e) {}
+      const m = String(text || '').match(/\b(?:con|maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
+      if (m) return m[1];
+      return '';
+    }
+    // Orario: "18-19:30" → range; "18" / "alle 18" → start + 90'
+    function _parseTimeRange(text) {
+      const t = String(text || '');
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) {
+        const ora = String(m[1]).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
+        const oraFine = String(m[3]).padStart(2, '0') + ':' + String(m[4] || '00').padStart(2, '0');
+        const sp = ora.split(':').map(Number), ep = oraFine.split(':').map(Number);
+        const durata = (ep[0] * 60 + ep[1]) - (sp[0] * 60 + sp[1]);
+        if (durata <= 0 || durata > 360) return null;
+        return { ora: ora, oraFine: oraFine, durata: durata };
       }
-      const tipoLabel = p.tipo === 'lezione' ? 'Lezione' : 'Partita';
-      const chi = p.istruttore ? ('maestro ' + p.istruttore) : (p.nome && p.nome !== 'Staff' ? p.nome : '—');
-      _say('📝 Ho capito: <strong>' + tipoLabel + '</strong> · Campo ' + p.campoNum + ' · ' + _dayLabel(p.data) + ' · ' + p.ora + '–' + p.oraFine + ' · ' + _escapeHtml(chi) +
-        '<br><span style="color:#98a2b3">La creazione effettiva (con riepilogo e conferma) sarà attiva nel prossimo step.</span>');
+      m = t.match(/\b(?:alle|ore|h)?\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (m) {
+        const hh = parseInt(m[1], 10);
+        if (hh >= 6 && hh <= 23) {
+          const ora = String(hh).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
+          return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+        }
+      }
+      return null;
+    }
+    function _endTime(ora, min) {
+      try { if (typeof svcEndTime === 'function') return svcEndTime(ora, min); } catch (e) {}
+      const p = String(ora).split(':'); const tot = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) + (parseInt(min, 10) || 0);
+      return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '0');
+    }
+    function _extractCampoLoose(text) {
+      const c = _extractCampo(_norm(text)); if (c) return c;
+      const m = String(text || '').match(/\b([1-4])\b/); return m ? parseInt(m[1], 10) : 0;
+    }
+    // Testo dei giocatori = ciò che segue l'orario, ripulito da ricorrenza/connettori.
+    function _afterTime(text) {
+      const t = String(text || '');
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (!m) m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (!m) return '';
+      const pos = t.indexOf(m[0]);
+      return t.slice(pos + m[0].length).replace(/^[\s\-–]+/, '').replace(/\bogni\s+\S+/ig, '').trim();
+    }
+    function _stripConnectors(s) {
+      return String(s || '').replace(/^\s*(?:per|con|giocatori|giocano|gioca|partita|match|tra|fra|:)\s+/i, '').trim();
+    }
+    function _lezionePlayerText(after, istruttore) {
+      let s = String(after || '');
+      if (istruttore) {
+        const variants = String(istruttore).split(/\s+/).concat([istruttore]);
+        variants.forEach(function (v) { if (v && v.length >= 2) { try { s = s.replace(new RegExp('\\b' + _escapeReg(v) + '\\b', 'ig'), ' '); } catch (e) {} } });
+      }
+      return s.replace(/\b(con|per|maestr[oa]|allievi?|insegnante|lezione)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+    }
+    // Risolve i nomi liberi in soci (codice interno + codice cliente) come fa
+    // staffCalSubmitSingle. Su omonimia sceglie il migliore e annota un avviso.
+    function _resolvePlayers(rawStr) {
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(function (s) { return s.trim(); }).filter(Boolean);
+      const giocatori = [], notes = [];
+      for (let i = 0; i < names.length; i++) {
+        const nm = names[i];
+        const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
+        if (!matches.length) { giocatori.push({ nome: nm, codice: '', codiceCliente: '' }); notes.push('“' + nm + '” non è in anagrafica: prenoto col nome così com’è.'); continue; }
+        const best = matches[0].member;
+        const ambiguous = matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best;
+        const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || nm;
+        const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';
+        const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
+        giocatori.push({ nome: nomeSocio, codice: codice, codiceCliente: codiceCliente });
+        if (ambiguous) notes.push('Più soci simili a “' + nm + '”: ho scelto ' + nomeSocio + ' (se sbaglio, annulla e specifica meglio).');
+      }
+      return { giocatori: giocatori, notes: notes };
+    }
+
+    // Costruisce la bozza dal parse + slot, poi: slot mancanti → domande, altrimenti riepilogo.
+    function _startPrenota(res, text) {
+      const n = _norm(text);
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const tipo = _detectTipo(n);
+      const istruttore = tipo === 'lezione' ? (_detectIstruttore(text, n) || p.istruttore || '') : '';
+      const draft = {
+        tipo: tipo,
+        campoNum: p.campoNum || slots.court || 0,
+        data: p.data || slots.date || _todayIso(),
+        ora: p.ora || slots.time || '',
+        oraFine: p.oraFine || '',
+        durata: p.durata || 0,
+        istruttore: istruttore,
+        giocatori: [],
+        notes: [],
+        nome: '',
+        note: ''
+      };
+      // Se ho l'inizio ma non la fine, prova a leggere il range dal testo, altrimenti 90'.
+      if (draft.ora && !draft.oraFine) {
+        const tr = _parseTimeRange(text);
+        if (tr && tr.ora === draft.ora && tr.oraFine) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; }
+        else { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      }
+      // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
+      const after = _afterTime(text);
+      const playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
+      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
+      _advancePrenota(draft);
+    }
+
+    // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
+    function _advancePrenota(draft) {
+      const need = [];
+      if (!draft.campoNum) need.push('court');
+      if (!draft.ora) need.push('time');
+      if (need.length) { aiFlowState = { stage: 'await', draft: draft, need: need }; return _askNext(); }
+      aiFlowState = null;
+      _showSummary(draft);
+    }
+    function _askNext() {
+      if (!aiFlowState || aiFlowState.stage !== 'await') return;
+      const k = aiFlowState.need[0];
+      if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
+      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
+    }
+    // Risposta dell'utente mentre raccolgo gli slot mancanti.
+    function _continuePrenota(text) {
+      const n = _norm(text);
+      if (/(^| )(annull\w*|lascia\w*|stop|niente)( |$)/.test(' ' + n + ' ')) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere. Dimmi pure quando vuoi.'); }
+      const draft = aiFlowState.draft;
+      const k = aiFlowState.need[0];
+      if (k === 'court') {
+        const c = _extractCampoLoose(text);
+        if (!c) return _say('Non ho capito il campo. Scrivi <strong>1</strong>, <strong>2</strong>, <strong>3</strong> o <strong>4</strong> (oppure “annulla”).');
+        draft.campoNum = c;
+      } else if (k === 'time') {
+        const tr = _parseTimeRange(text);
+        if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
+        draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata;
+      }
+      aiFlowState.need.shift();
+      if (aiFlowState.need.length) return _askNext();
+      aiFlowState = null;
+      _showSummary(draft);
+    }
+
+    function _summaryHtml(draft) {
+      const tipoLabel = draft.tipo === 'lezione' ? '📚 Lezione' : '🎾 Partita';
+      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || 90);
+      const lines = [
+        '<strong>' + tipoLabel + '</strong>',
+        '📍 Campo ' + draft.campoNum,
+        '📅 ' + _dayLabel(draft.data),
+        '🕐 ' + draft.ora + '–' + oraFine + ' (' + (draft.durata || 90) + '′)'
+      ];
+      if (draft.tipo === 'lezione') lines.push('👨‍🏫 Maestro: ' + _escapeHtml(draft.istruttore || '—'));
+      const chi = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? '—' : 'Staff (campo bloccato)');
+      lines.push('👥 ' + _escapeHtml(chi));
+      return lines.join('<br>');
+    }
+    function _showSummary(draft) {
+      if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      draft.nome = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Staff');
+      aiFlowState = { stage: 'confirm', draft: draft };
+      let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
+      if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">Confermi? Verrà scritta <strong>davvero</strong> su Matchpoint.</span>';
+      const div = _say(html);
+      _appendConfirmButtons(div, draft);
+    }
+    function _appendConfirmButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons';
+      wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e prenota';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        aiFlowState = null;
+        _executePrenota(draft);
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true;
+        aiFlowState = null;
+        _say('❌ Prenotazione annullata.');
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
+    }
+    // Conferma via testo (fallback ai pulsanti).
+    function _confirmAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      // No/annulla ha precedenza. NB: "prenota" NON è un sinonimo di conferma, così un
+      // nuovo comando "prenota …" non viene scambiato per un sì alla prenotazione in attesa.
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) {
+        aiFlowState = null; return _say('❌ Prenotazione annullata.');
+      }
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo )/.test(n)) {
+        const d = aiFlowState.draft; aiFlowState = null; return _executePrenota(d);
+      }
+      _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+    }
+
+    // Scrittura reale su Matchpoint (mirror di svcConfirmBooking).
+    async function _executePrenota(draft) {
+      if (!draft || draft.__started) return;
+      draft.__started = true;
+      const parsed = {
+        campoNum: draft.campoNum,
+        campo: 'Campo ' + draft.campoNum,
+        data: draft.data,
+        ora: draft.ora,
+        oraFine: draft.oraFine || _endTime(draft.ora, draft.durata || 90),
+        durata: draft.durata || 90,
+        tipo: draft.tipo || 'partita',
+        nome: draft.nome || (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Staff'),
+        istruttore: draft.tipo === 'lezione' ? (draft.istruttore || undefined) : undefined,
+        giocatori: Array.isArray(draft.giocatori) ? draft.giocatori : [],
+        note: draft.note || ''
+      };
+      // Pre-check conflitto istantaneo (non chiama il worker se lo slot è occupato).
+      try {
+        const c = (typeof staffCalFindConflict === 'function') ? staffCalFindConflict(parsed) : null;
+        if (c) return _say('⛔ Lo slot è già occupato' + (c.nome ? ' (' + _escapeHtml(c.nome) + ')' : '') + '. Prenotazione <strong>NON</strong> inviata.');
+      } catch (e) {}
+      let prog = null;
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+        const cfg = await loadAssessmentSupabaseConfig();
+        const supabaseUrl = cfg && cfg.supabaseUrl, supabaseKey = cfg && cfg.supabaseKey;
+        prog = _say('⏳ Prenotazione in corso su Matchpoint…');
+        const _sbId = _staffCalNewSbId();
+        const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
+        const jobId = submit && submit.jobId;
+        if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+        const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function (sec) {
+          try { const last = prog && prog.querySelector(':scope > div:last-child'); if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)'; } catch (e) {}
+        });
+        if (result.status === 'done') {
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
+          const dl = _dayLabel(parsed.data);
+          if (parsed.tipo === 'lezione') {
+            _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : ''), 'ok');
+          } else {
+            _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome), 'ok');
+          }
+          try { renderStaffCalendar(); } catch (e) {}
+        } else if (result.status === 'error') {
+          _say('❌ Prenotazione non riuscita: ' + _escapeHtml(result.error || 'errore sconosciuto'));
+        } else {
+          _say('⚠️ Esito <strong>non confermato</strong> (timeout). Controlla su Matchpoint prima di riprovare, per evitare doppioni.');
+        }
+      } catch (err) {
+        _say('❌ Errore: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
+      }
     }
 
     function _capabilitiesShort() {
@@ -39523,7 +39809,7 @@ Per confermare scrivi ELIMINA.`);
       if (!el) return;
       el.innerHTML = [
         '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
-        '<li class="soon"><strong>Crea</strong> partita/lezione — in arrivo</li>',
+        '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
         '<li class="soon"><strong>Modifica</strong> / <strong>Annulla</strong> prenotazione — in arrivo</li>',
         '<li class="soon"><strong>Anagrafica</strong> giocatori — in arrivo</li>',
         '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
@@ -39588,7 +39874,7 @@ Per confermare scrivi ELIMINA.`);
       if (typeof svcChatRefreshComposer === 'function') svcChatRefreshComposer();
       if (!_welcomed) {
         _welcomed = true;
-        _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“chi gioca domani alle 18?”</em> oppure <em>“campi liberi sabato”</em>.');
+        _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“campi liberi sabato”</em>, <em>“chi gioca domani alle 18?”</em> oppure <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
       }
     }
 
