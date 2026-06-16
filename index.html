@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.793';
+    const APP_VERSION = '5.794';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -12925,7 +12925,9 @@ Grazie.`
       pmoCreateMemberInMatchpoint(newMember).catch(err => console.warn('create-in-matchpoint fallita', err));
       return newMember;
     }
-    async function pmoCreateMemberInMatchpoint(member) {
+    async function pmoCreateMemberInMatchpoint(member, options = {}) {
+      // notify=false → niente toast showAlert (lo usa l'assistente AI, che riporta l'esito in chat).
+      const notify = options.notify !== false;
       if (isGuestJollyMember(member)) return;
       // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
       // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
@@ -12966,14 +12968,14 @@ Grazie.`
           }
           save('giocatori', giocatori);
           pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
-          showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
+          if (notify) showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
         } else {
           const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
-          showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+          if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
         }
       } catch (err) {
         const msg = err?.message || String(err) || 'errore sconosciuto';
-        showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+        if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
       }
     }
     function detectGender() {
@@ -40143,9 +40145,10 @@ Per confermare scrivi ELIMINA.`);
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
     // Esecutori PROGRAMMATICI (niente DOM): riusano le stesse primitive del form
     // (ensureMemberId/findMatchingMemberIndex/parseLevel/normalizePhone/save +
-    // pmoQueueImmediateMemberCloudSync). Scelta utente: salva in LOCALE + CLOUD,
-    // NON propaga a Matchpoint (a differenza di addMember/saveMemberCard). Sempre
-    // riepilogo + conferma prima di scrivere (rete di sicurezza Fase 1).
+    // pmoQueueImmediateMemberCloudSync). Parità col form (v5.794): dopo locale+cloud
+    // propagano anche a MATCHPOINT (create→pmoCreateMemberInMatchpoint,
+    // update→pmoPushMemberUpdateToMatchpoint) in background, con esito riportato in chat
+    // (notify:false sopprime i toast). Sempre riepilogo + conferma prima di scrivere.
     const _ANA_CREATE_VERB = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/;
     const _ANA_UPDATE_VERB = /(^| )(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*)( |$)/;
 
@@ -40277,7 +40280,7 @@ Per confermare scrivi ELIMINA.`);
         lines.push('🎾 Livello ' + _escapeHtml(String(draft.level || '—')));
       }
       let html = '📋 <strong>Nuovo socio</strong><br>' + lines.join('<br>');
-      html += '<br><span style="color:#98a2b3;font-size:12px">Lo salvo in anagrafica e su Supabase <strong>(non su Matchpoint)</strong>. Confermi?</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">Lo salvo in anagrafica, su Supabase' + (guest ? '' : ' e lo creo anche su <strong>Matchpoint</strong>') + '. Confermi?</span>';
       _anaAppendConfirmButtons(_say(html));
     }
 
@@ -40341,7 +40344,7 @@ Per confermare scrivi ELIMINA.`);
         return (lbl[k] || k) + ': <span style="color:#98a2b3">' + _escapeHtml(String(oldV || '—')) + '</span> → <strong>' + _escapeHtml(String(newV)) + '</strong>';
       });
       let html = '📋 <strong>Aggiorna ' + _escapeHtml(playerFullName(member)) + '</strong><br>' + rows.join('<br>');
-      html += '<br><span style="color:#98a2b3;font-size:12px">Salvo in anagrafica e su Supabase <strong>(non su Matchpoint)</strong>. Confermi?</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">Salvo in anagrafica, su Supabase e aggiorno anche <strong>Matchpoint</strong>. Confermi?</span>';
       _anaAppendConfirmButtons(_say(html));
     }
 
@@ -40391,7 +40394,17 @@ Per confermare scrivi ELIMINA.`);
         try { updateStats(); } catch (e) {}
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
-        return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e sincronizzato su Supabase. <span style="color:#98a2b3;font-size:12px">(non inviato a Matchpoint)</span>');
+        // Ospite/guest: non si crea su Matchpoint (la scheda 000001 esiste già lì).
+        if (guest) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>');
+        _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
+        if (typeof pmoCreateMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function () {
+            const code = String(newMember.memberId || '').trim();
+            if (/^\d{4,6}$/.test(code)) _say('✅ Creato anche su <strong>Matchpoint</strong> · codice <strong>' + _escapeHtml(code) + '</strong>.');
+            else _say('⚠️ Creazione su Matchpoint non riuscita: il socio resta in app + Supabase. Riprova più tardi o crealo dal gestionale.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); });
+        }
+        return;
       } catch (err) {
         return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
       }
@@ -40400,8 +40413,10 @@ Per confermare scrivi ELIMINA.`);
       try {
         const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
         if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
+        const cur = giocatori[idx];
+        const prev = { surname: cur.surname || '', phone: cur.phone || '', email: cur.email || '' };
         const now = new Date().toISOString();
-        const next = Object.assign({}, giocatori[idx]);
+        const next = Object.assign({}, cur);
         if (changes.phone != null) next.phone = (typeof normalizePhone === 'function') ? normalizePhone(changes.phone) : changes.phone;
         if (changes.email != null) next.email = changes.email;
         if (changes.gender != null) next.gender = changes.gender;
@@ -40413,7 +40428,19 @@ Per confermare scrivi ELIMINA.`);
         try { updateStats(); } catch (e) {}
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(next, 'aggiornare il socio (assistente AI) su Supabase'); } catch (e) {}
-        return _say('✅ <strong>' + _escapeHtml(playerFullName(next)) + '</strong> aggiornato e sincronizzato su Supabase. <span style="color:#98a2b3;font-size:12px">(non inviato a Matchpoint)</span>');
+        const nm = _escapeHtml(playerFullName(next));
+        _say('✅ <strong>' + nm + '</strong> aggiornato in anagrafica e su Supabase. ⏳ Aggiorno anche <strong>Matchpoint</strong>…');
+        if (typeof pmoPushMemberUpdateToMatchpoint === 'function') {
+          Promise.resolve(pmoPushMemberUpdateToMatchpoint(next, { prev: prev, notify: false })).then(function (res) {
+            const st = res && res.status;
+            if (st === 'ok') _say('✅ Aggiornato anche su <strong>Matchpoint</strong>.');
+            else if (st === 'guest') _say('ℹ️ È un ospite: su Matchpoint non si aggiorna. Resta salvato in app + Supabase.');
+            else if (st === 'skipped') _say('ℹ️ Socio senza codice Matchpoint: aggiornato solo in app + Supabase.');
+            else if (st === 'no_permission') _say('ℹ️ Manca il permesso <code>cloud_sync</code>: aggiornato solo in app + Supabase.');
+            else _say('⚠️ Aggiornamento su Matchpoint non riuscito' + ((res && res.reason) ? ' (' + _escapeHtml(String(res.reason).slice(0, 120)) + ')' : '') + '. Resta in app + Supabase.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Resta in app + Supabase.'); });
+        }
+        return;
       } catch (err) {
         return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
       }
@@ -40458,7 +40485,7 @@ Per confermare scrivi ELIMINA.`);
         '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
         '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
         '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
-        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase, non su Matchpoint)</li>',
+        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase + Matchpoint)</li>',
         '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
       ].join('');
     }
