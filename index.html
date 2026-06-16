@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.785';
+    const APP_VERSION = '5.786';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39301,8 +39301,28 @@ Per confermare scrivi ELIMINA.`);
       for (const k in _GIORNI) { if (new RegExp('\\b' + k + '\\b').test(n)) return _nextWeekday(baseIso, _GIORNI[k]); }
       return '';
     }
+    // Orari scritti a PAROLE → cifre, in contesto orario (dopo alle/dalle/ore/h) o per le
+    // parole inequivocabili a 24h (tredici…ventiquattro, mezzogiorno, mezzanotte). Così
+    // "alle quattordici" → "alle 14", "mezzogiorno e mezzo" → "12:30". Robustezza dettatura.
+    const _NUMWORD = { zero: 0, una: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, undici: 11, dodici: 12, tredici: 13, quattordici: 14, quindici: 15, sedici: 16, diciassette: 17, diciotto: 18, diciannove: 19, venti: 20, ventuno: 21, ventidue: 22, ventitre: 23, ventiquattro: 24 };
+    function _digitizeTimeWords(text) {
+      let t = ' ' + String(text || '') + ' ';
+      t = t.replace(/\bmezzogiorno\b/gi, ' 12 ').replace(/\bmezzanotte\b/gi, ' 24 ');
+      // parola-numero dopo preposizione oraria → cifra (es. "alle quattordici" → "alle 14")
+      t = t.replace(/\b(dalle|dall'|alle|all'|alla|ore|ora|h)\s+([a-zà-ÿ]+)/gi, function (m, prep, w) {
+        const d = _NUMWORD[_norm(w)];
+        return (d != null) ? (prep.replace(/\s/g, '') + ' ' + d) : m;
+      });
+      // parole 24h inequivocabili anche senza preposizione (es. "prenota alle 14" vs "le quattordici")
+      t = t.replace(/\b(tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|venti|ventuno|ventidue|ventitre|ventitré|ventiquattro)\b/gi, function (m) { return ' ' + _NUMWORD[_norm(m)] + ' '; });
+      // minuti a parole: "14 e mezza" → "14:30", "14 e un quarto" → "14:15"
+      t = t.replace(/\b(\d{1,2})\s+e\s+mezz[ao]\b/gi, '$1:30')
+        .replace(/\b(\d{1,2})\s+e\s+un\s+quarto\b/gi, '$1:15')
+        .replace(/\b(\d{1,2})\s+e\s+tre\s+quarti\b/gi, '$1:45');
+      return t.replace(/\s{2,}/g, ' ').trim();
+    }
     function _extractTime(text) {
-      const t = String(text || '');
+      const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
       if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
       m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
@@ -39327,9 +39347,14 @@ Per confermare scrivi ELIMINA.`);
     // Trigger in linguaggio naturale che arricchiscono gli intent già definiti in PARSER_RULES.
     const _AUGMENT = {
       TROVA: ['chi', 'quando', 'quali', 'quanti', 'cosa', 'campi liberi', 'campo libero', 'liberi', 'libero', 'disponibile', 'disponibili', 'disponibilita', 'occupato', 'occupati', 'prenotazioni', 'agenda', 'mostra', 'vedi', 'gioca', 'giocano'],
+      PRENOTA: ['prenotami', 'prenotarmi', 'prenotaci', 'bloccami', 'blocca', 'riservami', 'riserva', 'fissami', 'fissa', 'segnami'],
       CANCELLA: ['elimina', 'disdici', 'togli'],
       CORREGGI: ['rinomina']
     };
+    // Verbo "prenotare" coniugato (imperativo/infinito/condizionale/imperfetto/presente) MA
+    // NON il sostantivo "prenotazione/prenotazioni": rende l'assistente robusto a "mi prenoti…",
+    // "prenotami…", "mi prenotava…", che la sola keyword "prenota" non catturava. Vedi _classify.
+    const _BOOK_VERB = /(^| )prenot(a|ami|armi|arci|are|o|i|iamo|ate|aci|ava|avo|avi|avate|avano|er[oaià]|erei|eresti|erebbe|ereste|eremmo|eranno|ala|alo|ali|ale)( |$)/;
     // Match a PAROLA INTERA (n è già delimitato da spazi): evita falsi positivi come
     // "prenotazioni"→"prenota". Supporta keyword multi-parola ("campi liberi").
     function _escapeReg(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -39356,6 +39381,7 @@ Per confermare scrivi ELIMINA.`);
       Object.keys(cand).forEach(function (name) {
         if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
         let s = score(cand[name]);
+        if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
         if (name === 'ANAGRAFICA' && playerCtx) s += 2;
         if ((name === 'PRENOTA' || name === 'CORREGGI') && playerCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
@@ -39542,7 +39568,7 @@ Per confermare scrivi ELIMINA.`);
     }
     // Orario: "18-19:30" → range; "18" / "alle 18" → start + 90'
     function _parseTimeRange(text) {
-      const t = String(text || '');
+      const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
       if (m) {
         const ora = String(m[1]).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
@@ -39573,7 +39599,7 @@ Per confermare scrivi ELIMINA.`);
     }
     // Testo dei giocatori = ciò che segue l'orario, ripulito da ricorrenza/connettori.
     function _afterTime(text) {
-      const t = String(text || '');
+      const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
       if (!m) m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
       if (!m) return '';
