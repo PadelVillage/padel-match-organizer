@@ -7589,7 +7589,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.777';
+    const APP_VERSION = '5.778';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38356,7 +38356,7 @@ Per confermare scrivi ELIMINA.`);
     if (mode === 'normal')       {
       if (window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
         input.disabled = false; send.disabled = false;
-        input.placeholder = '💬 Es: “campi liberi domani” · “chi gioca oggi alle 18”';
+        input.placeholder = '💬 Es: “prenota campo 2 domani 18-19:30” · “campi liberi sabato”';
       } else {
         input.placeholder = 'Clicca uno slot libero per prenotare ↑';
       }
@@ -39859,7 +39859,7 @@ Per confermare scrivi ELIMINA.`);
       const flowActive = (typeof svcFlowState !== 'undefined' && svcFlowState);
       if (!flowActive) {
         input.disabled = false; send.disabled = false;
-        input.placeholder = '💬 Es: “campi liberi domani” · “chi gioca oggi alle 18”';
+        input.placeholder = '💬 Es: “prenota campo 2 domani 18-19:30” · “campi liberi sabato”';
       }
       if (!document.getElementById('svcAiMicBtn')) {
         const mic = document.createElement('button');
