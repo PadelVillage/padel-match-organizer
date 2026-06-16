@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.812';
+    const APP_VERSION = '5.813';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39619,6 +39619,10 @@ Per confermare scrivi ELIMINA.`);
       let confidence = 0;
       if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0) + (slots.days ? 0.15 : 0));
       if (intent === 'PRENOTA' && parsed && parsed.confidence) confidence = parsed.confidence;
+      // Una ANAGRAFICA chiara (verbo + contesto persona) è già gestita dalle regole con un
+      // dialogo che chiede i campi: non serve interpellare Gemini (evita "Sto pensando…" e
+      // latenza). Il +0.1 la porta sopra soglia. v5.813
+      if (intent === 'ANAGRAFICA') confidence = Math.min(0.95, confidence + 0.1);
       const missing = [];
       if (intent === 'PRENOTA') { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
       return { intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed };
