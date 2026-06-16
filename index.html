@@ -2826,10 +2826,16 @@
       .svc-chat-header { order:0; }
       .svc-chat-messages { order:1; flex-direction:column-reverse; }
       .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
-      .svc-chat-input-row { height:auto !important; min-height:56px; padding:10px 12px !important; }
-      .svc-chat-input { font-size:21px !important; padding:10px 14px !important; max-height:160px; }
-      .svc-chat-send { width:46px !important; height:46px !important; padding:0 !important; }
-      .svc-ai-mic { width:46px !important; height:46px !important; font-size:22px; }
+      /* Composer mobile allineato allo stile compatto del desktop, ma con misure
+         touch-friendly. 16px sull'input evita anche lo zoom automatico su iOS al focus.
+         NB: serve la specificità con .svc-chat-panel per battere il blanket
+         ".svc-chat-panel * { font-size:21px !important }" più sotto (che altrimenti
+         imporrebbe 21px anche all'input). I messaggi restano 21px (scelta voluta). */
+      .svc-chat-panel .svc-chat-input-row { height:auto !important; min-height:52px; padding:8px 10px !important; gap:8px; }
+      .svc-chat-panel .svc-chat-input { font-size:16px !important; padding:9px 13px !important; max-height:140px; }
+      .svc-chat-panel .svc-chat-send { width:40px !important; height:40px !important; padding:0 !important; }
+      .svc-chat-panel .svc-ai-mic { width:40px !important; height:40px !important; }
+      .svc-chat-panel .svc-chat-send svg, .svc-chat-panel .svc-ai-mic svg { width:20px !important; height:20px !important; }
       /* ✕ flottante in alto a destra sopra i messaggi: niente più barra-testata bianca */
       .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
       .svc-chat-header::before { display:none; }
@@ -7589,7 +7595,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.778';
+    const APP_VERSION = '5.779';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
