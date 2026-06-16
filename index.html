@@ -7169,10 +7169,12 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
           <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
-          <div class="ai-sandbox-report" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input id="aiSandboxNote" class="ai-sandbox-input" type="text" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)" style="flex:1;min-width:180px;min-height:0;">
-            <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
-            <span id="aiSandboxReportState" class="ai-admin-hint"></span>
+          <div class="ai-sandbox-report">
+            <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
+              <span id="aiSandboxReportState" class="ai-admin-hint"></span>
+            </div>
           </div>
           <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
@@ -7653,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.805';
+    const APP_VERSION = '5.806';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
