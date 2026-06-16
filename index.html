@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.811';
+    const APP_VERSION = '5.812';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39490,7 +39490,7 @@ Per confermare scrivi ELIMINA.`);
       const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
       if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
-      m = t.match(/\b(?:alle|dalle|dall'|dallo|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      m = t.match(/\b(?:alle|dalle|dall'|dallo|delle|dell'|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
       if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
       m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
       if (m) return String(m[1]).padStart(2, '0') + ':' + m[2];
@@ -39562,6 +39562,11 @@ Per confermare scrivi ELIMINA.`);
       const lessonCtx = /(^| )lezion\w*( |$)/.test(n)
         && (!!_detectIstruttore(text, n) || /(^| )(maestr\w*|istruttor\w*|insegnant\w*)( |$)/.test(n) || /(prossim\w*|settimana|giorni)/.test(n))
         && !_BOOK_VERB.test(n);
+      // "aggiungi un giocatore ALLA PARTITA / al campo / alla prenotazione" = modifica di una
+      // partita esistente (CORREGGI → apre l'editor giocatori), NON creazione di un socio.
+      const addToMatchCtx = /(^| )aggiung\w+( |$)/.test(n)
+        && /(^| )giocator\w*( |$)/.test(n)
+        && /(^| )(partit\w*|prenotazion\w*|campo|match)( |$)/.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -39573,6 +39578,8 @@ Per confermare scrivi ELIMINA.`);
         let s = score(cand[name]);
         if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
         if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
+        if (name === 'CORREGGI' && addToMatchCtx) s += 3;
+        if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
