@@ -2842,7 +2842,9 @@
       .svc-chat-panel:not(.svc-card-mode) .svc-chat-messages { padding-top:30px; }
       .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
       .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
-      .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
+      /* La schedina è un form alto: ancorala in ALTO (column, non column-reverse) così l'header
+         con la ✕ resta visibile e si scorre verso il basso fino a Conferma. */
+      .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
       .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
       /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile.
@@ -3426,6 +3428,8 @@
       .side-nav-chat-host .svc-chat-panel { flex:1 1 auto; min-height:0; width:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.22); overflow:hidden; border-top:1px solid var(--border); }
       /* Chat stile WhatsApp: messaggi sopra (ultimo in fondo, autoscroll), input in basso */
       .side-nav-chat-host .svc-chat-messages { order:0; flex:1 1 auto; min-height:0; flex-direction:column-reverse; }
+      /* In card-mode la schedina (form alto) si ancora in alto: header con ✕ visibile, scroll giù. */
+      .side-nav-chat-host .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
       .side-nav-chat-host .svc-chat-input-row { order:1; border-top:1px solid var(--border); border-bottom:none; border-radius:0; }
       /* Anti-flash / fallback: finché la chat non è stata spostata nella sidebar (o se il JS
          fallisce) non mostrarla come colonna dentro al calendario. */
@@ -7603,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.791';
+    const APP_VERSION = '5.792';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38636,6 +38640,8 @@ Per confermare scrivi ELIMINA.`);
     const confBtn=document.createElement('button'); confBtn.type='button'; confBtn.textContent='✓ Conferma prenotazione'; confBtn.style.cssText='flex:1;border-radius:var(--radius-sm);padding:'+PAD.foot+';cursor:pointer;font-size:'+FS.foot+'px;font-weight:700;';
     foot.appendChild(annBtn); foot.appendChild(confBtn); card.appendChild(foot);
     cont.appendChild(card);
+    // Apri la schedina mostrando l'ALTO (header + ✕), non il fondo.
+    try { cont.scrollTop = 0; } catch(e) {}
 
     function rebuildDurata(tipoKey){
       durSel.innerHTML=''; const list=(SVC_DURATE_PER_TIPO[tipoKey]||[60,90]);
