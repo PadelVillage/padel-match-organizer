@@ -5875,6 +5875,13 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-conv-intent { font-size:11px; font-weight:800; text-transform:uppercase; color:#0891b2; min-width:84px; }
     .ai-conv-text { color:#344054; overflow-wrap:anywhere; flex:1; }
     .ai-conv-conf { font-size:11px; color:#98a2b3; }
+    .ai-sbx-step { display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:#0891b2; margin:12px 0 5px; }
+    .ai-sbx-input-wrap { position:relative; }
+    .ai-sbx-input-wrap .ai-sandbox-input { padding-right:46px; }
+    .ai-sbx-mic { position:absolute; right:8px; bottom:8px; width:34px; height:34px; border-radius:50%; border:1px solid var(--border,#e5e9ee); background:#fff; cursor:pointer; font-size:16px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
+    .ai-sbx-mic:hover { background:#f1f5fb; }
+    .ai-sbx-mic.recording { background:#ffe3e3; border-color:#ff7a7a; animation:aiSbxPulse 1.1s infinite; }
+    @keyframes aiSbxPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(255,90,90,.45);} 50%{ box-shadow:0 0 0 6px rgba(255,90,90,0);} }
     .ai-conv-report { background:none; border:0; cursor:pointer; font-size:13px; line-height:1; padding:2px 4px; border-radius:6px; opacity:.65; }
     .ai-conv-report:hover { opacity:1; background:#fef3f2; }
     .ai-conv-report:disabled { cursor:default; opacity:1; }
@@ -7135,18 +7142,30 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="ai-admin-grid">
         <section class="ai-admin-card">
           <h3>🧪 Banco di prova</h3>
-          <p class="ai-admin-hint">Scrivi una frase e vedi <strong>esattamente cosa capisce l'assistente</strong> (intent, fonte regole/Gemini, slot e <strong>giocatori risolti</strong>), <strong>senza eseguirla</strong> e senza scrivere nulla su Matchpoint.</p>
-          <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
+          <p class="ai-admin-hint">Qui provi una frase e controlli <strong>cosa capisce l'assistente</strong> (intent, fonte regole/Gemini, slot e <strong>giocatori risolti</strong>). È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
+
+          <label class="ai-sbx-step">1 · Scrivi o detta 🎤 la frase da provare</label>
+          <div class="ai-sbx-input-wrap">
+            <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
+            <button type="button" id="aiSandboxMic" class="ai-sbx-mic" style="position:absolute;right:8px;bottom:8px;" title="Detta la frase con la voce" onclick="try{PMOAi.toggleSandboxDictation()}catch(e){}">🎤</button>
+          </div>
+
+          <label class="ai-sbx-step">2 · Premi “Analizza” e leggi il risultato</label>
           <div class="ai-sandbox-actions">
-            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">Analizza</button>
-            <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia report</button>
-            <span id="aiSandboxCopyState" class="ai-admin-hint" style="margin-left:6px"></span>
+            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">🔍 Analizza</button>
           </div>
           <pre id="aiSandboxOutput" class="ai-sandbox-output">—</pre>
-          <div class="ai-sandbox-report" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input id="aiSandboxNote" class="ai-sandbox-input" type="text" placeholder="Cosa è andato storto? (facoltativo)" style="flex:1;min-width:180px;min-height:0;">
+
+          <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
+          <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
+          <div class="ai-sandbox-report" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input id="aiSandboxNote" class="ai-sandbox-input" type="text" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)" style="flex:1;min-width:180px;min-height:0;">
             <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
             <span id="aiSandboxReportState" class="ai-admin-hint"></span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
+            <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
           </div>
         </section>
         <section class="ai-admin-card">
@@ -7618,7 +7637,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.799';
+    const APP_VERSION = '5.800';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40679,6 +40698,40 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) {}
     }
 
+    // Dettatura vocale nel BANCO DI PROVA (stato separato dal mic della chat). Riempie la
+    // textarea della sandbox con la stessa logica anti-duplicazione (Android/iOS) della chat.
+    let _sbxRec = null, _sbxDict = false;
+    function _sbxDictStop(btn) { _sbxDict = false; if (btn) { btn.classList.remove('recording'); btn.title = 'Detta la frase con la voce'; } }
+    function toggleSandboxDictation() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('aiSandboxMic');
+      const input = document.getElementById('aiSandboxInput');
+      if (!SR) { const o = document.getElementById('aiSandboxOutput'); if (o) o.textContent = '🎤 Dettatura vocale non supportata da questo browser. Scrivi la frase a mano.'; return; }
+      if (_sbxDict) { try { _sbxRec && _sbxRec.stop(); } catch (e) {} _sbxDictStop(btn); return; }
+      const base = (input && input.value) ? (input.value.replace(/\s+$/, '') + ' ') : '';
+      try { _sbxRec && _sbxRec.abort(); } catch (e) {}
+      _sbxRec = new SR(); _sbxRec.lang = 'it-IT';
+      const _isMobile = (typeof window.matchMedia === 'function') && window.matchMedia('(max-width: 899px)').matches;
+      _sbxRec.continuous = !_isMobile; _sbxRec.interimResults = true;
+      _sbxRec.onresult = function (e) {
+        const finalParts = []; let interim = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const seg = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            const t = seg.trim();
+            const last = finalParts.length ? finalParts[finalParts.length - 1] : '';
+            if (last && t.toLowerCase().indexOf(last.toLowerCase()) === 0) finalParts[finalParts.length - 1] = t;
+            else if (t) finalParts.push(t);
+          } else { interim += seg; }
+        }
+        const finalTr = finalParts.join(' ');
+        if (input) input.value = (base + finalTr + (interim ? (finalTr ? ' ' : '') + interim : '')).replace(/\s{2,}/g, ' ');
+      };
+      _sbxRec.onerror = function () { _sbxDictStop(btn); };
+      _sbxRec.onend = function () { _sbxDictStop(btn); };
+      try { _sbxRec.start(); _sbxDict = true; if (btn) { btn.classList.add('recording'); btn.title = 'Tocca per fermare la dettatura'; } } catch (e) {}
+    }
+
     // ── Log interazioni (tab gestione) ──────────────────────────────────────────
     function _logInteraction(text, res) {
       _convLog.unshift({ text: text, intent: res.intent || '—', confidence: res.confidence || 0 });
@@ -40809,7 +40862,7 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, toggleDictation: toggleDictation, initChatUI: initChatUI };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
