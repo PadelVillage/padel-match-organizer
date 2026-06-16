@@ -5835,8 +5835,28 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-toast.ok  { background:#2e7d32; }
     .wa-toast.err { background:#c62828; }
     @keyframes wa-toast-in { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-    /* Sezione Assistente AI: stile header interno */
-    #assistanteAI .wa-section-head h3::before { content: '✨ '; }
+    /* === Sezione Assistente AI — pannello di gestione === */
+    .ai-admin-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-top:14px; }
+    .ai-admin-card { background:var(--surface,#fff); border:1px solid var(--border,#e5e9ee); border-radius:12px; padding:16px 18px; }
+    .ai-admin-card-wide { grid-column:1 / -1; }
+    .ai-admin-card h3 { margin:0 0 8px; font-size:15px; color:var(--primary,#1e293b); }
+    .ai-admin-hint { font-size:12px; color:#667085; margin:6px 0; }
+    .ai-sandbox-input { width:100%; box-sizing:border-box; resize:vertical; min-height:48px; font-size:14px; padding:9px 11px; border:1px solid var(--border,#e5e9ee); border-radius:8px; outline:none; font-family:inherit; }
+    .ai-sandbox-actions { margin:10px 0; }
+    .ai-sandbox-output { background:#f8fbff; border:1px solid #dfe8f3; border-radius:8px; padding:11px 13px; font-size:12px; font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; max-height:280px; overflow:auto; color:#1e293b; margin:0; }
+    .ai-help-list { margin:6px 0; padding-left:18px; font-size:13px; color:#344054; }
+    .ai-help-list li { margin:5px 0; }
+    .ai-help-list code { background:#eef2f7; padding:1px 5px; border-radius:4px; font-size:12px; }
+    .ai-help-list li.soon { color:#98a2b3; }
+    .ai-conv-log { max-height:280px; overflow:auto; }
+    .ai-conv-row { display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px solid #f0f3f8; font-size:13px; }
+    .ai-conv-row:last-child { border-bottom:0; }
+    .ai-conv-intent { font-size:11px; font-weight:800; text-transform:uppercase; color:#0891b2; min-width:84px; }
+    .ai-conv-text { color:#344054; overflow-wrap:anywhere; flex:1; }
+    .ai-conv-conf { font-size:11px; color:#98a2b3; }
+    /* Microfono nella chat sidebar (modalità AI) */
+    .svc-ai-mic { border:1px solid var(--border,#e5e9ee); background:var(--surface2,#f4f6f9); border-radius:8px; cursor:pointer; font-size:16px; line-height:1; padding:0 9px; }
+    .svc-ai-mic.recording { background:#fee2e2; border-color:#ef4444; animation:wa-toast-in .2s ease; }
 
     /* Status bar */
     .wa-status-bar { font-size:11px; color:#9e9e9e; margin-top:8px; padding-top:7px; border-top:1px solid #f0f0f0; }
@@ -7079,9 +7099,31 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
-    <!-- Assistente AI tab — contenuto spostato qui a runtime in test env desktop -->
+    <!-- Assistente AI tab — pannello di gestione del motore conversazionale (Fase 1, solo TEST).
+         La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui si testano i
+         comandi (sandbox), si vede cosa sa fare e il log delle ultime interazioni. -->
     <div id="assistanteAI" class="tab-content">
-      <div class="pmo-section-head"><div><h2>Assistente AI</h2><p>Messaggi, varianti e bot.</p></div></div>
+      <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
+      <div class="ai-admin-grid">
+        <section class="ai-admin-card">
+          <h3>🧪 Sandbox parser</h3>
+          <p class="ai-admin-hint">Scrivi un comando e vedi come viene interpretato, <strong>senza eseguirlo</strong>.</p>
+          <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
+          <div class="ai-sandbox-actions">
+            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">Analizza</button>
+          </div>
+          <pre id="aiSandboxOutput" class="ai-sandbox-output">—</pre>
+        </section>
+        <section class="ai-admin-card">
+          <h3>💬 Cosa posso fare</h3>
+          <ul class="ai-help-list" id="aiHelpList"></ul>
+          <p class="ai-admin-hint">Le regole di riconoscimento (sinonimi, istruttori) si gestiscono in <strong>Amministrazione → Parser Config</strong>.</p>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>📋 Ultime interazioni</h3>
+          <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
+        </section>
+      </div>
     </div>
 
     <!-- WA reply modal -->
@@ -7540,7 +7582,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.771';
+    const APP_VERSION = '5.772';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34137,22 +34179,10 @@ Per confermare scrivi ELIMINA.`);
         chapterBar.insertBefore(btnAI, calItem ? calItem.nextSibling : chapterBar.firstChild);
       }
 
-      // Lo SPOSTAMENTO del pannello WA nel tab AI resta solo desktop (≥900px): sposta
-      // contenuto reale e su mobile la WA dashboard deve restare in "Messaggi WhatsApp".
-      // Idempotente (guard su parentElement) e ri-eseguibile al passaggio mobile↔desktop.
-      const pmoPlaceAiDesktop = function () {
-        if (window.innerWidth < 900) return;
-        const waDashboard = document.getElementById('waInboundDashboard');
-        const aiTab       = document.getElementById('assistanteAI');
-        if (waDashboard && aiTab && waDashboard.parentElement !== aiTab) aiTab.appendChild(waDashboard);
-      };
-      pmoPlaceAiDesktop();
-      try {
-        const _aiMq = window.matchMedia('(min-width:900px)');
-        const _aiOnChange = function () { pmoPlaceAiDesktop(); try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {} };
-        if (_aiMq.addEventListener) _aiMq.addEventListener('change', _aiOnChange);
-        else if (_aiMq.addListener) _aiMq.addListener(_aiOnChange);
-      } catch {}
+      // v5.772 — Il tab "Assistente AI" non ospita più il dashboard WhatsApp: ora è il pannello
+      // di gestione del motore conversazionale (sandbox + log). La vecchia relocation
+      // `pmoPlaceAiDesktop` è stata rimossa, così #waInboundDashboard resta nella sua sede
+      // naturale (tab "Messaggi WhatsApp") sia su desktop che su mobile.
 
       // La voce "Assistente AI" è iniettata QUI (script successivo), DOPO il gate di boot
       // `pmoApplyTabVisibility()` (~riga 26946, in uno <script> precedente): senza un nuovo
@@ -38316,7 +38346,14 @@ Per confermare scrivi ELIMINA.`);
     input.disabled = locked;
     send.disabled = locked;
     row.classList.toggle('svc-flow-locked', locked);
-    if (mode === 'normal')       { input.placeholder = 'Clicca uno slot libero per prenotare ↑'; }
+    if (mode === 'normal')       {
+      if (window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
+        input.disabled = false; send.disabled = false;
+        input.placeholder = '💬 Es: “campi liberi domani” · “chi gioca oggi alle 18”';
+      } else {
+        input.placeholder = 'Clicca uno slot libero per prenotare ↑';
+      }
+    }
     if (mode === 'flow-buttons') { input.placeholder = 'Scegli un’opzione qui sopra ↑'; }
     if (mode === 'flow-players') { input.placeholder = 'Es: Mario Rossi, Anna Verdi — Invia'; input.focus(); }
     if (mode === 'flow-summary') { input.placeholder = 'Conferma o annulla qui sopra ↑'; }
@@ -39080,6 +39117,14 @@ Per confermare scrivi ELIMINA.`);
       }
       return;
     }
+    // ── Assistente AI (solo TEST): se non c'è un flow guidato attivo, il testo libero
+    //    viene interpretato dal motore conversazionale. ──────────────────────────────
+    if (!svcFlowState && window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
+      input.value = '';
+      PMOAi.handle(text);
+      input.focus();
+      return;
+    }
     input.value = '';
     svcAddMessage('staff', text);
     svcAddMessage('system', 'ℹ️ Clicca una cella libera sul calendario per avviare una prenotazione guidata.');
@@ -39152,6 +39197,371 @@ Per confermare scrivi ELIMINA.`);
   /* Banner "Sincronizzazione automatica in corso" rimosso (v5.627): nessun polling, nessun banner. */
   // svcStartQueuePolling();
 
+  // ════════════════════════════════════════════════════════════════════════
+  // PMOAi — Assistente AI conversazionale a regole (Fase 1 — solo TEST)
+  // Router di intent costruito SOPRA PARSER_RULES (intents PRENOTA/CANCELLA/TROVA/
+  // CORREGGI già definiti nelle regole) + due intent locali (ANAGRAFICA, SUGGERISCI).
+  // La conversazione avviene nella chat sidebar (#svcChatPanel); il tab "Assistente AI"
+  // è il pannello di gestione (sandbox + log). Step 0+1: classificazione completa +
+  // intent TROVA (sola lettura). Creazione/modifica/annullamento/anagrafica arrivano
+  // negli step successivi (per ora rispondono "in arrivo"). Ogni futura scrittura passa
+  // da pmoRequireStaffPermission('cloud_sync').
+  // ════════════════════════════════════════════════════════════════════════
+  window.PMOAi = (function () {
+    let _welcomed = false;
+    const _convLog = [];
+
+    function _rules() {
+      return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
+           : (typeof STAFF_CAL_FALLBACK_RULES !== 'undefined' ? STAFF_CAL_FALLBACK_RULES : { intents: {} });
+    }
+    function _norm(s) {
+      return (typeof normalizeText === 'function') ? normalizeText(s) : String(s || '').toLowerCase().trim();
+    }
+    function _escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+      });
+    }
+    function _say(html, cls) { try { svcAddMessage('system', html, cls); } catch (e) {} }
+
+    // ── Gating: TEST + permesso view_assistante_ai (owner/admin sempre) ──────────
+    function isEnabled() {
+      try {
+        if (typeof PMO_IS_TEST_ENV === 'undefined' || !PMO_IS_TEST_ENV) return false;
+        if (typeof pmoSectionVisibleFor === 'function') {
+          const prof = (typeof pmoStaffProfile !== 'undefined') ? pmoStaffProfile : null;
+          return pmoSectionVisibleFor('assistanteAI', prof) !== false;
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
+    // ── Date/ora ─────────────────────────────────────────────────────────────
+    function _todayIso() {
+      return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
+    }
+    // Formattazione LOCALE (non toISOString, che in fusi positivi tipo UTC+2 sposta la
+    // data al giorno prima e farebbe sbagliare "domani"/i giorni della settimana).
+    function _fmtLocal(x) {
+      if (typeof formatLocalDate === 'function') return formatLocalDate(x);
+      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    }
+    function _addDays(iso, d) { const x = new Date(iso + 'T00:00:00'); x.setDate(x.getDate() + d); return _fmtLocal(x); }
+    function _nextWeekday(iso, wd) { const x = new Date(iso + 'T00:00:00'); let i = 0; while (x.getDay() !== wd && i < 8) { x.setDate(x.getDate() + 1); i++; } return _fmtLocal(x); }
+    const _GIORNI = { lunedi: 1, martedi: 2, mercoledi: 3, giovedi: 4, venerdi: 5, sabato: 6, domenica: 0 };
+
+    function _extractDate(n, baseIso) {
+      if (/\bdopodomani\b/.test(n)) return _addDays(baseIso, 2);
+      if (/\bdomani\b/.test(n)) return _addDays(baseIso, 1);
+      if (/\boggi\b/.test(n)) return baseIso;
+      let m = n.match(/\b(\d{4}-\d{2}-\d{2})\b/); if (m) return m[1];
+      m = n.match(/\b(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/);
+      if (m && typeof parseDateValue === 'function') {
+        const dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0');
+        const yy = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : baseIso.slice(0, 4);
+        const iso = parseDateValue(dd + '/' + mm + '/' + yy);
+        if (iso) return iso;
+      }
+      for (const k in _GIORNI) { if (new RegExp('\\b' + k + '\\b').test(n)) return _nextWeekday(baseIso, _GIORNI[k]); }
+      return '';
+    }
+    function _extractTime(text) {
+      const t = String(text || '');
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
+      m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
+      m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + m[2];
+      return '';
+    }
+    function _extractCampo(n) { const m = n.match(/\bcampo\s*([1-4])\b/); return m ? parseInt(m[1], 10) : 0; }
+    function _dayLabel(iso) {
+      let wd = '';
+      try { if (typeof weekdayLabelFromISO === 'function') wd = weekdayLabelFromISO(iso); } catch (e) {}
+      const p = String(iso).split('-');
+      return (wd ? wd + ' ' : '') + (p.length === 3 ? p[2] + '/' + p[1] : iso);
+    }
+
+    // ── Classificazione intent (score su keywords+sinonimi di PARSER_RULES) ─────
+    const LOCAL_INTENTS = {
+      ANAGRAFICA: { keywords: ['anagrafica'], sinonimi: ['aggiungi giocatore', 'nuovo giocatore', 'nuovo socio', 'aggiungi socio', 'crea giocatore', 'registra giocatore', 'modifica giocatore', 'aggiorna giocatore', 'cambia livello', 'aggiorna contatti'] },
+      SUGGERISCI: { keywords: ['suggerisci', 'consiglia', 'proponi'], sinonimi: ['suggerimento', 'consiglio', 'abbinamento', 'chi posso invitare', 'miglior orario', 'orario migliore'] }
+    };
+    // Trigger in linguaggio naturale che arricchiscono gli intent già definiti in PARSER_RULES.
+    const _AUGMENT = {
+      TROVA: ['chi', 'quando', 'quali', 'quanti', 'cosa', 'campi liberi', 'campo libero', 'liberi', 'libero', 'disponibile', 'disponibili', 'disponibilita', 'occupato', 'occupati', 'prenotazioni', 'agenda', 'mostra', 'vedi', 'gioca', 'giocano'],
+      CANCELLA: ['elimina', 'disdici', 'togli'],
+      CORREGGI: ['rinomina']
+    };
+    // Match a PAROLA INTERA (n è già delimitato da spazi): evita falsi positivi come
+    // "prenotazioni"→"prenota". Supporta keyword multi-parola ("campi liberi").
+    function _escapeReg(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function _wordHit(n, k) {
+      if (!k) return false;
+      try { return new RegExp('(^| )' + _escapeReg(k) + '( |$)').test(n); } catch (e) { return n.indexOf(' ' + k + ' ') !== -1; }
+    }
+    function _classify(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const r = _rules();
+      const cand = {};
+      Object.keys(r.intents || {}).forEach(function (name) { const d = r.intents[name] || {}; cand[name] = (d.keywords || []).concat(d.sinonimi || []); });
+      Object.keys(_AUGMENT).forEach(function (name) { cand[name] = (cand[name] || []).concat(_AUGMENT[name]); });
+      Object.keys(LOCAL_INTENTS).forEach(function (name) { cand[name] = (cand[name] || []).concat(LOCAL_INTENTS[name].keywords, LOCAL_INTENTS[name].sinonimi); });
+      // Contesto-anagrafica: SOLO termini inequivocabili sulla persona (NON "livello",
+      // che ricorre anche nel contesto-partita: "partita di livello 4").
+      const playerCtx = /(^| )(giocator\w*|soci\w*|socio|anagrafic\w*|telefon\w*|contatt\w*|cellulare)( |$)/.test(n);
+      function score(list) {
+        let s = 0;
+        (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
+        return s;
+      }
+      let best = null, bestScore = 0;
+      Object.keys(cand).forEach(function (name) {
+        if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
+        let s = score(cand[name]);
+        if (name === 'ANAGRAFICA' && playerCtx) s += 2;
+        if ((name === 'PRENOTA' || name === 'CORREGGI') && playerCtx && s > 0) s -= 1;
+        // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
+        // generico "libero" che farebbe scattare TROVA.
+        if (name === 'SUGGERISCI' && s > 0) s += 1;
+        if (s > bestScore) { bestScore = s; best = name; }
+      });
+      return { intent: best, score: bestScore };
+    }
+
+    // ── Parse pubblica: { intent, slots, confidence, missing, parsed } ──────────
+    function parse(text) {
+      const baseIso = _todayIso();
+      const c = _classify(text);
+      let intent = c.intent;
+      let parsed = null;
+      try { if (typeof staffCalParseBookingText === 'function') parsed = staffCalParseBookingText(text, baseIso); } catch (e) {}
+      if ((!intent || c.score === 0) && parsed && parsed.campoNum) intent = 'PRENOTA';
+      const n = _norm(text);
+      const slots = {};
+      const iso = _extractDate(n, baseIso); if (iso) slots.date = iso;
+      const campo = _extractCampo(n); if (campo) slots.court = campo;
+      const time = _extractTime(text); if (time) slots.time = time;
+      if (parsed) {
+        // Allinea la data del parser (che per "domani"/"dopodomani" usa toISOString, sfasato in
+        // fusi positivi) a quella corretta calcolata in locale.
+        if (slots.date) parsed.data = slots.date;
+        if (parsed.tipo) slots.type = parsed.tipo;
+        if (parsed.istruttore) slots.instructor = parsed.istruttore;
+        if (parsed.ora) slots.time = slots.time || parsed.ora;
+        if (parsed.oraFine) slots.timeEnd = parsed.oraFine;
+        if (parsed.durata) slots.duration = parsed.durata;
+        if (parsed.nome && parsed.nome !== 'Staff') slots.who = parsed.nome;
+        if (parsed.ricorrenza) slots.recurring = parsed.ricorrenza.giorno;
+      }
+      let confidence = 0;
+      if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0));
+      if (intent === 'PRENOTA' && parsed && parsed.confidence) confidence = parsed.confidence;
+      const missing = [];
+      if (intent === 'PRENOTA') { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
+      return { intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed };
+    }
+
+    // ── Handler conversazionale ────────────────────────────────────────────────
+    function handle(text) {
+      const t = String(text || '').trim();
+      if (!t) return;
+      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      const res = parse(t);
+      _logInteraction(t, res);
+      switch (res.intent) {
+        case 'TROVA': return _handleTrova(t, res.slots);
+        case 'PRENOTA': return _previewPrenota(res);
+        case 'CANCELLA': return _stub('annullare una prenotazione');
+        case 'CORREGGI': return _stub('modificare una prenotazione');
+        case 'ANAGRAFICA': return _stub('gestire l’anagrafica giocatori');
+        case 'SUGGERISCI': return _stub('i suggerimenti');
+        default: return _handleUnknown(t, res);
+      }
+    }
+
+    function _stub(what) {
+      _say('🛠️ La funzione per <strong>' + _escapeHtml(what) + '</strong> sarà attiva a breve (in costruzione). Per ora posso rispondere a <strong>domande</strong> su prenotazioni e disponibilità — prova “campi liberi domani” o “chi gioca oggi alle 18”.');
+    }
+
+    function _handleUnknown(text, res) {
+      _say('🤔 Non ho capito il comando. ' + _capabilitiesShort());
+      try {
+        if (typeof logParserError === 'function')
+          logParserError({ input_originale: text, intent_riconosciuto: res.intent || null, confidence: res.confidence || 0, error_message: 'AI: intent non riconosciuto', versione_parser: _rules().versione });
+      } catch (e) {}
+    }
+
+    // ── TROVA (sola lettura) ────────────────────────────────────────────────────
+    function _handleTrova(text, slots) {
+      const n = _norm(text);
+      const iso = slots.date || _todayIso();
+      const dl = _dayLabel(iso);
+      const all = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+      const wantsFree = /\b(liber\w*|disponibil\w*|vuot\w*|prenotabil\w*|posto)\b/.test(n);
+      if (wantsFree) return _answerFree(iso, dl, slots);
+      return _answerBookings(iso, dl, slots, all);
+    }
+
+    function _slotGrid() { return (typeof staffCalSlots === 'function') ? staffCalSlots() : []; }
+
+    function _answerFree(iso, dl, slots) {
+      const map = (typeof staffCalBuildOccupancyMap === 'function') ? staffCalBuildOccupancyMap(iso) : {};
+      const grid = _slotGrid();
+      const courts = slots.court ? [slots.court] : [1, 2, 3, 4];
+      if (slots.time) {
+        const free = courts.filter(function (c) { return !map[slots.time + '|' + c]; });
+        if (!free.length) return _say('⛔ Alle <strong>' + slots.time + '</strong> di ' + dl + ' non risultano campi liberi.');
+        return _say('🟢 Liberi alle <strong>' + slots.time + '</strong> di ' + dl + ': ' + free.map(function (c) { return 'Campo ' + c; }).join(', ') + '.');
+      }
+      // nessun orario: per ogni campo, intervalli liberi compatti
+      const lines = courts.map(function (c) {
+        const freeSlots = grid.filter(function (s) { return !map[s + '|' + c]; });
+        const ranges = _compressRanges(freeSlots, grid);
+        return '<strong>Campo ' + c + '</strong>: ' + (ranges.length ? ranges.join(', ') : '<em>nessuno slot libero</em>');
+      });
+      return _say('🟢 Disponibilità ' + dl + ':<br>' + lines.join('<br>'));
+    }
+
+    // Comprime una lista di slot ("08:00","08:30",...) in intervalli "08:00–09:30"
+    function _compressRanges(freeSlots, grid) {
+      if (!freeSlots.length) return [];
+      const idx = freeSlots.map(function (s) { return grid.indexOf(s); }).filter(function (i) { return i >= 0; }).sort(function (a, b) { return a - b; });
+      const ranges = [];
+      let start = idx[0], prev = idx[0];
+      for (let i = 1; i < idx.length; i++) {
+        if (idx[i] === prev + 1) { prev = idx[i]; continue; }
+        ranges.push(grid[start] + '–' + _slotEnd(grid[prev], grid));
+        start = idx[i]; prev = idx[i];
+      }
+      ranges.push(grid[start] + '–' + _slotEnd(grid[prev], grid));
+      return ranges;
+    }
+    function _slotEnd(slot, grid) {
+      const i = grid.indexOf(slot);
+      if (i >= 0 && i + 1 < grid.length) return grid[i + 1];
+      // ultimo slot: +30 min
+      const p = String(slot).split(':'); let mm = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) + 30;
+      return String(Math.floor(mm / 60)).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0');
+    }
+
+    function _answerBookings(iso, dl, slots, all) {
+      let rows = all.slice();
+      if (slots.court) rows = rows.filter(function (r) { return Number(r.campo) === Number(slots.court); });
+      if (slots.time) rows = rows.filter(function (r) { return r.ora === slots.time; });
+      if (!rows.length) {
+        return _say('✅ Nessuna prenotazione ' + dl + (slots.court ? ' sul Campo ' + slots.court : '') + (slots.time ? ' alle ' + slots.time : '') + '.');
+      }
+      rows.sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); });
+      const items = rows.map(function (r) {
+        const tipo = (r.tipoReale || r.tipo || '').toString().toLowerCase().includes('lez') ? '📚 lezione' : '🎾 partita';
+        const nome = _escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>';
+        const istr = r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '';
+        return '• <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + nome + ' (' + tipo + istr + ')';
+      });
+      return _say('📋 Prenotazioni ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + (slots.time ? ' · ' + slots.time : '') + ':<br>' + items.join('<br>'));
+    }
+
+    // ── PRENOTA: per ora SOLO anteprima (esecuzione = step successivo) ──────────
+    function _previewPrenota(res) {
+      const p = res.parsed;
+      if (!p || !p.campoNum || !p.ora) {
+        return _say('Per prenotare mi servono almeno <strong>campo</strong> e <strong>orario</strong>. Es: <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
+      }
+      const tipoLabel = p.tipo === 'lezione' ? 'Lezione' : 'Partita';
+      const chi = p.istruttore ? ('maestro ' + p.istruttore) : (p.nome && p.nome !== 'Staff' ? p.nome : '—');
+      _say('📝 Ho capito: <strong>' + tipoLabel + '</strong> · Campo ' + p.campoNum + ' · ' + _dayLabel(p.data) + ' · ' + p.ora + '–' + p.oraFine + ' · ' + _escapeHtml(chi) +
+        '<br><span style="color:#98a2b3">La creazione effettiva (con riepilogo e conferma) sarà attiva nel prossimo step.</span>');
+    }
+
+    function _capabilitiesShort() {
+      return 'Per ora posso rispondere a domande tipo “<em>campi liberi sabato pomeriggio</em>”, “<em>chi gioca domani alle 18</em>”, “<em>prenotazioni di oggi sul campo 2</em>”.';
+    }
+
+    // ── Sandbox (tab gestione) ──────────────────────────────────────────────────
+    function runSandbox() {
+      const inp = document.getElementById('aiSandboxInput');
+      const out = document.getElementById('aiSandboxOutput');
+      if (!inp || !out) return;
+      const text = inp.value.trim();
+      if (!text) { out.textContent = '—'; return; }
+      const res = parse(text);
+      out.textContent = JSON.stringify({ intent: res.intent, confidence: Number((res.confidence || 0).toFixed(2)), slots: res.slots, missing: res.missing }, null, 2);
+    }
+
+    // ── Log interazioni (tab gestione) ──────────────────────────────────────────
+    function _logInteraction(text, res) {
+      _convLog.unshift({ text: text, intent: res.intent || '—', confidence: res.confidence || 0 });
+      if (_convLog.length > 30) _convLog.pop();
+      _renderConvLog();
+    }
+    function _renderConvLog() {
+      const el = document.getElementById('aiConversationLog');
+      if (!el) return;
+      if (!_convLog.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna interazione ancora.</div>'; return; }
+      el.innerHTML = _convLog.map(function (r) {
+        return '<div class="ai-conv-row"><span class="ai-conv-intent">' + _escapeHtml(r.intent) + '</span>' +
+          '<span class="ai-conv-text">' + _escapeHtml(r.text) + '</span>' +
+          '<span class="ai-conv-conf">' + (r.confidence ? r.confidence.toFixed(2) : '') + '</span></div>';
+      }).join('');
+    }
+    function _renderHelp() {
+      const el = document.getElementById('aiHelpList');
+      if (!el) return;
+      el.innerHTML = [
+        '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
+        '<li class="soon"><strong>Crea</strong> partita/lezione — in arrivo</li>',
+        '<li class="soon"><strong>Modifica</strong> / <strong>Annulla</strong> prenotazione — in arrivo</li>',
+        '<li class="soon"><strong>Anagrafica</strong> giocatori — in arrivo</li>',
+        '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
+      ].join('');
+    }
+
+    // ── Dettatura vocale nella chat (Web Speech API it-IT) ──────────────────────
+    let _rec = null, _dictating = false;
+    function toggleDictation() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('svcAiMicBtn');
+      if (!SR) { _say('🎤 Dettatura vocale non supportata da questo browser.'); return; }
+      if (_dictating) { try { _rec && _rec.stop(); } catch (e) {} _dictating = false; if (btn) btn.classList.remove('recording'); return; }
+      _rec = new SR(); _rec.lang = 'it-IT'; _rec.continuous = true; _rec.interimResults = true;
+      _rec.onresult = function (e) { const tr = Array.from(e.results).map(function (r) { return r[0].transcript; }).join(''); const i = document.getElementById('svcChatInput'); if (i) i.value = tr; };
+      _rec.onerror = function () { _dictating = false; if (btn) btn.classList.remove('recording'); };
+      _rec.onend = function () { _dictating = false; if (btn) btn.classList.remove('recording'); };
+      try { _rec.start(); _dictating = true; if (btn) btn.classList.add('recording'); } catch (e) {}
+    }
+
+    // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
+    function initChatUI() {
+      _renderHelp(); _renderConvLog();
+      if (!isEnabled()) return;
+      const input = document.getElementById('svcChatInput');
+      const send = document.getElementById('svcChatSend');
+      const row = document.getElementById('svcChatInputRow');
+      if (!input || !send || !row) return;
+      const flowActive = (typeof svcFlowState !== 'undefined' && svcFlowState);
+      if (!flowActive) {
+        input.disabled = false; send.disabled = false;
+        input.placeholder = '💬 Es: “campi liberi domani” · “chi gioca oggi alle 18”';
+      }
+      if (!document.getElementById('svcAiMicBtn')) {
+        const mic = document.createElement('button');
+        mic.type = 'button'; mic.id = 'svcAiMicBtn'; mic.className = 'svc-ai-mic'; mic.title = 'Detta un comando';
+        mic.textContent = '🎤';
+        mic.addEventListener('click', toggleDictation);
+        row.insertBefore(mic, send);
+      }
+      if (!_welcomed) {
+        _welcomed = true;
+        _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“chi gioca domani alle 18?”</em> oppure <em>“campi liberi sabato”</em>.');
+      }
+    }
+
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, toggleDictation: toggleDictation, initChatUI: initChatUI };
+  })();
+
   // Init listener svc chat
   (function svcInitChat() {
     const fab = document.getElementById('svcChatFab');
@@ -39164,6 +39574,10 @@ Per confermare scrivi ELIMINA.`);
     if (overlay) overlay.addEventListener('click', svcCloseChat);
     if (sendBtn) sendBtn.addEventListener('click', svcHandleSend);
     if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') svcHandleSend(); });
+    // Assistente AI (solo TEST): abilita la chat a testo libero. Doppio tentativo per il
+    // timing del profilo staff (gating view_assistante_ai caricato dalla cache poco dopo il boot).
+    try { window.PMOAi && PMOAi.initChatUI(); } catch (e) {}
+    setTimeout(function () { try { window.PMOAi && PMOAi.initChatUI(); } catch (e) {} }, 1800);
   })();
 
   // ── Tappa 2: Mobile header + chat bar ──
