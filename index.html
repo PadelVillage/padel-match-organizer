@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.786';
+    const APP_VERSION = '5.787';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39647,7 +39647,10 @@ Per confermare scrivi ELIMINA.`);
       const draft = {
         tipo: tipo,
         campoNum: p.campoNum || slots.court || 0,
-        data: p.data || slots.date || _todayIso(),
+        // NIENTE default a "oggi": la data conta SOLO se l'utente l'ha detta esplicitamente
+        // (slots.date = _extractDate ha trovato oggi/domani/giorno/data). Altrimenti resta
+        // vuota e diventa uno slot da chiedere (l'utente poteva guardare un altro giorno).
+        data: slots.date || '',
         ora: p.ora || slots.time || '',
         oraFine: p.oraFine || '',
         durata: p.durata || 0,
@@ -39673,6 +39676,7 @@ Per confermare scrivi ELIMINA.`);
     // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
     function _advancePrenota(draft) {
       const need = [];
+      if (!draft.data) need.push('date');
       if (!draft.campoNum) need.push('court');
       if (!draft.ora) need.push('time');
       if (need.length) { aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: need }; return _askNext(); }
@@ -39682,6 +39686,7 @@ Per confermare scrivi ELIMINA.`);
     function _askNext() {
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
+      if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
     }
@@ -39691,7 +39696,11 @@ Per confermare scrivi ELIMINA.`);
       if (/(^| )(annull\w*|lascia\w*|stop|niente)( |$)/.test(' ' + n + ' ')) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere. Dimmi pure quando vuoi.'); }
       const draft = aiFlowState.draft;
       const k = aiFlowState.need[0];
-      if (k === 'court') {
+      if (k === 'date') {
+        const iso = _extractDate(_norm(text), _todayIso());
+        if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
+        draft.data = iso;
+      } else if (k === 'court') {
         const c = _extractCampoLoose(text);
         if (!c) return _say('Non ho capito il campo. Scrivi <strong>1</strong>, <strong>2</strong>, <strong>3</strong> o <strong>4</strong> (oppure “annulla”).');
         draft.campoNum = c;
