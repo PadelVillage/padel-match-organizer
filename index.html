@@ -5864,7 +5864,7 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-admin-hint { font-size:12px; color:#667085; margin:6px 0; }
     .ai-sandbox-input { width:100%; box-sizing:border-box; resize:vertical; min-height:48px; font-size:14px; padding:9px 11px; border:1px solid var(--border,#e5e9ee); border-radius:8px; outline:none; font-family:inherit; }
     .ai-sandbox-actions { margin:10px 0; }
-    .ai-sandbox-output { background:#f8fbff; border:1px solid #dfe8f3; border-radius:8px; padding:11px 13px; font-size:12px; font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; max-height:280px; overflow:auto; color:#1e293b; margin:0; }
+    .ai-sandbox-output { background:#f8fbff; border:1px solid #dfe8f3; border-radius:8px; padding:11px 13px; font-size:12px; font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; min-height:90px; max-height:600px; overflow:auto; resize:vertical; color:#1e293b; margin:0; }
     .ai-help-list { margin:6px 0; padding-left:18px; font-size:13px; color:#344054; }
     .ai-help-list li { margin:5px 0; }
     .ai-help-list code { background:#eef2f7; padding:1px 5px; border-radius:4px; font-size:12px; }
@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.806';
+    const APP_VERSION = '5.807';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
