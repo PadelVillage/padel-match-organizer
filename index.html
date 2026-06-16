@@ -7653,7 +7653,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.803';
+    const APP_VERSION = '5.804';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34886,15 +34886,16 @@ Per confermare scrivi ELIMINA.`);
   })();
 
   // ── Log errori parser su Supabase (fire-and-forget) ───────────────────────
+  // Ritorna true se la riga è stata salvata, false altrimenti (così chi segnala a mano può
+  // dire la verità all'utente invece di mostrare sempre ✅). Usa il token staff che si
+  // AUTO-RINFRESCA (pmoGetSupabaseStaffAccessToken): leggere il token grezzo da localStorage
+  // dava 401 quando era scaduto (insert silenziosamente perso, lista non leggibile).
   async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser, origine }) {
     try {
       const cfg = await loadAssessmentSupabaseConfig();
       let accessToken = cfg.supabaseKey;
-      try {
-        const raw = typeof safeLoad === 'function' ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null;
-        if (raw?.access_token) accessToken = raw.access_token;
-      } catch {}
-      await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) accessToken = t; } } catch {}
+      const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34912,8 +34913,11 @@ Per confermare scrivi ELIMINA.`);
           origine: origine || 'auto'
         })
       });
+      if (!res.ok) { console.warn('[StaffCal] logParserError HTTP', res.status); return false; }
+      return true;
     } catch (e) {
       console.warn('[StaffCal] logParserError failed:', e.message);
+      return false;
     }
   }
 
@@ -40736,11 +40740,14 @@ Per confermare scrivi ELIMINA.`);
       let intent = null, confidence = null;
       try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
       try {
-        if (typeof logParserError === 'function')
-          await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' });
-        if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
-        if (noteEl) noteEl.value = '';
-        try { loadMyReports(); } catch (e) {}
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' }) : false;
+        if (ok) {
+          if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
+          if (noteEl) noteEl.value = '';
+          try { loadMyReports(); } catch (e) {}
+        } else if (st) {
+          st.textContent = '⚠️ Non salvato (forse la sessione è scaduta): esci e rientra, poi riprova.';
+        }
       } catch (e) { if (st) st.textContent = '⚠️ Segnalazione non riuscita.'; }
     }
     // Segnala una delle ultime interazioni REALI (dalla lista) senza riscriverla.
@@ -40748,11 +40755,12 @@ Per confermare scrivi ELIMINA.`);
       const r = _convLog[idx];
       if (!r) return;
       try {
-        if (typeof logParserError === 'function')
-          await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione, origine: 'manuale' });
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione, origine: 'manuale' }) : false;
         const btn = document.getElementById('aiConvReport' + idx);
-        if (btn) { btn.textContent = '✅'; btn.disabled = true; btn.title = 'Segnalato'; }
-        try { loadMyReports(); } catch (e) {}
+        if (ok) {
+          if (btn) { btn.textContent = '✅'; btn.disabled = true; btn.title = 'Segnalato'; }
+          try { loadMyReports(); } catch (e) {}
+        } else if (btn) { btn.title = 'Non salvato (sessione scaduta?): esci e rientra, poi riprova.'; }
       } catch (e) {}
     }
 
@@ -40763,7 +40771,7 @@ Per confermare scrivi ELIMINA.`);
     async function _myReportsFetch() {
       const cfg = await loadAssessmentSupabaseConfig();
       let accessToken = cfg.supabaseKey;
-      try { const raw = (typeof safeLoad === 'function') ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null; if (raw && raw.access_token) accessToken = raw.access_token; } catch (e) {}
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) accessToken = t; } } catch (e) {}
       const url = cfg.supabaseUrl + '/rest/v1/pmo_parser_errors?origine=eq.manuale&order=timestamp.desc&limit=50&select=id,input_originale,error_message,stato,risolto_il,risolto_in_versione,nota_risoluzione,timestamp';
       const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + accessToken, Accept: 'application/json' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -40793,7 +40801,7 @@ Per confermare scrivi ELIMINA.`);
             extra + '</div>';
         }).join('');
       } catch (e) {
-        el.innerHTML = '<div class="ai-admin-hint">Per vedere le segnalazioni devi essere loggato come staff. (' + _escapeHtml(e.message || String(e)) + ')</div>';
+        el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere le segnalazioni: forse la sessione è scaduta. Esci e rientra, poi premi ↻ Aggiorna. <span style="opacity:.6">(' + _escapeHtml(e.message || String(e)) + ')</span></div>';
       }
     }
 
