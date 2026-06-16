@@ -7586,7 +7586,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.773';
+    const APP_VERSION = '5.774';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38361,6 +38361,7 @@ Per confermare scrivi ELIMINA.`);
     if (mode === 'flow-buttons') { input.placeholder = 'Scegli un’opzione qui sopra ↑'; }
     if (mode === 'flow-players') { input.placeholder = 'Es: Mario Rossi, Anna Verdi — Invia'; input.focus(); }
     if (mode === 'flow-summary') { input.placeholder = 'Conferma o annulla qui sopra ↑'; }
+    try { svcChatToggleAction(); } catch (e) {}
   }
 
   function svcAddMessage(role, html, extraClass) {
@@ -39097,7 +39098,7 @@ Per confermare scrivi ELIMINA.`);
     if (!text) return;
     if (svcFlowState && svcFlowState.step === 'players') {
       input.value = '';
-      svcChatAutoGrow();
+      svcChatRefreshComposer();
       const rawNames = String(text).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+/i)
         .map(function(s) { return s.trim(); })
         .filter(Boolean);
@@ -39126,13 +39127,13 @@ Per confermare scrivi ELIMINA.`);
     //    viene interpretato dal motore conversazionale. ──────────────────────────────
     if (!svcFlowState && window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
       input.value = '';
-      svcChatAutoGrow();
+      svcChatRefreshComposer();
       PMOAi.handle(text);
       input.focus();
       return;
     }
     input.value = '';
-    svcChatAutoGrow();
+    svcChatRefreshComposer();
     svcAddMessage('staff', text);
     svcAddMessage('system', 'ℹ️ Clicca una cella libera sul calendario per avviare una prenotazione guidata.');
   }
@@ -39560,6 +39561,10 @@ Per confermare scrivi ELIMINA.`);
         mic.addEventListener('click', toggleDictation);
         row.insertBefore(mic, send);
       }
+      // Garantisce l'aggancio dell'autogrow su QUESTO input (initChatUI gira di sicuro in
+      // modalità AI) e imposta lo stato iniziale del tasto (mic se vuoto).
+      if (typeof svcChatBindComposer === 'function') svcChatBindComposer();
+      if (typeof svcChatRefreshComposer === 'function') svcChatRefreshComposer();
       if (!_welcomed) {
         _welcomed = true;
         _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“chi gioca domani alle 18?”</em> oppure <em>“campi liberi sabato”</em>.');
@@ -39575,7 +39580,31 @@ Per confermare scrivi ELIMINA.`);
     const el = document.getElementById('svcChatInput');
     if (!el || el.tagName !== 'TEXTAREA') return;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    const cap = (window.innerWidth < 900) ? 160 : 120;
+    el.style.height = Math.min(el.scrollHeight, cap) + 'px';
+  }
+  // Stile WhatsApp: microfono quando il campo è VUOTO, invio quando c'è TESTO. Resta un
+  // solo tasto a destra → la textarea si allarga fin quasi all'icona. In PROD (niente mic)
+  // l'invio resta sempre visibile.
+  function svcChatToggleAction() {
+    const input = document.getElementById('svcChatInput');
+    const send = document.getElementById('svcChatSend');
+    const mic = document.getElementById('svcAiMicBtn');
+    if (!input || !send) return;
+    const hasText = !!(input.value && input.value.trim());
+    const showMic = !!mic && !hasText && !input.disabled;
+    if (mic) mic.style.display = showMic ? 'flex' : 'none';
+    send.style.display = showMic ? 'none' : 'flex';
+  }
+  function svcChatRefreshComposer() { svcChatAutoGrow(); svcChatToggleAction(); }
+  // Aggancia il listener 'input' UNA sola volta (idempotente): chiamato sia da svcInitChat
+  // sia da PMOAi.initChatUI per garantire l'autogrow ovunque (desktop/mobile, anche dopo
+  // la rilocazione del pannello nella sidebar).
+  function svcChatBindComposer() {
+    const input = document.getElementById('svcChatInput');
+    if (!input || input._svcComposerBound) return;
+    input._svcComposerBound = true;
+    input.addEventListener('input', svcChatRefreshComposer);
   }
 
   // Init listener svc chat
@@ -39592,7 +39621,7 @@ Per confermare scrivi ELIMINA.`);
     if (input) {
       // Invio = invia · Shift+Invio = a capo (come WhatsApp/desktop)
       input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); svcHandleSend(); } });
-      input.addEventListener('input', svcChatAutoGrow);
+      svcChatBindComposer();
     }
     // Assistente AI (solo TEST): abilita la chat a testo libero. Doppio tentativo per il
     // timing del profilo staff (gating view_assistante_ai caricato dalla cache poco dopo il boot).
