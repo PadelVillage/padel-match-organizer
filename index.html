@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.792';
+    const APP_VERSION = '5.793';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39416,6 +39416,13 @@ Per confermare scrivi ELIMINA.`);
       // Contesto-anagrafica: SOLO termini inequivocabili sulla persona (NON "livello",
       // che ricorre anche nel contesto-partita: "partita di livello 4").
       const playerCtx = /(^| )(giocator\w*|soci\w*|socio|anagrafic\w*|telefon\w*|contatt\w*|cellulare)( |$)/.test(n);
+      // Aggiorna-anagrafica: verbo di update + un CAMPO della scheda (livello/telefono/email/…)
+      // e NESSUNA parola di prenotazione → così "aggiorna il livello di Mario a 4" è ANAGRAFICA,
+      // ma "modifica la partita di Mario" resta CORREGGI e "partita di livello 4" resta PRENOTA.
+      const anaUpdateCtx = /(^| )(aggiorn\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*|aggiust\w*)( |$)/.test(n)
+        && /(^| )(livell\w*|telefon\w*|email|e-mail|mail|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz\w*|contatt\w*|recapit\w*|cellulare|numero)( |$)/.test(n)
+        && !/(^| )(camp[oi]|partit\w*|prenotazion\w*|lezion\w*|tornei?|slot)( |$)/.test(n);
+      const anaCtx = playerCtx || anaUpdateCtx;
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -39426,8 +39433,8 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
         let s = score(cand[name]);
         if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
-        if (name === 'ANAGRAFICA' && playerCtx) s += 2;
-        if ((name === 'PRENOTA' || name === 'CORREGGI') && playerCtx && s > 0) s -= 1;
+        if (name === 'ANAGRAFICA' && anaCtx) s += 2;
+        if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
         // generico "libero" che farebbe scattare TROVA.
         if (name === 'SUGGERISCI' && s > 0) s += 1;
@@ -39483,6 +39490,12 @@ Per confermare scrivi ELIMINA.`);
           return _continueCancella(t);
         }
         if (_k === 'modifica') return _continueModifica(t);
+        if (_k === 'anagrafica') {
+          if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
+          if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
+          if (aiFlowState.stage === 'changes') return _continueAnaChanges(t);
+          return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
+        }
         if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
         if (aiFlowState.stage === 'await') return _continuePrenota(t);
       }
@@ -39493,7 +39506,7 @@ Per confermare scrivi ELIMINA.`);
         case 'PRENOTA': return _startPrenota(res, t);
         case 'CANCELLA': return _startCancella(res, t);
         case 'CORREGGI': return _startModifica(res, t);
-        case 'ANAGRAFICA': return _stub('gestire l’anagrafica giocatori');
+        case 'ANAGRAFICA': return _startAnagrafica(res, t);
         case 'SUGGERISCI': return _stub('i suggerimenti');
         default: return _handleUnknown(t, res);
       }
@@ -40127,6 +40140,285 @@ Per confermare scrivi ELIMINA.`);
       return _openEditor(iso, pick);
     }
 
+    // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
+    // Esecutori PROGRAMMATICI (niente DOM): riusano le stesse primitive del form
+    // (ensureMemberId/findMatchingMemberIndex/parseLevel/normalizePhone/save +
+    // pmoQueueImmediateMemberCloudSync). Scelta utente: salva in LOCALE + CLOUD,
+    // NON propaga a Matchpoint (a differenza di addMember/saveMemberCard). Sempre
+    // riepilogo + conferma prima di scrivere (rete di sicurezza Fase 1).
+    const _ANA_CREATE_VERB = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/;
+    const _ANA_UPDATE_VERB = /(^| )(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*)( |$)/;
+
+    function _anaExtractEmail(text) { const m = String(text || '').match(/[\w.+-]+@[\w-]+\.[\w.-]+/); return m ? m[0].toLowerCase() : ''; }
+    function _anaExtractPhone(text) {
+      let m = String(text || '').match(/(?:telefono|telefonico|cellulare|numero|cell|tel|recapito)\D{0,3}((?:\+?\d[\s.\-]?){6,})/i);
+      if (!m) m = String(text || '').match(/(?:^|[^\d])(\+?\d(?:[\s.\-]?\d){5,})(?:[^\d]|$)/);
+      if (!m) return '';
+      return (typeof normalizePhone === 'function') ? normalizePhone(m[1]) : m[1].replace(/[^\d+]/g, '');
+    }
+    function _anaExtractLevel(text) { const m = String(text || '').match(/\bliv(?:ello)?\.?\s*([0-9](?:[.,][0-9])?)\b/i); return m ? m[1].replace(',', '.') : ''; }
+    function _anaExtractGender(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( femmin\w*| donna| ragazza| signora)( |$)/.test(n)) return 'F';
+      if (/( maschi\w*| uomo| ragazzo| signore)( |$)/.test(n)) return 'M';
+      return '';
+    }
+    function _anaGenderLabel(g) { return g === 'F' ? 'Donna' : g === 'M' ? 'Uomo' : '—'; }
+    // Isola il NOME togliendo email/numeri/livello/sesso, le parole di comando/ruolo e i
+    // filler INIZIALI (articoli/preposizioni) — ma NON le particelle interne dei cognomi
+    // ("Di Marco", "De Luca", "Lo Russo") che vanno preservate.
+    function _anaStripFieldTokens(text) {
+      let t = ' ' + String(text || '') + ' ';
+      t = t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, ' ');
+      t = t.replace(/\bliv(?:ello)?\.?\s*[0-9](?:[.,][0-9])?\b/gi, ' ');
+      t = t.replace(/(?:\+?\d(?:[\s.\-]?\d){4,})/g, ' ');
+      t = t.replace(/\b\d+(?:[.,]\d+)?\b/g, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livello|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\s{2,}/g, ' ').trim();
+      // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
+      let prev = null;
+      while (prev !== t) { prev = t; t = t.replace(/^(?:il|lo|la|i|gli|le|un|uno|una|dei|del|dello|della|di|d'|a|ad|al|allo|alla|per|con|mi|si)\s+/i, ''); }
+      // Filler FINALE: il connettore del valore ("…Mario Rossi a 4" → tolto "4", resta "a").
+      // NB: niente del/dello/della (possono chiudere un cognome es. "Della Valle … Anna").
+      prev = null;
+      while (prev !== t) { prev = t; t = t.replace(/\s+(?:a|ad|al|allo|alla|di|d'|in|con|su|da|per|e|il|lo|la|i|gli|le|un|uno|una)$/i, ''); }
+      return t.trim();
+    }
+    // Risposta diretta a "come si chiama?": niente strip aggressivo (preserva i cognomi).
+    function _anaParseNameAnswer(ans) {
+      let s = ' ' + String(ans || '').trim() + ' ';
+      s = s.replace(/^\s*(?:si chiama|è|e'|nome e cognome|nome|il socio|la socia)\s+/i, ' ');
+      s = s.replace(/[,;]/g, ' ');
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
+    function _anaName(d) { return _escapeHtml(((d.firstName || '') + ' ' + (d.surname || '')).trim() || 'il socio'); }
+
+    function _startAnagrafica(res, text) {
+      const n = ' ' + _norm(text) + ' ';
+      const isUpdate = _ANA_UPDATE_VERB.test(n) && !_ANA_CREATE_VERB.test(n);
+      return isUpdate ? _startAnaUpdate(text) : _startAnaCreate(text);
+    }
+
+    // ── CREA socio ──────────────────────────────────────────────────────────────
+    function _startAnaCreate(text) {
+      const draft = { firstName: '', surname: '', phone: _anaExtractPhone(text), email: _anaExtractEmail(text), level: _anaExtractLevel(text), gender: _anaExtractGender(text) };
+      const nameStr = _anaStripFieldTokens(text);
+      if (nameStr) { const p = nameStr.split(/\s+/).filter(Boolean); draft.firstName = p[0] || ''; draft.surname = p.slice(1).join(' '); }
+      return _anaAdvanceCreate(draft);
+    }
+    function _anaCreateNeeds(draft) {
+      const fullName = ((draft.firstName || '') + ' ' + (draft.surname || '')).trim();
+      const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+      const need = [];
+      if (!draft.firstName || (!draft.surname && !guest)) need.push('name');
+      if (!guest) {
+        if (!draft.phone) need.push('phone');
+        if (!draft.gender) need.push('gender');
+        if (!draft.level) need.push('level');
+        if (!draft.email) need.push('email');
+      }
+      return need;
+    }
+    function _anaAdvanceCreate(draft) {
+      const need = _anaCreateNeeds(draft);
+      if (need.length) { aiFlowState = { kind: 'anagrafica', op: 'create', stage: 'await', draft: draft, need: need }; return _anaAskNext(need[0], draft); }
+      return _showAnaCreateSummary(draft);
+    }
+    function _anaAskNext(k, draft) {
+      const q = {
+        name: '👤 Come si chiama il nuovo socio? (nome e cognome)',
+        phone: '📞 Qual è il <strong>telefono</strong> di ' + _anaName(draft) + '?',
+        gender: '⚧ ' + _anaName(draft) + ' è <strong>uomo</strong> o <strong>donna</strong>?',
+        level: '🎾 Che <strong>livello</strong> ha ' + _anaName(draft) + '? (es. 3 o 4.5)',
+        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '?'
+      };
+      return _say(q[k] || ('Dimmi: ' + k));
+    }
+    function _continueAnagrafica(text) {
+      if (!aiFlowState || aiFlowState.stage !== 'await') { aiFlowState = null; return _say('Dimmi pure cosa vuoi fare in anagrafica.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      const draft = aiFlowState.draft, k = aiFlowState.need[0], ans = String(text || '').trim();
+      if (k === 'name') {
+        const p = _anaParseNameAnswer(ans).split(/\s+/).filter(Boolean);
+        if (!p.length) return _say('Non ho capito il nome. Scrivi <strong>nome e cognome</strong> (oppure “annulla”).');
+        draft.firstName = p[0]; draft.surname = p.slice(1).join(' ');
+      } else if (k === 'phone') {
+        const ph = _anaExtractPhone(ans) || ((typeof normalizePhone === 'function') ? normalizePhone(ans) : ans.replace(/[^\d+]/g, ''));
+        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Telefono non valido. Scrivi un numero (es. 333 1234567).');
+        draft.phone = ph;
+      } else if (k === 'gender') {
+        const g = _anaExtractGender(ans) || (/^f/i.test(ans) ? 'F' : /^m/i.test(ans) ? 'M' : '');
+        if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
+        draft.gender = g;
+      } else if (k === 'level') {
+        const lm = ans.match(/[0-9](?:[.,][0-9])?/);
+        if (!lm) return _say('Livello non valido. Scrivi un numero (es. 3 o 4.5).');
+        draft.level = lm[0].replace(',', '.');
+      } else if (k === 'email') {
+        const em = _anaExtractEmail(ans);
+        if (!em) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it).');
+        draft.email = em;
+      }
+      const need = _anaCreateNeeds(draft);
+      aiFlowState.need = need;
+      if (need.length) return _anaAskNext(need[0], draft);
+      return _showAnaCreateSummary(draft);
+    }
+    function _showAnaCreateSummary(draft) {
+      const fullName = compactSpaces(((draft.firstName || '') + ' ' + (draft.surname || '')).trim());
+      const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+      aiFlowState = { kind: 'anagrafica', op: 'create', stage: 'confirm', draft: draft };
+      const lines = ['👤 <strong>' + _escapeHtml(fullName) + '</strong>' + (guest ? ' <em>(ospite)</em>' : '')];
+      if (!guest) {
+        lines.push('📞 ' + _escapeHtml(draft.phone || '—'));
+        lines.push('✉️ ' + _escapeHtml(draft.email || '—'));
+        lines.push('⚧ ' + _anaGenderLabel(draft.gender));
+        lines.push('🎾 Livello ' + _escapeHtml(String(draft.level || '—')));
+      }
+      let html = '📋 <strong>Nuovo socio</strong><br>' + lines.join('<br>');
+      html += '<br><span style="color:#98a2b3;font-size:12px">Lo salvo in anagrafica e su Supabase <strong>(non su Matchpoint)</strong>. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+
+    // ── AGGIORNA socio ──────────────────────────────────────────────────────────
+    function _anaExtractChanges(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const ch = {};
+      const email = _anaExtractEmail(text); if (email) ch.email = email;
+      const phone = _anaExtractPhone(text); if (phone) ch.phone = phone;
+      const gender = _anaExtractGender(text); if (gender) ch.gender = gender;
+      if (/livell/.test(n)) { const m = String(text).match(/\b([0-9](?:[.,][0-9])?)\b/); if (m) ch.level = m[1].replace(',', '.'); }
+      else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
+      return ch;
+    }
+    function _startAnaUpdate(text) {
+      const changes = _anaExtractChanges(text);
+      const nameStr = _anaStripFieldTokens(text);
+      if (!nameStr) return _say('Chi vuoi aggiornare? Dimmi <strong>nome e cognome</strong> del socio (es. “aggiorna il telefono di Mario Rossi a 333…”).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
+      if (!matches.length) return _say('🔍 Non trovo un socio che somigli a “<strong>' + _escapeHtml(nameStr) + '</strong>”. Controlla il nome.');
+      // Match esatto e univoco (distanza 0, strettamente migliore del 2°) → selezione automatica;
+      // altrimenti chiedi quale fra i candidati simili (omonimi/quasi-omonimi).
+      const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
+      if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
+      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
+      return _say('❓ Quale socio vuoi aggiornare? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+    }
+    function _continueAnaPick(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      const matches = aiFlowState.matches || [], changes = aiFlowState.changes || {};
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      let pick = null;
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < matches.length) pick = matches[i].member; }
+      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
+      aiFlowState = null;
+      return _anaUpdateWithTarget(pick, changes);
+    }
+    function _anaUpdateWithTarget(member, changes) {
+      if (!member) return _say('Socio non trovato.');
+      if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
+      return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “uomo/donna”.');
+    }
+    function _continueAnaChanges(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, niente modifiche.'); }
+      const target = aiFlowState.target;
+      const changes = _anaExtractChanges(text);
+      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “uomo/donna”.');
+      aiFlowState = null;
+      return _showAnaUpdateSummary(target, changes);
+    }
+    function _showAnaUpdateSummary(member, changes) {
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'confirm', target: member, changes: changes };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso' };
+      const rows = Object.keys(changes).map(function (k) {
+        const oldV = (k === 'gender') ? _anaGenderLabel(member.gender) : (k === 'level' ? String(member.level || '—') : (member[k] || '—'));
+        const newV = (k === 'gender') ? _anaGenderLabel(changes.gender) : (k === 'level' ? String(changes.level) : changes[k]);
+        return (lbl[k] || k) + ': <span style="color:#98a2b3">' + _escapeHtml(String(oldV || '—')) + '</span> → <strong>' + _escapeHtml(String(newV)) + '</strong>';
+      });
+      let html = '📋 <strong>Aggiorna ' + _escapeHtml(playerFullName(member)) + '</strong><br>' + rows.join('<br>');
+      html += '<br><span style="color:#98a2b3;font-size:12px">Salvo in anagrafica e su Supabase <strong>(non su Matchpoint)</strong>. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+
+    // ── Conferma + esecuzione (Locale + Cloud) ──────────────────────────────────
+    function _anaAppendConfirmButtons(div) {
+      if (!div || !div.appendChild) return;
+      const snap = aiFlowState; // {op, draft | target+changes}
+      const wrap = document.createElement('div'); wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e salva';
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
+      yes.addEventListener('click', function () { if (yes.disabled) return; yes.disabled = true; no.disabled = true; yes.classList.add('selected'); aiFlowState = null; _anaExecute(snap); });
+      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say('❌ Operazione annullata.'); });
+      wrap.appendChild(yes); wrap.appendChild(no); div.appendChild(wrap);
+    }
+    function _confirmAnagraficaAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say('❌ Operazione annullata.'); }
+      if (/( si | sì | conferm\w*| confermo| ok | va bene | vabene | procedi | certo | salva )/.test(n)) { const snap = aiFlowState; aiFlowState = null; return _anaExecute(snap); }
+      return _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+    }
+    function _anaExecute(snap) {
+      if (!snap) return;
+      return snap.op === 'update' ? _anaExecuteUpdate(snap.target, snap.changes) : _anaExecuteCreate(snap.draft);
+    }
+    function _anaExecuteCreate(draft) {
+      try {
+        const norm = (typeof normalizeImportedPlayerNameParts === 'function') ? normalizeImportedPlayerNameParts(draft.firstName, draft.surname) : { firstName: draft.firstName, surname: draft.surname };
+        const firstName = norm.firstName, surname = norm.surname;
+        const fullName = compactSpaces((firstName + ' ' + surname).trim());
+        const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+        if (!firstName || (!surname && !guest)) return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.');
+        const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: draft.email || '' };
+        if (typeof findMatchingMemberIndex === 'function' && findMatchingMemberIndex(candidate) >= 0) return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        const now = new Date().toISOString();
+        const newMember = ensureMemberId({
+          id: makeId(), memberId: '', firstName: firstName, surname: surname, name: fullName,
+          phone: draft.phone || '', email: draft.email || '',
+          level: guest ? '' : parseLevel(draft.level, 3),
+          gender: guest ? 'NA' : (draft.gender || 'NA'),
+          guestJolly: guest, active: true, prefDays: [], prefHours: [],
+          availabilityProfile: { time: '', days: '', frequency: '', notice: '', matchType: '', source: 'assistente AI', updatedAt: now },
+          createdAt: now, updatedAt: now
+        });
+        giocatori.push(newMember);
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
+        return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e sincronizzato su Supabase. <span style="color:#98a2b3;font-size:12px">(non inviato a Matchpoint)</span>');
+      } catch (err) {
+        return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
+      }
+    }
+    function _anaExecuteUpdate(member, changes) {
+      try {
+        const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
+        if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
+        const now = new Date().toISOString();
+        const next = Object.assign({}, giocatori[idx]);
+        if (changes.phone != null) next.phone = (typeof normalizePhone === 'function') ? normalizePhone(changes.phone) : changes.phone;
+        if (changes.email != null) next.email = changes.email;
+        if (changes.gender != null) next.gender = changes.gender;
+        if (changes.level != null) next.level = parseLevel(changes.level, 3);
+        next.updatedAt = now;
+        giocatori[idx] = next;
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(next, 'aggiornare il socio (assistente AI) su Supabase'); } catch (e) {}
+        return _say('✅ <strong>' + _escapeHtml(playerFullName(next)) + '</strong> aggiornato e sincronizzato su Supabase. <span style="color:#98a2b3;font-size:12px">(non inviato a Matchpoint)</span>');
+      } catch (err) {
+        return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
+      }
+    }
+
     function _capabilitiesShort() {
       return 'Per ora posso rispondere a domande tipo “<em>campi liberi sabato pomeriggio</em>”, “<em>chi gioca domani alle 18</em>”, “<em>prenotazioni di oggi sul campo 2</em>”.';
     }
@@ -40166,7 +40458,7 @@ Per confermare scrivi ELIMINA.`);
         '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
         '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
         '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
-        '<li class="soon"><strong>Anagrafica</strong> giocatori — in arrivo</li>',
+        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase, non su Matchpoint)</li>',
         '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
       ].join('');
     }
