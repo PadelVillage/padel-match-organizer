@@ -2845,9 +2845,11 @@
       .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
       .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
-      /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile */
-      .svc-chat-panel, .svc-chat-panel * { font-size:21px !important; }
-      .svc-chat-panel select, .svc-chat-panel input { padding:8px 10px !important; }
+      /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile.
+         ECCEZIONE: la schedina di prenotazione (.svc-flow-card) si auto-dimensiona in modo
+         ADATTIVO (vedi svcOpenBookingCard), quindi va esclusa da queste uniformità !important. */
+      .svc-chat-panel, .svc-chat-panel *:not(.svc-flow-card):not(.svc-flow-card *) { font-size:21px !important; }
+      .svc-chat-panel select:not(.svc-flow-card *), .svc-chat-panel input:not(.svc-flow-card *) { padding:8px 10px !important; }
       /* Equilibrio dimensioni: messaggi/azioni assistente in armonia con la schedina (solo mobile) */
       .svc-msg { font-size:21px; }
       .svc-msg-label { font-size:12px; }
@@ -7601,7 +7603,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.790';
+    const APP_VERSION = '5.791';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38530,15 +38532,25 @@ Per confermare scrivi ELIMINA.`);
     ];
     const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
 
-    // Leggibilità: su mobile (<900px) testi/controlli un po' più grandi; desktop invariato.
-    const M = (window.innerWidth || 999) < 900;
-    const FS  = { title:M?29:15, label:M?22:12, ctrl:M?24:14, btn:M?23:13, date:M?22:13, fine:M?22:12, chip:M?22:13, sugg:M?22:13, foot:M?24:14, x:M?30:16, plus:M?30:16 };
-    const PAD = { ctrl:M?'12px 14px':'6px 8px', pill:M?'11px 18px':'5px 11px', tipo:M?'12px 18px':'6px 11px', gioc:M?'13px 16px':'7px 10px', foot:M?'15px 22px':'8px 14px', sugg:M?'14px 16px':'8px 10px' };
+    // Leggibilità ADATTIVA: testi/controlli scalano in modo fluido sulla LARGHEZZA REALE del
+    // contenitore (non sul device). Estremi preservati: contenitore stretto (~320px, es. sidebar
+    // desktop) → compatto; largo (~560px, es. sheet mobile) → comodo; in mezzo interpola.
+    const _cw = (cont.clientWidth || 0);
+    // Se il contenitore è misurabile interpola sulla sua larghezza; altrimenti (raro: pannello non
+    // ancora layout-ato) si ripiega sull'euristica device originale (≥900px desktop → compatto).
+    const _t  = _cw > 0
+      ? Math.max(0, Math.min(1, (_cw - 320) / (560 - 320)))
+      : ((window.innerWidth || 999) < 900 ? 1 : 0);
+    const _l  = function(a,b){ return Math.round(a + (b - a) * _t); };
+    const _lp = function(a,b){ return _l(a,b) + 'px'; };
+    const FS  = { title:_l(15,29), label:_l(12,22), ctrl:_l(14,24), btn:_l(13,23), date:_l(13,22), fine:_l(12,22), chip:_l(13,22), sugg:_l(13,22), foot:_l(14,24), x:_l(16,30), plus:_l(16,30) };
+    const PAD = { ctrl:_lp(6,12)+' '+_lp(8,14), pill:_lp(5,11)+' '+_lp(11,18), tipo:_lp(6,12)+' '+_lp(11,18), gioc:_lp(7,13)+' '+_lp(10,16), foot:_lp(8,15)+' '+_lp(14,22), sugg:_lp(8,14)+' '+_lp(10,16) };
     const inSel = 'width:100%;font-size:'+FS.ctrl+'px;padding:'+PAD.ctrl+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
 
     const card = document.createElement('div');
     card.classList.add('svc-flow-card');
-    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;';
+    // text-size-adjust:100% → niente font-boosting del browser, così le misure fluide sono onorate 1:1.
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
 
     const head = document.createElement('div'); head.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px;';
     const dot = document.createElement('span'); dot.style.cssText='width:11px;height:11px;border-radius:50%;flex-shrink:0;';
@@ -38604,7 +38616,7 @@ Per confermare scrivi ELIMINA.`);
     const noteLblRow=document.createElement('div');
     noteLblRow.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px;';
     const noteLblTxt=document.createElement('span');
-    noteLblTxt.style.cssText='font-size:'+FS.lbl+'px;color:var(--text-muted);font-weight:500;';
+    noteLblTxt.style.cssText='font-size:'+FS.label+'px;color:var(--text-muted);font-weight:500;';
     noteLblTxt.textContent='Note';
     const noteHint=document.createElement('span');
     noteHint.style.cssText='font-size:11px;color:var(--text-muted);opacity:0.7;';
