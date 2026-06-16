@@ -7586,7 +7586,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.774';
+    const APP_VERSION = '5.775';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39528,17 +39528,35 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // ── Dettatura vocale nella chat (Web Speech API it-IT) ──────────────────────
-    let _rec = null, _dictating = false;
+    let _rec = null, _dictating = false, _dictHintShown = false;
+    function _dictStop(btn) {
+      _dictating = false;
+      if (btn) { btn.classList.remove('recording'); btn.title = 'Detta un comando'; }
+      const i = document.getElementById('svcChatInput'); if (i) i.focus();
+      try { svcChatRefreshComposer(); } catch (e) {}
+    }
     function toggleDictation() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       const btn = document.getElementById('svcAiMicBtn');
-      if (!SR) { _say('🎤 Dettatura vocale non supportata da questo browser.'); return; }
-      if (_dictating) { try { _rec && _rec.stop(); } catch (e) {} _dictating = false; if (btn) btn.classList.remove('recording'); return; }
+      const input = document.getElementById('svcChatInput');
+      if (!SR) { _say('🎤 Dettatura vocale non supportata da questo browser. Puoi scrivere il comando.'); return; }
+      if (_dictating) { try { _rec && _rec.stop(); } catch (e) {} _dictStop(btn); return; }
+      // mantieni l'eventuale testo già presente e accoda la dettatura
+      const base = (input && input.value) ? (input.value.replace(/\s+$/, '') + ' ') : '';
       _rec = new SR(); _rec.lang = 'it-IT'; _rec.continuous = true; _rec.interimResults = true;
-      _rec.onresult = function (e) { const tr = Array.from(e.results).map(function (r) { return r[0].transcript; }).join(''); const i = document.getElementById('svcChatInput'); if (i) i.value = tr; };
-      _rec.onerror = function () { _dictating = false; if (btn) btn.classList.remove('recording'); };
-      _rec.onend = function () { _dictating = false; if (btn) btn.classList.remove('recording'); };
-      try { _rec.start(); _dictating = true; if (btn) btn.classList.add('recording'); } catch (e) {}
+      _rec.onresult = function (e) {
+        const tr = Array.from(e.results).map(function (r) { return r[0].transcript; }).join('');
+        const i = document.getElementById('svcChatInput');
+        if (i) { i.value = base + tr; try { svcChatRefreshComposer(); } catch (e) {} }   // fa crescere il box mentre detti
+      };
+      _rec.onerror = function () { _dictStop(btn); };
+      _rec.onend = function () { _dictStop(btn); };
+      try {
+        _rec.start(); _dictating = true;
+        if (btn) { btn.classList.add('recording'); btn.title = 'Tocca per fermare la dettatura'; }
+        try { svcChatToggleAction(); } catch (e) {}   // tieni il mic visibile come "stop"
+        if (!_dictHintShown) { _dictHintShown = true; _say('🎤 Sto ascoltando… parla pure. Quando hai finito <strong>tocca di nuovo il microfono</strong> per fermare, poi premi <strong>➤</strong> (o Invio) per inviare.'); }
+      } catch (e) {}
     }
 
     // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
@@ -39591,8 +39609,11 @@ Per confermare scrivi ELIMINA.`);
     const send = document.getElementById('svcChatSend');
     const mic = document.getElementById('svcAiMicBtn');
     if (!input || !send) return;
+    const recording = !!(mic && mic.classList.contains('recording'));
     const hasText = !!(input.value && input.value.trim());
-    const showMic = !!mic && !hasText && !input.disabled;
+    // Durante la dettatura il mic resta visibile (serve a FERMARE). Altrimenti: mic se il
+    // campo è vuoto, freccia d'invio se c'è testo.
+    const showMic = !!mic && (recording || (!hasText && !input.disabled));
     if (mic) mic.style.display = showMic ? 'flex' : 'none';
     send.style.display = showMic ? 'none' : 'flex';
   }
