@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.794';
+    const APP_VERSION = '5.795';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39318,6 +39318,70 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) { return false; }
     }
 
+    // ── Comprensione Fase 2: fallback LLM (edge ai-parse / Gemini) ───────────────
+    // Ibrido: le REGOLE sono il primo passo (veloce, offline). Solo se la loro
+    // confidenza è sotto soglia chiamiamo l'edge ai-parse, che capisce frasi nuove.
+    // Privacy: all'edge va SOLO il testo + la data odierna; MAI l'archivio soci.
+    // Se l'edge fallisce o va in timeout → si torna alle regole (l'app non si rompe).
+    const AI_PARSE_THRESHOLD = 0.75;
+
+    async function _callAiParse(text) {
+      const accessToken = (typeof pmoGetSupabaseStaffAccessToken === 'function')
+        ? await pmoGetSupabaseStaffAccessToken() : null;
+      if (!accessToken) return null;
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ai-parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ text: text, context: { today: _todayIso() } })
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      if (!resp.ok || !data || data.ok === false) return null;
+      return data; // { intent, slots, confidence, missing, source:'gemini' }
+    }
+
+    // Fonde il risultato LLM su quello a regole: l'LLM "vince" sugli slot che fornisce,
+    // e allinea anche `parsed` (che gli esecutori usano con priorità via `p.x || slots.x`).
+    function _mergeLlmResult(ruleRes, llm) {
+      const ls = llm.slots || {};
+      const slots = Object.assign({}, ruleRes.slots || {}, ls);
+      const parsed = Object.assign({}, ruleRes.parsed || {});
+      if (ls.court != null) parsed.campoNum = ls.court;
+      if (ls.time) parsed.ora = ls.time;
+      if (ls.timeEnd) parsed.oraFine = ls.timeEnd;
+      if (ls.duration != null) parsed.durata = ls.duration;
+      if (ls.type) parsed.tipo = ls.type;
+      if (ls.instructor) parsed.istruttore = ls.instructor;
+      if (ls.who) parsed.nome = ls.who;
+      return {
+        intent: llm.intent || ruleRes.intent,
+        slots: slots,
+        confidence: (typeof llm.confidence === 'number') ? llm.confidence : ruleRes.confidence,
+        missing: Array.isArray(llm.missing) ? llm.missing : ruleRes.missing,
+        parsed: parsed,
+        source: 'gemini'
+      };
+    }
+
+    // Regole-first; LLM solo sotto soglia. Mostra "sto pensando…" durante la chiamata.
+    async function _parseWithAi(text) {
+      const ruleRes = parse(text);
+      if (!ruleRes || ruleRes.confidence >= AI_PARSE_THRESHOLD) return ruleRes;
+      let thinkingEl = null;
+      try {
+        thinkingEl = _say('💭 Sto pensando…', 'svc-thinking');
+        const llm = await _callAiParse(text);
+        if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+        if (llm && (llm.intent || (llm.slots && Object.keys(llm.slots).length))) {
+          return _mergeLlmResult(ruleRes, llm);
+        }
+      } catch (e) {
+        if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+      }
+      return ruleRes;
+    }
+
     // ── Date/ora ─────────────────────────────────────────────────────────────
     function _todayIso() {
       return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
@@ -39479,7 +39543,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // ── Handler conversazionale ────────────────────────────────────────────────
-    function handle(text) {
+    async function handle(text) {
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
@@ -39501,7 +39565,7 @@ Per confermare scrivi ELIMINA.`);
         if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
         if (aiFlowState.stage === 'await') return _continuePrenota(t);
       }
-      const res = parse(t);
+      const res = await _parseWithAi(t);
       _logInteraction(t, res);
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
