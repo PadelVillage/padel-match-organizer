@@ -7607,7 +7607,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.796';
+    const APP_VERSION = '5.797';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39291,6 +39291,8 @@ Per confermare scrivi ELIMINA.`);
     //   { stage:'await', draft, need:['court','time',…] }  → mancano slot, sto chiedendo
     //   { stage:'confirm', draft }                          → riepilogo mostrato, attendo OK
     let aiFlowState = null;
+    let _aiFlowAt = 0;                       // timestamp dell'ultimo messaggio (scadenza flusso)
+    const AI_FLOW_TTL_MS = 5 * 60 * 1000;    // 5 min: un flusso in sospeso ripreso più tardi riparte pulito
 
     function _rules() {
       return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
@@ -39559,13 +39561,18 @@ Per confermare scrivi ELIMINA.`);
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
+      // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.
+      const _now = (Date.now ? Date.now() : new Date().getTime());
+      if (aiFlowState && _aiFlowAt && (_now - _aiFlowAt) > AI_FLOW_TTL_MS) aiFlowState = null;
+      _aiFlowAt = _now;
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        const _stage = aiFlowState.stage;
-        // Un comando chiaramente NUOVO durante la raccolta dati (await) o la scelta (pick)
-        // abbandona il flusso in sospeso, così non viene scambiato per una risposta.
-        if ((_stage === 'await' || _stage === 'pick') && _looksLikeNewCommand(t)) {
+        // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
+        // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
+        // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
+        if (_looksLikeNewCommand(t)) {
           aiFlowState = null;
         } else {
           const _k = aiFlowState.kind || 'prenota';
