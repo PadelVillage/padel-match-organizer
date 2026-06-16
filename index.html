@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.813';
+    const APP_VERSION = '5.814';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39591,41 +39591,385 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // ── Parse pubblica: { intent, slots, confidence, missing, parsed } ──────────
+    // ════════════════════════════════════════════════════════════════════════
+    // INTERPRETAZIONE — regole A–I del brief. Arricchisce parse() con azione,
+    // tipo evento, giocatori e gli STATI: needsType (D), needsSurname (A),
+    // ospite (B), needsInstructor, ko/koReason (E), confirmMassive (F).
+    // Sola lettura: nessuna esecuzione, nessuna scrittura.
+    // ════════════════════════════════════════════════════════════════════════
+    // §4 — decisioni di comportamento confermate (flag modificabili):
+    const PMO_PARSER_FLAGS = {
+      ospiteAnnunciato: true, // §4.1 — "ho messo: ospite" nel riepilogo, non in silenzio
+      cognomeSempre:    true, // §4.2 — chiede il cognome anche con match unico a sistema
+      tipoSempre:       true  // §4.3 — chiede "partita o lezione?" se il tipo non è scritto
+    };
+    function _pad2(x) { x = String(x); return x.length < 2 ? ('0' + x) : x; }
+    const _PMO_EDIT_STOP = new Set(['la', 'lo', 'il', 'le', 'i', 'gli', 'un', 'uno', 'una', 'al', 'alla', 'allo', 'alle', 'nella', 'nello', 'dalla', 'dallo', 'in', 'su', 'sul', 'sulla', 'di', 'da', 'a', 'per', 'con', 'e', 'ed', 'partita', 'lezione', 'prenotazione', 'match', 'campo', 'socio', 'giocatore', 'giocatori', 'maestro', 'maestra', 'domani', 'dopodomani', 'oggi', 'stasera', 'sera', 'pomeriggio', 'mattina', 'notte', 'ora', 'ore', 'h']);
+    function _pmoIsStop(w) { return !w || _PMO_EDIT_STOP.has(w) || /^\d+$/.test(w); }
+
+    // Rule H — dialetto/abbreviazioni → forma estesa (lowercase, senza accenti).
+    function _ppDialect(text) {
+      let s = ' ' + _norm(text) + ' ';
+      s = s.replace(/\bbuta\s+dentro\b/g, ' aggiungi ');
+      s = s.replace(/\bde\s+sera\b/g, ' di sera ');
+      s = s.replace(/\bcmp\s*([1-4])\b/g, ' campo $1 ').replace(/\bcmp\b/g, ' campo ');
+      s = s.replace(/\bc\s*([1-4])\b/g, ' campo $1 ');
+      s = s.replace(/\b(dman|doman)\b/g, ' domani ');
+      s = s.replace(/\bcanc\b/g, ' annulla ');
+      s = s.replace(/\bagg\b/g, ' aggiungi ');
+      s = s.replace(/\blez\b/g, ' lezione ');
+      s = s.replace(/\bpart\b/g, ' partita ');
+      s = s.replace(/\bsanti\b/g, ' santiago ');
+      s = s.replace(/\bx\b/g, ' per ');
+      s = s.replace(/\blun\b/g, ' lunedi ').replace(/\bmar\b/g, ' martedi ').replace(/\bmer\b/g, ' mercoledi ')
+           .replace(/\bgio\b/g, ' giovedi ').replace(/\bven\b/g, ' venerdi ').replace(/\bsab\b/g, ' sabato ').replace(/\bdom\b/g, ' domenica ');
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // Campo 1–4. {campo} oppure {koCampo:true} se fuori range.
+    const _NUMW14 = { uno: 1, una: 1, due: 2, tre: 3, quattro: 4 };
+    function _campoX(tx) {
+      let m = tx.match(/\bcampo\s*(\d{1,2})\b/);
+      if (m) { const c = +m[1]; return (c >= 1 && c <= 4) ? { campo: c } : { koCampo: true, campoRaw: c }; }
+      m = tx.match(/\bcampo\s+(uno|una|due|tre|quattro)\b/);
+      if (m) return { campo: _NUMW14[m[1]] };
+      m = tx.match(/\b(?:sul|sullo|sulla|sui|su)\s+(\d{1,2})\b/);
+      if (m) { const c = +m[1]; if (c >= 1 && c <= 4) return { campo: c }; if (c > 4) return { koCampo: true, campoRaw: c }; }
+      m = tx.match(/\bil\s+([1-4])\b/); // "il 2" piccolo → campo (ambiguo, ma utile)
+      if (m) return { campo: +m[1] };
+      // ultimo tentativo (telegrafico "…rossi 2…"): un 1–4 isolato NON preceduto da una
+      // preposizione oraria (così non prende "alle 4") → campo.
+      const t2 = tx.replace(/\b(?:alle|dalle|dall'|delle|dell'|ore|ora|h)\s*\d{1,2}(?::\d{2})?/g, ' ');
+      m = t2.match(/(?:^|\s)([1-4])(?=\s|$)/);
+      if (m) return { campo: +m[1] };
+      return {};
+    }
+
+    // Data. {iso} | {koPast} | {koDate}. weekdayUsed = un giorno-settimana è stato usato.
+    const _MESI = { gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6, luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12 };
+    function _validYmd(y, mo, d) { const dt = new Date(y, mo - 1, d); return dt.getFullYear() === y && (dt.getMonth() + 1) === mo && dt.getDate() === d; }
+    function _dateX(tx, baseIso) {
+      if (/\bdopodomani\b/.test(tx)) return { iso: _addDays(baseIso, 2) };
+      if (/\bdomani\b/.test(tx)) return { iso: _addDays(baseIso, 1) };
+      if (/\bieri\b/.test(tx)) return { koPast: true };
+      if (/\b(oggi|stasera|stanotte|stamattina|stamane|stamani)\b/.test(tx)) return { iso: baseIso };
+      let m = tx.match(/\b(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/);
+      if (m) {
+        const d = +m[1], mo = _MESI[m[2]]; let y = +baseIso.slice(0, 4);
+        if (!_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (iso < baseIso) iso = (y + 1) + '-' + _pad2(mo) + '-' + _pad2(d);
+        return { iso };
+      }
+      m = tx.match(/\b(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/);
+      if (m) {
+        const d = +m[1], mo = +m[2]; let y = m[3] ? (m[3].length === 2 ? 2000 + (+m[3]) : (+m[3])) : (+baseIso.slice(0, 4));
+        if (mo < 1 || mo > 12 || !_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (!m[3] && iso < baseIso) iso = (y + 1) + '-' + _pad2(mo) + '-' + _pad2(d);
+        return { iso };
+      }
+      m = tx.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+      if (m) { const y = +m[1], mo = +m[2], d = +m[3]; if (!_validYmd(y, mo, d)) return { koDate: true }; const iso = y + '-' + _pad2(mo) + '-' + _pad2(d); return iso < baseIso ? { koPast: true } : { iso }; }
+      for (const k in _GIORNI) {
+        if (new RegExp('\\b' + k + '\\b').test(tx)) {
+          let iso = _nextWeekday(baseIso, _GIORNI[k]);
+          if (/\bprossim/.test(tx) && iso <= _addDays(baseIso, 6)) iso = _addDays(iso, 7);
+          return { iso: iso, weekdayUsed: true };
+        }
+      }
+      m = tx.match(/\bil\s+(\d{1,2})\b/); // giorno del mese
+      if (m) {
+        const d = +m[1]; let y = +baseIso.slice(0, 4), mo = +baseIso.slice(5, 7);
+        if (!_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (iso < baseIso) { mo++; if (mo > 12) { mo = 1; y++; } iso = y + '-' + _pad2(mo) + '-' + _pad2(d); }
+        return { iso };
+      }
+      return {};
+    }
+
+    // Orario. {ora, oraFine, durata, koOrder}. Riceve testo GIÀ ripulito di campo/data.
+    function _timeX(raw) {
+      let t = ' ' + String(raw || '') + ' ';
+      if (/\b(tra|fra)\s+un'?\s*ora\b/.test(t)) {
+        const d = new Date(); d.setMinutes(d.getMinutes() + 60);
+        const ora = _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+      }
+      t = t.replace(/\bun'?\s*ora\s+e\s+mezz[ao]\b/g, ' 1 ora e mezza ');
+      t = t.replace(/\bmezzogiorno\b/g, ' 12 ').replace(/\bmezzanotte\b/g, ' 0 ');
+      Object.keys(_NUMWORD).forEach(function (w) { t = t.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ' + _NUMWORD[w] + ' '); });
+      t = t.replace(/\b(\d{1,2})\s+e\s+mezz[ao]\b/g, '$1:30').replace(/\b(\d{1,2})\s+e\s+un\s+quarto\b/g, '$1:15').replace(/\b(\d{1,2})\s+e\s+tre\s+quarti\b/g, '$1:45');
+      const eve = /\b(di\s+sera|della\s+sera|sera)\b/.test(t);
+      const pom = /\bpomeriggio\b/.test(t);
+      const dur90 = /\b1\s+ora\s+e\s+mezz/.test(t);
+      function shift(h) { return ((eve || pom) && h >= 1 && h <= 11) ? h + 12 : h; }
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) {
+        const h1 = shift(+m[1]), n1 = +(m[2] || 0), h2 = shift(+m[3]), n2 = +(m[4] || 0);
+        const dur = (h2 * 60 + n2) - (h1 * 60 + n1);
+        return { ora: _pad2(h1) + ':' + _pad2(n1), oraFine: _pad2(h2) + ':' + _pad2(n2), durata: dur, koOrder: dur <= 0 };
+      }
+      m = t.match(/\b(?:dalle|dall'|delle|dell'|dal)\s*(\d{1,2})(?:[:.](\d{2}))?\s+(?:alle|all'|fino\s+alle?)\s*(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) {
+        const h1 = shift(+m[1]), n1 = +(m[2] || 0), h2 = shift(+m[3]), n2 = +(m[4] || 0);
+        const dur = (h2 * 60 + n2) - (h1 * 60 + n1);
+        return { ora: _pad2(h1) + ':' + _pad2(n1), oraFine: _pad2(h2) + ':' + _pad2(n2), durata: dur, koOrder: dur <= 0 };
+      }
+      m = t.match(/\b(?:alle|dalle|dall'|delle|dell'|alla|ore|ora|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) {
+        let h = +m[1]; const n = +(m[2] || 0);
+        if (h < 0 || h > 23) return {};
+        h = shift(h);
+        const ora = _pad2(h) + ':' + _pad2(n);
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+      }
+      // bare-hour: primo numero plausibile come ORA (6–23), così non prende il numero del campo
+      const toks = t.match(/\b\d{1,2}(?::\d{2})?\b/g) || [];
+      for (let i = 0; i < toks.length; i++) {
+        const parts = toks[i].split(':'); let h = +parts[0]; const n = +(parts[1] || 0);
+        if (h >= 6 && h <= 23) { h = shift(h); const ora = _pad2(h) + ':' + _pad2(n); return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, bareHour: true }; }
+      }
+      return {};
+    }
+
+    // Tipo evento. {tipo, typePresent}.
+    function _typeX(tx, istruttore) {
+      if (/\bmanutenzion\w*\b/.test(tx)) return { tipo: 'manutenzione', typePresent: true };
+      if (/\blezion\w*\b|\bindividuale\b|\bdi\s+gruppo\b|\bmaestr\w*\b|\binsegnante\b/.test(tx) || istruttore) return { tipo: 'lezione', typePresent: true };
+      if (/\bpartit\w*\b|\bmatch\b/.test(tx)) return { tipo: 'partita', typePresent: true };
+      return { tipo: null, typePresent: false };
+    }
+
+    // Nomi dopo un verbo di modifica-giocatori ("aggiungi Luca", "togli Giovanni",
+    // "sostituisci Mario con Luca", "aggiungi Anna e Sara").
+    function _editNames(tx) {
+      const out = [];
+      let m = tx.match(/\b(?:aggiungi|aggiungere|metti|inserisci|togli|togliere|rimuovi|rimuovere|leva|levare|sostituisci|sostituisce|scambia)\s+([a-zà-ÿ]+)\b/);
+      if (m && !_pmoIsStop(m[1])) out.push(m[1]);
+      m = tx.match(/\bcon\s+([a-zà-ÿ]+)\b/);
+      if (m && !_pmoIsStop(m[1]) && out.indexOf(m[1]) < 0) out.push(m[1]);
+      m = tx.match(/\b([a-zà-ÿ]+)\s+e\s+([a-zà-ÿ]+)\b/);
+      if (m) { [m[1], m[2]].forEach(function (w) { if (!_pmoIsStop(w) && out.indexOf(w) < 0) out.push(w); }); }
+      return out;
+    }
+
+    // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
+    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|prossim\w*)$/;
+    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
+
+    // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
+    function _subjectName(tx) {
+      let m = tx.match(/\b(?:di|del|della|dell')\s+([a-zà-ÿ]+)\b/);
+      if (m && _pmoNameOk(m[1])) return m[1];
+      m = tx.match(/\b(?:partita|lezione)\s+(?:di\s+)?([a-zà-ÿ]+)\b/);
+      if (m && _pmoNameOk(m[1])) return m[1];
+      return '';
+    }
+
+    // Nomi giocatori in una prenotazione (dopo "per"/"con"/l'orario).
+    function _bookingNames(tx) {
+      const s = ' ' + tx + ' ';
+      let after = '';
+      let m = s.match(/\b(?:per|con)\s+(.+)$/);
+      if (m) after = m[1];
+      else {
+        m = s.match(/\b(?:alle|dalle|delle|ore|h)\s*\d{1,2}(?::\d{2})?\b(.*)$/) ||
+            s.match(/\b\d{1,2}[:.]?\d{0,2}\s*[-–]\s*\d{1,2}[:.]?\d{0,2}\b(.*)$/) ||
+            s.match(/\b\d{1,2}(?::\d{2})?\b(.*)$/);
+        if (m) after = m[1];
+      }
+      if (!after) return [];
+      const parts = after.split(/[,;&+]|\be\b|\bed\b/);
+      const names = [];
+      parts.forEach(function (p) {
+        const toks = p.split(/\s+/).map(function (w) { return w.trim(); }).filter(_pmoNameOk);
+        if (toks.length) names.push(toks.join(' '));
+      });
+      return names;
+    }
+
+    function _isQuestion(tx, raw) {
+      if (/\?/.test(raw)) return true;
+      if (/\b(chi|quando|quali|quanti|quante|quanto|cosa|dove|quale)\b/.test(tx)) return true;
+      if (/\bche\s+(ora|prenotazion|partit|lezion)/.test(tx) || /\ba\s+che\s+ora\b/.test(tx)) return true;
+      if (/\bcamp\w*\s+(liber\w*|disponib\w*|prenotabil\w*|vuot\w*)\b/.test(tx) || /\b(liber\w*|disponib\w*)\b.*\bcamp/.test(tx)) return true;
+      if (/\bgioca\b/.test(tx)) return true;
+      if (/\bc'?e\b.*\blezion/.test(tx)) return true;
+      if (/\b(mostr\w*|elenc\w*|dimmi|vedi|visualizz\w*)\b/.test(tx)) return true;
+      return false;
+    }
+
+    // Rileva SOLO un maestro noto (lista + fuzzy). NON usa "con X" generico (eviterebbe di
+    // scambiare "con Luca" per un istruttore in una partita).
+    function _maestroDetect(tx) {
+      const list = _maestri();
+      for (let i = 0; i < list.length; i++) { if (new RegExp('\\b' + _escapeReg(_norm(list[i])) + '\\b').test(tx)) return list[i]; }
+      try {
+        const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
+        for (const k in fuzzy) { if (new RegExp('\\b' + _escapeReg(_norm(k)) + '\\b').test(tx)) return fuzzy[k]; }
+      } catch (e) {}
+      return '';
+    }
+    // Nome socio in un comando anagrafica ("socio Mario Rossi" → "mario rossi"), per regola A.
+    function _anaSubjName(tx) {
+      const m = tx.match(/\b(?:socio|socia|giocatore|giocatrice|cliente)\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)/);
+      return m ? m[1].trim() : '';
+    }
+
+    // Cuore dell'interpretazione: decide azione, tipo, giocatori e gli stati delle regole.
+    function _enrichInterpret(text, baseIso, c) {
+      const tx = _ppDialect(text);
+      const cx = _campoX(tx);
+      const dx = _dateX(tx, baseIso);
+      const istruttore = _maestroDetect(tx);
+      const ty = _typeX(tx, istruttore);
+      // testo per l'orario: tolgo campo e date così il bare-hour non prende quei numeri.
+      // Le date le rimuovo SOLO se con "/" (le date con "." si confondono con gli orari "18.00").
+      let timeText = tx
+        .replace(/\bcampo\s*\d+\b/g, ' ').replace(/\bcampo\s+(uno|una|due|tre|quattro)\b/g, ' ')
+        .replace(/\b(?:sul|sullo|sulla|sui|su)\s+\d+\b/g, ' ').replace(/\bil\s+\d{1,2}\b/g, ' ')
+        .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ' ')
+        .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, ' ')
+        .replace(/\b\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/g, ' ');
+      const tmx = _timeX(timeText);
+
+      const isQuestion = _isQuestion(tx, text);
+      const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
+      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
+      const editNames = (addV || remV || replV) ? _editNames(tx) : [];
+      const hasPerson = editNames.length > 0;
+      // verbo "prenotare" coniugato (NON il sostantivo "prenotazione/prenotazioni") + altri verbi di creazione
+      const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
+      // "metti/fai una partita|lezione" = CREA; "metti Marco nella lezione" = aggiunta giocatore
+      const createPhrase = bookVerb || /\b(metti|fai)\s+(?:un|uno|una|la|il|lo)\s+(?:partit\w*|lezion\w*|prenotazion\w*)\b/.test(tx) || /\bprenotazione\s+privat/.test(tx);
+      const cancelVerb = /\b(annulla|annullare|cancella|cancellare|disdici|disdire|elimina|eliminare)\b/.test(tx) || (remV && !hasPerson);
+      const modifyVerb = /\b(modific\w*|sposta\w*|spostare|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
+      const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
+      // "aggiungi/togli … ALLA/DALLA partita|lezione" = modifica dei giocatori (apre l'editor),
+      // anche senza un nome esplicito ("aggiungi un giocatore alla partita delle 18").
+      const editToExisting = /\b(alla|nella|dalla|all'|nell'|dall')\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
+      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting);
+      const anaStatus = /\bmoros\w*\b/.test(tx); // "X adesso è moroso" → scheda socio
+
+      // Domande su stato posti/roster e su lezioni multi-giorno (compat. assistente): sono
+      // INTERROGAZIONI anche senza punto di domanda, e devono battere il fallback "crea".
+      const rosterQ = /\bmancano?\b/.test(tx) || /\btutti\s+e\s+(quattro|4)\b/.test(tx) || /\bquant[ei]\s+giocator/.test(tx) || (/\bpost[oi]\b/.test(tx) && /\b(liber\w*|disponib\w*|partit\w*)\b/.test(tx));
+      const lessonsQ = /\blezion\w*\b/.test(tx) && /\b(prossim\w+|questa\s+settimana|settimana\s+prossima)\b/.test(tx);
+
+      // ── azione ──
+      let azione = null;
+      if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
+      else if (playerEdit) azione = 'giocatori';
+      if (!azione) {
+        if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
+        else if (cancelVerb) azione = 'annulla';
+        else if (modifyVerb && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
+        else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
+      }
+      if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
+
+      // ── giocatori (regola A/B) ──
+      let giocatori = [];
+      if (azione === 'giocatori') giocatori = editNames.slice();
+      else if (azione === 'crea') giocatori = _bookingNames(tx);
+      let ospite = false;
+      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'lezione' && ty.tipo !== 'manutenzione' && !giocatori.length) {
+        ospite = true; giocatori = ['Ospite'];
+      }
+      // soggetto di annulla/modifica ("la partita di Mario") → per il controllo cognome (regola A)
+      const subj = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') ? _subjectName(tx) : '';
+      const surnameNames = giocatori.slice(); if (subj) surnameNames.push(subj);
+      if (azione === 'anagrafica') { const an = _anaSubjName(tx); if (an) surnameNames.push(an); }
+      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre &&
+        (azione === 'crea' || azione === 'giocatori' || azione === 'anagrafica' || azione === 'annulla' || azione === 'modifica') &&
+        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; });
+
+      // ── tipo (regola D) ──
+      const needsType = PMO_PARSER_FLAGS.tipoSempre && !ty.typePresent &&
+        (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
+      const needsInstructor = (ty.tipo === 'lezione') && !istruttore && azione === 'crea';
+
+      // ── KO (regola E) ──
+      let ko = false, koReason = '';
+      if (cx.koCampo) { ko = true; koReason = 'campo inesistente (esistono i campi 1–4)'; }
+      else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
+      else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
+      else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
+
+      // ── azione massiva (regola F) ──
+      const confirmMassive = (azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx);
+
+      // ── serve chiarimento (DUBBIO) ──
+      // C: annulla/modifica/giocatori richiedono di INDIVIDUARE l'evento (campo + orario).
+      const needsLocate = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') && !(cx.campo && tmx.ora);
+      // Anagrafica CREA incompleta (senza telefono+email) → chiede il resto.
+      const anaCreate = azione === 'anagrafica' && /\b(aggiungi|nuov[oa]|crea|registra|inserisci)\b/.test(tx) && !/\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*)\b/.test(tx);
+      const needsMoreData = anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text));
+      // I: numero ambiguo ora/giorno ("lunedì 17", "sab 15") in un evento → chiedere.
+      const ambiguousDayHour = !!dx.weekdayUsed && !!tmx.bareHour && (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
+      const clarify = !ko && (needsType || needsSurname || needsInstructor || confirmMassive || needsLocate || needsMoreData || ambiguousDayHour ||
+        azione === 'modifica' || // modificare richiede sempre di confermare cosa cambia
+        (azione === 'crea' && (!cx.campo || !tmx.ora)));
+
+      return {
+        azione: azione, tipoEvento: ty.tipo || undefined, typePresent: ty.typePresent,
+        campo: cx.campo, data: dx.iso, oraInizio: tmx.ora, oraFine: tmx.oraFine, durata: tmx.durata,
+        istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
+        needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
+        needsLocate: needsLocate, needsMoreData: needsMoreData,
+        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion
+      };
+    }
+
+    // ── Parse pubblica ───────────────────────────────────────────────────────
     function parse(text) {
       const baseIso = _todayIso();
       const c = _classify(text);
-      let intent = c.intent;
       let parsed = null;
       try { if (typeof staffCalParseBookingText === 'function') parsed = staffCalParseBookingText(text, baseIso); } catch (e) {}
-      if ((!intent || c.score === 0) && parsed && parsed.campoNum) intent = 'PRENOTA';
       const n = _norm(text);
+      const E = _enrichInterpret(text, baseIso, c);
+
+      // intent (per i gestori conversazionali) derivato dall'azione interpretata
+      const AZ2INT = { interroga: 'TROVA', crea: 'PRENOTA', annulla: 'CANCELLA', modifica: 'CORREGGI', giocatori: 'CORREGGI', anagrafica: 'ANAGRAFICA' };
+      let intent = AZ2INT[E.azione] || c.intent;
+
       const slots = {};
-      const iso = _extractDate(n, baseIso); if (iso) slots.date = iso;
-      const campo = _extractCampo(n); if (campo) slots.court = campo;
-      const time = _extractTime(text); if (time) slots.time = time;
+      if (E.data) slots.date = E.data;
+      if (E.campo) slots.court = E.campo;
+      if (E.oraInizio) slots.time = E.oraInizio;
+      if (E.oraFine) slots.timeEnd = E.oraFine;
+      if (E.durata) slots.duration = E.durata;
+      if (E.tipoEvento) slots.type = E.tipoEvento;
+      if (E.istruttore) slots.instructor = E.istruttore;
       const days = _extractDays(n); if (days) slots.days = days;
       if (parsed) {
-        // Allinea la data del parser (che per "domani"/"dopodomani" usa toISOString, sfasato in
-        // fusi positivi) a quella corretta calcolata in locale.
         if (slots.date) parsed.data = slots.date;
-        if (parsed.tipo) slots.type = parsed.tipo;
-        if (parsed.istruttore) slots.instructor = parsed.istruttore;
-        if (parsed.ora) slots.time = slots.time || parsed.ora;
-        if (parsed.oraFine) slots.timeEnd = parsed.oraFine;
-        if (parsed.durata) slots.duration = parsed.durata;
         if (parsed.nome && parsed.nome !== 'Staff') slots.who = parsed.nome;
         if (parsed.ricorrenza) slots.recurring = parsed.ricorrenza.giorno;
       }
+
       let confidence = 0;
       if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0) + (slots.days ? 0.15 : 0));
-      if (intent === 'PRENOTA' && parsed && parsed.confidence) confidence = parsed.confidence;
-      // Una ANAGRAFICA chiara (verbo + contesto persona) è già gestita dalle regole con un
-      // dialogo che chiede i campi: non serve interpellare Gemini (evita "Sto pensando…" e
-      // latenza). Il +0.1 la porta sopra soglia. v5.813
-      if (intent === 'ANAGRAFICA') confidence = Math.min(0.95, confidence + 0.1);
+      if (E.azione) confidence = Math.max(confidence, 0.8); // azione interpretata con sicurezza → niente Gemini
+      if (E.ko) confidence = 0.9;
+
       const missing = [];
-      if (intent === 'PRENOTA') { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
-      return { intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed };
+      if (intent === 'PRENOTA' && !E.ko) { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
+
+      return {
+        intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed,
+        // ── interpretazione (regole A–I) ──
+        azione: E.azione, tipoEvento: E.tipoEvento,
+        campo: E.campo, data: E.data, oraInizio: E.oraInizio, oraFine: E.oraFine,
+        giocatori: E.giocatori, ospite: E.ospite,
+        needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
+        needsLocate: E.needsLocate, needsMoreData: E.needsMoreData,
+        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify
+      };
     }
 
     // Riconosce un comando chiaramente NUOVO (verbo d'azione iniziale), per non farlo
@@ -39677,6 +40021,12 @@ Per confermare scrivi ELIMINA.`);
       }
       const res = await _parseWithAi(t);
       _logInteraction(t, res);
+      // Regola E — input impossibile: rifiuta senza procedere.
+      if (res.ko) return _say('⛔ Non posso procedere: ' + _escapeHtml(res.koReason || 'richiesta non valida') + '. Controlla e riprova.');
+      // Regola F — azione massiva: chiedi conferma esplicita prima di toccare molte prenotazioni.
+      if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
+        return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
+      }
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
@@ -40743,7 +41093,12 @@ Per confermare scrivi ELIMINA.`);
         confidence: Number((res.confidence || 0).toFixed(2)),
         ruleConfidence: Number((rule.confidence || 0).toFixed(2)),
         slots: res.slots || {}, missing: res.missing || [],
-        llmError: llmError || ''
+        llmError: llmError || '',
+        // interpretazione regole A–I (dal parser a regole; l'LLM non le sovrascrive)
+        ko: !!rule.ko, koReason: rule.koReason || '',
+        needsType: !!rule.needsType, needsSurname: !!rule.needsSurname, needsInstructor: !!rule.needsInstructor,
+        ospite: !!rule.ospite, confirmMassive: !!rule.confirmMassive,
+        giocatori: Array.isArray(rule.giocatori) ? rule.giocatori : []
       };
       if (res.intent === 'PRENOTA') {
         try {
@@ -40811,6 +41166,17 @@ Per confermare scrivi ELIMINA.`);
         if (det.length) { L.push(''); det.forEach(function (x) { L.push(x); }); }
       }
       if (d.prenotaError) { L.push(''); L.push('⚠️ Errore interno: ' + d.prenotaError); }
+      // Stati delle regole A–I
+      if (d.ko) { L.push(''); L.push('⛔ NON VALIDO: ' + (d.koReason || 'richiesta impossibile') + '. Mi fermo e non procedo.'); }
+      else {
+        const need = [];
+        if (d.needsType) need.push('se è una partita o una lezione');
+        if (d.needsInstructor) need.push('con quale maestro');
+        if (d.needsSurname) need.push('nome e cognome del giocatore');
+        if (need.length) { L.push(''); L.push('❓ Prima di procedere ti chiederei: ' + need.join('; ') + '.'); }
+        if (d.confirmMassive) { L.push(''); L.push('⚠️ È un\'azione su molte prenotazioni: chiederei conferma prima di eseguire.'); }
+        if (d.ospite && !(d.prenota && d.prenota.giocatori && d.prenota.giocatori.length)) { L.push(''); L.push('👤 Nessun giocatore indicato: metto “Ospite”.'); }
+      }
       L.push('');
       L.push('✅ Se è tutto giusto, ottimo. ❌ Se ho sbagliato qualcosa, scrivilo qui sotto e premi 🐞 Segnala.');
       // Riga tecnica in fondo (serve a me quando incolli il report nella chat di supporto).
