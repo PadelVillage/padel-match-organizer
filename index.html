@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.810';
+    const APP_VERSION = '5.811';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39497,6 +39497,14 @@ Per confermare scrivi ELIMINA.`);
       return '';
     }
     function _extractCampo(n) { const m = n.match(/\bcampo\s*([1-4])\b/); return m ? parseInt(m[1], 10) : 0; }
+    // Range a più giorni: "prossimi 5 giorni" → 5, "prossima/questa settimana" → 7.
+    function _extractDays(n) {
+      let m = n.match(/prossim[ei]\s+(\d{1,2})\s+giorn/); if (m) return Math.min(30, parseInt(m[1], 10)) || null;
+      m = n.match(/(\d{1,2})\s+giorni/); if (m && /prossim/.test(n)) return Math.min(30, parseInt(m[1], 10)) || null;
+      if (/prossima\s+settimana|questa\s+settimana/.test(n)) return 7;
+      if (/prossim[ei]\s+giorni/.test(n)) return 7;
+      return null;
+    }
     function _dayLabel(iso) {
       let wd = '';
       try { if (typeof weekdayLabelFromISO === 'function') wd = weekdayLabelFromISO(iso); } catch (e) {}
@@ -39549,6 +39557,11 @@ Per confermare scrivi ELIMINA.`);
       const rosterCtx = /(^| )(mancano|manca|tutti +e +(quattro|4)|quattro +giocator\w*|quant[ei] +giocator\w*|giocator\w* +(mancant\w*|manca\w*)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))( |$)/.test(n);
       // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
       const anaCtx = (playerCtx || anaUpdateCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
+      // Domanda sulle LEZIONI di un maestro / su un range di giorni ("lezioni di Santiago dei
+      // prossimi 5 giorni") → DOMANDA (TROVA), purché non sia una prenotazione.
+      const lessonCtx = /(^| )lezion\w*( |$)/.test(n)
+        && (!!_detectIstruttore(text, n) || /(^| )(maestr\w*|istruttor\w*|insegnant\w*)( |$)/.test(n) || /(prossim\w*|settimana|giorni)/.test(n))
+        && !_BOOK_VERB.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -39559,7 +39572,7 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
         let s = score(cand[name]);
         if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
-        if (name === 'TROVA' && rosterCtx) s += 2;
+        if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
@@ -39583,6 +39596,7 @@ Per confermare scrivi ELIMINA.`);
       const iso = _extractDate(n, baseIso); if (iso) slots.date = iso;
       const campo = _extractCampo(n); if (campo) slots.court = campo;
       const time = _extractTime(text); if (time) slots.time = time;
+      const days = _extractDays(n); if (days) slots.days = days;
       if (parsed) {
         // Allinea la data del parser (che per "domani"/"dopodomani" usa toISOString, sfasato in
         // fusi positivi) a quella corretta calcolata in locale.
@@ -39596,7 +39610,7 @@ Per confermare scrivi ELIMINA.`);
         if (parsed.ricorrenza) slots.recurring = parsed.ricorrenza.giorno;
       }
       let confidence = 0;
-      if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0));
+      if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0) + (slots.days ? 0.15 : 0));
       if (intent === 'PRENOTA' && parsed && parsed.confidence) confidence = parsed.confidence;
       const missing = [];
       if (intent === 'PRENOTA') { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
@@ -39686,6 +39700,9 @@ Per confermare scrivi ELIMINA.`);
       const wantsRoster = /(mancano|manca|tutti +e +(quattro|4)|quattro +giocator|quant[ei] +giocator|giocator\w* +(mancant|manca)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))/.test(n)
         && /(partit|giocator|post[oi])/.test(n);
       if (wantsRoster) return _answerRoster(iso, dl, slots, n, all);
+      // Domanda sulle LEZIONI (di un maestro e/o su più giorni).
+      const wantsLessons = /\blezion\w*\b/.test(n) && (!!_detectIstruttore(text, n) || /\b(maestr\w*|istruttor\w*|insegnant\w*)\b/.test(n) || _extractDays(n));
+      if (wantsLessons) return _answerLessons(slots, n, text);
       const wantsFree = /\b(liber\w*|disponibil\w*|vuot\w*|prenotabil\w*|posto)\b/.test(n);
       if (wantsFree) return _answerFree(iso, dl, slots, n);
       return _answerBookings(iso, dl, slots, all);
@@ -39717,6 +39734,43 @@ Per confermare scrivi ELIMINA.`);
       });
       const head = '🎾 Partite ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + when + ':';
       return _say(head + '<br>' + items.join('<br>') + '<br><span style="opacity:.65;font-size:.85em">ℹ️ Conteggio sui giocatori indicati nella prenotazione (una partita = 4).</span>');
+    }
+
+    // Lezioni di un maestro e/o su un range di giorni ("lezioni di Santiago dei prossimi 5 giorni").
+    function _answerLessons(slots, n, text) {
+      const instr = _detectIstruttore(text, n);
+      const rangeDays = _extractDays(n);
+      const days = rangeDays || (slots.date ? 1 : 7);
+      const startIso = slots.date || _todayIso();
+      const found = [];
+      for (let d = 0; d < days; d++) {
+        const iso = _addDays(startIso, d);
+        const lst = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+        lst.forEach(function (r) {
+          if (!String(r.tipoReale || r.tipo || '').toLowerCase().includes('lez')) return;
+          if (instr && _norm(r.istruttore || '') !== _norm(instr)) return;
+          if (slots.court && Number(r.campo) !== Number(slots.court)) return;
+          found.push({ iso: iso, r: r });
+        });
+      }
+      const titWho = instr ? ' di ' + _escapeHtml(instr) : '';
+      const rangeLbl = rangeDays ? ('prossimi ' + days + ' giorni') : (slots.date ? _dayLabel(startIso) : ('prossimi ' + days + ' giorni'));
+      if (!found.length) return _say('✅ Nessuna lezione' + titWho + ' — ' + rangeLbl + '.');
+      const byDay = {};
+      found.forEach(function (f) { (byDay[f.iso] = byDay[f.iso] || []).push(f.r); });
+      const lines = Object.keys(byDay).sort().map(function (iso) {
+        const items = byDay[iso].sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); }).map(function (r) {
+          let names = [];
+          if (Array.isArray(r.giocatori) && r.giocatori.length) names = r.giocatori.map(function (g) { return typeof g === 'string' ? g : (g && g.nome || ''); }).filter(Boolean);
+          else names = String(r.nome || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+          const allievi = names.filter(function (x) { return !/^(ospite|staff)\b/i.test(x); });
+          const m = (r.istruttore && !instr) ? ' · maestro ' + _escapeHtml(r.istruttore) : '';
+          const who = allievi.length ? ' — ' + _escapeHtml(allievi.join(', ')) : '';
+          return '&nbsp;&nbsp;• <strong>' + r.ora + '</strong> Campo ' + r.campo + m + who;
+        });
+        return '<strong>' + _dayLabel(iso) + '</strong><br>' + items.join('<br>');
+      });
+      return _say('📚 Lezioni' + titWho + ' — ' + rangeLbl + ':<br>' + lines.join('<br>'));
     }
 
     function _slotGrid() { return (typeof staffCalSlots === 'function') ? staffCalSlots() : []; }
