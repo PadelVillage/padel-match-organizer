@@ -2826,16 +2826,15 @@
       .svc-chat-header { order:0; }
       .svc-chat-messages { order:1; flex-direction:column-reverse; }
       .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
-      /* Composer mobile allineato allo stile compatto del desktop, ma con misure
-         touch-friendly. 16px sull'input evita anche lo zoom automatico su iOS al focus.
-         NB: serve la specificità con .svc-chat-panel per battere il blanket
-         ".svc-chat-panel * { font-size:21px !important }" più sotto (che altrimenti
-         imporrebbe 21px anche all'input). I messaggi restano 21px (scelta voluta). */
-      .svc-chat-panel .svc-chat-input-row { height:auto !important; min-height:52px; padding:8px 10px !important; gap:8px; }
-      .svc-chat-panel .svc-chat-input { font-size:16px !important; padding:9px 13px !important; max-height:140px; }
-      .svc-chat-panel .svc-chat-send { width:40px !important; height:40px !important; padding:0 !important; }
-      .svc-chat-panel .svc-ai-mic { width:40px !important; height:40px !important; }
-      .svc-chat-panel .svc-chat-send svg, .svc-chat-panel .svc-ai-mic svg { width:20px !important; height:20px !important; }
+      /* Composer mobile: stesso stile pulito del desktop (pill + tasto tondo) ma con
+         testo GRANDE e leggibile (21px = come i bubble dei messaggi) e tasti touch.
+         Il box resta compatto perché il placeholder è corto (vedi svcSetInputMode/
+         initChatUI): l'autogrow allarga solo quando si scrive davvero. */
+      .svc-chat-panel .svc-chat-input-row { height:auto !important; min-height:56px; padding:8px 10px !important; gap:8px; align-items:flex-end; }
+      .svc-chat-panel .svc-chat-input { font-size:21px !important; line-height:1.3 !important; padding:9px 14px !important; max-height:140px; border-radius:20px; }
+      .svc-chat-panel .svc-chat-send { width:42px !important; height:42px !important; padding:0 !important; }
+      .svc-chat-panel .svc-ai-mic { width:42px !important; height:42px !important; }
+      .svc-chat-panel .svc-chat-send svg, .svc-chat-panel .svc-ai-mic svg { width:21px !important; height:21px !important; }
       /* ✕ flottante in alto a destra sopra i messaggi: niente più barra-testata bianca */
       .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
       .svc-chat-header::before { display:none; }
@@ -7595,7 +7594,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.779';
+    const APP_VERSION = '5.780';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38362,7 +38361,7 @@ Per confermare scrivi ELIMINA.`);
     if (mode === 'normal')       {
       if (window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
         input.disabled = false; send.disabled = false;
-        input.placeholder = '💬 Es: “prenota campo 2 domani 18-19:30” · “campi liberi sabato”';
+        input.placeholder = '💬 Scrivi o detta…';
       } else {
         input.placeholder = 'Clicca uno slot libero per prenotare ↑';
       }
@@ -39865,7 +39864,7 @@ Per confermare scrivi ELIMINA.`);
       const flowActive = (typeof svcFlowState !== 'undefined' && svcFlowState);
       if (!flowActive) {
         input.disabled = false; send.disabled = false;
-        input.placeholder = '💬 Es: “prenota campo 2 domani 18-19:30” · “campi liberi sabato”';
+        input.placeholder = '💬 Scrivi o detta…';
       }
       if (!document.getElementById('svcAiMicBtn')) {
         const mic = document.createElement('button');
@@ -39893,6 +39892,9 @@ Per confermare scrivi ELIMINA.`);
     const el = document.getElementById('svcChatInput');
     if (!el || el.tagName !== 'TEXTAREA') return;
     el.style.height = 'auto';
+    // Da vuoto: torna all'altezza CSS (una riga). Senza questo, alcuni browser
+    // includono il placeholder nello scrollHeight e il box vuoto risulta alto 2-3 righe.
+    if (!el.value) { el.style.height = ''; return; }
     const cap = (window.innerWidth < 900) ? 160 : 120;
     el.style.height = Math.min(el.scrollHeight, cap) + 'px';
   }
