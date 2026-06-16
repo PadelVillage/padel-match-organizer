@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.808';
+    const APP_VERSION = '5.809';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39490,7 +39490,7 @@ Per confermare scrivi ELIMINA.`);
       const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
       if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
-      m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      m = t.match(/\b(?:alle|dalle|dall'|dallo|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
       if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
       m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
       if (m) return String(m[1]).padStart(2, '0') + ':' + m[2];
@@ -39543,7 +39543,12 @@ Per confermare scrivi ELIMINA.`);
       const anaUpdateCtx = /(^| )(aggiorn\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*|aggiust\w*)( |$)/.test(n)
         && /(^| )(livell\w*|telefon\w*|email|e-mail|mail|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz\w*|contatt\w*|recapit\w*|cellulare|numero)( |$)/.test(n)
         && !/(^| )(camp[oi]|partit\w*|prenotazion\w*|lezion\w*|tornei?|slot)( |$)/.test(n);
-      const anaCtx = playerCtx || anaUpdateCtx;
+      // Domanda sul ROSTER di una partita ("mancano giocatori", "ci sono tutti e quattro",
+      // "quanti giocatori", "posti liberi nelle partite") → è una DOMANDA (TROVA), non
+      // anagrafica, anche se contiene la parola "giocatori".
+      const rosterCtx = /(^| )(mancano|manca|tutti +e +(quattro|4)|quattro +giocator\w*|quant[ei] +giocator\w*|giocator\w* +(mancant\w*|manca\w*)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))( |$)/.test(n);
+      // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
+      const anaCtx = (playerCtx || anaUpdateCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -39554,6 +39559,7 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
         let s = score(cand[name]);
         if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
+        if (name === 'TROVA' && rosterCtx) s += 2;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
@@ -39675,9 +39681,42 @@ Per confermare scrivi ELIMINA.`);
       const iso = slots.date || _todayIso();
       const dl = _dayLabel(iso);
       const all = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+      // Domanda sul ROSTER ("mancano giocatori", "ci sono tutti e quattro", "posti liberi
+      // nelle partite") → stato dei posti nelle PARTITE (una partita = 4 giocatori).
+      const wantsRoster = /(mancano|manca|tutti +e +(quattro|4)|quattro +giocator|quant[ei] +giocator|giocator\w* +(mancant|manca)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))/.test(n)
+        && /(partit|giocator|post[oi])/.test(n);
+      if (wantsRoster) return _answerRoster(iso, dl, slots, n, all);
       const wantsFree = /\b(liber\w*|disponibil\w*|vuot\w*|prenotabil\w*|posto)\b/.test(n);
       if (wantsFree) return _answerFree(iso, dl, slots);
       return _answerBookings(iso, dl, slots, all);
+    }
+
+    // "dalle 18 in poi" / "a partire dalle 18" / "dopo le 18" → fascia DA quell'ora in avanti.
+    function _isOnward(n) { return /\bin +poi\b/.test(n) || /\ba +partire\b/.test(n) || /\bdopo +le\b/.test(n); }
+
+    // Stato dei posti nelle PARTITE del giorno (una partita = 4 giocatori). Best-effort:
+    // conta i giocatori INDICATI nella prenotazione (per le partite Matchpoint spesso è solo
+    // l'intestatario, quindi il "mancano N" è una stima sui nomi presenti).
+    function _answerRoster(iso, dl, slots, n, all) {
+      let rows = (all || []).filter(function (r) { return !String(r.tipoReale || r.tipo || '').toLowerCase().includes('lez'); });
+      if (slots.court) rows = rows.filter(function (r) { return Number(r.campo) === Number(slots.court); });
+      const onward = _isOnward(n);
+      if (slots.time) rows = rows.filter(function (r) { return onward ? (r.ora || '') >= slots.time : (r.ora === slots.time); });
+      const when = (slots.time ? (onward ? ' dalle ' + slots.time + ' in poi' : ' alle ' + slots.time) : '');
+      if (!rows.length) return _say('✅ Nessuna partita ' + dl + (slots.court ? ' sul Campo ' + slots.court : '') + when + '.');
+      rows.sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); });
+      const items = rows.map(function (r) {
+        let names = [];
+        if (Array.isArray(r.giocatori) && r.giocatori.length) names = r.giocatori.map(function (g) { return typeof g === 'string' ? g : (g && g.nome || ''); }).filter(Boolean);
+        else names = String(r.nome || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        const real = names.filter(function (x) { return !/^(ospite|staff)\b/i.test(x); });
+        const count = real.length, free = Math.max(0, 4 - count);
+        const stato = free > 0 ? ' · <strong>mancano ' + free + '</strong>' : ' · ✅ al completo';
+        const who = real.length ? ' — ' + _escapeHtml(real.join(', ')) : '';
+        return '• <strong>' + r.ora + '</strong> Campo ' + r.campo + ': ' + count + '/4' + stato + who;
+      });
+      const head = '🎾 Partite ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + when + ':';
+      return _say(head + '<br>' + items.join('<br>') + '<br><span style="opacity:.65;font-size:.85em">ℹ️ Conteggio sui giocatori indicati nella prenotazione (una partita = 4).</span>');
     }
 
     function _slotGrid() { return (typeof staffCalSlots === 'function') ? staffCalSlots() : []; }
