@@ -5882,6 +5882,17 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-sbx-mic:hover { background:#f1f5fb; }
     .ai-sbx-mic.recording { background:#ffe3e3; border-color:#ff7a7a; animation:aiSbxPulse 1.1s infinite; }
     @keyframes aiSbxPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(255,90,90,.45);} 50%{ box-shadow:0 0 0 6px rgba(255,90,90,0);} }
+    .ai-reports-list { display:flex; flex-direction:column; gap:8px; }
+    .ai-rep-row { border:1px solid #eef2f7; border-left:3px solid #f5a623; border-radius:8px; padding:8px 10px; background:#fffdf8; }
+    .ai-rep-row.is-done { border-left-color:#22a06b; background:#f4fbf7; }
+    .ai-rep-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:3px; }
+    .ai-rep-badge { font-size:11px; font-weight:800; padding:1px 7px; border-radius:999px; }
+    .ai-rep-badge.open { color:#9a6400; background:#fff0d6; }
+    .ai-rep-badge.done { color:#0f7a52; background:#d8f5e7; }
+    .ai-rep-when { font-size:11px; color:#98a2b3; }
+    .ai-rep-text { color:#1f2937; font-size:13px; overflow-wrap:anywhere; }
+    .ai-rep-note { font-size:12px; color:#6b7280; margin-top:2px; }
+    .ai-rep-res { font-size:12px; color:#0f7a52; margin-top:4px; font-weight:600; }
     .ai-conv-report { background:none; border:0; cursor:pointer; font-size:13px; line-height:1; padding:2px 4px; border-radius:6px; opacity:.65; }
     .ai-conv-report:hover { opacity:1; background:#fef3f2; }
     .ai-conv-report:disabled { cursor:default; opacity:1; }
@@ -7175,8 +7186,13 @@ body.assessment-public-mode .assessment-public-only-card {
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>📋 Ultime interazioni</h3>
-          <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (finisce in Amministrazione → Parser Config).</p>
+          <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
           <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>🐞 Le mie segnalazioni</h3>
+          <p class="ai-admin-hint">Le frasi che hai segnalato con 🐞. <strong>🟠 Aperta</strong> = ancora da sistemare · <strong>✅ Risolta</strong> = corretta (con versione e nota di cosa è stato fatto). <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadMyReports()}catch(e){}">↻ Aggiorna</button></p>
+          <div id="aiReportsList" class="ai-reports-list"><div class="ai-admin-hint">—</div></div>
         </section>
       </div>
     </div>
@@ -7637,7 +7653,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.800';
+    const APP_VERSION = '5.801';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -34870,7 +34886,7 @@ Per confermare scrivi ELIMINA.`);
   })();
 
   // ── Log errori parser su Supabase (fire-and-forget) ───────────────────────
-  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser }) {
+  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser, origine }) {
     try {
       const cfg = await loadAssessmentSupabaseConfig();
       let accessToken = cfg.supabaseKey;
@@ -34892,7 +34908,8 @@ Per confermare scrivi ELIMINA.`);
           confidence: typeof confidence === 'number' ? confidence : null,
           error_message: error_message || null,
           versione_parser: versione_parser || PARSER_RULES?.versione || 'unknown',
-          admin_selected: false
+          admin_selected: false,
+          origine: origine || 'auto'
         })
       });
     } catch (e) {
@@ -40681,9 +40698,10 @@ Per confermare scrivi ELIMINA.`);
       try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
       try {
         if (typeof logParserError === 'function')
-          await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione });
-        if (st) { st.textContent = '✅ Segnalato. In Amministrazione → Parser Config.'; setTimeout(function () { st.textContent = ''; }, 4000); }
+          await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' });
+        if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
         if (noteEl) noteEl.value = '';
+        try { loadMyReports(); } catch (e) {}
       } catch (e) { if (st) st.textContent = '⚠️ Segnalazione non riuscita.'; }
     }
     // Segnala una delle ultime interazioni REALI (dalla lista) senza riscriverla.
@@ -40692,10 +40710,52 @@ Per confermare scrivi ELIMINA.`);
       if (!r) return;
       try {
         if (typeof logParserError === 'function')
-          await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione });
+          await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione, origine: 'manuale' });
         const btn = document.getElementById('aiConvReport' + idx);
         if (btn) { btn.textContent = '✅'; btn.disabled = true; btn.title = 'Segnalato'; }
+        try { loadMyReports(); } catch (e) {}
       } catch (e) {}
+    }
+
+    // ── Le mie segnalazioni (lista con stato Aperta/Risolta) ────────────────────
+    // Legge SOLO le segnalazioni manuali (origine='manuale') da pmo_parser_errors. La lettura
+    // richiede una sessione staff (RLS: select per authenticated). Gli stati "risolta" li
+    // imposta il manutentore via DB quando corregge il caso.
+    async function _myReportsFetch() {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let accessToken = cfg.supabaseKey;
+      try { const raw = (typeof safeLoad === 'function') ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null; if (raw && raw.access_token) accessToken = raw.access_token; } catch (e) {}
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_parser_errors?origine=eq.manuale&order=timestamp.desc&limit=50&select=id,input_originale,error_message,stato,risolto_il,risolto_in_versione,nota_risoluzione,timestamp';
+      const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + accessToken, Accept: 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+    async function loadMyReports() {
+      const el = document.getElementById('aiReportsList');
+      if (!el) return;
+      el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      try {
+        const rows = await _myReportsFetch();
+        if (!rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna segnalazione ancora. Quando trovi un errore usa 🐞 “Segnala questo caso”.</div>'; return; }
+        el.innerHTML = rows.map(function (r) {
+          const risolta = r.stato === 'risolta';
+          const badge = risolta ? '<span class="ai-rep-badge done">✅ Risolta</span>' : '<span class="ai-rep-badge open">🟠 Aperta</span>';
+          const nota = String(r.error_message || '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
+          const when = r.timestamp ? new Date(r.timestamp).toLocaleDateString('it-IT') : '';
+          let extra = '';
+          if (risolta) {
+            const rwhen = r.risolto_il ? new Date(r.risolto_il).toLocaleDateString('it-IT') : '';
+            extra = '<div class="ai-rep-res">✅ Risolta' + (r.risolto_in_versione ? ' in ' + _escapeHtml(r.risolto_in_versione) : '') + (rwhen ? ' · ' + rwhen : '') + (r.nota_risoluzione ? ' — ' + _escapeHtml(r.nota_risoluzione) : '') + '</div>';
+          }
+          return '<div class="ai-rep-row' + (risolta ? ' is-done' : '') + '">' +
+            '<div class="ai-rep-head">' + badge + '<span class="ai-rep-when">' + when + '</span></div>' +
+            '<div class="ai-rep-text">' + _escapeHtml(r.input_originale || '') + '</div>' +
+            (nota ? '<div class="ai-rep-note">📝 ' + _escapeHtml(nota) + '</div>' : '') +
+            extra + '</div>';
+        }).join('');
+      } catch (e) {
+        el.innerHTML = '<div class="ai-admin-hint">Per vedere le segnalazioni devi essere loggato come staff. (' + _escapeHtml(e.message || String(e)) + ')</div>';
+      }
     }
 
     // Dettatura vocale nel BANCO DI PROVA (stato separato dal mic della chat). Riempie la
@@ -40824,6 +40884,7 @@ Per confermare scrivi ELIMINA.`);
     // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
     function initChatUI() {
       _renderHelp(); _renderConvLog();
+      try { loadMyReports(); } catch (e) {}
       if (!isEnabled()) return;
       const input = document.getElementById('svcChatInput');
       const send = document.getElementById('svcChatSend');
@@ -40862,7 +40923,7 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
