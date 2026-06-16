@@ -7653,7 +7653,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.804';
+    const APP_VERSION = '5.805';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40703,6 +40703,37 @@ Per confermare scrivi ELIMINA.`);
       L.push('(per il supporto) frase: "' + d.text + '" — fonte: ' + d.source + ' · sicurezza ' + Math.round((d.confidence || 0) * 100) + '% · v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + (d.llmError ? ' · Gemini: ' + d.llmError : ''));
       return L.join('\n');
     }
+    // ── Anti-doppione: avvisa se la frase è uguale/simile a una GIÀ segnalata ────
+    // Confronta con la cache delle segnalazioni manuali (riempita da loadMyReports). Serve a
+    // non ri-segnalare casi già in elenco o già risolti.
+    let _myReportsCache = [];
+    let _lastReportWarnedFor = '';
+    function _statoLabel(r) {
+      if (r && r.stato === 'risolta') return '✅ già RISOLTA' + (r.risolto_in_versione ? ' in ' + r.risolto_in_versione : '');
+      return '🟠 già in elenco (aperta)';
+    }
+    function _findSimilarReports(text) {
+      const A = _norm(text);
+      if (A.length < 4 || !Array.isArray(_myReportsCache) || typeof editDistance !== 'function') return [];
+      const out = [];
+      _myReportsCache.forEach(function (r) {
+        const B = _norm(r.input_originale || '');
+        if (B.length < 4) return;
+        const ratio = (A === B) ? 1 : (1 - editDistance(A, B) / Math.max(A.length, B.length));
+        if (ratio >= 0.84) out.push({ r: r, ratio: ratio });
+      });
+      out.sort(function (a, b) { return b.ratio - a.ratio; });
+      return out.slice(0, 3);
+    }
+    function _formatSimilarWarn(sims) {
+      const L = ['🔁 ATTENZIONE: hai già segnalato una frase ' + (sims[0].ratio >= 0.999 ? 'UGUALE' : 'molto simile') + ':'];
+      sims.forEach(function (s) { L.push('• «' + s.r.input_originale + '» — ' + _statoLabel(s.r)); });
+      L.push('(se è lo stesso problema, forse è già in lavorazione o risolto)');
+      L.push('');
+      L.push('— — — — — — — — — —');
+      L.push('');
+      return L.join('\n');
+    }
     let _lastDiagReport = '';
     async function runSandbox() {
       const inp = document.getElementById('aiSandboxInput');
@@ -40713,8 +40744,11 @@ Per confermare scrivi ELIMINA.`);
       out.textContent = '💭 Analisi in corso…';
       try {
         const d = await diagnose(text);
-        _lastDiagReport = _formatDiag(d);
-        out.textContent = _lastDiagReport;
+        let report = _formatDiag(d);
+        const sims = _findSimilarReports(text);
+        if (sims.length) report = _formatSimilarWarn(sims) + report;
+        _lastDiagReport = report;
+        out.textContent = report;
       } catch (e) {
         out.textContent = '⚠️ Errore analisi: ' + (e.message || e); _lastDiagReport = '';
       }
@@ -40737,11 +40771,20 @@ Per confermare scrivi ELIMINA.`);
       const text = inp ? inp.value.trim() : '';
       if (!text) { if (st) st.textContent = 'Scrivi prima una frase.'; return; }
       const note = noteEl ? noteEl.value.trim() : '';
+      // Anti-doppione: se è uguale/simile a una già segnalata, avvisa e chiedi conferma
+      // (un secondo click sulla STESSA frase invia comunque).
+      const sims = _findSimilarReports(text);
+      if (sims.length && _lastReportWarnedFor !== _norm(text)) {
+        _lastReportWarnedFor = _norm(text);
+        if (st) st.textContent = '⚠️ Frase simile già segnalata (' + _statoLabel(sims[0].r) + '). Premi di nuovo “Segnala” per inviarla comunque.';
+        return;
+      }
       let intent = null, confidence = null;
       try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
       try {
         const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' }) : false;
         if (ok) {
+          _lastReportWarnedFor = '';
           if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
           if (noteEl) noteEl.value = '';
           try { loadMyReports(); } catch (e) {}
@@ -40783,6 +40826,7 @@ Per confermare scrivi ELIMINA.`);
       el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
       try {
         const rows = await _myReportsFetch();
+        _myReportsCache = Array.isArray(rows) ? rows : [];
         if (!rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna segnalazione ancora. Quando trovi un errore usa 🐞 “Segnala questo caso”.</div>'; return; }
         el.innerHTML = rows.map(function (r) {
           const risolta = r.stato === 'risolta';
@@ -40801,6 +40845,7 @@ Per confermare scrivi ELIMINA.`);
             extra + '</div>';
         }).join('');
       } catch (e) {
+        _myReportsCache = [];
         el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere le segnalazioni: forse la sessione è scaduta. Esci e rientra, poi premi ↻ Aggiorna. <span style="opacity:.6">(' + _escapeHtml(e.message || String(e)) + ')</span></div>';
       }
     }
