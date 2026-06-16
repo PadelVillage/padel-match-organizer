@@ -2766,7 +2766,7 @@
     .svc-chat-input::placeholder { color:var(--text-muted); }
     .svc-chat-input:focus { border-color:var(--accent); }
     .svc-chat-input:disabled { opacity:.5; cursor:not-allowed; background:var(--surface2); }
-    .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:50%; width:34px; height:34px; padding:0; cursor:pointer; transition:background .15s,opacity .15s; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; }
+    .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:50%; width:34px; height:34px; padding:0; margin:0; cursor:pointer; transition:background .15s,opacity .15s; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; }
     .svc-chat-send svg { display:block; }
     .svc-chat-send:hover:not(:disabled) { background:var(--accent-hover); }
     .svc-chat-send:disabled { opacity:.45; cursor:not-allowed; }
@@ -2935,11 +2935,11 @@
       .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:21px; padding:8px 16px; font-size:1.05rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:42px; transition:border-color .15s; }
       .smc-input:focus { border-color:#2563eb; }
       .smc-input:disabled { opacity:.5; cursor:not-allowed; }
-      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:21px; padding:0 18px; height:42px; font-size:.95rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
+      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:21px; padding:0 18px; margin:0; height:42px; font-size:.95rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
       .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
       .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
       /* Microfono nella barra (stile coerente col mic del pannello): tondo, a linea blu */
-      .smc-mic-btn { width:42px; height:42px; flex-shrink:0; border:1.5px solid #d1d5db; background:#f9fafb; color:#2563eb; border-radius:50%; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s,color .15s; }
+      .smc-mic-btn { width:42px; height:42px; flex-shrink:0; border:1.5px solid #d1d5db; background:#f9fafb; color:#2563eb; border-radius:50%; cursor:pointer; padding:0; margin:0; display:flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s,color .15s; }
       .smc-mic-btn svg { width:21px; height:21px; display:block; }
       .smc-mic-btn:hover { background:#eef2ff; }
       .smc-mic-btn.recording { background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:svcMicPulse 1.3s ease-in-out infinite; }
@@ -5870,7 +5870,7 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-conv-text { color:#344054; overflow-wrap:anywhere; flex:1; }
     .ai-conv-conf { font-size:11px; color:#98a2b3; }
     /* Microfono nella chat sidebar (modalità AI) */
-    .svc-ai-mic { border:1px solid var(--border,#e5e9ee); background:var(--surface,#fff); color:var(--accent,#2f6df6); border-radius:50%; cursor:pointer; line-height:1; width:34px; height:34px; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; padding:0; transition:background .15s,border-color .15s,color .15s; }
+    .svc-ai-mic { border:1px solid var(--border,#e5e9ee); background:var(--surface,#fff); color:var(--accent,#2f6df6); border-radius:50%; cursor:pointer; line-height:1; width:34px; height:34px; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; padding:0; margin:0; transition:background .15s,border-color .15s,color .15s; }
     .svc-ai-mic svg { width:18px; height:18px; display:block; }
     .svc-ai-mic:hover { background:var(--surface2,#f4f6f9); }
     .svc-ai-mic.recording { background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:svcMicPulse 1.3s ease-in-out infinite; }
@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.781';
+    const APP_VERSION = '5.782';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
