@@ -7153,7 +7153,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="ai-admin-grid">
         <section class="ai-admin-card">
           <h3>🧪 Banco di prova</h3>
-          <p class="ai-admin-hint">Qui provi una frase e controlli <strong>cosa capisce l'assistente</strong> (intent, fonte regole/Gemini, slot e <strong>giocatori risolti</strong>). È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
+          <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
 
           <label class="ai-sbx-step">1 · Scrivi o detta 🎤 la frase da provare</label>
           <div class="ai-sbx-input-wrap">
@@ -7653,7 +7653,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.801';
+    const APP_VERSION = '5.802';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40638,26 +40638,65 @@ Per confermare scrivi ELIMINA.`);
       }
       return out;
     }
-    // Diagnosi → testo leggibile (anche da copiare/incollare nel supporto).
+    // ── Diagnosi → spiegazione in ITALIANO SEMPLICE ─────────────────────────────
+    // L'utente deve poter giudicare "giusto/sbagliato" senza gergo (niente intent/slot/
+    // confidence): riscriviamo a parole cosa è stato capito, marcando ciò che manca.
+    function _orMancato(v) { return v ? v : '❓ non l\'hai detto'; }
+    function _intentFriendly(intent, prenota) {
+      switch (intent) {
+        case 'PRENOTA': return 'Vuoi PRENOTARE ' + (prenota && prenota.tipo === 'lezione' ? 'una LEZIONE 📚' : 'una PARTITA 🎾');
+        case 'TROVA': return 'Vuoi FARE UNA DOMANDA (campi liberi o prenotazioni) 🔎';
+        case 'CANCELLA': return 'Vuoi ANNULLARE una prenotazione ❌';
+        case 'CORREGGI': return 'Vuoi MODIFICARE una prenotazione ✏️';
+        case 'ANAGRAFICA': return 'Vuoi AGGIUNGERE o AGGIORNARE un giocatore in anagrafica 👤';
+        default: return '🤔 Non ho capito cosa vuoi fare. Prova a scriverlo più semplice (es. «prenota campo 2 domani alle 18»).';
+      }
+    }
+    function _slotFriendly(s) { return ({ date: 'il giorno', time: 'l\'ora', court: 'il campo' })[s] || s; }
+    function _friendlyDate(iso) {
+      try {
+        const today = _todayIso();
+        let rel = '';
+        if (iso === today) rel = ' (oggi)';
+        else if (iso === _addDays(today, 1)) rel = ' (domani)';
+        else if (iso === _addDays(today, 2)) rel = ' (dopodomani)';
+        const lbl = new Date(iso + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+        return lbl.charAt(0).toUpperCase() + lbl.slice(1) + rel;
+      } catch (e) { return iso; }
+    }
     function _formatDiag(d) {
       const L = [];
-      L.push('🧪 BANCO DI PROVA — Assistente AI (v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + ')');
-      L.push('Frase: "' + d.text + '"');
-      L.push('Fonte: ' + d.source);
-      L.push('Intent: ' + d.intent + '  ·  confidenza: ' + d.confidence + ' (regole: ' + d.ruleConfidence + ')');
-      const sk = Object.keys(d.slots || {});
-      L.push('Slot: ' + (sk.length ? sk.map(function (k) { return k + '=' + d.slots[k]; }).join(', ') : '—'));
-      if (d.missing && d.missing.length) L.push('Mancano: ' + d.missing.join(', '));
+      L.push('🗣️ Ho capito questo — controlla tu se è giusto:');
+      L.push('');
+      L.push('👉 ' + _intentFriendly(d.intent, d.prenota));
       if (d.prenota) {
         const p = d.prenota;
-        L.push('— Prenotazione —');
-        L.push('Tipo: ' + (p.tipo || '—') + '  ·  Campo: ' + (p.campo || '—') + '  ·  Data: ' + (p.data || '—') + '  ·  Ora: ' + (p.ora || '—') + (p.oraFine ? '–' + p.oraFine : ''));
-        if (p.tipo === 'lezione') L.push('Maestro: ' + (p.istruttore || '—'));
-        L.push('👥 Giocatori risolti: ' + (p.giocatori && p.giocatori.length ? p.giocatori.join(', ') : '—'));
-        if (p.note && p.note.length) L.push('Note: ' + p.note.join(' | '));
+        L.push('');
+        L.push('📅 Giorno: ' + _orMancato(p.data ? _friendlyDate(p.data) : ''));
+        L.push('🕐 Ora: ' + _orMancato(p.ora ? (p.ora + (p.oraFine ? '–' + p.oraFine : '')) : ''));
+        L.push('🎾 Campo: ' + _orMancato(p.campo ? ('campo ' + p.campo) : ''));
+        if (p.tipo === 'lezione') L.push('👨‍🏫 Maestro: ' + _orMancato(p.istruttore || ''));
+        const chi = (p.giocatori && p.giocatori.length) ? p.giocatori.join(', ') : '';
+        L.push((p.tipo === 'lezione' ? '👥 Allievo/i: ' : '👥 Giocatori: ') + _orMancato(chi));
+        if (p.note && p.note.length) L.push('⚠️ Attenzione: ' + p.note.join(' | '));
+        const mancano = (d.missing || []).map(_slotFriendly).filter(Boolean);
+        if (mancano.length) { L.push(''); L.push('ℹ️ Per completare mi manca ancora ' + mancano.join(' e ') + ': nella chat te lo chiederei.'); }
+      } else if (d.intent !== undefined) {
+        const s = d.slots || {};
+        const det = [];
+        if (s.date) det.push('📅 Giorno: ' + _friendlyDate(s.date));
+        if (s.court) det.push('🎾 Campo: campo ' + s.court);
+        if (s.time) det.push('🕐 Ora: ' + s.time);
+        if (s.who) det.push('🙋 Nome: ' + s.who);
+        if (det.length) { L.push(''); det.forEach(function (x) { L.push(x); }); }
       }
-      if (d.prenotaError) L.push('⚠️ Errore bozza: ' + d.prenotaError);
-      if (d.llmError) L.push('⚠️ Gemini: ' + d.llmError);
+      if (d.prenotaError) { L.push(''); L.push('⚠️ Errore interno: ' + d.prenotaError); }
+      L.push('');
+      L.push('✅ Se è tutto giusto, ottimo. ❌ Se ho sbagliato qualcosa, scrivilo qui sotto e premi 🐞 Segnala.');
+      // Riga tecnica in fondo (serve a me quando incolli il report nella chat di supporto).
+      L.push('');
+      L.push('· · · · · · · · · ·');
+      L.push('(per il supporto) frase: "' + d.text + '" — fonte: ' + d.source + ' · sicurezza ' + Math.round((d.confidence || 0) * 100) + '% · v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + (d.llmError ? ' · Gemini: ' + d.llmError : ''));
       return L.join('\n');
     }
     let _lastDiagReport = '';
