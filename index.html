@@ -7601,7 +7601,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.789';
+    const APP_VERSION = '5.790';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -11211,6 +11211,29 @@ Grazie.`
       `;
     }
 
+    // Garantisce la scheda socio "Ospite" (cod. Matchpoint 000001) in anagrafica dopo un import.
+    // L'export clienti di Matchpoint NON la restituisce, ma serve come segnaposto per le
+    // prenotazioni senza nominativo (l'assistente AI ci appoggia le partite senza nome). È
+    // guestJolly → resta esclusa da statistiche/abbinamenti/selezione giocatori, ma compare in
+    // Anagrafica soci ed è trovabile dalla ricerca nomi. Idempotente (non duplica se già presente).
+    function ensureOspiteMember(importedAtIso, source) {
+      const list = Array.isArray(giocatori) ? giocatori : [];
+      const exists = list.some(m => (typeof isGuestJollyMember === 'function' && isGuestJollyMember(m)) || cleanCell(m && m.memberId) === '000001');
+      if (exists) return false;
+      const now = importedAtIso || new Date().toISOString();
+      giocatori.push(ensureMemberId({
+        firstName: 'Ospite', surname: '', name: 'Ospite',
+        memberId: '000001', guestJolly: true,
+        phone: '', email: '', gender: 'NA', level: '',
+        birthDate: '', city: '', cap: '', province: '', address: '',
+        active: true, prefDays: [], prefHours: [],
+        matchpointImportedAt: now, matchpointLastImportedAt: now,
+        matchpointSource: source || 'automatic',
+        createdAt: now, updatedAt: now
+      }));
+      return true;
+    }
+
     function applyMatchpointMembersToLocal(importedMembers, options={}) {
       const members = Array.isArray(importedMembers) ? importedMembers : [];
       const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
@@ -11272,6 +11295,9 @@ Grazie.`
         }
       });
 
+      // Garantisce la scheda "Ospite" (000001): l'export clienti Matchpoint non la restituisce,
+      // ma deve comparire in anagrafica (segnaposto per le prenotazioni senza nominativo).
+      ensureOspiteMember(importedAtIso, source);
       save('giocatori', giocatori);
       const previousClientCount = parseInt(matchpointData?.clientCount, 10);
       const hasPreviousClientCount = Number.isFinite(previousClientCount) && !!(matchpointData?.lastClientsImportedAt || matchpointData?.lastSync);
