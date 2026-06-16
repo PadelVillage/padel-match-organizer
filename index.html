@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.809';
+    const APP_VERSION = '5.810';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39687,7 +39687,7 @@ Per confermare scrivi ELIMINA.`);
         && /(partit|giocator|post[oi])/.test(n);
       if (wantsRoster) return _answerRoster(iso, dl, slots, n, all);
       const wantsFree = /\b(liber\w*|disponibil\w*|vuot\w*|prenotabil\w*|posto)\b/.test(n);
-      if (wantsFree) return _answerFree(iso, dl, slots);
+      if (wantsFree) return _answerFree(iso, dl, slots, n);
       return _answerBookings(iso, dl, slots, all);
     }
 
@@ -39721,22 +39721,32 @@ Per confermare scrivi ELIMINA.`);
 
     function _slotGrid() { return (typeof staffCalSlots === 'function') ? staffCalSlots() : []; }
 
-    function _answerFree(iso, dl, slots) {
+    function _nCampi(k) { return k === 1 ? '1 campo' : k + ' campi'; }
+    function _answerFree(iso, dl, slots, n) {
       const map = (typeof staffCalBuildOccupancyMap === 'function') ? staffCalBuildOccupancyMap(iso) : {};
       const grid = _slotGrid();
       const courts = slots.court ? [slots.court] : [1, 2, 3, 4];
-      if (slots.time) {
+      const onward = n ? _isOnward(n) : false;
+      // Orario PUNTUALE (senza "in poi"): elenca i campi liberi a quell'ora + conteggio.
+      if (slots.time && !onward) {
         const free = courts.filter(function (c) { return !map[slots.time + '|' + c]; });
         if (!free.length) return _say('⛔ Alle <strong>' + slots.time + '</strong> di ' + dl + ' non risultano campi liberi.');
-        return _say('🟢 Liberi alle <strong>' + slots.time + '</strong> di ' + dl + ': ' + free.map(function (c) { return 'Campo ' + c; }).join(', ') + '.');
+        return _say('🟢 Alle <strong>' + slots.time + '</strong> di ' + dl + ' ' + (free.length === 1 ? 'è libero ' : 'sono liberi ') + '<strong>' + _nCampi(free.length) + '</strong>: ' + free.map(function (c) { return 'Campo ' + c; }).join(', ') + '.');
       }
-      // nessun orario: per ogni campo, intervalli liberi compatti
+      // FASCIA: tutto il giorno, oppure "dalle X in poi" (solo gli slot da quell'ora in avanti).
+      const fromIdx = (slots.time && onward) ? grid.indexOf(slots.time) : 0;
+      const sub = fromIdx >= 0 ? grid.slice(fromIdx) : grid.slice();
+      let nFree = 0;
       const lines = courts.map(function (c) {
-        const freeSlots = grid.filter(function (s) { return !map[s + '|' + c]; });
+        const freeSlots = sub.filter(function (s) { return !map[s + '|' + c]; });
+        if (freeSlots.length) nFree++;
         const ranges = _compressRanges(freeSlots, grid);
         return '<strong>Campo ' + c + '</strong>: ' + (ranges.length ? ranges.join(', ') : '<em>nessuno slot libero</em>');
       });
-      return _say('🟢 Disponibilità ' + dl + ':<br>' + lines.join('<br>'));
+      const head = (slots.time && onward)
+        ? '🟢 Disponibilità ' + dl + ' dalle ' + slots.time + ' in poi — <strong>' + _nCampi(nFree) + '</strong> con spazi liberi:'
+        : '🟢 Disponibilità ' + dl + ' — <strong>' + _nCampi(nFree) + '</strong> con spazi liberi:';
+      return _say(head + '<br>' + lines.join('<br>'));
     }
 
     // Comprime una lista di slot ("08:00","08:30",...) in intervalli "08:00–09:30"
