@@ -4433,6 +4433,50 @@ async function checkPrivatoCheckbox(formCtx, diagnostic) {
   return { found: false };
 }
 
+const OSSERVAZIONI_TEXTAREA = '#CC_Datos_FormViewFicha_TextBoxObservaciones';
+
+// ── Helper: clicca il link-tab "Osservazioni" (postback ASP.NET) ──────────────
+// ⚠️ NON usare getByText('Osservazioni'): match anche il contenitore "Generale
+// Osservazioni" (un div senza onclick) → click a vuoto, niente postback. Si punta
+// al vero <a> della tab: id-prefix `..._RepeaterPestanyas_LinkButtonPestanya_`
+// stabile (il suffisso numerico varia: create=_1, edit=_4). Dopo il click si
+// attende la comparsa del textarea (reso dal reload del pannello).
+async function _clickOsservazioniTab(page, diagnostic) {
+  const tabLink = page.locator('a[id*="RepeaterPestanyas_LinkButtonPestanya_"]')
+    .filter({ hasText: /Osservazioni/i }).first();
+  if (!(await tabLink.count().catch(() => 0))) {
+    diagnostic.steps.push('osservazioni_tab_not_found');
+    return false;
+  }
+  await Promise.all([
+    page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+    tabLink.click({ timeout: 6000 }).catch(() => {}),
+  ]);
+  diagnostic.steps.push('osservazioni_tab_click');
+  await page.locator(OSSERVAZIONI_TEXTAREA).first()
+    .waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+  return true;
+}
+
+// ── Helper: scrive le Osservazioni (← note) nei form ficha ────────────────────
+// Va chiamata PER ULTIMO, prima del salvataggio (i giocatori già inseriti restano
+// nel viewstate). La manutenzione ha il textarea già visibile (nessuna tab) → fill
+// diretto; partita/lezione richiedono prima il click sulla tab (postback).
+async function fillOsservazioni(formCtx, page, note, diagnostic) {
+  let visible = await formCtx.locator(OSSERVAZIONI_TEXTAREA).first().isVisible({ timeout: 800 }).catch(() => false);
+  if (!visible) {
+    await _clickOsservazioniTab(page, diagnostic);
+    visible = await formCtx.locator(OSSERVAZIONI_TEXTAREA).first().isVisible({ timeout: 2000 }).catch(() => false);
+  }
+  if (!visible) {
+    diagnostic.steps.push('osservazioni_textarea_absent');
+    return false;
+  }
+  await formCtx.locator(OSSERVAZIONI_TEXTAREA).first().fill(String(note ?? ''), { timeout: 6000 }).catch(() => {});
+  diagnostic.steps.push('osservazioni_set');
+  return true;
+}
+
 // ── Helper: imposta un campo ora con maschera HH:MM (scrivendo solo cifre HHMM) ─
 // I campi ora nel sotto-dialogo "Personalizzare" di Matchpoint usano una maschera:
 // vanno scritti come pure cifre (es. "0900") e la maschera inserisce i due punti.
@@ -4695,6 +4739,10 @@ async function createBookingWithBrowser(options = {}) {
       }
       diagnostic.playersResult = playersResult;
 
+      // 2b. Osservazioni (← note): per ultimo, prima del salvataggio.
+      const notePartita = clean(booking.note || '');
+      if (notePartita) await fillOsservazioni(formCtx, page, notePartita, diagnostic);
+
       // 3. Salva
       const saved = await clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare'], diagnostic);
       if (!saved) {
@@ -4811,6 +4859,10 @@ async function createBookingWithBrowser(options = {}) {
       await selectIstruttore(formCtx, page, istruttore, diagnostic);
 
       // 3. NIENTE "Privato" nelle lezioni → non chiamare checkPrivatoCheckbox
+
+      // 3b. Osservazioni (← note): per ultimo, prima del salvataggio.
+      const noteLezione = clean(booking.note || '');
+      if (noteLezione) await fillOsservazioni(formCtx, page, noteLezione, diagnostic);
 
       // 4. Salva
       const saved = await clickFormSave(formCtx, page, ['Salvare e uscire', 'Salvare'], diagnostic);
@@ -5071,9 +5123,12 @@ async function editBookingWithBrowser(input = {}) {
   const move = input.move || null;
   const players = input.players || null;
   const readOnly = input.read === true;
-  if (!move && !players && !readOnly) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players fornito.');
+  // note: stringa (anche vuota, per azzerare). null = campo non fornito → non toccare le Osservazioni.
+  const note = (typeof input.note === 'string') ? input.note : null;
+  const noteProvided = note !== null;
+  if (!move && !players && !readOnly && !noteProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note fornito.');
 
-  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players } };
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided } };
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
@@ -5174,8 +5229,22 @@ async function editBookingWithBrowser(input = {}) {
         ridx++;
       }
       diagnostic.partecipantiFinali = partecipantiLettura;
+      // Nota (Osservazioni): è dietro la tab → click (postback) + lettura del textarea.
+      // Serve per la lettura on-demand (ripiego G1=no) e per pre-popolare la modifica.
+      let notaLetta = null;
+      try {
+        const ta0 = page.locator(OSSERVAZIONI_TEXTAREA).first();
+        if (!(await ta0.isVisible({ timeout: 600 }).catch(() => false))) {
+          await _clickOsservazioniTab(page, diagnostic);
+        }
+        const ta = page.locator(OSSERVAZIONI_TEXTAREA).first();
+        if (await ta.isVisible({ timeout: 4000 }).catch(() => false)) {
+          notaLetta = (await ta.inputValue().catch(() => '')) || '';
+        }
+      } catch { /* nota non leggibile → null */ }
+      diagnostic.steps.push('read_only_nota:' + (notaLetta == null ? 'null' : 'len' + notaLetta.length));
       diagnostic.steps.push('done');
-      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, diagnostic };
+      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, note: notaLetta, diagnostic };
     }
 
     let moved = false;
@@ -5341,8 +5410,20 @@ async function editBookingWithBrowser(input = {}) {
         }
       }
 
+      // Osservazioni (← note): riempi PRIMA del salvataggio giocatori → un solo save.
+      if (noteProvided) await fillOsservazioni(page, page, note, diagnostic);
+
       // SALVA giocatori con ButtonActualizar
       diagnostic.steps.push('salva');
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
+        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
+      ]);
+      await page.waitForTimeout(2500);
+    } else if (noteProvided) {
+      // Solo nota (eventualmente dopo un move): riempi le Osservazioni e salva con ButtonActualizar.
+      await fillOsservazioni(page, page, note, diagnostic);
+      diagnostic.steps.push('salva_nota');
       await Promise.all([
         page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
         page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
@@ -5437,7 +5518,7 @@ async function editBookingWithBrowser(input = {}) {
     const resolvedPlayersEdit = addResults
       .filter((r) => r.added && r.idPeople)
       .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
-    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, resolvedPlayers: resolvedPlayersEdit, diagnostic };
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;

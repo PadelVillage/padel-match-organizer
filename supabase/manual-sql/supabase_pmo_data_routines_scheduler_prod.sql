@@ -1,40 +1,19 @@
--- Padel Match Organizer - TEST data routines scheduler.
--- TEST E' MANUALE: il dispatcher cron NON va schedulato su TEST. Matchpoint ha un solo
--- account condiviso con PROD; lo scheduler automatico gira SOLO su PROD (vedi
--- supabase_pmo_data_routines_scheduler_prod.sql). Su TEST gli import si lanciano a mano
--- dal pannello. Questo file definisce comunque le funzioni (riusate dai trigger manuali)
--- e si assicura che il cron resti DISATTIVATO. Vedi procedura-deploy-test-prod.md:354.
+-- Padel Match Organizer - PROD data routines scheduler.
+-- Scheduler automatico Matchpoint: gira SOLO su PROD (account Matchpoint unico, condiviso
+-- con TEST). Su TEST il dispatcher resta DISATTIVATO/manuale
+-- (vedi supabase_pmo_data_routines_scheduler.sql e procedura-deploy-test-prod.md:354).
+--
+-- Cadenza: ogni 2 minuti. Oltre ai 5 sync giornalieri "full" a orari fissi, esegue un sync
+-- "live" delle prenotazioni nella fascia 07:00-23:00 (Europe/Rome) per portare i cambi
+-- Matchpoint in app entro ~2 minuti. Il sync live riusa matchpoint-bookings-sync con la
+-- finestra piena di 30 giorni (reconciliation corretta) + guard anti-accavallamento.
+--
+-- I secret vault PROD (pmo_data_routine_project_url / _publishable_key / _secret) sono GIA'
+-- configurati su PROD: questo file NON li ricrea, per non sovrascriverli.
 
 create extension if not exists pg_net;
 create extension if not exists pg_cron;
 create extension if not exists supabase_vault with schema vault;
-
-do $$
-begin
-  if not exists (select 1 from vault.secrets where name = 'pmo_data_routine_project_url') then
-    perform vault.create_secret(
-      'https://cudiqnrrlbyqryrtaprd.supabase.co',
-      'pmo_data_routine_project_url',
-      'Padel Match Organizer TEST project URL for data routine cron'
-    );
-  end if;
-
-  if not exists (select 1 from vault.secrets where name = 'pmo_data_routine_publishable_key') then
-    perform vault.create_secret(
-      'sb_publishable_ewpTKg4yQVxoK8-wA9XhOA_5voSNLuQ',
-      'pmo_data_routine_publishable_key',
-      'Padel Match Organizer TEST publishable key for data routine cron'
-    );
-  end if;
-
-  if not exists (select 1 from vault.secrets where name = 'pmo_data_routine_secret') then
-    perform vault.create_secret(
-      encode(extensions.gen_random_bytes(32), 'hex'),
-      'pmo_data_routine_secret',
-      'Padel Match Organizer TEST internal secret for data routine cron'
-    );
-  end if;
-end $$;
 
 create or replace function public.pmo_verify_data_routine_secret(p_secret text)
 returns boolean
@@ -79,9 +58,11 @@ declare
   v_last_live_dispatch timestamptz;
   v_last_import_done timestamptz;
 begin
+  -- NB: branche giornaliere = stato REALE di PROD letto via pg_get_functiondef
+  -- (clienti 6x/giorno + bookings 5x + storico + backup). NON ridurle.
   case v_local_time
     when '04:30' then
-      v_routine_key := 'clients';
+      v_routine_key := 'clients_0430';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
     when '05:00' then
@@ -92,26 +73,46 @@ begin
       v_routine_key := 'bookings_morning';
       v_routine_label := 'Prenotazioni future Matchpoint';
       v_function_slug := 'matchpoint-bookings-sync';
-    when '10:30' then
-      v_routine_key := 'bookings_1030';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
-    when '14:30' then
-      v_routine_key := 'bookings_1430';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
-    when '17:30' then
-      v_routine_key := 'bookings_1730';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
-    when '21:30' then
-      v_routine_key := 'bookings_2130';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
     when '05:45' then
       v_routine_key := 'cloud_backup';
       v_routine_label := 'Backup cloud automatico';
       v_function_slug := 'pmo-cloud-backup-auto';
+    when '07:30' then
+      v_routine_key := 'clients_0730';
+      v_routine_label := 'Clienti Matchpoint';
+      v_function_slug := 'matchpoint-clients-sync';
+    when '10:30' then
+      v_routine_key := 'bookings_1030';
+      v_routine_label := 'Prenotazioni future Matchpoint';
+      v_function_slug := 'matchpoint-bookings-sync';
+    when '12:30' then
+      v_routine_key := 'clients_1230';
+      v_routine_label := 'Clienti Matchpoint';
+      v_function_slug := 'matchpoint-clients-sync';
+    when '14:30' then
+      v_routine_key := 'bookings_1430';
+      v_routine_label := 'Prenotazioni future Matchpoint';
+      v_function_slug := 'matchpoint-bookings-sync';
+    when '16:30' then
+      v_routine_key := 'clients_1630';
+      v_routine_label := 'Clienti Matchpoint';
+      v_function_slug := 'matchpoint-clients-sync';
+    when '17:30' then
+      v_routine_key := 'bookings_1730';
+      v_routine_label := 'Prenotazioni future Matchpoint';
+      v_function_slug := 'matchpoint-bookings-sync';
+    when '19:30' then
+      v_routine_key := 'clients_1930';
+      v_routine_label := 'Clienti Matchpoint';
+      v_function_slug := 'matchpoint-clients-sync';
+    when '21:30' then
+      v_routine_key := 'bookings_2130';
+      v_routine_label := 'Prenotazioni future Matchpoint';
+      v_function_slug := 'matchpoint-bookings-sync';
+    when '23:30' then
+      v_routine_key := 'clients_2330';
+      v_routine_label := 'Clienti Matchpoint';
+      v_function_slug := 'matchpoint-clients-sync';
     else
       -- Sync "live" prenotazioni: ogni 2 min nella fascia di apertura del circolo
       -- (07:00-23:00 Europe/Rome). Riusa matchpoint-bookings-sync con la finestra piena
@@ -304,10 +305,22 @@ $$;
 revoke all on function public.pmo_dispatch_data_routines(timestamptz) from public;
 grant execute on function public.pmo_dispatch_data_routines(timestamptz) to service_role;
 
--- TEST manuale: assicurati che il dispatcher NON sia schedulato (nessun cron.schedule).
+-- Cron PROD ogni 2 minuti. Robusto sul jobname: rimuove qualunque dispatcher data-routines
+-- gia' presente (qualsiasi nome) e lascia un solo job canonico, evitando doppioni.
 do $$
+declare
+  r record;
 begin
-  if exists (select 1 from cron.job where jobname = 'pmo-data-routines-dispatcher-test') then
-    perform cron.unschedule('pmo-data-routines-dispatcher-test');
-  end if;
+  for r in
+    select jobname from cron.job
+    where command ilike '%pmo_dispatch_data_routines%'
+  loop
+    perform cron.unschedule(r.jobname);
+  end loop;
+
+  perform cron.schedule(
+    'pmo-data-routines-dispatcher-prod',
+    '*/2 * * * *',
+    'select public.pmo_dispatch_data_routines();'
+  );
 end $$;

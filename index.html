@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.819';
+    const APP_VERSION = '5.820';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35573,7 +35573,7 @@ Per confermare scrivi ELIMINA.`);
       if (!b || !b.id) return;
       pmoSyncCloudRecordsNow([{
         record_type: 'staff_booking', local_key: b.id,
-        payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [] },
+        payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', note: b.note || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [] },
         deleted: false
       }], 'aggiornare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff edit cloud sync:', e); });
     } catch (e) { console.warn('staff edit cloud sync:', e); }
@@ -35606,7 +35606,7 @@ Per confermare scrivi ELIMINA.`);
           if (typeof save === 'function') save('staffBookings', list);
         }
         _destId = entry.id;
-        records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [], id_reserva: entry.idReserva || '', promoted: entry.promoted === true }, deleted: false });
+        records.push({ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore || '', note: entry.note || '', giocatori: Array.isArray(entry.giocatori) ? entry.giocatori : [], id_reserva: entry.idReserva || '', promoted: entry.promoted === true }, deleted: false });
       } else {
         // PROMOTE (Tappa 45): il booking spostato è Matchpoint (sta solo in prenotazioniOccupazione,
         // non in staffBookings) → al nuovo slot non comparirebbe nulla fino al prossimo sync.
@@ -36642,14 +36642,29 @@ Per confermare scrivi ELIMINA.`);
     const tipoR = String(tipoReale || 'partita').toLowerCase();
     const hasPlayers = ['partita', 'lezione'].includes(tipoR);
 
-    const buildState = function (roster) {
+    // Nota nota in locale (staff_booking.note) per pre-popolare il campo. La lettura autorevole
+    // dal worker (sotto, per partita/lezione) la sovrascrive se l'utente non l'ha ancora toccata.
+    let _localNote = '';
+    try {
+      const _ln = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      const _lb = (Array.isArray(_ln) ? _ln : []).find(function (x) {
+        return x && String(x.data).trim() === String(isoDate).trim()
+          && Number(String(x.campo).replace(/\D/g, '')) === campoNum
+          && String(x.ora).trim() === String(ora).trim();
+      });
+      if (_lb && typeof _lb.note === 'string') _localNote = _lb.note;
+    } catch (e) {}
+
+    const buildState = function (roster, note0) {
       staffCalPlayersState = {
         isoDate: isoDate, campo: campoNum, ora: ora, dataIt: dataIt,
         origIso: isoDate, origCampo: campoNum, origOra: ora, origDurMin: durMin,
         tipoReale: tipoR, hasPlayers: hasPlayers,
         mCampo: campoNum, mIso: isoDate, mOraIni: ora, mOraFin: _staffCalEndTime(ora, durMin),
         roster: Array.isArray(roster) ? roster : [], remove: {}, add: [],
-        msg: null, box: null, busy: false, nome: nome, note: '',
+        // note = valore corrente del campo; origNote = baseline per il confronto (da locale, poi
+        // sovrascritto dalla lettura autorevole Matchpoint se l'utente non ha ancora toccato la nota).
+        msg: null, box: null, busy: false, nome: nome, note: String(note0 || ''), origNote: String(note0 || ''),
       };
       const editor = svcAddMessage('system', '', 'flow');
       const box = document.createElement('div');
@@ -36660,7 +36675,7 @@ Per confermare scrivi ELIMINA.`);
       staffCalRenderPlayersEditor();
     };
 
-    if (!hasPlayers) { buildState([]); return; }
+    if (!hasPlayers) { buildState([], _localNote); return; }
 
     // Apri SUBITO la scheda con i giocatori già noti in locale (array `giocatori` della prenotazione
     // staff): modifica e annullo restano usabili anche se il worker Matchpoint è lento o non risponde.
@@ -36682,7 +36697,7 @@ Per confermare scrivi ELIMINA.`);
       });
       if (_b && Array.isArray(_b.giocatori)) _localRoster = _normRoster(_b.giocatori);
     } catch (e) {}
-    buildState(_localRoster);
+    buildState(_localRoster, _localNote);
 
     // Lettura autorevole dei giocatori dal worker, in SOTTOFONDO (non blocca la scheda).
     (function () {
@@ -36720,6 +36735,17 @@ Per confermare scrivi ELIMINA.`);
           const st = staffCalPlayersState;
           const stillOpen = st && st === _stOpen && !st.busy;
           const untouched = stillOpen && (!st.add || !st.add.length) && (!st.remove || !Object.keys(st.remove).length);
+          // Nota autorevole da Matchpoint (Osservazioni). Aggiorna sempre il baseline origNote per il
+          // confronto; pre-popola il campo SOLO se l'utente non l'ha ancora toccato (note === origNote).
+          const workerNote = (ok && data && data.worker && typeof data.worker.note === 'string') ? data.worker.note : null;
+          if (stillOpen && workerNote != null) {
+            const noteUntouched = String(st.note || '') === String(st.origNote || '');
+            st.origNote = workerNote;
+            if (noteUntouched && String(st.note || '') !== String(workerNote)) {
+              st.note = workerNote;
+              staffCalRenderPlayersEditor();
+            }
+          }
           if (ok && roster && untouched) {
             st.roster = roster;
             staffCalRenderPlayersEditor();
@@ -36998,8 +37024,10 @@ Per confermare scrivi ELIMINA.`);
     const remove = st.hasPlayers ? st.roster.filter(function (p) { return st.remove[p.idx]; }).map(function (p) { return p.nome; }) : [];
     const addArr = st.hasPlayers ? st.add.map(function (p) { const o = { nome: p.nome }; if (p.codice) o.codice = p.codice; if (p.codiceCliente) o.codiceCliente = p.codiceCliente; return o; }) : [];
     const playersChanged = addArr.length || remove.length;
+    // Nota cambiata vs il valore caricato (origNote): include l'azzeramento ('' diverso da nota esistente).
+    const noteChanged = String((st && st.note) || '') !== String((st && st.origNote) || '');
 
-    if (!moveChanged && !playersChanged) {
+    if (!moveChanged && !playersChanged && !noteChanged) {
       svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
       return;
     }
@@ -37010,6 +37038,7 @@ Per confermare scrivi ELIMINA.`);
     const parts = [];
     if (moveChanged) parts.push('Sposta → Campo ' + st.mCampo + ' · ' + st.mIso.split('-').reverse().join('/') + ' · ' + st.mOraIni + '–' + st.mOraFin);
     if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
+    if (noteChanged) parts.push((st.note ? 'Nota aggiornata' : 'Nota rimossa'));
     if (!confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
 
     // ── Cattura tutto in "op" e LIBERA SUBITO l'operatore: la scrittura prosegue in sottofondo ──
@@ -37017,6 +37046,7 @@ Per confermare scrivi ELIMINA.`);
       origIso: st.origIso, origCampo: st.origCampo, origOra: st.origOra, dataIt: st.dataIt,
       mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
+      note: (st.note || ''), noteChanged: noteChanged,
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
     const _idReservaEdit = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
@@ -37024,7 +37054,7 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) payload.move = { campo: op.mCampo, data: op.mIso, oraInizio: op.mOraIni, oraFine: op.mOraFin };
     if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
 
-    if (st && st.note) payload.note = st.note;
+    if (noteChanged) payload.note = st.note || '';
     const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
     _staffCalPendingEdits.add(pendKey);
 
@@ -37073,10 +37103,13 @@ Per confermare scrivi ELIMINA.`);
         // (che emetterebbe una soppressione sullo slot ancora occupato), ma come edit in place,
         // lo stesso ramo che funziona per le modifiche giocatori.
         var _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
+        // Persisti la nota in locale allo slot CORRENTE (spostato o in place) PRIMA del cloud sync,
+        // così il record staff_booking spinto sul cloud la include.
+        if (op.noteChanged) { try { staffCalApplyLocalNote(_slotMoved ? op.mIso : op.origIso, _slotMoved ? op.mCampo : op.origCampo, _slotMoved ? op.mOraIni : op.origOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
         try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
-        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : ''), 'ok');
+        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : '') + (op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : ''), 'ok');
         renderStaffCalendar();
         svcResetToNeutral(); svcAutoCloseIfMobile();
       } else {
@@ -37158,6 +37191,25 @@ Per confermare scrivi ELIMINA.`);
           Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
           String(b.ora).trim() === wantOra) {
         b.nome = nomi;
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
+
+  // Aggiorna la nota (Osservazioni) della prenotazione staff al dato slot in locale.
+  // Usata dopo un edit andato a buon fine; il cloud sync poi spinge il record con la nota.
+  function staffCalApplyLocalNote(isoDate, campo, ora, note) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function(b) {
+      if (String(b.data).trim() === String(isoDate).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        b.note = String(note || '');
         changed = true;
       }
     });
