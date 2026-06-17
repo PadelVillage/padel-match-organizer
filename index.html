@@ -2176,39 +2176,44 @@
     .match-player-row.status-declined { border-left: 7px solid #f44336; background: #fff7f7; }
     .match-player-row.status-reserve { border-left: 7px solid #777; background: #fafafa; }
     button[title], .small-btn[title] { position: relative; }
-    button[title]:hover::after,
-    .small-btn[title]:hover::after {
-      content: attr(title);
-      position: absolute;
-      left: 50%;
-      bottom: calc(100% + 8px);
-      transform: translateX(-50%);
-      min-width: 220px;
-      max-width: 320px;
-      white-space: normal;
-      text-align: left;
-      background: #1f2937;
-      color: #fff;
-      border-radius: 8px;
-      padding: 9px 10px;
-      font-size: 12px;
-      line-height: 1.35;
-      font-weight: 700;
-      z-index: 99999;
-      box-shadow: 0 8px 24px rgba(15,23,42,.24);
-      pointer-events: none;
-    }
-    button[title]:hover::before,
-    .small-btn[title]:hover::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      bottom: calc(100% + 2px);
-      transform: translateX(-50%);
-      border: 6px solid transparent;
-      border-top-color: #1f2937;
-      z-index: 99999;
-      pointer-events: none;
+    /* Tooltip CSS (attr(title)) SOLO su dispositivi con hover vero (desktop): su touch lo
+       stato :hover resta "appiccicato" dopo il tap → il tooltip (es. "Detta un comando" sul
+       microfono) restava fisso. @media (hover: hover) lo disattiva su mobile/touch. */
+    @media (hover: hover) {
+      button[title]:hover::after,
+      .small-btn[title]:hover::after {
+        content: attr(title);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 8px);
+        transform: translateX(-50%);
+        min-width: 220px;
+        max-width: 320px;
+        white-space: normal;
+        text-align: left;
+        background: #1f2937;
+        color: #fff;
+        border-radius: 8px;
+        padding: 9px 10px;
+        font-size: 12px;
+        line-height: 1.35;
+        font-weight: 700;
+        z-index: 99999;
+        box-shadow: 0 8px 24px rgba(15,23,42,.24);
+        pointer-events: none;
+      }
+      button[title]:hover::before,
+      .small-btn[title]:hover::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 2px);
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #1f2937;
+        z-index: 99999;
+        pointer-events: none;
+      }
     }
     @media (max-width: 1100px) {
       .invite-v44-layout { grid-template-columns: 1fr; }
@@ -7655,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.817';
+    const APP_VERSION = '5.818';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
