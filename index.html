@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.820';
+    const APP_VERSION = '5.821';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40401,8 +40401,12 @@ Per confermare scrivi ELIMINA.`);
       const slots = res.slots || {};
       const tipo = _detectTipo(n);
       const istruttore = tipo === 'lezione' ? (_detectIstruttore(text, n) || p.istruttore || '') : '';
+      // typePresent = il tipo è stato scritto esplicitamente (parola "partita/lezione/…") o
+      // estratto come slot (regole o Gemini). Se no, va CHIESTO per primo (vedi _advancePrenota).
+      const typePresent = (function () { try { return _typeX(n, '').typePresent || !!(slots && slots.type); } catch (e) { return !!(slots && slots.type); } })();
       const draft = {
         tipo: tipo,
+        typePresent: typePresent,
         campoNum: p.campoNum || slots.court || 0,
         // NIENTE default a "oggi": la data conta SOLO se l'utente l'ha detta esplicitamente
         // (slots.date = _extractDate ha trovato oggi/domani/giorno/data). Altrimenti resta
@@ -40436,6 +40440,9 @@ Per confermare scrivi ELIMINA.`);
     // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
     function _advancePrenota(draft) {
       const need = [];
+      // Tipo non scritto: va chiesto PER PRIMO ("partita o lezione?"). Senza il tipo non si può
+      // decidere se serve il maestro, quindi precede ogni altra domanda. §4.3 (tipoSempre).
+      if (PMO_PARSER_FLAGS.tipoSempre && !draft.typePresent) need.push('type');
       // Lezione senza maestro: il maestro è OBBLIGATORIO e va chiesto PER PRIMO (non si può
       // prenotare una lezione senza). Stessa logica "slot mancante" di date/court/time.
       if ((draft.tipo || 'partita') === 'lezione' && !draft.istruttore) need.push('maestro');
@@ -40454,11 +40461,34 @@ Per confermare scrivi ELIMINA.`);
     function _askNext() {
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
+      if (k === 'type') { const div = _say('🎾 È una <strong>partita</strong> o una <strong>lezione</strong>?'); _appendTypeButtons(div, aiFlowState.draft); return div; }
       if (k === 'maestro') return _say('👨‍🏫 Con quale <strong>maestro</strong> vuoi prenotare la lezione? (' + _escapeHtml(_maestri().join(', ')) + ')');
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
       if (k === 'player') return _say('👥 <strong>Chi gioca?</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).');
+    }
+    // Pulsanti "Partita / Lezione" per la domanda sul tipo (fallback testuale in _continuePrenota).
+    function _appendTypeButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const mk = function (label, tipo) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = label;
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          b.classList.add('selected');
+          draft.tipo = tipo; draft.typePresent = true; draft.__typeAsked = true;
+          aiFlowState = null;
+          _advancePrenota(draft);
+        });
+        return b;
+      };
+      wrap.appendChild(mk('🎾 Partita', 'partita'));
+      wrap.appendChild(mk('📚 Lezione', 'lezione'));
+      div.appendChild(wrap);
     }
     // Chiede se prenotare a nome Ospite quando manca il giocatore (Sì → Ospite; No → chiede il nome).
     function _askOspite(draft) {
@@ -40519,6 +40549,15 @@ Per confermare scrivi ELIMINA.`);
       if (/(^| )(annull\w*|lascia\w*|stop|niente)( |$)/.test(' ' + n + ' ')) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere. Dimmi pure quando vuoi.'); }
       const draft = aiFlowState.draft;
       const k = aiFlowState.need[0];
+      if (k === 'type') {
+        const nn = ' ' + _norm(text) + ' ';
+        if (/( lezion\w*| individual\w*| di gruppo| maestr\w*| insegnant\w*)/.test(nn)) draft.tipo = 'lezione';
+        else if (/( partit\w*| match | gioc\w*)/.test(nn)) draft.tipo = 'partita';
+        else return _say('Scrivi <strong>partita</strong> o <strong>lezione</strong> (oppure “annulla”).');
+        draft.typePresent = true; draft.__typeAsked = true;
+        aiFlowState = null;
+        return _advancePrenota(draft);
+      }
       if (k === 'maestro') {
         const m = _detectIstruttore(text, _norm(text));
         if (!m) return _say('Non ho riconosciuto il maestro. Scrivi uno tra: <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong> (oppure “annulla”).');
