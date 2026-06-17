@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.815';
+    const APP_VERSION = '5.816';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40022,6 +40022,7 @@ Per confermare scrivi ELIMINA.`);
             if (aiFlowState.stage === 'changes') return _continueAnaChanges(t);
             return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
           }
+          if (aiFlowState.stage === 'ospite') return _ospiteAnswer(t);
           if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
           if (aiFlowState.stage === 'await') return _continuePrenota(t);
         }
@@ -40298,9 +40299,18 @@ Per confermare scrivi ELIMINA.`);
     // articoli/preposizioni/connettori e termini di dominio (allievo, maestro, lezione…).
     // Senza questo filtro un residuo come "una" faceva match per sottostringa su "fortUNAto"
     // → inseriva un socio mai nominato (es. Loris Fortunato Salgarella).
-    const _PLAYER_STOPWORDS = new Set(['e', 'ed', 'o', 'con', 'per', 'un', 'uno', 'una', 'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'da', 'a', 'al', 'allo', 'alla', 'come', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'che', 'mi', 'poi', 'allievo', 'allieva', 'allievi', 'allieve', 'maestro', 'maestra', 'maestri', 'lezione', 'lezioni', 'insegnante', 'partita', 'match']);
+    const _PLAYER_STOPWORDS = new Set(['e', 'ed', 'o', 'con', 'per', 'un', 'uno', 'una', 'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'da', 'a', 'al', 'allo', 'alla', 'come', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'che', 'mi', 'poi', 'allievo', 'allieva', 'allievi', 'allieve', 'maestro', 'maestra', 'maestri', 'lezione', 'lezioni', 'insegnante', 'partita', 'match', 'su', 'sul', 'sullo', 'sulla', 'sui', 'sugli', 'sulle', 'nel', 'nello', 'nella', 'nei', 'negli', 'nelle', 'in', 'campo', 'campi']);
     function _stripPlayerStopwords(s) {
       return String(s || '').split(/\s+/).filter(function (w) { return w && !_PLAYER_STOPWORDS.has(w.toLowerCase()); }).join(' ').trim();
+    }
+    // Toglie i riferimenti al CAMPO dal testo-giocatori ("sul campo 4", "al campo 3",
+    // "campo 2", "campo") così non vengano scambiati per il NOME di un giocatore. Bug reale:
+    // "prenota oggi alle 12 sul campo 4" → "sul campo 4" (che viene DOPO l'ora) finiva come
+    // giocatore → Matchpoint 500 (autocomplete su un nominativo inesistente).
+    function _stripCourtRefs(s) {
+      return String(s || '')
+        .replace(/\b(?:sul|sullo|sulla|sui|sugli|sulle|su|al|allo|alla|ai|agli|alle|nel|nello|nella|nei|negli|nelle|in|del|dello|della)?\s*camp[oi]\b\s*(?:n(?:umero)?\.?\s*)?\d*/gi, ' ')
+        .replace(/\s+/g, ' ').trim();
     }
     function _resolvePlayers(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
@@ -40352,7 +40362,8 @@ Per confermare scrivi ELIMINA.`);
       }
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
       const after = _afterTime(text);
-      const playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
+      let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
+      playerText = _stripCourtRefs(playerText);
       if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
       return draft;
     }
@@ -40366,6 +40377,11 @@ Per confermare scrivi ELIMINA.`);
       if (!draft.campoNum) need.push('court');
       if (!draft.ora) need.push('time');
       if (need.length) { aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: need }; return _askNext(); }
+      // Partita senza giocatore indicato → CHIEDI se prenotare a nome Ospite (scelta utente,
+      // niente default silenzioso). Le lezioni non passano di qui (hanno il maestro).
+      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length) && !draft.__ospiteAsked) {
+        return _askOspite(draft);
+      }
       aiFlowState = null;
       _showSummary(draft);
     }
@@ -40375,6 +40391,60 @@ Per confermare scrivi ELIMINA.`);
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
+      if (k === 'player') return _say('👥 <strong>Chi gioca?</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).');
+    }
+    // Chiede se prenotare a nome Ospite quando manca il giocatore (Sì → Ospite; No → chiede il nome).
+    function _askOspite(draft) {
+      draft.__ospiteAsked = true;
+      aiFlowState = { kind: 'prenota', stage: 'ospite', draft: draft };
+      const div = _say('👥 Non hai indicato un giocatore. Prenoto a nome <strong>Ospite</strong>?');
+      _appendOspiteButtons(div, draft);
+    }
+    function _appendOspiteButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Sì, a nome Ospite';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✍️ No, inserisco il nome';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        draft.giocatori = [_ospitePlayer()];
+        aiFlowState = null;
+        _showSummary(draft);
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true; no.classList.add('selected');
+        aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
+        _askNext();
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
+    }
+    // Risposta testuale alla domanda Ospite (fallback ai pulsanti): sì/ospite → Ospite; no/nome → chiede;
+    // se l'utente scrive direttamente un nome lo usa come giocatore.
+    function _ospiteAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const draft = aiFlowState.draft;
+      if (/( no | nome | inserisc\w* | scriv\w* )/.test(n)) {
+        aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
+        return _askNext();
+      }
+      if (/( si | sì | ospite | ok | va bene | vabene | conferm\w* | procedi | certo )/.test(n)) {
+        draft.giocatori = [_ospitePlayer()];
+        aiFlowState = null;
+        return _showSummary(draft);
+      }
+      const r = _resolvePlayers(_stripCourtRefs(text));
+      if (r.giocatori && r.giocatori.length) {
+        draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
+        aiFlowState = null;
+        return _showSummary(draft);
+      }
+      return _say('Rispondi <strong>Sì</strong> (a nome Ospite) o <strong>No</strong> (inserisco il nome), oppure scrivi direttamente il nome del giocatore.');
     }
     // Risposta dell'utente mentre raccolgo gli slot mancanti.
     function _continuePrenota(text) {
@@ -40394,6 +40464,15 @@ Per confermare scrivi ELIMINA.`);
         const tr = _parseTimeRange(text);
         if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
         draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata;
+      } else if (k === 'player') {
+        const nn = ' ' + _norm(text) + ' ';
+        if (/( ospite | nessuno | anonimo | senza nome )/.test(nn)) {
+          draft.giocatori = [_ospitePlayer()];
+        } else {
+          const r = _resolvePlayers(_stripCourtRefs(text));
+          if (!r.giocatori || !r.giocatori.length) return _say('Non ho capito il nome. Scrivi il nome del giocatore, oppure <em>ospite</em> (o “annulla”).');
+          draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
+        }
       }
       aiFlowState.need.shift();
       if (aiFlowState.need.length) return _askNext();
