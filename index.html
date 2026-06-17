@@ -7655,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.814';
+    const APP_VERSION = '5.815';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -7691,6 +7691,12 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     const PMO_RUNTIME_ENV = pmoDetectRuntimeEnv();
     const PMO_IS_TEST_ENV = PMO_RUNTIME_ENV === 'test';
+    // Assistente AI: attivo in TUTTI gli ambienti (TEST e PROD). Il gating fine per chi lo
+    // vede resta il permesso ruolo `view_assistante_ai` (owner/admin sempre). Storicamente
+    // l'assistente era legato a PMO_IS_TEST_ENV; promosso/attivato in PROD da v5.815.
+    // NB: il TAB di gestione/addestramento (banco di prova, sandbox, log) resta solo-TEST
+    // (vedi blocco "TEST ENV — Assistente AI Desktop Layout", gate isTestEnv()).
+    const PMO_AI_ASSISTANT_ENABLED = true;
     const PMO_ENV_STORAGE_PREFIX = PMO_IS_TEST_ENV ? 'test:' : '';
     const PMO_DEFAULT_CONFIG_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}config-test.js` : `${PMO_PUBLIC_BASE_URL}config.js`;
     const PMO_DEFAULT_ASSESSMENT_BASE_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}autovalutazione.html?env=test` : `${PMO_PUBLIC_BASE_URL}autovalutazione.html`;
@@ -9904,10 +9910,11 @@ Grazie.`
     const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', contact:'view_contact', administration:'view_administration' };
     const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'contact', 'administration'];
     const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
-    // Assistente AI è un capitolo solo-TEST (iniettato a runtime su desktop):
-    // rendiamolo gateabile e mostriamolo nell'albero permessi solo lì.
-    // PMO_IS_TEST_ENV è già definito sopra (riga ~7578) in questo stesso script.
-    if (PMO_IS_TEST_ENV) {
+    // Assistente AI: registriamo il permesso `view_assistante_ai` nell'albero ruoli in
+    // TUTTI gli ambienti (TEST e PROD), così è gestibile dalla UI Gestione ruoli ovunque.
+    // Il capitolo/chat è gated da questo permesso (owner/admin sempre). PMO_AI_ASSISTANT_ENABLED
+    // è definito sopra (~riga 7693) in questo stesso script.
+    if (PMO_AI_ASSISTANT_ENABLED) {
       // dopo "Calendario", per rispecchiare l'ordine della barra capitoli
       PMO_SECTION_TREE.splice(1, 0, { key:'view_assistante_ai', tab:'assistanteAI', label:'Assistente AI' });
       PMO_TAB_VIEW_KEY.assistanteAI = 'view_assistante_ai';
@@ -39361,10 +39368,10 @@ Per confermare scrivi ELIMINA.`);
     }
     function _say(html, cls) { try { return svcAddMessage('system', html, cls); } catch (e) { return null; } }
 
-    // ── Gating: TEST + permesso view_assistante_ai (owner/admin sempre) ──────────
+    // ── Gating: assistente attivo (TEST+PROD) + permesso view_assistante_ai (owner/admin sempre) ──
     function isEnabled() {
       try {
-        if (typeof PMO_IS_TEST_ENV === 'undefined' || !PMO_IS_TEST_ENV) return false;
+        if (typeof PMO_AI_ASSISTANT_ENABLED === 'undefined' || !PMO_AI_ASSISTANT_ENABLED) return false;
         if (typeof pmoSectionVisibleFor === 'function') {
           const prof = (typeof pmoStaffProfile !== 'undefined') ? pmoStaffProfile : null;
           return pmoSectionVisibleFor('assistanteAI', prof) !== false;
