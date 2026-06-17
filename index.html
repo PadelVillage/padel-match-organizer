@@ -2759,13 +2759,15 @@
     .svc-chat-header { padding:8px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0; justify-content:flex-end; }
     .svc-chat-close-btn { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted); padding:2px 6px; border-radius:var(--radius-sm); line-height:1; transition:color .15s; }
     .svc-chat-close-btn:hover { color:var(--text); }
-    .svc-chat-input-row { padding:0 12px; height:var(--bar2-h); display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface2); transition:background .2s; }
+    .svc-chat-input-row { padding:7px 8px; min-height:var(--bar2-h); display:flex; align-items:flex-end; gap:6px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface2); transition:background .2s; }
     .svc-chat-input-row.svc-flow-locked { opacity:.7; }
-    .svc-chat-input { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:6px 10px; font-size:.82rem; font-family:inherit; outline:none; transition:border-color .15s,opacity .15s; min-width:0; }
+    /* Textarea stile WhatsApp: una riga di base, cresce verso l'alto e poi scrolla */
+    .svc-chat-input { flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:14px; padding:7px 11px; font-size:.82rem; font-family:inherit; outline:none; transition:border-color .15s,opacity .15s; min-width:0; resize:none; line-height:1.35; max-height:120px; overflow-y:auto; display:block; }
     .svc-chat-input::placeholder { color:var(--text-muted); }
     .svc-chat-input:focus { border-color:var(--accent); }
     .svc-chat-input:disabled { opacity:.5; cursor:not-allowed; background:var(--surface2); }
-    .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:var(--radius-sm); padding:6px 12px; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s,opacity .15s; white-space:nowrap; flex-shrink:0; }
+    .svc-chat-send { background:var(--accent); border:none; color:#fff; border-radius:50%; width:34px; height:34px; padding:0; margin:0; cursor:pointer; transition:background .15s,opacity .15s; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; }
+    .svc-chat-send svg { display:block; }
     .svc-chat-send:hover:not(:disabled) { background:var(--accent-hover); }
     .svc-chat-send:disabled { opacity:.45; cursor:not-allowed; }
     .svc-chat-messages { flex:1; overflow-y:auto; min-height:0; padding:10px 16px; display:flex; flex-direction:column; gap:8px; }
@@ -2824,8 +2826,15 @@
       .svc-chat-header { order:0; }
       .svc-chat-messages { order:1; flex-direction:column-reverse; }
       .svc-chat-input-row { order:2; border-bottom:none; border-top:1px solid var(--border); }
-      .svc-chat-input-row { height:auto !important; min-height:56px; padding:10px 12px !important; }
-      .svc-chat-input, .svc-chat-send { font-size:21px !important; padding:10px 14px !important; }
+      /* Composer mobile: stesso stile pulito del desktop (pill + tasto tondo) ma con
+         testo GRANDE e leggibile (21px = come i bubble dei messaggi) e tasti touch.
+         Il box resta compatto perché il placeholder è corto (vedi svcSetInputMode/
+         initChatUI): l'autogrow allarga solo quando si scrive davvero. */
+      .svc-chat-panel .svc-chat-input-row { height:auto !important; min-height:56px; padding:8px 10px !important; gap:8px; align-items:flex-end; }
+      .svc-chat-panel .svc-chat-input { font-size:21px !important; line-height:1.3 !important; padding:9px 14px !important; max-height:140px; border-radius:20px; }
+      .svc-chat-panel .svc-chat-send { width:42px !important; height:42px !important; padding:0 !important; }
+      .svc-chat-panel .svc-ai-mic { width:42px !important; height:42px !important; }
+      .svc-chat-panel .svc-chat-send svg, .svc-chat-panel .svc-ai-mic svg { width:21px !important; height:21px !important; }
       /* ✕ flottante in alto a destra sopra i messaggi: niente più barra-testata bianca */
       .svc-chat-panel:not(.svc-card-mode) .svc-chat-header { position:absolute; top:0; right:0; left:auto; width:auto; padding:6px 8px; border-bottom:none; background:transparent; z-index:3; }
       .svc-chat-header::before { display:none; }
@@ -2833,12 +2842,16 @@
       .svc-chat-panel:not(.svc-card-mode) .svc-chat-messages { padding-top:30px; }
       .svc-chat-panel.svc-card-mode { height:auto; max-height:90vh; }
       .svc-chat-panel.svc-card-mode .svc-chat-header { display:none; }
-      .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column-reverse; }
+      /* La schedina è un form alto: ancorala in ALTO (column, non column-reverse) così l'header
+         con la ✕ resta visibile e si scorre verso il basso fino a Conferma. */
+      .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
       .svc-chat-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0); z-index:200; pointer-events:none; transition:background .3s; }
       .svc-chat-overlay.active { background:rgba(0,0,0,.35); pointer-events:auto; }
-      /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile */
-      .svc-chat-panel, .svc-chat-panel * { font-size:21px !important; }
-      .svc-chat-panel select, .svc-chat-panel input { padding:8px 10px !important; }
+      /* OMOGENEITÀ: tutto il pannello assistente alla stessa taglia (21px) su mobile.
+         ECCEZIONE: la schedina di prenotazione (.svc-flow-card) si auto-dimensiona in modo
+         ADATTIVO (vedi svcOpenBookingCard), quindi va esclusa da queste uniformità !important. */
+      .svc-chat-panel, .svc-chat-panel *:not(.svc-flow-card):not(.svc-flow-card *) { font-size:21px !important; }
+      .svc-chat-panel select:not(.svc-flow-card *), .svc-chat-panel input:not(.svc-flow-card *) { padding:8px 10px !important; }
       /* Equilibrio dimensioni: messaggi/azioni assistente in armonia con la schedina (solo mobile) */
       .svc-msg { font-size:21px; }
       .svc-msg-label { font-size:12px; }
@@ -2922,12 +2935,18 @@
       .svc-grid-col { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
       #staffCalV36 .agenda-wrap { flex:1 1 auto; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
       #staffCalMobileChatBar { display:flex; flex:0 0 auto; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-top:1px solid #e5e7eb; box-shadow:0 -2px 8px rgba(0,0,0,.06); }
-      .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:19px; padding:7px 14px; font-size:.88rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:38px; transition:border-color .15s; }
+      /* Testo leggibile (1.05rem ≈ 17px) e box più alto: la barra è l'accesso all'assistente */
+      .smc-input { flex:1; border:1.5px solid #d1d5db; border-radius:21px; padding:8px 16px; font-size:1.05rem; font-family:inherit; outline:none; background:#f9fafb; color:#111827; height:42px; transition:border-color .15s; }
       .smc-input:focus { border-color:#2563eb; }
       .smc-input:disabled { opacity:.5; cursor:not-allowed; }
-      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:19px; padding:0 18px; height:38px; font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
+      .smc-send-btn { background:#2563eb; border:none; color:#fff; border-radius:21px; padding:0 18px; margin:0; height:42px; font-size:.95rem; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }
       .smc-send-btn:hover:not(:disabled) { background:#1d4ed8; }
       .smc-send-btn:disabled { opacity:.45; cursor:not-allowed; }
+      /* Microfono nella barra (stile coerente col mic del pannello): tondo, a linea blu */
+      .smc-mic-btn { width:42px; height:42px; flex-shrink:0; border:1.5px solid #d1d5db; background:#f9fafb; color:#2563eb; border-radius:50%; cursor:pointer; padding:0; margin:0; display:flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s,color .15s; }
+      .smc-mic-btn svg { width:21px; height:21px; display:block; }
+      .smc-mic-btn:hover { background:#eef2ff; }
+      .smc-mic-btn.recording { background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:svcMicPulse 1.3s ease-in-out infinite; }
       .svc-chat-fab { display:none !important; }
       /* HOTFIX: calendario a tutto schermo su mobile → nascondi la barra Menu globale solo qui */
       body.dashboard-view .top-nav-bar { display:none !important; }
@@ -3409,6 +3428,8 @@
       .side-nav-chat-host .svc-chat-panel { flex:1 1 auto; min-height:0; width:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.22); overflow:hidden; border-top:1px solid var(--border); }
       /* Chat stile WhatsApp: messaggi sopra (ultimo in fondo, autoscroll), input in basso */
       .side-nav-chat-host .svc-chat-messages { order:0; flex:1 1 auto; min-height:0; flex-direction:column-reverse; }
+      /* In card-mode la schedina (form alto) si ancora in alto: header con ✕ visibile, scroll giù. */
+      .side-nav-chat-host .svc-chat-panel.svc-card-mode .svc-chat-messages { flex-direction:column; }
       .side-nav-chat-host .svc-chat-input-row { order:1; border-top:1px solid var(--border); border-bottom:none; border-radius:0; }
       /* Anti-flash / fallback: finché la chat non è stata spostata nella sidebar (o se il JS
          fallisce) non mostrarla come colonna dentro al calendario. */
@@ -5835,8 +5856,52 @@ body.assessment-public-mode .assessment-public-only-card {
     .wa-toast.ok  { background:#2e7d32; }
     .wa-toast.err { background:#c62828; }
     @keyframes wa-toast-in { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-    /* Sezione Assistente AI: stile header interno */
-    #assistanteAI .wa-section-head h3::before { content: '✨ '; }
+    /* === Sezione Assistente AI — pannello di gestione === */
+    .ai-admin-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-top:14px; }
+    .ai-admin-card { background:var(--surface,#fff); border:1px solid var(--border,#e5e9ee); border-radius:12px; padding:16px 18px; }
+    .ai-admin-card-wide { grid-column:1 / -1; }
+    .ai-admin-card h3 { margin:0 0 8px; font-size:15px; color:var(--primary,#1e293b); }
+    .ai-admin-hint { font-size:12px; color:#667085; margin:6px 0; }
+    .ai-sandbox-input { width:100%; box-sizing:border-box; resize:vertical; min-height:48px; font-size:14px; padding:9px 11px; border:1px solid var(--border,#e5e9ee); border-radius:8px; outline:none; font-family:inherit; }
+    .ai-sandbox-actions { margin:10px 0; }
+    .ai-sandbox-output { background:#f8fbff; border:1px solid #dfe8f3; border-radius:8px; padding:11px 13px; font-size:12px; font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; min-height:90px; max-height:600px; overflow:auto; resize:vertical; color:#1e293b; margin:0; }
+    .ai-help-list { margin:6px 0; padding-left:18px; font-size:13px; color:#344054; }
+    .ai-help-list li { margin:5px 0; }
+    .ai-help-list code { background:#eef2f7; padding:1px 5px; border-radius:4px; font-size:12px; }
+    .ai-help-list li.soon { color:#98a2b3; }
+    .ai-conv-log { max-height:280px; overflow:auto; }
+    .ai-conv-row { display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px solid #f0f3f8; font-size:13px; }
+    .ai-conv-row:last-child { border-bottom:0; }
+    .ai-conv-intent { font-size:11px; font-weight:800; text-transform:uppercase; color:#0891b2; min-width:84px; }
+    .ai-conv-text { color:#344054; overflow-wrap:anywhere; flex:1; }
+    .ai-conv-conf { font-size:11px; color:#98a2b3; }
+    .ai-sbx-step { display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:#0891b2; margin:12px 0 5px; }
+    .ai-sbx-input-wrap { position:relative; }
+    .ai-sbx-input-wrap .ai-sandbox-input { padding-right:46px; }
+    .ai-sbx-mic { position:absolute; right:8px; bottom:8px; width:34px; height:34px; border-radius:50%; border:1px solid var(--border,#e5e9ee); background:#fff; cursor:pointer; font-size:16px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
+    .ai-sbx-mic:hover { background:#f1f5fb; }
+    .ai-sbx-mic.recording { background:#ffe3e3; border-color:#ff7a7a; animation:aiSbxPulse 1.1s infinite; }
+    @keyframes aiSbxPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(255,90,90,.45);} 50%{ box-shadow:0 0 0 6px rgba(255,90,90,0);} }
+    .ai-reports-list { display:flex; flex-direction:column; gap:8px; }
+    .ai-rep-row { border:1px solid #eef2f7; border-left:3px solid #f5a623; border-radius:8px; padding:8px 10px; background:#fffdf8; }
+    .ai-rep-row.is-done { border-left-color:#22a06b; background:#f4fbf7; }
+    .ai-rep-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:3px; }
+    .ai-rep-badge { font-size:11px; font-weight:800; padding:1px 7px; border-radius:999px; }
+    .ai-rep-badge.open { color:#9a6400; background:#fff0d6; }
+    .ai-rep-badge.done { color:#0f7a52; background:#d8f5e7; }
+    .ai-rep-when { font-size:11px; color:#98a2b3; }
+    .ai-rep-text { color:#1f2937; font-size:13px; overflow-wrap:anywhere; }
+    .ai-rep-note { font-size:12px; color:#6b7280; margin-top:2px; }
+    .ai-rep-res { font-size:12px; color:#0f7a52; margin-top:4px; font-weight:600; }
+    .ai-conv-report { background:none; border:0; cursor:pointer; font-size:13px; line-height:1; padding:2px 4px; border-radius:6px; opacity:.65; }
+    .ai-conv-report:hover { opacity:1; background:#fef3f2; }
+    .ai-conv-report:disabled { cursor:default; opacity:1; }
+    /* Microfono nella chat sidebar (modalità AI) */
+    .svc-ai-mic { border:1px solid var(--border,#e5e9ee); background:var(--surface,#fff); color:var(--accent,#2f6df6); border-radius:50%; cursor:pointer; line-height:1; width:34px; height:34px; flex-shrink:0; align-self:flex-end; display:flex; align-items:center; justify-content:center; padding:0; margin:0; transition:background .15s,border-color .15s,color .15s; }
+    .svc-ai-mic svg { width:18px; height:18px; display:block; }
+    .svc-ai-mic:hover { background:var(--surface2,#f4f6f9); }
+    .svc-ai-mic.recording { background:#fee2e2; border-color:#ef4444; color:#ef4444; animation:svcMicPulse 1.3s ease-in-out infinite; }
+    @keyframes svcMicPulse { 0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.45); } 50% { box-shadow:0 0 0 5px rgba(239,68,68,0); } }
 
     /* Status bar */
     .wa-status-bar { font-size:11px; color:#9e9e9e; margin-top:8px; padding-top:7px; border-top:1px solid #f0f0f0; }
@@ -6198,8 +6263,8 @@ body.assessment-public-mode .assessment-public-only-card {
                     <button class="svc-chat-close-btn" id="svcChatCloseBtn" title="Chiudi">✕</button>
                   </div>
                   <div class="svc-chat-input-row" id="svcChatInputRow">
-                    <input class="svc-chat-input" id="svcChatInput" type="text" placeholder="Clicca uno slot libero per prenotare ↑" disabled />
-                    <button class="svc-chat-send" id="svcChatSend" disabled>Invia ↵</button>
+                    <textarea class="svc-chat-input" id="svcChatInput" rows="1" placeholder="Clicca uno slot libero per prenotare ↑" disabled></textarea>
+                    <button class="svc-chat-send" id="svcChatSend" title="Invia (Invio)" aria-label="Invia" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                   </div>
                   <div class="svc-chat-messages" id="svcChatMessages"></div>
                 </div>
@@ -6207,6 +6272,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <!-- ── Tappa 2: barra chat mobile ── -->
               <div id="staffCalMobileChatBar">
                 <input id="staffCalMobileInput" class="smc-input" type="text" placeholder="Clicca uno slot per prenotare ↑">
+                <button id="staffCalMobileMic" class="smc-mic-btn" type="button" title="Detta un comando" aria-label="Detta un comando" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
                 <button id="staffCalMobileSend" class="smc-send-btn">Invia</button>
               </div>
               <div class="svc-chat-overlay" id="svcChatOverlay"></div>
@@ -7079,9 +7145,58 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
-    <!-- Assistente AI tab — contenuto spostato qui a runtime in test env desktop -->
+    <!-- Assistente AI tab — pannello di gestione del motore conversazionale (Fase 1, solo TEST).
+         La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui si testano i
+         comandi (sandbox), si vede cosa sa fare e il log delle ultime interazioni. -->
     <div id="assistanteAI" class="tab-content">
-      <div class="pmo-section-head"><div><h2>Assistente AI</h2><p>Messaggi, varianti e bot.</p></div></div>
+      <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
+      <div class="ai-admin-grid">
+        <section class="ai-admin-card">
+          <h3>🧪 Banco di prova</h3>
+          <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
+
+          <label class="ai-sbx-step">1 · Scrivi o detta 🎤 la frase da provare</label>
+          <div class="ai-sbx-input-wrap">
+            <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
+            <button type="button" id="aiSandboxMic" class="ai-sbx-mic" style="position:absolute;right:8px;bottom:8px;" title="Detta la frase con la voce" onclick="try{PMOAi.toggleSandboxDictation()}catch(e){}">🎤</button>
+          </div>
+
+          <label class="ai-sbx-step">2 · Premi “Analizza” e leggi il risultato</label>
+          <div class="ai-sandbox-actions">
+            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">🔍 Analizza</button>
+          </div>
+          <pre id="aiSandboxOutput" class="ai-sandbox-output">—</pre>
+
+          <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
+          <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
+          <div class="ai-sandbox-report">
+            <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
+              <span id="aiSandboxReportState" class="ai-admin-hint"></span>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
+            <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
+          </div>
+        </section>
+        <section class="ai-admin-card">
+          <h3>💬 Cosa posso fare</h3>
+          <ul class="ai-help-list" id="aiHelpList"></ul>
+          <p class="ai-admin-hint">Le regole di riconoscimento (sinonimi, istruttori) si gestiscono in <strong>Amministrazione → Parser Config</strong>.</p>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>📋 Ultime interazioni</h3>
+          <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
+          <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>🐞 Le mie segnalazioni</h3>
+          <p class="ai-admin-hint">Le frasi che hai segnalato con 🐞. <strong>🟠 Aperta</strong> = ancora da sistemare · <strong>✅ Risolta</strong> = corretta (con versione e nota di cosa è stato fatto). <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadMyReports()}catch(e){}">↻ Aggiorna</button></p>
+          <div id="aiReportsList" class="ai-reports-list"><div class="ai-admin-hint">—</div></div>
+        </section>
+      </div>
     </div>
 
     <!-- WA reply modal -->
@@ -7540,7 +7655,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.771';
+    const APP_VERSION = '5.814';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -11150,6 +11265,29 @@ Grazie.`
       `;
     }
 
+    // Garantisce la scheda socio "Ospite" (cod. Matchpoint 000001) in anagrafica dopo un import.
+    // L'export clienti di Matchpoint NON la restituisce, ma serve come segnaposto per le
+    // prenotazioni senza nominativo (l'assistente AI ci appoggia le partite senza nome). È
+    // guestJolly → resta esclusa da statistiche/abbinamenti/selezione giocatori, ma compare in
+    // Anagrafica soci ed è trovabile dalla ricerca nomi. Idempotente (non duplica se già presente).
+    function ensureOspiteMember(importedAtIso, source) {
+      const list = Array.isArray(giocatori) ? giocatori : [];
+      const exists = list.some(m => (typeof isGuestJollyMember === 'function' && isGuestJollyMember(m)) || cleanCell(m && m.memberId) === '000001');
+      if (exists) return false;
+      const now = importedAtIso || new Date().toISOString();
+      giocatori.push(ensureMemberId({
+        firstName: 'Ospite', surname: '', name: 'Ospite',
+        memberId: '000001', guestJolly: true,
+        phone: '', email: '', gender: 'NA', level: '',
+        birthDate: '', city: '', cap: '', province: '', address: '',
+        active: true, prefDays: [], prefHours: [],
+        matchpointImportedAt: now, matchpointLastImportedAt: now,
+        matchpointSource: source || 'automatic',
+        createdAt: now, updatedAt: now
+      }));
+      return true;
+    }
+
     function applyMatchpointMembersToLocal(importedMembers, options={}) {
       const members = Array.isArray(importedMembers) ? importedMembers : [];
       const skipped = Math.max(0, parseInt(options.skipped, 10) || 0);
@@ -11211,6 +11349,9 @@ Grazie.`
         }
       });
 
+      // Garantisce la scheda "Ospite" (000001): l'export clienti Matchpoint non la restituisce,
+      // ma deve comparire in anagrafica (segnaposto per le prenotazioni senza nominativo).
+      ensureOspiteMember(importedAtIso, source);
       save('giocatori', giocatori);
       const previousClientCount = parseInt(matchpointData?.clientCount, 10);
       const hasPreviousClientCount = Number.isFinite(previousClientCount) && !!(matchpointData?.lastClientsImportedAt || matchpointData?.lastSync);
@@ -12832,7 +12973,9 @@ Grazie.`
       pmoCreateMemberInMatchpoint(newMember).catch(err => console.warn('create-in-matchpoint fallita', err));
       return newMember;
     }
-    async function pmoCreateMemberInMatchpoint(member) {
+    async function pmoCreateMemberInMatchpoint(member, options = {}) {
+      // notify=false → niente toast showAlert (lo usa l'assistente AI, che riporta l'esito in chat).
+      const notify = options.notify !== false;
       if (isGuestJollyMember(member)) return;
       // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
       // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
@@ -12873,14 +13016,14 @@ Grazie.`
           }
           save('giocatori', giocatori);
           pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
-          showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
+          if (notify) showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
         } else {
           const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
-          showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+          if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
         }
       } catch (err) {
         const msg = err?.message || String(err) || 'errore sconosciuto';
-        showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+        if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
       }
     }
     function detectGender() {
@@ -34137,22 +34280,10 @@ Per confermare scrivi ELIMINA.`);
         chapterBar.insertBefore(btnAI, calItem ? calItem.nextSibling : chapterBar.firstChild);
       }
 
-      // Lo SPOSTAMENTO del pannello WA nel tab AI resta solo desktop (≥900px): sposta
-      // contenuto reale e su mobile la WA dashboard deve restare in "Messaggi WhatsApp".
-      // Idempotente (guard su parentElement) e ri-eseguibile al passaggio mobile↔desktop.
-      const pmoPlaceAiDesktop = function () {
-        if (window.innerWidth < 900) return;
-        const waDashboard = document.getElementById('waInboundDashboard');
-        const aiTab       = document.getElementById('assistanteAI');
-        if (waDashboard && aiTab && waDashboard.parentElement !== aiTab) aiTab.appendChild(waDashboard);
-      };
-      pmoPlaceAiDesktop();
-      try {
-        const _aiMq = window.matchMedia('(min-width:900px)');
-        const _aiOnChange = function () { pmoPlaceAiDesktop(); try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {} };
-        if (_aiMq.addEventListener) _aiMq.addEventListener('change', _aiOnChange);
-        else if (_aiMq.addListener) _aiMq.addListener(_aiOnChange);
-      } catch {}
+      // v5.772 — Il tab "Assistente AI" non ospita più il dashboard WhatsApp: ora è il pannello
+      // di gestione del motore conversazionale (sandbox + log). La vecchia relocation
+      // `pmoPlaceAiDesktop` è stata rimossa, così #waInboundDashboard resta nella sua sede
+      // naturale (tab "Messaggi WhatsApp") sia su desktop che su mobile.
 
       // La voce "Assistente AI" è iniettata QUI (script successivo), DOPO il gate di boot
       // `pmoApplyTabVisibility()` (~riga 26946, in uno <script> precedente): senza un nuovo
@@ -34757,15 +34888,16 @@ Per confermare scrivi ELIMINA.`);
   })();
 
   // ── Log errori parser su Supabase (fire-and-forget) ───────────────────────
-  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser }) {
+  // Ritorna true se la riga è stata salvata, false altrimenti (così chi segnala a mano può
+  // dire la verità all'utente invece di mostrare sempre ✅). Usa il token staff che si
+  // AUTO-RINFRESCA (pmoGetSupabaseStaffAccessToken): leggere il token grezzo da localStorage
+  // dava 401 quando era scaduto (insert silenziosamente perso, lista non leggibile).
+  async function logParserError({ input_originale, intent_riconosciuto, confidence, error_message, versione_parser, origine }) {
     try {
       const cfg = await loadAssessmentSupabaseConfig();
       let accessToken = cfg.supabaseKey;
-      try {
-        const raw = typeof safeLoad === 'function' ? safeLoad(PMO_STAFF_SUPABASE_SESSION_KEY, null) : null;
-        if (raw?.access_token) accessToken = raw.access_token;
-      } catch {}
-      await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) accessToken = t; } } catch {}
+      const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_parser_errors', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34779,11 +34911,15 @@ Per confermare scrivi ELIMINA.`);
           confidence: typeof confidence === 'number' ? confidence : null,
           error_message: error_message || null,
           versione_parser: versione_parser || PARSER_RULES?.versione || 'unknown',
-          admin_selected: false
+          admin_selected: false,
+          origine: origine || 'auto'
         })
       });
+      if (!res.ok) { console.warn('[StaffCal] logParserError HTTP', res.status); return false; }
+      return true;
     } catch (e) {
       console.warn('[StaffCal] logParserError failed:', e.message);
+      return false;
     }
   }
 
@@ -38077,7 +38213,14 @@ Per confermare scrivi ELIMINA.`);
     const chi = nome ? ` di ${nome}` : '';
     const confirmed = confirm(`Annullare su Matchpoint la prenotazione${chi}?\nCampo ${campo} · ${dataIt} · ${ora}\n\nL'operazione è irreversibile.`);
     if (!confirmed) return;
+    return staffCalDoCancel(isoDate, campo, ora, nome);
+  }
 
+  // Esegue l'annullamento su Matchpoint SENZA confirm() nativo: la conferma è già
+  // avvenuta a monte (dialog a pulsanti del calendario, oppure dialogo in chat
+  // dell'assistente AI). Estratto da staffCalAskCancel per riuso. v5.785.
+  async function staffCalDoCancel(isoDate, campo, ora, nome) {
+    const dataIt = isoDate.split('-').reverse().join('/');
     const inProgress = svcAddMessage('system', '⏳ Annullamento in corso su Matchpoint…');
     let _sec = 0;
     const _timer = setInterval(function() {
@@ -38316,10 +38459,18 @@ Per confermare scrivi ELIMINA.`);
     input.disabled = locked;
     send.disabled = locked;
     row.classList.toggle('svc-flow-locked', locked);
-    if (mode === 'normal')       { input.placeholder = 'Clicca uno slot libero per prenotare ↑'; }
+    if (mode === 'normal')       {
+      if (window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
+        input.disabled = false; send.disabled = false;
+        input.placeholder = '💬 Scrivi o detta…';
+      } else {
+        input.placeholder = 'Clicca uno slot libero per prenotare ↑';
+      }
+    }
     if (mode === 'flow-buttons') { input.placeholder = 'Scegli un’opzione qui sopra ↑'; }
     if (mode === 'flow-players') { input.placeholder = 'Es: Mario Rossi, Anna Verdi — Invia'; input.focus(); }
     if (mode === 'flow-summary') { input.placeholder = 'Conferma o annulla qui sopra ↑'; }
+    try { svcChatToggleAction(); } catch (e) {}
   }
 
   function svcAddMessage(role, html, extraClass) {
@@ -38440,15 +38591,25 @@ Per confermare scrivi ELIMINA.`);
     ];
     const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
 
-    // Leggibilità: su mobile (<900px) testi/controlli un po' più grandi; desktop invariato.
-    const M = (window.innerWidth || 999) < 900;
-    const FS  = { title:M?29:15, label:M?22:12, ctrl:M?24:14, btn:M?23:13, date:M?22:13, fine:M?22:12, chip:M?22:13, sugg:M?22:13, foot:M?24:14, x:M?30:16, plus:M?30:16 };
-    const PAD = { ctrl:M?'12px 14px':'6px 8px', pill:M?'11px 18px':'5px 11px', tipo:M?'12px 18px':'6px 11px', gioc:M?'13px 16px':'7px 10px', foot:M?'15px 22px':'8px 14px', sugg:M?'14px 16px':'8px 10px' };
+    // Leggibilità ADATTIVA: testi/controlli scalano in modo fluido sulla LARGHEZZA REALE del
+    // contenitore (non sul device). Estremi preservati: contenitore stretto (~320px, es. sidebar
+    // desktop) → compatto; largo (~560px, es. sheet mobile) → comodo; in mezzo interpola.
+    const _cw = (cont.clientWidth || 0);
+    // Se il contenitore è misurabile interpola sulla sua larghezza; altrimenti (raro: pannello non
+    // ancora layout-ato) si ripiega sull'euristica device originale (≥900px desktop → compatto).
+    const _t  = _cw > 0
+      ? Math.max(0, Math.min(1, (_cw - 320) / (560 - 320)))
+      : ((window.innerWidth || 999) < 900 ? 1 : 0);
+    const _l  = function(a,b){ return Math.round(a + (b - a) * _t); };
+    const _lp = function(a,b){ return _l(a,b) + 'px'; };
+    const FS  = { title:_l(15,29), label:_l(12,22), ctrl:_l(14,24), btn:_l(13,23), date:_l(13,22), fine:_l(12,22), chip:_l(13,22), sugg:_l(13,22), foot:_l(14,24), x:_l(16,30), plus:_l(16,30) };
+    const PAD = { ctrl:_lp(6,12)+' '+_lp(8,14), pill:_lp(5,11)+' '+_lp(11,18), tipo:_lp(6,12)+' '+_lp(11,18), gioc:_lp(7,13)+' '+_lp(10,16), foot:_lp(8,15)+' '+_lp(14,22), sugg:_lp(8,14)+' '+_lp(10,16) };
     const inSel = 'width:100%;font-size:'+FS.ctrl+'px;padding:'+PAD.ctrl+';border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);';
 
     const card = document.createElement('div');
     card.classList.add('svc-flow-card');
-    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;';
+    // text-size-adjust:100% → niente font-boosting del browser, così le misure fluide sono onorate 1:1.
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
 
     const head = document.createElement('div'); head.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px;';
     const dot = document.createElement('span'); dot.style.cssText='width:11px;height:11px;border-radius:50%;flex-shrink:0;';
@@ -38514,7 +38675,7 @@ Per confermare scrivi ELIMINA.`);
     const noteLblRow=document.createElement('div');
     noteLblRow.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px;';
     const noteLblTxt=document.createElement('span');
-    noteLblTxt.style.cssText='font-size:'+FS.lbl+'px;color:var(--text-muted);font-weight:500;';
+    noteLblTxt.style.cssText='font-size:'+FS.label+'px;color:var(--text-muted);font-weight:500;';
     noteLblTxt.textContent='Note';
     const noteHint=document.createElement('span');
     noteHint.style.cssText='font-size:11px;color:var(--text-muted);opacity:0.7;';
@@ -38534,6 +38695,8 @@ Per confermare scrivi ELIMINA.`);
     const confBtn=document.createElement('button'); confBtn.type='button'; confBtn.textContent='✓ Conferma prenotazione'; confBtn.style.cssText='flex:1;border-radius:var(--radius-sm);padding:'+PAD.foot+';cursor:pointer;font-size:'+FS.foot+'px;font-weight:700;';
     foot.appendChild(annBtn); foot.appendChild(confBtn); card.appendChild(foot);
     cont.appendChild(card);
+    // Apri la schedina mostrando l'ALTO (header + ✕), non il fondo.
+    try { cont.scrollTop = 0; } catch(e) {}
 
     function rebuildDurata(tipoKey){
       durSel.innerHTML=''; const list=(SVC_DURATE_PER_TIPO[tipoKey]||[60,90]);
@@ -38559,7 +38722,7 @@ Per confermare scrivi ELIMINA.`);
       svcFlowState.players.forEach(function(nm,idx){
         const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:'+FS.chip+'px;color:var(--text);';
         c.appendChild(document.createTextNode((nm && typeof nm==='object') ? nm.nome : nm));
-        const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:'+(M?18:12)+'px;padding:0 2px;';
+        const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:'+_l(12,18)+'px;padding:0 2px;';
         x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
         c.appendChild(x); chips.appendChild(c);
       });
@@ -39056,6 +39219,7 @@ Per confermare scrivi ELIMINA.`);
     if (!text) return;
     if (svcFlowState && svcFlowState.step === 'players') {
       input.value = '';
+      svcChatRefreshComposer();
       const rawNames = String(text).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+/i)
         .map(function(s) { return s.trim(); })
         .filter(Boolean);
@@ -39080,7 +39244,17 @@ Per confermare scrivi ELIMINA.`);
       }
       return;
     }
+    // ── Assistente AI (solo TEST): se non c'è un flow guidato attivo, il testo libero
+    //    viene interpretato dal motore conversazionale. ──────────────────────────────
+    if (!svcFlowState && window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()) {
+      input.value = '';
+      svcChatRefreshComposer();
+      PMOAi.handle(text);
+      input.focus();
+      return;
+    }
     input.value = '';
+    svcChatRefreshComposer();
     svcAddMessage('staff', text);
     svcAddMessage('system', 'ℹ️ Clicca una cella libera sul calendario per avviare una prenotazione guidata.');
   }
@@ -39152,6 +39326,2219 @@ Per confermare scrivi ELIMINA.`);
   /* Banner "Sincronizzazione automatica in corso" rimosso (v5.627): nessun polling, nessun banner. */
   // svcStartQueuePolling();
 
+  // ════════════════════════════════════════════════════════════════════════
+  // PMOAi — Assistente AI conversazionale a regole (Fase 1 — solo TEST)
+  // Router di intent costruito SOPRA PARSER_RULES (intents PRENOTA/CANCELLA/TROVA/
+  // CORREGGI già definiti nelle regole) + due intent locali (ANAGRAFICA, SUGGERISCI).
+  // La conversazione avviene nella chat sidebar (#svcChatPanel); il tab "Assistente AI"
+  // è il pannello di gestione (sandbox + log). Step 0+1: classificazione completa +
+  // intent TROVA (sola lettura). Creazione/modifica/annullamento/anagrafica arrivano
+  // negli step successivi (per ora rispondono "in arrivo"). Ogni futura scrittura passa
+  // da pmoRequireStaffPermission('cloud_sync').
+  // ════════════════════════════════════════════════════════════════════════
+  window.PMOAi = (function () {
+    let _welcomed = false;
+    const _convLog = [];
+    // Stato conversazionale PARALLELO a svcFlowState (il flow guidato del calendario).
+    // NON tocchiamo svcFlowState: questo gestisce solo il dialogo dell'assistente.
+    //   { stage:'await', draft, need:['court','time',…] }  → mancano slot, sto chiedendo
+    //   { stage:'confirm', draft }                          → riepilogo mostrato, attendo OK
+    let aiFlowState = null;
+    let _aiFlowAt = 0;                       // timestamp dell'ultimo messaggio (scadenza flusso)
+    const AI_FLOW_TTL_MS = 5 * 60 * 1000;    // 5 min: un flusso in sospeso ripreso più tardi riparte pulito
+
+    function _rules() {
+      return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
+           : (typeof STAFF_CAL_FALLBACK_RULES !== 'undefined' ? STAFF_CAL_FALLBACK_RULES : { intents: {} });
+    }
+    function _norm(s) {
+      return (typeof normalizeText === 'function') ? normalizeText(s) : String(s || '').toLowerCase().trim();
+    }
+    function _escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+      });
+    }
+    function _say(html, cls) { try { return svcAddMessage('system', html, cls); } catch (e) { return null; } }
+
+    // ── Gating: TEST + permesso view_assistante_ai (owner/admin sempre) ──────────
+    function isEnabled() {
+      try {
+        if (typeof PMO_IS_TEST_ENV === 'undefined' || !PMO_IS_TEST_ENV) return false;
+        if (typeof pmoSectionVisibleFor === 'function') {
+          const prof = (typeof pmoStaffProfile !== 'undefined') ? pmoStaffProfile : null;
+          return pmoSectionVisibleFor('assistanteAI', prof) !== false;
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
+    // ── Comprensione Fase 2: fallback LLM (edge ai-parse / Gemini) ───────────────
+    // Ibrido: le REGOLE sono il primo passo (veloce, offline). Solo se la loro
+    // confidenza è sotto soglia chiamiamo l'edge ai-parse, che capisce frasi nuove.
+    // Privacy: all'edge va SOLO il testo + la data odierna; MAI l'archivio soci.
+    // Se l'edge fallisce o va in timeout → si torna alle regole (l'app non si rompe).
+    const AI_PARSE_THRESHOLD = 0.75;
+
+    async function _callAiParse(text) {
+      const accessToken = (typeof pmoGetSupabaseStaffAccessToken === 'function')
+        ? await pmoGetSupabaseStaffAccessToken() : null;
+      if (!accessToken) return null;
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ai-parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ text: text, context: { today: _todayIso() } })
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      if (!resp.ok || !data || data.ok === false) return null;
+      return data; // { intent, slots, confidence, missing, source:'gemini' }
+    }
+
+    // Fonde il risultato LLM su quello a regole: l'LLM "vince" sugli slot che fornisce,
+    // e allinea anche `parsed` (che gli esecutori usano con priorità via `p.x || slots.x`).
+    function _mergeLlmResult(ruleRes, llm) {
+      const ls = llm.slots || {};
+      const slots = Object.assign({}, ruleRes.slots || {}, ls);
+      const parsed = Object.assign({}, ruleRes.parsed || {});
+      if (ls.court != null) parsed.campoNum = ls.court;
+      if (ls.time) parsed.ora = ls.time;
+      if (ls.timeEnd) parsed.oraFine = ls.timeEnd;
+      if (ls.duration != null) parsed.durata = ls.duration;
+      if (ls.type) parsed.tipo = ls.type;
+      if (ls.instructor) parsed.istruttore = ls.instructor;
+      if (ls.who) parsed.nome = ls.who;
+      return {
+        intent: llm.intent || ruleRes.intent,
+        slots: slots,
+        confidence: (typeof llm.confidence === 'number') ? llm.confidence : ruleRes.confidence,
+        missing: Array.isArray(llm.missing) ? llm.missing : ruleRes.missing,
+        parsed: parsed,
+        source: 'gemini'
+      };
+    }
+
+    // Regole-first; LLM solo sotto soglia. Mostra "sto pensando…" durante la chiamata.
+    async function _parseWithAi(text) {
+      const ruleRes = parse(text);
+      if (!ruleRes || ruleRes.confidence >= AI_PARSE_THRESHOLD) return ruleRes;
+      let thinkingEl = null;
+      try {
+        thinkingEl = _say('💭 Sto pensando…', 'svc-thinking');
+        const llm = await _callAiParse(text);
+        if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+        if (llm && (llm.intent || (llm.slots && Object.keys(llm.slots).length))) {
+          return _mergeLlmResult(ruleRes, llm);
+        }
+      } catch (e) {
+        if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+      }
+      return ruleRes;
+    }
+
+    // ── Date/ora ─────────────────────────────────────────────────────────────
+    function _todayIso() {
+      return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
+    }
+    // Formattazione LOCALE (non toISOString, che in fusi positivi tipo UTC+2 sposta la
+    // data al giorno prima e farebbe sbagliare "domani"/i giorni della settimana).
+    function _fmtLocal(x) {
+      if (typeof formatLocalDate === 'function') return formatLocalDate(x);
+      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    }
+    function _addDays(iso, d) { const x = new Date(iso + 'T00:00:00'); x.setDate(x.getDate() + d); return _fmtLocal(x); }
+    function _nextWeekday(iso, wd) { const x = new Date(iso + 'T00:00:00'); let i = 0; while (x.getDay() !== wd && i < 8) { x.setDate(x.getDate() + 1); i++; } return _fmtLocal(x); }
+    const _GIORNI = { lunedi: 1, martedi: 2, mercoledi: 3, giovedi: 4, venerdi: 5, sabato: 6, domenica: 0 };
+
+    function _extractDate(n, baseIso) {
+      if (/\bdopodomani\b/.test(n)) return _addDays(baseIso, 2);
+      if (/\bdomani\b/.test(n)) return _addDays(baseIso, 1);
+      if (/\boggi\b/.test(n)) return baseIso;
+      let m = n.match(/\b(\d{4}-\d{2}-\d{2})\b/); if (m) return m[1];
+      m = n.match(/\b(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/);
+      if (m && typeof parseDateValue === 'function') {
+        const dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0');
+        const yy = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : baseIso.slice(0, 4);
+        const iso = parseDateValue(dd + '/' + mm + '/' + yy);
+        if (iso) return iso;
+      }
+      for (const k in _GIORNI) { if (new RegExp('\\b' + k + '\\b').test(n)) return _nextWeekday(baseIso, _GIORNI[k]); }
+      return '';
+    }
+    // Orari scritti a PAROLE → cifre, in contesto orario (dopo alle/dalle/ore/h) o per le
+    // parole inequivocabili a 24h (tredici…ventiquattro, mezzogiorno, mezzanotte). Così
+    // "alle quattordici" → "alle 14", "mezzogiorno e mezzo" → "12:30". Robustezza dettatura.
+    const _NUMWORD = { zero: 0, una: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, undici: 11, dodici: 12, tredici: 13, quattordici: 14, quindici: 15, sedici: 16, diciassette: 17, diciotto: 18, diciannove: 19, venti: 20, ventuno: 21, ventidue: 22, ventitre: 23, ventiquattro: 24 };
+    function _digitizeTimeWords(text) {
+      let t = ' ' + String(text || '') + ' ';
+      t = t.replace(/\bmezzogiorno\b/gi, ' 12 ').replace(/\bmezzanotte\b/gi, ' 24 ');
+      // parola-numero dopo preposizione oraria → cifra (es. "alle quattordici" → "alle 14")
+      t = t.replace(/\b(dalle|dall'|alle|all'|alla|ore|ora|h)\s+([a-zà-ÿ]+)/gi, function (m, prep, w) {
+        const d = _NUMWORD[_norm(w)];
+        return (d != null) ? (prep.replace(/\s/g, '') + ' ' + d) : m;
+      });
+      // parole 24h inequivocabili anche senza preposizione (es. "prenota alle 14" vs "le quattordici")
+      t = t.replace(/\b(tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|venti|ventuno|ventidue|ventitre|ventitré|ventiquattro)\b/gi, function (m) { return ' ' + _NUMWORD[_norm(m)] + ' '; });
+      // minuti a parole: "14 e mezza" → "14:30", "14 e un quarto" → "14:15"
+      t = t.replace(/\b(\d{1,2})\s+e\s+mezz[ao]\b/gi, '$1:30')
+        .replace(/\b(\d{1,2})\s+e\s+un\s+quarto\b/gi, '$1:15')
+        .replace(/\b(\d{1,2})\s+e\s+tre\s+quarti\b/gi, '$1:45');
+      return t.replace(/\s{2,}/g, ' ').trim();
+    }
+    function _extractTime(text) {
+      const t = _digitizeTimeWords(text);
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
+      m = t.match(/\b(?:alle|dalle|dall'|dallo|delle|dell'|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0');
+      m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
+      if (m) return String(m[1]).padStart(2, '0') + ':' + m[2];
+      return '';
+    }
+    function _extractCampo(n) { const m = n.match(/\bcampo\s*([1-4])\b/); return m ? parseInt(m[1], 10) : 0; }
+    // Range a più giorni: "prossimi 5 giorni" → 5, "prossima/questa settimana" → 7.
+    function _extractDays(n) {
+      let m = n.match(/prossim[ei]\s+(\d{1,2})\s+giorn/); if (m) return Math.min(30, parseInt(m[1], 10)) || null;
+      m = n.match(/(\d{1,2})\s+giorni/); if (m && /prossim/.test(n)) return Math.min(30, parseInt(m[1], 10)) || null;
+      if (/prossima\s+settimana|questa\s+settimana/.test(n)) return 7;
+      if (/prossim[ei]\s+giorni/.test(n)) return 7;
+      return null;
+    }
+    function _dayLabel(iso) {
+      let wd = '';
+      try { if (typeof weekdayLabelFromISO === 'function') wd = weekdayLabelFromISO(iso); } catch (e) {}
+      const p = String(iso).split('-');
+      return (wd ? wd + ' ' : '') + (p.length === 3 ? p[2] + '/' + p[1] : iso);
+    }
+
+    // ── Classificazione intent (score su keywords+sinonimi di PARSER_RULES) ─────
+    const LOCAL_INTENTS = {
+      ANAGRAFICA: { keywords: ['anagrafica'], sinonimi: ['aggiungi giocatore', 'nuovo giocatore', 'nuovo socio', 'aggiungi socio', 'crea giocatore', 'registra giocatore', 'modifica giocatore', 'aggiorna giocatore', 'cambia livello', 'aggiorna contatti'] },
+      SUGGERISCI: { keywords: ['suggerisci', 'consiglia', 'proponi'], sinonimi: ['suggerimento', 'consiglio', 'abbinamento', 'chi posso invitare', 'miglior orario', 'orario migliore'] }
+    };
+    // Trigger in linguaggio naturale che arricchiscono gli intent già definiti in PARSER_RULES.
+    const _AUGMENT = {
+      TROVA: ['chi', 'quando', 'quali', 'quanti', 'cosa', 'campi liberi', 'campo libero', 'liberi', 'libero', 'disponibile', 'disponibili', 'disponibilita', 'occupato', 'occupati', 'prenotazioni', 'agenda', 'mostra', 'vedi', 'gioca', 'giocano'],
+      PRENOTA: ['prenotami', 'prenotarmi', 'prenotaci', 'bloccami', 'blocca', 'riservami', 'riserva', 'fissami', 'fissa', 'segnami'],
+      CANCELLA: ['elimina', 'disdici', 'togli'],
+      CORREGGI: ['rinomina']
+    };
+    // Verbo "prenotare" coniugato (imperativo/infinito/condizionale/imperfetto/presente) MA
+    // NON il sostantivo "prenotazione/prenotazioni": rende l'assistente robusto a "mi prenoti…",
+    // "prenotami…", "mi prenotava…", che la sola keyword "prenota" non catturava. Vedi _classify.
+    const _BOOK_VERB = /(^| )prenot(a|ami|armi|arci|are|o|i|iamo|ate|aci|ava|avo|avi|avate|avano|er[oaià]|erei|eresti|erebbe|ereste|eremmo|eranno|ala|alo|ali|ale)( |$)/;
+    // Match a PAROLA INTERA (n è già delimitato da spazi): evita falsi positivi come
+    // "prenotazioni"→"prenota". Supporta keyword multi-parola ("campi liberi").
+    function _escapeReg(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function _wordHit(n, k) {
+      if (!k) return false;
+      try { return new RegExp('(^| )' + _escapeReg(k) + '( |$)').test(n); } catch (e) { return n.indexOf(' ' + k + ' ') !== -1; }
+    }
+    function _classify(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const r = _rules();
+      const cand = {};
+      Object.keys(r.intents || {}).forEach(function (name) { const d = r.intents[name] || {}; cand[name] = (d.keywords || []).concat(d.sinonimi || []); });
+      Object.keys(_AUGMENT).forEach(function (name) { cand[name] = (cand[name] || []).concat(_AUGMENT[name]); });
+      Object.keys(LOCAL_INTENTS).forEach(function (name) { cand[name] = (cand[name] || []).concat(LOCAL_INTENTS[name].keywords, LOCAL_INTENTS[name].sinonimi); });
+      // Contesto-anagrafica: SOLO termini inequivocabili sulla persona (NON "livello",
+      // che ricorre anche nel contesto-partita: "partita di livello 4").
+      const playerCtx = /(^| )(giocator\w*|soci\w*|socio|anagrafic\w*|telefon\w*|contatt\w*|cellulare)( |$)/.test(n);
+      // Aggiorna-anagrafica: verbo di update + un CAMPO della scheda (livello/telefono/email/…)
+      // e NESSUNA parola di prenotazione → così "aggiorna il livello di Mario a 4" è ANAGRAFICA,
+      // ma "modifica la partita di Mario" resta CORREGGI e "partita di livello 4" resta PRENOTA.
+      const anaUpdateCtx = /(^| )(aggiorn\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*|aggiust\w*)( |$)/.test(n)
+        && /(^| )(livell\w*|telefon\w*|email|e-mail|mail|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz\w*|contatt\w*|recapit\w*|cellulare|numero)( |$)/.test(n)
+        && !/(^| )(camp[oi]|partit\w*|prenotazion\w*|lezion\w*|tornei?|slot)( |$)/.test(n);
+      // Domanda sul ROSTER di una partita ("mancano giocatori", "ci sono tutti e quattro",
+      // "quanti giocatori", "posti liberi nelle partite") → è una DOMANDA (TROVA), non
+      // anagrafica, anche se contiene la parola "giocatori".
+      const rosterCtx = /(^| )(mancano|manca|tutti +e +(quattro|4)|quattro +giocator\w*|quant[ei] +giocator\w*|giocator\w* +(mancant\w*|manca\w*)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))( |$)/.test(n);
+      // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
+      const anaCtx = (playerCtx || anaUpdateCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
+      // Domanda sulle LEZIONI di un maestro / su un range di giorni ("lezioni di Santiago dei
+      // prossimi 5 giorni") → DOMANDA (TROVA), purché non sia una prenotazione.
+      const lessonCtx = /(^| )lezion\w*( |$)/.test(n)
+        && (!!_detectIstruttore(text, n) || /(^| )(maestr\w*|istruttor\w*|insegnant\w*)( |$)/.test(n) || /(prossim\w*|settimana|giorni)/.test(n))
+        && !_BOOK_VERB.test(n);
+      // "aggiungi un giocatore ALLA PARTITA / al campo / alla prenotazione" = modifica di una
+      // partita esistente (CORREGGI → apre l'editor giocatori), NON creazione di un socio.
+      const addToMatchCtx = /(^| )aggiung\w+( |$)/.test(n)
+        && /(^| )giocator\w*( |$)/.test(n)
+        && /(^| )(partit\w*|prenotazion\w*|campo|match)( |$)/.test(n);
+      function score(list) {
+        let s = 0;
+        (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
+        return s;
+      }
+      let best = null, bestScore = 0;
+      Object.keys(cand).forEach(function (name) {
+        if (name === 'RICORRENZA') return; // gestita dentro PRENOTA, non è un intent a sé per l'AI
+        let s = score(cand[name]);
+        if (name === 'PRENOTA' && _BOOK_VERB.test(n)) s += 2;
+        if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
+        if (name === 'CORREGGI' && addToMatchCtx) s += 3;
+        if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
+        if (name === 'ANAGRAFICA' && anaCtx) s += 2;
+        if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
+        // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
+        // generico "libero" che farebbe scattare TROVA.
+        if (name === 'SUGGERISCI' && s > 0) s += 1;
+        if (s > bestScore) { bestScore = s; best = name; }
+      });
+      return { intent: best, score: bestScore };
+    }
+
+    // ── Parse pubblica: { intent, slots, confidence, missing, parsed } ──────────
+    // ════════════════════════════════════════════════════════════════════════
+    // INTERPRETAZIONE — regole A–I del brief. Arricchisce parse() con azione,
+    // tipo evento, giocatori e gli STATI: needsType (D), needsSurname (A),
+    // ospite (B), needsInstructor, ko/koReason (E), confirmMassive (F).
+    // Sola lettura: nessuna esecuzione, nessuna scrittura.
+    // ════════════════════════════════════════════════════════════════════════
+    // §4 — decisioni di comportamento confermate (flag modificabili):
+    const PMO_PARSER_FLAGS = {
+      ospiteAnnunciato: true, // §4.1 — "ho messo: ospite" nel riepilogo, non in silenzio
+      cognomeSempre:    true, // §4.2 — chiede il cognome anche con match unico a sistema
+      tipoSempre:       true  // §4.3 — chiede "partita o lezione?" se il tipo non è scritto
+    };
+    function _pad2(x) { x = String(x); return x.length < 2 ? ('0' + x) : x; }
+    const _PMO_EDIT_STOP = new Set(['la', 'lo', 'il', 'le', 'i', 'gli', 'un', 'uno', 'una', 'al', 'alla', 'allo', 'alle', 'nella', 'nello', 'dalla', 'dallo', 'in', 'su', 'sul', 'sulla', 'di', 'da', 'a', 'per', 'con', 'e', 'ed', 'partita', 'lezione', 'prenotazione', 'match', 'campo', 'socio', 'giocatore', 'giocatori', 'maestro', 'maestra', 'domani', 'dopodomani', 'oggi', 'stasera', 'sera', 'pomeriggio', 'mattina', 'notte', 'ora', 'ore', 'h']);
+    function _pmoIsStop(w) { return !w || _PMO_EDIT_STOP.has(w) || /^\d+$/.test(w); }
+
+    // Rule H — dialetto/abbreviazioni → forma estesa (lowercase, senza accenti).
+    function _ppDialect(text) {
+      let s = ' ' + _norm(text) + ' ';
+      s = s.replace(/\bbuta\s+dentro\b/g, ' aggiungi ');
+      s = s.replace(/\bde\s+sera\b/g, ' di sera ');
+      s = s.replace(/\bcmp\s*([1-4])\b/g, ' campo $1 ').replace(/\bcmp\b/g, ' campo ');
+      s = s.replace(/\bc\s*([1-4])\b/g, ' campo $1 ');
+      s = s.replace(/\b(dman|doman)\b/g, ' domani ');
+      s = s.replace(/\bcanc\b/g, ' annulla ');
+      s = s.replace(/\bagg\b/g, ' aggiungi ');
+      s = s.replace(/\blez\b/g, ' lezione ');
+      s = s.replace(/\bpart\b/g, ' partita ');
+      s = s.replace(/\bsanti\b/g, ' santiago ');
+      s = s.replace(/\bx\b/g, ' per ');
+      s = s.replace(/\blun\b/g, ' lunedi ').replace(/\bmar\b/g, ' martedi ').replace(/\bmer\b/g, ' mercoledi ')
+           .replace(/\bgio\b/g, ' giovedi ').replace(/\bven\b/g, ' venerdi ').replace(/\bsab\b/g, ' sabato ').replace(/\bdom\b/g, ' domenica ');
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
+
+    // Campo 1–4. {campo} oppure {koCampo:true} se fuori range.
+    const _NUMW14 = { uno: 1, una: 1, due: 2, tre: 3, quattro: 4 };
+    function _campoX(tx) {
+      let m = tx.match(/\bcampo\s*(\d{1,2})\b/);
+      if (m) { const c = +m[1]; return (c >= 1 && c <= 4) ? { campo: c } : { koCampo: true, campoRaw: c }; }
+      m = tx.match(/\bcampo\s+(uno|una|due|tre|quattro)\b/);
+      if (m) return { campo: _NUMW14[m[1]] };
+      m = tx.match(/\b(?:sul|sullo|sulla|sui|su)\s+(\d{1,2})\b/);
+      if (m) { const c = +m[1]; if (c >= 1 && c <= 4) return { campo: c }; if (c > 4) return { koCampo: true, campoRaw: c }; }
+      m = tx.match(/\bil\s+([1-4])\b/); // "il 2" piccolo → campo (ambiguo, ma utile)
+      if (m) return { campo: +m[1] };
+      // ultimo tentativo (telegrafico "…rossi 2…"): un 1–4 isolato NON preceduto da una
+      // preposizione oraria (così non prende "alle 4") → campo.
+      const t2 = tx.replace(/\b(?:alle|dalle|dall'|delle|dell'|ore|ora|h)\s*\d{1,2}(?::\d{2})?/g, ' ');
+      m = t2.match(/(?:^|\s)([1-4])(?=\s|$)/);
+      if (m) return { campo: +m[1] };
+      return {};
+    }
+
+    // Data. {iso} | {koPast} | {koDate}. weekdayUsed = un giorno-settimana è stato usato.
+    const _MESI = { gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6, luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12 };
+    function _validYmd(y, mo, d) { const dt = new Date(y, mo - 1, d); return dt.getFullYear() === y && (dt.getMonth() + 1) === mo && dt.getDate() === d; }
+    function _dateX(tx, baseIso) {
+      if (/\bdopodomani\b/.test(tx)) return { iso: _addDays(baseIso, 2) };
+      if (/\bdomani\b/.test(tx)) return { iso: _addDays(baseIso, 1) };
+      if (/\bieri\b/.test(tx)) return { koPast: true };
+      if (/\b(oggi|stasera|stanotte|stamattina|stamane|stamani)\b/.test(tx)) return { iso: baseIso };
+      let m = tx.match(/\b(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/);
+      if (m) {
+        const d = +m[1], mo = _MESI[m[2]]; let y = +baseIso.slice(0, 4);
+        if (!_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (iso < baseIso) iso = (y + 1) + '-' + _pad2(mo) + '-' + _pad2(d);
+        return { iso };
+      }
+      m = tx.match(/\b(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/);
+      if (m) {
+        const d = +m[1], mo = +m[2]; let y = m[3] ? (m[3].length === 2 ? 2000 + (+m[3]) : (+m[3])) : (+baseIso.slice(0, 4));
+        if (mo < 1 || mo > 12 || !_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (!m[3] && iso < baseIso) iso = (y + 1) + '-' + _pad2(mo) + '-' + _pad2(d);
+        return { iso };
+      }
+      m = tx.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+      if (m) { const y = +m[1], mo = +m[2], d = +m[3]; if (!_validYmd(y, mo, d)) return { koDate: true }; const iso = y + '-' + _pad2(mo) + '-' + _pad2(d); return iso < baseIso ? { koPast: true } : { iso }; }
+      for (const k in _GIORNI) {
+        if (new RegExp('\\b' + k + '\\b').test(tx)) {
+          let iso = _nextWeekday(baseIso, _GIORNI[k]);
+          if (/\bprossim/.test(tx) && iso <= _addDays(baseIso, 6)) iso = _addDays(iso, 7);
+          return { iso: iso, weekdayUsed: true };
+        }
+      }
+      m = tx.match(/\bil\s+(\d{1,2})\b/); // giorno del mese
+      if (m) {
+        const d = +m[1]; let y = +baseIso.slice(0, 4), mo = +baseIso.slice(5, 7);
+        if (!_validYmd(y, mo, d)) return { koDate: true };
+        let iso = y + '-' + _pad2(mo) + '-' + _pad2(d);
+        if (iso < baseIso) { mo++; if (mo > 12) { mo = 1; y++; } iso = y + '-' + _pad2(mo) + '-' + _pad2(d); }
+        return { iso };
+      }
+      return {};
+    }
+
+    // Orario. {ora, oraFine, durata, koOrder}. Riceve testo GIÀ ripulito di campo/data.
+    function _timeX(raw) {
+      let t = ' ' + String(raw || '') + ' ';
+      if (/\b(tra|fra)\s+un'?\s*ora\b/.test(t)) {
+        const d = new Date(); d.setMinutes(d.getMinutes() + 60);
+        const ora = _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+      }
+      t = t.replace(/\bun'?\s*ora\s+e\s+mezz[ao]\b/g, ' 1 ora e mezza ');
+      t = t.replace(/\bmezzogiorno\b/g, ' 12 ').replace(/\bmezzanotte\b/g, ' 0 ');
+      Object.keys(_NUMWORD).forEach(function (w) { t = t.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ' + _NUMWORD[w] + ' '); });
+      t = t.replace(/\b(\d{1,2})\s+e\s+mezz[ao]\b/g, '$1:30').replace(/\b(\d{1,2})\s+e\s+un\s+quarto\b/g, '$1:15').replace(/\b(\d{1,2})\s+e\s+tre\s+quarti\b/g, '$1:45');
+      const eve = /\b(di\s+sera|della\s+sera|sera)\b/.test(t);
+      const pom = /\bpomeriggio\b/.test(t);
+      const dur90 = /\b1\s+ora\s+e\s+mezz/.test(t);
+      function shift(h) { return ((eve || pom) && h >= 1 && h <= 11) ? h + 12 : h; }
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) {
+        const h1 = shift(+m[1]), n1 = +(m[2] || 0), h2 = shift(+m[3]), n2 = +(m[4] || 0);
+        const dur = (h2 * 60 + n2) - (h1 * 60 + n1);
+        return { ora: _pad2(h1) + ':' + _pad2(n1), oraFine: _pad2(h2) + ':' + _pad2(n2), durata: dur, koOrder: dur <= 0 };
+      }
+      m = t.match(/\b(?:dalle|dall'|delle|dell'|dal)\s*(\d{1,2})(?:[:.](\d{2}))?\s+(?:alle|all'|fino\s+alle?)\s*(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) {
+        const h1 = shift(+m[1]), n1 = +(m[2] || 0), h2 = shift(+m[3]), n2 = +(m[4] || 0);
+        const dur = (h2 * 60 + n2) - (h1 * 60 + n1);
+        return { ora: _pad2(h1) + ':' + _pad2(n1), oraFine: _pad2(h2) + ':' + _pad2(n2), durata: dur, koOrder: dur <= 0 };
+      }
+      m = t.match(/\b(?:alle|dalle|dall'|delle|dell'|alla|ore|ora|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) {
+        let h = +m[1]; const n = +(m[2] || 0);
+        if (h < 0 || h > 23) return {};
+        h = shift(h);
+        const ora = _pad2(h) + ':' + _pad2(n);
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+      }
+      // bare-hour: primo numero plausibile come ORA (6–23), così non prende il numero del campo
+      const toks = t.match(/\b\d{1,2}(?::\d{2})?\b/g) || [];
+      for (let i = 0; i < toks.length; i++) {
+        const parts = toks[i].split(':'); let h = +parts[0]; const n = +(parts[1] || 0);
+        if (h >= 6 && h <= 23) { h = shift(h); const ora = _pad2(h) + ':' + _pad2(n); return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, bareHour: true }; }
+      }
+      return {};
+    }
+
+    // Tipo evento. {tipo, typePresent}.
+    function _typeX(tx, istruttore) {
+      if (/\bmanutenzion\w*\b/.test(tx)) return { tipo: 'manutenzione', typePresent: true };
+      if (/\blezion\w*\b|\bindividuale\b|\bdi\s+gruppo\b|\bmaestr\w*\b|\binsegnante\b/.test(tx) || istruttore) return { tipo: 'lezione', typePresent: true };
+      if (/\bpartit\w*\b|\bmatch\b/.test(tx)) return { tipo: 'partita', typePresent: true };
+      return { tipo: null, typePresent: false };
+    }
+
+    // Nomi dopo un verbo di modifica-giocatori ("aggiungi Luca", "togli Giovanni",
+    // "sostituisci Mario con Luca", "aggiungi Anna e Sara").
+    function _editNames(tx) {
+      const out = [];
+      let m = tx.match(/\b(?:aggiungi|aggiungere|metti|inserisci|togli|togliere|rimuovi|rimuovere|leva|levare|sostituisci|sostituisce|scambia)\s+([a-zà-ÿ]+)\b/);
+      if (m && !_pmoIsStop(m[1])) out.push(m[1]);
+      m = tx.match(/\bcon\s+([a-zà-ÿ]+)\b/);
+      if (m && !_pmoIsStop(m[1]) && out.indexOf(m[1]) < 0) out.push(m[1]);
+      m = tx.match(/\b([a-zà-ÿ]+)\s+e\s+([a-zà-ÿ]+)\b/);
+      if (m) { [m[1], m[2]].forEach(function (w) { if (!_pmoIsStop(w) && out.indexOf(w) < 0) out.push(w); }); }
+      return out;
+    }
+
+    // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
+    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|prossim\w*)$/;
+    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
+
+    // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
+    function _subjectName(tx) {
+      let m = tx.match(/\b(?:di|del|della|dell')\s+([a-zà-ÿ]+)\b/);
+      if (m && _pmoNameOk(m[1])) return m[1];
+      m = tx.match(/\b(?:partita|lezione)\s+(?:di\s+)?([a-zà-ÿ]+)\b/);
+      if (m && _pmoNameOk(m[1])) return m[1];
+      return '';
+    }
+
+    // Nomi giocatori in una prenotazione (dopo "per"/"con"/l'orario).
+    function _bookingNames(tx) {
+      const s = ' ' + tx + ' ';
+      let after = '';
+      let m = s.match(/\b(?:per|con)\s+(.+)$/);
+      if (m) after = m[1];
+      else {
+        m = s.match(/\b(?:alle|dalle|delle|ore|h)\s*\d{1,2}(?::\d{2})?\b(.*)$/) ||
+            s.match(/\b\d{1,2}[:.]?\d{0,2}\s*[-–]\s*\d{1,2}[:.]?\d{0,2}\b(.*)$/) ||
+            s.match(/\b\d{1,2}(?::\d{2})?\b(.*)$/);
+        if (m) after = m[1];
+      }
+      if (!after) return [];
+      const parts = after.split(/[,;&+]|\be\b|\bed\b/);
+      const names = [];
+      parts.forEach(function (p) {
+        const toks = p.split(/\s+/).map(function (w) { return w.trim(); }).filter(_pmoNameOk);
+        if (toks.length) names.push(toks.join(' '));
+      });
+      return names;
+    }
+
+    function _isQuestion(tx, raw) {
+      if (/\?/.test(raw)) return true;
+      if (/\b(chi|quando|quali|quanti|quante|quanto|cosa|dove|quale)\b/.test(tx)) return true;
+      if (/\bche\s+(ora|prenotazion|partit|lezion)/.test(tx) || /\ba\s+che\s+ora\b/.test(tx)) return true;
+      if (/\bcamp\w*\s+(liber\w*|disponib\w*|prenotabil\w*|vuot\w*)\b/.test(tx) || /\b(liber\w*|disponib\w*)\b.*\bcamp/.test(tx)) return true;
+      if (/\bgioca\b/.test(tx)) return true;
+      if (/\bc'?e\b.*\blezion/.test(tx)) return true;
+      if (/\b(mostr\w*|elenc\w*|dimmi|vedi|visualizz\w*)\b/.test(tx)) return true;
+      return false;
+    }
+
+    // Rileva SOLO un maestro noto (lista + fuzzy). NON usa "con X" generico (eviterebbe di
+    // scambiare "con Luca" per un istruttore in una partita).
+    function _maestroDetect(tx) {
+      const list = _maestri();
+      for (let i = 0; i < list.length; i++) { if (new RegExp('\\b' + _escapeReg(_norm(list[i])) + '\\b').test(tx)) return list[i]; }
+      try {
+        const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
+        for (const k in fuzzy) { if (new RegExp('\\b' + _escapeReg(_norm(k)) + '\\b').test(tx)) return fuzzy[k]; }
+      } catch (e) {}
+      return '';
+    }
+    // Nome socio in un comando anagrafica ("socio Mario Rossi" → "mario rossi"), per regola A.
+    function _anaSubjName(tx) {
+      const m = tx.match(/\b(?:socio|socia|giocatore|giocatrice|cliente)\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)/);
+      return m ? m[1].trim() : '';
+    }
+
+    // Cuore dell'interpretazione: decide azione, tipo, giocatori e gli stati delle regole.
+    function _enrichInterpret(text, baseIso, c) {
+      const tx = _ppDialect(text);
+      const cx = _campoX(tx);
+      const dx = _dateX(tx, baseIso);
+      const istruttore = _maestroDetect(tx);
+      const ty = _typeX(tx, istruttore);
+      // testo per l'orario: tolgo campo e date così il bare-hour non prende quei numeri.
+      // Le date le rimuovo SOLO se con "/" (le date con "." si confondono con gli orari "18.00").
+      let timeText = tx
+        .replace(/\bcampo\s*\d+\b/g, ' ').replace(/\bcampo\s+(uno|una|due|tre|quattro)\b/g, ' ')
+        .replace(/\b(?:sul|sullo|sulla|sui|su)\s+\d+\b/g, ' ').replace(/\bil\s+\d{1,2}\b/g, ' ')
+        .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ' ')
+        .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, ' ')
+        .replace(/\b\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/g, ' ');
+      const tmx = _timeX(timeText);
+
+      const isQuestion = _isQuestion(tx, text);
+      const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
+      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
+      const editNames = (addV || remV || replV) ? _editNames(tx) : [];
+      const hasPerson = editNames.length > 0;
+      // verbo "prenotare" coniugato (NON il sostantivo "prenotazione/prenotazioni") + altri verbi di creazione
+      const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
+      // "metti/fai una partita|lezione" = CREA; "metti Marco nella lezione" = aggiunta giocatore
+      const createPhrase = bookVerb || /\b(metti|fai)\s+(?:un|uno|una|la|il|lo)\s+(?:partit\w*|lezion\w*|prenotazion\w*)\b/.test(tx) || /\bprenotazione\s+privat/.test(tx);
+      const cancelVerb = /\b(annulla|annullare|cancella|cancellare|disdici|disdire|elimina|eliminare)\b/.test(tx) || (remV && !hasPerson);
+      const modifyVerb = /\b(modific\w*|sposta\w*|spostare|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
+      const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
+      // "aggiungi/togli … ALLA/DALLA partita|lezione" = modifica dei giocatori (apre l'editor),
+      // anche senza un nome esplicito ("aggiungi un giocatore alla partita delle 18").
+      const editToExisting = /\b(alla|nella|dalla|all'|nell'|dall')\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
+      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting);
+      const anaStatus = /\bmoros\w*\b/.test(tx); // "X adesso è moroso" → scheda socio
+
+      // Domande su stato posti/roster e su lezioni multi-giorno (compat. assistente): sono
+      // INTERROGAZIONI anche senza punto di domanda, e devono battere il fallback "crea".
+      const rosterQ = /\bmancano?\b/.test(tx) || /\btutti\s+e\s+(quattro|4)\b/.test(tx) || /\bquant[ei]\s+giocator/.test(tx) || (/\bpost[oi]\b/.test(tx) && /\b(liber\w*|disponib\w*|partit\w*)\b/.test(tx));
+      const lessonsQ = /\blezion\w*\b/.test(tx) && /\b(prossim\w+|questa\s+settimana|settimana\s+prossima)\b/.test(tx);
+
+      // ── azione ──
+      let azione = null;
+      if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
+      else if (playerEdit) azione = 'giocatori';
+      if (!azione) {
+        if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
+        else if (cancelVerb) azione = 'annulla';
+        else if (modifyVerb && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
+        else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
+      }
+      if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
+
+      // ── giocatori (regola A/B) ──
+      let giocatori = [];
+      if (azione === 'giocatori') giocatori = editNames.slice();
+      else if (azione === 'crea') giocatori = _bookingNames(tx);
+      let ospite = false;
+      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'lezione' && ty.tipo !== 'manutenzione' && !giocatori.length) {
+        ospite = true; giocatori = ['Ospite'];
+      }
+      // soggetto di annulla/modifica ("la partita di Mario") → per il controllo cognome (regola A)
+      const subj = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') ? _subjectName(tx) : '';
+      const surnameNames = giocatori.slice(); if (subj) surnameNames.push(subj);
+      if (azione === 'anagrafica') { const an = _anaSubjName(tx); if (an) surnameNames.push(an); }
+      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre &&
+        (azione === 'crea' || azione === 'giocatori' || azione === 'anagrafica' || azione === 'annulla' || azione === 'modifica') &&
+        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; });
+
+      // ── tipo (regola D) ──
+      const needsType = PMO_PARSER_FLAGS.tipoSempre && !ty.typePresent &&
+        (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
+      const needsInstructor = (ty.tipo === 'lezione') && !istruttore && azione === 'crea';
+
+      // ── KO (regola E) ──
+      let ko = false, koReason = '';
+      if (cx.koCampo) { ko = true; koReason = 'campo inesistente (esistono i campi 1–4)'; }
+      else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
+      else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
+      else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
+
+      // ── azione massiva (regola F) ──
+      const confirmMassive = (azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx);
+
+      // ── serve chiarimento (DUBBIO) ──
+      // C: annulla/modifica/giocatori richiedono di INDIVIDUARE l'evento (campo + orario).
+      const needsLocate = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') && !(cx.campo && tmx.ora);
+      // Anagrafica CREA incompleta (senza telefono+email) → chiede il resto.
+      const anaCreate = azione === 'anagrafica' && /\b(aggiungi|nuov[oa]|crea|registra|inserisci)\b/.test(tx) && !/\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*)\b/.test(tx);
+      const needsMoreData = anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text));
+      // I: numero ambiguo ora/giorno ("lunedì 17", "sab 15") in un evento → chiedere.
+      const ambiguousDayHour = !!dx.weekdayUsed && !!tmx.bareHour && (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
+      const clarify = !ko && (needsType || needsSurname || needsInstructor || confirmMassive || needsLocate || needsMoreData || ambiguousDayHour ||
+        azione === 'modifica' || // modificare richiede sempre di confermare cosa cambia
+        (azione === 'crea' && (!cx.campo || !tmx.ora)));
+
+      return {
+        azione: azione, tipoEvento: ty.tipo || undefined, typePresent: ty.typePresent,
+        campo: cx.campo, data: dx.iso, oraInizio: tmx.ora, oraFine: tmx.oraFine, durata: tmx.durata,
+        istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
+        needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
+        needsLocate: needsLocate, needsMoreData: needsMoreData,
+        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion
+      };
+    }
+
+    // ── Parse pubblica ───────────────────────────────────────────────────────
+    function parse(text) {
+      const baseIso = _todayIso();
+      const c = _classify(text);
+      let parsed = null;
+      try { if (typeof staffCalParseBookingText === 'function') parsed = staffCalParseBookingText(text, baseIso); } catch (e) {}
+      const n = _norm(text);
+      const E = _enrichInterpret(text, baseIso, c);
+
+      // intent (per i gestori conversazionali) derivato dall'azione interpretata
+      const AZ2INT = { interroga: 'TROVA', crea: 'PRENOTA', annulla: 'CANCELLA', modifica: 'CORREGGI', giocatori: 'CORREGGI', anagrafica: 'ANAGRAFICA' };
+      let intent = AZ2INT[E.azione] || c.intent;
+
+      const slots = {};
+      if (E.data) slots.date = E.data;
+      if (E.campo) slots.court = E.campo;
+      if (E.oraInizio) slots.time = E.oraInizio;
+      if (E.oraFine) slots.timeEnd = E.oraFine;
+      if (E.durata) slots.duration = E.durata;
+      if (E.tipoEvento) slots.type = E.tipoEvento;
+      if (E.istruttore) slots.instructor = E.istruttore;
+      const days = _extractDays(n); if (days) slots.days = days;
+      if (parsed) {
+        if (slots.date) parsed.data = slots.date;
+        if (parsed.nome && parsed.nome !== 'Staff') slots.who = parsed.nome;
+        if (parsed.ricorrenza) slots.recurring = parsed.ricorrenza.giorno;
+      }
+
+      let confidence = 0;
+      if (intent) confidence = Math.min(0.95, 0.4 + 0.15 * Math.min(c.score, 2) + (slots.date ? 0.1 : 0) + (slots.time ? 0.1 : 0) + (slots.court ? 0.1 : 0) + (slots.days ? 0.15 : 0));
+      if (E.azione) confidence = Math.max(confidence, 0.8); // azione interpretata con sicurezza → niente Gemini
+      if (E.ko) confidence = 0.9;
+
+      const missing = [];
+      if (intent === 'PRENOTA' && !E.ko) { if (!slots.court) missing.push('court'); if (!slots.time) missing.push('time'); }
+
+      return {
+        intent: intent, slots: slots, confidence: confidence, missing: missing, parsed: parsed,
+        // ── interpretazione (regole A–I) ──
+        azione: E.azione, tipoEvento: E.tipoEvento,
+        campo: E.campo, data: E.data, oraInizio: E.oraInizio, oraFine: E.oraFine,
+        giocatori: E.giocatori, ospite: E.ospite,
+        needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
+        needsLocate: E.needsLocate, needsMoreData: E.needsMoreData,
+        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify
+      };
+    }
+
+    // Riconosce un comando chiaramente NUOVO (verbo d'azione iniziale), per non farlo
+    // scambiare con la risposta a un flusso in sospeso (es. "aggiorna Anna livello 4"
+    // mentre una prenotazione chiedeva il campo → "quattro" diventava campo 4).
+    // Volutamente NON include "annulla/stop" (= annulla il flusso) né "cambia/sposta"
+    // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
+    function _looksLikeNewCommand(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
+      return false;
+    }
+
+    // ── Handler conversazionale ────────────────────────────────────────────────
+    async function handle(text) {
+      const t = String(text || '').trim();
+      if (!t) return;
+      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
+      // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.
+      const _now = (Date.now ? Date.now() : new Date().getTime());
+      if (aiFlowState && _aiFlowAt && (_now - _aiFlowAt) > AI_FLOW_TTL_MS) aiFlowState = null;
+      _aiFlowAt = _now;
+      // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
+      // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
+      if (aiFlowState) {
+        // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
+        // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
+        // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
+        if (_looksLikeNewCommand(t)) {
+          aiFlowState = null;
+        } else {
+          const _k = aiFlowState.kind || 'prenota';
+          if (_k === 'cancella') {
+            if (aiFlowState.stage === 'confirm') return _confirmCancellaAnswer(t);
+            return _continueCancella(t);
+          }
+          if (_k === 'modifica') return _continueModifica(t);
+          if (_k === 'anagrafica') {
+            if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
+            if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
+            if (aiFlowState.stage === 'changes') return _continueAnaChanges(t);
+            return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
+          }
+          if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
+          if (aiFlowState.stage === 'await') return _continuePrenota(t);
+        }
+      }
+      const res = await _parseWithAi(t);
+      _logInteraction(t, res);
+      // Regola E — input impossibile: rifiuta senza procedere.
+      if (res.ko) return _say('⛔ Non posso procedere: ' + _escapeHtml(res.koReason || 'richiesta non valida') + '. Controlla e riprova.');
+      // Regola F — azione massiva: chiedi conferma esplicita prima di toccare molte prenotazioni.
+      if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
+        return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
+      }
+      switch (res.intent) {
+        case 'TROVA': return _handleTrova(t, res.slots);
+        case 'PRENOTA': return _startPrenota(res, t);
+        case 'CANCELLA': return _startCancella(res, t);
+        case 'CORREGGI': return _startModifica(res, t);
+        case 'ANAGRAFICA': return _startAnagrafica(res, t);
+        case 'SUGGERISCI': return _stub('i suggerimenti');
+        default: return _handleUnknown(t, res);
+      }
+    }
+
+    function _stub(what) {
+      _say('🛠️ La funzione per <strong>' + _escapeHtml(what) + '</strong> sarà attiva a breve (in costruzione). Per ora posso rispondere a <strong>domande</strong> su prenotazioni e disponibilità — prova “campi liberi domani” o “chi gioca oggi alle 18”.');
+    }
+
+    function _handleUnknown(text, res) {
+      _say('🤔 Non ho capito il comando. ' + _capabilitiesShort());
+      try {
+        if (typeof logParserError === 'function')
+          logParserError({ input_originale: text, intent_riconosciuto: res.intent || null, confidence: res.confidence || 0, error_message: 'AI: intent non riconosciuto', versione_parser: _rules().versione });
+      } catch (e) {}
+    }
+
+    // ── TROVA (sola lettura) ────────────────────────────────────────────────────
+    function _handleTrova(text, slots) {
+      const n = _norm(text);
+      const iso = slots.date || _todayIso();
+      const dl = _dayLabel(iso);
+      const all = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+      // Domanda sul ROSTER ("mancano giocatori", "ci sono tutti e quattro", "posti liberi
+      // nelle partite") → stato dei posti nelle PARTITE (una partita = 4 giocatori).
+      const wantsRoster = /(mancano|manca|tutti +e +(quattro|4)|quattro +giocator|quant[ei] +giocator|giocator\w* +(mancant|manca)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))/.test(n)
+        && /(partit|giocator|post[oi])/.test(n);
+      if (wantsRoster) return _answerRoster(iso, dl, slots, n, all);
+      // Domanda sulle LEZIONI (di un maestro e/o su più giorni).
+      const wantsLessons = /\blezion\w*\b/.test(n) && (!!_detectIstruttore(text, n) || /\b(maestr\w*|istruttor\w*|insegnant\w*)\b/.test(n) || _extractDays(n));
+      if (wantsLessons) return _answerLessons(slots, n, text);
+      const wantsFree = /\b(liber\w*|disponibil\w*|vuot\w*|prenotabil\w*|posto)\b/.test(n);
+      if (wantsFree) return _answerFree(iso, dl, slots, n);
+      return _answerBookings(iso, dl, slots, all);
+    }
+
+    // "dalle 18 in poi" / "a partire dalle 18" / "dopo le 18" → fascia DA quell'ora in avanti.
+    function _isOnward(n) { return /\bin +poi\b/.test(n) || /\ba +partire\b/.test(n) || /\bdopo +le\b/.test(n); }
+
+    // Stato dei posti nelle PARTITE del giorno (una partita = 4 giocatori). Best-effort:
+    // conta i giocatori INDICATI nella prenotazione (per le partite Matchpoint spesso è solo
+    // l'intestatario, quindi il "mancano N" è una stima sui nomi presenti).
+    function _answerRoster(iso, dl, slots, n, all) {
+      let rows = (all || []).filter(function (r) { return !String(r.tipoReale || r.tipo || '').toLowerCase().includes('lez'); });
+      if (slots.court) rows = rows.filter(function (r) { return Number(r.campo) === Number(slots.court); });
+      const onward = _isOnward(n);
+      if (slots.time) rows = rows.filter(function (r) { return onward ? (r.ora || '') >= slots.time : (r.ora === slots.time); });
+      const when = (slots.time ? (onward ? ' dalle ' + slots.time + ' in poi' : ' alle ' + slots.time) : '');
+      if (!rows.length) return _say('✅ Nessuna partita ' + dl + (slots.court ? ' sul Campo ' + slots.court : '') + when + '.');
+      rows.sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); });
+      const items = rows.map(function (r) {
+        let names = [];
+        if (Array.isArray(r.giocatori) && r.giocatori.length) names = r.giocatori.map(function (g) { return typeof g === 'string' ? g : (g && g.nome || ''); }).filter(Boolean);
+        else names = String(r.nome || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        const real = names.filter(function (x) { return !/^(ospite|staff)\b/i.test(x); });
+        const count = real.length, free = Math.max(0, 4 - count);
+        const stato = free > 0 ? ' · <strong>mancano ' + free + '</strong>' : ' · ✅ al completo';
+        const who = real.length ? ' — ' + _escapeHtml(real.join(', ')) : '';
+        return '• <strong>' + r.ora + '</strong> Campo ' + r.campo + ': ' + count + '/4' + stato + who;
+      });
+      const head = '🎾 Partite ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + when + ':';
+      return _say(head + '<br>' + items.join('<br>') + '<br><span style="opacity:.65;font-size:.85em">ℹ️ Conteggio sui giocatori indicati nella prenotazione (una partita = 4).</span>');
+    }
+
+    // Lezioni di un maestro e/o su un range di giorni ("lezioni di Santiago dei prossimi 5 giorni").
+    function _answerLessons(slots, n, text) {
+      const instr = _detectIstruttore(text, n);
+      const rangeDays = _extractDays(n);
+      const days = rangeDays || (slots.date ? 1 : 7);
+      const startIso = slots.date || _todayIso();
+      const found = [];
+      for (let d = 0; d < days; d++) {
+        const iso = _addDays(startIso, d);
+        const lst = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+        lst.forEach(function (r) {
+          if (!String(r.tipoReale || r.tipo || '').toLowerCase().includes('lez')) return;
+          if (instr && _norm(r.istruttore || '') !== _norm(instr)) return;
+          if (slots.court && Number(r.campo) !== Number(slots.court)) return;
+          found.push({ iso: iso, r: r });
+        });
+      }
+      const titWho = instr ? ' di ' + _escapeHtml(instr) : '';
+      const rangeLbl = rangeDays ? ('prossimi ' + days + ' giorni') : (slots.date ? _dayLabel(startIso) : ('prossimi ' + days + ' giorni'));
+      if (!found.length) return _say('✅ Nessuna lezione' + titWho + ' — ' + rangeLbl + '.');
+      const byDay = {};
+      found.forEach(function (f) { (byDay[f.iso] = byDay[f.iso] || []).push(f.r); });
+      const lines = Object.keys(byDay).sort().map(function (iso) {
+        const items = byDay[iso].sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); }).map(function (r) {
+          let names = [];
+          if (Array.isArray(r.giocatori) && r.giocatori.length) names = r.giocatori.map(function (g) { return typeof g === 'string' ? g : (g && g.nome || ''); }).filter(Boolean);
+          else names = String(r.nome || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+          const allievi = names.filter(function (x) { return !/^(ospite|staff)\b/i.test(x); });
+          const m = (r.istruttore && !instr) ? ' · maestro ' + _escapeHtml(r.istruttore) : '';
+          const who = allievi.length ? ' — ' + _escapeHtml(allievi.join(', ')) : '';
+          return '&nbsp;&nbsp;• <strong>' + r.ora + '</strong> Campo ' + r.campo + m + who;
+        });
+        return '<strong>' + _dayLabel(iso) + '</strong><br>' + items.join('<br>');
+      });
+      return _say('📚 Lezioni' + titWho + ' — ' + rangeLbl + ':<br>' + lines.join('<br>'));
+    }
+
+    function _slotGrid() { return (typeof staffCalSlots === 'function') ? staffCalSlots() : []; }
+
+    function _nCampi(k) { return k === 1 ? '1 campo' : k + ' campi'; }
+    function _answerFree(iso, dl, slots, n) {
+      const map = (typeof staffCalBuildOccupancyMap === 'function') ? staffCalBuildOccupancyMap(iso) : {};
+      const grid = _slotGrid();
+      const courts = slots.court ? [slots.court] : [1, 2, 3, 4];
+      const onward = n ? _isOnward(n) : false;
+      // Orario PUNTUALE (senza "in poi"): elenca i campi liberi a quell'ora + conteggio.
+      if (slots.time && !onward) {
+        const free = courts.filter(function (c) { return !map[slots.time + '|' + c]; });
+        if (!free.length) return _say('⛔ Alle <strong>' + slots.time + '</strong> di ' + dl + ' non risultano campi liberi.');
+        return _say('🟢 Alle <strong>' + slots.time + '</strong> di ' + dl + ' ' + (free.length === 1 ? 'è libero ' : 'sono liberi ') + '<strong>' + _nCampi(free.length) + '</strong>: ' + free.map(function (c) { return 'Campo ' + c; }).join(', ') + '.');
+      }
+      // FASCIA: tutto il giorno, oppure "dalle X in poi" (solo gli slot da quell'ora in avanti).
+      const fromIdx = (slots.time && onward) ? grid.indexOf(slots.time) : 0;
+      const sub = fromIdx >= 0 ? grid.slice(fromIdx) : grid.slice();
+      let nFree = 0;
+      const lines = courts.map(function (c) {
+        const freeSlots = sub.filter(function (s) { return !map[s + '|' + c]; });
+        if (freeSlots.length) nFree++;
+        const ranges = _compressRanges(freeSlots, grid);
+        return '<strong>Campo ' + c + '</strong>: ' + (ranges.length ? ranges.join(', ') : '<em>nessuno slot libero</em>');
+      });
+      const head = (slots.time && onward)
+        ? '🟢 Disponibilità ' + dl + ' dalle ' + slots.time + ' in poi — <strong>' + _nCampi(nFree) + '</strong> con spazi liberi:'
+        : '🟢 Disponibilità ' + dl + ' — <strong>' + _nCampi(nFree) + '</strong> con spazi liberi:';
+      return _say(head + '<br>' + lines.join('<br>'));
+    }
+
+    // Comprime una lista di slot ("08:00","08:30",...) in intervalli "08:00–09:30"
+    function _compressRanges(freeSlots, grid) {
+      if (!freeSlots.length) return [];
+      const idx = freeSlots.map(function (s) { return grid.indexOf(s); }).filter(function (i) { return i >= 0; }).sort(function (a, b) { return a - b; });
+      const ranges = [];
+      let start = idx[0], prev = idx[0];
+      for (let i = 1; i < idx.length; i++) {
+        if (idx[i] === prev + 1) { prev = idx[i]; continue; }
+        ranges.push(grid[start] + '–' + _slotEnd(grid[prev], grid));
+        start = idx[i]; prev = idx[i];
+      }
+      ranges.push(grid[start] + '–' + _slotEnd(grid[prev], grid));
+      return ranges;
+    }
+    function _slotEnd(slot, grid) {
+      const i = grid.indexOf(slot);
+      if (i >= 0 && i + 1 < grid.length) return grid[i + 1];
+      // ultimo slot: +30 min
+      const p = String(slot).split(':'); let mm = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) + 30;
+      return String(Math.floor(mm / 60)).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0');
+    }
+
+    function _answerBookings(iso, dl, slots, all) {
+      let rows = all.slice();
+      if (slots.court) rows = rows.filter(function (r) { return Number(r.campo) === Number(slots.court); });
+      if (slots.time) rows = rows.filter(function (r) { return r.ora === slots.time; });
+      if (!rows.length) {
+        return _say('✅ Nessuna prenotazione ' + dl + (slots.court ? ' sul Campo ' + slots.court : '') + (slots.time ? ' alle ' + slots.time : '') + '.');
+      }
+      rows.sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); });
+      const items = rows.map(function (r) {
+        const tipo = (r.tipoReale || r.tipo || '').toString().toLowerCase().includes('lez') ? '📚 lezione' : '🎾 partita';
+        const nome = _escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>';
+        const istr = r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '';
+        return '• <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + nome + ' (' + tipo + istr + ')';
+      });
+      return _say('📋 Prenotazioni ' + dl + (slots.court ? ' · Campo ' + slots.court : '') + (slots.time ? ' · ' + slots.time : '') + ':<br>' + items.join('<br>'));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PRENOTA — Step 2: dialogo reale con riepilogo + conferma e scrittura su
+    // Matchpoint. Riusa l'infrastruttura esistente del calendario staff
+    // (staffCalFindConflict / staffCalSubmitSingle / staffCalPollJob /
+    // staffCalSaveLocal), mantenendo uno stato parallelo (aiFlowState).
+    // ════════════════════════════════════════════════════════════════════════
+    function _maestri() {
+      try {
+        const v = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali &&
+          PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi);
+        if (Array.isArray(v) && v.length) return v;
+      } catch (e) {}
+      return ['Santiago', 'LoZio', 'Spinazze'];
+    }
+    function _detectTipo(n) {
+      let kw = ['lezione', 'lesson'];
+      try { const k = _rules().campi_opzionali && _rules().campi_opzionali.tipo && _rules().campi_opzionali.tipo.keywords_lezione; if (Array.isArray(k) && k.length) kw = k; } catch (e) {}
+      for (let i = 0; i < kw.length; i++) { if (_wordHit(n, _norm(kw[i]))) return 'lezione'; }
+      return 'partita';
+    }
+    function _detectIstruttore(text, n) {
+      const list = _maestri();
+      for (let i = 0; i < list.length; i++) { if (_wordHit(n, _norm(list[i]))) return list[i]; }
+      try {
+        const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
+        for (const k in fuzzy) { if (_wordHit(n, _norm(k))) return fuzzy[k]; }
+      } catch (e) {}
+      const m = String(text || '').match(/\b(?:con|maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
+      if (m) return m[1];
+      return '';
+    }
+    // Orario: "18-19:30" → range; "18" / "alle 18" → start + 90'
+    function _parseTimeRange(text) {
+      const t = _digitizeTimeWords(text);
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (m) {
+        const ora = String(m[1]).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
+        const oraFine = String(m[3]).padStart(2, '0') + ':' + String(m[4] || '00').padStart(2, '0');
+        const sp = ora.split(':').map(Number), ep = oraFine.split(':').map(Number);
+        const durata = (ep[0] * 60 + ep[1]) - (sp[0] * 60 + sp[1]);
+        if (durata <= 0 || durata > 360) return null;
+        return { ora: ora, oraFine: oraFine, durata: durata };
+      }
+      m = t.match(/\b(?:alle|ore|h)?\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (m) {
+        const hh = parseInt(m[1], 10);
+        if (hh >= 6 && hh <= 23) {
+          const ora = String(hh).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
+          return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+        }
+      }
+      return null;
+    }
+    function _endTime(ora, min) {
+      try { if (typeof svcEndTime === 'function') return svcEndTime(ora, min); } catch (e) {}
+      const p = String(ora).split(':'); const tot = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) + (parseInt(min, 10) || 0);
+      return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '0');
+    }
+    function _extractCampoLoose(text) {
+      const c = _extractCampo(_norm(text)); if (c) return c;
+      const m = String(text || '').match(/\b([1-4])\b/); return m ? parseInt(m[1], 10) : 0;
+    }
+    // Testo dei giocatori = ciò che segue l'orario, ripulito da ricorrenza/connettori.
+    function _afterTime(text) {
+      const t = _digitizeTimeWords(text);
+      let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
+      if (!m) m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (!m) return '';
+      const pos = t.indexOf(m[0]);
+      return t.slice(pos + m[0].length).replace(/^[\s\-–]+/, '').replace(/\bogni\s+\S+/ig, '').trim();
+    }
+    function _stripConnectors(s) {
+      return String(s || '').replace(/^\s*(?:per|con|giocatori|giocano|gioca|partita|match|tra|fra|:)\s+/i, '').trim();
+    }
+    function _lezionePlayerText(after, istruttore) {
+      let s = String(after || '');
+      if (istruttore) {
+        const variants = String(istruttore).split(/\s+/).concat([istruttore]);
+        variants.forEach(function (v) { if (v && v.length >= 2) { try { s = s.replace(new RegExp('\\b' + _escapeReg(v) + '\\b', 'ig'), ' '); } catch (e) {} } });
+      }
+      return s.replace(/\b(con|per|maestr[oa]|allievi?|insegnante|lezione)\b/ig, ' ').replace(/\s+/g, ' ').trim();
+    }
+    // Risolve i nomi liberi in soci (codice interno + codice cliente) come fa
+    // staffCalSubmitSingle. Su omonimia sceglie il migliore e annota un avviso.
+    // Parole vuote da scartare token-per-token prima di cercare il nome in anagrafica:
+    // articoli/preposizioni/connettori e termini di dominio (allievo, maestro, lezione…).
+    // Senza questo filtro un residuo come "una" faceva match per sottostringa su "fortUNAto"
+    // → inseriva un socio mai nominato (es. Loris Fortunato Salgarella).
+    const _PLAYER_STOPWORDS = new Set(['e', 'ed', 'o', 'con', 'per', 'un', 'uno', 'una', 'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'da', 'a', 'al', 'allo', 'alla', 'come', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'che', 'mi', 'poi', 'allievo', 'allieva', 'allievi', 'allieve', 'maestro', 'maestra', 'maestri', 'lezione', 'lezioni', 'insegnante', 'partita', 'match']);
+    function _stripPlayerStopwords(s) {
+      return String(s || '').split(/\s+/).filter(function (w) { return w && !_PLAYER_STOPWORDS.has(w.toLowerCase()); }).join(' ').trim();
+    }
+    function _resolvePlayers(rawStr) {
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      const giocatori = [], notes = [];
+      for (let i = 0; i < names.length; i++) {
+        const nm = names[i];
+        const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
+        if (!matches.length) { giocatori.push({ nome: nm, codice: '', codiceCliente: '' }); notes.push('“' + nm + '” non è in anagrafica: prenoto col nome così com’è.'); continue; }
+        const best = matches[0].member;
+        const ambiguous = matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best;
+        const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || nm;
+        const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';
+        const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
+        giocatori.push({ nome: nomeSocio, codice: codice, codiceCliente: codiceCliente });
+        if (ambiguous) notes.push('Più soci simili a “' + nm + '”: ho scelto ' + nomeSocio + ' (se sbaglio, annulla e specifica meglio).');
+      }
+      return { giocatori: giocatori, notes: notes };
+    }
+
+    // Costruisce la bozza dal parse + slot (risoluzione nomi giocatori inclusa), SENZA eseguire.
+    // Usata sia da _startPrenota sia dal banco di prova (diagnose), così la logica è unica.
+    function _buildPrenotaDraft(res, text) {
+      const n = _norm(text);
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const tipo = _detectTipo(n);
+      const istruttore = tipo === 'lezione' ? (_detectIstruttore(text, n) || p.istruttore || '') : '';
+      const draft = {
+        tipo: tipo,
+        campoNum: p.campoNum || slots.court || 0,
+        // NIENTE default a "oggi": la data conta SOLO se l'utente l'ha detta esplicitamente
+        // (slots.date = _extractDate ha trovato oggi/domani/giorno/data). Altrimenti resta
+        // vuota e diventa uno slot da chiedere (l'utente poteva guardare un altro giorno).
+        data: slots.date || '',
+        ora: p.ora || slots.time || '',
+        oraFine: p.oraFine || '',
+        durata: p.durata || 0,
+        istruttore: istruttore,
+        giocatori: [],
+        notes: [],
+        nome: '',
+        note: ''
+      };
+      // Se ho l'inizio ma non la fine, prova a leggere il range dal testo, altrimenti 90'.
+      if (draft.ora && !draft.oraFine) {
+        const tr = _parseTimeRange(text);
+        if (tr && tr.ora === draft.ora && tr.oraFine) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; }
+        else { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      }
+      // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
+      const after = _afterTime(text);
+      const playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
+      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
+      return draft;
+    }
+    // Esegue: costruisce la bozza e avanza (slot mancanti → domande, altrimenti riepilogo).
+    function _startPrenota(res, text) { _advancePrenota(_buildPrenotaDraft(res, text)); }
+
+    // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
+    function _advancePrenota(draft) {
+      const need = [];
+      if (!draft.data) need.push('date');
+      if (!draft.campoNum) need.push('court');
+      if (!draft.ora) need.push('time');
+      if (need.length) { aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: need }; return _askNext(); }
+      aiFlowState = null;
+      _showSummary(draft);
+    }
+    function _askNext() {
+      if (!aiFlowState || aiFlowState.stage !== 'await') return;
+      const k = aiFlowState.need[0];
+      if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
+      if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
+      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
+    }
+    // Risposta dell'utente mentre raccolgo gli slot mancanti.
+    function _continuePrenota(text) {
+      const n = _norm(text);
+      if (/(^| )(annull\w*|lascia\w*|stop|niente)( |$)/.test(' ' + n + ' ')) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere. Dimmi pure quando vuoi.'); }
+      const draft = aiFlowState.draft;
+      const k = aiFlowState.need[0];
+      if (k === 'date') {
+        const iso = _extractDate(_norm(text), _todayIso());
+        if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
+        draft.data = iso;
+      } else if (k === 'court') {
+        const c = _extractCampoLoose(text);
+        if (!c) return _say('Non ho capito il campo. Scrivi <strong>1</strong>, <strong>2</strong>, <strong>3</strong> o <strong>4</strong> (oppure “annulla”).');
+        draft.campoNum = c;
+      } else if (k === 'time') {
+        const tr = _parseTimeRange(text);
+        if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
+        draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata;
+      }
+      aiFlowState.need.shift();
+      if (aiFlowState.need.length) return _askNext();
+      aiFlowState = null;
+      _showSummary(draft);
+    }
+
+    // Giocatore "Ospite" = scheda Matchpoint codice cliente 000001 (segnaposto del circolo
+    // per le prenotazioni senza nominativo). NB: l'anagrafica della webapp NON contiene
+    // "Ospite" (l'import lo filtra, vedi normalizeText==='ospite'), ma il worker lo aggancia
+    // per NOME via autocomplete su Matchpoint, dove la scheda esiste. Cablato qui per evitare
+    // che una partita senza giocatori finisca sotto "Staff" (inesistente → errore worker 500).
+    function _ospitePlayer() { return { nome: 'Ospite', codice: '', codiceCliente: '000001' }; }
+    function _summaryHtml(draft) {
+      const tipoLabel = draft.tipo === 'lezione' ? '📚 Lezione' : '🎾 Partita';
+      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || 90);
+      const lines = [
+        '<strong>' + tipoLabel + '</strong>',
+        '📍 Campo ' + draft.campoNum,
+        '📅 ' + _dayLabel(draft.data),
+        '🕐 ' + draft.ora + '–' + oraFine + ' (' + (draft.durata || 90) + '′)'
+      ];
+      if (draft.tipo === 'lezione') lines.push('👨‍🏫 Maestro: ' + _escapeHtml(draft.istruttore || '—'));
+      const chi = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? '—' : 'Ospite');
+      lines.push('👥 ' + _escapeHtml(chi));
+      return lines.join('<br>');
+    }
+    function _showSummary(draft) {
+      if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      // Partita senza giocatori indicati → la prenota sotto l'OSPITE (vedi _ospitePlayer).
+      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length)) {
+        draft.giocatori = [_ospitePlayer()];
+      }
+      draft.nome = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite');
+      aiFlowState = { kind: 'prenota', stage: 'confirm', draft: draft };
+      let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
+      if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">Confermi? Verrà scritta <strong>davvero</strong> su Matchpoint.</span>';
+      const div = _say(html);
+      _appendConfirmButtons(div, draft);
+    }
+    function _appendConfirmButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons';
+      wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e prenota';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        aiFlowState = null;
+        _executePrenota(draft);
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true;
+        aiFlowState = null;
+        _say('❌ Prenotazione annullata.');
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
+    }
+    // Conferma via testo (fallback ai pulsanti).
+    function _confirmAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      // No/annulla ha precedenza. NB: "prenota" NON è un sinonimo di conferma, così un
+      // nuovo comando "prenota …" non viene scambiato per un sì alla prenotazione in attesa.
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) {
+        aiFlowState = null; return _say('❌ Prenotazione annullata.');
+      }
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo )/.test(n)) {
+        const d = aiFlowState.draft; aiFlowState = null; return _executePrenota(d);
+      }
+      _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+    }
+
+    // Scrittura reale su Matchpoint (mirror di svcConfirmBooking).
+    async function _executePrenota(draft) {
+      if (!draft || draft.__started) return;
+      draft.__started = true;
+      // Rete di sicurezza (anche per la conferma testuale che salta _showSummary): una partita
+      // senza giocatori va sotto l'Ospite, mai sotto "Staff" (che il worker non sa agganciare).
+      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length)) {
+        draft.giocatori = [_ospitePlayer()];
+        if (!draft.nome || draft.nome === 'Staff') draft.nome = 'Ospite';
+      }
+      const parsed = {
+        campoNum: draft.campoNum,
+        campo: 'Campo ' + draft.campoNum,
+        data: draft.data,
+        ora: draft.ora,
+        oraFine: draft.oraFine || _endTime(draft.ora, draft.durata || 90),
+        durata: draft.durata || 90,
+        tipo: draft.tipo || 'partita',
+        nome: draft.nome || (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite'),
+        istruttore: draft.tipo === 'lezione' ? (draft.istruttore || undefined) : undefined,
+        giocatori: Array.isArray(draft.giocatori) ? draft.giocatori : [],
+        note: draft.note || ''
+      };
+      // Pre-check conflitto istantaneo (non chiama il worker se lo slot è occupato).
+      try {
+        const c = (typeof staffCalFindConflict === 'function') ? staffCalFindConflict(parsed) : null;
+        if (c) return _say('⛔ Lo slot è già occupato' + (c.nome ? ' (' + _escapeHtml(c.nome) + ')' : '') + '. Prenotazione <strong>NON</strong> inviata.');
+      } catch (e) {}
+      let prog = null;
+      try {
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+        const cfg = await loadAssessmentSupabaseConfig();
+        const supabaseUrl = cfg && cfg.supabaseUrl, supabaseKey = cfg && cfg.supabaseKey;
+        prog = _say('⏳ Prenotazione in corso su Matchpoint…');
+        const _sbId = _staffCalNewSbId();
+        const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
+        const jobId = submit && submit.jobId;
+        if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+        const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function (sec) {
+          try { const last = prog && prog.querySelector(':scope > div:last-child'); if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)'; } catch (e) {}
+        });
+        if (result.status === 'done') {
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
+          const dl = _dayLabel(parsed.data);
+          if (parsed.tipo === 'lezione') {
+            _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : ''), 'ok');
+          } else {
+            _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome), 'ok');
+          }
+          try { renderStaffCalendar(); } catch (e) {}
+        } else if (result.status === 'error') {
+          _say('❌ Prenotazione non riuscita: ' + _escapeHtml(result.error || 'errore sconosciuto'));
+        } else {
+          _say('⚠️ Esito <strong>non confermato</strong> (timeout). Controlla su Matchpoint prima di riprovare, per evitare doppioni.');
+        }
+      } catch (err) {
+        _say('❌ Errore: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CANCELLA — Step 3: annullo conversazionale con riepilogo + conferma in chat
+    // (NIENTE confirm() nativo). Trova la prenotazione fra gli slot del giorno
+    // (staffCalGetSlots), disambigua se ce n'è più d'una, poi esegue via
+    // staffCalDoCancel (stessa rete/cleanup del pulsante calendario).
+    // ════════════════════════════════════════════════════════════════════════
+    function _cancelTipoLabel(r) {
+      const t = String(r.tipoReale || r.tipo || '').toLowerCase();
+      if (t.indexOf('lez') >= 0) return '📚 lezione' + (r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '');
+      if (t.indexOf('manut') >= 0) return '🔧 manutenzione';
+      return '🎾 partita';
+    }
+    // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
+    function _cancelCandidates(iso, court, time, who) {
+      const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+      // Dedup per campo|ora: preferisci la card staff-booking (porta la lista giocatori).
+      const byKey = {};
+      rows.forEach(function (r) {
+        if (!r || !r.ora || !r.campo) return;
+        const k = r.campo + '|' + r.ora;
+        if (!byKey[k] || r.tipo === 'staff-booking') byKey[k] = r;
+      });
+      let cands = Object.keys(byKey).map(function (k) { return byKey[k]; });
+      if (court) cands = cands.filter(function (r) { return Number(r.campo) === Number(court); });
+      if (time) cands = cands.filter(function (r) { return String(r.ora) === String(time); });
+      if (who) {
+        const wn = _norm(who);
+        cands = cands.filter(function (r) {
+          return _norm(String(r.nome || '').replace(/\n/g, ' ')).indexOf(wn) >= 0
+            || (r.istruttore && _norm(r.istruttore).indexOf(wn) >= 0);
+        });
+      }
+      cands.sort(function (a, b) { return String(a.ora).localeCompare(String(b.ora)) || (a.campo - b.campo); });
+      return cands;
+    }
+    // Nome da un comando di annullo (es. "annulla la partita di Fabio domani" → "fabio"):
+    // staffCalParseBookingText non lo estrae senza campo/ora. Toglie verbi/articoli/nomi-comuni/
+    // date/orari e tiene il resto come query nome (poi filtrata contro le prenotazioni reali).
+    const _CANCEL_STOP = (function () {
+      const w = ('annulla annullare annullami annullale annullala cancella cancellare cancellami cancellala ' +
+        'elimina eliminare disdici disdire togli togliere rimuovi rimuovere ' +
+        'modifica modificare modificami modificala cambia cambiare cambiami correggi correggere ' +
+        'sposta spostare spostami rinomina aggiorna aggiornare aggiungi ' +
+        'la il lo le i gli l un una uno di del dello della dei degli delle da dal dallo dalla ' +
+        'al alla alle allo ai agli a in nel nella sul sulla e ed con per su tra fra ' +
+        'partita partite lezione lezioni prenotazione prenotazioni prenota match slot campo campi ' +
+        'manutenzione appuntamento giocatore giocatori ' +
+        'oggi domani dopodomani ieri lunedi martedi mercoledi giovedi venerdi sabato domenica giorno ' +
+        'tutto tutta tutti tutte ogni qualche ' +
+        'alle ore ora h mattina pomeriggio sera mezzogiorno mezzanotte stamattina stasera stanotte').split(/\s+/);
+      const s = {}; w.forEach(function (x) { if (x) s[x] = 1; }); return s;
+    })();
+    function _extractCancelWho(text) {
+      let n = _norm(text);
+      n = n.replace(/\bcampo\s*[1-4]\b/g, ' ');
+      n = n.replace(/\b\d{1,2}[:.]?\d{0,2}\s*[-–]\s*\d{1,2}[:.]?\d{0,2}\b/g, ' ');
+      n = n.replace(/\b\d{1,2}[:.]\d{2}\b/g, ' ');
+      n = n.replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ');
+      n = n.replace(/\b\d{1,2}\b/g, ' ');
+      const toks = n.split(/\s+/).filter(function (x) { return x && x.length >= 2 && !_CANCEL_STOP[x]; });
+      return toks.join(' ').trim();
+    }
+    function _startCancella(res, text) {
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const iso = slots.date || p.data || _todayIso();
+      const court = slots.court || p.campoNum || 0;
+      const time = slots.time || p.ora || '';
+      let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      const dl = _dayLabel(iso);
+      let cands = _cancelCandidates(iso, court, time, who);
+      // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
+      // (o quel nome non è prenotato): mostra comunque l'elenco (ignora il filtro nome).
+      if (!cands.length && who) {
+        const base = _cancelCandidates(iso, court, time, '');
+        if (base.length) { cands = base; who = ''; }
+      }
+      if (!cands.length) {
+        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (who ? ' · ' + _escapeHtml(who) : '');
+        return _say('🔍 Non trovo prenotazioni da annullare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
+      }
+      if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
+      aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
+      const items = cands.map(function (r, i) {
+        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
+      });
+      return _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. Quale vuoi annullare? Rispondi col <strong>numero</strong> (oppure “annulla” per uscire):<br>' + items.join('<br>'));
+    }
+    function _showCancelSummary(iso, slot) {
+      const durata = slot.durata || 90;
+      const oraFine = _endTime(slot.ora, durata);
+      const nome = (slot.nome || '').replace(/\n/g, ', ');
+      const draft = { iso: iso, campo: slot.campo, ora: slot.ora, durata: durata, nome: nome, istruttore: slot.istruttore || '', tipoLabel: _cancelTipoLabel(slot) };
+      aiFlowState = { kind: 'cancella', stage: 'confirm', draft: draft };
+      const lines = [
+        '🗑️ <strong>Annullare questa prenotazione?</strong>',
+        '📍 Campo ' + slot.campo,
+        '📅 ' + _dayLabel(iso),
+        '🕐 ' + slot.ora + '–' + oraFine + ' (' + durata + '′)',
+        '👥 ' + (_escapeHtml(nome) || '<em>—</em>') + ' · ' + draft.tipoLabel
+      ];
+      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">Verrà annullata <strong>davvero</strong> su Matchpoint. L’operazione è irreversibile.</span>';
+      const div = _say(html);
+      _appendCancelButtons(div, draft);
+    }
+    function _appendCancelButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '🗑️ Sì, annulla';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ No, lascia';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        aiFlowState = null;
+        _executeCancella(draft);
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true;
+        aiFlowState = null;
+        _say('👍 Ok, non ho annullato nulla.');
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
+    }
+    // Risposta quando ci sono più candidati (stage 'pick'): numero o campo+ora.
+    function _continueCancella(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      if (!aiFlowState || aiFlowState.stage !== 'pick') { aiFlowState = null; return _say('Dimmi pure cosa vuoi annullare.'); }
+      const list = aiFlowState.list || [];
+      const iso = aiFlowState.iso;
+      let pick = null;
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < list.length) pick = list[i]; }
+      if (!pick) {
+        const c = _extractCampo(_norm(text)); const tm = _extractTime(text);
+        let f = list.slice();
+        if (c) f = f.filter(function (r) { return Number(r.campo) === Number(c); });
+        if (tm) f = f.filter(function (r) { return r.ora === tm; });
+        if (f.length === 1) pick = f[0];
+      }
+      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      aiFlowState = null;
+      return _showCancelSummary(iso, pick);
+    }
+    // Conferma via testo (fallback ai pulsanti). NB: qui “annulla” NON è una parola di
+    // uscita (sarebbe ambigua: è il verbo dell'azione). Per uscire: “no/lascia/stop”.
+    function _confirmCancellaAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | lascia\w* | stop | niente | nessun\w* )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho annullato nulla.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | elimina | disdici | togli )/.test(n)) {
+        const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
+      }
+      _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
+    }
+    // Annullamento reale su Matchpoint (riusa staffCalDoCancel: rete + cleanup locale/cloud).
+    async function _executeCancella(draft) {
+      if (!draft || draft.__started) return;
+      draft.__started = true;
+      try {
+        if (typeof staffCalDoCancel === 'function') {
+          await staffCalDoCancel(draft.iso, draft.campo, draft.ora, draft.nome);
+        } else {
+          _say('❌ Funzione di annullamento non disponibile.');
+        }
+      } catch (err) {
+        _say('❌ Errore durante l’annullamento: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CORREGGI — Step 3b: modifica prenotazione. L'AI TROVA la prenotazione (stesso
+    // finder dell'annullo) e APRE l'editor esistente staffCalEditPlayers (collaudato
+    // in PROD: aggiungi/togli giocatori + sposta data/campo/ora, partite e lezioni).
+    // La modifica vera avviene nell'editor (ha il suo riepilogo+conferma). La modifica
+    // "a voce pura" (capire il cambiamento dal testo) è comprensione → fase successiva.
+    // ════════════════════════════════════════════════════════════════════════
+    function _openEditor(iso, slot) {
+      aiFlowState = null;
+      const tipoR = slot.tipoReale || (String(slot.tipo || '').indexOf('lez') >= 0 ? 'lezione' : 'partita');
+      const nome = (slot.nome || '').replace(/\n/g, ', ');
+      try {
+        if (typeof staffCalEditPlayers === 'function') staffCalEditPlayers(iso, slot.campo, slot.ora, nome, slot.durata, tipoR);
+        else _say('❌ Editor di modifica non disponibile.');
+      } catch (e) { _say('❌ Non riesco ad aprire l’editor di modifica: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+    }
+    function _startModifica(res, text) {
+      const p = res.parsed || {};
+      const slots = res.slots || {};
+      const iso = slots.date || p.data || _todayIso();
+      const court = slots.court || p.campoNum || 0;
+      const time = slots.time || p.ora || '';
+      let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      const dl = _dayLabel(iso);
+      let cands = _cancelCandidates(iso, court, time, who);
+      if (!cands.length && who) {
+        const base = _cancelCandidates(iso, court, time, '');
+        if (base.length) { cands = base; who = ''; }
+      }
+      if (!cands.length) {
+        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (who ? ' · ' + _escapeHtml(who) : '');
+        return _say('🔍 Non trovo prenotazioni da modificare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
+      }
+      if (cands.length === 1) return _openEditor(iso, cands[0]);
+      aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands };
+      const items = cands.map(function (r, i) {
+        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
+      });
+      return _say('❓ Quale prenotazione vuoi <strong>modificare</strong>? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+    }
+    function _continueModifica(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      if (!aiFlowState || aiFlowState.stage !== 'pick') { aiFlowState = null; return _say('Dimmi pure cosa vuoi modificare.'); }
+      const list = aiFlowState.list || [];
+      const iso = aiFlowState.iso;
+      let pick = null;
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < list.length) pick = list[i]; }
+      if (!pick) {
+        const c = _extractCampo(_norm(text)); const tm = _extractTime(text);
+        let f = list.slice();
+        if (c) f = f.filter(function (r) { return Number(r.campo) === Number(c); });
+        if (tm) f = f.filter(function (r) { return r.ora === tm; });
+        if (f.length === 1) pick = f[0];
+      }
+      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      return _openEditor(iso, pick);
+    }
+
+    // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
+    // Esecutori PROGRAMMATICI (niente DOM): riusano le stesse primitive del form
+    // (ensureMemberId/findMatchingMemberIndex/parseLevel/normalizePhone/save +
+    // pmoQueueImmediateMemberCloudSync). Parità col form (v5.794): dopo locale+cloud
+    // propagano anche a MATCHPOINT (create→pmoCreateMemberInMatchpoint,
+    // update→pmoPushMemberUpdateToMatchpoint) in background, con esito riportato in chat
+    // (notify:false sopprime i toast). Sempre riepilogo + conferma prima di scrivere.
+    const _ANA_CREATE_VERB = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/;
+    const _ANA_UPDATE_VERB = /(^| )(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*)( |$)/;
+
+    function _anaExtractEmail(text) { const m = String(text || '').match(/[\w.+-]+@[\w-]+\.[\w.-]+/); return m ? m[0].toLowerCase() : ''; }
+    function _anaExtractPhone(text) {
+      let m = String(text || '').match(/(?:telefono|telefonico|cellulare|numero|cell|tel|recapito)\D{0,3}((?:\+?\d[\s.\-]?){6,})/i);
+      if (!m) m = String(text || '').match(/(?:^|[^\d])(\+?\d(?:[\s.\-]?\d){5,})(?:[^\d]|$)/);
+      if (!m) return '';
+      return (typeof normalizePhone === 'function') ? normalizePhone(m[1]) : m[1].replace(/[^\d+]/g, '');
+    }
+    function _anaExtractLevel(text) { const m = String(text || '').match(/\bliv(?:ello)?\.?\s*([0-9](?:[.,][0-9])?)\b/i); return m ? m[1].replace(',', '.') : ''; }
+    function _anaExtractGender(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( femmin\w*| donna| ragazza| signora)( |$)/.test(n)) return 'F';
+      if (/( maschi\w*| uomo| ragazzo| signore)( |$)/.test(n)) return 'M';
+      return '';
+    }
+    function _anaGenderLabel(g) { return g === 'F' ? 'Donna' : g === 'M' ? 'Uomo' : '—'; }
+    // Isola il NOME togliendo email/numeri/livello/sesso, le parole di comando/ruolo e i
+    // filler INIZIALI (articoli/preposizioni) — ma NON le particelle interne dei cognomi
+    // ("Di Marco", "De Luca", "Lo Russo") che vanno preservate.
+    function _anaStripFieldTokens(text) {
+      let t = ' ' + String(text || '') + ' ';
+      t = t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, ' ');
+      t = t.replace(/\bliv(?:ello)?\.?\s*[0-9](?:[.,][0-9])?\b/gi, ' ');
+      t = t.replace(/(?:\+?\d(?:[\s.\-]?\d){4,})/g, ' ');
+      t = t.replace(/\b\d+(?:[.,]\d+)?\b/g, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livello|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\s{2,}/g, ' ').trim();
+      // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
+      let prev = null;
+      while (prev !== t) { prev = t; t = t.replace(/^(?:il|lo|la|i|gli|le|un|uno|una|dei|del|dello|della|di|d'|a|ad|al|allo|alla|per|con|mi|si)\s+/i, ''); }
+      // Filler FINALE: il connettore del valore ("…Mario Rossi a 4" → tolto "4", resta "a").
+      // NB: niente del/dello/della (possono chiudere un cognome es. "Della Valle … Anna").
+      prev = null;
+      while (prev !== t) { prev = t; t = t.replace(/\s+(?:a|ad|al|allo|alla|di|d'|in|con|su|da|per|e|il|lo|la|i|gli|le|un|uno|una)$/i, ''); }
+      return t.trim();
+    }
+    // Risposta diretta a "come si chiama?": niente strip aggressivo (preserva i cognomi).
+    function _anaParseNameAnswer(ans) {
+      let s = ' ' + String(ans || '').trim() + ' ';
+      s = s.replace(/^\s*(?:si chiama|è|e'|nome e cognome|nome|il socio|la socia)\s+/i, ' ');
+      s = s.replace(/[,;]/g, ' ');
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
+    function _anaName(d) { return _escapeHtml(((d.firstName || '') + ' ' + (d.surname || '')).trim() || 'il socio'); }
+
+    function _startAnagrafica(res, text) {
+      const n = ' ' + _norm(text) + ' ';
+      const isUpdate = _ANA_UPDATE_VERB.test(n) && !_ANA_CREATE_VERB.test(n);
+      return isUpdate ? _startAnaUpdate(text) : _startAnaCreate(text);
+    }
+
+    // ── CREA socio ──────────────────────────────────────────────────────────────
+    function _startAnaCreate(text) {
+      const draft = { firstName: '', surname: '', phone: _anaExtractPhone(text), email: _anaExtractEmail(text), level: _anaExtractLevel(text), gender: _anaExtractGender(text) };
+      const nameStr = _anaStripFieldTokens(text);
+      if (nameStr) { const p = nameStr.split(/\s+/).filter(Boolean); draft.firstName = p[0] || ''; draft.surname = p.slice(1).join(' '); }
+      return _anaAdvanceCreate(draft);
+    }
+    function _anaCreateNeeds(draft) {
+      const fullName = ((draft.firstName || '') + ' ' + (draft.surname || '')).trim();
+      const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+      const need = [];
+      if (!draft.firstName || (!draft.surname && !guest)) need.push('name');
+      if (!guest) {
+        if (!draft.phone) need.push('phone');
+        if (!draft.gender) need.push('gender');
+        if (!draft.level) need.push('level');
+        if (!draft.email) need.push('email');
+      }
+      return need;
+    }
+    function _anaAdvanceCreate(draft) {
+      const need = _anaCreateNeeds(draft);
+      if (need.length) { aiFlowState = { kind: 'anagrafica', op: 'create', stage: 'await', draft: draft, need: need }; return _anaAskNext(need[0], draft); }
+      return _showAnaCreateSummary(draft);
+    }
+    function _anaAskNext(k, draft) {
+      const q = {
+        name: '👤 Come si chiama il nuovo socio? (nome e cognome)',
+        phone: '📞 Qual è il <strong>telefono</strong> di ' + _anaName(draft) + '?',
+        gender: '⚧ ' + _anaName(draft) + ' è <strong>uomo</strong> o <strong>donna</strong>?',
+        level: '🎾 Che <strong>livello</strong> ha ' + _anaName(draft) + '? (es. 3 o 4.5)',
+        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '?'
+      };
+      return _say(q[k] || ('Dimmi: ' + k));
+    }
+    function _continueAnagrafica(text) {
+      if (!aiFlowState || aiFlowState.stage !== 'await') { aiFlowState = null; return _say('Dimmi pure cosa vuoi fare in anagrafica.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      const draft = aiFlowState.draft, k = aiFlowState.need[0], ans = String(text || '').trim();
+      if (k === 'name') {
+        const p = _anaParseNameAnswer(ans).split(/\s+/).filter(Boolean);
+        if (!p.length) return _say('Non ho capito il nome. Scrivi <strong>nome e cognome</strong> (oppure “annulla”).');
+        draft.firstName = p[0]; draft.surname = p.slice(1).join(' ');
+      } else if (k === 'phone') {
+        const ph = _anaExtractPhone(ans) || ((typeof normalizePhone === 'function') ? normalizePhone(ans) : ans.replace(/[^\d+]/g, ''));
+        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Telefono non valido. Scrivi un numero (es. 333 1234567).');
+        draft.phone = ph;
+      } else if (k === 'gender') {
+        const g = _anaExtractGender(ans) || (/^f/i.test(ans) ? 'F' : /^m/i.test(ans) ? 'M' : '');
+        if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
+        draft.gender = g;
+      } else if (k === 'level') {
+        const lm = ans.match(/[0-9](?:[.,][0-9])?/);
+        if (!lm) return _say('Livello non valido. Scrivi un numero (es. 3 o 4.5).');
+        draft.level = lm[0].replace(',', '.');
+      } else if (k === 'email') {
+        const em = _anaExtractEmail(ans);
+        if (!em) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it).');
+        draft.email = em;
+      }
+      const need = _anaCreateNeeds(draft);
+      aiFlowState.need = need;
+      if (need.length) return _anaAskNext(need[0], draft);
+      return _showAnaCreateSummary(draft);
+    }
+    function _showAnaCreateSummary(draft) {
+      const fullName = compactSpaces(((draft.firstName || '') + ' ' + (draft.surname || '')).trim());
+      const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+      aiFlowState = { kind: 'anagrafica', op: 'create', stage: 'confirm', draft: draft };
+      const lines = ['👤 <strong>' + _escapeHtml(fullName) + '</strong>' + (guest ? ' <em>(ospite)</em>' : '')];
+      if (!guest) {
+        lines.push('📞 ' + _escapeHtml(draft.phone || '—'));
+        lines.push('✉️ ' + _escapeHtml(draft.email || '—'));
+        lines.push('⚧ ' + _anaGenderLabel(draft.gender));
+        lines.push('🎾 Livello ' + _escapeHtml(String(draft.level || '—')));
+      }
+      let html = '📋 <strong>Nuovo socio</strong><br>' + lines.join('<br>');
+      html += '<br><span style="color:#98a2b3;font-size:12px">Lo salvo in anagrafica, su Supabase' + (guest ? '' : ' e lo creo anche su <strong>Matchpoint</strong>') + '. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+
+    // ── AGGIORNA socio ──────────────────────────────────────────────────────────
+    function _anaExtractChanges(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const ch = {};
+      const email = _anaExtractEmail(text); if (email) ch.email = email;
+      const phone = _anaExtractPhone(text); if (phone) ch.phone = phone;
+      const gender = _anaExtractGender(text); if (gender) ch.gender = gender;
+      if (/livell/.test(n)) { const m = String(text).match(/\b([0-9](?:[.,][0-9])?)\b/); if (m) ch.level = m[1].replace(',', '.'); }
+      else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
+      return ch;
+    }
+    function _startAnaUpdate(text) {
+      const changes = _anaExtractChanges(text);
+      const nameStr = _anaStripFieldTokens(text);
+      if (!nameStr) return _say('Chi vuoi aggiornare? Dimmi <strong>nome e cognome</strong> del socio (es. “aggiorna il telefono di Mario Rossi a 333…”).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
+      if (!matches.length) return _say('🔍 Non trovo un socio che somigli a “<strong>' + _escapeHtml(nameStr) + '</strong>”. Controlla il nome.');
+      // Match esatto e univoco (distanza 0, strettamente migliore del 2°) → selezione automatica;
+      // altrimenti chiedi quale fra i candidati simili (omonimi/quasi-omonimi).
+      const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
+      if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
+      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
+      return _say('❓ Quale socio vuoi aggiornare? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+    }
+    function _continueAnaPick(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      const matches = aiFlowState.matches || [], changes = aiFlowState.changes || {};
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      let pick = null;
+      if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < matches.length) pick = matches[i].member; }
+      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
+      aiFlowState = null;
+      return _anaUpdateWithTarget(pick, changes);
+    }
+    function _anaUpdateWithTarget(member, changes) {
+      if (!member) return _say('Socio non trovato.');
+      if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
+      return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “uomo/donna”.');
+    }
+    function _continueAnaChanges(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, niente modifiche.'); }
+      const target = aiFlowState.target;
+      const changes = _anaExtractChanges(text);
+      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “uomo/donna”.');
+      aiFlowState = null;
+      return _showAnaUpdateSummary(target, changes);
+    }
+    function _showAnaUpdateSummary(member, changes) {
+      aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'confirm', target: member, changes: changes };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso' };
+      const rows = Object.keys(changes).map(function (k) {
+        const oldV = (k === 'gender') ? _anaGenderLabel(member.gender) : (k === 'level' ? String(member.level || '—') : (member[k] || '—'));
+        const newV = (k === 'gender') ? _anaGenderLabel(changes.gender) : (k === 'level' ? String(changes.level) : changes[k]);
+        return (lbl[k] || k) + ': <span style="color:#98a2b3">' + _escapeHtml(String(oldV || '—')) + '</span> → <strong>' + _escapeHtml(String(newV)) + '</strong>';
+      });
+      let html = '📋 <strong>Aggiorna ' + _escapeHtml(playerFullName(member)) + '</strong><br>' + rows.join('<br>');
+      html += '<br><span style="color:#98a2b3;font-size:12px">Salvo in anagrafica, su Supabase e aggiorno anche <strong>Matchpoint</strong>. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+
+    // ── Conferma + esecuzione (Locale + Cloud) ──────────────────────────────────
+    function _anaAppendConfirmButtons(div) {
+      if (!div || !div.appendChild) return;
+      const snap = aiFlowState; // {op, draft | target+changes}
+      const wrap = document.createElement('div'); wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e salva';
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
+      yes.addEventListener('click', function () { if (yes.disabled) return; yes.disabled = true; no.disabled = true; yes.classList.add('selected'); aiFlowState = null; _anaExecute(snap); });
+      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say('❌ Operazione annullata.'); });
+      wrap.appendChild(yes); wrap.appendChild(no); div.appendChild(wrap);
+    }
+    function _confirmAnagraficaAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say('❌ Operazione annullata.'); }
+      if (/( si | sì | conferm\w*| confermo| ok | va bene | vabene | procedi | certo | salva )/.test(n)) { const snap = aiFlowState; aiFlowState = null; return _anaExecute(snap); }
+      return _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+    }
+    function _anaExecute(snap) {
+      if (!snap) return;
+      return snap.op === 'update' ? _anaExecuteUpdate(snap.target, snap.changes) : _anaExecuteCreate(snap.draft);
+    }
+    function _anaExecuteCreate(draft) {
+      try {
+        const norm = (typeof normalizeImportedPlayerNameParts === 'function') ? normalizeImportedPlayerNameParts(draft.firstName, draft.surname) : { firstName: draft.firstName, surname: draft.surname };
+        const firstName = norm.firstName, surname = norm.surname;
+        const fullName = compactSpaces((firstName + ' ' + surname).trim());
+        const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
+        if (!firstName || (!surname && !guest)) return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.');
+        const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: draft.email || '' };
+        if (typeof findMatchingMemberIndex === 'function' && findMatchingMemberIndex(candidate) >= 0) return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        const now = new Date().toISOString();
+        const newMember = ensureMemberId({
+          id: makeId(), memberId: '', firstName: firstName, surname: surname, name: fullName,
+          phone: draft.phone || '', email: draft.email || '',
+          level: guest ? '' : parseLevel(draft.level, 3),
+          gender: guest ? 'NA' : (draft.gender || 'NA'),
+          guestJolly: guest, active: true, prefDays: [], prefHours: [],
+          availabilityProfile: { time: '', days: '', frequency: '', notice: '', matchType: '', source: 'assistente AI', updatedAt: now },
+          createdAt: now, updatedAt: now
+        });
+        giocatori.push(newMember);
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
+        // Ospite/guest: non si crea su Matchpoint (la scheda 000001 esiste già lì).
+        if (guest) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>');
+        _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
+        if (typeof pmoCreateMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function () {
+            const code = String(newMember.memberId || '').trim();
+            if (/^\d{4,6}$/.test(code)) _say('✅ Creato anche su <strong>Matchpoint</strong> · codice <strong>' + _escapeHtml(code) + '</strong>.');
+            else _say('⚠️ Creazione su Matchpoint non riuscita: il socio resta in app + Supabase. Riprova più tardi o crealo dal gestionale.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); });
+        }
+        return;
+      } catch (err) {
+        return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
+      }
+    }
+    function _anaExecuteUpdate(member, changes) {
+      try {
+        const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
+        if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
+        const cur = giocatori[idx];
+        const prev = { surname: cur.surname || '', phone: cur.phone || '', email: cur.email || '' };
+        const now = new Date().toISOString();
+        const next = Object.assign({}, cur);
+        if (changes.phone != null) next.phone = (typeof normalizePhone === 'function') ? normalizePhone(changes.phone) : changes.phone;
+        if (changes.email != null) next.email = changes.email;
+        if (changes.gender != null) next.gender = changes.gender;
+        if (changes.level != null) next.level = parseLevel(changes.level, 3);
+        next.updatedAt = now;
+        giocatori[idx] = next;
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(next, 'aggiornare il socio (assistente AI) su Supabase'); } catch (e) {}
+        const nm = _escapeHtml(playerFullName(next));
+        _say('✅ <strong>' + nm + '</strong> aggiornato in anagrafica e su Supabase. ⏳ Aggiorno anche <strong>Matchpoint</strong>…');
+        if (typeof pmoPushMemberUpdateToMatchpoint === 'function') {
+          Promise.resolve(pmoPushMemberUpdateToMatchpoint(next, { prev: prev, notify: false })).then(function (res) {
+            const st = res && res.status;
+            if (st === 'ok') _say('✅ Aggiornato anche su <strong>Matchpoint</strong>.');
+            else if (st === 'guest') _say('ℹ️ È un ospite: su Matchpoint non si aggiorna. Resta salvato in app + Supabase.');
+            else if (st === 'skipped') _say('ℹ️ Socio senza codice Matchpoint: aggiornato solo in app + Supabase.');
+            else if (st === 'no_permission') _say('ℹ️ Manca il permesso <code>cloud_sync</code>: aggiornato solo in app + Supabase.');
+            else _say('⚠️ Aggiornamento su Matchpoint non riuscito' + ((res && res.reason) ? ' (' + _escapeHtml(String(res.reason).slice(0, 120)) + ')' : '') + '. Resta in app + Supabase.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Resta in app + Supabase.'); });
+        }
+        return;
+      } catch (err) {
+        return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
+      }
+    }
+
+    function _capabilitiesShort() {
+      return 'Per ora posso rispondere a domande tipo “<em>campi liberi sabato pomeriggio</em>”, “<em>chi gioca domani alle 18</em>”, “<em>prenotazioni di oggi sul campo 2</em>”.';
+    }
+
+    // ── Sandbox (tab gestione) ──────────────────────────────────────────────────
+    // ── Banco di prova (diagnostica) ────────────────────────────────────────────
+    // Esegue la STESSA comprensione ibrida della chat (regole → Gemini sotto soglia) ma
+    // SENZA eseguire nulla: niente scritture su Matchpoint, niente messaggi in chat. Per le
+    // prenotazioni mostra anche i GIOCATORI RISOLTI — è lì che si vedono i bug di nomi.
+    async function diagnose(text) {
+      const t = String(text || '').trim();
+      const rule = parse(t) || {};
+      let res = rule, source = 'regole', llmError = '';
+      if ((rule.confidence || 0) < AI_PARSE_THRESHOLD) {
+        try {
+          const llm = await _callAiParse(t);
+          if (llm && (llm.intent || (llm.slots && Object.keys(llm.slots).length))) {
+            res = _mergeLlmResult(rule, llm); source = 'Gemini (regole sotto soglia)';
+          } else { source = 'regole (Gemini: nessuna risposta utile)'; }
+        } catch (e) { llmError = e.message || String(e); source = 'regole (Gemini non disponibile)'; }
+      } else {
+        source = 'regole (confidenza alta, Gemini non serve)';
+      }
+      const out = {
+        text: t, source: source,
+        intent: res.intent || '—',
+        confidence: Number((res.confidence || 0).toFixed(2)),
+        ruleConfidence: Number((rule.confidence || 0).toFixed(2)),
+        slots: res.slots || {}, missing: res.missing || [],
+        llmError: llmError || '',
+        // interpretazione regole A–I (dal parser a regole; l'LLM non le sovrascrive)
+        ko: !!rule.ko, koReason: rule.koReason || '',
+        needsType: !!rule.needsType, needsSurname: !!rule.needsSurname, needsInstructor: !!rule.needsInstructor,
+        ospite: !!rule.ospite, confirmMassive: !!rule.confirmMassive,
+        giocatori: Array.isArray(rule.giocatori) ? rule.giocatori : []
+      };
+      if (res.intent === 'PRENOTA') {
+        try {
+          const d = _buildPrenotaDraft(res, t);
+          out.prenota = {
+            tipo: d.tipo, campo: d.campoNum || null, data: d.data || null,
+            ora: d.ora || null, oraFine: d.oraFine || null, istruttore: d.istruttore || null,
+            giocatori: (d.giocatori || []).map(function (g) { return g.nome; }),
+            note: d.notes || []
+          };
+        } catch (e) { out.prenotaError = e.message || String(e); }
+      }
+      return out;
+    }
+    // ── Diagnosi → spiegazione in ITALIANO SEMPLICE ─────────────────────────────
+    // L'utente deve poter giudicare "giusto/sbagliato" senza gergo (niente intent/slot/
+    // confidence): riscriviamo a parole cosa è stato capito, marcando ciò che manca.
+    function _orMancato(v) { return v ? v : '❓ non l\'hai detto'; }
+    function _intentFriendly(intent, prenota) {
+      switch (intent) {
+        case 'PRENOTA': return 'Vuoi PRENOTARE ' + (prenota && prenota.tipo === 'lezione' ? 'una LEZIONE 📚' : 'una PARTITA 🎾');
+        case 'TROVA': return 'Vuoi FARE UNA DOMANDA (campi liberi o prenotazioni) 🔎';
+        case 'CANCELLA': return 'Vuoi ANNULLARE una prenotazione ❌';
+        case 'CORREGGI': return 'Vuoi MODIFICARE una prenotazione ✏️';
+        case 'ANAGRAFICA': return 'Vuoi AGGIUNGERE o AGGIORNARE un giocatore in anagrafica 👤';
+        default: return '🤔 Non ho capito cosa vuoi fare. Prova a scriverlo più semplice (es. «prenota campo 2 domani alle 18»).';
+      }
+    }
+    function _slotFriendly(s) { return ({ date: 'il giorno', time: 'l\'ora', court: 'il campo' })[s] || s; }
+    function _friendlyDate(iso) {
+      try {
+        const today = _todayIso();
+        let rel = '';
+        if (iso === today) rel = ' (oggi)';
+        else if (iso === _addDays(today, 1)) rel = ' (domani)';
+        else if (iso === _addDays(today, 2)) rel = ' (dopodomani)';
+        const lbl = new Date(iso + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+        return lbl.charAt(0).toUpperCase() + lbl.slice(1) + rel;
+      } catch (e) { return iso; }
+    }
+    function _formatDiag(d) {
+      const L = [];
+      L.push('🗣️ Ho capito questo — controlla tu se è giusto:');
+      L.push('');
+      L.push('👉 ' + _intentFriendly(d.intent, d.prenota));
+      if (d.prenota) {
+        const p = d.prenota;
+        L.push('');
+        L.push('📅 Giorno: ' + _orMancato(p.data ? _friendlyDate(p.data) : ''));
+        L.push('🕐 Ora: ' + _orMancato(p.ora ? (p.ora + (p.oraFine ? '–' + p.oraFine : '')) : ''));
+        L.push('🎾 Campo: ' + _orMancato(p.campo ? ('campo ' + p.campo) : ''));
+        if (p.tipo === 'lezione') L.push('👨‍🏫 Maestro: ' + _orMancato(p.istruttore || ''));
+        const chi = (p.giocatori && p.giocatori.length) ? p.giocatori.join(', ') : '';
+        L.push((p.tipo === 'lezione' ? '👥 Allievo/i: ' : '👥 Giocatori: ') + _orMancato(chi));
+        if (p.note && p.note.length) L.push('⚠️ Attenzione: ' + p.note.join(' | '));
+        const mancano = (d.missing || []).map(_slotFriendly).filter(Boolean);
+        if (mancano.length) { L.push(''); L.push('ℹ️ Per completare mi manca ancora ' + mancano.join(' e ') + ': nella chat te lo chiederei.'); }
+      } else if (d.intent !== undefined) {
+        const s = d.slots || {};
+        const det = [];
+        if (s.date) det.push('📅 Giorno: ' + _friendlyDate(s.date));
+        if (s.court) det.push('🎾 Campo: campo ' + s.court);
+        if (s.time) det.push('🕐 Ora: ' + s.time);
+        if (s.who) det.push('🙋 Nome: ' + s.who);
+        if (det.length) { L.push(''); det.forEach(function (x) { L.push(x); }); }
+      }
+      if (d.prenotaError) { L.push(''); L.push('⚠️ Errore interno: ' + d.prenotaError); }
+      // Stati delle regole A–I
+      if (d.ko) { L.push(''); L.push('⛔ NON VALIDO: ' + (d.koReason || 'richiesta impossibile') + '. Mi fermo e non procedo.'); }
+      else {
+        const need = [];
+        if (d.needsType) need.push('se è una partita o una lezione');
+        if (d.needsInstructor) need.push('con quale maestro');
+        if (d.needsSurname) need.push('nome e cognome del giocatore');
+        if (need.length) { L.push(''); L.push('❓ Prima di procedere ti chiederei: ' + need.join('; ') + '.'); }
+        if (d.confirmMassive) { L.push(''); L.push('⚠️ È un\'azione su molte prenotazioni: chiederei conferma prima di eseguire.'); }
+        if (d.ospite && !(d.prenota && d.prenota.giocatori && d.prenota.giocatori.length)) { L.push(''); L.push('👤 Nessun giocatore indicato: metto “Ospite”.'); }
+      }
+      L.push('');
+      L.push('✅ Se è tutto giusto, ottimo. ❌ Se ho sbagliato qualcosa, scrivilo qui sotto e premi 🐞 Segnala.');
+      // Riga tecnica in fondo (serve a me quando incolli il report nella chat di supporto).
+      L.push('');
+      L.push('· · · · · · · · · ·');
+      L.push('(per il supporto) frase: "' + d.text + '" — fonte: ' + d.source + ' · sicurezza ' + Math.round((d.confidence || 0) * 100) + '% · v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + (d.llmError ? ' · Gemini: ' + d.llmError : ''));
+      return L.join('\n');
+    }
+    // ── Anti-doppione: avvisa se la frase è uguale/simile a una GIÀ segnalata ────
+    // Confronta con la cache delle segnalazioni manuali (riempita da loadMyReports). Serve a
+    // non ri-segnalare casi già in elenco o già risolti.
+    let _myReportsCache = [];
+    let _lastReportWarnedFor = '';
+    function _statoLabel(r) {
+      if (r && r.stato === 'risolta') return '✅ già RISOLTA' + (r.risolto_in_versione ? ' in ' + r.risolto_in_versione : '');
+      return '🟠 già in elenco (aperta)';
+    }
+    function _findSimilarReports(text) {
+      const A = _norm(text);
+      if (A.length < 4 || !Array.isArray(_myReportsCache) || typeof editDistance !== 'function') return [];
+      const out = [];
+      _myReportsCache.forEach(function (r) {
+        const B = _norm(r.input_originale || '');
+        if (B.length < 4) return;
+        const ratio = (A === B) ? 1 : (1 - editDistance(A, B) / Math.max(A.length, B.length));
+        if (ratio >= 0.84) out.push({ r: r, ratio: ratio });
+      });
+      out.sort(function (a, b) { return b.ratio - a.ratio; });
+      return out.slice(0, 3);
+    }
+    function _formatSimilarWarn(sims) {
+      const L = ['❌❌❌ ATTENZIONE: hai già segnalato una frase ' + (sims[0].ratio >= 0.999 ? 'UGUALE' : 'molto simile') + ':'];
+      sims.forEach(function (s) { L.push('• «' + s.r.input_originale + '» — ' + _statoLabel(s.r)); });
+      L.push('(se è lo stesso problema, forse è già in lavorazione o risolto)');
+      L.push('');
+      L.push('— — — — — — — — — —');
+      L.push('');
+      return L.join('\n');
+    }
+    let _lastDiagReport = '';
+    async function runSandbox() {
+      const inp = document.getElementById('aiSandboxInput');
+      const out = document.getElementById('aiSandboxOutput');
+      if (!inp || !out) return;
+      const text = inp.value.trim();
+      if (!text) { out.textContent = '—'; _lastDiagReport = ''; return; }
+      out.textContent = '💭 Analisi in corso…';
+      try {
+        const d = await diagnose(text);
+        let report = _formatDiag(d);
+        const sims = _findSimilarReports(text);
+        if (sims.length) report = _formatSimilarWarn(sims) + report;
+        _lastDiagReport = report;
+        out.textContent = report;
+      } catch (e) {
+        out.textContent = '⚠️ Errore analisi: ' + (e.message || e); _lastDiagReport = '';
+      }
+    }
+    // Copia il report negli appunti (per incollarlo nel supporto).
+    async function copySandboxReport() {
+      const st = document.getElementById('aiSandboxCopyState');
+      if (!_lastDiagReport) { if (st) st.textContent = 'Prima premi “Analizza”.'; return; }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(_lastDiagReport);
+        else { const ta = document.createElement('textarea'); ta.value = _lastDiagReport; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+        if (st) { st.textContent = '✅ Report copiato.'; setTimeout(function () { st.textContent = ''; }, 2500); }
+      } catch (e) { if (st) st.textContent = '⚠️ Copia non riuscita.'; }
+    }
+    // Segnala il caso del banco di prova → pmo_parser_errors (rivedibile in Amministrazione → Parser Config).
+    async function reportSandbox() {
+      const inp = document.getElementById('aiSandboxInput');
+      const noteEl = document.getElementById('aiSandboxNote');
+      const st = document.getElementById('aiSandboxReportState');
+      const text = inp ? inp.value.trim() : '';
+      if (!text) { if (st) st.textContent = 'Scrivi prima una frase.'; return; }
+      const note = noteEl ? noteEl.value.trim() : '';
+      // Anti-doppione: se è uguale/simile a una già segnalata, avvisa e chiedi conferma
+      // (un secondo click sulla STESSA frase invia comunque).
+      const sims = _findSimilarReports(text);
+      if (sims.length && _lastReportWarnedFor !== _norm(text)) {
+        _lastReportWarnedFor = _norm(text);
+        if (st) st.textContent = '⚠️ Frase simile già segnalata (' + _statoLabel(sims[0].r) + '). Premi di nuovo “Segnala” per inviarla comunque.';
+        return;
+      }
+      let intent = null, confidence = null;
+      try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
+      try {
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' }) : false;
+        if (ok) {
+          _lastReportWarnedFor = '';
+          if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
+          if (noteEl) noteEl.value = '';
+          try { loadMyReports(); } catch (e) {}
+        } else if (st) {
+          st.textContent = '⚠️ Non salvato (forse la sessione è scaduta): esci e rientra, poi riprova.';
+        }
+      } catch (e) { if (st) st.textContent = '⚠️ Segnalazione non riuscita.'; }
+    }
+    // Segnala una delle ultime interazioni REALI (dalla lista) senza riscriverla.
+    async function reportInteraction(idx) {
+      const r = _convLog[idx];
+      if (!r) return;
+      try {
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione, origine: 'manuale' }) : false;
+        const btn = document.getElementById('aiConvReport' + idx);
+        if (ok) {
+          if (btn) { btn.textContent = '✅'; btn.disabled = true; btn.title = 'Segnalato'; }
+          try { loadMyReports(); } catch (e) {}
+        } else if (btn) { btn.title = 'Non salvato (sessione scaduta?): esci e rientra, poi riprova.'; }
+      } catch (e) {}
+    }
+
+    // ── Le mie segnalazioni (lista con stato Aperta/Risolta) ────────────────────
+    // Legge SOLO le segnalazioni manuali (origine='manuale') da pmo_parser_errors. La lettura
+    // richiede una sessione staff (RLS: select per authenticated). Gli stati "risolta" li
+    // imposta il manutentore via DB quando corregge il caso.
+    async function _myReportsFetch() {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let accessToken = cfg.supabaseKey;
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) accessToken = t; } } catch (e) {}
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_parser_errors?origine=eq.manuale&order=timestamp.desc&limit=50&select=id,input_originale,error_message,stato,risolto_il,risolto_in_versione,nota_risoluzione,timestamp';
+      const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + accessToken, Accept: 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+    async function loadMyReports() {
+      const el = document.getElementById('aiReportsList');
+      if (!el) return;
+      el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      try {
+        const rows = await _myReportsFetch();
+        _myReportsCache = Array.isArray(rows) ? rows : [];
+        if (!rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna segnalazione ancora. Quando trovi un errore usa 🐞 “Segnala questo caso”.</div>'; return; }
+        el.innerHTML = rows.map(function (r) {
+          const risolta = r.stato === 'risolta';
+          const badge = risolta ? '<span class="ai-rep-badge done">✅ Risolta</span>' : '<span class="ai-rep-badge open">🟠 Aperta</span>';
+          const nota = String(r.error_message || '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
+          const when = r.timestamp ? new Date(r.timestamp).toLocaleDateString('it-IT') : '';
+          let extra = '';
+          if (risolta) {
+            const rwhen = r.risolto_il ? new Date(r.risolto_il).toLocaleDateString('it-IT') : '';
+            extra = '<div class="ai-rep-res">✅ Risolta' + (r.risolto_in_versione ? ' in ' + _escapeHtml(r.risolto_in_versione) : '') + (rwhen ? ' · ' + rwhen : '') + (r.nota_risoluzione ? ' — ' + _escapeHtml(r.nota_risoluzione) : '') + '</div>';
+          }
+          return '<div class="ai-rep-row' + (risolta ? ' is-done' : '') + '">' +
+            '<div class="ai-rep-head">' + badge + '<span class="ai-rep-when">' + when + '</span></div>' +
+            '<div class="ai-rep-text">' + _escapeHtml(r.input_originale || '') + '</div>' +
+            (nota ? '<div class="ai-rep-note">📝 ' + _escapeHtml(nota) + '</div>' : '') +
+            extra + '</div>';
+        }).join('');
+      } catch (e) {
+        _myReportsCache = [];
+        el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere le segnalazioni: forse la sessione è scaduta. Esci e rientra, poi premi ↻ Aggiorna. <span style="opacity:.6">(' + _escapeHtml(e.message || String(e)) + ')</span></div>';
+      }
+    }
+
+    // Dettatura vocale nel BANCO DI PROVA (stato separato dal mic della chat). Riempie la
+    // textarea della sandbox con la stessa logica anti-duplicazione (Android/iOS) della chat.
+    let _sbxRec = null, _sbxDict = false;
+    function _sbxDictStop(btn) { _sbxDict = false; if (btn) { btn.classList.remove('recording'); btn.title = 'Detta la frase con la voce'; } }
+    function toggleSandboxDictation() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('aiSandboxMic');
+      const input = document.getElementById('aiSandboxInput');
+      if (!SR) { const o = document.getElementById('aiSandboxOutput'); if (o) o.textContent = '🎤 Dettatura vocale non supportata da questo browser. Scrivi la frase a mano.'; return; }
+      if (_sbxDict) { try { _sbxRec && _sbxRec.stop(); } catch (e) {} _sbxDictStop(btn); return; }
+      const base = (input && input.value) ? (input.value.replace(/\s+$/, '') + ' ') : '';
+      try { _sbxRec && _sbxRec.abort(); } catch (e) {}
+      _sbxRec = new SR(); _sbxRec.lang = 'it-IT';
+      const _isMobile = (typeof window.matchMedia === 'function') && window.matchMedia('(max-width: 899px)').matches;
+      _sbxRec.continuous = !_isMobile; _sbxRec.interimResults = true;
+      _sbxRec.onresult = function (e) {
+        const finalParts = []; let interim = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const seg = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            const t = seg.trim();
+            const last = finalParts.length ? finalParts[finalParts.length - 1] : '';
+            if (last && t.toLowerCase().indexOf(last.toLowerCase()) === 0) finalParts[finalParts.length - 1] = t;
+            else if (t) finalParts.push(t);
+          } else { interim += seg; }
+        }
+        const finalTr = finalParts.join(' ');
+        if (input) input.value = (base + finalTr + (interim ? (finalTr ? ' ' : '') + interim : '')).replace(/\s{2,}/g, ' ');
+      };
+      _sbxRec.onerror = function () { _sbxDictStop(btn); };
+      _sbxRec.onend = function () { _sbxDictStop(btn); };
+      try { _sbxRec.start(); _sbxDict = true; if (btn) { btn.classList.add('recording'); btn.title = 'Tocca per fermare la dettatura'; } } catch (e) {}
+    }
+
+    // ── Log interazioni (tab gestione) ──────────────────────────────────────────
+    function _logInteraction(text, res) {
+      _convLog.unshift({ text: text, intent: res.intent || '—', confidence: res.confidence || 0 });
+      if (_convLog.length > 30) _convLog.pop();
+      _renderConvLog();
+    }
+    function _renderConvLog() {
+      const el = document.getElementById('aiConversationLog');
+      if (!el) return;
+      if (!_convLog.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna interazione ancora.</div>'; return; }
+      el.innerHTML = _convLog.map(function (r, i) {
+        return '<div class="ai-conv-row"><span class="ai-conv-intent">' + _escapeHtml(r.intent) + '</span>' +
+          '<span class="ai-conv-text">' + _escapeHtml(r.text) + '</span>' +
+          '<span class="ai-conv-conf">' + (r.confidence ? r.confidence.toFixed(2) : '') + '</span>' +
+          '<button type="button" id="aiConvReport' + i + '" class="ai-conv-report" title="Segnala questo comando come interpretato male" onclick="try{PMOAi.reportInteraction(' + i + ')}catch(e){}">🐞</button></div>';
+      }).join('');
+    }
+    function _renderHelp() {
+      const el = document.getElementById('aiHelpList');
+      if (!el) return;
+      el.innerHTML = [
+        '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
+        '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
+        '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
+        '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
+        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase + Matchpoint)</li>',
+        '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
+      ].join('');
+    }
+
+    // ── Dettatura vocale nella chat (Web Speech API it-IT) ──────────────────────
+    let _rec = null, _dictating = false, _dictHintShown = false;
+    function _dictStop(btn) {
+      _dictating = false;
+      if (btn) { btn.classList.remove('recording'); btn.title = 'Detta un comando'; }
+      const i = document.getElementById('svcChatInput'); if (i) i.focus();
+      try { svcChatRefreshComposer(); } catch (e) {}
+    }
+    function toggleDictation() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('svcAiMicBtn');
+      const input = document.getElementById('svcChatInput');
+      if (!SR) { _say('🎤 Dettatura vocale non supportata da questo browser. Puoi scrivere il comando.'); return; }
+      if (_dictating) { try { _rec && _rec.stop(); } catch (e) {} _dictStop(btn); return; }
+      // mantieni l'eventuale testo già presente e accoda la dettatura
+      const base = (input && input.value) ? (input.value.replace(/\s+$/, '') + ' ') : '';
+      try { _rec && _rec.abort(); } catch (e) {}   // niente recognizer "fantasma" residuo
+      _rec = new SR(); _rec.lang = 'it-IT';
+      // Su mobile (Android) continuous=true ri-emette i risultati finali e il testo si
+      // DUPLICA a valanga: usiamo singola utterance su mobile + accumulo per indice
+      // (ogni segmento finale aggiunto UNA sola volta) per evitare le ripetizioni.
+      const _isMobile = (typeof window.matchMedia === 'function') && window.matchMedia('(max-width: 899px)').matches;
+      _rec.continuous = !_isMobile;
+      _rec.interimResults = true;
+      _rec.onresult = function (e) {
+        // Ricostruisci il testo da capo a OGNI evento scorrendo TUTTI i risultati
+        // (la lista è cumulativa per la sessione). Per i segmenti FINALI: se un nuovo
+        // finale è la frase intera re-riconosciuta che cresce — bug Android (finali
+        // ripetuti che si contengono) e edge iOS (finale che cresce sullo stesso
+        // indice) — lo si SOSTITUISCE all'ultimo invece di accodarlo; altrimenti è un
+        // nuovo segmento e si accoda. Niente stato esterno fra eventi → nessuna
+        // ripetizione a valanga e nessun troncamento.
+        const finalParts = [];
+        let interim = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const seg = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            const t = seg.trim();
+            const last = finalParts.length ? finalParts[finalParts.length - 1] : '';
+            if (last && t.toLowerCase().indexOf(last.toLowerCase()) === 0) finalParts[finalParts.length - 1] = t;
+            else if (t) finalParts.push(t);
+          } else {
+            interim += seg;
+          }
+        }
+        const finalTr = finalParts.join(' ');
+        const i2 = document.getElementById('svcChatInput');
+        if (i2) { i2.value = (base + finalTr + (interim ? (finalTr ? ' ' : '') + interim : '')).replace(/\s{2,}/g, ' '); try { svcChatRefreshComposer(); } catch (e) {} }
+      };
+      _rec.onerror = function () { _dictStop(btn); };
+      _rec.onend = function () { _dictStop(btn); };
+      try {
+        _rec.start(); _dictating = true;
+        if (btn) { btn.classList.add('recording'); btn.title = 'Tocca per fermare la dettatura'; }
+        try { svcChatToggleAction(); } catch (e) {}   // tieni il mic visibile come "stop"
+        if (!_dictHintShown) { _dictHintShown = true; _say('🎤 Sto ascoltando… parla pure. Quando hai finito <strong>tocca di nuovo il microfono</strong> per fermare, poi premi <strong>➤</strong> (o Invio) per inviare.'); }
+      } catch (e) {}
+    }
+
+    // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
+    function initChatUI() {
+      _renderHelp(); _renderConvLog();
+      try { loadMyReports(); } catch (e) {}
+      if (!isEnabled()) return;
+      const input = document.getElementById('svcChatInput');
+      const send = document.getElementById('svcChatSend');
+      const row = document.getElementById('svcChatInputRow');
+      if (!input || !send || !row) return;
+      const flowActive = (typeof svcFlowState !== 'undefined' && svcFlowState);
+      if (!flowActive) {
+        input.disabled = false; send.disabled = false;
+        input.placeholder = '💬 Scrivi o detta…';
+      }
+      if (!document.getElementById('svcAiMicBtn')) {
+        const mic = document.createElement('button');
+        mic.type = 'button'; mic.id = 'svcAiMicBtn'; mic.className = 'svc-ai-mic'; mic.title = 'Detta un comando';
+        mic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
+        mic.addEventListener('click', toggleDictation);
+        row.insertBefore(mic, send);
+      }
+      // Garantisce l'aggancio dell'autogrow su QUESTO input (initChatUI gira di sicuro in
+      // modalità AI) e imposta lo stato iniziale del tasto (mic se vuoto).
+      if (typeof svcChatBindComposer === 'function') svcChatBindComposer();
+      if (typeof svcChatRefreshComposer === 'function') svcChatRefreshComposer();
+      // Barra mobile (<900px): con assistente attivo diventa il "launcher" del pannello —
+      // placeholder coerente, microfono visibile, niente "Invia" (l'invio avviene nel
+      // pannello aperto). readonly così il tap apre il pannello invece della tastiera locale.
+      try {
+        const mInp = document.getElementById('staffCalMobileInput');
+        const mMic = document.getElementById('staffCalMobileMic');
+        const mSnd = document.getElementById('staffCalMobileSend');
+        if (mInp) { mInp.placeholder = '💬 Scrivi o detta…'; mInp.readOnly = true; mInp.disabled = false; }
+        if (mMic) mMic.style.display = 'flex';
+        if (mSnd) mSnd.style.display = 'none';
+      } catch (e) {}
+      if (!_welcomed) {
+        _welcomed = true;
+        _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“campi liberi sabato”</em>, <em>“chi gioca domani alle 18?”</em> oppure <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
+      }
+    }
+
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
+  })();
+
+  // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
+  // max-height (poi scrolla). Chiamata su 'input' e dopo l'invio (per tornare a una riga).
+  function svcChatAutoGrow() {
+    const el = document.getElementById('svcChatInput');
+    if (!el || el.tagName !== 'TEXTAREA') return;
+    el.style.height = 'auto';
+    // Da vuoto: torna all'altezza CSS (una riga). Senza questo, alcuni browser
+    // includono il placeholder nello scrollHeight e il box vuoto risulta alto 2-3 righe.
+    if (!el.value) { el.style.height = ''; return; }
+    const cap = (window.innerWidth < 900) ? 160 : 120;
+    el.style.height = Math.min(el.scrollHeight, cap) + 'px';
+  }
+  // Stile WhatsApp: microfono quando il campo è VUOTO, invio quando c'è TESTO. Resta un
+  // solo tasto a destra → la textarea si allarga fin quasi all'icona. In PROD (niente mic)
+  // l'invio resta sempre visibile.
+  function svcChatToggleAction() {
+    const input = document.getElementById('svcChatInput');
+    const send = document.getElementById('svcChatSend');
+    const mic = document.getElementById('svcAiMicBtn');
+    if (!input || !send) return;
+    const recording = !!(mic && mic.classList.contains('recording'));
+    const hasText = !!(input.value && input.value.trim());
+    // Durante la dettatura il mic resta visibile (serve a FERMARE). Altrimenti: mic se il
+    // campo è vuoto, freccia d'invio se c'è testo.
+    const showMic = !!mic && (recording || (!hasText && !input.disabled));
+    if (mic) mic.style.display = showMic ? 'flex' : 'none';
+    send.style.display = showMic ? 'none' : 'flex';
+  }
+  function svcChatRefreshComposer() { svcChatAutoGrow(); svcChatToggleAction(); }
+  // Aggancia il listener 'input' UNA sola volta (idempotente): chiamato sia da svcInitChat
+  // sia da PMOAi.initChatUI per garantire l'autogrow ovunque (desktop/mobile, anche dopo
+  // la rilocazione del pannello nella sidebar).
+  function svcChatBindComposer() {
+    const input = document.getElementById('svcChatInput');
+    if (!input || input._svcComposerBound) return;
+    input._svcComposerBound = true;
+    input.addEventListener('input', svcChatRefreshComposer);
+  }
+
   // Init listener svc chat
   (function svcInitChat() {
     const fab = document.getElementById('svcChatFab');
@@ -39163,7 +41550,15 @@ Per confermare scrivi ELIMINA.`);
     if (closeBtn) closeBtn.addEventListener('click', svcCloseChat);
     if (overlay) overlay.addEventListener('click', svcCloseChat);
     if (sendBtn) sendBtn.addEventListener('click', svcHandleSend);
-    if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') svcHandleSend(); });
+    if (input) {
+      // Invio = invia · Shift+Invio = a capo (come WhatsApp/desktop)
+      input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); svcHandleSend(); } });
+      svcChatBindComposer();
+    }
+    // Assistente AI (solo TEST): abilita la chat a testo libero. Doppio tentativo per il
+    // timing del profilo staff (gating view_assistante_ai caricato dalla cache poco dopo il boot).
+    try { window.PMOAi && PMOAi.initChatUI(); } catch (e) {}
+    setTimeout(function () { try { window.PMOAi && PMOAi.initChatUI(); } catch (e) {} }, 1800);
   })();
 
   // ── Tappa 2: Mobile header + chat bar ──
@@ -39430,25 +41825,51 @@ Per confermare scrivi ELIMINA.`);
   (function staffCalMobileChatInit() {
     var mInput = document.getElementById('staffCalMobileInput');
     var mSend = document.getElementById('staffCalMobileSend');
+    var mMic = document.getElementById('staffCalMobileMic');
     var realInput = document.getElementById('svcChatInput');
     var realSend = document.getElementById('svcChatSend');
+    function aiOn() { try { return !!(window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled()); } catch (e) { return false; } }
+    // Apre il pannello assistente completo (il composer del desktop: mic, testo grande,
+    // a-capo e messaggi visibili) e sposta lì il focus, così la conversazione si vede.
+    function openAssistant() {
+      try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {}
+      var ri = document.getElementById('svcChatInput');
+      setTimeout(function () { try { if (ri && !ri.disabled) ri.focus(); } catch (e) {} }, 40);
+    }
     if (mInput && realInput) {
-      mInput.addEventListener('input', function() { realInput.value = mInput.value; });
-      var obs = new MutationObserver(function() {
-        mInput.disabled = realInput.disabled;
+      mInput.addEventListener('input', function () { realInput.value = mInput.value; });
+      // Con assistente attivo la barra è un "launcher": toccarla apre il pannello pieno.
+      // Senza assistente (PROD / niente permesso) resta la quick-bar prenotazioni invariata.
+      mInput.addEventListener('click', function () { if (aiOn()) openAssistant(); });
+      mInput.addEventListener('focus', function () { if (aiOn()) openAssistant(); });
+      var obs = new MutationObserver(function () {
+        var d = realInput.disabled;
+        if (!aiOn()) mInput.disabled = d;   // in modalità AI l'input è readonly-launcher, non disabled
         if (mSend) mSend.disabled = realSend ? realSend.disabled : false;
+        if (mMic) mMic.disabled = d;
       });
       obs.observe(realInput, { attributes: true, attributeFilter: ['disabled'] });
-      mInput.disabled = realInput.disabled;
+      if (!aiOn()) mInput.disabled = realInput.disabled;
       if (mSend && realSend) mSend.disabled = realSend.disabled;
     }
+    if (mMic) {
+      // Mic della barra → apre il pannello e avvia la dettatura (la trascrizione compare
+      // nel composer del pannello, col mic come "stop").
+      mMic.addEventListener('click', function () {
+        if (!aiOn()) return;
+        openAssistant();
+        setTimeout(function () { try { PMOAi.toggleDictation(); } catch (e) {} }, 120);
+      });
+    }
     if (mSend) {
-      mSend.addEventListener('click', function() {
+      mSend.addEventListener('click', function () {
         var ri = document.getElementById('svcChatInput');
         if (!ri || ri.disabled) return;
         ri.value = mInput ? mInput.value : '';
         if (typeof svcHandleSend === 'function') svcHandleSend();
         if (mInput) mInput.value = '';
+        // Mostra la conversazione (e la risposta) anche se inviato dalla barra compatta.
+        if (aiOn()) { try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {} }
       });
     }
   })();

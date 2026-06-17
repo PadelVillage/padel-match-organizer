@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco di prova — Test parser Assistente AI (71 casi)</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { margin: 0; padding: 18px; background:#0f172a; color:#e2e8f0; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color:#94a3b8; font-size:13px; margin-bottom:14px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  button { background:#2563eb; color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  button.sec { background:#334155; }
+  .pill { padding:4px 10px; border-radius:999px; font-size:13px; font-weight:600; }
+  .ok { background:#064e3b; color:#6ee7b7; }
+  .ko { background:#7f1d1d; color:#fca5a5; }
+  table { border-collapse: collapse; width:100%; font-size:12.5px; }
+  th, td { border:1px solid #1e293b; padding:5px 7px; text-align:left; vertical-align:top; }
+  th { background:#1e293b; position:sticky; top:0; }
+  tr.pass td:first-child { box-shadow: inset 4px 0 0 #10b981; }
+  tr.fail td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
+  .res-ok { color:#6ee7b7; font-weight:700; }
+  .res-fail { color:#fca5a5; font-weight:700; }
+  code { background:#1e293b; padding:1px 4px; border-radius:4px; }
+  .muted { color:#94a3b8; }
+  .fail-reasons { color:#fca5a5; }
+  iframe { display:none; }
+  .cat { color:#a5b4fc; font-weight:600; }
+</style>
+</head>
+<body>
+  <h1>Test offline parser — Assistente AI / Banco di prova</h1>
+  <div class="sub">
+    Esegue <code>PMOAi.parse(frase)</code> sui 71 casi del CSV. <b>Offline</b>: <code>logParserError</code> viene
+    disattivato (niente write su Supabase), non viene eseguita nessuna azione (no Matchpoint), nessun fallback Gemini
+    (si usa solo <code>parse()</code> a regole). Le asserzioni sono sui campi reali del parser + sugli stati attesi
+    dalle regole A–I (alcuni stati — tipo richiesto, cognome richiesto, KO, ospite — non esistono ancora: sono i gap da colmare).
+  </div>
+  <div class="bar">
+    <button id="run">▶︎ Esegui test</button>
+    <button class="sec" id="onlyfail">Mostra solo NON-PASSA</button>
+    <span id="summary" class="pill muted">in attesa…</span>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>#</th><th>Categoria</th><th>Frase</th><th>Atteso (CSV)</th><th>Capito dal parser</th><th>Esito</th><th>Check falliti</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <iframe id="app" src="../index.html?env=test"></iframe>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// 71 casi dal CSV + attese strutturate (derivate da esito_atteso + cosa_deve_capire
+// + chiedi_tipo + regole A–I). data: token relativo risolto a runtime.
+//   az: azione attesa (string o array di alternative accettate)
+//   tipo: 'partita'|'lezione'|'manutenzione'
+//   campo, ora, oraFine: valori esatti
+//   data: 'oggi'|'domani'|'dopodomani'|'wd:N'(prossima occorrenza)|'wdNext:N'(settimana prossima)|'md:GG'|'md:GG/MM'
+//   players: 'names' (deve catturare ≥1 giocatore) | 'ospite' (deve mettere il segnaposto)
+//   surname: true (regola A: serve il cognome)
+//   type: true (regola D: deve chiedere partita/lezione — solo dove chiedi_tipo=SI)
+//   instr: true (deve chiedere quale maestro)
+//   ko: true (regola E: input impossibile, deve segnalare)
+//   massive: true (regola F: deve chiedere conferma)
+//   esito: 'OK'|'DUBBIO'|'KO' (dal CSV)
+// ─────────────────────────────────────────────────────────────────────────────
+const CASES = [
+ {id:1, cat:'Interroga', frase:'campi liberi domani pomeriggio', esito:'OK', exp:{az:'interroga', data:'domani'}},
+ {id:2, cat:'Interroga', frase:'chi gioca oggi alle 18 sul campo 1', esito:'OK', exp:{az:'interroga', campo:1, data:'oggi', ora:'18:00'}},
+ {id:3, cat:'Interroga', frase:'che prenotazioni ci sono sabato', esito:'OK', exp:{az:'interroga', data:'wd:6'}},
+ {id:4, cat:'Interroga', frase:'a che ora e libero il campo 3 giovedi', esito:'OK', exp:{az:'interroga', campo:3, data:'wd:4'}},
+ {id:5, cat:'Interroga', frase:'prenotazioni del campo 2 di venerdi', esito:'OK', exp:{az:'interroga', campo:2, data:'wd:5'}},
+ {id:6, cat:'Interroga', frase:'Mario Rossi gioca questa settimana?', esito:'OK', exp:{az:'interroga'}},
+ {id:7, cat:'Interroga', frase:"c'e lezione con Santiago domani?", esito:'OK', exp:{az:'interroga', data:'domani'}},
+ {id:8, cat:'Interroga', frase:'quanti campi liberi stasera alle 21', esito:'OK', exp:{az:'interroga', data:'oggi', ora:'21:00'}},
+
+ {id:9,  cat:'Crea partita', frase:'prenota campo 2 domani 18-19:30 Mario Rossi', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'domani', ora:'18:00', oraFine:'19:30', players:'names', type:true}},
+ {id:10, cat:'Crea', frase:'metti una partita campo 1 sabato alle 10 con Luca e Giovanni', esito:'DUBBIO', exp:{az:'crea', tipo:'partita', campo:1, data:'wd:6', ora:'10:00', players:'names', surname:true}},
+ {id:11, cat:'Crea', frase:'segna campo 3 stasera 21 Marco Bianchi', esito:'DUBBIO', exp:{az:'crea', campo:3, data:'oggi', ora:'21:00', players:'names', type:true}},
+ {id:12, cat:'Crea', frase:'fissa il campo 4 domenica dalle 9 alle 10:30', esito:'DUBBIO', exp:{az:'crea', campo:4, data:'wd:0', ora:'09:00', oraFine:'10:30', players:'ospite', type:true}},
+ {id:13, cat:'Crea', frase:'campo 2 domani sera 19 per Rossi, Bianchi, Verdi, Neri', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'domani', ora:'19:00', players:'names', surname:true, type:true}},
+ {id:14, cat:'Crea', frase:'prenotazione privata campo 1 mercoledi 20:30', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'wd:3', ora:'20:30', players:'ospite', type:true}},
+ {id:15, cat:'Crea', frase:"prenota il 2 domani alle 18 per un'ora e mezza", esito:'DUBBIO', exp:{az:'crea', campo:2, data:'domani', ora:'18:00', oraFine:'19:30', players:'ospite', type:true}},
+ {id:16, cat:'Crea', frase:'blocca campo 3 lunedi 17 manutenzione', esito:'DUBBIO', exp:{az:'crea', tipo:'manutenzione', campo:3, data:'wd:1', ora:'17:00'}},
+ {id:17, cat:'Crea', frase:'lezione con Santiago campo 1 domani 18-19', esito:'OK', exp:{az:'crea', tipo:'lezione', campo:1, data:'domani', ora:'18:00', oraFine:'19:00'}},
+ {id:18, cat:'Crea', frase:'individuale con Santiago giovedi 17 campo 3', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', campo:3, data:'wd:4', ora:'17:00'}},
+ {id:19, cat:'Crea', frase:'lezione di gruppo campo 1 domani 18 con Anna e Sara', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', campo:1, data:'domani', ora:'18:00', players:'names', surname:true}},
+ {id:20, cat:'Crea', frase:'metti una lezione maestro Santiago campo 2 sabato alle 15', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', campo:2, data:'wd:6', ora:'15:00'}},
+ {id:21, cat:'Crea', frase:'lezione campo 1 domani 18', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', campo:1, data:'domani', ora:'18:00', instr:true}},
+
+ {id:22, cat:'Annulla', frase:'annulla campo 2 domani alle 18', esito:'DUBBIO', exp:{az:'annulla', campo:2, data:'domani', ora:'18:00', type:true}},
+ {id:23, cat:'Annulla', frase:'cancella la partita di Mario domani', esito:'DUBBIO', exp:{az:'annulla', data:'domani', surname:true}},
+ {id:24, cat:'Annulla', frase:'disdici la lezione di sabato con Santiago', esito:'DUBBIO', exp:{az:'annulla', data:'wd:6'}},
+ {id:25, cat:'Annulla', frase:'elimina la partita delle 21 di domani campo 1', esito:'OK', exp:{az:'annulla', campo:1, data:'domani', ora:'21:00'}},
+ {id:26, cat:'Annulla', frase:'togli la prenotazione di stasera sul 3', esito:'DUBBIO', exp:{az:'annulla', campo:3, data:'oggi', type:true}},
+
+ {id:27, cat:'Modifica', frase:'modifica la partita di Mario domani', esito:'DUBBIO', exp:{az:'modifica', data:'domani', surname:true}},
+ {id:28, cat:'Modifica', frase:'sposta la partita del campo 2 di domani alle 19', esito:'DUBBIO', exp:{az:'modifica', campo:2, data:'domani'}},
+ {id:29, cat:'Modifica', frase:'cambia campo alla partita di sabato, mettila sul 3', esito:'DUBBIO', exp:{az:'modifica', data:'wd:6'}},
+ {id:30, cat:'Modifica', frase:'sposta a domenica la lezione di Santiago di sabato', esito:'DUBBIO', exp:{az:'modifica'}},
+ {id:31, cat:'Modifica', frase:'allunga la partita di domani alle 18 fino alle 20', esito:'DUBBIO', exp:{az:'modifica', data:'domani', ora:'18:00'}},
+
+ {id:32, cat:'Giocatori', frase:'aggiungi Luca alla partita di domani campo 2 alle 18', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', players:'names', surname:true}},
+ {id:33, cat:'Giocatori', frase:'togli Giovanni dalla partita di Mario di sabato', esito:'DUBBIO', exp:{az:['giocatori','modifica'], data:'wd:6', surname:true}},
+ {id:34, cat:'Giocatori', frase:'metti Marco nella lezione di Santiago di giovedi', esito:'DUBBIO', exp:{az:['giocatori','modifica'], data:'wd:4', surname:true}},
+ {id:35, cat:'Giocatori', frase:'sostituisci Mario con Luca nella partita di domani', esito:'DUBBIO', exp:{az:['giocatori','modifica'], data:'domani', surname:true}},
+ {id:36, cat:'Giocatori', frase:'aggiungi Anna e Sara alla partita delle 21 di stasera', esito:'DUBBIO', exp:{az:['giocatori','modifica'], data:'oggi', ora:'21:00', players:'names', surname:true}},
+
+ {id:37, cat:'Anagrafica', frase:'aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it', esito:'OK', exp:{az:'anagrafica'}},
+ {id:38, cat:'Anagrafica', frase:'nuovo socio Anna Verdi donna livello 2', esito:'DUBBIO', exp:{az:'anagrafica'}},
+ {id:39, cat:'Anagrafica', frase:'aggiorna il livello di Mario Rossi a 4', esito:'OK', exp:{az:'anagrafica'}},
+ {id:40, cat:'Anagrafica', frase:'Mario Rossi adesso e moroso', esito:'OK', exp:{az:'anagrafica'}},
+ {id:41, cat:'Anagrafica', frase:'cambia il telefono di Anna Verdi in 347 9988776', esito:'OK', exp:{az:'anagrafica'}},
+
+ {id:42, cat:'Ambigua', frase:'prenota campo 2', esito:'DUBBIO', exp:{az:'crea', campo:2, type:true}},
+ {id:43, cat:'Ambigua', frase:'cancella la partita di Mario', esito:'DUBBIO', exp:{az:'annulla', surname:true}},
+ {id:44, cat:'Ambigua', frase:'metti una partita domani alle 18', esito:'DUBBIO', exp:{az:'crea', data:'domani', ora:'18:00', players:'ospite'}},
+ {id:45, cat:'Ambigua', frase:'campo 5 domani alle 18', esito:'KO', exp:{ko:true}},
+ {id:46, cat:'Ambigua', frase:'prenota ieri alle 18 campo 1', esito:'KO', exp:{ko:true}},
+ {id:47, cat:'Ambigua', frase:'prenota campo 2 domani dalle 18 alle 17', esito:'KO', exp:{ko:true}},
+ {id:48, cat:'Ambigua', frase:'aggiungi Mario', esito:'DUBBIO', exp:{az:['giocatori','modifica'], surname:true}},
+ {id:49, cat:'Ambigua', frase:'prenota campo 2 e campo 3 domani alle 18', esito:'DUBBIO', exp:{az:'crea', data:'domani', ora:'18:00'}},
+ {id:50, cat:'Ambigua', frase:'lezione domani alle 18', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', data:'domani', ora:'18:00', instr:true}},
+ {id:51, cat:'Ambigua', frase:'prenota campo 2 oggi alle 14', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'oggi', ora:'14:00', type:true}},
+ {id:52, cat:'Ambigua', frase:'modifica la partita', esito:'DUBBIO', exp:{az:'modifica'}},
+ {id:53, cat:'Ambigua', frase:'annulla tutto domani', esito:'DUBBIO', exp:{az:'annulla', data:'domani', massive:true}},
+ {id:54, cat:'Ambigua', frase:'prenota campo 2 il 30 febbraio alle 18', esito:'KO', exp:{ko:true}},
+ {id:55, cat:'Ambigua', frase:'aggiungi socio Mario', esito:'DUBBIO', exp:{az:'anagrafica', surname:true}},
+
+ {id:56, cat:'Dialetto', frase:'buta dentro Mario sul 2 doman a le 6 de sera', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', surname:true}},
+ {id:57, cat:'Dialetto', frase:'C2 dman h18 partita Rossi+Bianchi', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'domani', ora:'18:00', players:'names', surname:true}},
+ {id:58, cat:'Dialetto', frase:'prenota cmp1 dopodomani 9-10.30 mario', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'dopodomani', ora:'09:00', oraFine:'10:30', players:'names', surname:true, type:true}},
+ {id:59, cat:'Dialetto', frase:'canc partita mario dman', esito:'DUBBIO', exp:{az:'annulla', data:'domani', surname:true}},
+ {id:60, cat:'Dialetto', frase:'agg luca part c2 dman 18', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', surname:true}},
+ {id:61, cat:'Dialetto', frase:'lez santi c1 sab 15', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', campo:1, data:'wd:6', ora:'15:00'}},
+ {id:62, cat:'Dialetto', frase:'campo tre venerdi sera nove e mezza', esito:'DUBBIO', exp:{az:'crea', campo:3, data:'wd:5', ora:'21:30', players:'ospite', type:true}},
+ {id:63, cat:'Dialetto', frase:'prenota x rossi 2 dman mattina 10', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'domani', ora:'10:00', players:'names', surname:true, type:true}},
+
+ {id:64, cat:'Ora/Data', frase:'prenota campo 1 domani a mezzogiorno', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'domani', ora:'12:00', players:'ospite', type:true}},
+ {id:65, cat:'Ora/Data', frase:'campo 2 sabato pomeriggio alle 4', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wd:6', ora:'16:00', players:'ospite', type:true}},
+ {id:66, cat:'Ora/Data', frase:'prenota il 18/06 campo 3 alle 18', esito:'DUBBIO', exp:{az:'crea', campo:3, data:'md:18/06', ora:'18:00', players:'ospite', type:true}},
+ {id:67, cat:'Ora/Data', frase:'campo 1 il 20 alle 19 partita Rossi', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'md:20', ora:'19:00', players:'names', surname:true}},
+ {id:68, cat:'Ora/Data', frase:'prenota campo 2 lunedi prossimo alle 18', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wdNext:1', ora:'18:00', players:'ospite', type:true}},
+ {id:69, cat:'Ora/Data', frase:"campo 4 oggi tra un'ora", esito:'DUBBIO', exp:{az:'crea', campo:4, data:'oggi', players:'ospite', type:true}},
+ {id:70, cat:'Ora/Data', frase:'prenota campo 1 domani dalle 18.00 alle 19.00', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'domani', ora:'18:00', oraFine:'19:00', players:'ospite', type:true}},
+ {id:71, cat:'Ora/Data', frase:'campo 2 venerdi h21', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wd:5', ora:'21:00', players:'ospite', type:true}}
+];
+
+const INTENT2AZ = {PRENOTA:'crea', TROVA:'interroga', CANCELLA:'annulla', CORREGGI:'modifica', ANAGRAFICA:'anagrafica', SUGGERISCI:'suggerisci'};
+function pad(n){ return String(n).padStart(2,'0'); }
+function iso(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+function expectedData(token, todayIso, win){
+  const t = new Date(todayIso+'T00:00:00');
+  if (token==='oggi') return {kind:'eq', val:iso(t)};
+  if (token==='domani'){ t.setDate(t.getDate()+1); return {kind:'eq', val:iso(t)}; }
+  if (token==='dopodomani'){ t.setDate(t.getDate()+2); return {kind:'eq', val:iso(t)}; }
+  if (token.startsWith('wd:')){ return {kind:'wd', wd:+token.slice(3)}; }
+  if (token.startsWith('wdNext:')){ return {kind:'wdNext', wd:+token.slice(7)}; }
+  if (token.startsWith('md:')){ const v=token.slice(3); const p=v.split('/'); return {kind:'md', day:+p[0], month:p[1]?+p[1]:null}; }
+  return {kind:'eq', val:token};
+}
+function checkData(actual, token, todayIso){
+  if (!actual) return false;
+  const e = expectedData(token, todayIso);
+  const d = new Date(actual+'T00:00:00');
+  if (e.kind==='eq') return actual===e.val;
+  if (e.kind==='wd') return d.getDay()===e.wd && actual >= todayIso;
+  if (e.kind==='wdNext') return d.getDay()===e.wd && actual > iso(new Date(new Date(todayIso+'T00:00:00').getTime()+6*864e5));
+  if (e.kind==='md'){ const okDay=d.getDate()===e.day; const okMon=e.month==null||(d.getMonth()+1)===e.month; return okDay&&okMon; }
+  return false;
+}
+
+function normalize(win, frase){
+  const r = win.PMOAi.parse(frase) || {};
+  const s = r.slots||{}, p = r.parsed||{};
+  // Campi reali esposti dal parser (regole A–I); fallback ai vecchi slot dove assenti.
+  const giocatori = Array.isArray(r.giocatori) ? r.giocatori.slice() : [];
+  return {
+    raw: r,
+    intent: r.intent || null,
+    azione: r.azione || INTENT2AZ[r.intent] || null,
+    tipoEvento: r.tipoEvento || s.type || undefined,
+    campo: r.campo || s.court || undefined,
+    data: r.data || s.date || undefined,
+    oraInizio: r.oraInizio || s.time || undefined,
+    oraFine: r.oraFine || s.timeEnd || undefined,
+    giocatori,
+    needsType: r.needsType === true,
+    needsSurname: r.needsSurname === true,
+    needsInstructor: r.needsInstructor === true,
+    ko: r.ko === true,
+    confirmMassive: r.confirmMassive === true,
+    missing: Array.isArray(r.missing) ? r.missing : [],
+    confidence: r.confidence
+  };
+}
+function deriveEsito(a, c){
+  if (a.ko) return 'KO';
+  // usa il flag "clarify" reale del parser, con fallback ai singoli stati
+  const dubbio = (a.raw && a.raw.clarify === true) || a.confirmMassive || a.needsType || a.needsSurname || a.needsInstructor || (a.missing && a.missing.length>0);
+  return dubbio ? 'DUBBIO' : 'OK';
+}
+
+function runCase(win, todayIso, c){
+  const a = normalize(win, c.frase);
+  const e = c.exp || {};
+  const checks = [];
+  const add = (label, cond) => checks.push({label, ok:!!cond});
+  if (e.ko) {
+    add('KO (rifiuta input impossibile)', a.ko);
+  } else {
+    if (e.az){ const set = Array.isArray(e.az)?e.az:[e.az]; add('azione='+set.join('/'), set.includes(a.azione)); }
+    if (e.tipo) add('tipo='+e.tipo, a.tipoEvento===e.tipo);
+    if (e.campo) add('campo='+e.campo, Number(a.campo)===Number(e.campo));
+    if (e.data) add('data='+e.data, checkData(a.data, e.data, todayIso));
+    if (e.ora) add('ora='+e.ora, a.oraInizio===e.ora);
+    if (e.oraFine) add('oraFine='+e.oraFine, a.oraFine===e.oraFine);
+    if (e.players==='names') add('cattura giocatori', a.giocatori.length>0);
+    if (e.players==='ospite') add('ospite (regola B)', a.giocatori.some(g=>/ospite/i.test(g)));
+    if (e.surname) add('chiede cognome (regola A)', a.needsSurname);
+    if (e.type) add('chiede tipo (regola D)', a.needsType);
+    if (e.instr) add('chiede maestro', a.needsInstructor===true);
+    if (e.massive) add('conferma azione massiva (regola F)', a.confirmMassive);
+  }
+  // esito complessivo (alto livello)
+  add('esito='+c.esito, deriveEsito(a,c)===c.esito);
+  const failed = checks.filter(x=>!x.ok);
+  return { a, checks, pass: failed.length===0, failed };
+}
+
+function fmtCapito(a){
+  const bits=[];
+  if (a.azione) bits.push(a.azione); else bits.push('—');
+  if (a.tipoEvento) bits.push(a.tipoEvento);
+  if (a.campo) bits.push('c'+a.campo);
+  if (a.data) bits.push(a.data);
+  if (a.oraInizio) bits.push(a.oraInizio+(a.oraFine?('–'+a.oraFine):''));
+  if (a.giocatori.length) bits.push('['+a.giocatori.join(', ')+']');
+  bits.push('conf '+(a.confidence!=null?a.confidence.toFixed(2):'?'));
+  return bits.join(' · ');
+}
+
+async function run(){
+  const frame = document.getElementById('app');
+  const win = frame.contentWindow;
+  // attendi il parser
+  for (let i=0;i<120 && !(win.PMOAi && typeof win.PMOAi.parse==='function');i++) await new Promise(r=>setTimeout(r,100));
+  if (!(win.PMOAi && win.PMOAi.parse)){ document.getElementById('summary').textContent='PMOAi non caricato'; return; }
+  // OFFLINE: disattiva ogni logging di rete del parser
+  try { win.logParserError = function(){ return Promise.resolve(false); }; } catch(e){}
+  const todayIso = (typeof win.staffCalTodayIso==='function') ? win.staffCalTodayIso() : iso(new Date());
+
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML='';
+  let pass=0; const rows=[];
+  for (const c of CASES){
+    let r;
+    try { r = runCase(win, todayIso, c); }
+    catch(err){ r = { a:{}, checks:[{label:'errore',ok:false}], pass:false, failed:[{label:'EXCEPTION: '+(err.message||err)}] }; }
+    if (r.pass) pass++;
+    rows.push({id:c.id, pass:r.pass, esitoCsv:c.esito, capito:fmtCapito(r.a||{}), failed:r.failed.map(f=>f.label)});
+    const tr=document.createElement('tr');
+    tr.className = r.pass?'pass':'fail';
+    tr.dataset.pass = r.pass?'1':'0';
+    tr.innerHTML =
+      '<td>'+c.id+'</td>'+
+      '<td class="cat">'+c.cat+'</td>'+
+      '<td>'+c.frase.replace(/</g,'&lt;')+'</td>'+
+      '<td class="muted">'+c.esito+(c.exp.ko?' · campo/data/orario impossibile':'')+'</td>'+
+      '<td>'+fmtCapito(r.a||{}).replace(/</g,'&lt;')+'</td>'+
+      '<td class="'+(r.pass?'res-ok':'res-fail')+'">'+(r.pass?'PASSA':'NON PASSA')+'</td>'+
+      '<td class="fail-reasons">'+r.failed.map(f=>f.label).join('<br>')+'</td>';
+    tbody.appendChild(tr);
+  }
+  const total=CASES.length;
+  const s=document.getElementById('summary');
+  s.className='pill '+(pass===total?'ok':'ko');
+  s.textContent = pass+' / '+total+' PASSA  ('+(total-pass)+' da sistemare) — oggi='+todayIso;
+  window.__RESULTS__ = { total, pass, fail: total-pass, todayIso, rows };
+}
+
+document.getElementById('run').addEventListener('click', run);
+document.getElementById('onlyfail').addEventListener('click', function(){
+  this.dataset.on = this.dataset.on==='1'?'0':'1';
+  const on = this.dataset.on==='1';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{ tr.style.display = (on && tr.dataset.pass==='1') ? 'none' : ''; });
+  this.textContent = on ? 'Mostra tutti' : 'Mostra solo NON-PASSA';
+});
+// autorun
+window.addEventListener('load', ()=> setTimeout(run, 800));
+</script>
+</body>
+</html>
