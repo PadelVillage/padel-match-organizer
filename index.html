@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.818';
+    const APP_VERSION = '5.819';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39356,7 +39356,6 @@ Per confermare scrivi ELIMINA.`);
   // da pmoRequireStaffPermission('cloud_sync').
   // ════════════════════════════════════════════════════════════════════════
   window.PMOAi = (function () {
-    let _welcomed = false;
     const _convLog = [];
     // Stato conversazionale PARALLELO a svcFlowState (il flow guidato del calendario).
     // NON tocchiamo svcFlowState: questo gestisce solo il dialogo dell'assistente.
@@ -40385,6 +40384,9 @@ Per confermare scrivi ELIMINA.`);
     // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
     function _advancePrenota(draft) {
       const need = [];
+      // Lezione senza maestro: il maestro è OBBLIGATORIO e va chiesto PER PRIMO (non si può
+      // prenotare una lezione senza). Stessa logica "slot mancante" di date/court/time.
+      if ((draft.tipo || 'partita') === 'lezione' && !draft.istruttore) need.push('maestro');
       if (!draft.data) need.push('date');
       if (!draft.campoNum) need.push('court');
       if (!draft.ora) need.push('time');
@@ -40400,6 +40402,7 @@ Per confermare scrivi ELIMINA.`);
     function _askNext() {
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
+      if (k === 'maestro') return _say('👨‍🏫 Con quale <strong>maestro</strong> vuoi prenotare la lezione? (' + _escapeHtml(_maestri().join(', ')) + ')');
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
@@ -40464,7 +40467,11 @@ Per confermare scrivi ELIMINA.`);
       if (/(^| )(annull\w*|lascia\w*|stop|niente)( |$)/.test(' ' + n + ' ')) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere. Dimmi pure quando vuoi.'); }
       const draft = aiFlowState.draft;
       const k = aiFlowState.need[0];
-      if (k === 'date') {
+      if (k === 'maestro') {
+        const m = _detectIstruttore(text, _norm(text));
+        if (!m) return _say('Non ho riconosciuto il maestro. Scrivi uno tra: <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong> (oppure “annulla”).');
+        draft.istruttore = m;
+      } else if (k === 'date') {
         const iso = _extractDate(_norm(text), _todayIso());
         if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
         draft.data = iso;
@@ -41589,10 +41596,7 @@ Per confermare scrivi ELIMINA.`);
         if (mMic) mMic.style.display = 'flex';
         if (mSnd) mSnd.style.display = 'none';
       } catch (e) {}
-      if (!_welcomed) {
-        _welcomed = true;
-        _say('👋 Ciao! Sono l’assistente. Scrivi o detta un comando — prova: <em>“campi liberi sabato”</em>, <em>“chi gioca domani alle 18?”</em> oppure <em>“prenota campo 2 domani 18-19:30 Mario Rossi”</em>.');
-      }
+      // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
     return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
