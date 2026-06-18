@@ -40116,7 +40116,8 @@ Per confermare scrivi ELIMINA.`);
       'aggiorna','aggiornare','modifica','modificare','cambia','cambiare','imposta','impostare','correggi','correggere',
       'aggiusta','rettifica','rinomina','rinominare','disattiva','disattivare','disabilita','riattiva','riattivare','riabilita',
       'elimina','eliminare','cancella','cancellare','rimuovi','rimuovere','annulla','togli','togliere','leva','levare',
-      'alza','abbassa','porta','segna','set','cerca','cercare','trova','trovare','mostra','mostrami','dimmi','vedi',
+      'alza','abbassa','porta','segna','set','cerca','cercare','trova','trovare','mostra','mostrami','dimmi','vedi','vedere',
+      'fai','fa','fammi','fatti','guarda','guardare','apri','aprire','dammi','portami',
       'visualizza','info','informazioni','dettagli','qual','quale','quali','quanti','quante','quanto','sai','sapere','elenco','tutti','tutte',
       // valori/rumore frequenti
       'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','mezzo','mezza','presente'
@@ -41513,7 +41514,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
