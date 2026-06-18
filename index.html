@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.823';
+    const APP_VERSION = '5.824';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39637,8 +39637,18 @@ Per confermare scrivi ELIMINA.`);
       // "quanti giocatori", "posti liberi nelle partite") → è una DOMANDA (TROVA), non
       // anagrafica, anche se contiene la parola "giocatori".
       const rosterCtx = /(^| )(mancano|manca|tutti +e +(quattro|4)|quattro +giocator\w*|quant[ei] +giocator\w*|giocator\w* +(mancant\w*|manca\w*)|post[oi] +(liber\w*|disponib\w*|ancora|rimast\w*))( |$)/.test(n);
+      // Lettura anagrafica: DOMANDA su un campo/scheda di una PERSONA, senza contesto partita
+      // ("qual è il telefono di Mario", "che livello ha X", "mostrami la scheda di Y").
+      const anaReadCtx = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|schede|info\w*|dettagl\w*|recapit\w*|sai|sapere)( |$)/.test(n)
+        && /(^| )(telefon\w*|cellulare|numero|email|e-mail|mail|recapit\w*|contatt\w*|livell\w*|sesso|genere|scheda|socio|soci\w*|giocator\w*|anagrafic\w*)( |$)/.test(n)
+        && !/(^| )(camp[oi]|partit\w*|prenotazion\w*|lezion\w*|tornei?|slot|liber\w*|disponib\w*|gioca\w*|mancano|post[oi])( |$)/.test(n);
+      // Creazione socio "telegrafica": verbo di creazione + un CONTATTO (telefono/email) e nessun
+      // contesto partita → nuovo socio ("aggiungi Mario Rossi 333…"), non "aggiungi giocatore alla partita".
+      const anaCreateContactCtx = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/.test(n)
+        && (/(?:\+?\d[\s.\-]?){6,}/.test(text) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(text))
+        && !/(^| )(partit\w*|prenotazion\w*|camp[oi]|match|lezion\w*|tornei?|slot)( |$)/.test(n);
       // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
-      const anaCtx = (playerCtx || anaUpdateCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
+      const anaCtx = (playerCtx || anaUpdateCtx || anaReadCtx || anaCreateContactCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
       // Domanda sulle LEZIONI di un maestro / su un range di giorni ("lezioni di Santiago dei
       // prossimi 5 giorni") → DOMANDA (TROVA), purché non sia una prenotazione.
       const lessonCtx = /(^| )lezion\w*( |$)/.test(n)
@@ -39663,6 +39673,11 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'CORREGGI' && addToMatchCtx) s += 3;
         if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
+        // Lettura scheda socio → vince ANAGRAFICA, mai TROVA (che cerca tra le prenotazioni).
+        if (name === 'ANAGRAFICA' && (anaReadCtx || anaCreateContactCtx)) s += 3;
+        if (name === 'TROVA' && anaReadCtx) s = 0;
+        // "aggiungi <nome> <telefono/email>" è un socio nuovo, non una modifica di prenotazione.
+        if ((name === 'CORREGGI' || name === 'PRENOTA') && anaCreateContactCtx) s = 0;
         if ((name === 'PRENOTA' || name === 'CORREGGI') && anaCtx && s > 0) s -= 1;
         // un verbo esplicito di suggerimento (suggerisci/consiglia/proponi) prevale sul
         // generico "libero" che farebbe scattare TROVA.
@@ -39933,17 +39948,35 @@ Per confermare scrivi ELIMINA.`);
       // "aggiungi/togli … ALLA/DALLA partita|lezione" = modifica dei giocatori (apre l'editor),
       // anche senza un nome esplicito ("aggiungi un giocatore alla partita delle 18").
       const editToExisting = /\b(alla|nella|dalla|all'|nell'|dall')\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
-      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting);
       const anaStatus = /\bmoros\w*\b/.test(tx); // "X adesso è moroso" → scheda socio
-
       // Domande su stato posti/roster e su lezioni multi-giorno (compat. assistente): sono
       // INTERROGAZIONI anche senza punto di domanda, e devono battere il fallback "crea".
       const rosterQ = /\bmancano?\b/.test(tx) || /\btutti\s+e\s+(quattro|4)\b/.test(tx) || /\bquant[ei]\s+giocator/.test(tx) || (/\bpost[oi]\b/.test(tx) && /\b(liber\w*|disponib\w*|partit\w*)\b/.test(tx));
       const lessonsQ = /\blezion\w*\b/.test(tx) && /\b(prossim\w+|questa\s+settimana|settimana\s+prossima)\b/.test(tx);
+      // ── Anagrafica socio: lettura / creazione-contatto / disattivazione, FUORI dal contesto evento ──
+      const createV = addV || /\b(crea|creare|registr\w*|inserisc\w*|nuov[oa])\b/.test(tx);
+      const updateV = /\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*)\b/.test(tx);
+      const deactV = /\b(disattiv\w*|disabilit\w*)\b/.test(tx);
+      const contactPresent = /(?:\+?\d[\s.\-]?){6,}/.test(tx) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(tx);
+      // Campi "forti" (telefono/email/scheda) bastano da soli; i "deboli" (livello/sesso) servono
+      // con una domanda, per non rubare "prenota campo 2 livello 4" all'anagrafica.
+      const personFieldStrong = /\b(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|scheda|anagrafic\w*)\b/.test(tx);
+      const personFieldWeak = /\b(livell\w*|sesso|genere)\b/.test(tx);
+      const readVerbQ = isQuestion || /\b(qual\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)\b/.test(tx);
+      const noEventCtx = !eventRef && !/\b(partit\w*|tornei?|camp[oi]|slot|prenotazion\w*)\b/.test(tx);
+      const anaReadish = noEventCtx && !createV && !updateV && !deactV && !rosterQ
+        && (personFieldStrong || (personFieldWeak && readVerbQ));
+      const anaCreateContact = createV && contactPresent && !eventRef && !editToExisting;
+      const anaDeact = deactV && noEventCtx;
+      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
 
       // ── azione ──
       let azione = null;
-      if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
+      // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
+      // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
+      // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
+      if (anaReadish || anaCreateContact || anaDeact) azione = 'anagrafica';
+      else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
         if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
@@ -41056,6 +41089,13 @@ Per confermare scrivi ELIMINA.`);
     // (notify:false sopprime i toast). Sempre riepilogo + conferma prima di scrivere.
     const _ANA_CREATE_VERB = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/;
     const _ANA_UPDATE_VERB = /(^| )(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*)( |$)/;
+    // Lettura (interrogazione) e disattivazione di un socio. La lettura vale solo se NON c'è
+    // un verbo di creazione/aggiornamento (quelli hanno priorità). La disattivazione NON è
+    // mai un'eliminazione: l'assistente può solo marcare inattivo (vedi regola di prodotto).
+    const _ANA_READ_VERB = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)( |$)/;
+    const _ANA_DEACT_VERB = /(^| )(disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*)( |$)/;
+    // Un campo della scheda nominato (anche senza verbo di lettura) = interrogazione: "telefono di X".
+    const _ANA_FIELD_WORD = /(^| )(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|livell\w*|sesso|genere|scheda)( |$)/;
 
     function _anaExtractEmail(text) { const m = String(text || '').match(/[\w.+-]+@[\w-]+\.[\w.-]+/); return m ? m[0].toLowerCase() : ''; }
     function _anaExtractPhone(text) {
@@ -41081,7 +41121,10 @@ Per confermare scrivi ELIMINA.`);
       t = t.replace(/\bliv(?:ello)?\.?\s*[0-9](?:[.,][0-9])?\b/gi, ' ');
       t = t.replace(/(?:\+?\d(?:[\s.\-]?\d){4,})/g, ' ');
       t = t.replace(/\b\d+(?:[.,]\d+)?\b/g, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livello|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
+      // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
+      t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41103,8 +41146,63 @@ Per confermare scrivi ELIMINA.`);
 
     function _startAnagrafica(res, text) {
       const n = ' ' + _norm(text) + ' ';
-      const isUpdate = _ANA_UPDATE_VERB.test(n) && !_ANA_CREATE_VERB.test(n);
-      return isUpdate ? _startAnaUpdate(text) : _startAnaCreate(text);
+      const createV = _ANA_CREATE_VERB.test(n);
+      const updateV = _ANA_UPDATE_VERB.test(n) && !createV;
+      // Operazione: DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
+      // Disattivazione ha priorità (anche "cancella/elimina il socio" = disattiva, mai delete vero).
+      if (_ANA_DEACT_VERB.test(n) && !createV) return _startAnaDeactivate(text);
+      // Lettura: verbo/parola di lettura OPPURE un campo della scheda nominato, senza verbi di scrittura.
+      if (!createV && !updateV && (_ANA_READ_VERB.test(n) || _ANA_FIELD_WORD.test(n))) return _startAnaRead(text);
+      return updateV ? _startAnaUpdate(text) : _startAnaCreate(text);
+    }
+
+    // ── LEGGI socio (interrogazione, sola lettura) ───────────────────────────────
+    // Quali campi chiede la domanda; null = scheda intera.
+    function _anaReadFields(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/(^| )(scheda|tutto|info\w*|dettagl\w*|anagrafic\w*)( |$)/.test(n)) return null;
+      const f = [];
+      if (/(telefon|cellulare|numero|recapit|contatt)/.test(n)) f.push('phone');
+      if (/(email|e-mail|mail|posta)/.test(n)) f.push('email');
+      if (/livell/.test(n)) f.push('level');
+      if (/(sesso|genere)/.test(n)) f.push('gender');
+      return f.length ? f : null;
+    }
+    function _startAnaRead(text) {
+      const fields = _anaReadFields(text);
+      const nameStr = _anaStripFieldTokens(text);
+      if (!nameStr) return _say('🔎 Di quale socio vuoi sapere i dati? Dimmi <strong>nome e cognome</strong> (es. «qual è il telefono di Mario Rossi»).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
+      if (!matches.length) return _say('🔍 Non trovo un socio che somigli a «<strong>' + _escapeHtml(nameStr) + '</strong>». Controlla il nome.');
+      const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
+      if (matches.length === 1 || exactTop) return _anaAnswerMember(matches[0].member, fields);
+      aiFlowState = { kind: 'anagrafica', op: 'read', stage: 'pick', matches: matches, fields: fields };
+      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
+      return _say('❓ Di quale socio? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+    }
+    function _anaAnswerMember(member, fields) {
+      if (!member) return _say('Socio non trovato.');
+      const nm = _escapeHtml(playerFullName(member));
+      const val = {
+        phone: member.phone ? _escapeHtml(member.phone) : '—',
+        email: member.email ? _escapeHtml(member.email) : '—',
+        level: (member.level === '' || member.level == null) ? '—' : _escapeHtml(String(member.level)),
+        gender: _anaGenderLabel(member.gender)
+      };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso' };
+      if (fields && fields.length) {
+        if (fields.length === 1) { const k = fields[0]; return _say(lbl[k] + ' di <strong>' + nm + '</strong>: <strong>' + val[k] + '</strong>'); }
+        return _say('<strong>' + nm + '</strong><br>' + fields.map(function (k) { return lbl[k] + ': <strong>' + val[k] + '</strong>'; }).join('<br>'));
+      }
+      const code = member.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(member.memberId) + ')</span>' : '';
+      const inactive = (member.active === false) ? ' <span style="color:#b42318">· inattivo</span>' : '';
+      return _say('👤 <strong>' + nm + '</strong>' + code + inactive + '<br>📞 ' + val.phone + '<br>✉️ ' + val.email + '<br>⚧ ' + val.gender + '<br>🎾 Livello ' + val.level);
+    }
+    // ── DISATTIVA socio — instradamento (impl. completa nel passo dedicato) ──────
+    function _startAnaDeactivate(text) {
+      const nameStr = _anaStripFieldTokens(text);
+      const chi = nameStr ? ' di «<strong>' + _escapeHtml(nameStr) + '</strong>»' : '';
+      return _say('🚧 La <strong>disattivazione</strong> di un socio dall’assistente sarà attiva a breve. Per ora posso <strong>leggere</strong> o <strong>aggiornare</strong> la scheda' + chi + '. (L’eliminazione vera resta una tua azione manuale dall’app.)');
     }
 
     // ── CREA socio ──────────────────────────────────────────────────────────────
@@ -41218,11 +41316,13 @@ Per confermare scrivi ELIMINA.`);
       const n = ' ' + _norm(text) + ' ';
       if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
       const matches = aiFlowState.matches || [], changes = aiFlowState.changes || {};
+      const op = aiFlowState.op || 'update', fields = aiFlowState.fields || null;
       const m = String(text || '').match(/\b(\d{1,2})\b/);
       let pick = null;
       if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < matches.length) pick = matches[i].member; }
       if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
       aiFlowState = null;
+      if (op === 'read') return _anaAnswerMember(pick, fields);
       return _anaUpdateWithTarget(pick, changes);
     }
     function _anaUpdateWithTarget(member, changes) {
