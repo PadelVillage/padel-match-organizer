@@ -4204,52 +4204,73 @@ async function disableClientWithBrowser(options = {}) {
       return { id: '', onFicha: false, how: resolved.how };
     };
 
-    const searchPlan = [
-      { by: 'E-mail', val: email, acceptSingle: true },
-      { by: 'Telefono cellulare', val: telefono, acceptSingle: true },
-      { by: 'Cliente', val: cognome || nome, acceptSingle: false },
-    ];
-    const seenTerms = new Set();
-    const attempts = [];
-    for (const a of searchPlan) {
-      const v = clean(a.val);
-      if (!v) continue;
-      const key = `${a.by}|${v.toLowerCase()}`;
-      if (seenTerms.has(key)) continue;
-      seenTerms.add(key);
-      attempts.push(a);
-    }
-
-    diagnostic.steps.push('resolve_codice');
-    diagnostic.attempts = [];
-    let idInterno = '';
-    let onFichaNow = false;
-    let resolvedOk = false;
-    for (const a of attempts) {
-      const r = await trySearch(a.by, a.val, a.acceptSingle);
-      diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '' });
-      if (r.id || r.onFicha) { idInterno = r.id || ''; onFichaNow = r.onFicha; resolvedOk = true; diagnostic.resolve = { how: r.how, by: a.by, id: idInterno }; break; }
-    }
-    diagnostic.idInterno = idInterno;
-    if (!resolvedOk) {
-      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (tentativi=${diagnostic.attempts.length}).`, diagnostic);
-    }
-    if (!onFichaNow && idInterno) {
-      diagnostic.steps.push('goto_ficha');
-      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-    }
-    diagnostic.fichaUrl = page.url();
-
-    // ── Verifica DEFINITIVA del codice sulla scheda, prima di agire (anti-omonimo) ──
-    const fichaCod = await page.evaluate(() => {
+    const codNorm = String(codice).replace(/^0+/, '');
+    const idInternoHint = clean(client.idInterno || client.matchpointIdInterno || '');
+    const readFichaCodice = async () => page.evaluate(() => {
       const t = (document.body ? document.body.innerText : '');
       const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
       return m ? m[1] : '';
     }).catch(() => '');
+    const fichaMatchesCodice = (c) => !!c && c.replace(/^0+/, '') === codNorm;
+
+    diagnostic.steps.push('resolve');
+    diagnostic.attempts = [];
+    let idInterno = '';
+    let fichaCod = '';
+
+    // ── Path A: id interno noto (matchpointIdInterno = id_people, l'analogo di idReserva
+    //    per le prenotazioni) → DIRETTO alla Ficha, niente ricerca per email/telefono/
+    //    cognome (che può beccare un omonimo). Accetto solo se il codice combacia. ──
+    if (/^\d{2,9}$/.test(idInternoHint)) {
+      diagnostic.steps.push('goto_ficha_by_id');
+      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInternoHint)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      const cod = await readFichaCodice();
+      diagnostic.attempts.push({ by: 'id_interno', id: idInternoHint, fichaCod: cod });
+      if (fichaMatchesCodice(cod)) { idInterno = idInternoHint; fichaCod = cod; diagnostic.resolve = { how: 'id_hint', id: idInterno }; }
+    }
+
+    // ── Path B (fallback): ricerca, ma con VERIFICA del codice sulla Ficha per OGNI
+    //    candidato: se non combacia provo il termine successivo (niente abort sull'omonimo,
+    //    niente single_candidate accettato alla cieca). Cognome per primo (espone il codice). ──
+    if (!idInterno) {
+      const searchPlan = [
+        { by: 'Cliente', val: cognome || nome, acceptSingle: false },
+        { by: 'E-mail', val: email, acceptSingle: true },
+        { by: 'Telefono cellulare', val: telefono, acceptSingle: true },
+      ];
+      const seenTerms = new Set();
+      for (const a of searchPlan) {
+        const v = clean(a.val);
+        if (!v) continue;
+        const key = `${a.by}|${v.toLowerCase()}`;
+        if (seenTerms.has(key)) continue;
+        seenTerms.add(key);
+        const r = await trySearch(a.by, a.val, a.acceptSingle);
+        let cod = '';
+        if (r.onFicha) {
+          cod = await readFichaCodice();
+        } else if (r.id) {
+          await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(r.id)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+          await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+          cod = await readFichaCodice();
+        }
+        diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '', fichaCod: cod });
+        if ((r.id || r.onFicha) && fichaMatchesCodice(cod)) {
+          idInterno = r.id || '';
+          if (!idInterno) { const mm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i); if (mm) idInterno = mm[1]; }
+          fichaCod = cod;
+          diagnostic.resolve = { how: r.how, by: a.by, id: idInterno };
+          break;
+        }
+      }
+    }
+
+    diagnostic.idInterno = idInterno;
     diagnostic.fichaCodice = fichaCod;
-    if (fichaCod && fichaCod.replace(/^0+/, '') !== String(codice).replace(/^0+/, '')) {
-      throw fail('CLIENT_NOT_FOUND', `Scheda trovata ma con codice diverso (${fichaCod} != ${codice}): non disiscrivo per non toccare un omonimo.`, diagnostic);
+    diagnostic.fichaUrl = page.url();
+    if (!idInterno || !fichaMatchesCodice(fichaCod)) {
+      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (tentativi=${diagnostic.attempts.length}).`, diagnostic);
     }
 
     // Legge lo stato della Ficha: bottoni (Disiscrivere/Riattivare), valore della select

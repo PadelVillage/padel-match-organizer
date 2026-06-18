@@ -157,6 +157,8 @@ Deno.serve(async (req: Request) => {
   // Dati per ritrovare la scheda (il buscador non cerca per Codice).
   const client: JsonMap = {
     codice,
+    // id interno Matchpoint (id_people): se presente il worker va diretto alla Ficha.
+    idInterno: clean(c.idInterno ?? ''),
     firstName: clean(c.firstName ?? ''),
     surname: clean(c.surname ?? ''),
     phone: clean(c.phone ?? ''),
