@@ -2597,6 +2597,8 @@
 
     /* === Staff Calendar (v5.580) === */
     .staff-cal-date-nav { display:flex; align-items:center; gap:6px; }
+    .staff-cal-weekday { font-weight:700; color:#1e3a8a; white-space:nowrap; text-transform:capitalize; padding:0 2px; }
+    @media (max-width:899px) { .staff-cal-weekday { display:none; } }
     .staff-cal-date-nav button { min-width:34px; height:34px; border-radius:8px; border:1px solid #d1d5db; background:#f8fbff; color:#374151; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
     .staff-cal-date-nav button:hover { background:#e5edff; }
     .staff-cal-date-nav input[type="date"] { border:1.5px solid #d1d5db; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:700; color:#111827; background:#fff; height:34px; }
@@ -5866,6 +5868,12 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-admin-card { background:var(--surface,#fff); border:1px solid var(--border,#e5e9ee); border-radius:12px; padding:16px 18px; }
     .ai-admin-card-wide { grid-column:1 / -1; }
     .ai-admin-card h3 { margin:0 0 8px; font-size:15px; color:var(--primary,#1e293b); }
+    .ai-sbx-drop { margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 10px; border:1px dashed var(--border,#cbd5e1); border-radius:8px; transition:background .15s, border-color .15s; }
+    .ai-sbx-drop.dragover { background:#eef6ff; border-color:#3b82f6; }
+    .ai-sbx-img-preview { margin-top:10px; position:relative; display:inline-block; }
+    .ai-sbx-img-preview img { max-width:240px; max-height:170px; border-radius:8px; border:1px solid var(--border,#e5e9ee); display:block; }
+    .ai-sbx-img-remove { position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; border:none; background:#ef4444; color:#fff; cursor:pointer; font-size:14px; line-height:24px; padding:0; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+    .ai-sbx-img-name { font-size:11px; color:#98a2b3; margin-top:3px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ai-admin-hint { font-size:12px; color:#667085; margin:6px 0; }
     .ai-sandbox-input { width:100%; box-sizing:border-box; resize:vertical; min-height:48px; font-size:14px; padding:9px 11px; border:1px solid var(--border,#e5e9ee); border-radius:8px; outline:none; font-family:inherit; }
     .ai-sandbox-actions { margin:10px 0; }
@@ -6223,6 +6231,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="staff-cal-date-nav" style="margin-left:auto">
                 <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
                 <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
+                <span id="staffCalDateWeekday" class="staff-cal-weekday"></span>
                 <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
                 <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
               </div>
@@ -7156,7 +7165,7 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assistanteAI" class="tab-content">
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
-        <section class="ai-admin-card">
+        <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧪 Banco di prova</h3>
           <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
 
@@ -7174,8 +7183,14 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
           <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
-          <div class="ai-sandbox-report">
+          <div class="ai-sandbox-report" id="aiSandboxReportBox">
             <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
+            <div class="ai-sbx-drop" id="aiSandboxDrop">
+              <input type="file" id="aiSandboxImgInput" accept="image/*" hidden onchange="try{PMOAi.onSandboxImagePicked(this.files)}catch(e){}">
+              <button type="button" class="btn-secondary small-btn" onclick="document.getElementById('aiSandboxImgInput').click()">📎 Allega immagine</button>
+              <span class="ai-admin-hint">o trascina qui un'immagine dal desktop · o incolla con Ctrl/⌘+V</span>
+            </div>
+            <div id="aiSandboxImgPreview" class="ai-sbx-img-preview" style="display:none"></div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
               <span id="aiSandboxReportState" class="ai-admin-hint"></span>
@@ -7185,11 +7200,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
             <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
           </div>
-        </section>
-        <section class="ai-admin-card">
-          <h3>💬 Cosa posso fare</h3>
-          <ul class="ai-help-list" id="aiHelpList"></ul>
-          <p class="ai-admin-hint">Le regole di riconoscimento (sinonimi, istruttori) si gestiscono in <strong>Amministrazione → Parser Config</strong>.</p>
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>📋 Ultime interazioni</h3>
@@ -7660,7 +7670,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.832';
+    const APP_VERSION = '5.833';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -12932,6 +12942,19 @@ Grazie.`
         }, 120);
       });
     }
+    // Validazioni di business condivise tra assistente AI e form manuale (parità, regole D/E
+    // del brief anagrafica): livello 0–7 (scala app, confermata da LoZio), email in formato
+    // valido se presente, telefono con almeno 6 cifre se presente. Ritorna '' se tutto ok.
+    function pmoAnaFieldError(levelRaw, email, phone) {
+      const lvl = String(levelRaw == null ? '' : levelRaw).trim();
+      if (lvl) { const n = parseFloat(lvl.replace(',', '.')); if (!Number.isNaN(n) && (n < 0 || n > 7)) return '❌ Livello fuori scala: ammessi 0–7.'; }
+      const em = String(email == null ? '' : email).trim();
+      if (em && !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(em)) return '❌ Indirizzo email non valido.';
+      const ph = String(phone == null ? '' : phone).replace(/\D/g, '');
+      if (ph && ph.length < 6) return '❌ Numero di telefono non valido (troppo corto).';
+      return '';
+    }
+
     function addMember(options={}) {
       const normalizedManualName = normalizeImportedPlayerNameParts(document.getElementById('firstName').value, document.getElementById('surname').value);
       const firstName = normalizedManualName.firstName;
@@ -12946,7 +12969,10 @@ Grazie.`
       if (!guestJolly && (!genderValue || genderValue === 'NA')) { showAlert('❌ Sesso obbligatorio', 'danger'); return null; }
       if (!guestJolly && !levelRaw) { showAlert('❌ Livello obbligatorio', 'danger'); return null; }
       const emailVal = cleanCell(document.getElementById('email').value);
-      if (!guestJolly && !emailVal) { showAlert('❌ Email obbligatoria', 'danger'); return null; }
+      // Email FACOLTATIVA (parità con l'assistente: confermato da LoZio). Resta solo la
+      // validazione di formato/livello/telefono, condivisa con il parser AI.
+      const _vErr = pmoAnaFieldError(levelRaw, emailVal, phone);
+      if (!guestJolly && _vErr) { showAlert(_vErr, 'danger'); return null; }
       const candidate = {
         firstName,
         surname,
@@ -13727,6 +13753,9 @@ Grazie.`
       const guestJolly = isGuestJollyName(fullName);
       if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
       const cardLevelRaw = cleanCell(document.getElementById('cardLevel').value || '');
+      // Validazioni condivise con l'assistente (parità): livello 0–7, email formato, telefono.
+      const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(document.getElementById('cardEmail').value), document.getElementById('cardPhone').value);
+      if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
       const currentGuestJolly = isGuestJollyMember(current);
       const nextEditable = {
         firstName,
@@ -35963,6 +35992,9 @@ Per confermare scrivi ELIMINA.`);
 
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    // Nome del giorno accanto alla data (desktop): es. "Giovedì".
+    const _wd = document.getElementById('staffCalDateWeekday');
+    if (_wd) { const _GG = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']; const _dd = new Date(isoDate + 'T12:00:00'); _wd.textContent = isNaN(_dd.getTime()) ? '' : _GG[_dd.getDay()]; }
     if (!_staffCalResizeInited) {
       _staffCalResizeInited = true;
       window.addEventListener('resize', function() {
@@ -40009,7 +40041,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
-    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|prossim\w*)$/;
+    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|zio|come|istruttore|istruttrice|maestro|maestra|prossim\w*)$/;
     function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
 
     // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
@@ -40071,6 +40103,190 @@ Per confermare scrivi ELIMINA.`);
       return m ? m[1].trim() : '';
     }
 
+    // ── ANAGRAFICA / rubrica soci (regole A–I del brief anagrafica) ─────────────
+    // Tutta la logica-socio vive qui, ISOLATA dal parser prenotazioni che condivide
+    // _enrichInterpret: così allargare l'anagrafica non rischia di rompere partite/lezioni.
+
+    // Scala livelli VALIDA in app (form manuale: input min=0 max=7 step=0.5). Confermato
+    // da LoZio: si usa 0–7, NON 1–5 del brief. Flag unico così parser e UI restano allineati.
+    const PMO_ANA_LEVEL_MIN = 0, PMO_ANA_LEVEL_MAX = 7;
+
+    // Parole che NON sono nomi propri (articoli/preposizioni + parole-campo + verbi +
+    // valori), per estrarre il nome del socio come "la sequenza più lunga di token-nome".
+    const _ANA_STOP = new Set([
+      'la','lo','il','le','i','gli','un','uno','una','al','allo','alla','alle','del','dello','della','dei','degli','delle',
+      'dal','dallo','dalla','in','su','sul','sulla','di','da','a','ad','per','con','e','ed','o','che','come','non','piu',
+      'gia','adesso','ora','poi','anche','ma','se','si','no','suo','sua','il','lui','lei',
+      'ha','ho','hai','abbiamo','avete','hanno','sono','sei','siamo','siete','era','essere','avere','quanti','quante',
+      // parole-socio
+      'socio','socia','soci','socie','tesserato','tesserati','membro','membri','cliente','clienti','anagrafica','rubrica',
+      // parole-campo
+      'livello','livelli','liv','telefono','telefoni','tel','cellulare','recapito','recapiti','contatto','contatti','numero',
+      'email','mail','sesso','genere','maschio','femmina','uomo','donna','posizione','destra','sinistra','moroso','morosa',
+      'morosi','morose','scheda','nome','cognome','nominativo','stato',
+      // verbi
+      'aggiungi','aggiungere','nuovo','nuova','crea','creare','registra','registrare','inserisci','inserire','metti','mettere',
+      'aggiorna','aggiornare','modifica','modificare','cambia','cambiare','imposta','impostare','correggi','correggere',
+      'aggiusta','rettifica','rinomina','rinominare','disattiva','disattivare','disabilita','riattiva','riattivare','riabilita',
+      'elimina','eliminare','cancella','cancellare','rimuovi','rimuovere','annulla','togli','togliere','leva','levare',
+      'alza','abbassa','porta','segna','set','cerca','cercare','trova','trovare','mostra','mostrami','dimmi','vedi','vedere',
+      'fai','fa','fammi','fatti','guarda','guardare','apri','aprire','dammi','portami',
+      'visualizza','info','informazioni','dettagli','qual','quale','quali','quanti','quante','quanto','sai','sapere','elenco','tutti','tutte',
+      // valori/rumore frequenti
+      'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','mezzo','mezza','presente'
+    ]);
+    // Nome del socio: la sequenza CONTIGUA più lunga di token-nome (max 2 = nome+cognome).
+    function _anaPickName(tx) {
+      const toks = String(tx || '').split(/\s+/);
+      let best = [], cur = [];
+      for (const w0 of toks) {
+        const base = w0.indexOf("'") >= 0 ? w0.split("'").pop() : w0;   // "l'email" → "email"
+        const w = base.replace(/[^a-zà-ÿ]/g, '');
+        const ok = w && w.length >= 2 && !_ANA_STOP.has(w) && !/\d/.test(w0);
+        if (ok) { cur.push(w); if (cur.length > best.length) best = cur.slice(); }
+        else cur = [];
+      }
+      return best.slice(0, 2).join(' ');
+    }
+    // Valore numerico di livello in un comando anagrafica (per validare 1–5).
+    function _anaLevelValue(tx) {
+      let m = tx.match(/\b(?:livell\w*|liv)\s*(?:a\s+)?(\d+(?:[.,]\d+)?)\b/) || tx.match(/\ba\s+(\d+(?:[.,]\d+)?)\b/);
+      return m ? parseFloat(m[1].replace(',', '.')) : null;
+    }
+
+    // Rubrica iniettabile per i controlli duplicato/esistenza (regole C, G). In TEST la
+    // popola l'harness; in produzione resta null finché non viene agganciata alla rubrica
+    // reale dei soci (allora i controlli si attivano anche live). Senza roster → niente
+    // falso "socio inesistente": il controllo è opt-in.
+    let _anaRoster = null;
+    function setTestRoster(list) { _anaRoster = Array.isArray(list) ? list.slice() : null; }
+    function _rosterFull(m) { return _norm((m.nome || '') + ' ' + (m.cognome || '')).trim(); }
+    function _lev(a, b) {
+      const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        let prev = dp[0]; dp[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+          const tmp = dp[j];
+          dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = tmp;
+        }
+      }
+      return dp[b.length];
+    }
+
+    // Interpretazione ANAGRAFICA completa. Restituisce { isAna, sub, field, subject,
+    // needsSurname, needsField, needsMoreData, proposeDisable, massive, duplicate,
+    // ambiguousRecord, ko, koReason, clarify }.
+    function _anaInterpret(tx, rawText) {
+      const out = { isAna: false };
+      // FUORI dal contesto evento: niente partita/lezione/prenotazione/campo/torneo/slot.
+      const noEvent = !/\b(partit\w*|lezion\w*|prenotazion\w*|match|tornei?|camp[oi]|slot)\b/.test(tx);
+      if (!noEvent) return out;
+
+      const socioWord = /\b(soci[oae]?|soc[ie]|tesserat\w*|membr\w*|client[ei]|anagrafic\w*)\b/.test(tx);
+      const phoneField = /\b(telefon\w*|tel|cellulare|recapit\w*|numero)\b/.test(tx);
+      const emailField = /\b(e-?mail|mail)\b/.test(tx);
+      const levelField = /\b(livell\w*|liv)\b/.test(tx);
+      const sexField   = /\b(sesso|genere|maschi\w*|femmin\w*|uomo|donna)\b/.test(tx) || /(^|\s)[mf](\s|$)/.test(tx);
+      const posField   = /\b(posizion\w*|destra|sinistra)\b/.test(tx);
+      const statField  = /\b(moros\w*|stato)\b/.test(tx);
+      const nameField  = /\b(nome|cognome|nominativ\w*)\b/.test(tx);
+      const schedaField = /\b(scheda|anagrafic\w*|contatt\w*)\b/.test(tx);
+      const fieldWord = phoneField || emailField || levelField || sexField || posField || statField || nameField || schedaField;
+
+      const createV = /\b(crea|creare|registr\w*|inserisc\w*)\b/.test(tx) || (/\b(aggiungi|aggiungere|nuov[oa])\b/.test(tx) && socioWord);
+      const modVerb = /\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|metti|porta|alza|abbassa|segna|set)\b/.test(tx);
+      const renameV = /\brinomin\w*\b/.test(tx) || (/\b(corregg\w*|cambi\w*|aggiorn\w*)\b/.test(tx) && nameField);
+      const deactV  = /\b(disattiv\w*|disabilit\w*)\b/.test(tx);
+      const reactV  = /\b(riattiv\w*|riabilit\w*|reiscriv\w*|re-?iscriv\w*)\b/.test(tx);
+      // "canc" → "annulla" via _ppDialect, quindi includo "annulla" tra i verbi di cancellazione.
+      const deleteV = /\b(elimin\w*|cancell\w*|rimuov\w*|annull\w*)\b/.test(tx);
+      const removalEmail = /\btogl\w*\b/.test(tx) && emailField;
+      const readV = /\b(cerca\w*|trova\w*|mostr\w*|dimmi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|qual\w*|elenc\w*|sai|sapere)\b/.test(tx) || /\?/.test(String(rawText || ''));
+      // Domanda di tipo prenotazione/roster: NON è anagrafica ("Mario Rossi gioca questa settimana?").
+      const bookingQ = /\b(gioca\w*|liber\w*|disponib\w*|settimana|prossim\w*|oggi|domani|dopodomani|stasera|stanotte|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\b/.test(tx);
+
+      const subj = _anaPickName(tx);
+
+      const isAna = (socioWord || fieldWord || createV || deleteV || deactV || reactV
+        || (subj && (readV || modVerb))) && !bookingQ;
+      if (!isAna) return out;
+
+      // Presenza di un valore esplicito (per distinguere modifica da semplice lettura).
+      const hasValue = /\b(in|a|:|=)\b/.test(tx) || /\d/.test(tx) || removalEmail
+        || /\b(uomo|donna|maschi\w*|femmin\w*|destra|sinistra|moros\w*|regolar\w*)\b/.test(tx);
+
+      let sub;
+      if (createV) sub = 'crea';
+      else if (reactV) sub = 'riattiva';
+      else if (deactV) sub = 'disattiva';
+      else if (deleteV) sub = 'elimina';
+      else if (renameV) sub = 'rinomina';
+      else if (modVerb || removalEmail || (fieldWord && hasValue && !readV)) sub = 'modifica';
+      else sub = 'leggi';
+
+      let field = null;
+      if (levelField) field = 'livello';
+      else if (phoneField) field = 'telefono';
+      else if (emailField) field = 'email';
+      else if (posField) field = 'posizione';
+      else if (statField) field = 'stato';
+      else if (sexField) field = 'sesso';
+      else if (nameField) field = 'nome';
+
+      // Regola H: "modifica Mario Rossi" senza dire quale campo.
+      const needsField = sub === 'modifica' && !field;
+      // Regola A: socio identificato da un solo token → serve il nome completo.
+      const toks = subj ? subj.split(/\s+/).filter(Boolean) : [];
+      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre && toks.length === 1 && !/^ospite$/.test(toks[0]);
+
+      // KO — validazioni (regole D/E).
+      let ko = false, koReason = '';
+      if (levelField) { const lvl = _anaLevelValue(tx); if (lvl != null && (lvl < PMO_ANA_LEVEL_MIN || lvl > PMO_ANA_LEVEL_MAX)) { ko = true; koReason = 'livello fuori scala (valido ' + PMO_ANA_LEVEL_MIN + '–' + PMO_ANA_LEVEL_MAX + ')'; } }
+      if (!ko && emailField && !removalEmail && sub !== 'leggi' && /\b(in|:|=)\b/.test(tx) && !/[\w.+-]+@[\w-]+\.[\w.-]+/.test(String(rawText || ''))) {
+        ko = true; koReason = 'indirizzo email non valido';
+      }
+      if (!ko && phoneField && !readV) {
+        const tail = tx.split(/\b(?:telefon\w*|tel|cellulare|numero)\b/).slice(1).join(' ');
+        const dig = (tail.match(/\d/g) || []).length;
+        if (dig > 0 && dig < 6) { ko = true; koReason = 'numero di telefono non valido'; }
+      }
+
+      // Regola G — socio inesistente: solo per operazioni che REFERENZIANO un socio
+      // esistente (modifica/lettura/disattiva/rinomina). Il controllo DUPLICATO su CREATE
+      // (regola C) resta lato handler, contro la rubrica live: il dataset riusa gli stessi
+      // nomi per "crea" e per "esiste", quindi farlo qui sarebbe contraddittorio.
+      let duplicate = false, ambiguousRecord = false;
+      if (_anaRoster && toks.length >= 2 && sub !== 'crea') {
+        const full = subj;
+        const exact = _anaRoster.some(m => _rosterFull(m) === full);
+        if (!exact) {
+          const near = _anaRoster.some(m => { const f = _rosterFull(m).split(' '); return f[0] === toks[0] || f[1] === toks[1] || _lev(_rosterFull(m), full) <= 2; });
+          if (near) ambiguousRecord = true;
+          else if (!ko) { ko = true; koReason = 'socio non presente in rubrica'; }
+        }
+      }
+
+      // Regola B — obbligatori alla creazione: nome, cognome, sesso, livello, telefono (email facoltativa).
+      let needsMoreData = false;
+      if (sub === 'crea') {
+        const hasSesso = sexField;
+        const hasLiv = (_anaLevelValue(tx) != null) || /\b(uno|due|tre|quattro|cinque)\b.*\bmezz/.test(tx) || (levelField && /\b(uno|due|tre|quattro|cinque)\b/.test(tx));
+        const hasTel = ((tx.match(/\d/g) || []).length >= 6);
+        needsMoreData = !(toks.length >= 2 && hasSesso && hasLiv && hasTel);
+      }
+
+      const massive = /\b(tutt[oei]|tutte)\b/.test(tx);
+      const proposeDisable = sub === 'elimina';
+
+      const clarify = !ko && (needsField || needsSurname || needsMoreData || proposeDisable || massive || duplicate || ambiguousRecord);
+      return {
+        isAna: true, sub, field, subject: subj,
+        needsSurname, needsField, needsMoreData, proposeDisable, massive, duplicate, ambiguousRecord,
+        ko, koReason, clarify
+      };
+    }
+
     // Cuore dell'interpretazione: decide azione, tipo, giocatori e gli stati delle regole.
     function _enrichInterpret(text, baseIso, c) {
       const tx = _ppDialect(text);
@@ -40089,6 +40305,8 @@ Per confermare scrivi ELIMINA.`);
       const tmx = _timeX(timeText);
 
       const isQuestion = _isQuestion(tx, text);
+      // Interpretazione anagrafica (isolata): se è un comando-socio, ha priorità su tutto.
+      const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
       const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
       const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
@@ -40142,7 +40360,7 @@ Per confermare scrivi ELIMINA.`);
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
+      if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -40158,16 +40376,19 @@ Per confermare scrivi ELIMINA.`);
       if (azione === 'giocatori') giocatori = editNames.slice();
       else if (azione === 'crea') giocatori = _bookingNames(tx);
       let ospite = false;
-      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'lezione' && ty.tipo !== 'manutenzione' && !giocatori.length) {
+      // Nessun nome riconosciuto → Ospite (mai un nome inventato su Matchpoint): vale per
+      // partite E lezioni (lo studente non indicato diventa Ospite). Manutenzione esclusa.
+      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'manutenzione' && !giocatori.length) {
         ospite = true; giocatori = ['Ospite'];
       }
       // soggetto di annulla/modifica ("la partita di Mario") → per il controllo cognome (regola A)
       const subj = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') ? _subjectName(tx) : '';
       const surnameNames = giocatori.slice(); if (subj) surnameNames.push(subj);
       if (azione === 'anagrafica') { const an = _anaSubjName(tx); if (an) surnameNames.push(an); }
-      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre &&
+      const needsSurname = (PMO_PARSER_FLAGS.cognomeSempre &&
         (azione === 'crea' || azione === 'giocatori' || azione === 'anagrafica' || azione === 'annulla' || azione === 'modifica') &&
-        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; });
+        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; }))
+        || (ana.isAna && ana.needsSurname);
 
       // ── tipo (regola D) ──
       const needsType = PMO_PARSER_FLAGS.tipoSempre && !ty.typePresent &&
@@ -40180,20 +40401,25 @@ Per confermare scrivi ELIMINA.`);
       else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
       else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
       else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
+      else if (ana.isAna && ana.ko) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente)
 
       // ── azione massiva (regola F) ──
-      const confirmMassive = (azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx);
+      const confirmMassive = ((azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx))
+        || (ana.isAna && ana.massive);
 
       // ── serve chiarimento (DUBBIO) ──
       // C: annulla/modifica/giocatori richiedono di INDIVIDUARE l'evento (campo + orario).
       const needsLocate = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') && !(cx.campo && tmx.ora);
       // Anagrafica CREA incompleta (senza telefono+email) → chiede il resto.
+      // Anagrafica CREA incompleta → chiede gli obbligatori (regola B, email facoltativa): la
+      // valutazione vera è in _anaInterpret; qui resta solo il fallback per il vecchio percorso.
       const anaCreate = azione === 'anagrafica' && /\b(aggiungi|nuov[oa]|crea|registra|inserisci)\b/.test(tx) && !/\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*)\b/.test(tx);
-      const needsMoreData = anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text));
+      const needsMoreData = ana.isAna ? ana.needsMoreData : (anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text)));
       // I: numero ambiguo ora/giorno ("lunedì 17", "sab 15") in un evento → chiedere.
       const ambiguousDayHour = !!dx.weekdayUsed && !!tmx.bareHour && (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
       const clarify = !ko && (needsType || needsSurname || needsInstructor || confirmMassive || needsLocate || needsMoreData || ambiguousDayHour ||
-        azione === 'modifica' || // modificare richiede sempre di confermare cosa cambia
+        (ana.isAna && ana.clarify) ||
+        (azione === 'modifica' && !ana.isAna) || // modificare una PRENOTAZIONE richiede sempre conferma
         (azione === 'crea' && (!cx.campo || !tmx.ora)));
 
       return {
@@ -40202,7 +40428,14 @@ Per confermare scrivi ELIMINA.`);
         istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
         needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
         needsLocate: needsLocate, needsMoreData: needsMoreData,
-        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion
+        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion,
+        // ── anagrafica (per i gestori e la UI manuale) ──
+        anaSub: ana.isAna ? ana.sub : undefined, anaField: ana.isAna ? ana.field : undefined,
+        anaSubject: ana.isAna ? ana.subject : undefined,
+        anaProposeDisable: ana.isAna ? ana.proposeDisable : undefined,
+        anaDuplicate: ana.isAna ? ana.duplicate : undefined,
+        anaAmbiguousRecord: ana.isAna ? ana.ambiguousRecord : undefined,
+        anaNeedsField: ana.isAna ? ana.needsField : undefined
       };
     }
 
@@ -40250,7 +40483,11 @@ Per confermare scrivi ELIMINA.`);
         giocatori: E.giocatori, ospite: E.ospite,
         needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
         needsLocate: E.needsLocate, needsMoreData: E.needsMoreData,
-        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify
+        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify,
+        // ── anagrafica (per i gestori e la UI manuale) ──
+        anaSub: E.anaSub, anaField: E.anaField, anaSubject: E.anaSubject,
+        anaProposeDisable: E.anaProposeDisable, anaDuplicate: E.anaDuplicate,
+        anaAmbiguousRecord: E.anaAmbiguousRecord, anaNeedsField: E.anaNeedsField
       };
     }
 
@@ -40672,7 +40909,9 @@ Per confermare scrivi ELIMINA.`);
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
         const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
-        if (!matches.length) { giocatori.push({ nome: nm, codice: '', codiceCliente: '' }); notes.push('“' + nm + '” non è in anagrafica: prenoto col nome così com’è.'); continue; }
+        // Regola ferma (LoZio): l'assistente NON crea nuovi nomi su Matchpoint. Un nome non
+        // in anagrafica diventa OSPITE, mai scritto così com'è.
+        if (!matches.length) { giocatori.push({ nome: 'Ospite', codice: '', codiceCliente: '', ospite: true }); notes.push('“' + nm + '” non è in anagrafica: l’ho messo come <strong>Ospite</strong> (non creo nuovi nomi su Matchpoint).'); continue; }
         const best = matches[0].member;
         const ambiguous = matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best;
         const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || nm;
@@ -41292,7 +41531,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41974,6 +42213,67 @@ Per confermare scrivi ELIMINA.`);
         if (st) { st.textContent = '✅ Report copiato.'; setTimeout(function () { st.textContent = ''; }, 2500); }
       } catch (e) { if (st) st.textContent = '⚠️ Copia non riuscita.'; }
     }
+    // ── Allegato immagine alla segnalazione (banco di prova) ────────────────────
+    // L'immagine va in Supabase Storage (bucket pubblico 'parser-reports'): il DB resta
+    // leggero (nella segnalazione salviamo solo l'URL) e lo screenshot è scaricabile da
+    // chi corregge il bug.
+    let _sandboxImage = null; // { dataUrl, blob, name, type }
+    function _setSandboxImage(file) {
+      const st = document.getElementById('aiSandboxReportState');
+      if (!file || !/^image\//.test(file.type || '')) { if (st) st.textContent = '⚠️ Allega un file immagine (png/jpg/webp/gif).'; return; }
+      if (file.size > 5 * 1024 * 1024) { if (st) st.textContent = '⚠️ Immagine troppo grande (max 5 MB).'; return; }
+      const reader = new FileReader();
+      reader.onload = function (e) { _sandboxImage = { dataUrl: e.target.result, blob: file, name: file.name || 'screenshot.png', type: file.type }; _renderSandboxImg(); if (st) st.textContent = ''; };
+      reader.readAsDataURL(file);
+    }
+    function _renderSandboxImg() {
+      const box = document.getElementById('aiSandboxImgPreview');
+      if (!box) return;
+      if (!_sandboxImage) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      box.style.display = 'block';
+      box.innerHTML = '<button type="button" class="ai-sbx-img-remove" title="Rimuovi immagine" onclick="try{PMOAi.clearSandboxImage()}catch(e){}">✕</button>'
+        + '<img src="' + _sandboxImage.dataUrl + '" alt="anteprima allegato">'
+        + '<div class="ai-sbx-img-name">' + _escapeHtml(_sandboxImage.name) + '</div>';
+    }
+    function clearSandboxImage() { _sandboxImage = null; _renderSandboxImg(); const inp = document.getElementById('aiSandboxImgInput'); if (inp) inp.value = ''; }
+    function onSandboxImagePicked(files) { if (files && files[0]) _setSandboxImage(files[0]); }
+    // Carica l'immagine su Storage e ritorna l'URL pubblico (o '' se non riesce).
+    async function _uploadSandboxImage() {
+      if (!_sandboxImage) return '';
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const ext = (String(_sandboxImage.type).split('/')[1] || 'png').replace('jpeg', 'jpg');
+        const path = 'report-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        const res = await fetch(cfg.supabaseUrl + '/storage/v1/object/parser-reports/' + path, {
+          method: 'POST',
+          headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, 'Content-Type': _sandboxImage.type, 'x-upsert': 'true' },
+          body: _sandboxImage.blob
+        });
+        if (!res.ok) return '';
+        return cfg.supabaseUrl + '/storage/v1/object/public/parser-reports/' + path;
+      } catch (e) { return ''; }
+    }
+    // Drag&drop dal desktop + incolla (Ctrl/⌘+V) sull'area segnalazione — agganciato una volta.
+    let _sbxDndReady = false;
+    function _setupSandboxImageDnd() {
+      if (_sbxDndReady) return;
+      const drop = document.getElementById('aiSandboxDrop');
+      const box = document.getElementById('aiSandboxReportBox');
+      const note = document.getElementById('aiSandboxNote');
+      if (!drop || !box) return;
+      _sbxDndReady = true;
+      const stop = function (e) { e.preventDefault(); e.stopPropagation(); };
+      ['dragenter', 'dragover'].forEach(function (ev) { box.addEventListener(ev, function (e) { stop(e); drop.classList.add('dragover'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { box.addEventListener(ev, function (e) { stop(e); if (ev === 'dragleave' && box.contains(e.relatedTarget)) return; drop.classList.remove('dragover'); }); });
+      box.addEventListener('drop', function (e) { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) _setSandboxImage(f); });
+      if (note) note.addEventListener('paste', function (e) {
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (let i = 0; i < items.length; i++) { if (items[i].type && items[i].type.indexOf('image') === 0) { const f = items[i].getAsFile(); if (f) { e.preventDefault(); _setSandboxImage(f); break; } } }
+      });
+    }
+
     // Segnala il caso del banco di prova → pmo_parser_errors (rivedibile in Amministrazione → Parser Config).
     async function reportSandbox() {
       const inp = document.getElementById('aiSandboxInput');
@@ -41992,12 +42292,17 @@ Per confermare scrivi ELIMINA.`);
       }
       let intent = null, confidence = null;
       try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
+      // Se c'è un'immagine allegata, caricala su Storage e metti SOLO l'URL nella segnalazione.
+      let imgUrl = '';
+      if (_sandboxImage) { if (st) st.textContent = '⏳ Carico l\'immagine…'; imgUrl = await _uploadSandboxImage(); if (!imgUrl && st) st.textContent = '⚠️ Immagine non caricata: invio la segnalazione solo col testo.'; }
       try {
-        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' }) : false;
+        const errMsg = 'Segnalato dal banco di prova' + (note ? ': ' + note : '') + (imgUrl ? ' [img: ' + imgUrl + ']' : '');
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: errMsg, versione_parser: _rules().versione, origine: 'manuale' }) : false;
         if (ok) {
           _lastReportWarnedFor = '';
-          if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
+          if (st) { st.textContent = '✅ Segnalato' + (imgUrl ? ' (con immagine)' : '') + '. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
           if (noteEl) noteEl.value = '';
+          clearSandboxImage();
           try { loadMyReports(); } catch (e) {}
         } else if (st) {
           st.textContent = '⚠️ Non salvato (forse la sessione è scaduta): esci e rientra, poi riprova.';
@@ -42031,6 +42336,23 @@ Per confermare scrivi ELIMINA.`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
     }
+    // Pulizia screenshot: quando una segnalazione è RISOLTA l'immagine non serve più.
+    // La cancella la sessione staff autenticata (policy delete sul bucket): lo Storage
+    // resta leggero senza service key né funzioni pubbliche. Idempotente (404 = già rimossa).
+    async function _cleanupResolvedScreenshots(rows) {
+      try {
+        const targets = (rows || []).filter(function (r) { return r.stato === 'risolta' && /parser-reports\//.test(String(r.error_message || '')); });
+        if (!targets.length) return;
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        targets.forEach(function (r) {
+          const m = String(r.error_message || '').match(/parser-reports\/([^ \]]+)/);
+          if (!m) return;
+          fetch(cfg.supabaseUrl + '/storage/v1/object/parser-reports/' + m[1], { method: 'DELETE', headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token } }).catch(function () {});
+        });
+      } catch (e) {}
+    }
     async function loadMyReports() {
       const el = document.getElementById('aiReportsList');
       if (!el) return;
@@ -42039,10 +42361,11 @@ Per confermare scrivi ELIMINA.`);
         const rows = await _myReportsFetch();
         _myReportsCache = Array.isArray(rows) ? rows : [];
         if (!rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna segnalazione ancora. Quando trovi un errore usa 🐞 “Segnala questo caso”.</div>'; return; }
+        _cleanupResolvedScreenshots(rows); // fire-and-forget: libera lo Storage dalle immagini dei casi risolti
         el.innerHTML = rows.map(function (r) {
           const risolta = r.stato === 'risolta';
           const badge = risolta ? '<span class="ai-rep-badge done">✅ Risolta</span>' : '<span class="ai-rep-badge open">🟠 Aperta</span>';
-          const nota = String(r.error_message || '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
+          const nota = String(r.error_message || '').replace(/\s*\[img:[^\]]*\]/, '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
           const when = r.timestamp ? new Date(r.timestamp).toLocaleDateString('it-IT') : '';
           let extra = '';
           if (risolta) {
@@ -42112,18 +42435,6 @@ Per confermare scrivi ELIMINA.`);
           '<button type="button" id="aiConvReport' + i + '" class="ai-conv-report" title="Segnala questo comando come interpretato male" onclick="try{PMOAi.reportInteraction(' + i + ')}catch(e){}">🐞</button></div>';
       }).join('');
     }
-    function _renderHelp() {
-      const el = document.getElementById('aiHelpList');
-      if (!el) return;
-      el.innerHTML = [
-        '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
-        '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
-        '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
-        '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
-        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase + Matchpoint)</li>',
-        '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
-      ].join('');
-    }
 
     // ── Dettatura vocale nella chat (Web Speech API it-IT) ──────────────────────
     let _rec = null, _dictating = false, _dictHintShown = false;
@@ -42185,7 +42496,8 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
     function initChatUI() {
-      _renderHelp(); _renderConvLog();
+      _renderConvLog();
+      try { _setupSandboxImageDnd(); } catch (e) {}
       try { loadMyReports(); } catch (e) {}
       if (!isEnabled()) return;
       const input = document.getElementById('svcChatInput');
@@ -42222,7 +42534,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
