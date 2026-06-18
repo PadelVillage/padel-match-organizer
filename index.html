@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.821';
+    const APP_VERSION = '5.822';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40126,7 +40126,33 @@ Per confermare scrivi ELIMINA.`);
     }
 
     function _handleUnknown(text, res) {
-      _say('🤔 Non ho capito il comando. ' + _capabilitiesShort());
+      // Principio: MAI un vicolo cieco "non ho capito". L'assistente è proattivo —
+      // riconosce i pezzi già colti (orario/campo) e guida con una domanda di chiarimento
+      // DETTAGLIATA che raffina la richiesta. Niente bottoni qui: la richiesta è ancora
+      // troppo vaga (i bottoni arrivano dopo, quando le opzioni sono concrete: lista da
+      // annullare/modificare, conferma).
+      const n = _norm(text);
+      const time = _extractTime(text);
+      const court = _extractCampo(n);
+      const recap = [];
+      if (court) recap.push('campo ' + court);
+      if (time) recap.push('orario ' + time);
+      let msg;
+      if (recap.length) {
+        msg = 'Ho capito <strong>' + recap.join(' · ') + '</strong>, ma non ancora <em>cosa</em> vuoi farci. '
+          + 'Vuoi 🎾 <strong>prenotare</strong>, 🔍 vedere se è <strong>libero</strong>, o 🗑️ <strong>annullare</strong>? '
+          + 'E per che <strong>giorno</strong>? Per esempio: «prenota ' + (court ? 'campo ' + court + ' ' : '') + 'oggi'
+          + (time ? ' alle ' + time : '') + '» oppure «campi liberi oggi' + (time ? ' alle ' + time : '') + '».';
+      } else {
+        msg = 'Dimmi pure cosa ti serve — così intanto ti mostro cosa posso fare:<br>'
+          + '🎾 <strong>Prenotare</strong> — es. «campo 2 domani 18-19:30»<br>'
+          + '🔍 <strong>Disponibilità</strong> — es. «campi liberi sabato pomeriggio»<br>'
+          + '👥 <strong>Chi gioca</strong> — es. «chi gioca domani alle 18»<br>'
+          + '🗑️ <strong>Annullare</strong> — es. «annulla campo 2 oggi alle 18»<br>'
+          + '👤 <strong>Anagrafica</strong> — es. «aggiungi Mario Rossi 333 1234567»<br>'
+          + 'Puoi scrivermela anche a pezzi: ti guido io fino in fondo.';
+      }
+      _say(msg);
       try {
         if (typeof logParserError === 'function')
           logParserError({ input_originale: text, intent_riconosciuto: res.intent || null, confidence: res.confidence || 0, error_message: 'AI: intent non riconosciuto', versione_parser: _rules().versione });
@@ -40803,6 +40829,12 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      // Frase generica tipo "annulla la prenotazione": nessun bersaglio (giorno/campo/ora/nome).
+      // Non assumere "oggi" né avvicinarsi alla conferma di un'azione irreversibile: chiedi prima
+      // di restringere (risposta proattiva e dettagliata, niente bottoni a questo stadio).
+      if (!(court || time || who || slots.date || p.data)) {
+        return _say('🗑️ Volentieri — <strong>quale</strong> prenotazione vuoi annullare? Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «annulla campo 2 oggi alle 18». Così trovo quella giusta senza rischiare di toccarne un\'altra.');
+      }
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
@@ -40931,6 +40963,11 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      // Frase generica tipo "modifica la prenotazione": nessun bersaglio → chiedi prima di
+      // restringere, invece di assumere "oggi" o aprire l'editor sulla prima che capita.
+      if (!(court || time || who || slots.date || p.data)) {
+        return _say('✏️ Certo — <strong>quale</strong> prenotazione vuoi modificare? Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «modifica campo 2 oggi alle 18».');
+      }
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       if (!cands.length && who) {
