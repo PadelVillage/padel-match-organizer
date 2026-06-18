@@ -66,8 +66,9 @@ const ROSTER = [
   { nome:'Mario',  cognome:'Rossi',   sesso:'M', livello:3.5, telefono:'3331234567', email:'mario@x.it', posizione:'Destra',   stato:'regolare' },
   { nome:'Anna',   cognome:'Verdi',   sesso:'F', livello:2,   telefono:'3479988776', email:'anna@mail.it', posizione:'Sinistra', stato:'regolare' },
   { nome:'Luca',   cognome:'Bianchi', sesso:'M', livello:4,   telefono:'3401122334', email:'',            posizione:'Destra',   stato:'regolare' },
-  { nome:'Giulia', cognome:'Neri',    sesso:'F', livello:1.5, telefono:'3335556677', email:'giulia@x.it', posizione:'Sinistra', stato:'regolare' }
-  // 'Pippo Inesistente' NON è in rubrica (caso 45, KO).
+  { nome:'Giulia', cognome:'Neri',    sesso:'F', livello:1.5, telefono:'3335556677', email:'giulia@x.it', posizione:'Sinistra', stato:'regolare' },
+  { nome:'Carla',  cognome:'Mezza',   sesso:'F', livello:3,   telefono:'3330000001', email:'',            posizione:'Destra',   stato:'regolare' }
+  // 'Pippo Inesistente' NON è in rubrica (caso 45, KO). 'Carla Mezza' ha un cognome che era in stop-list.
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +146,12 @@ const CASES = [
  {id:52, cat:'Dialetto/telegrafico', frase:'mario rossi moroso',                             esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'modifica stato -> moroso'},
  {id:53, cat:'Dialetto/telegrafico', frase:'liv di luca bianchi a 4',                        esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'liv=livello -> 4'},
  {id:54, cat:'Dialetto/telegrafico', frase:'tel anna verdi 3479988776',                      esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'tel=telefono'},
- {id:55, cat:'Dialetto/telegrafico', frase:'canc socio mario rossi',                         esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'canc=cancella NON permesso -> disattivazione'}
+ {id:55, cat:'Dialetto/telegrafico', frase:'canc socio mario rossi',                         esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'canc=cancella NON permesso -> disattivazione'},
+
+ // ── Robustezza vocabolario (2026-06-18): buchi confermati live ──
+ {id:56, cat:'Robustezza',  frase:'dammi i dati di Mario Rossi',                            esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'mario rossi'}, note:'lettura via "dammi"/"dati" (prima cadeva: azione null)'},
+ {id:57, cat:'Robustezza',  frase:'iscrivi Marco Gialli uomo livello 3 telefono 3330000009', esito:'OK',   exp:{az:'anagrafica', esito:'OK', subj:'marco gialli'}, note:'"iscrivi"=crea + soggetto corretto (non "iscrivi marco")'},
+ {id:58, cat:'Robustezza',  frase:'cerca Carla Mezza',                                      esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carla mezza'}, note:'cognome "Mezza" non più scartato dalla stop-list'}
 ];
 
 function normalize(win, frase){
@@ -153,6 +159,7 @@ function normalize(win, frase){
   return {
     raw: r,
     azione: r.azione || null,
+    subject: r.anaSubject || null,
     needsSurname: r.needsSurname === true,
     needsMoreData: r.needsMoreData === true,
     needsType: r.needsType === true,
@@ -176,6 +183,7 @@ function runCase(win, c){
   const checks = [];
   const add = (label, cond) => checks.push({label, ok:!!cond});
   if (e.az) add('azione=anagrafica', a.azione===e.az);
+  if (e.subj) add('soggetto="'+e.subj+'"', (a.subject||'')===e.subj);
   if (e.surname) add('chiede cognome (regola A)', a.needsSurname);
   if (e.ko) add('KO (rifiuta/segnala)', a.ko);
   add('esito='+e.esito, deriveEsito(a)===e.esito);

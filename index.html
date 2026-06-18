@@ -40339,13 +40339,15 @@ Per confermare scrivi ELIMINA.`);
       // verbi
       'aggiungi','aggiungere','nuovo','nuova','crea','creare','registra','registrare','inserisci','inserire','metti','mettere',
       'aggiorna','aggiornare','modifica','modificare','cambia','cambiare','imposta','impostare','correggi','correggere',
-      'aggiusta','rettifica','rinomina','rinominare','disattiva','disattivare','disabilita','riattiva','riattivare','riabilita',
+      'aggiusta','rettifica','rinomina','rinominare','iscrivi','iscrivere','iscrivilo','iscrivila','iscrivimi','disattiva','disattivare','disabilita','riattiva','riattivare','riabilita','reiscrivi','reiscrivere',
       'elimina','eliminare','cancella','cancellare','rimuovi','rimuovere','annulla','togli','togliere','leva','levare',
       'alza','abbassa','porta','segna','set','cerca','cercare','trova','trovare','mostra','mostrami','dimmi','vedi','vedere',
       'fai','fa','fammi','fatti','guarda','guardare','apri','aprire','dammi','portami',
-      'visualizza','info','informazioni','dettagli','qual','quale','quali','quanti','quante','quanto','sai','sapere','elenco','tutti','tutte',
+      'visualizza','info','informazioni','dettagli','dati','dato','qual','quale','quali','quanti','quante','quanto','sai','sapere','elenco','tutti','tutte',
       // valori/rumore frequenti
-      'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','mezzo','mezza','presente'
+      // NB: 'mezzo'/'mezza' NON sono più qui (sono cognomi reali, es. "Carla Mezza"); il livello
+      // "tre e mezzo"=3.5 è parsato da una regex dedicata, indipendente da questa stop-list.
+      'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','presente'
     ]);
     // Nome del socio: la sequenza CONTIGUA più lunga di token-nome (max 2 = nome+cognome).
     function _anaPickName(tx) {
@@ -40406,7 +40408,9 @@ Per confermare scrivi ELIMINA.`);
       const schedaField = /\b(scheda|anagrafic\w*|contatt\w*)\b/.test(tx);
       const fieldWord = phoneField || emailField || levelField || sexField || posField || statField || nameField || schedaField;
 
-      const createV = /\b(crea|creare|registr\w*|inserisc\w*)\b/.test(tx) || (/\b(aggiungi|aggiungere|nuov[oa])\b/.test(tx) && socioWord);
+      // "iscrivi X" = prima iscrizione → crea. Match solo a inizio parola (NON "re-iscrivi"/
+      // "reiscrivi", che sono riattivazioni gestite da reactV): "(^|\s)iscriv" evita il trattino.
+      const createV = /\b(crea|creare|registr\w*|inserisc\w*)\b/.test(tx) || /(^|\s)iscriv\w*/.test(tx) || (/\b(aggiungi|aggiungere|nuov[oa])\b/.test(tx) && socioWord);
       const modVerb = /\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|metti|porta|alza|abbassa|segna|set)\b/.test(tx);
       const renameV = /\brinomin\w*\b/.test(tx) || (/\b(corregg\w*|cambi\w*|aggiorn\w*)\b/.test(tx) && nameField);
       const deactV  = /\b(disattiv\w*|disabilit\w*)\b/.test(tx);
@@ -40414,7 +40418,7 @@ Per confermare scrivi ELIMINA.`);
       // "canc" → "annulla" via _ppDialect, quindi includo "annulla" tra i verbi di cancellazione.
       const deleteV = /\b(elimin\w*|cancell\w*|rimuov\w*|annull\w*)\b/.test(tx);
       const removalEmail = /\btogl\w*\b/.test(tx) && emailField;
-      const readV = /\b(cerca\w*|trova\w*|mostr\w*|dimmi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|qual\w*|elenc\w*|sai|sapere)\b/.test(tx) || /\?/.test(String(rawText || ''));
+      const readV = /\b(cerca\w*|trova\w*|mostr\w*|dimmi|dammi|dai|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|dat[io]|qual\w*|elenc\w*|sai|sapere)\b/.test(tx) || /\?/.test(String(rawText || ''));
       // Domanda di tipo prenotazione/roster: NON è anagrafica ("Mario Rossi gioca questa settimana?").
       const bookingQ = /\b(gioca\w*|liber\w*|disponib\w*|settimana|prossim\w*|oggi|domani|dopodomani|stasera|stanotte|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\b/.test(tx);
 
