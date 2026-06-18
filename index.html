@@ -5895,6 +5895,19 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-sbx-mic:hover { background:#f1f5fb; }
     .ai-sbx-mic.recording { background:#ffe3e3; border-color:#ff7a7a; animation:aiSbxPulse 1.1s infinite; }
     @keyframes aiSbxPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(255,90,90,.45);} 50%{ box-shadow:0 0 0 6px rgba(255,90,90,0);} }
+    .ai-turns-insight { font-size:13px; }
+    .ai-turn-chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:4px; }
+    .ai-turn-chip { font-size:11.5px; padding:4px 9px; border-radius:999px; background:#f1f5fb; color:#475467; border:1px solid #e5e9ee; }
+    .ai-turn-chip strong { color:#1e293b; }
+    .ai-turn-chip.ok { background:#f4fbf7; border-color:#cdeede; color:#22a06b; }
+    .ai-turn-chip.warn { background:#fff8ec; border-color:#ffe2b8; color:#b7791f; }
+    .ai-turn-chip.bad { background:#fdf2f2; border-color:#f7caca; color:#c0392b; }
+    .ai-turn-sub { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:#0891b2; margin:12px 0 6px; }
+    .ai-turn-list { display:flex; flex-direction:column; gap:6px; max-height:300px; overflow:auto; }
+    .ai-turn-row { border:1px solid #eef2f7; border-left:3px solid #e6705b; border-radius:8px; padding:7px 10px; background:#fffdfc; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; }
+    .ai-turn-utt { color:#344054; font-weight:600; overflow-wrap:anywhere; }
+    .ai-turn-meta { font-size:11px; color:#98a2b3; }
+    .ai-turn-next { font-size:12px; color:#0891b2; overflow-wrap:anywhere; flex-basis:100%; }
     .ai-reports-list { display:flex; flex-direction:column; gap:8px; }
     .ai-rep-row { border:1px solid #eef2f7; border-left:3px solid #f5a623; border-radius:8px; padding:8px 10px; background:#fffdf8; }
     .ai-rep-row.is-done { border-left-color:#22a06b; background:#f4fbf7; }
@@ -7205,6 +7218,11 @@ body.assessment-public-mode .assessment-public-only-card {
           <h3>📋 Ultime interazioni</h3>
           <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
           <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
+          <h3>📊 Autoapprendimento — diario turni</h3>
+          <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
+          <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>🐞 Le mie segnalazioni</h3>
@@ -13829,6 +13847,8 @@ Grazie.`
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito la scheda socio su Supabase');
       showAlert('✅ Scheda salvata', 'success');
+      // Diario autoapprendimento (Fase 1): azione manuale anagrafica → stesso diario della chat.
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('anagrafica', 'modifica', 'confirmed', { via: 'scheda socio', name: fullName }); } catch (e) {}
       // Push verso Matchpoint in background: la funzione gestisce da sé i toast di esito
       // (skip/errore), posticipati per non sovrascrivere "Scheda salvata".
       Promise.resolve(pmoPushMemberUpdateToMatchpoint(giocatori[idx], { prev: { surname: currentEditable.surname, phone: currentEditable.phone, email: currentEditable.email } })).catch(e => console.warn('push update Matchpoint:', e));
@@ -13843,6 +13863,8 @@ Grazie.`
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito lo stato del socio su Supabase');
       const m = giocatori[idx];
+      // Diario autoapprendimento (Fase 1): disattiva/riattiva manuale → diario.
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('anagrafica', m.active === false ? 'disattiva' : 'riattiva', 'confirmed', { via: 'scheda socio', name: (typeof playerFullName === 'function' ? playerFullName(m) : (m.name || '')) }); } catch (e) {}
       if (m.active === false) {
         // Disattivazione → disiscrivi anche da Matchpoint (in background, ~30s).
         // La RIATTIVAZIONE resta locale: la "ri-iscrizione" su Matchpoint è una
@@ -39625,6 +39647,187 @@ Per confermare scrivi ELIMINA.`);
       return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
            : (typeof STAFF_CAL_FALLBACK_RULES !== 'undefined' ? STAFF_CAL_FALLBACK_RULES : { intents: {} });
     }
+
+    // ══ Fase 1 autoapprendimento: diario turni (tabella pmo_ai_turns) ════════════
+    // Cattura OGNI turno con il suo esito → carburante per analisi e proposte di
+    // miglioria. SOLO cattura: nessuna auto-applicazione. Gated a TEST per ora.
+    // Fire-and-forget: se la scrittura fallisce, l'assistente continua a funzionare.
+    const _AI_TURNS_ENABLED = (typeof PMO_IS_TEST_ENV !== 'undefined') ? PMO_IS_TEST_ENV : false;
+    const _AI_TURN_REFORMULATE_MS = 90 * 1000;   // riformulazione = nuovo turno entro 90s su uno debole
+    let _aiTurnSession = null;
+    let _aiPendingTurn = null;                    // turno "aperto" in attesa d'esito { id, at, weak, outcome }
+    function _aiTurnSessionId() {
+      if (!_aiTurnSession) _aiTurnSession = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+      return _aiTurnSession;
+    }
+    function _aiTurnStaffId() {
+      try { return (typeof pmoStaffProfile !== 'undefined' && pmoStaffProfile) ? (pmoStaffProfile.email || pmoStaffProfile.full_name || null) : null; } catch (e) { return null; }
+    }
+    function _aiTurnDomain(res) {
+      if (!res) return null;
+      if (res.intent === 'ANAGRAFICA' || res.azione === 'anagrafica') return 'anagrafica';
+      return res.intent ? 'prenotazione' : null;
+    }
+    function _aiTurnNewId() {
+      try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+      // fallback uuidv4 testuale (sufficiente come chiave di riga)
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16);
+      });
+    }
+    // Insert con id generato lato client (return=minimal) → l'id è noto subito per il patch
+    // dell'esito, e la scrittura non richiede il permesso SELECT (più robusta).
+    async function _aiTurnInsert(row) {
+      if (!_AI_TURNS_ENABLED) return null;
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_ai_turns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(row)
+        });
+        if (!res.ok) { console.warn('[PMOAi] turn insert HTTP', res.status); return null; }
+        return row.id || null;
+      } catch (e) { console.warn('[PMOAi] turn insert failed:', e.message); return null; }
+    }
+    async function _aiTurnPatch(id, patch) {
+      if (!_AI_TURNS_ENABLED || !id) return false;
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_ai_turns?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + token, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(patch)
+        });
+        return res.ok;
+      } catch (e) { return false; }
+    }
+    // Fissa l'esito del turno aperto (se non già fissato). pend = il turno da chiudere.
+    function _aiTurnFinalize(pend, outcome, extra) {
+      if (!pend || pend.outcome || !pend.id) return;
+      pend.outcome = outcome;
+      const patch = Object.assign({ outcome: outcome, outcome_at: new Date().toISOString() }, extra || {});
+      _aiTurnPatch(pend.id, patch);
+    }
+    // Logga un turno CHAT e lo rende "aperto". Chiude il precedente come riformulato/confermato.
+    function _aiTurnLogChat(text, res) {
+      if (!_AI_TURNS_ENABLED) return null;
+      const negative = !!(res && (res.ko || res.clarify || !res.intent || (typeof res.confidence === 'number' && res.confidence < AI_PARSE_THRESHOLD)));
+      // Chiudi il turno precedente ancora aperto: se era DEBOLE e segue subito un nuovo
+      // messaggio → riformulazione; se era PULITO e azionabile → confermato (l'utente è andato
+      // avanti senza lamentele). Un debole non seguìto subito resta aperto (potrà essere segnalato).
+      if (_aiPendingTurn && !_aiPendingTurn.outcome) {
+        const quick = (Date.now() - _aiPendingTurn.at) < _AI_TURN_REFORMULATE_MS;
+        if (_aiPendingTurn.weak && quick) _aiTurnFinalize(_aiPendingTurn, 'reformulated', { next_utterance: text });
+        else if (!_aiPendingTurn.weak) _aiTurnFinalize(_aiPendingTurn, 'confirmed');
+      }
+      const row = {
+        id: _aiTurnNewId(),
+        session_id: _aiTurnSessionId(),
+        staff_id: _aiTurnStaffId(),
+        env: (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test',
+        domain: _aiTurnDomain(res),
+        source: (res && res.source === 'gemini') ? 'gemini' : 'rules',
+        utterance: text,
+        confidence: (res && typeof res.confidence === 'number') ? res.confidence : null,
+        azione: (res && (res.azione || res.intent)) || null,
+        parsed_json: res ? {
+          intent: res.intent, azione: res.azione, slots: res.slots,
+          anaSub: res.anaSub, anaField: res.anaField, anaSubject: res.anaSubject,
+          ko: res.ko, koReason: res.koReason, clarify: res.clarify,
+          needsSurname: res.needsSurname, needsMoreData: res.needsMoreData
+        } : null,
+        versione_parser: (function () { try { return _rules().versione || 'unknown'; } catch (e) { return 'unknown'; } })(),
+        meta: { negative: negative }
+      };
+      const pend = { id: row.id, at: Date.now(), weak: negative, outcome: null };
+      _aiPendingTurn = pend;
+      _aiTurnInsert(row);
+      return pend;
+    }
+    // Logga un'azione MANUALE (form UI): stesso diario, source='manual', subito risolta.
+    function _aiTurnLogManual(domain, azione, outcome, detail) {
+      if (!_AI_TURNS_ENABLED) return;
+      const row = {
+        id: _aiTurnNewId(),
+        session_id: _aiTurnSessionId(),
+        staff_id: _aiTurnStaffId(),
+        env: (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test',
+        domain: domain || null,
+        source: 'manual',
+        utterance: null,
+        confidence: null,
+        azione: azione || null,
+        parsed_json: detail || null,
+        outcome: outcome || 'confirmed',
+        outcome_at: new Date().toISOString(),
+        versione_parser: (function () { try { return _rules().versione || 'unknown'; } catch (e) { return 'unknown'; } })(),
+        meta: { manual: true }
+      };
+      _aiTurnInsert(row);
+    }
+    // Legge gli ultimi turni dal diario (richiede sessione staff: SELECT per authenticated).
+    async function _aiTurnsFetch(limitN) {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let token = cfg.supabaseKey;
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_ai_turns?order=created_at.desc&limit=' + (limitN || 60) +
+        '&select=created_at,domain,source,utterance,confidence,azione,outcome,next_utterance,meta';
+      const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+    function _aiTurnIsNegative(r) {
+      if (r && r.meta && r.meta.negative) return true;
+      return !!(r && (r.outcome === 'reformulated' || r.outcome === 'reported'));
+    }
+    async function loadTurnsInsight() {
+      const el = document.getElementById('aiTurnsInsight');
+      if (!el) return;
+      el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      let rows;
+      try { rows = await _aiTurnsFetch(80); } catch (e) {
+        el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere il diario (sessione scaduta?): esci e rientra, poi riprova. [' + _escapeHtml(e.message) + ']</div>';
+        return;
+      }
+      if (!Array.isArray(rows) || !rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessun turno registrato ancora. Usa l\'assistente dalla chat: i comandi compariranno qui con il loro esito.</div>'; return; }
+      const tot = rows.length;
+      const byOut = { confirmed: 0, reformulated: 0, reported: 0, cancelled: 0, open: 0 };
+      let manual = 0, chat = 0;
+      rows.forEach(function (r) {
+        if (r.source === 'manual') manual++; else chat++;
+        const o = r.outcome || 'open';
+        if (byOut[o] == null) byOut[o] = 0; byOut[o]++;
+      });
+      const negatives = rows.filter(_aiTurnIsNegative);
+      const chip = function (label, n, cls) { return '<span class="ai-turn-chip ' + (cls || '') + '">' + label + ' <strong>' + n + '</strong></span>'; };
+      let html = '<div class="ai-turn-chips">' +
+        chip('Turni', tot, '') +
+        chip('Chat', chat, '') +
+        chip('Manuale', manual, '') +
+        chip('✅ Confermate', byOut.confirmed || 0, 'ok') +
+        chip('↻ Riformulate', byOut.reformulated || 0, 'warn') +
+        chip('🐞 Segnalate', byOut.reported || 0, 'bad') +
+        chip('🔴 Da migliorare', negatives.length, 'bad') +
+        '</div>';
+      if (negatives.length) {
+        html += '<div class="ai-turn-sub">Frasi da migliorare (l\'assistente non le ha capite bene)</div>';
+        html += '<div class="ai-turn-list">' + negatives.slice(0, 20).map(function (r) {
+          const tag = r.outcome === 'reported' ? '🐞 segnalata' : (r.outcome === 'reformulated' ? '↻ riformulata' : '🔴 dubbia');
+          const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
+          const nxt = r.next_utterance ? ('<span class="ai-turn-next">→ ' + _escapeHtml(r.next_utterance) + '</span>') : '';
+          return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(r.utterance || '(azione manuale)') + '</span>' +
+            '<span class="ai-turn-meta">' + tag + dom + '</span>' + nxt + '</div>';
+        }).join('') + '</div>';
+      } else {
+        html += '<div class="ai-admin-hint" style="margin-top:8px">Nessuna frase problematica negli ultimi ' + tot + ' turni. 👍</div>';
+      }
+      el.innerHTML = html;
+    }
     function _norm(s) {
       return (typeof normalizeText === 'function') ? normalizeText(s) : String(s || '').toLowerCase().trim();
     }
@@ -42413,6 +42616,8 @@ Per confermare scrivi ELIMINA.`);
     async function reportInteraction(idx) {
       const r = _convLog[idx];
       if (!r) return;
+      // Segnale d'oro: l'utente dice "qui dovevi capirmi" → fissa l'esito del turno a 'reported'.
+      try { if (r._turn) _aiTurnFinalize(r._turn, 'reported'); } catch (e) {}
       try {
         const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: r.text, intent_riconosciuto: r.intent === '—' ? null : r.intent, confidence: r.confidence || 0, error_message: 'Segnalato dalle ultime interazioni', versione_parser: _rules().versione, origine: 'manuale' }) : false;
         const btn = document.getElementById('aiConvReport' + idx);
@@ -42520,7 +42725,10 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Log interazioni (tab gestione) ──────────────────────────────────────────
     function _logInteraction(text, res) {
-      _convLog.unshift({ text: text, intent: res.intent || '—', confidence: res.confidence || 0 });
+      // Diario persistente (Fase 1): cattura il turno e tiene il riferimento sul log in
+      // memoria, così "Segnala" può fissarne l'esito come 'reported'.
+      const _turn = _aiTurnLogChat(text, res);
+      _convLog.unshift({ text: text, intent: res.intent || '—', confidence: res.confidence || 0, _turn: _turn });
       if (_convLog.length > 30) _convLog.pop();
       _renderConvLog();
     }
@@ -42634,7 +42842,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
