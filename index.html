@@ -7178,6 +7178,11 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assistanteAI" class="tab-content">
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
+        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
+          <h3>📊 Autoapprendimento — diario turni</h3>
+          <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
+          <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
+        </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧪 Banco di prova</h3>
           <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
@@ -7218,11 +7223,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <h3>📋 Ultime interazioni</h3>
           <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
           <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
-          <h3>📊 Autoapprendimento — diario turni</h3>
-          <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
-          <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>🐞 Le mie segnalazioni</h3>
