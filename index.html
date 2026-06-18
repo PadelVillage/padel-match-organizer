@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.822';
+    const APP_VERSION = '5.823';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40110,6 +40110,11 @@ Per confermare scrivi ELIMINA.`);
       if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
         return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
       }
+      // Punto UNICO di chiarimento (trasversale): se la richiesta non è azionabile —
+      // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
+      // gestori: si fa una domanda proattiva che restringe. Vedi _needsClarification/_clarify.
+      const _clar = _needsClarification(res, t);
+      if (_clar) return _clarify(t, res, _clar);
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
@@ -40117,7 +40122,7 @@ Per confermare scrivi ELIMINA.`);
         case 'CORREGGI': return _startModifica(res, t);
         case 'ANAGRAFICA': return _startAnagrafica(res, t);
         case 'SUGGERISCI': return _stub('i suggerimenti');
-        default: return _handleUnknown(t, res);
+        default: return _clarify(t, res, { reason: 'unknown', intent: null });
       }
     }
 
@@ -40125,25 +40130,70 @@ Per confermare scrivi ELIMINA.`);
       _say('🛠️ La funzione per <strong>' + _escapeHtml(what) + '</strong> sarà attiva a breve (in costruzione). Per ora posso rispondere a <strong>domande</strong> su prenotazioni e disponibilità — prova “campi liberi domani” o “chi gioca oggi alle 18”.');
     }
 
-    function _handleUnknown(text, res) {
-      // Principio: MAI un vicolo cieco "non ho capito". L'assistente è proattivo —
-      // riconosce i pezzi già colti (orario/campo) e guida con una domanda di chiarimento
-      // DETTAGLIATA che raffina la richiesta. Niente bottoni qui: la richiesta è ancora
-      // troppo vaga (i bottoni arrivano dopo, quando le opzioni sono concrete: lista da
-      // annullare/modificare, conferma).
-      const n = _norm(text);
-      const time = _extractTime(text);
+    // ── Strato di chiarimento CENTRALE (trasversale a tutti gli intenti) ────────
+    // Principio (decisione utente): l'assistente non risponde MAI con un vicolo cieco
+    // "non ho capito". Quando la richiesta non è azionabile, un UNICO punto produce una
+    // domanda di chiarimento proattiva e dettagliata che raffina la richiesta. Le regole
+    // fanno struttura + sicurezza (mai assumere default né avvicinarsi a un'azione
+    // irreversibile con dati incompleti); Gemini fa da RINFORZO: quando le regole non
+    // bastano è già stato chiamato da _parseWithAi e la sua intuizione (intent/slots/
+    // missing, anche sotto soglia) arriva qui in `res` e mira meglio la domanda.
+    // Niente bottoni a questo stadio: la richiesta è ancora vaga; i bottoni arrivano dopo,
+    // quando le opzioni sono concrete (lista da annullare/modificare, conferma sì/no).
+
+    // Decide se la richiesta è azionabile o serve chiarire. Ritorna null (azionabile) o un
+    // descrittore { reason, intent } per lo strato centrale.
+    function _needsClarification(res, t) {
+      if (!res || res.ko) return null;                 // ko gestito a parte in handle()
+      const intent = res.intent || null;
+      // Intento sconosciuto → sempre chiarire (anche dopo il rinforzo Gemini).
+      if (!intent) return { reason: 'unknown', intent: null };
+      // Azione distruttiva/di modifica senza ALCUN bersaglio (giorno/campo/ora/nome):
+      // non assumere "oggi" né aprire qualcosa a caso → chiedi di restringere.
+      if (intent === 'CANCELLA' || intent === 'CORREGGI') {
+        const p = res.parsed || {}, s = res.slots || {};
+        const court = s.court || p.campoNum || 0;
+        const time = s.time || p.ora || '';
+        const date = s.date || p.data || '';
+        const who = (s.who && s.who !== 'Staff') ? s.who : _extractCancelWho(t);
+        if (!(court || time || date || who)) return { reason: 'no_target', intent: intent };
+      }
+      return null;
+    }
+
+    // Unico produttore di domande di chiarimento proattive. `info` = descrittore di
+    // _needsClarification; usa i frammenti già riconosciuti nel testo per mostrare cosa ha
+    // capito e guidare verso ciò che manca.
+    function _clarify(t, res, info) {
+      res = res || {}; info = info || { reason: 'unknown', intent: res.intent || null };
+      const n = _norm(t);
       const court = _extractCampo(n);
+      const time = _extractTime(t);
+      const date = _extractDate(n, _todayIso());
       const recap = [];
       if (court) recap.push('campo ' + court);
       if (time) recap.push('orario ' + time);
+      if (date) recap.push(_dayLabel(date));
+      const recapTxt = recap.length ? ' (ho già capito ' + recap.join(' · ') + ')' : '';
       let msg;
-      if (recap.length) {
+      if (info.reason === 'no_target' && (info.intent === 'CANCELLA' || info.intent === 'CORREGGI')) {
+        const verbo = info.intent === 'CANCELLA' ? 'annullare' : 'modificare';
+        const ic = info.intent === 'CANCELLA' ? '🗑️' : '✏️';
+        const es = info.intent === 'CANCELLA' ? 'annulla campo 2 oggi alle 18' : 'modifica campo 2 oggi alle 18';
+        msg = ic + ' Volentieri — <strong>quale</strong> prenotazione vuoi ' + verbo + '?' + recapTxt
+          + ' Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «' + es + '».';
+      } else if (recap.length) {
+        // Frammento riconosciuto (es. solo una fascia oraria) ma senza azione: chiedi cosa fare.
+        const esParts = ['prenota'];
+        if (court) esParts.push('campo ' + court);
+        if (!date) esParts.push('oggi');
+        if (time) esParts.push('alle ' + time);
         msg = 'Ho capito <strong>' + recap.join(' · ') + '</strong>, ma non ancora <em>cosa</em> vuoi farci. '
-          + 'Vuoi 🎾 <strong>prenotare</strong>, 🔍 vedere se è <strong>libero</strong>, o 🗑️ <strong>annullare</strong>? '
-          + 'E per che <strong>giorno</strong>? Per esempio: «prenota ' + (court ? 'campo ' + court + ' ' : '') + 'oggi'
-          + (time ? ' alle ' + time : '') + '» oppure «campi liberi oggi' + (time ? ' alle ' + time : '') + '».';
+          + 'Vuoi 🎾 <strong>prenotare</strong>, 🔍 vedere se è <strong>libero</strong>, o 🗑️ <strong>annullare</strong>?'
+          + (date ? '' : ' E per che <strong>giorno</strong>?')
+          + ' Per esempio: «' + esParts.join(' ') + '».';
       } else {
+        // Del tutto vago: guida proattiva con esempi (niente "non ho capito").
         msg = 'Dimmi pure cosa ti serve — così intanto ti mostro cosa posso fare:<br>'
           + '🎾 <strong>Prenotare</strong> — es. «campo 2 domani 18-19:30»<br>'
           + '🔍 <strong>Disponibilità</strong> — es. «campi liberi sabato pomeriggio»<br>'
@@ -40153,10 +40203,13 @@ Per confermare scrivi ELIMINA.`);
           + 'Puoi scrivermela anche a pezzi: ti guido io fino in fondo.';
       }
       _say(msg);
-      try {
-        if (typeof logParserError === 'function')
-          logParserError({ input_originale: text, intent_riconosciuto: res.intent || null, confidence: res.confidence || 0, error_message: 'AI: intent non riconosciuto', versione_parser: _rules().versione });
-      } catch (e) {}
+      // Telemetria: solo quando proprio non c'è un intento (utile al banco di prova).
+      if (!info.intent) {
+        try {
+          if (typeof logParserError === 'function')
+            logParserError({ input_originale: t, intent_riconosciuto: res.intent || null, confidence: res.confidence || 0, error_message: 'AI: intent non riconosciuto', versione_parser: _rules().versione });
+        } catch (e) {}
+      }
     }
 
     // ── TROVA (sola lettura) ────────────────────────────────────────────────────
@@ -40829,12 +40882,6 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
-      // Frase generica tipo "annulla la prenotazione": nessun bersaglio (giorno/campo/ora/nome).
-      // Non assumere "oggi" né avvicinarsi alla conferma di un'azione irreversibile: chiedi prima
-      // di restringere (risposta proattiva e dettagliata, niente bottoni a questo stadio).
-      if (!(court || time || who || slots.date || p.data)) {
-        return _say('🗑️ Volentieri — <strong>quale</strong> prenotazione vuoi annullare? Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «annulla campo 2 oggi alle 18». Così trovo quella giusta senza rischiare di toccarne un\'altra.');
-      }
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
@@ -40963,11 +41010,6 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
-      // Frase generica tipo "modifica la prenotazione": nessun bersaglio → chiedi prima di
-      // restringere, invece di assumere "oggi" o aprire l'editor sulla prima che capita.
-      if (!(court || time || who || slots.date || p.data)) {
-        return _say('✏️ Certo — <strong>quale</strong> prenotazione vuoi modificare? Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «modifica campo 2 oggi alle 18».');
-      }
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       if (!cands.length && who) {
