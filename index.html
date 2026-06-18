@@ -7670,7 +7670,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.833';
+    const APP_VERSION = '5.834';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39616,6 +39616,10 @@ Per confermare scrivi ELIMINA.`);
     let aiFlowState = null;
     let _aiFlowAt = 0;                       // timestamp dell'ultimo messaggio (scadenza flusso)
     const AI_FLOW_TTL_MS = 5 * 60 * 1000;    // 5 min: un flusso in sospeso ripreso più tardi riparte pulito
+    // Ultimo socio "in discorso" in anagrafica (scheda mostrata / appena usato): permette i
+    // follow-up con pronome — «voglio modificarlo», «aggiorna il suo telefono» — senza ripetere
+    // il nome (niente vicolo cieco). Scade come il flusso (5 min).
+    let _anaLastSubject = null;              // { member, at }
 
     function _rules() {
       return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
@@ -41551,6 +41555,54 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaName(d) { return _escapeHtml(((d.firstName || '') + ' ' + (d.surname || '')).trim() || 'il socio'); }
 
+    // Memoria dell'ultimo socio "in discorso" (scheda mostrata / appena risolto), per i follow-up.
+    function _anaRemember(member) { if (member) _anaLastSubject = { member: member, at: (Date.now ? Date.now() : new Date().getTime()) }; }
+    function _anaRecentSubject() {
+      if (!_anaLastSubject || !_anaLastSubject.member) return null;
+      const now = (Date.now ? Date.now() : new Date().getTime());
+      if ((now - (_anaLastSubject.at || 0)) > AI_FLOW_TTL_MS) { _anaLastSubject = null; return null; }
+      return _anaLastSubject.member;
+    }
+    // Il testo rimanda all'ultimo socio col PRONOME? «modificalo / aggiornalo / cambiala»,
+    // «lo stesso», «questo socio», «il suo/la sua…» — senza ripetere nome e cognome.
+    function _anaPronounRef(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/(modific|aggiorn|cambi|variar|corregg|aggiust|imposta|rettific|disattiv|disabilit|riattiv|riabilit|elimin|cancell|rimuov|togl|mostr|ved\w*|guard|registr)\w*(lo|la|li|le)\b/.test(n)) return true;
+      if (/( lo stesso | la stessa | medesim\w* | quest[oa] socio| quel socio| suo | sua | sue | suoi )/.test(n)) return true;
+      return false;
+    }
+    // Disambiguazione per NOME (non solo per numero): la risposta «aprea» o «Maurizio Aprea»
+    // alla domanda «di quale socio?» va riconosciuta. Scelgo solo se UN candidato combacia.
+    function _anaPickByName(text, matches) {
+      if (!matches || !matches.length) return null;
+      const q = ' ' + _norm(_anaStripFieldTokens(text)) + ' ';
+      if (!q.trim()) return null;
+      const hits = [];
+      matches.forEach(function (mm) {
+        const g = mm.member;
+        const sur = _norm(g.surname || '').trim();
+        const full = _norm(playerFullName(g)).trim();
+        const id = _norm(String(g.memberId || '')).trim();
+        let hit = false;
+        if (sur && q.indexOf(' ' + sur + ' ') >= 0) hit = true;
+        else if (full && q.indexOf(full) >= 0) hit = true;
+        else if (id && q.indexOf(id) >= 0) hit = true;
+        if (hit && hits.indexOf(g) < 0) hits.push(g);
+      });
+      return hits.length === 1 ? hits[0] : null;
+    }
+    // «mi apri una scheda socio vuota», «nuova scheda», «scheda in bianco» = aprire una
+    // scheda NUOVA da compilare (creazione), non leggere il socio «vuota». Vale solo se non
+    // resta un nome (es. «è vuota la scheda di Mario» → è una lettura, non una scheda vuota).
+    function _anaWantsBlankCard(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (!/( scheda| schede| ficha| anagrafic\w*| socio| socia| giocator\w*| tesserat\w*)/.test(n)) return false;
+      if (!/( vuot[ao]| in bianco| bianc[ao]| da zero| da compilare| nuov[ao])/.test(n)) return false;
+      let rest = ' ' + _norm(_anaStripFieldTokens(text)) + ' ';
+      rest = rest.replace(/( vuot[ao] | in bianco | bianc[ao] | da zero | da compilare | nuov[ao] | una | un | uno )/g, ' ').replace(/\s+/g, ' ').trim();
+      return rest === '';
+    }
+
     function _startAnagrafica(res, text) {
       const n = ' ' + _norm(text) + ' ';
       const createV = _ANA_CREATE_VERB.test(n);
@@ -41560,6 +41612,9 @@ Per confermare scrivi ELIMINA.`);
       // il socio" = disattiva, mai delete vero).
       if (_ANA_REACTIVATE_VERB.test(n) && !createV) return _startAnaReactivate(text);
       if (_ANA_DEACT_VERB.test(n) && !createV) return _startAnaDeactivate(text);
+      // «Scheda vuota/nuova/in bianco» = nuova scheda da compilare (creazione con draft vuoto),
+      // prima della lettura (che cercherebbe un socio di nome «vuota»).
+      if (!createV && !updateV && _anaWantsBlankCard(text)) return _anaAdvanceCreate({ firstName: '', surname: '', phone: '', email: '', level: '', gender: '' });
       // Lettura: verbo/parola di lettura OPPURE un campo della scheda nominato, senza verbi di scrittura.
       if (!createV && !updateV && (_ANA_READ_VERB.test(n) || _ANA_FIELD_WORD.test(n))) return _startAnaRead(text);
       return updateV ? _startAnaUpdate(text) : _startAnaCreate(text);
@@ -41592,6 +41647,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaAnswerMember(member, fields) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       const nm = _escapeHtml(playerFullName(member));
       const val = {
         phone: member.phone ? _escapeHtml(member.phone) : '—',
@@ -41629,6 +41685,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaDeactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       if (member.active === false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già disattivato.');
       return _showAnaDeactivateSummary(member);
     }
@@ -41687,6 +41744,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaReactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       if (member.active !== false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già attivo.');
       return _showAnaReactivateSummary(member);
     }
@@ -41864,6 +41922,11 @@ Per confermare scrivi ELIMINA.`);
       // non lo strip dell'intera frase (che mischierebbe vecchio e nuovo nome).
       const isRename = (changes.firstName != null || changes.surname != null);
       const nameStr = (isRename && _anaRenameTarget(text)) || _anaStripFieldTokens(text);
+      // Follow-up contestuale: «voglio modificarlo», «aggiorna il suo telefono», o un comando
+      // senza nome subito dopo aver mostrato/usato una scheda → il bersaglio è l'ultimo socio
+      // del discorso (niente vicolo cieco; vedi _anaLastSubject).
+      const _subj = _anaRecentSubject();
+      if (_subj && (_anaPronounRef(text) || !nameStr)) return _anaUpdateWithTarget(_subj, changes);
       if (!nameStr) return _say('Chi vuoi aggiornare? Dimmi <strong>nome e cognome</strong> del socio (es. “aggiorna il telefono di Mario Rossi a 333…”).');
       const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
       if (!matches.length) return _say('🔍 Non trovo un socio che somigli a “<strong>' + _escapeHtml(nameStr) + '</strong>”. Controlla il nome.');
@@ -41883,7 +41946,10 @@ Per confermare scrivi ELIMINA.`);
       const m = String(text || '').match(/\b(\d{1,2})\b/);
       let pick = null;
       if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < matches.length) pick = matches[i].member; }
-      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
+      // Nessun numero valido → prova a riconoscere il socio dal NOME/COGNOME digitato
+      // (es. risposta «aprea» o «voglio variare la scheda di Maurizio Aprea» invece di «1»).
+      if (!pick) pick = _anaPickByName(text, matches);
+      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure scrivi il <strong>cognome</strong> (o “annulla”).');
       aiFlowState = null;
       if (op === 'read') return _anaAnswerMember(pick, fields);
       if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
@@ -41892,6 +41958,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaUpdateWithTarget(member, changes) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
       return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “cognome Bianchi”, “uomo/donna”.');
