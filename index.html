@@ -42326,6 +42326,23 @@ Per confermare scrivi ELIMINA.`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
     }
+    // Pulizia screenshot: quando una segnalazione è RISOLTA l'immagine non serve più.
+    // La cancella la sessione staff autenticata (policy delete sul bucket): lo Storage
+    // resta leggero senza service key né funzioni pubbliche. Idempotente (404 = già rimossa).
+    async function _cleanupResolvedScreenshots(rows) {
+      try {
+        const targets = (rows || []).filter(function (r) { return r.stato === 'risolta' && /parser-reports\//.test(String(r.error_message || '')); });
+        if (!targets.length) return;
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        targets.forEach(function (r) {
+          const m = String(r.error_message || '').match(/parser-reports\/([^ \]]+)/);
+          if (!m) return;
+          fetch(cfg.supabaseUrl + '/storage/v1/object/parser-reports/' + m[1], { method: 'DELETE', headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token } }).catch(function () {});
+        });
+      } catch (e) {}
+    }
     async function loadMyReports() {
       const el = document.getElementById('aiReportsList');
       if (!el) return;
@@ -42334,10 +42351,11 @@ Per confermare scrivi ELIMINA.`);
         const rows = await _myReportsFetch();
         _myReportsCache = Array.isArray(rows) ? rows : [];
         if (!rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessuna segnalazione ancora. Quando trovi un errore usa 🐞 “Segnala questo caso”.</div>'; return; }
+        _cleanupResolvedScreenshots(rows); // fire-and-forget: libera lo Storage dalle immagini dei casi risolti
         el.innerHTML = rows.map(function (r) {
           const risolta = r.stato === 'risolta';
           const badge = risolta ? '<span class="ai-rep-badge done">✅ Risolta</span>' : '<span class="ai-rep-badge open">🟠 Aperta</span>';
-          const nota = String(r.error_message || '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
+          const nota = String(r.error_message || '').replace(/\s*\[img:[^\]]*\]/, '').replace(/^Segnalato[^:]*:?\s*/i, '').trim();
           const when = r.timestamp ? new Date(r.timestamp).toLocaleDateString('it-IT') : '';
           let extra = '';
           if (risolta) {
