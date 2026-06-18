@@ -5866,6 +5866,12 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-admin-card { background:var(--surface,#fff); border:1px solid var(--border,#e5e9ee); border-radius:12px; padding:16px 18px; }
     .ai-admin-card-wide { grid-column:1 / -1; }
     .ai-admin-card h3 { margin:0 0 8px; font-size:15px; color:var(--primary,#1e293b); }
+    .ai-sbx-drop { margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 10px; border:1px dashed var(--border,#cbd5e1); border-radius:8px; transition:background .15s, border-color .15s; }
+    .ai-sbx-drop.dragover { background:#eef6ff; border-color:#3b82f6; }
+    .ai-sbx-img-preview { margin-top:10px; position:relative; display:inline-block; }
+    .ai-sbx-img-preview img { max-width:240px; max-height:170px; border-radius:8px; border:1px solid var(--border,#e5e9ee); display:block; }
+    .ai-sbx-img-remove { position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; border:none; background:#ef4444; color:#fff; cursor:pointer; font-size:14px; line-height:24px; padding:0; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+    .ai-sbx-img-name { font-size:11px; color:#98a2b3; margin-top:3px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ai-admin-hint { font-size:12px; color:#667085; margin:6px 0; }
     .ai-sandbox-input { width:100%; box-sizing:border-box; resize:vertical; min-height:48px; font-size:14px; padding:9px 11px; border:1px solid var(--border,#e5e9ee); border-radius:8px; outline:none; font-family:inherit; }
     .ai-sandbox-actions { margin:10px 0; }
@@ -7156,7 +7162,7 @@ body.assessment-public-mode .assessment-public-only-card {
     <div id="assistanteAI" class="tab-content">
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
-        <section class="ai-admin-card">
+        <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧪 Banco di prova</h3>
           <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
 
@@ -7174,8 +7180,14 @@ body.assessment-public-mode .assessment-public-only-card {
 
           <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
           <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
-          <div class="ai-sandbox-report">
+          <div class="ai-sandbox-report" id="aiSandboxReportBox">
             <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
+            <div class="ai-sbx-drop" id="aiSandboxDrop">
+              <input type="file" id="aiSandboxImgInput" accept="image/*" hidden onchange="try{PMOAi.onSandboxImagePicked(this.files)}catch(e){}">
+              <button type="button" class="btn-secondary small-btn" onclick="document.getElementById('aiSandboxImgInput').click()">📎 Allega immagine</button>
+              <span class="ai-admin-hint">o trascina qui un'immagine dal desktop · o incolla con Ctrl/⌘+V</span>
+            </div>
+            <div id="aiSandboxImgPreview" class="ai-sbx-img-preview" style="display:none"></div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
               <span id="aiSandboxReportState" class="ai-admin-hint"></span>
@@ -7185,11 +7197,6 @@ body.assessment-public-mode .assessment-public-only-card {
             <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
             <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
           </div>
-        </section>
-        <section class="ai-admin-card">
-          <h3>💬 Cosa posso fare</h3>
-          <ul class="ai-help-list" id="aiHelpList"></ul>
-          <p class="ai-admin-hint">Le regole di riconoscimento (sinonimi, istruttori) si gestiscono in <strong>Amministrazione → Parser Config</strong>.</p>
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>📋 Ultime interazioni</h3>
@@ -42196,6 +42203,67 @@ Per confermare scrivi ELIMINA.`);
         if (st) { st.textContent = '✅ Report copiato.'; setTimeout(function () { st.textContent = ''; }, 2500); }
       } catch (e) { if (st) st.textContent = '⚠️ Copia non riuscita.'; }
     }
+    // ── Allegato immagine alla segnalazione (banco di prova) ────────────────────
+    // L'immagine va in Supabase Storage (bucket pubblico 'parser-reports'): il DB resta
+    // leggero (nella segnalazione salviamo solo l'URL) e lo screenshot è scaricabile da
+    // chi corregge il bug.
+    let _sandboxImage = null; // { dataUrl, blob, name, type }
+    function _setSandboxImage(file) {
+      const st = document.getElementById('aiSandboxReportState');
+      if (!file || !/^image\//.test(file.type || '')) { if (st) st.textContent = '⚠️ Allega un file immagine (png/jpg/webp/gif).'; return; }
+      if (file.size > 5 * 1024 * 1024) { if (st) st.textContent = '⚠️ Immagine troppo grande (max 5 MB).'; return; }
+      const reader = new FileReader();
+      reader.onload = function (e) { _sandboxImage = { dataUrl: e.target.result, blob: file, name: file.name || 'screenshot.png', type: file.type }; _renderSandboxImg(); if (st) st.textContent = ''; };
+      reader.readAsDataURL(file);
+    }
+    function _renderSandboxImg() {
+      const box = document.getElementById('aiSandboxImgPreview');
+      if (!box) return;
+      if (!_sandboxImage) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      box.style.display = 'block';
+      box.innerHTML = '<button type="button" class="ai-sbx-img-remove" title="Rimuovi immagine" onclick="try{PMOAi.clearSandboxImage()}catch(e){}">✕</button>'
+        + '<img src="' + _sandboxImage.dataUrl + '" alt="anteprima allegato">'
+        + '<div class="ai-sbx-img-name">' + _escapeHtml(_sandboxImage.name) + '</div>';
+    }
+    function clearSandboxImage() { _sandboxImage = null; _renderSandboxImg(); const inp = document.getElementById('aiSandboxImgInput'); if (inp) inp.value = ''; }
+    function onSandboxImagePicked(files) { if (files && files[0]) _setSandboxImage(files[0]); }
+    // Carica l'immagine su Storage e ritorna l'URL pubblico (o '' se non riesce).
+    async function _uploadSandboxImage() {
+      if (!_sandboxImage) return '';
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const ext = (String(_sandboxImage.type).split('/')[1] || 'png').replace('jpeg', 'jpg');
+        const path = 'report-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        const res = await fetch(cfg.supabaseUrl + '/storage/v1/object/parser-reports/' + path, {
+          method: 'POST',
+          headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, 'Content-Type': _sandboxImage.type, 'x-upsert': 'true' },
+          body: _sandboxImage.blob
+        });
+        if (!res.ok) return '';
+        return cfg.supabaseUrl + '/storage/v1/object/public/parser-reports/' + path;
+      } catch (e) { return ''; }
+    }
+    // Drag&drop dal desktop + incolla (Ctrl/⌘+V) sull'area segnalazione — agganciato una volta.
+    let _sbxDndReady = false;
+    function _setupSandboxImageDnd() {
+      if (_sbxDndReady) return;
+      const drop = document.getElementById('aiSandboxDrop');
+      const box = document.getElementById('aiSandboxReportBox');
+      const note = document.getElementById('aiSandboxNote');
+      if (!drop || !box) return;
+      _sbxDndReady = true;
+      const stop = function (e) { e.preventDefault(); e.stopPropagation(); };
+      ['dragenter', 'dragover'].forEach(function (ev) { box.addEventListener(ev, function (e) { stop(e); drop.classList.add('dragover'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { box.addEventListener(ev, function (e) { stop(e); if (ev === 'dragleave' && box.contains(e.relatedTarget)) return; drop.classList.remove('dragover'); }); });
+      box.addEventListener('drop', function (e) { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) _setSandboxImage(f); });
+      if (note) note.addEventListener('paste', function (e) {
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (let i = 0; i < items.length; i++) { if (items[i].type && items[i].type.indexOf('image') === 0) { const f = items[i].getAsFile(); if (f) { e.preventDefault(); _setSandboxImage(f); break; } } }
+      });
+    }
+
     // Segnala il caso del banco di prova → pmo_parser_errors (rivedibile in Amministrazione → Parser Config).
     async function reportSandbox() {
       const inp = document.getElementById('aiSandboxInput');
@@ -42214,12 +42282,17 @@ Per confermare scrivi ELIMINA.`);
       }
       let intent = null, confidence = null;
       try { const r = parse(text); intent = r.intent; confidence = r.confidence; } catch (e) {}
+      // Se c'è un'immagine allegata, caricala su Storage e metti SOLO l'URL nella segnalazione.
+      let imgUrl = '';
+      if (_sandboxImage) { if (st) st.textContent = '⏳ Carico l\'immagine…'; imgUrl = await _uploadSandboxImage(); if (!imgUrl && st) st.textContent = '⚠️ Immagine non caricata: invio la segnalazione solo col testo.'; }
       try {
-        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: 'Segnalato dal banco di prova' + (note ? ': ' + note : ''), versione_parser: _rules().versione, origine: 'manuale' }) : false;
+        const errMsg = 'Segnalato dal banco di prova' + (note ? ': ' + note : '') + (imgUrl ? ' [img: ' + imgUrl + ']' : '');
+        const ok = (typeof logParserError === 'function') ? await logParserError({ input_originale: text, intent_riconosciuto: intent, confidence: confidence, error_message: errMsg, versione_parser: _rules().versione, origine: 'manuale' }) : false;
         if (ok) {
           _lastReportWarnedFor = '';
-          if (st) { st.textContent = '✅ Segnalato. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
+          if (st) { st.textContent = '✅ Segnalato' + (imgUrl ? ' (con immagine)' : '') + '. Lo trovi qui sotto in “Le mie segnalazioni”.'; setTimeout(function () { st.textContent = ''; }, 4000); }
           if (noteEl) noteEl.value = '';
+          clearSandboxImage();
           try { loadMyReports(); } catch (e) {}
         } else if (st) {
           st.textContent = '⚠️ Non salvato (forse la sessione è scaduta): esci e rientra, poi riprova.';
@@ -42334,18 +42407,6 @@ Per confermare scrivi ELIMINA.`);
           '<button type="button" id="aiConvReport' + i + '" class="ai-conv-report" title="Segnala questo comando come interpretato male" onclick="try{PMOAi.reportInteraction(' + i + ')}catch(e){}">🐞</button></div>';
       }).join('');
     }
-    function _renderHelp() {
-      const el = document.getElementById('aiHelpList');
-      if (!el) return;
-      el.innerHTML = [
-        '<li><strong>Interroga</strong> (attivo): <code>campi liberi domani</code>, <code>chi gioca oggi alle 18</code>, <code>prenotazioni di sabato sul campo 2</code></li>',
-        '<li><strong>Crea</strong> (attivo): <code>prenota campo 2 domani 18-19:30 Mario Rossi</code>, <code>lezione con Santiago campo 1 domani 18-19</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong></li>',
-        '<li><strong>Annulla</strong> (attivo): <code>annulla campo 2 domani alle 18</code>, <code>cancella la partita di Mario domani</code> — se ce n’è più d’una chiede quale, poi <strong>riepilogo da confermare</strong></li>',
-        '<li><strong>Modifica</strong> (attivo): <code>modifica la partita di Mario domani</code>, <code>modifica campo 2 domani alle 18</code> — trova la prenotazione e apre l’<strong>editor</strong> (aggiungi/togli giocatori, sposta data/campo/ora)</li>',
-        '<li><strong>Anagrafica</strong> (attivo): <code>aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it</code>, <code>aggiorna il livello di Mario Rossi a 4</code> — chiede ciò che manca e mostra un <strong>riepilogo da confermare</strong> (salva in app + Supabase + Matchpoint)</li>',
-        '<li class="soon"><strong>Suggerimenti</strong> (slot, abbinamenti) — in arrivo</li>'
-      ].join('');
-    }
 
     // ── Dettatura vocale nella chat (Web Speech API it-IT) ──────────────────────
     let _rec = null, _dictating = false, _dictHintShown = false;
@@ -42407,7 +42468,8 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Inizializzazione UI chat (abilita input + mic + benvenuto) ──────────────
     function initChatUI() {
-      _renderHelp(); _renderConvLog();
+      _renderConvLog();
+      try { _setupSandboxImageDnd(); } catch (e) {}
       try { loadMyReports(); } catch (e) {}
       if (!isEnabled()) return;
       const input = document.getElementById('svcChatInput');
@@ -42444,7 +42506,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
