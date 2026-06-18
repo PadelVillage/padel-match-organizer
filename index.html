@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.826';
+    const APP_VERSION = '5.827';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39964,10 +39964,15 @@ Per confermare scrivi ELIMINA.`);
       const personFieldWeak = /\b(livell\w*|sesso|genere)\b/.test(tx);
       const readVerbQ = isQuestion || /\b(qual\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)\b/.test(tx);
       const noEventCtx = !eventRef && !/\b(partit\w*|tornei?|camp[oi]|slot|prenotazion\w*)\b/.test(tx);
-      const anaReadish = noEventCtx && !createV && !updateV && !deactV && !rosterQ
+      const renameV = /\brinomin\w*\b/.test(tx);
+      const nameFieldWord = /\b(nome|cognome|nominativ\w*)\b/.test(tx);
+      const anaReadish = noEventCtx && !createV && !updateV && !deactV && !renameV && !rosterQ
         && (personFieldStrong || (personFieldWeak && readVerbQ));
       const anaCreateContact = createV && contactPresent && !eventRef && !editToExisting;
       const anaDeact = deactV && noEventCtx;
+      // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
+      const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
+      const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
       const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
 
       // ── azione ──
@@ -39975,7 +39980,7 @@ Per confermare scrivi ELIMINA.`);
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (anaReadish || anaCreateContact || anaDeact) azione = 'anagrafica';
+      if (anaReadish || anaCreateContact || anaDeact || anaRename || anaUpdateField) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -41147,7 +41152,7 @@ Per confermare scrivi ELIMINA.`);
     function _startAnagrafica(res, text) {
       const n = ' ' + _norm(text) + ' ';
       const createV = _ANA_CREATE_VERB.test(n);
-      const updateV = _ANA_UPDATE_VERB.test(n) && !createV;
+      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n)) && !createV;
       // Operazione: DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
       // Disattivazione ha priorità (anche "cancella/elimina il socio" = disattiva, mai delete vero).
       if (_ANA_DEACT_VERB.test(n) && !createV) return _startAnaDeactivate(text);
@@ -41291,6 +41296,40 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // ── AGGIORNA socio ──────────────────────────────────────────────────────────
+    // Nuovo nome/cognome da una frase: "cambia il cognome di X in Bianchi", "rinomina X in Y Z",
+    // o risposta conversazionale breve "cognome Bianchi" / "nome Marco". Ritorna {firstName?,surname?}.
+    const _ANA_CONN = '(?:\\s+in\\s+|\\s+a\\s+|\\s+diventa\\s+|\\s*[:=]\\s*|\\s*(?:->|=>|→)\\s*)';
+    function _anaExtractNameChange(text) {
+      const raw = String(text || '').trim();
+      const out = {};
+      let m = raw.match(new RegExp('\\brinomin\\w*\\s+.+?' + _ANA_CONN + '(.+)$', 'i'));
+      if (m) { const p = _anaParseNameAnswer(m[1]).split(/\s+/).filter(Boolean); if (p.length >= 2) { out.firstName = p[0]; out.surname = p.slice(1).join(' '); } else if (p.length === 1) out.firstName = p[0]; return out; }
+      m = raw.match(new RegExp('\\b(cognom\\w*|nominativ\\w*|nome)\\b(?:.*?\\bdi\\b\\s+.+?)?' + _ANA_CONN + '(.+)$', 'i'));
+      if (m) {
+        const field = /cognom/i.test(m[1]) ? 'surname' : (/nominativ/i.test(m[1]) ? 'both' : 'first');
+        const val = _anaParseNameAnswer(m[2]).trim();
+        if (!val) return out;
+        if (field === 'surname') out.surname = val;
+        else if (field === 'first') out.firstName = val;
+        else { const p = val.split(/\s+/).filter(Boolean); if (p.length >= 2) { out.firstName = p[0]; out.surname = p.slice(1).join(' '); } else out.firstName = val; }
+        return out;
+      }
+      // Risposta conversazionale breve (target già noto): "cognome Bianchi", "nome Marco".
+      m = raw.match(/^\s*(?:nuov[oa]\s+)?(cognom\w*|nome)\b\s+([A-Za-zÀ-ÿ'][A-Za-zÀ-ÿ' ]{1,40})$/i);
+      if (m && !/\b(di|in)\b/i.test(m[2])) {
+        const val = _anaParseNameAnswer(m[2]).trim();
+        if (val) { if (/cognom/i.test(m[1])) out.surname = val; else out.firstName = val; }
+      }
+      return out;
+    }
+    // Nome del socio BERSAGLIO in una rinomina (la parte prima del connettore).
+    function _anaRenameTarget(text) {
+      let m = String(text || '').match(new RegExp('\\brinomin\\w*\\s+(.+?)' + _ANA_CONN, 'i'));
+      if (m) return _anaStripFieldTokens(m[1]);
+      m = String(text || '').match(new RegExp('\\bdi\\s+(.+?)' + _ANA_CONN, 'i'));
+      if (m) return _anaStripFieldTokens(m[1]);
+      return null;
+    }
     function _anaExtractChanges(text) {
       const n = ' ' + _norm(text) + ' ';
       const ch = {};
@@ -41299,11 +41338,15 @@ Per confermare scrivi ELIMINA.`);
       const gender = _anaExtractGender(text); if (gender) ch.gender = gender;
       if (/livell/.test(n)) { const m = String(text).match(/\b([0-9](?:[.,][0-9])?)\b/); if (m) ch.level = m[1].replace(',', '.'); }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
+      Object.assign(ch, _anaExtractNameChange(text));
       return ch;
     }
     function _startAnaUpdate(text) {
       const changes = _anaExtractChanges(text);
-      const nameStr = _anaStripFieldTokens(text);
+      // Per una rinomina il bersaglio è il nome PRIMA del connettore ("di Mario Rossi in Bianchi"),
+      // non lo strip dell'intera frase (che mischierebbe vecchio e nuovo nome).
+      const isRename = (changes.firstName != null || changes.surname != null);
+      const nameStr = (isRename && _anaRenameTarget(text)) || _anaStripFieldTokens(text);
       if (!nameStr) return _say('Chi vuoi aggiornare? Dimmi <strong>nome e cognome</strong> del socio (es. “aggiorna il telefono di Mario Rossi a 333…”).');
       const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
       if (!matches.length) return _say('🔍 Non trovo un socio che somigli a “<strong>' + _escapeHtml(nameStr) + '</strong>”. Controlla il nome.');
@@ -41332,20 +41375,20 @@ Per confermare scrivi ELIMINA.`);
       if (!member) return _say('Socio non trovato.');
       if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
-      return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “uomo/donna”.');
+      return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “cognome Bianchi”, “uomo/donna”.');
     }
     function _continueAnaChanges(text) {
       const n = ' ' + _norm(text) + ' ';
       if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, niente modifiche.'); }
       const target = aiFlowState.target;
       const changes = _anaExtractChanges(text);
-      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “uomo/donna”.');
+      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “cognome Bianchi”, “uomo/donna”.');
       aiFlowState = null;
       return _showAnaUpdateSummary(target, changes);
     }
     function _showAnaUpdateSummary(member, changes) {
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'confirm', target: member, changes: changes };
-      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso' };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso', firstName: '👤 Nome', surname: '👤 Cognome' };
       const rows = Object.keys(changes).map(function (k) {
         const oldV = (k === 'gender') ? _anaGenderLabel(member.gender) : (k === 'level' ? String(member.level || '—') : (member[k] || '—'));
         const newV = (k === 'gender') ? _anaGenderLabel(changes.gender) : (k === 'level' ? String(changes.level) : changes[k]);
@@ -41432,6 +41475,13 @@ Per confermare scrivi ELIMINA.`);
         if (changes.email != null) next.email = changes.email;
         if (changes.gender != null) next.gender = changes.gender;
         if (changes.level != null) next.level = parseLevel(changes.level, 3);
+        if (changes.firstName != null || changes.surname != null) {
+          const fn = changes.firstName != null ? changes.firstName : (cur.firstName || '');
+          const sn = changes.surname != null ? changes.surname : (cur.surname || '');
+          const norm = (typeof normalizeImportedPlayerNameParts === 'function') ? normalizeImportedPlayerNameParts(fn, sn) : { firstName: fn, surname: sn };
+          next.firstName = norm.firstName; next.surname = norm.surname;
+          next.name = compactSpaces(((norm.firstName || '') + ' ' + (norm.surname || '')).trim());
+        }
         next.updatedAt = now;
         giocatori[idx] = next;
         save('giocatori', giocatori);
