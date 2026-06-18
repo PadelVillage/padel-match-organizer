@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.829';
+    const APP_VERSION = '5.830';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13813,7 +13813,27 @@ Grazie.`
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito lo stato del socio su Supabase');
-      showAlert(giocatori[idx].active ? '✅ Socio riattivato' : '⏸️ Socio disattivato', 'success');
+      const m = giocatori[idx];
+      if (m.active === false) {
+        // Disattivazione → disiscrivi anche da Matchpoint (in background, ~30s).
+        // La RIATTIVAZIONE resta locale: la "ri-iscrizione" su Matchpoint è una
+        // capability worker non ancora disponibile.
+        showAlert('⏸️ Socio disattivato. ⏳ Lo disiscrivo da Matchpoint…', 'success');
+        if (typeof pmoDisableMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoDisableMemberInMatchpoint(m, { notify: false })).then(function (res) {
+            const st = res && res.status;
+            const nm = (typeof playerFullName === 'function') ? playerFullName(m) : 'Socio';
+            if (st === 'ok') showAlert('✅ ' + nm + ' disiscritto anche da Matchpoint' + (res.verified === false ? ' (controlla la scheda)' : ''), 'success');
+            else if (st === 'already_disabled') showAlert('ℹ️ Su Matchpoint risultava già disiscritto.', 'info');
+            else if (st === 'guest') { /* ospite: su Matchpoint non si disiscrive */ }
+            else if (st === 'skipped') showAlert('ℹ️ Socio senza codice Matchpoint: disattivato solo in app + Supabase.', 'info');
+            else if (st === 'no_permission') showAlert('ℹ️ Manca il permesso cloud_sync: disattivato solo in app + Supabase.', 'info');
+            else showAlert('⚠️ Disiscrizione su Matchpoint non riuscita' + ((res && res.reason) ? ': ' + String(res.reason).slice(0, 120) : '') + '. Disiscrivilo dal gestionale.', 'warning');
+          }).catch(function (e) { showAlert('⚠️ Errore Matchpoint: ' + ((e && e.message) || e), 'warning'); });
+        }
+      } else {
+        showAlert('✅ Socio riattivato', 'success');
+      }
     }
     function deleteMemberCard(memberId) {
       const g = giocatori.find(p => String(p.id) === String(memberId));
