@@ -40909,7 +40909,9 @@ Per confermare scrivi ELIMINA.`);
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
         const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
-        if (!matches.length) { giocatori.push({ nome: nm, codice: '', codiceCliente: '' }); notes.push('“' + nm + '” non è in anagrafica: prenoto col nome così com’è.'); continue; }
+        // Regola ferma (LoZio): l'assistente NON crea nuovi nomi su Matchpoint. Un nome non
+        // in anagrafica diventa OSPITE, mai scritto così com'è.
+        if (!matches.length) { giocatori.push({ nome: 'Ospite', codice: '', codiceCliente: '', ospite: true }); notes.push('“' + nm + '” non è in anagrafica: l’ho messo come <strong>Ospite</strong> (non creo nuovi nomi su Matchpoint).'); continue; }
         const best = matches[0].member;
         const ambiguous = matches.length > 1 && matches[1].distance === matches[0].distance && matches[1].member !== best;
         const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || nm;
