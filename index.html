@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.825';
+    const APP_VERSION = '5.826';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39960,7 +39960,7 @@ Per confermare scrivi ELIMINA.`);
       const contactPresent = /(?:\+?\d[\s.\-]?){6,}/.test(tx) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(tx);
       // Campi "forti" (telefono/email/scheda) bastano da soli; i "deboli" (livello/sesso) servono
       // con una domanda, per non rubare "prenota campo 2 livello 4" all'anagrafica.
-      const personFieldStrong = /\b(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|scheda|anagrafic\w*)\b/.test(tx);
+      const personFieldStrong = /\b(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|scheda|anagrafic\w*|posizion\w*)\b/.test(tx);
       const personFieldWeak = /\b(livell\w*|sesso|genere)\b/.test(tx);
       const readVerbQ = isQuestion || /\b(qual\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)\b/.test(tx);
       const noEventCtx = !eventRef && !/\b(partit\w*|tornei?|camp[oi]|slot|prenotazion\w*)\b/.test(tx);
@@ -41095,7 +41095,7 @@ Per confermare scrivi ELIMINA.`);
     const _ANA_READ_VERB = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)( |$)/;
     const _ANA_DEACT_VERB = /(^| )(disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*)( |$)/;
     // Un campo della scheda nominato (anche senza verbo di lettura) = interrogazione: "telefono di X".
-    const _ANA_FIELD_WORD = /(^| )(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|livell\w*|sesso|genere|scheda)( |$)/;
+    const _ANA_FIELD_WORD = /(^| )(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|livell\w*|sesso|genere|scheda|posizion\w*)( |$)/;
 
     function _anaExtractEmail(text) { const m = String(text || '').match(/[\w.+-]+@[\w-]+\.[\w.-]+/); return m ? m[0].toLowerCase() : ''; }
     function _anaExtractPhone(text) {
@@ -41124,7 +41124,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41166,6 +41166,7 @@ Per confermare scrivi ELIMINA.`);
       if (/(email|e-mail|mail|posta)/.test(n)) f.push('email');
       if (/livell/.test(n)) f.push('level');
       if (/(sesso|genere)/.test(n)) f.push('gender');
+      if (/posizion/.test(n)) f.push('position');
       return f.length ? f : null;
     }
     function _startAnaRead(text) {
@@ -41187,9 +41188,10 @@ Per confermare scrivi ELIMINA.`);
         phone: member.phone ? _escapeHtml(member.phone) : '—',
         email: member.email ? _escapeHtml(member.email) : '—',
         level: (member.level === '' || member.level == null) ? '—' : _escapeHtml(String(member.level)),
-        gender: _anaGenderLabel(member.gender)
+        gender: _anaGenderLabel(member.gender),
+        position: member.playingPosition ? _escapeHtml(member.playingPosition) : '—'
       };
-      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso' };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso', position: '📍 Posizione di gioco' };
       if (fields && fields.length) {
         if (fields.length === 1) { const k = fields[0]; return _say(lbl[k] + ' di <strong>' + nm + '</strong>: <strong>' + val[k] + '</strong>'); }
         return _say('<strong>' + nm + '</strong><br>' + fields.map(function (k) { return lbl[k] + ': <strong>' + val[k] + '</strong>'; }).join('<br>'));
