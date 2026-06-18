@@ -7670,7 +7670,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.833';
+    const APP_VERSION = '5.836';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39616,6 +39616,10 @@ Per confermare scrivi ELIMINA.`);
     let aiFlowState = null;
     let _aiFlowAt = 0;                       // timestamp dell'ultimo messaggio (scadenza flusso)
     const AI_FLOW_TTL_MS = 5 * 60 * 1000;    // 5 min: un flusso in sospeso ripreso più tardi riparte pulito
+    // Ultimo socio "in discorso" in anagrafica (scheda mostrata / appena usato): permette i
+    // follow-up con pronome — «voglio modificarlo», «aggiorna il suo telefono» — senza ripetere
+    // il nome (niente vicolo cieco). Scade come il flusso (5 min).
+    let _anaLastSubject = null;              // { member, at }
 
     function _rules() {
       return (typeof PARSER_RULES !== 'undefined' && PARSER_RULES) ? PARSER_RULES
@@ -40500,6 +40504,11 @@ Per confermare scrivi ELIMINA.`);
       const n = ' ' + _norm(text) + ' ';
       if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
+      // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
+      // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
+      // abbandona il flusso in sospeso invece di farsi catturare come dato. La parola "scheda"/
+      // "anagrafica" non compare mai in un valore di campo.
+      if (/( la scheda | una scheda | scheda di | scheda del | scheda dello | scheda della | scheda nuov| nuova scheda | scheda socio | scheda vuot| anagrafic)/.test(n)) return true;
       return false;
     }
 
@@ -41531,7 +41540,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|variar\w*|varia\w*|vari|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41540,7 +41549,11 @@ Per confermare scrivi ELIMINA.`);
       // NB: niente del/dello/della (possono chiudere un cognome es. "Della Valle … Anna").
       prev = null;
       while (prev !== t) { prev = t; t = t.replace(/\s+(?:a|ad|al|allo|alla|di|d'|in|con|su|da|per|e|il|lo|la|i|gli|le|un|uno|una)$/i, ''); }
-      return t.trim();
+      t = t.trim();
+      // Se resta solo rumore (connettori/preposizioni sciolti dopo aver tolto numeri e campi,
+      // es. «vari il livello da 5 a 4» → "da") = NESSUN nome: la richiesta è contestuale.
+      if (t && t.split(/\s+/).every(function (w) { return /^(?:a|ad|al|allo|alla|da|di|d'|in|con|su|per|e|o|il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei)$/i.test(w); })) t = '';
+      return t;
     }
     // Risposta diretta a "come si chiama?": niente strip aggressivo (preserva i cognomi).
     function _anaParseNameAnswer(ans) {
@@ -41551,15 +41564,69 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaName(d) { return _escapeHtml(((d.firstName || '') + ' ' + (d.surname || '')).trim() || 'il socio'); }
 
+    // Memoria dell'ultimo socio "in discorso" (scheda mostrata / appena risolto), per i follow-up.
+    function _anaRemember(member) { if (member) _anaLastSubject = { member: member, at: (Date.now ? Date.now() : new Date().getTime()) }; }
+    function _anaRecentSubject() {
+      if (!_anaLastSubject || !_anaLastSubject.member) return null;
+      const now = (Date.now ? Date.now() : new Date().getTime());
+      if ((now - (_anaLastSubject.at || 0)) > AI_FLOW_TTL_MS) { _anaLastSubject = null; return null; }
+      return _anaLastSubject.member;
+    }
+    // Il testo rimanda all'ultimo socio col PRONOME? «modificalo / aggiornalo / cambiala»,
+    // «lo stesso», «questo socio», «il suo/la sua…» — senza ripetere nome e cognome.
+    function _anaPronounRef(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/(modific|aggiorn|cambi|variar|corregg|aggiust|imposta|rettific|disattiv|disabilit|riattiv|riabilit|elimin|cancell|rimuov|togl|mostr|ved\w*|guard|registr)\w*(lo|la|li|le)\b/.test(n)) return true;
+      if (/( lo stesso | la stessa | medesim\w* | quest[oa] socio| quel socio| suo | sua | sue | suoi )/.test(n)) return true;
+      return false;
+    }
+    // Disambiguazione per NOME (non solo per numero): la risposta «aprea» o «Maurizio Aprea»
+    // alla domanda «di quale socio?» va riconosciuta. Scelgo solo se UN candidato combacia.
+    function _anaPickByName(text, matches) {
+      if (!matches || !matches.length) return null;
+      const q = ' ' + _norm(_anaStripFieldTokens(text)) + ' ';
+      if (!q.trim()) return null;
+      const hits = [];
+      matches.forEach(function (mm) {
+        const g = mm.member;
+        const sur = _norm(g.surname || '').trim();
+        const full = _norm(playerFullName(g)).trim();
+        const id = _norm(String(g.memberId || '')).trim();
+        let hit = false;
+        if (sur && q.indexOf(' ' + sur + ' ') >= 0) hit = true;
+        else if (full && q.indexOf(full) >= 0) hit = true;
+        else if (id && q.indexOf(id) >= 0) hit = true;
+        if (hit && hits.indexOf(g) < 0) hits.push(g);
+      });
+      return hits.length === 1 ? hits[0] : null;
+    }
+    // «mi apri una scheda socio vuota», «nuova scheda», «scheda in bianco» = aprire una
+    // scheda NUOVA da compilare (creazione), non leggere il socio «vuota». Vale solo se non
+    // resta un nome (es. «è vuota la scheda di Mario» → è una lettura, non una scheda vuota).
+    function _anaWantsBlankCard(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (!/( scheda| schede| ficha| anagrafic\w*| socio| socia| giocator\w*| tesserat\w*)/.test(n)) return false;
+      if (!/( vuot[ao]| in bianco| bianc[ao]| da zero| da compilare| nuov[ao])/.test(n)) return false;
+      let rest = ' ' + _norm(_anaStripFieldTokens(text)) + ' ';
+      rest = rest.replace(/( vuot[ao] | in bianco | bianc[ao] | da zero | da compilare | nuov[ao] | una | un | uno )/g, ' ').replace(/\s+/g, ' ').trim();
+      return rest === '';
+    }
+
     function _startAnagrafica(res, text) {
       const n = ' ' + _norm(text) + ' ';
       const createV = _ANA_CREATE_VERB.test(n);
-      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n)) && !createV;
+      // "variare" = modificare (es. «mi vari il livello da 5 a 4»). Il bare "vari" vale come
+      // verbo solo se seguito da articolo (per non confonderlo con l'aggettivo "vari soci").
+      const varyV = /(^| )(variar\w*|varia\w*)( |$)/.test(n) || /(^| )vari (?:il|lo|la|l'|i|gli|le|loro)( |$)/.test(n);
+      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n) || varyV) && !createV;
       // Operazione: RIATTIVA → DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
       // Riattivazione prima (es. "riattiva Mario"); disattivazione poi (anche "cancella/elimina
       // il socio" = disattiva, mai delete vero).
       if (_ANA_REACTIVATE_VERB.test(n) && !createV) return _startAnaReactivate(text);
       if (_ANA_DEACT_VERB.test(n) && !createV) return _startAnaDeactivate(text);
+      // «Scheda vuota/nuova/in bianco» = nuova scheda da compilare (creazione con draft vuoto),
+      // prima della lettura (che cercherebbe un socio di nome «vuota»).
+      if (!createV && !updateV && _anaWantsBlankCard(text)) return _anaAdvanceCreate({ firstName: '', surname: '', phone: '', email: '', level: '', gender: '' });
       // Lettura: verbo/parola di lettura OPPURE un campo della scheda nominato, senza verbi di scrittura.
       if (!createV && !updateV && (_ANA_READ_VERB.test(n) || _ANA_FIELD_WORD.test(n))) return _startAnaRead(text);
       return updateV ? _startAnaUpdate(text) : _startAnaCreate(text);
@@ -41592,6 +41659,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaAnswerMember(member, fields) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       const nm = _escapeHtml(playerFullName(member));
       const val = {
         phone: member.phone ? _escapeHtml(member.phone) : '—',
@@ -41629,6 +41697,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaDeactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       if (member.active === false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già disattivato.');
       return _showAnaDeactivateSummary(member);
     }
@@ -41687,6 +41756,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaReactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
+      _anaRemember(member);
       if (member.active !== false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già attivo.');
       return _showAnaReactivateSummary(member);
     }
@@ -41746,7 +41816,7 @@ Per confermare scrivi ELIMINA.`);
         if (!draft.phone) need.push('phone');
         if (!draft.gender) need.push('gender');
         if (!draft.level) need.push('level');
-        if (!draft.email) need.push('email');
+        if (!draft.email && !draft.emailDone) need.push('email'); // email FACOLTATIVA: si chiede una volta, poi si può saltare
       }
       return need;
     }
@@ -41761,7 +41831,7 @@ Per confermare scrivi ELIMINA.`);
         phone: '📞 Qual è il <strong>telefono</strong> di ' + _anaName(draft) + '?',
         gender: '⚧ ' + _anaName(draft) + ' è <strong>uomo</strong> o <strong>donna</strong>?',
         level: '🎾 Che <strong>livello</strong> ha ' + _anaName(draft) + '? (es. 3 o 4.5)',
-        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '?'
+        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '? <span style="color:#98a2b3;font-size:12px">(facoltativa — scrivi “salta” se non ce l’hai)</span>'
       };
       return _say(q[k] || ('Dimmi: ' + k));
     }
@@ -41783,13 +41853,20 @@ Per confermare scrivi ELIMINA.`);
         if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
         draft.gender = g;
       } else if (k === 'level') {
-        const lm = ans.match(/[0-9](?:[.,][0-9])?/);
-        if (!lm) return _say('Livello non valido. Scrivi un numero (es. 3 o 4.5).');
+        // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Estrai il numero
+        // INTERO ("21" non va troncato a "2") e rifiuta fuori scala invece di accettare in silenzio.
+        const lm = ans.match(/\d+(?:[.,]\d+)?/);
+        const nl = lm ? parseFloat(lm[0].replace(',', '.')) : NaN;
+        if (Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
         draft.level = lm[0].replace(',', '.');
       } else if (k === 'email') {
+        // Email FACOLTATIVA (decisione di prodotto): se la risposta è un indirizzo valido lo salvo;
+        // se contiene «@» ma è malformato chiedo di correggere (o saltare); qualsiasi altra risposta
+        // («non la conosco», «salta», «no»…) = nessuna email → vado avanti, niente vicolo cieco.
         const em = _anaExtractEmail(ans);
-        if (!em) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it).');
-        draft.email = em;
+        if (em) { draft.email = em; draft.emailDone = true; }
+        else if (/@/.test(ans)) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it) — oppure scrivi “<strong>salta</strong>”.');
+        else { draft.email = ''; draft.emailDone = true; }
       }
       const need = _anaCreateNeeds(draft);
       aiFlowState.need = need;
@@ -41853,7 +41930,16 @@ Per confermare scrivi ELIMINA.`);
       const email = _anaExtractEmail(text); if (email) ch.email = email;
       const phone = _anaExtractPhone(text); if (phone) ch.phone = phone;
       const gender = _anaExtractGender(text); if (gender) ch.gender = gender;
-      if (/livell/.test(n)) { const m = String(text).match(/\b([0-9](?:[.,][0-9])?)\b/); if (m) ch.level = m[1].replace(',', '.'); }
+      if (/livell/.test(n)) {
+        let lv = null;
+        // "da 5 a 4" → il NUOVO valore è il secondo; "…a 4"/"→ 4"/"livello: 4" → dopo il connettore;
+        // altrimenti l'ultimo numero (di norma il target). Mai il primo (sarebbe il valore attuale).
+        let mm = String(text).match(/\bda\s+\d+(?:[.,]\d+)?\s+a\s+(\d+(?:[.,]\d+)?)\b/i);
+        if (!mm) mm = String(text).match(/(?:\ba\b|->|=>|→|:|=)\s*(\d+(?:[.,]\d+)?)\s*$/i);
+        if (mm) lv = mm[1];
+        else { const all = String(text).match(/\d+(?:[.,]\d+)?/g); if (all && all.length) lv = all[all.length - 1]; }
+        if (lv != null) ch.level = lv.replace(',', '.');
+      }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
       Object.assign(ch, _anaExtractNameChange(text));
       return ch;
@@ -41864,6 +41950,11 @@ Per confermare scrivi ELIMINA.`);
       // non lo strip dell'intera frase (che mischierebbe vecchio e nuovo nome).
       const isRename = (changes.firstName != null || changes.surname != null);
       const nameStr = (isRename && _anaRenameTarget(text)) || _anaStripFieldTokens(text);
+      // Follow-up contestuale: «voglio modificarlo», «aggiorna il suo telefono», o un comando
+      // senza nome subito dopo aver mostrato/usato una scheda → il bersaglio è l'ultimo socio
+      // del discorso (niente vicolo cieco; vedi _anaLastSubject).
+      const _subj = _anaRecentSubject();
+      if (_subj && (_anaPronounRef(text) || !nameStr)) return _anaUpdateWithTarget(_subj, changes);
       if (!nameStr) return _say('Chi vuoi aggiornare? Dimmi <strong>nome e cognome</strong> del socio (es. “aggiorna il telefono di Mario Rossi a 333…”).');
       const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
       if (!matches.length) return _say('🔍 Non trovo un socio che somigli a “<strong>' + _escapeHtml(nameStr) + '</strong>”. Controlla il nome.');
@@ -41883,7 +41974,10 @@ Per confermare scrivi ELIMINA.`);
       const m = String(text || '').match(/\b(\d{1,2})\b/);
       let pick = null;
       if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < matches.length) pick = matches[i].member; }
-      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
+      // Nessun numero valido → prova a riconoscere il socio dal NOME/COGNOME digitato
+      // (es. risposta «aprea» o «voglio variare la scheda di Maurizio Aprea» invece di «1»).
+      if (!pick) pick = _anaPickByName(text, matches);
+      if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure scrivi il <strong>cognome</strong> (o “annulla”).');
       aiFlowState = null;
       if (op === 'read') return _anaAnswerMember(pick, fields);
       if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
@@ -41892,6 +41986,12 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaUpdateWithTarget(member, changes) {
       if (!member) return _say('Socio non trovato.');
+      // Livello fuori scala 0–7 → rifiuta (parità col form manuale), non salvare un valore assurdo.
+      if (changes && changes.level != null && changes.level !== '') {
+        const nl = parseFloat(String(changes.level).replace(',', '.'));
+        if (Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
+      }
+      _anaRemember(member);
       if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
       return _say('✏️ Cosa vuoi aggiornare di <strong>' + _escapeHtml(playerFullName(member)) + '</strong>? Es. “telefono 333 1234567”, “email nome@dominio.it”, “livello 4.5”, “cognome Bianchi”, “uomo/donna”.');
