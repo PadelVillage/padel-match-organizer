@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco di prova — Test parser ANAGRAFICA (55 casi)</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { margin: 0; padding: 18px; background:#0f172a; color:#e2e8f0; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color:#94a3b8; font-size:13px; margin-bottom:14px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  button { background:#2563eb; color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  button.sec { background:#334155; }
+  .pill { padding:4px 10px; border-radius:999px; font-size:13px; font-weight:600; }
+  .ok { background:#064e3b; color:#6ee7b7; }
+  .ko { background:#7f1d1d; color:#fca5a5; }
+  table { border-collapse: collapse; width:100%; font-size:12.5px; }
+  th, td { border:1px solid #1e293b; padding:5px 7px; text-align:left; vertical-align:top; }
+  th { background:#1e293b; position:sticky; top:0; }
+  tr.pass td:first-child { box-shadow: inset 4px 0 0 #10b981; }
+  tr.fail td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
+  .res-ok { color:#6ee7b7; font-weight:700; }
+  .res-fail { color:#fca5a5; font-weight:700; }
+  code { background:#1e293b; padding:1px 4px; border-radius:4px; }
+  .muted { color:#94a3b8; }
+  .fail-reasons { color:#fca5a5; }
+  iframe { display:none; }
+  .cat { color:#a5b4fc; font-weight:600; }
+</style>
+</head>
+<body>
+  <h1>Test offline parser — ANAGRAFICA / Rubrica soci (gemello del banco prenotazioni)</h1>
+  <div class="sub">
+    Esegue <code>PMOAi.parse(frase)</code> sui <b>55 casi</b> di <code>anagrafica_test_cases.csv</code>. <b>Offline</b>:
+    <code>logParserError</code> disattivato (niente write su Supabase), nessuna azione reale (no Matchpoint), nessun
+    fallback Gemini (solo <code>parse()</code> a regole). Le asserzioni sono sui campi reali del parser
+    (<code>azione</code>, <code>needsSurname</code>, <code>needsMoreData</code>, <code>ko</code>, <code>clarify</code>)
+    + sugli stati attesi dalle regole A–I del brief. Alcuni stati richiesti dal brief NON esistono ancora nel parser
+    (KO anagrafica per livello/email/telefono, duplicati, socio inesistente, sotto-azione e campo da modificare):
+    sono i <b>gap da colmare in Fase 2</b> e qui appaiono come NON-PASSA.
+  </div>
+  <div class="bar">
+    <button id="run">▶︎ Esegui test</button>
+    <button class="sec" id="onlyfail">Mostra solo NON-PASSA</button>
+    <span id="summary" class="pill muted">in attesa…</span>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>#</th><th>Categoria</th><th>Frase</th><th>Atteso (CSV)</th><th>Capito dal parser</th><th>Esito</th><th>Check falliti</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <iframe id="app" src="../index.html?env=test"></iframe>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// RUBRICA-FIXTURE (scelta A, confermata da LoZio). Roster noto su cui valutare i
+// casi che dipendono dall'esistenza del socio: duplicato (regola C), socio
+// inesistente (regola G), correzione cognome (caso 25). OFFLINE: nessuna lettura
+// da Supabase/Matchpoint. In Fase 2 il parser dovrà poter consultare un roster
+// iniettabile; per ora è qui solo come riferimento e per i futuri assert.
+// ─────────────────────────────────────────────────────────────────────────────
+const ROSTER = [
+  { nome:'Mario',  cognome:'Rossi',   sesso:'M', livello:3.5, telefono:'3331234567', email:'mario@x.it', posizione:'Destra',   stato:'regolare' },
+  { nome:'Anna',   cognome:'Verdi',   sesso:'F', livello:2,   telefono:'3479988776', email:'anna@mail.it', posizione:'Sinistra', stato:'regolare' },
+  { nome:'Luca',   cognome:'Bianchi', sesso:'M', livello:4,   telefono:'3401122334', email:'',            posizione:'Destra',   stato:'regolare' },
+  { nome:'Giulia', cognome:'Neri',    sesso:'F', livello:1.5, telefono:'3335556677', email:'giulia@x.it', posizione:'Sinistra', stato:'regolare' }
+  // 'Pippo Inesistente' NON è in rubrica (caso 45, KO).
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 55 casi dal CSV + attese strutturate (derivate da esito_atteso + cosa_deve_capire
+// + note + regole A–I).
+//   az: azione attesa (sempre 'anagrafica' per questo dominio)
+//   esito: 'OK'|'DUBBIO'|'KO' (dal CSV) — headline
+//   surname: true (regola A: socio identificato da un solo token → deve chiedere il nome completo)
+//   ko: true (regole D/E/G: input non valido o socio inesistente → deve segnalare e non eseguire)
+//   sub: sotto-azione attesa ('crea'|'modifica'|'leggi'|'disattiva') — TARGET Fase 2 (il parser
+//        oggi non la espone): incluso come nota, NON come check bloccante in Fase 1.
+//   dup/notFound/proposeDisable/massive/fieldNeeded: comportamenti-target del brief (Fase 2).
+// ─────────────────────────────────────────────────────────────────────────────
+const CASES = [
+ {id:1,  cat:'Crea completo', frase:'aggiungi socio Mario Rossi, uomo, livello 3.5, telefono 333 1234567, email mario@x.it', esito:'OK',     exp:{az:'anagrafica', esito:'OK'},  note:'crea completo'},
+ {id:2,  cat:'Crea completo', frase:'nuovo socio Anna Verdi, donna, livello 2, tel 347 9988776, anna@mail.it',                esito:'OK',     exp:{az:'anagrafica', esito:'OK'},  note:'crea completo'},
+ {id:3,  cat:'Crea completo', frase:'registra Luca Bianchi uomo livello 4 telefono 3401122334',                                esito:'OK',     exp:{az:'anagrafica', esito:'OK'},  note:'email facoltativa assente: deve restare OK'},
+ {id:4,  cat:'Crea completo', frase:'crea socio Giulia Neri donna livello 1.5 email giulia@x.it telefono 333 5556677',         esito:'OK',     exp:{az:'anagrafica', esito:'OK'},  note:'crea completo'},
+ {id:5,  cat:'Crea completo', frase:'aggiungi socia Maria Gialli donna livello 3 telefono 333 7778899 email maria@x.it',       esito:'OK',     exp:{az:'anagrafica', esito:'OK'},  note:"'socia' al femminile"},
+
+ {id:6,  cat:'Crea parziale', frase:'aggiungi socio Mario Rossi',                          esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'mancano sesso/livello/telefono'},
+ {id:7,  cat:'Crea parziale', frase:'nuovo socio Anna Verdi donna',                        esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'mancano livello/telefono'},
+ {id:8,  cat:'Crea parziale', frase:'crea socio Luca Bianchi livello 3',                   esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'mancano sesso/telefono'},
+ {id:9,  cat:'Crea parziale', frase:'registra Giulia Neri donna livello 2',               esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'manca telefono'},
+ {id:10, cat:'Crea parziale', frase:'aggiungi socio Marco',                               esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', surname:true}, note:'solo nome, manca cognome + obbligatori'},
+
+ {id:11, cat:'Modifica livello',  frase:'aggiorna il livello di Mario Rossi a 4',  esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello -> 4'},
+ {id:12, cat:'Modifica livello',  frase:'cambia il livello di Anna Verdi a 2.5',   esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello -> 2.5'},
+ {id:13, cat:'Modifica livello',  frase:'metti Luca Bianchi a livello 5',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello -> 5'},
+ {id:14, cat:'Modifica livello',  frase:'alza il livello di Giulia Neri a 3',      esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello -> 3'},
+
+ {id:15, cat:'Modifica contatti', frase:'cambia il telefono di Anna Verdi in 347 9988776',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'telefono'},
+ {id:16, cat:'Modifica contatti', frase:"aggiorna l'email di Mario Rossi in mario.rossi@gmail.com", esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'email'},
+ {id:17, cat:'Modifica contatti', frase:"togli l'email a Luca Bianchi",                              esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'rimuove email (facoltativa)'},
+ {id:18, cat:'Modifica contatti', frase:"il nuovo numero di Giulia Neri e' 333 0001112",            esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'frase indiretta = modifica telefono'},
+
+ {id:19, cat:'Modifica stato', frase:"Mario Rossi adesso e' moroso",        esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> moroso'},
+ {id:20, cat:'Modifica stato', frase:'togli moroso a Mario Rossi',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> regolare'},
+ {id:21, cat:'Modifica stato', frase:'segna Anna Verdi come moroso',        esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> moroso'},
+ {id:22, cat:'Modifica stato', frase:"Anna Verdi non e' piu' moroso",       esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> regolare'},
+ {id:23, cat:'Modifica stato', frase:'cambia il genere di Giulia Neri in uomo', esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'genere -> M'},
+ {id:24, cat:'Modifica stato', frase:'imposta la posizione di Luca Bianchi a sinistra', esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'posizione -> Sinistra'},
+
+ {id:25, cat:'Modifica nome', frase:"correggi il cognome di Mario Rosi in Rossi",  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'registrato come Rosi o Rossi? (dipende dal roster)'},
+ {id:26, cat:'Modifica nome', frase:'cambia il nome di Anna Verdi in Annalisa',    esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'nome -> Annalisa'},
+
+ {id:27, cat:'Cerca/Interroga', frase:'cerca Mario Rossi',                     esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'scheda Mario Rossi'},
+ {id:28, cat:'Cerca/Interroga', frase:'mostrami la scheda di Anna Verdi',      esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'scheda Anna Verdi'},
+ {id:29, cat:'Cerca/Interroga', frase:'che livello ha Luca Bianchi?',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello Luca Bianchi'},
+ {id:30, cat:'Cerca/Interroga', frase:"qual e' il telefono di Giulia Neri?",   esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'telefono Giulia Neri'},
+ {id:31, cat:'Cerca/Interroga', frase:"Mario Rossi e' moroso?",               esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato moroso Mario Rossi'},
+ {id:32, cat:'Cerca/Interroga', frase:'quanti soci abbiamo a livello 3?',      esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'query aggregata conteggio'},
+ {id:33, cat:'Cerca/Interroga', frase:'elenco soci morosi',                    esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'query lista morosi'},
+ {id:34, cat:'Cerca/Interroga', frase:'trova il numero di telefono di Mario',  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', surname:true}, note:'manca cognome (regola A)'},
+
+ {id:35, cat:'Elimina/Disattiva', frase:'elimina il socio Mario Rossi',        esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'elimina NON permesso -> proporre disattivazione'},
+ {id:36, cat:'Elimina/Disattiva', frase:"cancella Anna Verdi dall'anagrafica", esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'cancella NON permesso -> disattivazione'},
+ {id:37, cat:'Elimina/Disattiva', frase:'disattiva Luca Bianchi',              esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'disattivazione permessa (riepilogo da confermare)'},
+ {id:38, cat:'Elimina/Disattiva', frase:'rimuovi il socio Giulia Neri',        esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'rimuovi NON permesso -> disattivazione'},
+
+ {id:39, cat:'Ambigua/Validazione', frase:'aggiorna il livello di Mario a 4',  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', surname:true}, note:'manca cognome (regola A)'},
+ {id:40, cat:'Ambigua/Validazione', frase:'cambia il telefono di Rossi',       esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', surname:true}, note:'manca nome completo E nuovo numero'},
+ {id:41, cat:'Ambigua/Validazione', frase:'aggiungi socio Mario Rossi (gia\' presente)', esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'duplicato (regola C) — richiede roster'},
+ {id:42, cat:'Ambigua/Validazione', frase:'metti Mario Rossi a livello 12',    esito:'KO', exp:{az:'anagrafica', esito:'KO', ko:true}, note:'livello fuori scala 1-5 (regola D)'},
+ {id:43, cat:'Ambigua/Validazione', frase:"aggiorna l'email di Mario Rossi in mario punto rossi chiocciola gmail", esito:'KO', exp:{az:'anagrafica', esito:'KO', ko:true}, note:'email malformata (regola E)'},
+ {id:44, cat:'Ambigua/Validazione', frase:'cambia il telefono di Anna Verdi in 33', esito:'KO', exp:{az:'anagrafica', esito:'KO', ko:true}, note:'telefono troppo corto (regola E)'},
+ {id:45, cat:'Ambigua/Validazione', frase:'aggiorna il livello di Pippo Inesistente a 3', esito:'KO', exp:{az:'anagrafica', esito:'KO', ko:true}, note:'socio non in rubrica (regola G) — richiede roster'},
+ {id:46, cat:'Ambigua/Validazione', frase:'modifica Mario Rossi',              esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'non dice quale campo (regola H)'},
+ {id:47, cat:'Ambigua/Validazione', frase:'aggiungi socio',                    esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'manca tutto: chiede almeno nome+cognome'},
+ {id:48, cat:'Ambigua/Validazione', frase:'cancella tutti i soci morosi',      esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'cancellazione massiva NON permessa (regola F)'},
+ {id:49, cat:'Ambigua/Validazione', frase:'aggiungi socio Mario Rossi uomo livello tre e mezzo', esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'liv "tre e mezzo"=3.5; manca telefono'},
+
+ {id:50, cat:'Dialetto/telegrafico', frase:'agg socio mario rossi m liv 3.5 tel 3331234567', esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'agg=aggiungi, m=uomo, liv=livello; email facoltativa assente'},
+ {id:51, cat:'Dialetto/telegrafico', frase:'nuovo socio anna verdi f liv2',                  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'f=donna, liv2; manca telefono'},
+ {id:52, cat:'Dialetto/telegrafico', frase:'mario rossi moroso',                             esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'modifica stato -> moroso'},
+ {id:53, cat:'Dialetto/telegrafico', frase:'liv di luca bianchi a 4',                        esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'liv=livello -> 4'},
+ {id:54, cat:'Dialetto/telegrafico', frase:'tel anna verdi 3479988776',                      esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'tel=telefono'},
+ {id:55, cat:'Dialetto/telegrafico', frase:'canc socio mario rossi',                         esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'canc=cancella NON permesso -> disattivazione'}
+];
+
+function normalize(win, frase){
+  const r = win.PMOAi.parse(frase) || {};
+  return {
+    raw: r,
+    azione: r.azione || null,
+    needsSurname: r.needsSurname === true,
+    needsMoreData: r.needsMoreData === true,
+    needsType: r.needsType === true,
+    needsLocate: r.needsLocate === true,
+    confirmMassive: r.confirmMassive === true,
+    clarify: r.clarify === true,
+    ko: r.ko === true,
+    koReason: r.koReason || '',
+    confidence: r.confidence
+  };
+}
+function deriveEsito(a){
+  if (a.ko) return 'KO';
+  const dubbio = a.clarify || a.confirmMassive || a.needsType || a.needsSurname || a.needsLocate || a.needsMoreData;
+  return dubbio ? 'DUBBIO' : 'OK';
+}
+
+function runCase(win, c){
+  const a = normalize(win, c.frase);
+  const e = c.exp || {};
+  const checks = [];
+  const add = (label, cond) => checks.push({label, ok:!!cond});
+  if (e.az) add('azione=anagrafica', a.azione===e.az);
+  if (e.surname) add('chiede cognome (regola A)', a.needsSurname);
+  if (e.ko) add('KO (rifiuta/segnala)', a.ko);
+  add('esito='+e.esito, deriveEsito(a)===e.esito);
+  const failed = checks.filter(x=>!x.ok);
+  return { a, checks, pass: failed.length===0, failed };
+}
+
+function fmtCapito(a){
+  const bits=[];
+  bits.push(a.azione || '—');
+  if (a.ko) bits.push('KO('+(a.koReason||'?')+')');
+  const flags=[];
+  if (a.needsSurname) flags.push('surname');
+  if (a.needsMoreData) flags.push('moreData');
+  if (a.needsType) flags.push('type');
+  if (a.needsLocate) flags.push('locate');
+  if (a.confirmMassive) flags.push('massive');
+  if (a.clarify) flags.push('clarify');
+  if (flags.length) bits.push('{'+flags.join(',')+'}');
+  bits.push('conf '+(a.confidence!=null?a.confidence.toFixed(2):'?'));
+  bits.push('→ '+deriveEsito(a));
+  return bits.join(' · ');
+}
+
+async function run(){
+  const frame = document.getElementById('app');
+  const win = frame.contentWindow;
+  for (let i=0;i<120 && !(win.PMOAi && typeof win.PMOAi.parse==='function');i++) await new Promise(r=>setTimeout(r,100));
+  if (!(win.PMOAi && win.PMOAi.parse)){ document.getElementById('summary').textContent='PMOAi non caricato'; return; }
+  try { win.logParserError = function(){ return Promise.resolve(false); }; } catch(e){}
+  // Inietta la rubrica-fixture (scelta A): abilita i controlli duplicato/inesistente (regole C, G).
+  try { if (win.PMOAi.setTestRoster) win.PMOAi.setTestRoster(ROSTER); } catch(e){}
+
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML='';
+  let pass=0; const rows=[];
+  for (const c of CASES){
+    let r;
+    try { r = runCase(win, c); }
+    catch(err){ r = { a:{}, checks:[{label:'errore',ok:false}], pass:false, failed:[{label:'EXCEPTION: '+(err.message||err)}] }; }
+    if (r.pass) pass++;
+    rows.push({id:c.id, pass:r.pass, esitoCsv:c.esito, capito:fmtCapito(r.a||{}), failed:r.failed.map(f=>f.label)});
+    const tr=document.createElement('tr');
+    tr.className = r.pass?'pass':'fail';
+    tr.dataset.pass = r.pass?'1':'0';
+    tr.innerHTML =
+      '<td>'+c.id+'</td>'+
+      '<td class="cat">'+c.cat+'</td>'+
+      '<td>'+c.frase.replace(/</g,'&lt;')+'</td>'+
+      '<td class="muted">'+c.esito+'</td>'+
+      '<td>'+fmtCapito(r.a||{}).replace(/</g,'&lt;')+'</td>'+
+      '<td class="'+(r.pass?'res-ok':'res-fail')+'">'+(r.pass?'PASSA':'NON PASSA')+'</td>'+
+      '<td class="fail-reasons">'+r.failed.map(f=>f.label).join('<br>')+'</td>';
+    tbody.appendChild(tr);
+  }
+  const total=CASES.length;
+  const s=document.getElementById('summary');
+  s.className='pill '+(pass===total?'ok':'ko');
+  s.textContent = pass+' / '+total+' PASSA  ('+(total-pass)+' da sistemare)';
+  window.__RESULTS__ = { total, pass, fail: total-pass, rows };
+}
+
+document.getElementById('run').addEventListener('click', run);
+document.getElementById('onlyfail').addEventListener('click', function(){
+  this.dataset.on = this.dataset.on==='1'?'0':'1';
+  const on = this.dataset.on==='1';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{ tr.style.display = (on && tr.dataset.pass==='1') ? 'none' : ''; });
+  this.textContent = on ? 'Mostra tutti' : 'Mostra solo NON-PASSA';
+});
+window.addEventListener('load', ()=> setTimeout(run, 800));
+</script>
+</body>
+</html>
