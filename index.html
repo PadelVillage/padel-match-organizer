@@ -38587,6 +38587,8 @@ Per confermare scrivi ELIMINA.`);
 
       if (response.ok && data?.ok !== false) {
         removeLocalCopy();
+        // Diario autoapprendimento (Fase 1): annullo manuale prenotazione → diario.
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
         svcAddMessage('system',
           '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
           (nome ? '<br>👥 ' + nome : ''),
@@ -39392,6 +39394,7 @@ Per confermare scrivi ELIMINA.`);
     const c = staffCalFindConflict(parsed);
     if (c) {
       svcAddMessage('system', '⛔ Slot gi\xe0 occupato' + (c.nome ? ' (' + c.nome + ')' : '') + '. Prenotazione NON inviata.');
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'validation_error', { via: 'slot calendario', reason: 'conflitto', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
       svcFlowState = null;
       svcSetInputMode('normal');
       return;
@@ -39410,6 +39413,8 @@ Per confermare scrivi ELIMINA.`);
       });
       if (result.status === 'done') {
         staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
+        // Diario autoapprendimento (Fase 1): prenotazione manuale da slot → diario.
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
         if (tipoEngine === 'lezione') {
           const allievi = (players && players.length) ? nomeStr : '—';
           svcAddMessage('system',
