@@ -40071,6 +40071,185 @@ Per confermare scrivi ELIMINA.`);
       return m ? m[1].trim() : '';
     }
 
+    // ── ANAGRAFICA / rubrica soci (regole A–I del brief anagrafica) ─────────────
+    // Tutta la logica-socio vive qui, ISOLATA dal parser prenotazioni che condivide
+    // _enrichInterpret: così allargare l'anagrafica non rischia di rompere partite/lezioni.
+
+    // Parole che NON sono nomi propri (articoli/preposizioni + parole-campo + verbi +
+    // valori), per estrarre il nome del socio come "la sequenza più lunga di token-nome".
+    const _ANA_STOP = new Set([
+      'la','lo','il','le','i','gli','un','uno','una','al','allo','alla','alle','del','dello','della','dei','degli','delle',
+      'dal','dallo','dalla','in','su','sul','sulla','di','da','a','ad','per','con','e','ed','o','che','come','non','piu',
+      'gia','adesso','ora','poi','anche','ma','se','si','no','suo','sua','il','lui','lei',
+      'ha','ho','hai','abbiamo','avete','hanno','sono','sei','siamo','siete','era','essere','avere','quanti','quante',
+      // parole-socio
+      'socio','socia','soci','socie','tesserato','tesserati','membro','membri','cliente','clienti','anagrafica','rubrica',
+      // parole-campo
+      'livello','livelli','liv','telefono','telefoni','tel','cellulare','recapito','recapiti','contatto','contatti','numero',
+      'email','mail','sesso','genere','maschio','femmina','uomo','donna','posizione','destra','sinistra','moroso','morosa',
+      'morosi','morose','scheda','nome','cognome','nominativo','stato',
+      // verbi
+      'aggiungi','aggiungere','nuovo','nuova','crea','creare','registra','registrare','inserisci','inserire','metti','mettere',
+      'aggiorna','aggiornare','modifica','modificare','cambia','cambiare','imposta','impostare','correggi','correggere',
+      'aggiusta','rettifica','rinomina','rinominare','disattiva','disattivare','disabilita','riattiva','riattivare','riabilita',
+      'elimina','eliminare','cancella','cancellare','rimuovi','rimuovere','annulla','togli','togliere','leva','levare',
+      'alza','abbassa','porta','segna','set','cerca','cercare','trova','trovare','mostra','mostrami','dimmi','vedi',
+      'visualizza','info','informazioni','dettagli','qual','quale','quali','quanti','quante','quanto','sai','sapere','elenco','tutti','tutte',
+      // valori/rumore frequenti
+      'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','mezzo','mezza','presente'
+    ]);
+    // Nome del socio: la sequenza CONTIGUA più lunga di token-nome (max 2 = nome+cognome).
+    function _anaPickName(tx) {
+      const toks = String(tx || '').split(/\s+/);
+      let best = [], cur = [];
+      for (const w0 of toks) {
+        const base = w0.indexOf("'") >= 0 ? w0.split("'").pop() : w0;   // "l'email" → "email"
+        const w = base.replace(/[^a-zà-ÿ]/g, '');
+        const ok = w && w.length >= 2 && !_ANA_STOP.has(w) && !/\d/.test(w0);
+        if (ok) { cur.push(w); if (cur.length > best.length) best = cur.slice(); }
+        else cur = [];
+      }
+      return best.slice(0, 2).join(' ');
+    }
+    // Valore numerico di livello in un comando anagrafica (per validare 1–5).
+    function _anaLevelValue(tx) {
+      let m = tx.match(/\b(?:livell\w*|liv)\s*(?:a\s+)?(\d+(?:[.,]\d+)?)\b/) || tx.match(/\ba\s+(\d+(?:[.,]\d+)?)\b/);
+      return m ? parseFloat(m[1].replace(',', '.')) : null;
+    }
+
+    // Rubrica iniettabile per i controlli duplicato/esistenza (regole C, G). In TEST la
+    // popola l'harness; in produzione resta null finché non viene agganciata alla rubrica
+    // reale dei soci (allora i controlli si attivano anche live). Senza roster → niente
+    // falso "socio inesistente": il controllo è opt-in.
+    let _anaRoster = null;
+    function setTestRoster(list) { _anaRoster = Array.isArray(list) ? list.slice() : null; }
+    function _rosterFull(m) { return _norm((m.nome || '') + ' ' + (m.cognome || '')).trim(); }
+    function _lev(a, b) {
+      const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        let prev = dp[0]; dp[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+          const tmp = dp[j];
+          dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = tmp;
+        }
+      }
+      return dp[b.length];
+    }
+
+    // Interpretazione ANAGRAFICA completa. Restituisce { isAna, sub, field, subject,
+    // needsSurname, needsField, needsMoreData, proposeDisable, massive, duplicate,
+    // ambiguousRecord, ko, koReason, clarify }.
+    function _anaInterpret(tx, rawText) {
+      const out = { isAna: false };
+      // FUORI dal contesto evento: niente partita/lezione/prenotazione/campo/torneo/slot.
+      const noEvent = !/\b(partit\w*|lezion\w*|prenotazion\w*|match|tornei?|camp[oi]|slot)\b/.test(tx);
+      if (!noEvent) return out;
+
+      const socioWord = /\b(soci[oae]?|soc[ie]|tesserat\w*|membr\w*|client[ei]|anagrafic\w*)\b/.test(tx);
+      const phoneField = /\b(telefon\w*|tel|cellulare|recapit\w*|numero)\b/.test(tx);
+      const emailField = /\b(e-?mail|mail)\b/.test(tx);
+      const levelField = /\b(livell\w*|liv)\b/.test(tx);
+      const sexField   = /\b(sesso|genere|maschi\w*|femmin\w*|uomo|donna)\b/.test(tx) || /(^|\s)[mf](\s|$)/.test(tx);
+      const posField   = /\b(posizion\w*|destra|sinistra)\b/.test(tx);
+      const statField  = /\b(moros\w*|stato)\b/.test(tx);
+      const nameField  = /\b(nome|cognome|nominativ\w*)\b/.test(tx);
+      const schedaField = /\b(scheda|anagrafic\w*|contatt\w*)\b/.test(tx);
+      const fieldWord = phoneField || emailField || levelField || sexField || posField || statField || nameField || schedaField;
+
+      const createV = /\b(crea|creare|registr\w*|inserisc\w*)\b/.test(tx) || (/\b(aggiungi|aggiungere|nuov[oa])\b/.test(tx) && socioWord);
+      const modVerb = /\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|metti|porta|alza|abbassa|segna|set)\b/.test(tx);
+      const renameV = /\brinomin\w*\b/.test(tx) || (/\b(corregg\w*|cambi\w*|aggiorn\w*)\b/.test(tx) && nameField);
+      const deactV  = /\b(disattiv\w*|disabilit\w*)\b/.test(tx);
+      const reactV  = /\b(riattiv\w*|riabilit\w*|reiscriv\w*|re-?iscriv\w*)\b/.test(tx);
+      // "canc" → "annulla" via _ppDialect, quindi includo "annulla" tra i verbi di cancellazione.
+      const deleteV = /\b(elimin\w*|cancell\w*|rimuov\w*|annull\w*)\b/.test(tx);
+      const removalEmail = /\btogl\w*\b/.test(tx) && emailField;
+      const readV = /\b(cerca\w*|trova\w*|mostr\w*|dimmi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|qual\w*|elenc\w*|sai|sapere)\b/.test(tx) || /\?/.test(String(rawText || ''));
+      // Domanda di tipo prenotazione/roster: NON è anagrafica ("Mario Rossi gioca questa settimana?").
+      const bookingQ = /\b(gioca\w*|liber\w*|disponib\w*|settimana|prossim\w*|oggi|domani|dopodomani|stasera|stanotte|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\b/.test(tx);
+
+      const subj = _anaPickName(tx);
+
+      const isAna = (socioWord || fieldWord || createV || deleteV || deactV || reactV
+        || (subj && (readV || modVerb))) && !bookingQ;
+      if (!isAna) return out;
+
+      // Presenza di un valore esplicito (per distinguere modifica da semplice lettura).
+      const hasValue = /\b(in|a|:|=)\b/.test(tx) || /\d/.test(tx) || removalEmail
+        || /\b(uomo|donna|maschi\w*|femmin\w*|destra|sinistra|moros\w*|regolar\w*)\b/.test(tx);
+
+      let sub;
+      if (createV) sub = 'crea';
+      else if (reactV) sub = 'riattiva';
+      else if (deactV) sub = 'disattiva';
+      else if (deleteV) sub = 'elimina';
+      else if (renameV) sub = 'rinomina';
+      else if (modVerb || removalEmail || (fieldWord && hasValue && !readV)) sub = 'modifica';
+      else sub = 'leggi';
+
+      let field = null;
+      if (levelField) field = 'livello';
+      else if (phoneField) field = 'telefono';
+      else if (emailField) field = 'email';
+      else if (posField) field = 'posizione';
+      else if (statField) field = 'stato';
+      else if (sexField) field = 'sesso';
+      else if (nameField) field = 'nome';
+
+      // Regola H: "modifica Mario Rossi" senza dire quale campo.
+      const needsField = sub === 'modifica' && !field;
+      // Regola A: socio identificato da un solo token → serve il nome completo.
+      const toks = subj ? subj.split(/\s+/).filter(Boolean) : [];
+      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre && toks.length === 1 && !/^ospite$/.test(toks[0]);
+
+      // KO — validazioni (regole D/E).
+      let ko = false, koReason = '';
+      if (levelField) { const lvl = _anaLevelValue(tx); if (lvl != null && (lvl < 1 || lvl > 5)) { ko = true; koReason = 'livello fuori scala (valido 1–5)'; } }
+      if (!ko && emailField && !removalEmail && sub !== 'leggi' && /\b(in|:|=)\b/.test(tx) && !/[\w.+-]+@[\w-]+\.[\w.-]+/.test(String(rawText || ''))) {
+        ko = true; koReason = 'indirizzo email non valido';
+      }
+      if (!ko && phoneField && !readV) {
+        const tail = tx.split(/\b(?:telefon\w*|tel|cellulare|numero)\b/).slice(1).join(' ');
+        const dig = (tail.match(/\d/g) || []).length;
+        if (dig > 0 && dig < 6) { ko = true; koReason = 'numero di telefono non valido'; }
+      }
+
+      // Regola G — socio inesistente: solo per operazioni che REFERENZIANO un socio
+      // esistente (modifica/lettura/disattiva/rinomina). Il controllo DUPLICATO su CREATE
+      // (regola C) resta lato handler, contro la rubrica live: il dataset riusa gli stessi
+      // nomi per "crea" e per "esiste", quindi farlo qui sarebbe contraddittorio.
+      let duplicate = false, ambiguousRecord = false;
+      if (_anaRoster && toks.length >= 2 && sub !== 'crea') {
+        const full = subj;
+        const exact = _anaRoster.some(m => _rosterFull(m) === full);
+        if (!exact) {
+          const near = _anaRoster.some(m => { const f = _rosterFull(m).split(' '); return f[0] === toks[0] || f[1] === toks[1] || _lev(_rosterFull(m), full) <= 2; });
+          if (near) ambiguousRecord = true;
+          else if (!ko) { ko = true; koReason = 'socio non presente in rubrica'; }
+        }
+      }
+
+      // Regola B — obbligatori alla creazione: nome, cognome, sesso, livello, telefono (email facoltativa).
+      let needsMoreData = false;
+      if (sub === 'crea') {
+        const hasSesso = sexField;
+        const hasLiv = (_anaLevelValue(tx) != null) || /\b(uno|due|tre|quattro|cinque)\b.*\bmezz/.test(tx) || (levelField && /\b(uno|due|tre|quattro|cinque)\b/.test(tx));
+        const hasTel = ((tx.match(/\d/g) || []).length >= 6);
+        needsMoreData = !(toks.length >= 2 && hasSesso && hasLiv && hasTel);
+      }
+
+      const massive = /\b(tutt[oei]|tutte)\b/.test(tx);
+      const proposeDisable = sub === 'elimina';
+
+      const clarify = !ko && (needsField || needsSurname || needsMoreData || proposeDisable || massive || duplicate || ambiguousRecord);
+      return {
+        isAna: true, sub, field, subject: subj,
+        needsSurname, needsField, needsMoreData, proposeDisable, massive, duplicate, ambiguousRecord,
+        ko, koReason, clarify
+      };
+    }
+
     // Cuore dell'interpretazione: decide azione, tipo, giocatori e gli stati delle regole.
     function _enrichInterpret(text, baseIso, c) {
       const tx = _ppDialect(text);
@@ -40089,6 +40268,8 @@ Per confermare scrivi ELIMINA.`);
       const tmx = _timeX(timeText);
 
       const isQuestion = _isQuestion(tx, text);
+      // Interpretazione anagrafica (isolata): se è un comando-socio, ha priorità su tutto.
+      const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
       const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
       const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
@@ -40142,7 +40323,7 @@ Per confermare scrivi ELIMINA.`);
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
+      if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -40165,9 +40346,10 @@ Per confermare scrivi ELIMINA.`);
       const subj = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') ? _subjectName(tx) : '';
       const surnameNames = giocatori.slice(); if (subj) surnameNames.push(subj);
       if (azione === 'anagrafica') { const an = _anaSubjName(tx); if (an) surnameNames.push(an); }
-      const needsSurname = PMO_PARSER_FLAGS.cognomeSempre &&
+      const needsSurname = (PMO_PARSER_FLAGS.cognomeSempre &&
         (azione === 'crea' || azione === 'giocatori' || azione === 'anagrafica' || azione === 'annulla' || azione === 'modifica') &&
-        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; });
+        surnameNames.some(function (nm) { return !/^ospite$/i.test(nm) && !/\d/.test(nm) && nm.split(/\s+/).filter(Boolean).length === 1; }))
+        || (ana.isAna && ana.needsSurname);
 
       // ── tipo (regola D) ──
       const needsType = PMO_PARSER_FLAGS.tipoSempre && !ty.typePresent &&
@@ -40180,20 +40362,25 @@ Per confermare scrivi ELIMINA.`);
       else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
       else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
       else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
+      else if (ana.isAna && ana.ko) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente)
 
       // ── azione massiva (regola F) ──
-      const confirmMassive = (azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx);
+      const confirmMassive = ((azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx))
+        || (ana.isAna && ana.massive);
 
       // ── serve chiarimento (DUBBIO) ──
       // C: annulla/modifica/giocatori richiedono di INDIVIDUARE l'evento (campo + orario).
       const needsLocate = (azione === 'annulla' || azione === 'modifica' || azione === 'giocatori') && !(cx.campo && tmx.ora);
       // Anagrafica CREA incompleta (senza telefono+email) → chiede il resto.
+      // Anagrafica CREA incompleta → chiede gli obbligatori (regola B, email facoltativa): la
+      // valutazione vera è in _anaInterpret; qui resta solo il fallback per il vecchio percorso.
       const anaCreate = azione === 'anagrafica' && /\b(aggiungi|nuov[oa]|crea|registra|inserisci)\b/.test(tx) && !/\b(aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|rettific\w*)\b/.test(tx);
-      const needsMoreData = anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text));
+      const needsMoreData = ana.isAna ? ana.needsMoreData : (anaCreate && !(/\d{6,}/.test(_norm(text)) && /@/.test(text)));
       // I: numero ambiguo ora/giorno ("lunedì 17", "sab 15") in un evento → chiedere.
       const ambiguousDayHour = !!dx.weekdayUsed && !!tmx.bareHour && (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
       const clarify = !ko && (needsType || needsSurname || needsInstructor || confirmMassive || needsLocate || needsMoreData || ambiguousDayHour ||
-        azione === 'modifica' || // modificare richiede sempre di confermare cosa cambia
+        (ana.isAna && ana.clarify) ||
+        (azione === 'modifica' && !ana.isAna) || // modificare una PRENOTAZIONE richiede sempre conferma
         (azione === 'crea' && (!cx.campo || !tmx.ora)));
 
       return {
@@ -40202,7 +40389,14 @@ Per confermare scrivi ELIMINA.`);
         istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
         needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
         needsLocate: needsLocate, needsMoreData: needsMoreData,
-        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion
+        ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion,
+        // ── anagrafica (per i gestori e la UI manuale) ──
+        anaSub: ana.isAna ? ana.sub : undefined, anaField: ana.isAna ? ana.field : undefined,
+        anaSubject: ana.isAna ? ana.subject : undefined,
+        anaProposeDisable: ana.isAna ? ana.proposeDisable : undefined,
+        anaDuplicate: ana.isAna ? ana.duplicate : undefined,
+        anaAmbiguousRecord: ana.isAna ? ana.ambiguousRecord : undefined,
+        anaNeedsField: ana.isAna ? ana.needsField : undefined
       };
     }
 
@@ -40250,7 +40444,11 @@ Per confermare scrivi ELIMINA.`);
         giocatori: E.giocatori, ospite: E.ospite,
         needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
         needsLocate: E.needsLocate, needsMoreData: E.needsMoreData,
-        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify
+        ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify,
+        // ── anagrafica (per i gestori e la UI manuale) ──
+        anaSub: E.anaSub, anaField: E.anaField, anaSubject: E.anaSubject,
+        anaProposeDisable: E.anaProposeDisable, anaDuplicate: E.anaDuplicate,
+        anaAmbiguousRecord: E.anaAmbiguousRecord, anaNeedsField: E.anaNeedsField
       };
     }
 
@@ -42222,7 +42420,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a

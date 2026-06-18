@@ -206,6 +206,8 @@ async function run(){
   for (let i=0;i<120 && !(win.PMOAi && typeof win.PMOAi.parse==='function');i++) await new Promise(r=>setTimeout(r,100));
   if (!(win.PMOAi && win.PMOAi.parse)){ document.getElementById('summary').textContent='PMOAi non caricato'; return; }
   try { win.logParserError = function(){ return Promise.resolve(false); }; } catch(e){}
+  // Inietta la rubrica-fixture (scelta A): abilita i controlli duplicato/inesistente (regole C, G).
+  try { if (win.PMOAi.setTestRoster) win.PMOAi.setTestRoster(ROSTER); } catch(e){}
 
   const tbody = document.querySelector('#tbl tbody');
   tbody.innerHTML='';
