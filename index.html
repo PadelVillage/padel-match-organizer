@@ -7670,7 +7670,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.834';
+    const APP_VERSION = '5.835';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40504,6 +40504,11 @@ Per confermare scrivi ELIMINA.`);
       const n = ' ' + _norm(text) + ' ';
       if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
+      // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
+      // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
+      // abbandona il flusso in sospeso invece di farsi catturare come dato. La parola "scheda"/
+      // "anagrafica" non compare mai in un valore di campo.
+      if (/( la scheda | una scheda | scheda di | scheda del | scheda dello | scheda della | scheda nuov| nuova scheda | scheda socio | scheda vuot| anagrafic)/.test(n)) return true;
       return false;
     }
 
@@ -41535,7 +41540,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|variar\w*|varia\w*|vari|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41544,7 +41549,11 @@ Per confermare scrivi ELIMINA.`);
       // NB: niente del/dello/della (possono chiudere un cognome es. "Della Valle … Anna").
       prev = null;
       while (prev !== t) { prev = t; t = t.replace(/\s+(?:a|ad|al|allo|alla|di|d'|in|con|su|da|per|e|il|lo|la|i|gli|le|un|uno|una)$/i, ''); }
-      return t.trim();
+      t = t.trim();
+      // Se resta solo rumore (connettori/preposizioni sciolti dopo aver tolto numeri e campi,
+      // es. «vari il livello da 5 a 4» → "da") = NESSUN nome: la richiesta è contestuale.
+      if (t && t.split(/\s+/).every(function (w) { return /^(?:a|ad|al|allo|alla|da|di|d'|in|con|su|per|e|o|il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei)$/i.test(w); })) t = '';
+      return t;
     }
     // Risposta diretta a "come si chiama?": niente strip aggressivo (preserva i cognomi).
     function _anaParseNameAnswer(ans) {
@@ -41606,7 +41615,10 @@ Per confermare scrivi ELIMINA.`);
     function _startAnagrafica(res, text) {
       const n = ' ' + _norm(text) + ' ';
       const createV = _ANA_CREATE_VERB.test(n);
-      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n)) && !createV;
+      // "variare" = modificare (es. «mi vari il livello da 5 a 4»). Il bare "vari" vale come
+      // verbo solo se seguito da articolo (per non confonderlo con l'aggettivo "vari soci").
+      const varyV = /(^| )(variar\w*|varia\w*)( |$)/.test(n) || /(^| )vari (?:il|lo|la|l'|i|gli|le|loro)( |$)/.test(n);
+      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n) || varyV) && !createV;
       // Operazione: RIATTIVA → DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
       // Riattivazione prima (es. "riattiva Mario"); disattivazione poi (anche "cancella/elimina
       // il socio" = disattiva, mai delete vero).
@@ -41804,7 +41816,7 @@ Per confermare scrivi ELIMINA.`);
         if (!draft.phone) need.push('phone');
         if (!draft.gender) need.push('gender');
         if (!draft.level) need.push('level');
-        if (!draft.email) need.push('email');
+        if (!draft.email && !draft.emailDone) need.push('email'); // email FACOLTATIVA: si chiede una volta, poi si può saltare
       }
       return need;
     }
@@ -41819,7 +41831,7 @@ Per confermare scrivi ELIMINA.`);
         phone: '📞 Qual è il <strong>telefono</strong> di ' + _anaName(draft) + '?',
         gender: '⚧ ' + _anaName(draft) + ' è <strong>uomo</strong> o <strong>donna</strong>?',
         level: '🎾 Che <strong>livello</strong> ha ' + _anaName(draft) + '? (es. 3 o 4.5)',
-        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '?'
+        email: '✉️ Qual è l’<strong>email</strong> di ' + _anaName(draft) + '? <span style="color:#98a2b3;font-size:12px">(facoltativa — scrivi “salta” se non ce l’hai)</span>'
       };
       return _say(q[k] || ('Dimmi: ' + k));
     }
@@ -41845,9 +41857,13 @@ Per confermare scrivi ELIMINA.`);
         if (!lm) return _say('Livello non valido. Scrivi un numero (es. 3 o 4.5).');
         draft.level = lm[0].replace(',', '.');
       } else if (k === 'email') {
+        // Email FACOLTATIVA (decisione di prodotto): se la risposta è un indirizzo valido lo salvo;
+        // se contiene «@» ma è malformato chiedo di correggere (o saltare); qualsiasi altra risposta
+        // («non la conosco», «salta», «no»…) = nessuna email → vado avanti, niente vicolo cieco.
         const em = _anaExtractEmail(ans);
-        if (!em) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it).');
-        draft.email = em;
+        if (em) { draft.email = em; draft.emailDone = true; }
+        else if (/@/.test(ans)) return _say('Email non valida. Scrivi un indirizzo (es. nome@dominio.it) — oppure scrivi “<strong>salta</strong>”.');
+        else { draft.email = ''; draft.emailDone = true; }
       }
       const need = _anaCreateNeeds(draft);
       aiFlowState.need = need;
@@ -41911,7 +41927,16 @@ Per confermare scrivi ELIMINA.`);
       const email = _anaExtractEmail(text); if (email) ch.email = email;
       const phone = _anaExtractPhone(text); if (phone) ch.phone = phone;
       const gender = _anaExtractGender(text); if (gender) ch.gender = gender;
-      if (/livell/.test(n)) { const m = String(text).match(/\b([0-9](?:[.,][0-9])?)\b/); if (m) ch.level = m[1].replace(',', '.'); }
+      if (/livell/.test(n)) {
+        let lv = null;
+        // "da 5 a 4" → il NUOVO valore è il secondo; "…a 4"/"→ 4"/"livello: 4" → dopo il connettore;
+        // altrimenti l'ultimo numero (di norma il target). Mai il primo (sarebbe il valore attuale).
+        let mm = String(text).match(/\bda\s+[0-9](?:[.,][0-9])?\s+a\s+([0-9](?:[.,][0-9])?)\b/i);
+        if (!mm) mm = String(text).match(/(?:\ba\b|->|=>|→|:|=)\s*([0-9](?:[.,][0-9])?)\s*$/i);
+        if (mm) lv = mm[1];
+        else { const all = String(text).match(/[0-9](?:[.,][0-9])?/g); if (all && all.length) lv = all[all.length - 1]; }
+        if (lv != null) ch.level = lv.replace(',', '.');
+      }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
       Object.assign(ch, _anaExtractNameChange(text));
       return ch;
