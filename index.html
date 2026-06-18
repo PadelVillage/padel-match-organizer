@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.827';
+    const APP_VERSION = '5.828';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39969,7 +39969,11 @@ Per confermare scrivi ELIMINA.`);
       const anaReadish = noEventCtx && !createV && !updateV && !deactV && !renameV && !rosterQ
         && (personFieldStrong || (personFieldWeak && readVerbQ));
       const anaCreateContact = createV && contactPresent && !eventRef && !editToExisting;
-      const anaDeact = deactV && noEventCtx;
+      // "elimina/cancella/rimuovi il socio X" → DISATTIVAZIONE (l'assistente non elimina mai).
+      // Solo con una parola-socio esplicita e fuori dal contesto evento, così "cancella la
+      // prenotazione" resta CANCELLA e "togli Mario dalla partita" resta modifica giocatori.
+      const socioWordQ = /\b(soci[oa]?|tesserat\w*|membr\w*|client[ei])\b/.test(tx);
+      const anaDeact = (deactV || (/\b(elimin\w*|cancell\w*|rimuov\w*|togl\w*)\b/.test(tx) && socioWordQ)) && noEventCtx;
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
@@ -41206,11 +41210,60 @@ Per confermare scrivi ELIMINA.`);
       const pos = member.playingPosition ? _escapeHtml(member.playingPosition) : '—';
       return _say('👤 <strong>' + nm + '</strong><br>📞 ' + val.phone + '<br>✉️ ' + val.email + '<br>⚧ ' + val.gender + '<br>📍 Posizione ' + pos + '<br>🎾 Livello ' + val.level);
     }
-    // ── DISATTIVA socio — instradamento (impl. completa nel passo dedicato) ──────
+    // ── DISATTIVA socio (mai eliminazione: marca solo inattivo) ──────────────────
+    // Regola di prodotto ferma: l'assistente può SOLO disattivare un socio, mai
+    // cancellarlo — anche se l'utente scrive "elimina/cancella/rimuovi". L'eliminazione
+    // vera resta un'azione manuale dell'admin dall'app. Trova socio → conferma →
+    // active=false → salva locale + Supabase. (La propagazione a Matchpoint — bottone
+    // "Disiscrivere"/Bloccare sulla Ficha — è una capability worker da aggiungere a parte.)
     function _startAnaDeactivate(text) {
       const nameStr = _anaStripFieldTokens(text);
-      const chi = nameStr ? ' di «<strong>' + _escapeHtml(nameStr) + '</strong>»' : '';
-      return _say('🚧 La <strong>disattivazione</strong> di un socio dall’assistente sarà attiva a breve. Per ora posso <strong>leggere</strong> o <strong>aggiornare</strong> la scheda' + chi + '. (L’eliminazione vera resta una tua azione manuale dall’app.)');
+      if (!nameStr) return _say('⏸️ Quale socio vuoi <strong>disattivare</strong>? Dimmi <strong>nome e cognome</strong> (es. «disattiva Mario Rossi»). <span style="color:#98a2b3;font-size:12px">Non elimino nessuno: lo marco solo come inattivo e potrai riattivarlo.</span>');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
+      if (!matches.length) return _say('🔍 Non trovo un socio che somigli a «<strong>' + _escapeHtml(nameStr) + '</strong>». Controlla il nome.');
+      const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
+      if (matches.length === 1 || exactTop) return _anaDeactivateWithTarget(matches[0].member);
+      aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'pick', matches: matches };
+      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
+      return _say('❓ Quale socio vuoi disattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+    }
+    function _anaDeactivateWithTarget(member) {
+      if (!member) return _say('Socio non trovato.');
+      if (member.active === false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già disattivato.');
+      return _showAnaDeactivateSummary(member);
+    }
+    function _showAnaDeactivateSummary(member) {
+      aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'confirm', target: member };
+      const nm = _escapeHtml(playerFullName(member));
+      const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
+      const html = '⏸️ <strong>Disattivo ' + nm + '</strong>'
+        + '<br><span style="color:#98a2b3;font-size:12px">Lo marco come <strong>inattivo</strong> in anagrafica e su Supabase'
+        + (_isTestEnv ? ' <strong>(🧪 TEST: Matchpoint scollegato)</strong>' : '')
+        + '. Non lo elimino: resta nello storico e potrai riattivarlo quando vuoi. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+    function _anaExecuteDeactivate(member) {
+      try {
+        if (!member) return _say('❌ Socio non trovato.');
+        const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
+        if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
+        const cur = giocatori[idx];
+        const nm = _escapeHtml(playerFullName(cur));
+        if (cur.active === false) return _say('ℹ️ <strong>' + nm + '</strong> è già disattivato.');
+        cur.active = false;
+        cur.updatedAt = new Date().toISOString();
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(cur, 'salvare la disattivazione del socio (assistente AI) su Supabase'); } catch (e) {}
+        if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) {
+          return _say('⏸️ <strong>' + nm + '</strong> disattivato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo disattivo nel gestionale.');
+        }
+        return _say('⏸️ <strong>' + nm + '</strong> disattivato in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">⏳ La disattivazione automatica su <strong>Matchpoint</strong> sarà attiva a breve: per ora disiscrivilo anche dal gestionale.</span>');
+      } catch (err) {
+        return _say('❌ Errore nella disattivazione: ' + _escapeHtml((err && err.message) || String(err)));
+      }
     }
 
     // ── CREA socio ──────────────────────────────────────────────────────────────
@@ -41369,6 +41422,7 @@ Per confermare scrivi ELIMINA.`);
       if (!pick) return _say('Rispondi col <strong>numero</strong> (1–' + matches.length + ') del socio, oppure “annulla”.');
       aiFlowState = null;
       if (op === 'read') return _anaAnswerMember(pick, fields);
+      if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
       return _anaUpdateWithTarget(pick, changes);
     }
     function _anaUpdateWithTarget(member, changes) {
@@ -41418,6 +41472,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaExecute(snap) {
       if (!snap) return;
+      if (snap.op === 'deactivate') return _anaExecuteDeactivate(snap.target);
       return snap.op === 'update' ? _anaExecuteUpdate(snap.target, snap.changes) : _anaExecuteCreate(snap.draft);
     }
     function _anaExecuteCreate(draft) {
