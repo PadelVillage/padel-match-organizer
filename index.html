@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.828';
+    const APP_VERSION = '5.829';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -24881,7 +24881,67 @@ Per confermare scrivi ELIMINA.`);
 	        return { status: 'error', reason: (e && e.message) || String(e) };
 	      }
 	    }
-	    function pmoQueueImmediateMemberCloudDelete(member, actionLabel='segnare subito il socio cancellato su Supabase') {
+	    // Disiscrive (disattiva) il socio su Matchpoint via edge matchpoint-clients-disable
+    // → worker /disable-client (bottone "Disiscrivere" sulla Ficha). Ritorna sempre uno
+    // stato ({status, reason}) e NON lancia. A differenza di create/update NON ha il
+    // guard test_env: la disiscrizione è stata RIATTIVATA in TEST su richiesta (account
+    // Matchpoint unico → in TEST tocca davvero il gestionale; usare soci di prova).
+    async function pmoDisableMemberInMatchpoint(member, opts = {}) {
+      try {
+        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return { status: 'guest' };
+        const codice = String(member.memberId || '').trim();
+        if (!/^\d{4,6}$/.test(codice)) return { status: 'skipped', reason: 'no_matchpoint_code' };
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        let staff;
+        try {
+          staff = await pmoRequireStaffPermission('cloud_sync', 'disiscrivere il socio su Matchpoint');
+        } catch (permErr) {
+          console.warn('cloud_sync non disponibile, disiscrizione Matchpoint saltata:', permErr);
+          return { status: 'no_permission' };
+        }
+        const payload = { client: {
+          codice,
+          firstName: member.firstName || '',
+          surname: member.surname || '',
+          phone: member.phone || '',
+          email: member.email || '',
+        }};
+        const NON_RETRYABLE = /CLIENT_NOT_FOUND|INVALID_CLIENT_CODICE|DISISCRIVI_BUTTON_NOT_FOUND|CLIENT_DISABLE_VALIDATION|MATCHPOINT_WORKER_SECRETS_MISSING|WORKER_DISABLE_CLIENT_NOT_IMPLEMENTED/i;
+        const callEdgeOnce = async () => {
+          const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-disable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+            body: JSON.stringify(payload),
+          });
+          const txt = await response.text();
+          let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+          if (response.ok && !(data && data.ok === false)) return { ok: true, data };
+          const reason = (data && (data.message || data.error)) || `HTTP ${response.status}`;
+          const retryable = (data && typeof data.retryable === 'boolean')
+            ? data.retryable
+            : ((response.status >= 500 || response.status === 0) && !NON_RETRYABLE.test(String(reason)));
+          return { ok: false, reason, retryable, diagnostic: data && data.diagnostic };
+        };
+        let last;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try { last = await callEdgeOnce(); }
+          catch (netErr) { last = { ok: false, reason: (netErr && netErr.message) || String(netErr), retryable: true }; }
+          if (last.ok) {
+            const w = (last.data && last.data.worker) || {};
+            if (w.alreadyDisabled) return { status: 'already_disabled', data: last.data };
+            return { status: 'ok', verified: w.verified !== false, data: last.data };
+          }
+          if (attempt < 2 && last.retryable) { await new Promise(r => setTimeout(r, 3000)); continue; }
+          break;
+        }
+        console.warn('Matchpoint disiscrizione non riuscita:', last.reason, last.diagnostic || '');
+        return { status: 'error', reason: last.reason };
+      } catch (e) {
+        console.warn('pmoDisableMemberInMatchpoint error:', e);
+        return { status: 'error', reason: (e && e.message) || String(e) };
+      }
+    }
+    function pmoQueueImmediateMemberCloudDelete(member, actionLabel='segnare subito il socio cancellato su Supabase') {
 	      const record = pmoBuildMemberCloudRecord(member, { deleted:true });
 	      if (!record) return;
 	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
@@ -41235,11 +41295,9 @@ Per confermare scrivi ELIMINA.`);
     function _showAnaDeactivateSummary(member) {
       aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'confirm', target: member };
       const nm = _escapeHtml(playerFullName(member));
-      const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
       const html = '⏸️ <strong>Disattivo ' + nm + '</strong>'
-        + '<br><span style="color:#98a2b3;font-size:12px">Lo marco come <strong>inattivo</strong> in anagrafica e su Supabase'
-        + (_isTestEnv ? ' <strong>(🧪 TEST: Matchpoint scollegato)</strong>' : '')
-        + '. Non lo elimino: resta nello storico e potrai riattivarlo quando vuoi. Confermi?</span>';
+        + '<br><span style="color:#98a2b3;font-size:12px">Lo marco come <strong>inattivo</strong> in anagrafica e su Supabase, e lo <strong>disiscrivo da Matchpoint</strong>. '
+        + 'Non lo elimino: resta nello storico e potrai riattivarlo quando vuoi. Confermi?</span>';
       _anaAppendConfirmButtons(_say(html));
     }
     function _anaExecuteDeactivate(member) {
@@ -41257,10 +41315,19 @@ Per confermare scrivi ELIMINA.`);
         try { updateStats(); } catch (e) {}
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(cur, 'salvare la disattivazione del socio (assistente AI) su Supabase'); } catch (e) {}
-        if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) {
-          return _say('⏸️ <strong>' + nm + '</strong> disattivato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo disattivo nel gestionale.');
+        _say('⏸️ <strong>' + nm + '</strong> disattivato in anagrafica e su Supabase. ⏳ Lo disiscrivo anche da <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s)</span>');
+        if (typeof pmoDisableMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoDisableMemberInMatchpoint(cur, { notify: false })).then(function (res) {
+            const st = res && res.status;
+            if (st === 'ok') _say('✅ Disiscritto anche da <strong>Matchpoint</strong>.' + (res.verified === false ? ' <span style="color:#98a2b3;font-size:12px">(verifica non conclusiva: controlla la scheda nel gestionale)</span>' : ''));
+            else if (st === 'already_disabled') _say('ℹ️ Su <strong>Matchpoint</strong> risultava già disiscritto. Resta disattivato in app + Supabase.');
+            else if (st === 'guest') _say('ℹ️ È un ospite: su Matchpoint non si disiscrive. Resta disattivato in app + Supabase.');
+            else if (st === 'skipped') _say('ℹ️ Socio senza codice Matchpoint: disattivato solo in app + Supabase.');
+            else if (st === 'no_permission') _say('ℹ️ Manca il permesso <code>cloud_sync</code>: disattivato solo in app + Supabase.');
+            else _say('⚠️ Disiscrizione su Matchpoint non riuscita' + ((res && res.reason) ? ' (' + _escapeHtml(String(res.reason).slice(0, 140)) + ')' : '') + '. Resta disattivato in app + Supabase: disiscrivilo dal gestionale.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Resta disattivato in app + Supabase.'); });
         }
-        return _say('⏸️ <strong>' + nm + '</strong> disattivato in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">⏳ La disattivazione automatica su <strong>Matchpoint</strong> sarà attiva a breve: per ora disiscrivilo anche dal gestionale.</span>');
+        return;
       } catch (err) {
         return _say('❌ Errore nella disattivazione: ' + _escapeHtml((err && err.message) || String(err)));
       }

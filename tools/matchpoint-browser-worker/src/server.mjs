@@ -4056,6 +4056,303 @@ async function updateClientWithBrowser(options = {}) {
   }
 }
 
+// ── disableClientWithBrowser: DISISCRIVE un cliente su Matchpoint ─────────────
+//    L'assistente può solo DISATTIVARE un socio (mai eliminarlo). Su Matchpoint la
+//    disattivazione = bottone "Disiscrivere" sulla Ficha (NON "Bloccare", che è altro).
+//    Riusa il login + la risoluzione codice→idInterno della Ficha (stesso approccio di
+//    updateClientWithBrowser), poi clicca "Disiscrivere" e verifica in modo best-effort.
+async function disableClientWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+
+  const client = options.client || {};
+  const codice = clean(client.codice || client.memberId || '');
+  if (!/^\d{3,6}$/.test(codice)) {
+    throw fail('INVALID_CLIENT_CODICE', 'Codice Matchpoint (4-6 cifre) richiesto per disiscrivere il cliente.', { codice });
+  }
+  // Termini per ritrovare la scheda (il buscador NON cerca per Codice): email/telefono
+  // danno match UNICO; cognome/nome possono avere omonimi (accettati solo se il codice combacia).
+  const nome = clean(client.nome || client.firstName || '');
+  const cognome = clean(client.cognome || client.surname || '');
+  const telefono = clean(client.telefono || client.phone || '');
+  const email = clean(client.email || '');
+
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = {
+    mode: 'disable_client',
+    codice, nome, cognome, telefono, email, baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  const browser = await chromium.launch({
+    headless: boolEnv('MATCHPOINT_HEADLESS', true),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+
+  let page;
+  try {
+    const context = await browser.newContext({
+      acceptDownloads: false,
+      locale: 'it-IT',
+      timezoneId: 'Europe/Rome',
+      viewport: { width: 1440, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+    });
+    page = await context.newPage();
+    // Matchpoint può mettere un confirm() su "Disiscrivere": lo neutralizziamo.
+    await page.addInitScript(() => { window.confirm = () => true; });
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+
+    // ── Login ──
+    diagnostic.steps.push('login');
+    await page.goto(absoluteUrl(baseUrl, '/Login.aspx'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('#username, input[name="username"]').first().fill(username, { timeout: 20000 });
+    await page.locator('#password, input[name="password"]').first().fill(password, { timeout: 20000 });
+    const language = page.locator('select[name="ddlLenguaje"]');
+    if (await language.count().catch(() => 0)) {
+      await language.first().selectOption('it-IT', { timeout: 5000 }).catch(() => {});
+    }
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}),
+      page.locator('#btnLogin, input[name="btnLogin"]').first().click({ timeout: 15000 }),
+    ]);
+    await page.waitForTimeout(2500);
+    diagnostic.loginUrl = page.url();
+    if (/Login\.aspx/i.test(page.url()) && await page.locator('input[type="password"]').count().catch(() => 0)) {
+      throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
+    }
+    await maybeClickCashEnter(page, diagnostic);
+
+    // ── Risoluzione codice → id interno (stessa cascata di updateClientWithBrowser) ──
+    const trySearch = async (by, val, acceptSingle) => {
+      await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+      if (await optSel.count().catch(() => 0)) {
+        await optSel.selectOption({ label: by }, { timeout: 5000 }).catch(() => {});
+      }
+      const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+      if (!(await valBox.count().catch(() => 0))) return { id: '', onFicha: false, how: 'search_field_not_found' };
+      await valBox.fill(String(val), { timeout: 8000 }).catch(() => {});
+      const btnBuscar = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
+      if (await btnBuscar.count().catch(() => 0)) {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          btnBuscar.click({ timeout: 8000 }).catch(() => {}),
+        ]);
+      } else {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          valBox.press('Enter', { timeout: 5000 }).catch(() => {}),
+        ]);
+      }
+      await page.waitForTimeout(1200);
+
+      const ss = await page.evaluate(() => ({
+        bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300),
+      })).catch(() => ({ bodySample: '' }));
+
+      const codNorm = String(codice).replace(/^0+/, '');
+      const schedaMatch = String(ss.bodySample || '').match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      const onFichaNow = /FichaCliente\.aspx/i.test(page.url()) || !!schedaMatch;
+      if (onFichaNow) {
+        const schedaCod = schedaMatch ? schedaMatch[1].replace(/^0+/, '') : '';
+        if (schedaCod && schedaCod !== codNorm) {
+          return { id: '', onFicha: false, how: `ficha_codice_mismatch(${schedaMatch[1]})` };
+        }
+        const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+        return { id: idm ? idm[1] : '', onFicha: true, how: 'direct_ficha' };
+      }
+
+      const resolved = await page.evaluate((cod) => {
+        const codNorm = String(cod).replace(/^0+/, '');
+        const matchId = (str) => {
+          const s2 = decodeURIComponent(String(str || ''));
+          let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+          m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+          return '';
+        };
+        const rowAnchors = (tr) => [...tr.querySelectorAll('a')].map((a) => a.getAttribute('href') || a.getAttribute('onclick') || '');
+        const rows = [...document.querySelectorAll('table tr')];
+        const candidates = [];
+        for (const tr of rows) {
+          const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+          if (!text) continue;
+          let id = '';
+          for (const h of rowAnchors(tr)) { id = matchId(h); if (id) break; }
+          if (!id) continue;
+          const codeHit = text.split(' ').some((t) => {
+            const tn = t.replace(/\D/g, '');
+            return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm);
+          });
+          candidates.push({ id, codeHit });
+        }
+        const hit = candidates.find((c) => c.codeHit);
+        if (hit) return { id: hit.id, how: 'code_token' };
+        const uniqueIds = [...new Set(candidates.map((c) => c.id))];
+        if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate' };
+        return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate' };
+      }, codice).catch(() => ({ id: '', how: 'eval_error' }));
+
+      if (resolved.how === 'code_token') return { id: resolved.id, onFicha: false, how: resolved.how };
+      if (resolved.how === 'single_candidate' && acceptSingle) return { id: resolved.id, onFicha: false, how: resolved.how };
+      return { id: '', onFicha: false, how: resolved.how };
+    };
+
+    const searchPlan = [
+      { by: 'E-mail', val: email, acceptSingle: true },
+      { by: 'Telefono cellulare', val: telefono, acceptSingle: true },
+      { by: 'Cliente', val: cognome || nome, acceptSingle: false },
+    ];
+    const seenTerms = new Set();
+    const attempts = [];
+    for (const a of searchPlan) {
+      const v = clean(a.val);
+      if (!v) continue;
+      const key = `${a.by}|${v.toLowerCase()}`;
+      if (seenTerms.has(key)) continue;
+      seenTerms.add(key);
+      attempts.push(a);
+    }
+
+    diagnostic.steps.push('resolve_codice');
+    diagnostic.attempts = [];
+    let idInterno = '';
+    let onFichaNow = false;
+    let resolvedOk = false;
+    for (const a of attempts) {
+      const r = await trySearch(a.by, a.val, a.acceptSingle);
+      diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '' });
+      if (r.id || r.onFicha) { idInterno = r.id || ''; onFichaNow = r.onFicha; resolvedOk = true; diagnostic.resolve = { how: r.how, by: a.by, id: idInterno }; break; }
+    }
+    diagnostic.idInterno = idInterno;
+    if (!resolvedOk) {
+      throw fail('CLIENT_NOT_FOUND', `Cliente con codice ${codice} non trovato in Matchpoint (tentativi=${diagnostic.attempts.length}).`, diagnostic);
+    }
+    if (!onFichaNow && idInterno) {
+      diagnostic.steps.push('goto_ficha');
+      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    }
+    diagnostic.fichaUrl = page.url();
+
+    // ── Verifica DEFINITIVA del codice sulla scheda, prima di agire (anti-omonimo) ──
+    const fichaCod = await page.evaluate(() => {
+      const t = (document.body ? document.body.innerText : '');
+      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      return m ? m[1] : '';
+    }).catch(() => '');
+    diagnostic.fichaCodice = fichaCod;
+    if (fichaCod && fichaCod.replace(/^0+/, '') !== String(codice).replace(/^0+/, '')) {
+      throw fail('CLIENT_NOT_FOUND', `Scheda trovata ma con codice diverso (${fichaCod} != ${codice}): non disiscrivo per non toccare un omonimo.`, diagnostic);
+    }
+
+    // ── Stato PRIMA: se già disiscritto (Data disiscrizione valorizzata o manca il
+    //    bottone "Disiscrivere"), considero l'operazione già fatta (idempotente). ──
+    const before = await page.evaluate(() => {
+      const txt = (document.body ? document.body.innerText : '');
+      const stato = (txt.match(/Stato\s*[:\n]?\s*([A-Za-zÀ-ÿ' ]{2,30})/i) || [])[1] || '';
+      const buttons = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')]
+        .map((el) => (el.innerText || el.value || '').trim()).filter(Boolean);
+      const hasDisiscrivi = buttons.some((b) => /disiscriv/i.test(b));
+      const hasRiscrivi = buttons.some((b) => /(riscriv|reiscriv|iscriv(?!.*spese))/i.test(b) && !/disiscriv/i.test(b));
+      return { stato: stato.trim(), hasDisiscrivi, hasRiscrivi, buttons: buttons.slice(0, 30) };
+    }).catch(() => ({ stato: '', hasDisiscrivi: false, hasRiscrivi: false, buttons: [] }));
+    diagnostic.before = before;
+    if (!before.hasDisiscrivi) {
+      // Nessun bottone "Disiscrivere": probabilmente è già disiscritto. Non è un errore.
+      return { ok: true, alreadyDisabled: true, message: `Cliente ${codice} risulta già disiscritto su Matchpoint (nessun bottone Disiscrivere).`, codice, idInterno, diagnostic };
+    }
+
+    // ── Click "Disiscrivere" (gestendo eventuale confirm/dialog) ──
+    diagnostic.steps.push('click_disiscrivere');
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    page.once('dialog', async (dialog) => {
+      diagnostic.dialogMessage = dialog.message();
+      diagnostic.dialogType = dialog.type();
+      await dialog.accept().catch(() => {});
+    });
+    const clickRes = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')];
+      for (const el of els) {
+        const t = (el.innerText || el.value || '').trim();
+        if (t && /disiscriv/i.test(t)) {
+          if (typeof el.click === 'function') { el.click(); return { clicked: true, text: t, tag: el.tagName, id: el.id || '' }; }
+        }
+      }
+      return { clicked: false };
+    }).catch((e) => ({ clicked: false, error: String(e) }));
+    diagnostic.click = clickRes;
+    if (!clickRes.clicked) {
+      throw fail('DISISCRIVI_BUTTON_NOT_FOUND', 'Bottone "Disiscrivere" non trovato sulla scheda cliente.', diagnostic);
+    }
+    await page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    diagnostic.afterClickUrl = page.url();
+
+    // ── Verifica messaggi di validazione ──
+    const vmsgs = await page.evaluate(() => {
+      const sels = ['[id*="ValidationSummary"]', '.field-validation-error', 'span[style*="color:Red"]', 'span[style*="color:red"]'];
+      const out = [];
+      for (const s of sels) document.querySelectorAll(s).forEach((el) => { const t = (el.textContent || '').trim(); if (t) out.push(t); });
+      return out.slice(0, 20);
+    }).catch(() => []);
+    diagnostic.validationMessages = vmsgs;
+    const realErrors = vmsgs.filter((m) => m && m.replace(/\s+/g, '').length > 1);
+    if (realErrors.length) {
+      throw fail('CLIENT_DISABLE_VALIDATION', `Matchpoint ha rifiutato la disiscrizione del cliente ${codice}.`, diagnostic);
+    }
+
+    // ── Verifica best-effort dello stato DOPO ──
+    const after = await page.evaluate(() => {
+      const txt = (document.body ? document.body.innerText : '');
+      const buttons = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')]
+        .map((el) => (el.innerText || el.value || '').trim()).filter(Boolean);
+      const hasDisiscrivi = buttons.some((b) => /disiscriv/i.test(b));
+      // Campo "Data disiscrizione" valorizzato = disiscrizione applicata.
+      const dataDisInput = [...document.querySelectorAll('input')]
+        .find((el) => /disiscriz|FechaBaja|FechaDisiscriz|Baja/i.test(el.id || el.name || ''));
+      const dataDisVal = dataDisInput ? (dataDisInput.value || '') : '';
+      return { hasDisiscrivi, dataDisVal, sample: txt.replace(/\s+/g, ' ').trim().slice(0, 300) };
+    }).catch(() => ({ hasDisiscrivi: true, dataDisVal: '', sample: '' }));
+    diagnostic.after = after;
+
+    // Considero riuscito se il bottone "Disiscrivere" è sparito O la data di
+    // disiscrizione è ora valorizzata. (Verifica lenta su Matchpoint → best-effort:
+    // se ambiguo segnalo `verified:false` ma non lancio, l'azione è reversibile.)
+    const verified = (!after.hasDisiscrivi) || (!!after.dataDisVal && !before.dataDisVal);
+    diagnostic.verified = verified;
+
+    return {
+      ok: true,
+      message: `Cliente ${codice} disiscritto su Matchpoint${verified ? '' : ' (verifica non conclusiva — controlla la scheda)'}`,
+      codice,
+      idInterno,
+      verified,
+      diagnostic,
+    };
+  } catch (error) {
+    if (error && error.code && error.diagnostic) throw error;
+    throw fail('CLIENT_DISABLE_FAILED', (error && error.message) || String(error), diagnostic);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleDisableClient(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const codice = clean((body.client && body.client.codice) || body.codice || '');
+  const meta = { op: 'disable-client', operatore: clean(body.operatore) || '—', label: ['disiscrivere cliente', codice].filter(Boolean).join(' · ') };
+  const result = await mpQueueRun(meta, () => disableClientWithBrowser(body));
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -6006,7 +6303,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/debug-find-client',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/debug-find-client',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -6052,6 +6349,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/update-client') {
       return await handleUpdateClient(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/disable-client') {
+      return await handleDisableClient(req, res);
     }
     if (req.method === 'POST' && req.url === '/debug-find-client') {
       return await handleDebugFindClient(req, res);
