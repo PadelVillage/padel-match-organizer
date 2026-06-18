@@ -25,3 +25,14 @@ pmo_deploy_key.pub
 
 # Config locale editor/agent (non versionata)
 .claude/
+
+# Artefatti scratch generati da skill/agent (generazione documenti, debug locale):
+# NON fanno parte del progetto (l'app è il solo index.html) → non versionare.
+node_modules/
+package.json
+package-lock.json
+*.docx
+*.pdf
+_*.html
+_*.js
+_*.txt
