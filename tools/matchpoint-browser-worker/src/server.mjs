@@ -4252,88 +4252,94 @@ async function disableClientWithBrowser(options = {}) {
       throw fail('CLIENT_NOT_FOUND', `Scheda trovata ma con codice diverso (${fichaCod} != ${codice}): non disiscrivo per non toccare un omonimo.`, diagnostic);
     }
 
-    // ── Stato PRIMA: se già disiscritto (Data disiscrizione valorizzata o manca il
-    //    bottone "Disiscrivere"), considero l'operazione già fatta (idempotente). ──
-    const before = await page.evaluate(() => {
-      const txt = (document.body ? document.body.innerText : '');
-      const stato = (txt.match(/Stato\s*[:\n]?\s*([A-Za-zÀ-ÿ' ]{2,30})/i) || [])[1] || '';
+    // Legge lo stato della Ficha: bottoni (Disiscrivere/Riattivare), valore della select
+    // "Stato" (Iscrizione/Disiscrizione) e "Data disiscrizione". Usato prima e dopo.
+    const readFichaState = async () => page.evaluate(() => {
       const buttons = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')]
         .map((el) => (el.innerText || el.value || '').trim()).filter(Boolean);
       const hasDisiscrivi = buttons.some((b) => /disiscriv/i.test(b));
-      const hasRiscrivi = buttons.some((b) => /(riscriv|reiscriv|iscriv(?!.*spese))/i.test(b) && !/disiscriv/i.test(b));
-      return { stato: stato.trim(), hasDisiscrivi, hasRiscrivi, buttons: buttons.slice(0, 30) };
-    }).catch(() => ({ stato: '', hasDisiscrivi: false, hasRiscrivi: false, buttons: [] }));
+      const hasRiattiva = buttons.some((b) => /riattiv/i.test(b));
+      // "Stato": testo dell'opzione selezionata della select che contiene Iscrizione/Disiscrizione.
+      let stato = '';
+      const sel = [...document.querySelectorAll('select')].find((s) => {
+        const t = ((s.options[s.selectedIndex] || {}).text || '');
+        return /\b(Iscrizione|Disiscrizione)\b/i.test(t);
+      });
+      if (sel) stato = ((sel.options[sel.selectedIndex] || {}).text || '').trim();
+      // "Data disiscrizione": input con id/name che richiama la disiscrizione/baja, valorizzato.
+      const dataDisInput = [...document.querySelectorAll('input')]
+        .find((el) => /disiscriz|baja|fechabaja/i.test((el.id || '') + '|' + (el.name || '')));
+      const dataDis = dataDisInput ? (dataDisInput.value || '').trim() : '';
+      return { hasDisiscrivi, hasRiattiva, stato, dataDis, buttons: buttons.slice(0, 30) };
+    }).catch(() => ({ hasDisiscrivi: false, hasRiattiva: false, stato: '', dataDis: '', buttons: [] }));
+
+    // ── Stato PRIMA (idempotenza): se la Ficha mostra "Riattivare" (e non "Disiscrivere")
+    //    il cliente è GIÀ disiscritto → niente da fare. ──
+    const before = await readFichaState();
     diagnostic.before = before;
+    if (before.hasRiattiva && !before.hasDisiscrivi) {
+      return { ok: true, alreadyDisabled: true, message: `Cliente ${codice} risulta già disiscritto su Matchpoint.`, codice, idInterno, diagnostic };
+    }
     if (!before.hasDisiscrivi) {
-      // Nessun bottone "Disiscrivere": probabilmente è già disiscritto. Non è un errore.
-      return { ok: true, alreadyDisabled: true, message: `Cliente ${codice} risulta già disiscritto su Matchpoint (nessun bottone Disiscrivere).`, codice, idInterno, diagnostic };
+      throw fail('DISISCRIVI_BUTTON_NOT_FOUND', 'Bottone "Disiscrivere" non trovato sulla scheda cliente.', diagnostic);
     }
 
-    // ── Click "Disiscrivere" (gestendo eventuale confirm/dialog) ──
-    diagnostic.steps.push('click_disiscrivere');
-    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
-    page.once('dialog', async (dialog) => {
-      diagnostic.dialogMessage = dialog.message();
-      diagnostic.dialogType = dialog.type();
-      await dialog.accept().catch(() => {});
-    });
-    const clickRes = await page.evaluate(() => {
+    // Click su un bottone/anchor il cui testo inizia per "disiscriv" (NON "Annullare").
+    const clickByText = async (reSrc) => page.evaluate((src) => {
+      const rx = new RegExp(src, 'i');
       const els = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')];
       for (const el of els) {
         const t = (el.innerText || el.value || '').trim();
-        if (t && /disiscriv/i.test(t)) {
-          if (typeof el.click === 'function') { el.click(); return { clicked: true, text: t, tag: el.tagName, id: el.id || '' }; }
-        }
+        if (t && rx.test(t) && typeof el.click === 'function') { el.click(); return { clicked: true, text: t, tag: el.tagName, id: el.id || '' }; }
       }
       return { clicked: false };
-    }).catch((e) => ({ clicked: false, error: String(e) }));
-    diagnostic.click = clickRes;
-    if (!clickRes.clicked) {
-      throw fail('DISISCRIVI_BUTTON_NOT_FOUND', 'Bottone "Disiscrivere" non trovato sulla scheda cliente.', diagnostic);
-    }
+    }, reSrc).catch((e) => ({ clicked: false, error: String(e) }));
+
+    // ── Step 1: "Disiscrivere" sulla Ficha → apre la "Scheda disiscrizione cliente" ──
+    diagnostic.steps.push('click_disiscrivere_ficha');
+    await page.evaluate(() => { window.confirm = () => true; }).catch(() => {});
+    const c1 = await clickByText('^\\s*disiscriv');
+    diagnostic.click1 = c1;
+    if (!c1.clicked) throw fail('DISISCRIVI_BUTTON_NOT_FOUND', 'Bottone "Disiscrivere" non trovato sulla scheda cliente.', diagnostic);
     await page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {});
-    await page.waitForTimeout(2500);
-    diagnostic.afterClickUrl = page.url();
+    await page.waitForFunction(() => /scheda\s+disiscrizione\s+cliente/i.test(document.body ? document.body.innerText : ''), { timeout: 12000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    diagnostic.afterClick1Url = page.url();
+    const onForm = await page.evaluate(() => /scheda\s+disiscrizione\s+cliente/i.test(document.body ? document.body.innerText : '')).catch(() => false);
+    diagnostic.onDisiscrizioneForm = onForm;
+    if (!onForm) throw fail('DISISCRIVI_FORM_NOT_FOUND', 'La "Scheda disiscrizione cliente" non si è aperta dopo il click su Disiscrivere.', diagnostic);
 
-    // ── Verifica messaggi di validazione ──
-    const vmsgs = await page.evaluate(() => {
-      const sels = ['[id*="ValidationSummary"]', '.field-validation-error', 'span[style*="color:Red"]', 'span[style*="color:red"]'];
-      const out = [];
-      for (const s of sels) document.querySelectorAll(s).forEach((el) => { const t = (el.textContent || '').trim(); if (t) out.push(t); });
-      return out.slice(0, 20);
-    }).catch(() => []);
-    diagnostic.validationMessages = vmsgs;
-    const realErrors = vmsgs.filter((m) => m && m.replace(/\s+/g, '').length > 1);
-    if (realErrors.length) {
-      throw fail('CLIENT_DISABLE_VALIDATION', `Matchpoint ha rifiutato la disiscrizione del cliente ${codice}.`, diagnostic);
-    }
+    // ── Step 2: conferma con "Disiscrivere" sul form (NON "Annullare"). Compare poi un
+    //    popup "Disiscrizione effettuata" che si chiude DA SOLO → non va cliccato, solo atteso. ──
+    diagnostic.steps.push('confirm_disiscrivere_form');
+    page.once('dialog', async (dialog) => { diagnostic.dialogMessage = dialog.message(); await dialog.accept().catch(() => {}); });
+    const c2 = await clickByText('^\\s*disiscriv');
+    diagnostic.click2 = c2;
+    if (!c2.clicked) throw fail('DISISCRIVI_CONFIRM_NOT_FOUND', 'Bottone di conferma "Disiscrivere" non trovato sul form di disiscrizione.', diagnostic);
+    await page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {});
+    await page.waitForFunction(() => /disiscrizione\s+effettuata/i.test(document.body ? document.body.innerText : ''), { timeout: 10000 })
+      .then(() => { diagnostic.successPopup = true; }).catch(() => { diagnostic.successPopup = false; });
+    await page.waitForTimeout(3000);
 
-    // ── Verifica best-effort dello stato DOPO ──
-    const after = await page.evaluate(() => {
-      const txt = (document.body ? document.body.innerText : '');
-      const buttons = [...document.querySelectorAll('a, input[type="submit"], input[type="button"], button')]
-        .map((el) => (el.innerText || el.value || '').trim()).filter(Boolean);
-      const hasDisiscrivi = buttons.some((b) => /disiscriv/i.test(b));
-      // Campo "Data disiscrizione" valorizzato = disiscrizione applicata.
-      const dataDisInput = [...document.querySelectorAll('input')]
-        .find((el) => /disiscriz|FechaBaja|FechaDisiscriz|Baja/i.test(el.id || el.name || ''));
-      const dataDisVal = dataDisInput ? (dataDisInput.value || '') : '';
-      return { hasDisiscrivi, dataDisVal, sample: txt.replace(/\s+/g, ' ').trim().slice(0, 300) };
-    }).catch(() => ({ hasDisiscrivi: true, dataDisVal: '', sample: '' }));
+    // ── Verifica DEFINITIVA: ricarico la Ficha e controllo lo stato reale ──
+    diagnostic.steps.push('verify_reload_ficha');
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    const after = await readFichaState();
     diagnostic.after = after;
-
-    // Considero riuscito se il bottone "Disiscrivere" è sparito O la data di
-    // disiscrizione è ora valorizzata. (Verifica lenta su Matchpoint → best-effort:
-    // se ambiguo segnalo `verified:false` ma non lancio, l'azione è reversibile.)
-    const verified = (!after.hasDisiscrivi) || (!!after.dataDisVal && !before.dataDisVal);
+    const verified = after.hasRiattiva || /disiscriz/i.test(after.stato) || (!!after.dataDis && !before.dataDis);
     diagnostic.verified = verified;
+    if (!verified) {
+      // Niente più falsi positivi: se la scheda risulta ancora iscritta, è un errore.
+      throw fail('CLIENT_DISABLE_NOT_CONFIRMED', `Disiscrizione cliente ${codice} non confermata: la scheda risulta ancora iscritta dopo l'operazione.`, diagnostic);
+    }
 
     return {
       ok: true,
-      message: `Cliente ${codice} disiscritto su Matchpoint${verified ? '' : ' (verifica non conclusiva — controlla la scheda)'}`,
+      message: `Cliente ${codice} disiscritto su Matchpoint`,
       codice,
       idInterno,
-      verified,
+      verified: true,
       diagnostic,
     };
   } catch (error) {
