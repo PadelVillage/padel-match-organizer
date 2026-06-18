@@ -7660,7 +7660,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.831';
+    const APP_VERSION = '5.832';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13832,7 +13832,20 @@ Grazie.`
           }).catch(function (e) { showAlert('⚠️ Errore Matchpoint: ' + ((e && e.message) || e), 'warning'); });
         }
       } else {
-        showAlert('✅ Socio riattivato', 'success');
+        // Riattivazione → ri-iscrivi anche su Matchpoint (bottone "Riattivare" sulla Ficha).
+        showAlert('✅ Socio riattivato. ⏳ Lo ri-iscrivo su Matchpoint…', 'success');
+        if (typeof pmoReactivateMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoReactivateMemberInMatchpoint(m, { notify: false })).then(function (res) {
+            const st = res && res.status;
+            const nm = (typeof playerFullName === 'function') ? playerFullName(m) : 'Socio';
+            if (st === 'ok') showAlert('✅ ' + nm + ' ri-iscritto anche su Matchpoint' + (res.verified === false ? ' (controlla la scheda)' : ''), 'success');
+            else if (st === 'already_active') showAlert('ℹ️ Su Matchpoint risultava già iscritto.', 'info');
+            else if (st === 'guest') { /* ospite: su Matchpoint non si riattiva */ }
+            else if (st === 'skipped') showAlert('ℹ️ Socio senza codice Matchpoint: riattivato solo in app + Supabase.', 'info');
+            else if (st === 'no_permission') showAlert('ℹ️ Manca il permesso cloud_sync: riattivato solo in app + Supabase.', 'info');
+            else showAlert('⚠️ Ri-iscrizione su Matchpoint non riuscita' + ((res && res.reason) ? ': ' + String(res.reason).slice(0, 120) : '') + '. Riattivalo dal gestionale.', 'warning');
+          }).catch(function (e) { showAlert('⚠️ Errore Matchpoint: ' + ((e && e.message) || e), 'warning'); });
+        }
       }
     }
     function deleteMemberCard(memberId) {
@@ -24962,6 +24975,65 @@ Per confermare scrivi ELIMINA.`);
         return { status: 'error', reason: last.reason };
       } catch (e) {
         console.warn('pmoDisableMemberInMatchpoint error:', e);
+        return { status: 'error', reason: (e && e.message) || String(e) };
+      }
+    }
+    // Ri-iscrive (riattiva) il socio su Matchpoint via edge matchpoint-clients-reactivate
+    // → worker /reactivate-client (bottone "Riattivare" sulla Ficha, azione diretta).
+    // Specchio di pmoDisableMemberInMatchpoint; nessun guard test_env (riattivata in TEST).
+    async function pmoReactivateMemberInMatchpoint(member, opts = {}) {
+      try {
+        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return { status: 'guest' };
+        const codice = String(member.memberId || '').trim();
+        if (!/^\d{4,6}$/.test(codice)) return { status: 'skipped', reason: 'no_matchpoint_code' };
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        let staff;
+        try {
+          staff = await pmoRequireStaffPermission('cloud_sync', 'riattivare il socio su Matchpoint');
+        } catch (permErr) {
+          console.warn('cloud_sync non disponibile, riattivazione Matchpoint saltata:', permErr);
+          return { status: 'no_permission' };
+        }
+        const payload = { client: {
+          codice,
+          idInterno: String(member.matchpointIdInterno || '').trim(),
+          firstName: member.firstName || '',
+          surname: member.surname || '',
+          phone: member.phone || '',
+          email: member.email || '',
+        }};
+        const NON_RETRYABLE = /CLIENT_NOT_FOUND|INVALID_CLIENT_CODICE|RIATTIVA_BUTTON_NOT_FOUND|CLIENT_REACTIVATE_VALIDATION|MATCHPOINT_WORKER_SECRETS_MISSING|WORKER_REACTIVATE_CLIENT_NOT_IMPLEMENTED/i;
+        const callEdgeOnce = async () => {
+          const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-reactivate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+            body: JSON.stringify(payload),
+          });
+          const txt = await response.text();
+          let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+          if (response.ok && !(data && data.ok === false)) return { ok: true, data };
+          const reason = (data && (data.message || data.error)) || `HTTP ${response.status}`;
+          const retryable = (data && typeof data.retryable === 'boolean')
+            ? data.retryable
+            : ((response.status >= 500 || response.status === 0) && !NON_RETRYABLE.test(String(reason)));
+          return { ok: false, reason, retryable, diagnostic: data && data.diagnostic };
+        };
+        let last;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try { last = await callEdgeOnce(); }
+          catch (netErr) { last = { ok: false, reason: (netErr && netErr.message) || String(netErr), retryable: true }; }
+          if (last.ok) {
+            const w = (last.data && last.data.worker) || {};
+            if (w.alreadyActive) return { status: 'already_active', data: last.data };
+            return { status: 'ok', verified: w.verified !== false, data: last.data };
+          }
+          if (attempt < 2 && last.retryable) { await new Promise(r => setTimeout(r, 3000)); continue; }
+          break;
+        }
+        console.warn('Matchpoint riattivazione non riuscita:', last.reason, last.diagnostic || '');
+        return { status: 'error', reason: last.reason };
+      } catch (e) {
+        console.warn('pmoReactivateMemberInMatchpoint error:', e);
         return { status: 'error', reason: (e && e.message) || String(e) };
       }
     }
@@ -40058,6 +40130,8 @@ Per confermare scrivi ELIMINA.`);
       // prenotazione" resta CANCELLA e "togli Mario dalla partita" resta modifica giocatori.
       const socioWordQ = /\b(soci[oa]?|tesserat\w*|membr\w*|client[ei])\b/.test(tx);
       const anaDeact = (deactV || (/\b(elimin\w*|cancell\w*|rimuov\w*|togl\w*)\b/.test(tx) && socioWordQ)) && noEventCtx;
+      // Riattivazione (ri-iscrizione) di un socio disattivato.
+      const anaReactivate = /\b(riattiv\w*|riabilit\w*|reiscriv\w*|re-iscriv\w*)\b/.test(tx) && noEventCtx;
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
@@ -40068,7 +40142,7 @@ Per confermare scrivi ELIMINA.`);
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (anaReadish || anaCreateContact || anaDeact || anaRename || anaUpdateField) azione = 'anagrafica';
+      if (anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -41187,6 +41261,7 @@ Per confermare scrivi ELIMINA.`);
     // mai un'eliminazione: l'assistente può solo marcare inattivo (vedi regola di prodotto).
     const _ANA_READ_VERB = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)( |$)/;
     const _ANA_DEACT_VERB = /(^| )(disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*)( |$)/;
+    const _ANA_REACTIVATE_VERB = /(^| )(riattiv\w*|riabilit\w*|reiscriv\w*|re-iscriv\w*)( |$)/;
     // Un campo della scheda nominato (anche senza verbo di lettura) = interrogazione: "telefono di X".
     const _ANA_FIELD_WORD = /(^| )(telefon\w*|cellulare|recapit\w*|contatt\w*|email|e-mail|mail|livell\w*|sesso|genere|scheda|posizion\w*)( |$)/;
 
@@ -41217,7 +41292,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|mostr\w*|dimmi|fammi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
@@ -41241,8 +41316,10 @@ Per confermare scrivi ELIMINA.`);
       const n = ' ' + _norm(text) + ' ';
       const createV = _ANA_CREATE_VERB.test(n);
       const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n)) && !createV;
-      // Operazione: DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
-      // Disattivazione ha priorità (anche "cancella/elimina il socio" = disattiva, mai delete vero).
+      // Operazione: RIATTIVA → DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
+      // Riattivazione prima (es. "riattiva Mario"); disattivazione poi (anche "cancella/elimina
+      // il socio" = disattiva, mai delete vero).
+      if (_ANA_REACTIVATE_VERB.test(n) && !createV) return _startAnaReactivate(text);
       if (_ANA_DEACT_VERB.test(n) && !createV) return _startAnaDeactivate(text);
       // Lettura: verbo/parola di lettura OPPURE un campo della scheda nominato, senza verbi di scrittura.
       if (!createV && !updateV && (_ANA_READ_VERB.test(n) || _ANA_FIELD_WORD.test(n))) return _startAnaRead(text);
@@ -41354,6 +41431,63 @@ Per confermare scrivi ELIMINA.`);
         return;
       } catch (err) {
         return _say('❌ Errore nella disattivazione: ' + _escapeHtml((err && err.message) || String(err)));
+      }
+    }
+
+    // ── RIATTIVA socio (ri-iscrizione) — specchio della disattivazione ───────────
+    function _startAnaReactivate(text) {
+      const nameStr = _anaStripFieldTokens(text);
+      if (!nameStr) return _say('▶️ Quale socio vuoi <strong>riattivare</strong>? Dimmi <strong>nome e cognome</strong> (es. «riattiva Mario Rossi»).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nameStr, 5) || []) : [];
+      if (!matches.length) return _say('🔍 Non trovo un socio che somigli a «<strong>' + _escapeHtml(nameStr) + '</strong>». Controlla il nome.');
+      const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
+      if (matches.length === 1 || exactTop) return _anaReactivateWithTarget(matches[0].member);
+      aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'pick', matches: matches };
+      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
+      return _say('❓ Quale socio vuoi riattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+    }
+    function _anaReactivateWithTarget(member) {
+      if (!member) return _say('Socio non trovato.');
+      if (member.active !== false) return _say('ℹ️ <strong>' + _escapeHtml(playerFullName(member)) + '</strong> è già attivo.');
+      return _showAnaReactivateSummary(member);
+    }
+    function _showAnaReactivateSummary(member) {
+      aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'confirm', target: member };
+      const nm = _escapeHtml(playerFullName(member));
+      const html = '▶️ <strong>Riattivo ' + nm + '</strong>'
+        + '<br><span style="color:#98a2b3;font-size:12px">Lo rimetto <strong>attivo</strong> in anagrafica e su Supabase, e lo <strong>ri-iscrivo su Matchpoint</strong>. Confermi?</span>';
+      _anaAppendConfirmButtons(_say(html));
+    }
+    function _anaExecuteReactivate(member) {
+      try {
+        if (!member) return _say('❌ Socio non trovato.');
+        const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
+        if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
+        const cur = giocatori[idx];
+        const nm = _escapeHtml(playerFullName(cur));
+        if (cur.active !== false) return _say('ℹ️ <strong>' + nm + '</strong> è già attivo.');
+        cur.active = true;
+        cur.updatedAt = new Date().toISOString();
+        save('giocatori', giocatori);
+        try { displayMembers(); } catch (e) {}
+        try { updateStats(); } catch (e) {}
+        try { displayAssessment(); } catch (e) {}
+        try { pmoQueueImmediateMemberCloudSync(cur, 'salvare la riattivazione del socio (assistente AI) su Supabase'); } catch (e) {}
+        _say('▶️ <strong>' + nm + '</strong> riattivato in anagrafica e su Supabase. ⏳ Lo ri-iscrivo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s)</span>');
+        if (typeof pmoReactivateMemberInMatchpoint === 'function') {
+          Promise.resolve(pmoReactivateMemberInMatchpoint(cur, { notify: false })).then(function (res) {
+            const st = res && res.status;
+            if (st === 'ok') _say('✅ Ri-iscritto anche su <strong>Matchpoint</strong>.' + (res.verified === false ? ' <span style="color:#98a2b3;font-size:12px">(verifica non conclusiva: controlla la scheda nel gestionale)</span>' : ''));
+            else if (st === 'already_active') _say('ℹ️ Su <strong>Matchpoint</strong> risultava già iscritto. Resta attivo in app + Supabase.');
+            else if (st === 'guest') _say('ℹ️ È un ospite: su Matchpoint non si riattiva. Resta attivo in app + Supabase.');
+            else if (st === 'skipped') _say('ℹ️ Socio senza codice Matchpoint: riattivato solo in app + Supabase.');
+            else if (st === 'no_permission') _say('ℹ️ Manca il permesso <code>cloud_sync</code>: riattivato solo in app + Supabase.');
+            else _say('⚠️ Ri-iscrizione su Matchpoint non riuscita' + ((res && res.reason) ? ' (' + _escapeHtml(String(res.reason).slice(0, 140)) + ')' : '') + '. Resta attivo in app + Supabase: riattivalo dal gestionale.');
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Resta attivo in app + Supabase.'); });
+        }
+        return;
+      } catch (err) {
+        return _say('❌ Errore nella riattivazione: ' + _escapeHtml((err && err.message) || String(err)));
       }
     }
 
@@ -41514,6 +41648,7 @@ Per confermare scrivi ELIMINA.`);
       aiFlowState = null;
       if (op === 'read') return _anaAnswerMember(pick, fields);
       if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
+      if (op === 'reactivate') return _anaReactivateWithTarget(pick);
       return _anaUpdateWithTarget(pick, changes);
     }
     function _anaUpdateWithTarget(member, changes) {
@@ -41564,6 +41699,7 @@ Per confermare scrivi ELIMINA.`);
     function _anaExecute(snap) {
       if (!snap) return;
       if (snap.op === 'deactivate') return _anaExecuteDeactivate(snap.target);
+      if (snap.op === 'reactivate') return _anaExecuteReactivate(snap.target);
       return snap.op === 'update' ? _anaExecuteUpdate(snap.target, snap.changes) : _anaExecuteCreate(snap.draft);
     }
     function _anaExecuteCreate(draft) {
