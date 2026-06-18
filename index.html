@@ -2597,6 +2597,8 @@
 
     /* === Staff Calendar (v5.580) === */
     .staff-cal-date-nav { display:flex; align-items:center; gap:6px; }
+    .staff-cal-weekday { font-weight:700; color:#1e3a8a; white-space:nowrap; text-transform:capitalize; padding:0 2px; }
+    @media (max-width:899px) { .staff-cal-weekday { display:none; } }
     .staff-cal-date-nav button { min-width:34px; height:34px; border-radius:8px; border:1px solid #d1d5db; background:#f8fbff; color:#374151; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
     .staff-cal-date-nav button:hover { background:#e5edff; }
     .staff-cal-date-nav input[type="date"] { border:1.5px solid #d1d5db; border-radius:8px; padding:6px 10px; font-size:14px; font-weight:700; color:#111827; background:#fff; height:34px; }
@@ -6229,6 +6231,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="staff-cal-date-nav" style="margin-left:auto">
                 <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
                 <input type="date" id="staffCalDate" onchange="renderStaffCalendar()">
+                <span id="staffCalDateWeekday" class="staff-cal-weekday"></span>
                 <button onclick="staffCalNextDay()" title="Giorno successivo">›</button>
                 <button class="staff-cal-today-btn" onclick="staffCalGoToday()">Oggi</button>
               </div>
@@ -35989,6 +35992,9 @@ Per confermare scrivi ELIMINA.`);
 
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    // Nome del giorno accanto alla data (desktop): es. "Giovedì".
+    const _wd = document.getElementById('staffCalDateWeekday');
+    if (_wd) { const _GG = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']; const _dd = new Date(isoDate + 'T12:00:00'); _wd.textContent = isNaN(_dd.getTime()) ? '' : _GG[_dd.getDay()]; }
     if (!_staffCalResizeInited) {
       _staffCalResizeInited = true;
       window.addEventListener('resize', function() {
