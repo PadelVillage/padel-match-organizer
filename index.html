@@ -5908,6 +5908,9 @@ body.assessment-public-mode .assessment-public-only-card {
     .ai-turn-utt { color:#344054; font-weight:600; overflow-wrap:anywhere; }
     .ai-turn-meta { font-size:11px; color:#98a2b3; }
     .ai-turn-next { font-size:12px; color:#0891b2; overflow-wrap:anywhere; flex-basis:100%; }
+    .ai-lex-add { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+    .ai-lex-input { padding:7px 9px; border:1px solid var(--border,#e5e9ee); border-radius:8px; font-size:13px; flex:1; min-width:120px; background:#fff; color:inherit; }
+    .ai-lex-arrow { color:#98a2b3; font-weight:800; }
     .ai-reports-list { display:flex; flex-direction:column; gap:8px; }
     .ai-rep-row { border:1px solid #eef2f7; border-left:3px solid #f5a623; border-radius:8px; padding:8px 10px; background:#fffdf8; }
     .ai-rep-row.is-done { border-left-color:#22a06b; background:#f4fbf7; }
@@ -7182,6 +7185,19 @@ body.assessment-public-mode .assessment-public-only-card {
           <h3>📊 Autoapprendimento — diario turni</h3>
           <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
           <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
+        </section>
+        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
+          <h3>🧩 Vocabolario (lessico)</h3>
+          <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: una parola nuova → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia»). Solo le voci <strong>✅ Attive</strong> entrano nel parser. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna</button></p>
+          <div class="ai-lex-add">
+            <input id="aiLexSurface" class="ai-lex-input" placeholder="parola nuova (es. spostare)">
+            <span class="ai-lex-arrow">→</span>
+            <input id="aiLexCanonical" class="ai-lex-input" placeholder="che già capisce (es. cambia)">
+            <select id="aiLexDomain" class="ai-lex-input"><option value="">entrambi</option><option value="prenotazione">prenotazione</option><option value="anagrafica">anagrafica</option></select>
+            <button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(e){}">+ Aggiungi</button>
+            <span id="aiLexAddState" class="ai-admin-hint"></span>
+          </div>
+          <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere i termini.</div></div>
         </section>
         <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧪 Banco di prova</h3>
@@ -39833,6 +39849,103 @@ Per confermare scrivi ELIMINA.`);
       }
       el.innerHTML = html;
     }
+    // ══ Fase 2 autoapprendimento: lessico data-driven (tabella pmo_lessico) ══════
+    // Coppie surface→canonical (parola nuova → parola che il parser già capisce),
+    // applicate come RISCRITTURA del testo PRIMA del parse. Solo righe 'approved'.
+    // No-op finché la tabella è vuota → harness/parser deterministici invariati.
+    // Gating TEST (come il diario). L'approva resta UMANA: nessuna auto-applicazione.
+    let _lessico = [];                           // [{surface, canonical, re}]
+    const _LESSICO_ENABLED = _AI_TURNS_ENABLED;
+    async function _lessicoLoad() {
+      if (!_LESSICO_ENABLED) return;
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?status=eq.approved&env=eq.' + encodeURIComponent(env) + '&select=surface,canonical,domain';
+        const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        if (!res.ok) return;
+        const rows = await res.json().catch(function () { return []; });
+        _lessico = (Array.isArray(rows) ? rows : []).map(function (r) {
+          const s = String(r.surface || '').trim().toLowerCase();
+          const c = String(r.canonical || '').trim();
+          // Guardie base: surface ≥3 lettere, solo lettere/spazio/apostrofo (mai stop-word di 1-2 char).
+          if (s.length < 3 || !c || !/^[a-zà-ÿ' -]+$/.test(s)) return null;
+          let re; try { re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'); } catch (e) { return null; }
+          return { surface: s, canonical: c, re: re };
+        }).filter(Boolean);
+      } catch (e) { /* offline/anon → resta vuoto, no-op */ }
+    }
+    // Riscrive il testo sostituendo i sinonimi approvati con la forma canonica. No-op se vuoto.
+    function _applyLessico(text) {
+      if (!_lessico.length) return text;
+      let out = String(text || '');
+      for (let i = 0; i < _lessico.length; i++) out = out.replace(_lessico[i].re, _lessico[i].canonical);
+      return out;
+    }
+    // Carica all'avvio + refresh orario (gating TEST dentro _lessicoLoad).
+    try { _lessicoLoad(); setInterval(_lessicoLoad, 60 * 60 * 1000); } catch (e) {}
+
+    // ── Gestione lessico (UI pannello Assistente AI, solo TEST) ─────────────────
+    async function _lessicoFetchAll() {
+      const cfg = await loadAssessmentSupabaseConfig();
+      let token = cfg.supabaseKey;
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+      const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source';
+      const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }
+    async function addLessico() {
+      const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical'), dEl = document.getElementById('aiLexDomain'), st = document.getElementById('aiLexAddState');
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim(), domain = (dEl && dEl.value) || null;
+      if (st) st.textContent = '';
+      if (surface.length < 3 || !canonical) { if (st) st.textContent = 'Serve una parola nuova (≥3 lettere) e la forma che il parser già capisce.'; return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola nuova può contenere solo lettere/spazi.'; return; }
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ env: env, domain: domain, surface: surface, canonical: canonical, kind: 'sinonimo', status: 'approved', source: 'manual', approved_by: _aiTurnStaffId(), approved_at: new Date().toISOString() })
+        });
+        if (!res.ok) { if (st) st.textContent = 'Non salvato (HTTP ' + res.status + ').'; return; }
+        if (sEl) sEl.value = ''; if (cEl) cEl.value = '';
+        if (st) st.textContent = '✅ Aggiunto e attivo.';
+        await _lessicoLoad(); loadLessico();
+      } catch (e) { if (st) st.textContent = 'Errore: ' + e.message; }
+    }
+    async function setLessicoStatus(id, status) {
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const patch = { status: status };
+        if (status === 'approved') { patch.approved_by = _aiTurnStaffId(); patch.approved_at = new Date().toISOString(); }
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' }, body: JSON.stringify(patch)
+        });
+        if (res.ok) { await _lessicoLoad(); loadLessico(); }
+      } catch (e) {}
+    }
+    async function loadLessico() {
+      const el = document.getElementById('aiLexList'); if (!el) return;
+      el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      let rows; try { rows = await _lessicoFetchAll(); } catch (e) { el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere il lessico (sessione scaduta?): esci e rientra. [' + _escapeHtml(e.message) + ']</div>'; return; }
+      if (!Array.isArray(rows) || !rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessun termine ancora. Aggiungine uno qui sopra (es. «spostare» → «cambia»).</div>'; return; }
+      el.innerHTML = rows.map(function (r) {
+        const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">🟠 Proposto</span>');
+        const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
+        let actions = '';
+        if (r.status !== 'approved') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'approved\')}catch(e){}">Approva</button> ';
+        if (r.status !== 'rejected') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'rejected\')}catch(e){}">Rifiuta</button>';
+        return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + '</span><span class="ai-turn-meta">' + badge + dom + '</span><span class="ai-turn-next">' + actions + '</span></div>';
+      }).join('');
+    }
+
     function _norm(s) {
       return (typeof normalizeText === 'function') ? normalizeText(s) : String(s || '').toLowerCase().trim();
     }
@@ -40669,6 +40782,7 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Parse pubblica ───────────────────────────────────────────────────────
     function parse(text) {
+      text = _applyLessico(text);   // Fase 2: riscrive i sinonimi approvati (no-op se vuoto)
       const baseIso = _todayIso();
       const c = _classify(text);
       let parsed = null;
@@ -42873,7 +42987,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
