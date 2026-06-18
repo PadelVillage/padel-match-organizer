@@ -40638,12 +40638,17 @@ Per confermare scrivi ELIMINA.`);
         (azione === 'modifica' && !ana.isAna) || // modificare una PRENOTAZIONE richiede sempre conferma
         (azione === 'crea' && (!cx.campo || !tmx.ora)));
 
+      // "aggiungi <nome>" senza contesto prenotazione (campo/ora/partita) né parola "socio" è
+      // AMBIGUO: giocatore in una prenotazione o nuovo socio? L'azione resta 'giocatori' (contratto
+      // del parser/harness), ma alziamo un flag così handle() chiede chiarimento invece di assumere.
+      const addAmbiguous = azione === 'giocatori' && addV && hasPerson && !eventRef && !cx.campo && !tmx.ora && !socioWordQ;
+
       return {
         azione: azione, tipoEvento: ty.tipo || undefined, typePresent: ty.typePresent,
         campo: cx.campo, data: dx.iso, oraInizio: tmx.ora, oraFine: tmx.oraFine, durata: tmx.durata,
         istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
         needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
-        needsLocate: needsLocate, needsMoreData: needsMoreData,
+        needsLocate: needsLocate, needsMoreData: needsMoreData, addAmbiguous: addAmbiguous,
         ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion,
         // ── anagrafica (per i gestori e la UI manuale) ──
         anaSub: ana.isAna ? ana.sub : undefined, anaField: ana.isAna ? ana.field : undefined,
@@ -40698,7 +40703,7 @@ Per confermare scrivi ELIMINA.`);
         campo: E.campo, data: E.data, oraInizio: E.oraInizio, oraFine: E.oraFine,
         giocatori: E.giocatori, ospite: E.ospite,
         needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
-        needsLocate: E.needsLocate, needsMoreData: E.needsMoreData,
+        needsLocate: E.needsLocate, needsMoreData: E.needsMoreData, addAmbiguous: E.addAmbiguous,
         ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify,
         // ── anagrafica (per i gestori e la UI manuale) ──
         anaSub: E.anaSub, anaField: E.anaField, anaSubject: E.anaSubject,
@@ -40767,6 +40772,16 @@ Per confermare scrivi ELIMINA.`);
       // Regola F — azione massiva: chiedi conferma esplicita prima di toccare molte prenotazioni.
       if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
         return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
+      }
+      // "aggiungi <nome>" ambiguo (giocatore o nuovo socio?) → chiedi chiarimento mirato,
+      // invece di assumere "giocatore". Decisione utente 2026-06-18 (mai vicolo cieco).
+      if (res.addAmbiguous) {
+        const _nm = (res.giocatori && res.giocatori.length) ? res.giocatori.join(' ') : '';
+        const _nmEsc = _escapeHtml(_nm);
+        const _label = _nm ? ('<strong>' + _nmEsc + '</strong>') : 'questa persona';
+        return _say('Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>?<br>' +
+          '• Nuovo socio: scrivi “<em>iscrivi ' + (_nmEsc || '[nome cognome]') + '</em>”.<br>' +
+          '• In una prenotazione: dimmi quale, es. “<em>aggiungi ' + (_nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>”.');
       }
       // Punto UNICO di chiarimento (trasversale): se la richiesta non è azionabile —
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
