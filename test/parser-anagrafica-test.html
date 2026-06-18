@@ -67,8 +67,9 @@ const ROSTER = [
   { nome:'Anna',   cognome:'Verdi',   sesso:'F', livello:2,   telefono:'3479988776', email:'anna@mail.it', posizione:'Sinistra', stato:'regolare' },
   { nome:'Luca',   cognome:'Bianchi', sesso:'M', livello:4,   telefono:'3401122334', email:'',            posizione:'Destra',   stato:'regolare' },
   { nome:'Giulia', cognome:'Neri',    sesso:'F', livello:1.5, telefono:'3335556677', email:'giulia@x.it', posizione:'Sinistra', stato:'regolare' },
-  { nome:'Carla',  cognome:'Mezza',   sesso:'F', livello:3,   telefono:'3330000001', email:'',            posizione:'Destra',   stato:'regolare' }
-  // 'Pippo Inesistente' NON è in rubrica (caso 45, KO). 'Carla Mezza' ha un cognome che era in stop-list.
+  { nome:'Carla',  cognome:'Mezza',   sesso:'F', livello:3,   telefono:'3330000001', email:'',            posizione:'Destra',   stato:'regolare' },
+  { nome:'Carlo',  cognome:'Porta',   sesso:'M', livello:3,   telefono:'3330000002', email:'',            posizione:'Destra',   stato:'regolare' }
+  // 'Pippo Inesistente' NON è in rubrica (caso 45, KO). 'Carla Mezza'/'Carlo Porta' hanno cognomi che erano in stop-list / sono verbi.
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,7 +152,9 @@ const CASES = [
  // ── Robustezza vocabolario (2026-06-18): buchi confermati live ──
  {id:56, cat:'Robustezza',  frase:'dammi i dati di Mario Rossi',                            esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'mario rossi'}, note:'lettura via "dammi"/"dati" (prima cadeva: azione null)'},
  {id:57, cat:'Robustezza',  frase:'iscrivi Marco Gialli uomo livello 3 telefono 3330000009', esito:'OK',   exp:{az:'anagrafica', esito:'OK', subj:'marco gialli'}, note:'"iscrivi"=crea + soggetto corretto (non "iscrivi marco")'},
- {id:58, cat:'Robustezza',  frase:'cerca Carla Mezza',                                      esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carla mezza'}, note:'cognome "Mezza" non più scartato dalla stop-list'}
+ {id:58, cat:'Robustezza',  frase:'cerca Carla Mezza',                                      esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carla mezza'}, note:'cognome "Mezza" non più scartato dalla stop-list'},
+ {id:59, cat:'Robustezza',  frase:'mostrami la scheda di Carlo Porta',                       esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carlo porta'}, note:'cognome-verbo "Porta": lettura, non modifica; cognome non scartato'},
+ {id:60, cat:'Robustezza',  frase:'aggiorna il telefono di Carlo Porta in 3331112223',       esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carlo porta'}, note:'modifica di "Carlo Porta": cognome-verbo mantenuto'}
 ];
 
 function normalize(win, frase){

@@ -40349,6 +40349,10 @@ Per confermare scrivi ELIMINA.`);
       // "tre e mezzo"=3.5 è parsato da una regex dedicata, indipendente da questa stop-list.
       'punto','chiocciola','gmail','hotmail','yahoo','libero','com','it','presente'
     ]);
+    // Parole che sono ANCHE verbi (in _ANA_STOP) ma cognomi reali: valgono come cognome SOLO
+    // in seconda posizione (dopo un nome), così "Carlo Porta"/"Marco Segna" non perdono il
+    // cognome, mentre "segna Anna come moroso"/"porta il livello a 5" restano verbi (inizio frase).
+    const _ANA_SOFT_SURNAME = new Set(['porta', 'segna', 'alza', 'abbassa', 'leva']);
     // Nome del socio: la sequenza CONTIGUA più lunga di token-nome (max 2 = nome+cognome).
     function _anaPickName(tx) {
       const toks = String(tx || '').split(/\s+/);
@@ -40356,8 +40360,11 @@ Per confermare scrivi ELIMINA.`);
       for (const w0 of toks) {
         const base = w0.indexOf("'") >= 0 ? w0.split("'").pop() : w0;   // "l'email" → "email"
         const w = base.replace(/[^a-zà-ÿ]/g, '');
-        const ok = w && w.length >= 2 && !_ANA_STOP.has(w) && !/\d/.test(w0);
-        if (ok) { cur.push(w); if (cur.length > best.length) best = cur.slice(); }
+        const hardOk = w && w.length >= 2 && !_ANA_STOP.has(w) && !/\d/.test(w0);
+        if (hardOk) { cur.push(w); if (cur.length > best.length) best = cur.slice(); }
+        else if (cur.length === 1 && _ANA_SOFT_SURNAME.has(w) && !/\d/.test(w0)) {
+          cur.push(w); if (cur.length > best.length) best = cur.slice(); cur = [];   // cognome → nome completo
+        }
         else cur = [];
       }
       return best.slice(0, 2).join(' ');
@@ -40438,7 +40445,7 @@ Per confermare scrivi ELIMINA.`);
       else if (deactV) sub = 'disattiva';
       else if (deleteV) sub = 'elimina';
       else if (renameV) sub = 'rinomina';
-      else if (modVerb || removalEmail || (fieldWord && hasValue && !readV)) sub = 'modifica';
+      else if ((modVerb && (hasValue || !readV)) || removalEmail || (fieldWord && hasValue && !readV)) sub = 'modifica';
       else sub = 'leggi';
 
       let field = null;
