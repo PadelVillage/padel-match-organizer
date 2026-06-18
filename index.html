@@ -12995,6 +12995,12 @@ Grazie.`
     async function pmoCreateMemberInMatchpoint(member, options = {}) {
       // notify=false → niente toast showAlert (lo usa l'assistente AI, che riporta l'esito in chat).
       const notify = options.notify !== false;
+      // In TEST il collegamento anagrafica→Matchpoint è scollegato: le prove (anche con
+      // l'assistente) restano in app + Supabase e NON toccano il gestionale.
+      if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) {
+        console.info('[TEST] creazione socio→Matchpoint disattivata: il socio resta in app + Supabase.');
+        return { status: 'test_env' };
+      }
       if (isGuestJollyMember(member)) return;
       // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
       // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
@@ -24790,6 +24796,12 @@ Per confermare scrivi ELIMINA.`);
 	        setTimeout(() => { try { showAlert(msg, type); } catch (_) {} }, 3200);
 	      };
 	      try {
+	        // In TEST il collegamento anagrafica→Matchpoint è scollegato: le prove (anche con
+	        // l'assistente) restano in app + Supabase e NON toccano il gestionale.
+	        if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) {
+	          console.info('[TEST] aggiornamento socio→Matchpoint disattivato: la modifica resta in app + Supabase.');
+	          return { status: 'test_env' };
+	        }
 	        if (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member)) return { status: 'guest' };
 	        const codice = String(member.memberId || '').trim();
 	        if (!/^\d{4,6}$/.test(codice)) {
@@ -41210,9 +41222,12 @@ Per confermare scrivi ELIMINA.`);
         try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
         // Ospite/guest: non si crea su Matchpoint (la scheda 000001 esiste già lì).
         if (guest) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>');
+        const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
+        if (_isTestEnv) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.');
         _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
         if (typeof pmoCreateMemberInMatchpoint === 'function') {
-          Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function () {
+          Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function (res) {
+            if (res && res.status === 'test_env') return _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.');
             const code = String(newMember.memberId || '').trim();
             if (/^\d{4,6}$/.test(code)) _say('✅ Creato anche su <strong>Matchpoint</strong> · codice <strong>' + _escapeHtml(code) + '</strong>.');
             else _say('⚠️ Creazione su Matchpoint non riuscita: il socio resta in app + Supabase. Riprova più tardi o crealo dal gestionale.');
@@ -41243,11 +41258,15 @@ Per confermare scrivi ELIMINA.`);
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(next, 'aggiornare il socio (assistente AI) su Supabase'); } catch (e) {}
         const nm = _escapeHtml(playerFullName(next));
+        if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) {
+          return _say('✅ <strong>' + nm + '</strong> aggiornato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo aggiorno nel gestionale.');
+        }
         _say('✅ <strong>' + nm + '</strong> aggiornato in anagrafica e su Supabase. ⏳ Aggiorno anche <strong>Matchpoint</strong>…');
         if (typeof pmoPushMemberUpdateToMatchpoint === 'function') {
           Promise.resolve(pmoPushMemberUpdateToMatchpoint(next, { prev: prev, notify: false })).then(function (res) {
             const st = res && res.status;
             if (st === 'ok') _say('✅ Aggiornato anche su <strong>Matchpoint</strong>.');
+            else if (st === 'test_env') _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Aggiornato solo in app + Supabase.');
             else if (st === 'guest') _say('ℹ️ È un ospite: su Matchpoint non si aggiorna. Resta salvato in app + Supabase.');
             else if (st === 'skipped') _say('ℹ️ Socio senza codice Matchpoint: aggiornato solo in app + Supabase.');
             else if (st === 'no_permission') _say('ℹ️ Manca il permesso <code>cloud_sync</code>: aggiornato solo in app + Supabase.');
