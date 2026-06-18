@@ -7670,7 +7670,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.835';
+    const APP_VERSION = '5.836';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41853,8 +41853,11 @@ Per confermare scrivi ELIMINA.`);
         if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
         draft.gender = g;
       } else if (k === 'level') {
-        const lm = ans.match(/[0-9](?:[.,][0-9])?/);
-        if (!lm) return _say('Livello non valido. Scrivi un numero (es. 3 o 4.5).');
+        // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Estrai il numero
+        // INTERO ("21" non va troncato a "2") e rifiuta fuori scala invece di accettare in silenzio.
+        const lm = ans.match(/\d+(?:[.,]\d+)?/);
+        const nl = lm ? parseFloat(lm[0].replace(',', '.')) : NaN;
+        if (Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
         draft.level = lm[0].replace(',', '.');
       } else if (k === 'email') {
         // Email FACOLTATIVA (decisione di prodotto): se la risposta è un indirizzo valido lo salvo;
@@ -41931,10 +41934,10 @@ Per confermare scrivi ELIMINA.`);
         let lv = null;
         // "da 5 a 4" → il NUOVO valore è il secondo; "…a 4"/"→ 4"/"livello: 4" → dopo il connettore;
         // altrimenti l'ultimo numero (di norma il target). Mai il primo (sarebbe il valore attuale).
-        let mm = String(text).match(/\bda\s+[0-9](?:[.,][0-9])?\s+a\s+([0-9](?:[.,][0-9])?)\b/i);
-        if (!mm) mm = String(text).match(/(?:\ba\b|->|=>|→|:|=)\s*([0-9](?:[.,][0-9])?)\s*$/i);
+        let mm = String(text).match(/\bda\s+\d+(?:[.,]\d+)?\s+a\s+(\d+(?:[.,]\d+)?)\b/i);
+        if (!mm) mm = String(text).match(/(?:\ba\b|->|=>|→|:|=)\s*(\d+(?:[.,]\d+)?)\s*$/i);
         if (mm) lv = mm[1];
-        else { const all = String(text).match(/[0-9](?:[.,][0-9])?/g); if (all && all.length) lv = all[all.length - 1]; }
+        else { const all = String(text).match(/\d+(?:[.,]\d+)?/g); if (all && all.length) lv = all[all.length - 1]; }
         if (lv != null) ch.level = lv.replace(',', '.');
       }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
@@ -41983,6 +41986,11 @@ Per confermare scrivi ELIMINA.`);
     }
     function _anaUpdateWithTarget(member, changes) {
       if (!member) return _say('Socio non trovato.');
+      // Livello fuori scala 0–7 → rifiuta (parità col form manuale), non salvare un valore assurdo.
+      if (changes && changes.level != null && changes.level !== '') {
+        const nl = parseFloat(String(changes.level).replace(',', '.'));
+        if (Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
+      }
       _anaRemember(member);
       if (changes && Object.keys(changes).length) return _showAnaUpdateSummary(member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'changes', target: member };
