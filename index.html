@@ -41596,7 +41596,7 @@ Per confermare scrivi ELIMINA.`);
     let _rec = null, _dictating = false, _dictHintShown = false;
     function _dictStop(btn) {
       _dictating = false;
-      if (btn) { btn.classList.remove('recording'); btn.title = 'Detta un comando'; }
+      if (btn) { btn.classList.remove('recording'); btn.removeAttribute('title'); btn.setAttribute('aria-label', 'Detta un comando'); }
       const i = document.getElementById('svcChatInput'); if (i) i.focus();
       try { svcChatRefreshComposer(); } catch (e) {}
     }
@@ -41645,7 +41645,7 @@ Per confermare scrivi ELIMINA.`);
       _rec.onend = function () { _dictStop(btn); };
       try {
         _rec.start(); _dictating = true;
-        if (btn) { btn.classList.add('recording'); btn.title = 'Tocca per fermare la dettatura'; }
+        if (btn) { btn.classList.add('recording'); btn.removeAttribute('title'); btn.setAttribute('aria-label', 'Tocca per fermare la dettatura'); }
         try { svcChatToggleAction(); } catch (e) {}   // tieni il mic visibile come "stop"
         if (!_dictHintShown) { _dictHintShown = true; _say('🎤 Sto ascoltando… parla pure. Quando hai finito <strong>tocca di nuovo il microfono</strong> per fermare, poi premi <strong>➤</strong> (o Invio) per inviare.'); }
       } catch (e) {}
@@ -41667,7 +41667,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (!document.getElementById('svcAiMicBtn')) {
         const mic = document.createElement('button');
-        mic.type = 'button'; mic.id = 'svcAiMicBtn'; mic.className = 'svc-ai-mic'; mic.title = 'Detta un comando';
+        mic.type = 'button'; mic.id = 'svcAiMicBtn'; mic.className = 'svc-ai-mic'; mic.setAttribute('aria-label', 'Detta un comando');
         mic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
         mic.addEventListener('click', toggleDictation);
         row.insertBefore(mic, send);
