@@ -40041,7 +40041,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
-    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|prossim\w*)$/;
+    const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|zio|come|istruttore|istruttrice|maestro|maestra|prossim\w*)$/;
     function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
 
     // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
@@ -40376,7 +40376,9 @@ Per confermare scrivi ELIMINA.`);
       if (azione === 'giocatori') giocatori = editNames.slice();
       else if (azione === 'crea') giocatori = _bookingNames(tx);
       let ospite = false;
-      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'lezione' && ty.tipo !== 'manutenzione' && !giocatori.length) {
+      // Nessun nome riconosciuto → Ospite (mai un nome inventato su Matchpoint): vale per
+      // partite E lezioni (lo studente non indicato diventa Ospite). Manutenzione esclusa.
+      if (PMO_PARSER_FLAGS.ospiteAnnunciato && azione === 'crea' && ty.tipo !== 'manutenzione' && !giocatori.length) {
         ospite = true; giocatori = ['Ospite'];
       }
       // soggetto di annulla/modifica ("la partita di Mario") → per il controllo cognome (regola A)
