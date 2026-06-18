@@ -12932,6 +12932,19 @@ Grazie.`
         }, 120);
       });
     }
+    // Validazioni di business condivise tra assistente AI e form manuale (parità, regole D/E
+    // del brief anagrafica): livello 0–7 (scala app, confermata da LoZio), email in formato
+    // valido se presente, telefono con almeno 6 cifre se presente. Ritorna '' se tutto ok.
+    function pmoAnaFieldError(levelRaw, email, phone) {
+      const lvl = String(levelRaw == null ? '' : levelRaw).trim();
+      if (lvl) { const n = parseFloat(lvl.replace(',', '.')); if (!Number.isNaN(n) && (n < 0 || n > 7)) return '❌ Livello fuori scala: ammessi 0–7.'; }
+      const em = String(email == null ? '' : email).trim();
+      if (em && !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(em)) return '❌ Indirizzo email non valido.';
+      const ph = String(phone == null ? '' : phone).replace(/\D/g, '');
+      if (ph && ph.length < 6) return '❌ Numero di telefono non valido (troppo corto).';
+      return '';
+    }
+
     function addMember(options={}) {
       const normalizedManualName = normalizeImportedPlayerNameParts(document.getElementById('firstName').value, document.getElementById('surname').value);
       const firstName = normalizedManualName.firstName;
@@ -12946,7 +12959,10 @@ Grazie.`
       if (!guestJolly && (!genderValue || genderValue === 'NA')) { showAlert('❌ Sesso obbligatorio', 'danger'); return null; }
       if (!guestJolly && !levelRaw) { showAlert('❌ Livello obbligatorio', 'danger'); return null; }
       const emailVal = cleanCell(document.getElementById('email').value);
-      if (!guestJolly && !emailVal) { showAlert('❌ Email obbligatoria', 'danger'); return null; }
+      // Email FACOLTATIVA (parità con l'assistente: confermato da LoZio). Resta solo la
+      // validazione di formato/livello/telefono, condivisa con il parser AI.
+      const _vErr = pmoAnaFieldError(levelRaw, emailVal, phone);
+      if (!guestJolly && _vErr) { showAlert(_vErr, 'danger'); return null; }
       const candidate = {
         firstName,
         surname,
@@ -13727,6 +13743,9 @@ Grazie.`
       const guestJolly = isGuestJollyName(fullName);
       if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
       const cardLevelRaw = cleanCell(document.getElementById('cardLevel').value || '');
+      // Validazioni condivise con l'assistente (parità): livello 0–7, email formato, telefono.
+      const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(document.getElementById('cardEmail').value), document.getElementById('cardPhone').value);
+      if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
       const currentGuestJolly = isGuestJollyMember(current);
       const nextEditable = {
         firstName,
@@ -40075,6 +40094,10 @@ Per confermare scrivi ELIMINA.`);
     // Tutta la logica-socio vive qui, ISOLATA dal parser prenotazioni che condivide
     // _enrichInterpret: così allargare l'anagrafica non rischia di rompere partite/lezioni.
 
+    // Scala livelli VALIDA in app (form manuale: input min=0 max=7 step=0.5). Confermato
+    // da LoZio: si usa 0–7, NON 1–5 del brief. Flag unico così parser e UI restano allineati.
+    const PMO_ANA_LEVEL_MIN = 0, PMO_ANA_LEVEL_MAX = 7;
+
     // Parole che NON sono nomi propri (articoli/preposizioni + parole-campo + verbi +
     // valori), per estrarre il nome del socio come "la sequenza più lunga di token-nome".
     const _ANA_STOP = new Set([
@@ -40205,7 +40228,7 @@ Per confermare scrivi ELIMINA.`);
 
       // KO — validazioni (regole D/E).
       let ko = false, koReason = '';
-      if (levelField) { const lvl = _anaLevelValue(tx); if (lvl != null && (lvl < 1 || lvl > 5)) { ko = true; koReason = 'livello fuori scala (valido 1–5)'; } }
+      if (levelField) { const lvl = _anaLevelValue(tx); if (lvl != null && (lvl < PMO_ANA_LEVEL_MIN || lvl > PMO_ANA_LEVEL_MAX)) { ko = true; koReason = 'livello fuori scala (valido ' + PMO_ANA_LEVEL_MIN + '–' + PMO_ANA_LEVEL_MAX + ')'; } }
       if (!ko && emailField && !removalEmail && sub !== 'leggi' && /\b(in|:|=)\b/.test(tx) && !/[\w.+-]+@[\w-]+\.[\w.-]+/.test(String(rawText || ''))) {
         ko = true; koReason = 'indirizzo email non valido';
       }
