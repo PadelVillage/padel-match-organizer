@@ -4898,28 +4898,44 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // Clicca "Aggiungere" solo con id valido E nome combaciante
   await addLink.first().click({ timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(1200);
+  // L'aggiunta scatena un postback parziale: attende che la riga partecipante sia
+  // renderizzata prima di scansionare (riduce i falsi PLAYER_ADD_NOT_CONFIRMED).
+  await mpWaitAsyncPostbackIdle(page, 8000).catch(() => {});
 
   // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
   // tipo di form. La partita usa il repeater "WUCUsuarioPartida", la lezione
   // "WUCUsuarioClase": il vecchio selettore fisso su WUCUsuarioPartida falliva sulle
   // lezioni (allievo in realtà aggiunto, ma cercato nel repeater sbagliato → falso
-  // PLAYER_ADD_NOT_CONFIRMED). Ora si cerca per nome tra TUTTI gli input
-  // "TextBoxNombreValor" e si ricava l'id cliente sostituendo, nello stesso id,
-  // "TextBoxNombreValor" → "HiddenFieldIdCliente".
+  // PLAYER_ADD_NOT_CONFIRMED). Ora si cerca tra TUTTI gli input "TextBoxNombreValor"
+  // e si ricava l'id cliente sostituendo, nello stesso id, "TextBoxNombreValor" →
+  // "HiddenFieldIdCliente".
+  // ⚠️ OSPITE / righe senza nome: alcuni partecipanti (es. il cliente "Ospite",
+  // codice 000001) NON espongono il nome nel campo TextBoxNombreValor → il match per
+  // solo-nome dava un falso PLAYER_ADD_NOT_CONFIRMED. Poiché il giocatore è agganciato
+  // PER ID (lockedId = HiddenFieldIdPeople / codice cliente), confermiamo ANCHE per id:
+  // una riga è valida se il suo HiddenFieldIdCliente combacia col codice cliente atteso
+  // o con l'id agganciato (confronto su onlyDigits, ignora gli zeri iniziali).
   let addedIdCliente = null;
   const righeViste = [];
+  const wantCode = onlyDigits(expectedClientCode);
+  const wantPeople = onlyDigits(lockedId);
   const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
   const righeTot = await nomeInputs.count().catch(() => 0);
   for (let r = 0; r < righeTot; r++) {
     const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
     const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
-    righeViste.push(`${rowId}=${nomeVal}`);
-    if (nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal))) {
-      if (rowId) {
-        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
-        addedIdCliente = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
-      }
-      if (addedIdCliente === null) addedIdCliente = ''; // riga trovata; id non determinabile, ma aggiunta confermata
+    let idCliVal = '';
+    if (rowId) {
+      const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+      idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+    }
+    const idCliDigits = onlyDigits(idCliVal);
+    righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
+    const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
+    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+    if (matchByName || matchById) {
+      addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
+      diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}`);
       break;
     }
   }
