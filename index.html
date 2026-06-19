@@ -35932,9 +35932,14 @@ Per confermare scrivi ELIMINA.`);
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
-      const tipo = String(p.tipo || '').toLowerCase().includes('lez') ? 'lezione' : 'partita';
-      const _nomeOcc = (Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || '');
-      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : '') });
+      const _tLow = String(p.tipo || '').toLowerCase();
+      // Manutenzione (import dal tabellone): slot occupato senza giocatori, con solo eventuale nota.
+      const tipo = _tLow.includes('manuten') ? 'manutenzione' : (_tLow.includes('lez') ? 'lezione' : 'partita');
+      const _nota = String(p.descrizione || p.note || p.nota || '');
+      const _nomeOcc = (tipo === 'manutenzione')
+        ? _nota
+        : ((Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || ''));
+      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, note: _nota, durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : '') });
     }
     for (const p of bookings) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;

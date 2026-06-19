@@ -468,7 +468,7 @@ async function enrichBookingsWithTabellone(
   username: string,
   password: string,
   baseUrl: string,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<void> {
   // Raccoglie le date uniche future presenti nei booking
   const today = todayIsoRome();
   const dates = [...new Set(
@@ -477,7 +477,7 @@ async function enrichBookingsWithTabellone(
       .map((b) => b.data),
   )].sort();
 
-  if (!dates.length) return [];
+  if (!dates.length) return;
 
   const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
   let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[] }>> = {};
@@ -498,7 +498,7 @@ async function enrichBookingsWithTabellone(
     }
   } catch (err) {
     console.warn(JSON.stringify({ event: 'tabellone_enrich_failed', error: String(err) }));
-    return []; // non bloccante
+    return; // non bloccante
   }
 
   // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
@@ -516,22 +516,38 @@ async function enrichBookingsWithTabellone(
     }
   }
 
-  // DEBUG TEMPORANEO (manutenzione import 2026-06-19): raccoglie gli eventi del tabellone NON abbinati
-  // ad alcuna prenotazione Excel → candidati blocchi "Manutenzione"/chiusure (che l'export esclude).
-  // Restituiti al chiamante, che li salva su pmo_cloud_records per ispezione via SQL. DA RIMUOVERE.
-  const unmatched: Array<Record<string, unknown>> = [];
+  // MANUTENZIONE (import 2026-06-19): i blocchi del tabellone marcati 'manutenzione' (senza
+  // giocatori, solo eventuale nota) NON sono nell'export Excel → li aggiungiamo come occupancy
+  // con tipo 'manutenzione', così l'app li mostra e li tratta come slot occupati. Il worker li
+  // marca con ev.tipo==='manutenzione' e ev.nota. Saltiamo quelli già coperti da una prenotazione.
+  const toMin = (t: string) => { const m = String(t || '').match(/(\d{1,2})[:.](\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
+  let added = 0;
   try {
     for (const [data, evs] of Object.entries(tabelloneData)) {
       for (const ev of (evs || [])) {
-        const key = `${data}|${ev.campo}|${ev.ora}`;
-        if (matchedKeys.has(key)) continue;
-        unmatched.push({ data, campo: ev.campo, ora: ev.ora, oraFine: (ev as any).oraFine || '', giocatori: ev.giocatori || [] });
+        if ((ev as any).tipo !== 'manutenzione') continue;
+        const campoNum = Number(ev.campo) || 0;
+        if (!campoNum || !ev.ora) continue;
+        if (matchedKeys.has(`${data}|${campoNum}|${ev.ora}`)) continue;
+        const mins = toMin((ev as any).oraFine) - toMin(ev.ora);
+        const oreStr = (Number.isFinite(mins) && mins > 0) ? String(mins / 60) : '1.5';
+        bookings.push({
+          numero: '',
+          giocatore: '',
+          data,
+          ora: ev.ora,
+          durata: oreStr,
+          campo: `Campo ${campoNum}`,
+          tipo: 'manutenzione',
+          descrizione: String((ev as any).nota || ''),
+        } as ParsedBooking);
+        added += 1;
       }
     }
   } catch (err) {
-    console.warn(JSON.stringify({ event: 'tabellone_unmatched_debug_failed', error: String(err) }));
+    console.warn(JSON.stringify({ event: 'manutenzione_occupancy_failed', error: String(err) }));
   }
-  return unmatched;
+  console.log(JSON.stringify({ event: 'manutenzione_occupancy_added', added }));
 }
 
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
@@ -910,7 +926,7 @@ Deno.serve(async (req) => {
       const enrichPassword = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
       const enrichBaseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
       if (enrichWorkerUrl && enrichWorkerApiKey && enrichUsername && enrichPassword) {
-        const unmatchedDebug = await enrichBookingsWithTabellone(
+        await enrichBookingsWithTabellone(
           validation.occupancyBookings,
           enrichWorkerUrl,
           enrichWorkerApiKey,
@@ -918,20 +934,6 @@ Deno.serve(async (req) => {
           enrichPassword,
           enrichBaseUrl,
         );
-        // DEBUG TEMPORANEO (manutenzione import): salva gli eventi tabellone non abbinati su
-        // pmo_cloud_records per ispezione via SQL. DA RIMUOVERE dopo la verifica.
-        try {
-          await admin.from('pmo_cloud_records').upsert([{
-            record_type: 'matchpoint_data',
-            local_key: 'debug_tabellone_unmatched',
-            payload: { importedAt, total: unmatchedDebug.length, eventi: unmatchedDebug.slice(0, 80) },
-            payload_hash: null,
-            deleted: false,
-            synced_at: importedAt,
-          }], { onConflict: 'record_type,local_key' });
-        } catch (dbg) {
-          console.warn(JSON.stringify({ event: 'unmatched_debug_save_failed', error: String(dbg) }));
-        }
       }
     } catch (err) {
       console.warn(JSON.stringify({ event: 'tabellone_enrich_error', error: String(err) }));
