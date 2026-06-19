@@ -41491,7 +41491,10 @@ Per confermare scrivi ELIMINA.`);
       aiFlowState.need.shift();
       if (aiFlowState.need.length) return _askNext();
       aiFlowState = null;
-      _showSummary(draft);
+      // Raccolti tutti gli slot tecnici: ripassa da _advancePrenota (non dritto al riepilogo),
+      // così se manca il nominativo parte la domanda "Ospite o un nome?" anche quando la
+      // prenotazione è stata completata a step (collaudo 19/06). __ospiteAsked evita il loop.
+      _advancePrenota(draft);
     }
 
     // Giocatore "Ospite" = scheda Matchpoint codice cliente 000001 (segnaposto del circolo
