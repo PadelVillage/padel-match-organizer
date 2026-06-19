@@ -40865,13 +40865,14 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        // Allo stadio CONFERMA di una prenotazione, una risposta BREVE (solo la parola) di
-        // conferma/annullo è la risposta al riepilogo — incl. "prenota"/"prenotala", che
-        // _looksLikeNewCommand scambierebbe per un nuovo comando e farebbe ripartire da capo
-        // (collaudo 19/06). NB: ancorata a ^…$, così "prenota campo 2 domani" (comando pieno)
-        // NON entra qui e abbandona regolarmente il flusso.
+        // Allo stadio CONFERMA di una prenotazione, una risposta BREVE fatta SOLO di parole di
+        // conferma/annullo è la risposta al riepilogo — incl. "prenota"/"prenotala" e combinazioni
+        // come "ok prenota", "sì conferma", "va bene prenota" (collaudo 19/06), che
+        // _looksLikeNewCommand scambierebbe per un nuovo comando e farebbe ripartire da capo.
+        // NB: ancorata a ^…$ e composta SOLO da token di conferma, così "prenota campo 2 domani"
+        // (comando pieno) NON entra qui e abbandona regolarmente il flusso.
         if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'prenota' &&
-            /^\s*(prenot\w*|conferm\w*|confermo|s[iì]|ok|va bene|vabene|procedi|certo|salva|annull\w*|no|lascia\w*|stop|niente)\s*$/i.test(t)) {
+            /^\s*(?:(?:prenot\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|salva|annull\w*|no|lascia\w*|stop|niente)[\s,.!]*)+$/i.test(t)) {
           return _confirmAnswer(t);
         }
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
