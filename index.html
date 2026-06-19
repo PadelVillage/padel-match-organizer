@@ -41366,6 +41366,18 @@ Per confermare scrivi ELIMINA.`);
 
     // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
     function _advancePrenota(draft) {
+      // Disponibilità ANTICIPATA: appena campo+giorno+ora sono noti, se lo slot è occupato avvisa e
+      // proponi i campi liberi PRIMA di chiedere maestro/giocatore (feedback immediato, decisione
+      // utente 2026-06-19). I pulsanti "campo libero" rientrano qui e raccolgono gli slot mancanti
+      // sul nuovo campo. Il check in _showSummary resta come rete finale (race).
+      if (draft.campoNum && draft.data && draft.ora) {
+        try {
+          if (typeof staffCalFindConflict === 'function') {
+            const _c0 = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || 90 });
+            if (_c0) { aiFlowState = null; return _suggestFreeCourts(draft, _c0); }
+          }
+        } catch (e) {}
+      }
       const need = [];
       // Tipo non scritto: va chiesto PER PRIMO ("partita o lezione?"). Senza il tipo non si può
       // decidere se serve il maestro, quindi precede ogni altra domanda. §4.3 (tipoSempre).
@@ -41633,10 +41645,10 @@ Per confermare scrivi ELIMINA.`);
             if (b.disabled) return;
             wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
             b.classList.add('selected');
-            // Vai al riepilogo del campo scelto (con conferma), non prenotare al volo: _showSummary
-            // ri-verifica la disponibilità del nuovo campo e mostra "Conferma e prenota".
+            // Riparti da _advancePrenota sul campo scelto: ri-verifica la disponibilità e raccoglie
+            // gli eventuali slot ancora mancanti (es. maestro/giocatore), poi arriva al riepilogo.
             draft.campoNum = c; draft.__started = false;
-            _showSummary(draft);
+            _advancePrenota(draft);
           });
           wrap.appendChild(b);
         });
