@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.841';
+    const APP_VERSION = '5.843';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40186,6 +40186,14 @@ Per confermare scrivi ELIMINA.`);
       const addToMatchCtx = /(^| )aggiung\w+( |$)/.test(n)
         && /(^| )giocator\w*( |$)/.test(n)
         && /(^| )(partit\w*|prenotazion\w*|campo|match)( |$)/.test(n);
+      // "togli/cancella/elimina <nome> DALLA partita/lezione/prenotazione/campo" = togliere un
+      // GIOCATORE dalla prenotazione (CORREGGI → editor), NON annullare tutta la prenotazione.
+      // Distinzione chiave: la preposizione "da(lla)" (= da dentro) + il riferimento partita/
+      // lezione/prenotazione/campo. "cancella LA prenotazione / annulla LA partita di campo X"
+      // (con "la/il/di", senza "dalla") resta CANCELLA. In italiano cancella/elimina valgono
+      // anche per "leva un giocatore", quindi qui pesano come rimozione SOLO con "dalla …".
+      const removeFromMatchCtx = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n)
+        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
       // "apri/mostra/visualizza/gestisci LA PRENOTAZIONE/PARTITA/LEZIONE di campo X [alle Y]" =
       // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
       // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
@@ -40207,6 +40215,10 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
         if (name === 'CORREGGI' && addToMatchCtx) s += 3;
         if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
+        // Rimozione di un giocatore "dalla partita/lezione" → CORREGGI (apre l'editor), mai
+        // CANCELLA (che annullerebbe l'intera prenotazione). Vince anche su cancella/elimina.
+        if (name === 'CORREGGI' && removeFromMatchCtx) s += 4;
+        if ((name === 'CANCELLA' || name === 'ANAGRAFICA') && removeFromMatchCtx) s = 0;
         // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
         if (name === 'CORREGGI' && openEditCtx) s += 4;
         if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
@@ -40670,8 +40682,13 @@ Per confermare scrivi ELIMINA.`);
       const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
       const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      // In italiano "cancella/elimina/scarta <nome> DALLA partita/lezione/prenotazione/campo" =
+      // togliere un GIOCATORE (non annullare la prenotazione). Vale SOLO con "da(lla) …": senza,
+      // "cancella la prenotazione / elimina la partita di Mario" resta annullamento (cancelVerb).
+      const removeFromBooking = /\b(cancell\w*|elimin\w*|scart\w*)\b/.test(tx)
+        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s*(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(tx);
       const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
-      const editNames = (addV || remV || replV) ? _editNames(tx) : [];
+      const editNames = (addV || remV || replV || removeFromBooking) ? _editNames(tx) : [];
       const hasPerson = editNames.length > 0;
       // verbo "prenotare" coniugato (NON il sostantivo "prenotazione/prenotazioni") + altri verbi di creazione
       const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
@@ -40719,7 +40736,7 @@ Per confermare scrivi ELIMINA.`);
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
-      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
+      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
 
       // "apri/riapri/gestisci/mostra/visualizza LA prenotazione di campo X [alle Y]" = aprire la
       // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
@@ -41357,7 +41374,7 @@ Per confermare scrivi ELIMINA.`);
     // dominio e i riferimenti campo/data/ora, lasciando il solo nome (poi risolto in anagrafica).
     function _extractEditPlayerName(text) {
       let raw = String(text || '')
-        .replace(/^\s*\W*(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|add)\s+/i, ' ')
+        .replace(/^\s*\W*(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|cancell\w*|elimin\w*|scart\w*|caccia|add)\s+/i, ' ')
         .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw)));
       return raw.trim();
@@ -42183,7 +42200,12 @@ Per confermare scrivi ELIMINA.`);
       const nlow = _norm(text);
       // L'azione sulla scheda: aggiungere o togliere un giocatore (verbo nel comando).
       const isAdd = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow);
-      const isRemove = !isAdd && /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow);
+      // "da(lla) partita/lezione/prenotazione/campo" = togliere un giocatore DA dentro (non annullare).
+      const removeFromPat = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(nlow);
+      // togli/rimuovi/leva valgono sempre; cancella/elimina/scarta SOLO col pattern "dalla …"
+      // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
+      const isRemove = !isAdd && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
+        || (removeFromPat && /(^|\s)(cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(nlow)));
       // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
       const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
