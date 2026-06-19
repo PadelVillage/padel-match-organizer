@@ -40652,7 +40652,9 @@ Per confermare scrivi ELIMINA.`);
       const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
       // "metti/fai una partita|lezione" = CREA; "metti Marco nella lezione" = aggiunta giocatore
       const createPhrase = bookVerb || /\b(metti|fai)\s+(?:un|uno|una|la|il|lo)\s+(?:partit\w*|lezion\w*|prenotazion\w*)\b/.test(tx) || /\bprenotazione\s+privat/.test(tx);
-      const cancelVerb = /\b(annulla|annullare|cancella|cancellare|disdici|disdire|elimina|eliminare)\b/.test(tx) || (remV && !hasPerson);
+      // Stem, non forme esatte: "mi annulli", "annullami", "cancellami", "disdici/disdire" devono
+      // valere come annullamento (prima matchava solo "annulla/cancella" → "annulli" finiva in CREA).
+      const cancelVerb = /\b(annull\w*|cancell\w*|disd\w*|elimin\w*)\b/.test(tx) || (remV && !hasPerson);
       const modifyVerb = /\b(modific\w*|sposta\w*|spostare|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
       const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
       // "aggiungi/togli … ALLA/DALLA partita|lezione" = modifica dei giocatori (apre l'editor),
