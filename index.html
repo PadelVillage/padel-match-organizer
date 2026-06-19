@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.848';
+    const APP_VERSION = '5.849';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40131,7 +40131,9 @@ Per confermare scrivi ELIMINA.`);
       TROVA: ['chi', 'quando', 'quali', 'quanti', 'cosa', 'campi liberi', 'campo libero', 'liberi', 'libero', 'disponibile', 'disponibili', 'disponibilita', 'occupato', 'occupati', 'prenotazioni', 'agenda', 'mostra', 'vedi', 'gioca', 'giocano'],
       PRENOTA: ['prenotami', 'prenotarmi', 'prenotaci', 'bloccami', 'blocca', 'riservami', 'riserva', 'fissami', 'fissa', 'segnami'],
       CANCELLA: ['elimina', 'disdici', 'togli'],
-      CORREGGI: ['rinomina']
+      // CORREGGI include i verbi di DURATA ("allunga/accorcia/…"): cambiano l'ora di fine di una
+      // prenotazione esistente → editor in place, non spostamento. Vedi _startDurata.
+      CORREGGI: ['rinomina', 'allunga', 'allungare', 'allungami', 'accorcia', 'accorciare', 'accorciami', 'prolunga', 'prolungare', 'estendi', 'estendere', 'riduci', 'ridurre', 'abbrevia', 'durata']
     };
     // Verbo "prenotare" coniugato (imperativo/infinito/condizionale/imperfetto/presente) MA
     // NON il sostantivo "prenotazione/prenotazioni": rende l'assistente robusto a "mi prenoti…",
@@ -40202,6 +40204,12 @@ Per confermare scrivi ELIMINA.`);
         && /(^| )(prenotazion\w*|partit\w*|lezion\w*)( |$)/.test(n)
         && /\bcamp[oi]\s*(?:\d|uno|una|due|tre|quattro)\b/.test(n)
         && !/(^| )(scheda|socio|soci\w*|anagrafic\w*)( |$)/.test(n);
+      // Verbo di DURATA (anche coniugato: "allungala", "accorciamo") → CORREGGI (edit in place
+      // dell'ora di fine). Robusto alle forme che il match a parola intera non catturerebbe.
+      // Guardia: serve un segnale di prenotazione/durata, così "riduci il livello di Mario"
+      // (anagrafica) o altri usi generici di "riduci/estendi" NON vengono dirottati su CORREGGI.
+      const durataCtx = /(^| )(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(n)
+        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -40222,6 +40230,9 @@ Per confermare scrivi ELIMINA.`);
         // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
         if (name === 'CORREGGI' && openEditCtx) s += 4;
         if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
+        // Verbo durata → CORREGGI (modifica prenotazione esistente), mai PRENOTA/ANAGRAFICA.
+        if (name === 'CORREGGI' && durataCtx) s += 3;
+        if ((name === 'PRENOTA' || name === 'ANAGRAFICA') && durataCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         // Lettura scheda socio → vince ANAGRAFICA, mai TROVA (che cerca tra le prenotazioni).
         if (name === 'ANAGRAFICA' && (anaReadCtx || anaCreateContactCtx)) s += 3;
@@ -40703,7 +40714,7 @@ Per confermare scrivi ELIMINA.`);
       const cancelVerb = /\b(annull\w*|cancell\w*|disd\w*|elimin\w*)\b/.test(tx) || (remV && !hasPerson);
       // spost\w* copre tutte le coniugazioni ("sposta/sposti/sposto/spostami/spostare/sposterei…":
       // "Mi sposti la lezione…" cadeva in crea perché "sposti" non matchava "sposta\w*").
-      const modifyVerb = /\b(modific\w*|spost\w*|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
+      const modifyVerb = /\b(modific\w*|spost\w*|allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
       const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
       // "aggiungi/togli … ALLA/DALLA partita|lezione|prenotazione|campo" = modifica dei giocatori
       // (apre l'editor), anche senza un nome esplicito ("aggiungi un giocatore alla partita delle
@@ -40763,7 +40774,10 @@ Per confermare scrivi ELIMINA.`);
       if (!azione) {
         if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
         else if (cancelVerb) azione = 'annulla';
-        else if (modifyVerb && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
+        // Durata nominata senza verbo d'azione esplicito ("porta/imposta la durata a 90",
+        // "fai durare … due ore"): modifica. Esclude i verbi di creazione, così
+        // "prenota campo 2 durata 90" resta una NUOVA prenotazione, non una modifica.
+        else if ((modifyVerb || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)) && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
       if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
@@ -40906,7 +40920,7 @@ Per confermare scrivi ELIMINA.`);
     // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
     function _looksLikeNewCommand(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|modific\w+|disd\w+|scart\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|modific\w+|disd\w+|scart\w+|allung\w+|accorci\w+|prolung\w+|estend\w+|riduc\w+|abbrevi\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
       // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
       // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
@@ -40955,6 +40969,7 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'removeconfirm') return _confirmRemoveAnswer(t);
           if (_k === 'moveconfirm') return _confirmMoveAnswer(t);
           if (_k === 'movedest') return _continueMoveDest(t);
+          if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -42300,6 +42315,15 @@ Per confermare scrivi ELIMINA.`);
       // SPOSTAMENTO: postulato → leggi il calendario per capire sorgente e destinazione.
       const isMove = !isAdd && !isRemove && /(^|\s)spost\w*/.test(nlow);
       if (isMove) return _startSposta(res, text, iso, court, time);
+      // DURATA: postulato → leggi il calendario per la prenotazione e la sua durata attuale, poi
+      // cambia SOLO l'ora di fine (edit in place, non spostamento). Vale per i verbi diretti
+      // (allunga/accorcia/…) e per la durata nominata ("porta/imposta/cambia la durata a 90",
+      // "fai durare … due ore").
+      const isDurata = !isAdd && !isRemove && !isMove && (
+        /(^|\s)(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(nlow)
+        || /(^|\s)durat\w*/.test(nlow)
+        || /\bdurar\w*/.test(nlow));
+      if (isDurata) return _startDurata(res, text, iso, court, time);
       // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
       const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
@@ -42437,6 +42461,121 @@ Per confermare scrivi ELIMINA.`);
       const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
       dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
       return _askMoveConfirm(src, dest);
+    }
+
+    // ── DURATA (postulato: leggi prima il calendario) ───────────────────────────
+    // Interpreta una durata detta in linguaggio naturale → minuti. Gestisce ore/minuti, numeri
+    // a parole ("un'ora e mezza"), mezz'ora, quarti d'ora e formati "1h30". null se non trova nulla.
+    function _durToMin(text) {
+      // Normalizzo l'apostrofo ricurvo → dritto, così "un'ora"/"mezz'ora" matchano sempre.
+      const n = ' ' + _norm(text).replace(/[’']/g, "'") + ' ';
+      const W = { "un'": 1, "una": 1, "uno": 1, "un": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6 };
+      function hw(tok) { if (tok == null) return null; if (W[tok] != null) return W[tok]; const f = parseFloat(String(tok).replace(',', '.')); return Number.isFinite(f) ? f : null; }
+      const HNUM = "(\\d+(?:[.,]\\d+)?|un'|una|uno|due|tre|quattro|cinque|sei|un)";
+      let m;
+      // "un quarto d'ora" = 15 · "tre quarti d'ora" = 45
+      m = n.match(/\b(un|tre)\s+quart[oi]\s+d['’\s]?or/);
+      if (m) return m[1] === 'tre' ? 45 : 15;
+      // "X ore e mezza/mezzo" = X*60+30
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\s+e\\s+mezz"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60 + 30); }
+      // "X ore e Y (minuti)" = X*60+Y
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\s+e\\s+(\\d{1,2})\\b"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60 + (parseInt(m[2], 10) || 0)); }
+      // "1h30" / "1 h 30"
+      m = n.match(/\b(\d{1,2})\s*h\s*(\d{2})\b/);
+      if (m) return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+      // "mezz'ora" / "mezzora" = 30
+      if (/\bmezz['’\s]?or/.test(n)) return 30;
+      // "X ore" / "X ora" (anche 1.5 ore)
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\b"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60); }
+      // "X minuti" / "X min" / "X'"
+      m = n.match(/\b(\d{2,3})\s*(?:'|min|minut)/);
+      if (m) return parseInt(m[1], 10);
+      return null;
+    }
+    function _startDurata(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      const nlow = _norm(text);
+      // SORGENTE (postulato): la scheda aperta, oppure la prenotazione che ESISTE sul calendario.
+      let src = null;
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) {
+        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      } else {
+        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        const tryCampi = campi.length ? campi : (court ? [court] : []);
+        const tryTimes = times.length ? times : (time ? [time] : []);
+        for (let di = 0; di < isoCands.length && !src; di++)
+          for (let ci = 0; ci < tryCampi.length && !src; ci++)
+            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
+              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+            }
+      }
+      if (!src) return _say('🔍 Non trovo la prenotazione di cui cambiare la durata. Dimmi campo e ora, es. «<em>allunga la partita di campo 1 alle 18 di mezz\'ora</em>».');
+      const curDur = src.durata || 90;
+      // Apostrofo normalizzato per le euristiche preposizionali ("un'ora").
+      const napo = ' ' + nlow.replace(/[’']/g, "'") + ' ';
+      // Verbo: accorcia (riduce) vs allunga (aumenta).
+      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow);
+      // ASSOLUTO vs DELTA dalla preposizione che INTRODUCE la durata (non da "di" ovunque, che
+      // compare anche in "di campo 2"): "durata/fa(r) durare", oppure "a/fino a <durata>" = assoluto;
+      // "di <durata>" = delta. Lookahead su una cifra o un numero a parole/mezz/quart.
+      const _DLEAD = "(?=\\d|un'|una|uno|un|due|tre|quattro|cinque|sei|mezz|quart)";
+      const isAbs = /(^| )(durat\w*|fai?\s+durar\w*|deve\s+durar\w*)/.test(napo)
+        || new RegExp("\\b(?:a|ad|fino a)\\s+" + _DLEAD).test(napo);
+      let amount = _durToMin(text);
+      // In contesto ASSOLUTO ("porta la durata a 90") un numero nudo 30–240 vale come minuti
+      // (i riferimenti a campo/ora restano fuori dal range plausibile).
+      if (amount == null && isAbs) {
+        const bm = napo.match(/\b(\d{2,3})\b/g);
+        if (bm) { for (let i = 0; i < bm.length; i++) { const v = parseInt(bm[i], 10); if (v >= 30 && v <= 240) { amount = v; break; } } }
+      }
+      if (amount == null) return _say('Di quanto cambio la durata? Dimmi i minuti o le ore, es. «<em>di 30 minuti</em>» oppure «<em>a un\'ora e mezza</em>».');
+      const absHint = isAbs;
+      let newDur;
+      if (absHint) newDur = amount;
+      else newDur = curDur + (isShorten ? -amount : amount);
+      if (!Number.isFinite(newDur) || newDur < STAFF_CAL_SLOT_MIN) {
+        return _say('⛔ La durata minima è ' + STAFF_CAL_SLOT_MIN + '′. Con questa modifica scenderebbe a ' + (Number.isFinite(newDur) ? newDur : '?') + '′: dimmi una durata diversa.');
+      }
+      if (newDur === curDur) return _say('ℹ️ La durata è già di <strong>' + curDur + '′</strong>: niente da cambiare.');
+      // Postulato: controlla sul calendario che l'estensione non si sovrapponga alla prenotazione
+      // successiva (esclude gli slot della prenotazione stessa). Per gli accorciamenti non serve.
+      if (newDur > curDur) {
+        const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
+        if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
+          return _say('⛔ Non posso allungare a <strong>' + newDur + '′</strong>: lo slot successivo (Campo ' + src.campo + ' · ' + src.ora + ') è già occupato. Scegli una durata più breve o sposta prima l\'altra prenotazione.');
+        }
+      }
+      aiFlowState = { kind: 'durataconfirm', stage: 'confirm', src: src, newDur: newDur };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      const oraFin = _staffCalEndTime(src.ora, newDur);
+      return _say('🤔 Porto la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _confirmDurataAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'durataconfirm') { aiFlowState = null; return _say('Dimmi pure di quale prenotazione cambiare la durata.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const src = fs.src, newDur = fs.newDur; aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione.');
+        // Stessa data/campo/ora di inizio: cambia SOLO l'ora di fine → edit in place (non spostamento).
+        st.mOraFin = _staffCalEndTime(st.mOraIni, newDur);
+        _say('⏱️ Porto la durata a <strong>' + newDur + '′</strong> (fine ' + st.mOraFin + ') e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> per cambiare la durata o <strong>no</strong> per lasciar perdere.');
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
