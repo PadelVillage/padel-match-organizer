@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.846';
+    const APP_VERSION = '5.847';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41850,17 +41850,54 @@ Per confermare scrivi ELIMINA.`);
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
     // richiesto ai giocatori presenti (roster); se non c'è → lo dice; se più simili → fa scegliere.
+    // POSTULATO DI BASE: leggi PRIMA il calendario. Legge il roster reale di una prenotazione
+    // (gli stessi dati che disegnano il box) dallo store staff, per ancorare le decisioni a chi
+    // c'è davvero, non allo stato a metà di una scheda appena aperta.
+    function _rosterFromCalendar(st) {
+      if (!st) return [];
+      try {
+        const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const wc = Number(String((st.origCampo != null ? st.origCampo : st.campo) || '').replace(/\D/g, ''));
+        const wIso = String(st.origIso || st.isoDate || '').trim();
+        const wOra = String(st.origOra || st.ora || '').trim();
+        const b = (Array.isArray(list) ? list : []).find(function (x) {
+          return x && String(x.data).trim() === wIso && Number(String(x.campo).replace(/\D/g, '')) === wc && String(x.ora).trim() === wOra;
+        });
+        if (b && Array.isArray(b.giocatori)) {
+          return b.giocatori.map(function (g, i) { return { idx: (g && g.idx != null ? g.idx : i), nome: String((g && g.nome) || '').trim() }; }).filter(function (x) { return x.nome; });
+        }
+      } catch (e) {}
+      return [];
+    }
     function _askRemoveConfirm(st, rawName) {
+      // Se la scheda è appena aperta e il roster non è ancora popolato, leggilo dal calendario,
+      // così il match (e la rimozione per idx) si basano su chi c'è davvero.
+      if (st && (!Array.isArray(st.roster) || !st.roster.length)) {
+        const cal = _rosterFromCalendar(st);
+        if (cal.length) st.roster = cal;
+      }
       const roster = (st && Array.isArray(st.roster)) ? st.roster.filter(function (p) { return p && p.nome; }) : [];
       if (!roster.length) return _say('Questa prenotazione non risulta avere giocatori da togliere (o non li ho ancora letti): riprova tra un istante o aprila e controlla.');
-      const q = _norm(rawName || '');
-      const qtok = q.split(/\s+/).filter(Boolean);
+      const q = _norm(rawName || '').trim();
+      // Parole generiche di ruolo NON sono un nome ("togli un giocatore" = nessun nome → "quale?").
+      const _GENERIC_ROLE = { giocatore: 1, giocatori: 1, alliev: 1, allievo: 1, allieva: 1, allievi: 1, persona: 1, qualcuno: 1, socio: 1, soci: 1, tizio: 1, uno: 1, una: 1 };
+      const qtok = q.split(/\s+/).filter(function (w) { return w.length >= 3 && !_GENERIC_ROLE[w]; });
+      // Nessun nome utile detto ("togli un giocatore", o estrazione a vuoto) → chiedi QUALE
+      // togliere elencando i presenti (caso legittimo, non un errore). NB: senza questa guardia,
+      // un q vuoto faceva matchare TUTTI (indexOf('') = 0) e sembrava "più giocatori simili".
+      if (!q || !qtok.length) {
+        aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? ' + roster.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Rispondi col <strong>numero</strong> (o “no”).');
+      }
+      // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
+      // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
       const hits = roster.filter(function (p) {
         const nm = _norm(p.nome);
         if (!nm) return false;
-        if (nm === q || nm.indexOf(q) >= 0 || (q && q.indexOf(nm) >= 0)) return true;
+        if (nm === q) return true;
         const ntok = nm.split(/\s+/);
-        return qtok.some(function (w) { return w.length >= 3 && ntok.indexOf(w) >= 0; });
+        return qtok.some(function (w) { return ntok.indexOf(w) >= 0; });
       });
       if (!hits.length) {
         return _say('🔍 In questa prenotazione non trovo “<strong>' + _escapeHtml(rawName) + '</strong>”. Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '. Dimmi quale togliere (o “chiudi”).');
