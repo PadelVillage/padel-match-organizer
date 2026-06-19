@@ -468,7 +468,7 @@ async function enrichBookingsWithTabellone(
   username: string,
   password: string,
   baseUrl: string,
-): Promise<void> {
+): Promise<Array<Record<string, unknown>>> {
   // Raccoglie le date uniche future presenti nei booking
   const today = todayIsoRome();
   const dates = [...new Set(
@@ -477,7 +477,7 @@ async function enrichBookingsWithTabellone(
       .map((b) => b.data),
   )].sort();
 
-  if (!dates.length) return;
+  if (!dates.length) return [];
 
   const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
   let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[] }>> = {};
@@ -498,7 +498,7 @@ async function enrichBookingsWithTabellone(
     }
   } catch (err) {
     console.warn(JSON.stringify({ event: 'tabellone_enrich_failed', error: String(err) }));
-    return; // non bloccante
+    return []; // non bloccante
   }
 
   // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
@@ -516,11 +516,11 @@ async function enrichBookingsWithTabellone(
     }
   }
 
-  // DEBUG TEMPORANEO (manutenzione import 2026-06-19): logga gli eventi del tabellone NON abbinati
+  // DEBUG TEMPORANEO (manutenzione import 2026-06-19): raccoglie gli eventi del tabellone NON abbinati
   // ad alcuna prenotazione Excel → candidati blocchi "Manutenzione"/chiusure (che l'export esclude).
-  // Serve a vedere il dato reale (campo/ora/oraFine/giocatori) per progettare il detector. DA RIMUOVERE.
+  // Restituiti al chiamante, che li salva su pmo_cloud_records per ispezione via SQL. DA RIMUOVERE.
+  const unmatched: Array<Record<string, unknown>> = [];
   try {
-    const unmatched: Array<Record<string, unknown>> = [];
     for (const [data, evs] of Object.entries(tabelloneData)) {
       for (const ev of (evs || [])) {
         const key = `${data}|${ev.campo}|${ev.ora}`;
@@ -528,10 +528,10 @@ async function enrichBookingsWithTabellone(
         unmatched.push({ data, campo: ev.campo, ora: ev.ora, oraFine: (ev as any).oraFine || '', giocatori: ev.giocatori || [] });
       }
     }
-    console.log(JSON.stringify({ event: 'tabellone_unmatched_debug', total: unmatched.length, sample: unmatched.slice(0, 50) }));
   } catch (err) {
     console.warn(JSON.stringify({ event: 'tabellone_unmatched_debug_failed', error: String(err) }));
   }
+  return unmatched;
 }
 
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
@@ -910,7 +910,7 @@ Deno.serve(async (req) => {
       const enrichPassword = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
       const enrichBaseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
       if (enrichWorkerUrl && enrichWorkerApiKey && enrichUsername && enrichPassword) {
-        await enrichBookingsWithTabellone(
+        const unmatchedDebug = await enrichBookingsWithTabellone(
           validation.occupancyBookings,
           enrichWorkerUrl,
           enrichWorkerApiKey,
@@ -918,6 +918,20 @@ Deno.serve(async (req) => {
           enrichPassword,
           enrichBaseUrl,
         );
+        // DEBUG TEMPORANEO (manutenzione import): salva gli eventi tabellone non abbinati su
+        // pmo_cloud_records per ispezione via SQL. DA RIMUOVERE dopo la verifica.
+        try {
+          await admin.from('pmo_cloud_records').upsert([{
+            record_type: 'matchpoint_data',
+            local_key: 'debug_tabellone_unmatched',
+            payload: { importedAt, total: unmatchedDebug.length, eventi: unmatchedDebug.slice(0, 80) },
+            payload_hash: null,
+            deleted: false,
+            synced_at: importedAt,
+          }], { onConflict: 'record_type,local_key' });
+        } catch (dbg) {
+          console.warn(JSON.stringify({ event: 'unmatched_debug_save_failed', error: String(dbg) }));
+        }
       }
     } catch (err) {
       console.warn(JSON.stringify({ event: 'tabellone_enrich_error', error: String(err) }));
