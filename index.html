@@ -40865,6 +40865,15 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
+        // Allo stadio CONFERMA di una prenotazione, una risposta BREVE (solo la parola) di
+        // conferma/annullo è la risposta al riepilogo — incl. "prenota"/"prenotala", che
+        // _looksLikeNewCommand scambierebbe per un nuovo comando e farebbe ripartire da capo
+        // (collaudo 19/06). NB: ancorata a ^…$, così "prenota campo 2 domani" (comando pieno)
+        // NON entra qui e abbandona regolarmente il flusso.
+        if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'prenota' &&
+            /^\s*(prenot\w*|conferm\w*|confermo|s[iì]|ok|va bene|vabene|procedi|certo|salva|annull\w*|no|lascia\w*|stop|niente)\s*$/i.test(t)) {
+          return _confirmAnswer(t);
+        }
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
         // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
@@ -41543,12 +41552,13 @@ Per confermare scrivi ELIMINA.`);
     // Conferma via testo (fallback ai pulsanti).
     function _confirmAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
-      // No/annulla ha precedenza. NB: "prenota" NON è un sinonimo di conferma, così un
-      // nuovo comando "prenota …" non viene scambiato per un sì alla prenotazione in attesa.
+      // No/annulla ha precedenza. "prenota"/"prenotala" come risposta breve = conferma (qui ci
+      // arriva solo la parola singola: i comandi pieni "prenota campo 2…" sono già stati intercettati
+      // a monte da _looksLikeNewCommand, che abbandona il flusso).
       if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) {
         aiFlowState = null; return _say('❌ Prenotazione annullata.');
       }
-      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo )/.test(n)) {
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | salva | prenot\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executePrenota(d);
       }
       _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
