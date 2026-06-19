@@ -41869,6 +41869,16 @@ Per confermare scrivi ELIMINA.`);
       return (typeof normalizePhone === 'function') ? normalizePhone(m[1]) : m[1].replace(/[^\d+]/g, '');
     }
     function _anaExtractLevel(text) { const m = String(text || '').match(/\bliv(?:ello)?\.?\s*([0-9](?:[.,][0-9])?)\b/i); return m ? m[1].replace(',', '.') : ''; }
+    // Livello scritto a PAROLE (es. "uno"→1, "tre e mezzo"→3.5). Ritorna numero o null.
+    const _ANA_NUMWORD = { zero: 0, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7 };
+    function _anaLevelWord(text) {
+      const t = ' ' + _norm(text) + ' ';
+      const wm = t.match(/\b(zero|uno|due|tre|quattro|cinque|sei|sette)\b/);
+      if (!wm) return null;
+      let v = _ANA_NUMWORD[wm[1]];
+      if (/\bmezz[oa]\b/.test(t)) v += 0.5;   // "e mezzo"/"e mezza" → +0.5
+      return v;
+    }
     function _anaExtractGender(text) {
       const n = ' ' + _norm(text) + ' ';
       if (/( femmin\w*| donna| ragazza| signora)( |$)/.test(n)) return 'F';
@@ -41966,7 +41976,10 @@ Per confermare scrivi ELIMINA.`);
       // "variare" = modificare (es. «mi vari il livello da 5 a 4»). Il bare "vari" vale come
       // verbo solo se seguito da articolo (per non confonderlo con l'aggettivo "vari soci").
       const varyV = /(^| )(variar\w*|varia\w*)( |$)/.test(n) || /(^| )vari (?:il|lo|la|l'|i|gli|le|loro)( |$)/.test(n);
-      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n) || varyV) && !createV;
+      // Mi fido anche della sotto-azione del PARSER (res.anaSub): le sue regex modVerb includono
+      // metti/porta/alza/abbassa/segna che _ANA_UPDATE_VERB qui non aveva → "metti il livello a N"
+      // finiva in LETTURA (c'è la parola-campo). Il parser distingue già il cognome-verbo (Porta=leggi).
+      const updateV = (_ANA_UPDATE_VERB.test(n) || /(^| )rinomin\w*( |$)/.test(n) || varyV || (res && res.anaSub === 'modifica')) && !createV;
       // Operazione: RIATTIVA → DISATTIVA → LETTURA → AGGIORNA → CREA (la creazione è il default).
       // Riattivazione prima (es. "riattiva Mario"); disattivazione poi (anche "cancella/elimina
       // il socio" = disattiva, mai delete vero).
@@ -42201,12 +42214,12 @@ Per confermare scrivi ELIMINA.`);
         if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
         draft.gender = g;
       } else if (k === 'level') {
-        // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Estrai il numero
-        // INTERO ("21" non va troncato a "2") e rifiuta fuori scala invece di accettare in silenzio.
+        // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Accetta cifra
+        // ("21" intero, non troncato a "2") O parola ("uno"→1, "tre e mezzo"→3.5); rifiuta fuori scala.
         const lm = ans.match(/\d+(?:[.,]\d+)?/);
-        const nl = lm ? parseFloat(lm[0].replace(',', '.')) : NaN;
-        if (Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
-        draft.level = lm[0].replace(',', '.');
+        const nl = lm ? parseFloat(lm[0].replace(',', '.')) : _anaLevelWord(ans);
+        if (nl == null || Number.isNaN(nl) || nl < 0 || nl > 7) return _say('Livello non valido: ammessi <strong>0–7</strong> (es. 3 o 4.5).');
+        draft.level = lm ? lm[0].replace(',', '.') : String(nl);
       } else if (k === 'email') {
         // Email FACOLTATIVA (decisione di prodotto): se la risposta è un indirizzo valido lo salvo;
         // se contiene «@» ma è malformato chiedo di correggere (o saltare); qualsiasi altra risposta
@@ -42284,9 +42297,10 @@ Per confermare scrivi ELIMINA.`);
         // altrimenti l'ultimo numero (di norma il target). Mai il primo (sarebbe il valore attuale).
         let mm = String(text).match(/\bda\s+\d+(?:[.,]\d+)?\s+a\s+(\d+(?:[.,]\d+)?)\b/i);
         if (!mm) mm = String(text).match(/(?:\ba\b|->|=>|→|:|=)\s*(\d+(?:[.,]\d+)?)\s*$/i);
-        if (mm) lv = mm[1];
-        else { const all = String(text).match(/\d+(?:[.,]\d+)?/g); if (all && all.length) lv = all[all.length - 1]; }
-        if (lv != null) ch.level = lv.replace(',', '.');
+        if (mm) lv = mm[1].replace(',', '.');
+        else { const all = String(text).match(/\d+(?:[.,]\d+)?/g); if (all && all.length) lv = all[all.length - 1].replace(',', '.'); }
+        if (lv == null) { const w = _anaLevelWord(text); if (w != null) lv = String(w); }   // livello a parole ("uno", "tre e mezzo")
+        if (lv != null) ch.level = lv;
       }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
       // Posizione di gioco (Destra/Sinistra). "da destra a sinistra" → il NUOVO lato è il
