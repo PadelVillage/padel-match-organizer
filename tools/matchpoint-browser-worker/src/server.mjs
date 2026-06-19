@@ -3181,6 +3181,10 @@ async function readTabelloneWithBrowser(options = {}) {
         const nota = manutenzione
           ? fullText.replace(/\d{1,2}[:.]\d{2}\s*[-–]?\s*\d{0,2}[:.]?\d{0,2}/g, ' ').replace(/manutenzione/ig, ' ').replace(/\s+/g, ' ').trim()
           : '';
+        // DEBUG DISCOVERY (manutenzione 2026-06-19): classe + tutti gli attributi del div.evento,
+        // per trovare un marcatore DETERMINISTICO della manutenzione (più robusto del colore). DA RIMUOVERE.
+        const cls = String(e.className || '');
+        const attrs = [...e.attributes].map((a) => `${a.name}=${a.value}`).slice(0, 30);
         return {
           id: e.getAttribute('id') || e.id || '',
           idrecurso: e.getAttribute('idrecurso') || '',
@@ -3189,6 +3193,8 @@ async function readTabelloneWithBrowser(options = {}) {
           giocatori,
           manutenzione,
           nota,
+          cls,
+          attrs,
         };
       });
     });
@@ -3281,6 +3287,8 @@ async function readTabelloneWithBrowser(options = {}) {
             // Campi additivi (manutenzione import 2026-06-19): i consumatori che non li conoscono
             // li ignorano. Solo per i blocchi manutenzione (senza giocatori, solo nota).
             ...(ev.manutenzione ? { tipo: 'manutenzione', nota: ev.nota || '' } : {}),
+            // DEBUG DISCOVERY: classe+attributi per trovare il marcatore deterministico. DA RIMUOVERE.
+            cls: ev.cls || '', attrs: ev.attrs || [],
           }))
           .filter((ev) => ev.campo > 0);
       } catch (err) {

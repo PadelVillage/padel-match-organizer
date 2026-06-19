@@ -503,6 +503,8 @@ async function enrichBookingsWithTabellone(
 
   // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
   const matchedKeys = new Set<string>();
+  const _dbgNorm: Array<Record<string, unknown>> = []; // DEBUG: campione eventi NORMALI (cls/attrs)
+  const _dbgMan: Array<Record<string, unknown>> = [];  // DEBUG: eventi MANUTENZIONE (cls/attrs)
   for (const booking of bookings) {
     const dayData = tabelloneData[booking.data] || [];
     const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
@@ -513,6 +515,7 @@ async function enrichBookingsWithTabellone(
       if (match.giocatori.length) booking.giocatori = match.giocatori;
       if (match.id) booking.idReserva = String(match.id);
       matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
+      if (_dbgNorm.length < 6) _dbgNorm.push({ data: booking.data, campo: campoNum, ora: booking.ora, cls: (match as any).cls || '', attrs: (match as any).attrs || [] });
     }
   }
 
@@ -542,10 +545,31 @@ async function enrichBookingsWithTabellone(
           descrizione: String((ev as any).nota || ''),
         } as ParsedBooking);
         added += 1;
+        if (_dbgMan.length < 30) _dbgMan.push({ data, campo: campoNum, ora: ev.ora, nota: String((ev as any).nota || ''), cls: (ev as any).cls || '', attrs: (ev as any).attrs || [] });
       }
     }
   } catch (err) {
     console.warn(JSON.stringify({ event: 'manutenzione_occupancy_failed', error: String(err) }));
+  }
+
+  // DEBUG DISCOVERY (manutenzione 2026-06-19): salva classe+attributi di eventi manutenzione vs
+  // normali su pmo_cloud_records, per trovare un marcatore deterministico. DA RIMUOVERE.
+  try {
+    const dbgUrl = Deno.env.get('SUPABASE_URL') || '';
+    const dbgKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    if (dbgUrl && dbgKey) {
+      const dbgAdmin = createClient(dbgUrl, dbgKey, { auth: { persistSession: false } });
+      await dbgAdmin.from('pmo_cloud_records').upsert([{
+        record_type: 'matchpoint_data',
+        local_key: 'debug_manutenzione_attrs',
+        payload: { at: new Date().toISOString(), manutenzione: _dbgMan, normali: _dbgNorm },
+        payload_hash: null,
+        deleted: false,
+        synced_at: new Date().toISOString(),
+      }], { onConflict: 'record_type,local_key' });
+    }
+  } catch (e) {
+    console.warn(JSON.stringify({ event: 'debug_manutenzione_attrs_failed', error: String(e) }));
   }
   console.log(JSON.stringify({ event: 'manutenzione_occupancy_added', added }));
 }
