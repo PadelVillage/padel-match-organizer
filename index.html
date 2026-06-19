@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.854';
+    const APP_VERSION = '5.855';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40052,6 +40052,13 @@ Per confermare scrivi ELIMINA.`);
     function _todayIso() {
       return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
     }
+    // Giorno ATTUALMENTE MOSTRATO nel calendario (date picker #staffCalDate). Per le azioni su
+    // prenotazioni esistenti senza data esplicita, l'operatore intende il giorno che sta guardando,
+    // NON per forza "oggi". Fallback a oggi se il selettore non è disponibile/valido.
+    function _calSelectedIso() {
+      try { const el = document.getElementById('staffCalDate'); const v = el && el.value; if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v; } catch (e) {}
+      return _todayIso();
+    }
     // Formattazione LOCALE (non toISOString, che in fusi positivi tipo UTC+2 sposta la
     // data al giorno prima e farebbe sbagliare "domani"/i giorni della settimana).
     function _fmtLocal(x) {
@@ -42165,7 +42172,7 @@ Per confermare scrivi ELIMINA.`);
     function _startCancella(res, text) {
       const p = res.parsed || {};
       const slots = res.slots || {};
-      const iso = slots.date || p.data || _todayIso();
+      const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
@@ -42311,7 +42318,7 @@ Per confermare scrivi ELIMINA.`);
     function _startModifica(res, text) {
       const p = res.parsed || {};
       const slots = res.slots || {};
-      const iso = slots.date || p.data || _todayIso();
+      const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       const nlow = _norm(text);
@@ -42431,7 +42438,10 @@ Per confermare scrivi ELIMINA.`);
       if (open) {
         src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
       } else {
-        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        // Priorità data sorgente: data ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+        // (Prima si assumeva "oggi", e modificava la prenotazione di un altro giorno rispetto a quello
+        // che l'operatore stava guardando.)
+        const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
         const tryCampi = campi.length ? campi : (court ? [court] : []);
         const tryTimes = times.length ? times : (time ? [time] : []);
         for (let di = 0; di < isoCands.length && !src; di++)
@@ -42461,9 +42471,11 @@ Per confermare scrivi ELIMINA.`);
       return _askMoveConfirm(src, dest);
     }
     function _askMoveConfirm(src, dest) {
-      // Niente spostamenti nel passato (data destinazione precedente a oggi).
-      if (String(dest.iso) < _todayIso()) {
-        return _say('⛔ Non posso spostare la prenotazione nel passato (' + _dmy(dest.iso) + '). Scegli una data da oggi in poi.');
+      // Niente spostamenti PIÙ indietro nel passato: blocca solo se la destinazione è prima della
+      // sorgente E prima di oggi (così correggere/spostare una prenotazione già passata sullo stesso
+      // giorno — o spostarla in avanti — resta possibile).
+      if (String(dest.iso) < String(src.iso) && String(dest.iso) < _todayIso()) {
+        return _say('⛔ Non posso spostare la prenotazione più indietro nel passato (' + _dmy(dest.iso) + '). Scegli una data da oggi in poi.');
       }
       // Postulato: controlla sul calendario che la destinazione sia LIBERA prima di confermare.
       const occ = _calBookingAt(dest.iso, dest.campo, dest.ora);
@@ -42606,7 +42618,8 @@ Per confermare scrivi ELIMINA.`);
       const times = _allTimes(text);
       const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
       if (open) return { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
-      const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+      // Priorità data: ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+      const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
       const tryCampi = campi.length ? campi : (court ? [court] : []);
       const tryTimes = times.length ? times : (time ? [time] : []);
       for (let di = 0; di < isoCands.length; di++)
@@ -42688,7 +42701,10 @@ Per confermare scrivi ELIMINA.`);
       if (open) {
         src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
       } else {
-        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        // Priorità data sorgente: data ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+        // (Prima si assumeva "oggi", e modificava la prenotazione di un altro giorno rispetto a quello
+        // che l'operatore stava guardando.)
+        const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
         const tryCampi = campi.length ? campi : (court ? [court] : []);
         const tryTimes = times.length ? times : (time ? [time] : []);
         for (let di = 0; di < isoCands.length && !src; di++)
