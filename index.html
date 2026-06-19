@@ -41566,6 +41566,47 @@ Per confermare scrivi ELIMINA.`);
       wrap.appendChild(yes); wrap.appendChild(no);
       div.appendChild(wrap);
     }
+    // Campi (1–4) LIBERI per la stessa fascia oraria del draft, escluso quello richiesto.
+    // Riusa staffCalFindConflict clonando il parsed con un campoNum diverso.
+    function _freeCourtsAt(draft) {
+      const free = [];
+      if (typeof staffCalFindConflict !== 'function') return free;
+      const base = { data: draft.data, ora: draft.ora, durata: draft.durata || 90 };
+      for (let c = 1; c <= 4; c++) {
+        if (c === draft.campoNum) continue;
+        try { if (!staffCalFindConflict(Object.assign({}, base, { campoNum: c }))) free.push(c); } catch (e) {}
+      }
+      return free;
+    }
+    // Slot occupato → niente vicolo cieco: proponi gli altri campi liberi a quell'ora (pulsanti
+    // che riprenotano sul campo scelto). Se non ce n'è nessuno, suggerisci di cambiare orario/giorno.
+    function _suggestFreeCourts(draft, conflict) {
+      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || 90);
+      const occ = '⛔ Il <strong>Campo ' + draft.campoNum + '</strong> è già occupato ' + draft.ora + '–' + oraFine +
+        (conflict && conflict.nome ? ' (' + _escapeHtml(conflict.nome) + ')' : '') + '.';
+      const free = _freeCourtsAt(draft);
+      if (!free.length) {
+        return _say(occ + '<br>😕 A quell’ora <strong>non c’è nessun altro campo libero</strong>. Prova un altro orario o giorno.');
+      }
+      const div = _say(occ + '<br>✅ Liberi a quell’ora: <strong>Campo ' + free.join(', Campo ') +
+        '</strong>. Vuoi spostarti su uno di questi?');
+      if (div && div.appendChild) {
+        const wrap = document.createElement('div'); wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+        free.forEach(function (c) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = '📍 Campo ' + c;
+          b.addEventListener('click', function () {
+            if (b.disabled) return;
+            wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            b.classList.add('selected');
+            draft.campoNum = c; draft.__started = false; // consenti il re-submit sul campo scelto
+            _executePrenota(draft);
+          });
+          wrap.appendChild(b);
+        });
+        div.appendChild(wrap);
+      }
+      return div;
+    }
     // Conferma via testo (fallback ai pulsanti).
     function _confirmAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
@@ -41605,9 +41646,10 @@ Per confermare scrivi ELIMINA.`);
         note: draft.note || ''
       };
       // Pre-check conflitto istantaneo (non chiama il worker se lo slot è occupato).
+      // Occupato → proponi gli altri campi liberi a quell'ora invece di un secco "non è possibile".
       try {
         const c = (typeof staffCalFindConflict === 'function') ? staffCalFindConflict(parsed) : null;
-        if (c) return _say('⛔ Lo slot è già occupato' + (c.nome ? ' (' + _escapeHtml(c.nome) + ')' : '') + '. Prenotazione <strong>NON</strong> inviata.');
+        if (c) { draft.__started = false; return _suggestFreeCourts(draft, c); }
       } catch (e) {}
       let prog = null;
       try {
