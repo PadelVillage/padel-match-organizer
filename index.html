@@ -41280,6 +41280,17 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b(?:sul|sullo|sulla|sui|sugli|sulle|su|al|allo|alla|ai|agli|alle|nel|nello|nella|nei|negli|nelle|in|del|dello|della)?\s*camp[oi]\b\s*(?:n(?:umero)?\.?\s*)?\d*/gi, ' ')
         .replace(/\s+/g, ' ').trim();
     }
+    // Toglie i riferimenti di GIORNO/DATA dal testo dei giocatori, così un "…alle 11 di oggi"
+    // non fa diventare "oggi" un nome (sul live "oggi" matchava per fuzzy un socio reale — collaudo
+    // 19/06). NB: solo per il testo-giocatori, non per il parsing della data (già fatto a monte).
+    function _stripDateRefs(s) {
+      return String(s || '')
+        .replace(/\b(?:di|del|dell['’]|per|entro|questo|questa|prossim[oa])\s+(oggi|domani|dopodomani|ieri|stamattina|stamane|stasera|stanotte|mattina|mattino|pomeriggio|sera|notte|settimana|mese)\b/gi, ' ')
+        .replace(/\b(oggi|domani|dopodomani|ieri|stamattina|stamane|stasera|stanotte)\b/gi, ' ')
+        .replace(/\b(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)\b/gi, ' ')
+        .replace(/\b\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?\b/g, ' ')
+        .replace(/\s+/g, ' ').trim();
+    }
     function _resolvePlayers(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
@@ -41337,7 +41348,7 @@ Per confermare scrivi ELIMINA.`);
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
       const after = _afterTime(text);
       let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
-      playerText = _stripCourtRefs(playerText);
+      playerText = _stripDateRefs(_stripCourtRefs(playerText));
       if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
       return draft;
     }
