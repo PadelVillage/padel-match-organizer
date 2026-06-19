@@ -502,6 +502,7 @@ async function enrichBookingsWithTabellone(
   }
 
   // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
+  const matchedKeys = new Set<string>();
   for (const booking of bookings) {
     const dayData = tabelloneData[booking.data] || [];
     const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
@@ -511,7 +512,25 @@ async function enrichBookingsWithTabellone(
     if (match) {
       if (match.giocatori.length) booking.giocatori = match.giocatori;
       if (match.id) booking.idReserva = String(match.id);
+      matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
+  }
+
+  // DEBUG TEMPORANEO (manutenzione import 2026-06-19): logga gli eventi del tabellone NON abbinati
+  // ad alcuna prenotazione Excel → candidati blocchi "Manutenzione"/chiusure (che l'export esclude).
+  // Serve a vedere il dato reale (campo/ora/oraFine/giocatori) per progettare il detector. DA RIMUOVERE.
+  try {
+    const unmatched: Array<Record<string, unknown>> = [];
+    for (const [data, evs] of Object.entries(tabelloneData)) {
+      for (const ev of (evs || [])) {
+        const key = `${data}|${ev.campo}|${ev.ora}`;
+        if (matchedKeys.has(key)) continue;
+        unmatched.push({ data, campo: ev.campo, ora: ev.ora, oraFine: (ev as any).oraFine || '', giocatori: ev.giocatori || [] });
+      }
+    }
+    console.log(JSON.stringify({ event: 'tabellone_unmatched_debug', total: unmatched.length, sample: unmatched.slice(0, 50) }));
+  } catch (err) {
+    console.warn(JSON.stringify({ event: 'tabellone_unmatched_debug_failed', error: String(err) }));
   }
 }
 
