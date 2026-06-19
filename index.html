@@ -40926,6 +40926,7 @@ Per confermare scrivi ELIMINA.`);
             return _continueAnagrafica(t); // stage 'await' (slot mancanti del nuovo socio)
           }
           if (aiFlowState.stage === 'ospite') return _ospiteAnswer(t);
+          if (aiFlowState.stage === 'pickfree') return _pickFreeCourtAnswer(t);
           if (aiFlowState.stage === 'confirm') return _confirmAnswer(t);
           if (aiFlowState.stage === 'await') return _continuePrenota(t);
         }
@@ -41666,6 +41667,8 @@ Per confermare scrivi ELIMINA.`);
       }
       const div = _say(occ + '<br>✅ Liberi a quell’ora: <strong>Campo ' + free.join(', Campo ') +
         '</strong>. Vuoi spostarti su uno di questi?');
+      // Stato per rispondere ANCHE a voce/testo ("due", "campo 2", "il 3"), non solo coi pulsanti.
+      aiFlowState = { kind: 'prenota', stage: 'pickfree', draft: draft, free: free };
       if (div && div.appendChild) {
         const wrap = document.createElement('div'); wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
         free.forEach(function (c) {
@@ -41684,6 +41687,20 @@ Per confermare scrivi ELIMINA.`);
         div.appendChild(wrap);
       }
       return div;
+    }
+    // Risposta testuale/vocale alla proposta dei campi liberi ("due", "campo 2", "il 3").
+    function _pickFreeCourtAnswer(text) {
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lascio perdere.'); }
+      const draft = aiFlowState.draft;
+      const free = aiFlowState.free || [];
+      const c = _extractCampoLoose(text);
+      const elenco = free.map(function (x) { return 'Campo ' + x; }).join(', ');
+      if (!c) return _say('Scrivi il <strong>numero del campo</strong> (' + elenco + ') oppure “annulla”.');
+      if (free.indexOf(c) === -1) return _say('Il <strong>Campo ' + c + '</strong> non è libero a quell’ora. Scegli tra <strong>' + elenco + '</strong> (oppure “annulla”).');
+      draft.campoNum = c; draft.__started = false;
+      aiFlowState = null;
+      return _advancePrenota(draft);
     }
     // "Aggiungi <nome>" con una scheda prenotazione APERTA → aggiunge il giocatore a QUELLA
     // scheda (st.add) e la riporta in cima, senza la domanda socio/giocatore (decisione utente
