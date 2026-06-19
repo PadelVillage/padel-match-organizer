@@ -41230,7 +41230,9 @@ Per confermare scrivi ELIMINA.`);
     }
     function _extractCampoLoose(text) {
       const c = _extractCampo(_norm(text)); if (c) return c;
-      const m = String(text || '').match(/\b([1-4])\b/); return m ? parseInt(m[1], 10) : 0;
+      const cx = _campoX(_norm(text)); if (cx && cx.campo) return cx.campo; // "campo quattro", "sul 2"
+      const m = String(text || '').match(/\b([1-4])\b/); if (m) return parseInt(m[1], 10);
+      const w = _norm(text).match(/\b(uno|una|due|tre|quattro)\b/); return w ? _NUMW14[w[1]] : 0; // risposta a parole: "quattro"
     }
     // Testo dei giocatori = ciò che segue l'orario, ripulito da ricorrenza/connettori.
     function _afterTime(text) {
