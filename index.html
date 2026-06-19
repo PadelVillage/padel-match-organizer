@@ -37249,7 +37249,8 @@ Per confermare scrivi ELIMINA.`);
     return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
   }
 
-  async function staffCalPlayersSave() {
+  async function staffCalPlayersSave(opts) {
+    opts = opts || {};
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
 
@@ -37277,7 +37278,9 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) parts.push('Sposta → Campo ' + st.mCampo + ' · ' + st.mIso.split('-').reverse().join('/') + ' · ' + st.mOraIni + '–' + st.mOraFin);
     if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
     if (noteChanged) parts.push((st.note ? 'Nota aggiornata' : 'Nota rimossa'));
-    if (!confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
+    // skipConfirm = chiamata dall'assistente ("salva" a voce): la conferma è già stata data a voce,
+    // niente popup nativo (che spezzerebbe il flusso vocale). Il pulsante Salva manuale lo mantiene.
+    if (!opts.skipConfirm && !confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
 
     // ── Cattura tutto in "op" e LIBERA SUBITO l'operatore: la scrittura prosegue in sottofondo ──
     const op = {
@@ -40898,6 +40901,12 @@ Per confermare scrivi ELIMINA.`);
           if (aiFlowState.stage === 'await') return _continuePrenota(t);
         }
       }
+      // Scheda prenotazione APERTA: "salva/conferma/ok" la conferma a voce, "chiudi" la chiude
+      // (così non serve cliccare i pulsanti). "aggiungi <nome>" resta gestito più sotto.
+      if (staffCalPlayersState && !staffCalPlayersState.busy) {
+        const _ev = _editorVoiceCommand(t);
+        if (_ev) return _ev;
+      }
       const res = await _parseWithAi(t);
       _logInteraction(t, res);
       // Regola E — input impossibile: rifiuta senza procedere.
@@ -41660,6 +41669,33 @@ Per confermare scrivi ELIMINA.`);
         st.campo + ' · ' + st.ora + '). Premi <strong>Salva</strong> nella scheda per confermare su Matchpoint.';
       if (r.notes && r.notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + r.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
       return _say(msg);
+    }
+    // Comandi vocali/testuali sulla SCHEDA prenotazione aperta: "salva/conferma/ok" → salva su
+    // Matchpoint (come il pulsante Salva), "chiudi" → chiude senza salvare. Così l'aggiunta di un
+    // giocatore si conferma a voce, senza cliccare (decisione utente 2026-06-19). Restituisce un
+    // valore truthy se ha gestito il comando, altrimenti null (si prosegue col parsing normale).
+    function _editorVoiceCommand(text) {
+      const st = staffCalPlayersState;
+      if (!st || st.busy) return null;
+      const n = _norm(text);
+      // Chiudi la scheda (senza salvare). NB: "annulla" da solo NON entra qui (= annulla
+      // prenotazione/flusso altrove): serve "chiudi" o "annulla la modifica".
+      if (/^\s*(chiud\w*|esci|lascia\s+perder\w*|annull\w*\s+(la\s+)?modific\w*)\s*$/.test(n)) {
+        staffCalPlayersState = null;
+        return _say('📝 Modifica chiusa (senza salvare).');
+      }
+      const hasChanges = (st.add && st.add.length) || (st.remove && Object.keys(st.remove).length) ||
+        _staffCalEditorMoveChanged(st) || (String(st.note || '') !== String(st.origNote || ''));
+      // "salva/conferma/ok/sì/va bene/procedi/vai/fatto" con modifiche in sospeso → salva.
+      if (hasChanges && /^\s*(salv\w*|conferm\w*|confermo|ok(?:ay|ey)?|va\s+bene|vabene|procedi|vai|fatto|s[iì])\s*$/.test(n)) {
+        try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml(e.message || String(e))); }
+        return true;
+      }
+      // "salva/conferma" esplicito ma senza nulla da salvare → spiega (non cade nel messaggio d'aiuto).
+      if (/^\s*(salv\w*|conferm\w*)\s*$/.test(n)) {
+        return _say('Non c’è nessuna modifica da salvare in questa scheda. Aggiungi un giocatore, oppure scrivi “<strong>chiudi</strong>”.');
+      }
+      return null;
     }
     // Conferma via testo (fallback ai pulsanti).
     function _confirmAnswer(text) {
