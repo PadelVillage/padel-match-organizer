@@ -41536,6 +41536,15 @@ Per confermare scrivi ELIMINA.`);
     }
     function _showSummary(draft) {
       if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      // Disponibilità PRIMA del riepilogo: se il campo è occupato non mostrare "Conferma e prenota",
+      // ma proponi subito gli altri campi liberi a quell'ora (decisione utente 2026-06-19). Il check
+      // in _executePrenota resta come rete di sicurezza (race: qualcuno prenota nel frattempo).
+      try {
+        if (draft.campoNum && draft.ora && typeof staffCalFindConflict === 'function') {
+          const _c = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || 90 });
+          if (_c) { aiFlowState = null; return _suggestFreeCourts(draft, _c); }
+        }
+      } catch (e) {}
       // Partita senza giocatori indicati → la prenota sotto l'OSPITE (vedi _ospitePlayer).
       if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length)) {
         draft.giocatori = [_ospitePlayer()];
@@ -41604,8 +41613,10 @@ Per confermare scrivi ELIMINA.`);
             if (b.disabled) return;
             wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
             b.classList.add('selected');
-            draft.campoNum = c; draft.__started = false; // consenti il re-submit sul campo scelto
-            _executePrenota(draft);
+            // Vai al riepilogo del campo scelto (con conferma), non prenotare al volo: _showSummary
+            // ri-verifica la disponibilità del nuovo campo e mostra "Conferma e prenota".
+            draft.campoNum = c; draft.__started = false;
+            _showSummary(draft);
           });
           wrap.appendChild(b);
         });
