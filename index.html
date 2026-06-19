@@ -41337,9 +41337,10 @@ Per confermare scrivi ELIMINA.`);
       if (!draft.campoNum) need.push('court');
       if (!draft.ora) need.push('time');
       if (need.length) { aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: need }; return _askNext(); }
-      // Partita senza giocatore indicato → CHIEDI se prenotare a nome Ospite (scelta utente,
-      // niente default silenzioso). Le lezioni non passano di qui (hanno il maestro).
-      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length) && !draft.__ospiteAsked) {
+      // Partita/lezione senza nominativo indicato → CHIEDI se a nome Ospite o se c'è un nome
+      // (scelta utente, niente "—" silenzioso). Vale anche per le LEZIONI: l'allievo va chiesto
+      // (decisione utente 2026-06-19), oltre al maestro già obbligatorio.
+      if ((!draft.giocatori || !draft.giocatori.length) && !draft.__ospiteAsked) {
         return _askOspite(draft);
       }
       aiFlowState = null;
@@ -41353,7 +41354,7 @@ Per confermare scrivi ELIMINA.`);
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
-      if (k === 'player') return _say('👥 <strong>Chi gioca?</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).');
+      if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
     }
     // Pulsanti "Partita / Lezione" per la domanda sul tipo (fallback testuale in _continuePrenota).
     function _appendTypeButtons(div, draft) {
@@ -41381,7 +41382,9 @@ Per confermare scrivi ELIMINA.`);
     function _askOspite(draft) {
       draft.__ospiteAsked = true;
       aiFlowState = { kind: 'prenota', stage: 'ospite', draft: draft };
-      const div = _say('👥 Non hai indicato un giocatore. Prenoto a nome <strong>Ospite</strong>?');
+      const isLez = (draft.tipo || 'partita') === 'lezione';
+      const who = isLez ? 'allievo' : 'giocatore';
+      const div = _say('👥 Non hai indicato un <strong>' + who + '</strong>. ' + (isLez ? 'Faccio la lezione' : 'Prenoto') + ' a nome <strong>Ospite</strong>, oppure hai un nome da inserire?');
       _appendOspiteButtons(div, draft);
     }
     function _appendOspiteButtons(div, draft) {
