@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.843';
+    const APP_VERSION = '5.844';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40689,7 +40689,11 @@ Per confermare scrivi ELIMINA.`);
         && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s*(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(tx);
       const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
       const editNames = (addV || remV || replV || removeFromBooking) ? _editNames(tx) : [];
-      const hasPerson = editNames.length > 0;
+      // "Ospite" è un SOCIO jolly (non un nuovo nominativo): "aggiungi/inserisci/metti un ospite"
+      // è una modifica-giocatori, non la creazione di un socio "ospite". Conta come persona.
+      const hasOspite = /\b(ospit[ei]|jolly)\b/.test(tx);
+      const ospiteEdit = (addV || remV || replV || removeFromBooking) && hasOspite;
+      const hasPerson = editNames.length > 0 || ospiteEdit;
       // verbo "prenotare" coniugato (NON il sostantivo "prenotazione/prenotazioni") + altri verbi di creazione
       const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
       // "metti/fai una partita|lezione" = CREA; "metti Marco nella lezione" = aggiunta giocatore
@@ -40753,7 +40757,7 @@ Per confermare scrivi ELIMINA.`);
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
       if (openEditCtx2) azione = 'modifica';
-      else if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
+      else if (!ospiteEdit && (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField)) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -40799,7 +40803,7 @@ Per confermare scrivi ELIMINA.`);
       else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
       else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
       else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
-      else if (ana.isAna && ana.ko) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente)
+      else if (ana.isAna && ana.ko && !ospiteEdit) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente). Ospite-jolly escluso.
 
       // ── azione massiva (regola F) ──
       const confirmMassive = ((azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx))
@@ -40975,11 +40979,21 @@ Per confermare scrivi ELIMINA.`);
       if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
         return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
       }
-      // Scheda prenotazione APERTA + "aggiungi <nome>" → aggiungi il giocatore a QUELLA scheda,
-      // senza la domanda socio/giocatore (decisione utente 2026-06-19). Solo se la scheda accetta
-      // giocatori (hasPlayers) e non è occupata da un'altra operazione.
-      if (res.addAmbiguous && staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
-        return _addPlayerToOpenBooking(res, t);
+      // Scheda prenotazione APERTA + comando di AGGIUNTA → aggiungi a QUELLA scheda (decisione
+      // utente 2026-06-19). Vale per "aggiungi <nome>" ma anche per "inserisci/metti un ospite"
+      // (Ospite è un socio jolly, non un nuovo nominativo: senza questa regola ANAGRAFICA lo
+      // scambiava per la creazione di un socio "ospite"). Condizioni: la scheda accetta giocatori,
+      // non è occupata, il comando NON punta a un'ALTRA prenotazione (campo/ora diversi) e non è
+      // una creazione-socio con contatto (telefono/email).
+      if (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
+        const _addVerb = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*|metti)\b/.test(_norm(t));
+        const _c = res.slots && res.slots.court, _tm = res.slots && res.slots.time;
+        const _sameCourt = !_c || Number(_c) === Number(staffCalPlayersState.campo);
+        const _sameTime = !_tm || String(_tm) === String(staffCalPlayersState.ora);
+        const _hasContact = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
+        if ((res.addAmbiguous || _addVerb) && _sameCourt && _sameTime && !_hasContact) {
+          return _addPlayerToOpenBooking(res, t);
+        }
       }
       // "aggiungi <nome>" ambiguo (giocatore o nuovo socio?) → chiedi chiarimento mirato,
       // invece di assumere "giocatore". Decisione utente 2026-06-18 (mai vicolo cieco).
@@ -41375,7 +41389,7 @@ Per confermare scrivi ELIMINA.`);
     function _extractEditPlayerName(text) {
       let raw = String(text || '')
         .replace(/^\s*\W*(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|cancell\w*|elimin\w*|scart\w*|caccia|add)\s+/i, ' ')
-        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
+        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|nell?[ae’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw)));
       return raw.trim();
     }
@@ -41384,6 +41398,18 @@ Per confermare scrivi ELIMINA.`);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
+        // "Ospite" è un SOCIO vero dell'anagrafica (ID cliente 000001), usato come giocatore
+        // jolly di identità ignota: si può inserire anche più volte. Va risolto su QUEL socio,
+        // MAI con un fuzzy che pescherebbe un tesserato a caso ("inserisci un ospite" → "Eri
+        // Beqiri"). Quantità opzionale: "due ospiti" → 2 slot.
+        const _onm = ' ' + _norm(nm) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_onm)) {
+          let _q = 1;
+          const _qm = _onm.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) giocatori.push(_ospitePlayer());
+          continue;
+        }
         const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
         // Regola ferma (LoZio): l'assistente NON crea nuovi nomi su Matchpoint. Un nome non
         // in anagrafica diventa OSPITE, mai scritto così com'è.
@@ -41761,8 +41787,8 @@ Per confermare scrivi ELIMINA.`);
       if (!st) return _say('Non c’è nessuna prenotazione aperta da modificare.');
       let raw = String(text || '')
         .replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ')
-        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|alla?\s+prenotazione|a\s+quest[ao]\s+prenotazione|alla\s+partita|alla\s+lezione)\b/ig, ' ');
-      raw = _stripCourtRefs(raw).trim();
+        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|(?:a|ad|in|su|nel|nell['’]|nella|nelle|alla|alle|dalla|dalle)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
+      raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw))).trim();
       if (!raw && res && res.giocatori && res.giocatori.length) raw = res.giocatori.join(' ');
       const r = raw ? _resolvePlayers(raw) : { giocatori: [], notes: [] };
       if (!r.giocatori || !r.giocatori.length) {
