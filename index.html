@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.845';
+    const APP_VERSION = '5.846';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40906,7 +40906,7 @@ Per confermare scrivi ELIMINA.`);
     // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
     function _looksLikeNewCommand(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|modific\w+|disd\w+|scart\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
       // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
       // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
@@ -41388,7 +41388,7 @@ Per confermare scrivi ELIMINA.`);
     // dominio e i riferimenti campo/data/ora, lasciando il solo nome (poi risolto in anagrafica).
     function _extractEditPlayerName(text) {
       let raw = String(text || '')
-        .replace(/^\s*\W*(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|cancell\w*|elimin\w*|scart\w*|caccia|add)\s+/i, ' ')
+        .replace(/^\s*\W*(?:(?:mi|me|ci|ti)\s+)?(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|cancell\w*|elimin\w*|scart\w*|caccia|add)\s+/i, ' ')
         .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|nell?[ae’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw)));
       return raw.trim();
