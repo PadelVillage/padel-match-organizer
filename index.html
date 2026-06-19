@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.851';
+    const APP_VERSION = '5.852';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42509,57 +42509,44 @@ Per confermare scrivi ELIMINA.`);
       if (m) return parseInt(m[1], 10);
       return null;
     }
-    function _startDurata(res, text, iso, court, time) {
-      const slots = res.slots || {};
-      const campi = _allCampi(text);
-      const times = _allTimes(text);
-      const nlow = _norm(text);
-      // SORGENTE (postulato): la scheda aperta, oppure la prenotazione che ESISTE sul calendario.
-      let src = null;
-      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
-      if (open) {
-        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
-      } else {
-        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
-        const tryCampi = campi.length ? campi : (court ? [court] : []);
-        const tryTimes = times.length ? times : (time ? [time] : []);
-        for (let di = 0; di < isoCands.length && !src; di++)
-          for (let ci = 0; ci < tryCampi.length && !src; ci++)
-            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
-              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
-              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
-            }
-      }
-      if (!src) return _say('🔍 Non trovo la prenotazione di cui cambiare la durata. Dimmi campo e ora, es. «<em>allunga la partita di campo 1 alle 18 di mezz\'ora</em>».');
+    // Orario di FINE assoluto ("…fino alle 11:30", "che finisce alle 11", "termina alle 20:30").
+    // Ritorna 'HH:MM' o null. Distinto da una durata: qui l'utente dà l'ORA in cui finire.
+    function _endTimeTarget(text) {
+      const n = _norm(text);
+      let m = n.match(/\bfino\s+a(?:lle|ll['’]|l|d)?\s+(?:ore\s+|le\s+)?(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (!m) m = n.match(/\b(?:che\s+)?(?:finisc\w*|termin\w*|finir\w*|chiud\w*)\s+a(?:lle|ll['’]|l)?\s+(?:ore\s+|le\s+)?(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) { const h = parseInt(m[1], 10); if (h >= 7 && h <= 23) return (h < 10 ? '0' + h : '' + h) + ':' + (m[2] || '00'); }
+      return null;
+    }
+    // Calcola la NUOVA durata (minuti) dal testo, dato src e direzione (allunga/accorcia).
+    // Ordine: 1) ora di fine assoluta ("fino alle 11:30") → durata = fine − inizio; 2) durata
+    // esplicita ("di 30 minuti", "a un'ora e mezza"); 3) numero nudo in contesto assoluto.
+    // Ritorna { newDur } oppure { ask:true } se non ha trovato alcuna quantità.
+    function _computeNewDur(src, isShorten, text) {
       const curDur = src.durata || 90;
-      // Apostrofo normalizzato per le euristiche preposizionali ("un'ora").
-      const napo = ' ' + nlow.replace(/[’']/g, "'") + ' ';
-      // Verbo: accorcia (riduce) vs allunga (aumenta).
-      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow);
-      // ASSOLUTO vs DELTA dalla preposizione che INTRODUCE la durata (non da "di" ovunque, che
-      // compare anche in "di campo 2"): "durata/fa(r) durare", oppure "a/fino a <durata>" = assoluto;
-      // "di <durata>" = delta. Lookahead su una cifra o un numero a parole/mezz/quart.
+      const endT = _endTimeTarget(text);
+      if (endT) return { newDur: _staffCalToMin(endT) - _staffCalToMin(src.ora) };
+      const napo = ' ' + _norm(text).replace(/[’']/g, "'") + ' ';
       const _DLEAD = "(?=\\d|un'|una|uno|un|due|tre|quattro|cinque|sei|mezz|quart)";
       const isAbs = /(^| )(durat\w*|fai?\s+durar\w*|deve\s+durar\w*)/.test(napo)
         || new RegExp("\\b(?:a|ad|fino a)\\s+" + _DLEAD).test(napo);
       let amount = _durToMin(text);
-      // In contesto ASSOLUTO ("porta la durata a 90") un numero nudo 30–240 vale come minuti
-      // (i riferimenti a campo/ora restano fuori dal range plausibile).
       if (amount == null && isAbs) {
         const bm = napo.match(/\b(\d{2,3})\b/g);
         if (bm) { for (let i = 0; i < bm.length; i++) { const v = parseInt(bm[i], 10); if (v >= 30 && v <= 240) { amount = v; break; } } }
       }
-      if (amount == null) return _say('Di quanto cambio la durata? Dimmi i minuti o le ore, es. «<em>di 30 minuti</em>» oppure «<em>a un\'ora e mezza</em>».');
-      const absHint = isAbs;
-      let newDur;
-      if (absHint) newDur = amount;
-      else newDur = curDur + (isShorten ? -amount : amount);
+      if (amount == null) return { ask: true };
+      return { newDur: isAbs ? amount : curDur + (isShorten ? -amount : amount) };
+    }
+    // Valida la nuova durata e apre la conferma (o spiega perché no).
+    function _finalizeDurata(src, newDur) {
+      const curDur = src.durata || 90;
       if (!Number.isFinite(newDur) || newDur < STAFF_CAL_SLOT_MIN) {
         return _say('⛔ La durata minima è ' + STAFF_CAL_SLOT_MIN + '′. Con questa modifica scenderebbe a ' + (Number.isFinite(newDur) ? newDur : '?') + '′: dimmi una durata diversa.');
       }
       if (newDur === curDur) return _say('ℹ️ La durata è già di <strong>' + curDur + '′</strong>: niente da cambiare.');
-      // Postulato: controlla sul calendario che l'estensione non si sovrapponga alla prenotazione
-      // successiva (esclude gli slot della prenotazione stessa). Per gli accorciamenti non serve.
+      // Postulato: l'estensione non deve sovrapporsi alla prenotazione successiva (esclude gli slot
+      // della prenotazione stessa). Per gli accorciamenti non serve.
       if (newDur > curDur) {
         const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
         if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
@@ -42571,11 +42558,51 @@ Per confermare scrivi ELIMINA.`);
       const oraFin = _staffCalEndTime(src.ora, newDur);
       return _say('🤔 Porto la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
     }
+    function _durSrcFromCalendar(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) return { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+      const tryCampi = campi.length ? campi : (court ? [court] : []);
+      const tryTimes = times.length ? times : (time ? [time] : []);
+      for (let di = 0; di < isoCands.length; di++)
+        for (let ci = 0; ci < tryCampi.length; ci++)
+          for (let ti = 0; ti < tryTimes.length; ti++) {
+            const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+            if (b) return { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+          }
+      return null;
+    }
+    function _startDurata(res, text, iso, court, time) {
+      const nlow = _norm(text);
+      // SORGENTE (postulato): scheda aperta o prenotazione che ESISTE sul calendario.
+      const src = _durSrcFromCalendar(res, text, iso, court, time);
+      if (!src) return _say('🔍 Non trovo la prenotazione di cui cambiare la durata. Dimmi campo e ora, es. «<em>allunga la partita di campo 1 alle 18 di mezz\'ora</em>».');
+      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow);
+      const r = _computeNewDur(src, isShorten, text);
+      if (r.ask) {
+        // Quantità non detta: apro un flusso in ATTESA così la risposta successiva viene catturata.
+        aiFlowState = { kind: 'durataconfirm', stage: 'await', src: src, isShorten: isShorten };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('Di quanto cambio la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>» (o “annulla”).');
+      }
+      return _finalizeDurata(src, r.newDur);
+    }
     function _confirmDurataAnswer(text) {
       const fs = aiFlowState;
       if (!fs || fs.kind !== 'durataconfirm') { aiFlowState = null; return _say('Dimmi pure di quale prenotazione cambiare la durata.'); }
       const n = ' ' + _norm(text) + ' ';
-      if (/( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
+      const isExit = /( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n);
+      // Stage 'await': la risposta È la quantità/ora di fine (non un comando nuovo).
+      if (fs.stage === 'await') {
+        if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
+        const r = _computeNewDur(fs.src, fs.isShorten, text);
+        if (r.ask) return _say('Non ho capito la durata. Dimmi i minuti o le ore — es. «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>» (o “annulla”).');
+        return _finalizeDurata(fs.src, r.newDur);
+      }
+      if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
       if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
         const src = fs.src, newDur = fs.newDur; aiFlowState = null;
         try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
