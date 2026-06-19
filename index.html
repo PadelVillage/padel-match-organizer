@@ -41430,20 +41430,31 @@ Per confermare scrivi ELIMINA.`);
     function _ospiteAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
       const draft = aiFlowState.draft;
-      if (/( no | nome | inserisc\w* | scriv\w* )/.test(n)) {
-        aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
-        return _askNext();
-      }
-      if (/( si | sì | ospite | ok | va bene | vabene | conferm\w* | procedi | certo )/.test(n)) {
+      // "Ospite" esplicito (o sola affermazione "sì/ok") → prenota a nome Ospite.
+      if (/( ospite | nessuno | anonimo | senza nome )/.test(n) ||
+          /^\s*(s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|conferm\w*|confermo|procedi|certo)\s*$/i.test(_norm(text))) {
         draft.giocatori = [_ospitePlayer()];
         aiFlowState = null;
         return _showSummary(draft);
       }
-      const r = _resolvePlayers(_stripCourtRefs(text));
+      // Prova SEMPRE a leggere un nome, anche se introdotto da "inserisci/metti/il nome è/no,…"
+      // ("Inserisci Maurizio Aprea" deve USARE Maurizio Aprea, non riavviare la domanda — collaudo 19/06).
+      let cand = String(text || '')
+        .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
+        .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
+      cand = _stripCourtRefs(cand).trim();
+      // Se dopo aver tolto i riempitivi non resta nulla (es. "no", "inserisco il nome"), NON
+      // forzare la risoluzione sul testo grezzo: cadi sotto e chiedi esplicitamente il nome.
+      const r = cand ? _resolvePlayers(cand) : { giocatori: [], notes: [] };
       if (r.giocatori && r.giocatori.length) {
         draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
         aiFlowState = null;
         return _showSummary(draft);
+      }
+      // Voleva inserire un nome ma non l'ha (ancora) scritto → chiedilo esplicitamente.
+      if (/( no | nome | inserisc\w* | scriv\w* )/.test(n)) {
+        aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
+        return _askNext();
       }
       return _say('Rispondi <strong>Sì</strong> (a nome Ospite) o <strong>No</strong> (inserisco il nome), oppure scrivi direttamente il nome del giocatore.');
     }
