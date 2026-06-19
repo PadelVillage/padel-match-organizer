@@ -3165,12 +3165,29 @@ async function readTabelloneWithBrowser(options = {}) {
           .split(/<br\s*\/?>/i)
           .map((s) => s.replace(/<[^>]+>/g, '').trim())
           .filter(Boolean);
+        // Manutenzione = prenotazione SENZA giocatori, con solo eventuale nota. Sul tabellone è
+        // grigia e contiene il testo "Manutenzione" (che NON sta in .eventoTexto2). La riconosciamo
+        // dal testo completo dell'evento e/o dal colore grigio, e ne estraiamo la nota.
+        const fullText = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
+        let grey = false;
+        try {
+          const bg = window.getComputedStyle(e).backgroundColor || '';
+          const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+          if (m) { const r = +m[1], g = +m[2], b = +m[3]; grey = Math.abs(r - g) < 35 && Math.abs(g - b) < 35 && r > 80 && r < 215; }
+        } catch (_e) {}
+        const manutenzione = /manutenz/i.test(fullText) || (grey && giocatori.length === 0);
+        // Nota manutenzione: testo senza orari e senza la parola "Manutenzione".
+        const nota = manutenzione
+          ? fullText.replace(/\d{1,2}[:.]\d{2}\s*[-–]?\s*\d{0,2}[:.]?\d{0,2}/g, ' ').replace(/manutenzione/ig, ' ').replace(/\s+/g, ' ').trim()
+          : '';
         return {
           id: e.getAttribute('id') || e.id || '',
           idrecurso: e.getAttribute('idrecurso') || '',
           inicio: e.getAttribute('inicio') || '',
           fin: e.getAttribute('fin') || '',
           giocatori,
+          manutenzione,
+          nota,
         };
       });
     });
@@ -3260,6 +3277,9 @@ async function readTabelloneWithBrowser(options = {}) {
             ora: padOraHHMM(ev.inicio),
             oraFine: padOraHHMM(ev.fin),
             giocatori: ev.giocatori,
+            // Campi additivi (manutenzione import 2026-06-19): i consumatori che non li conoscono
+            // li ignorano. Solo per i blocchi manutenzione (senza giocatori, solo nota).
+            ...(ev.manutenzione ? { tipo: 'manutenzione', nota: ev.nota || '' } : {}),
           }))
           .filter((ev) => ev.campo > 0);
       } catch (err) {
