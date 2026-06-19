@@ -40671,9 +40671,10 @@ Per confermare scrivi ELIMINA.`);
       const cancelVerb = /\b(annull\w*|cancell\w*|disd\w*|elimin\w*)\b/.test(tx) || (remV && !hasPerson);
       const modifyVerb = /\b(modific\w*|sposta\w*|spostare|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
       const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
-      // "aggiungi/togli … ALLA/DALLA partita|lezione" = modifica dei giocatori (apre l'editor),
-      // anche senza un nome esplicito ("aggiungi un giocatore alla partita delle 18").
-      const editToExisting = /\b(alla|nella|dalla|all'|nell'|dall')\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
+      // "aggiungi/togli … ALLA/DALLA partita|lezione|prenotazione|campo" = modifica dei giocatori
+      // (apre l'editor), anche senza un nome esplicito ("aggiungi un giocatore alla partita delle
+      // 18", "…alle prenotazioni di oggi sul campo 4 alle 12:30"). Include plurali e "sul campo".
+      const editToExisting = /\b(alla|alle|ai|agli|nella|nelle|nei|negli|dalla|dalle|dai|dagli|all'|nell'|dall'|sul|sulla|sui|sugli|su|in)\s*(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(tx);
       const anaStatus = /\bmoros\w*\b/.test(tx); // "X adesso è moroso" → scheda socio
       // Domande su stato posti/roster e su lezioni multi-giorno (compat. assistente): sono
       // INTERROGAZIONI anche senza punto di domanda, e devono battere il fallback "crea".
@@ -40753,8 +40754,13 @@ Per confermare scrivi ELIMINA.`);
         || (ana.isAna && ana.needsSurname);
 
       // ── tipo (regola D) ──
+      // Aggiunta/rimozione GIOCATORE su una prenotazione GIÀ INDIVIDUABILE (campo + ora) NON chiede
+      // "partita o lezione?": il tipo si ricava dalla prenotazione trovata dal finder ("aggiungi un
+      // giocatore alle prenotazioni di oggi sul campo 4 alle 12:30"). Annulla/modifica e crea restano
+      // come prima (regola D).
+      const canLocateEvent = !!(cx.campo && tmx.ora);
       const needsType = PMO_PARSER_FLAGS.tipoSempre && !ty.typePresent &&
-        (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || azione === 'giocatori');
+        (azione === 'crea' || azione === 'annulla' || azione === 'modifica' || (azione === 'giocatori' && !canLocateEvent));
       const needsInstructor = (ty.tipo === 'lezione') && !istruttore && azione === 'crea';
 
       // ── KO (regola E) ──
@@ -41875,9 +41881,9 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
-      // I verbi di apertura/azione ("apri/mostra/visualizza/gestisci/riapri") non sono nomi: non
-      // devono diventare il filtro giocatore (es. "apri la prenotazione…" → who='apri').
-      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi)$/.test(_norm(who))) who = '';
+      // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
+      // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
+      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
@@ -42006,9 +42012,9 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
-      // I verbi di apertura/azione ("apri/mostra/visualizza/gestisci/riapri") non sono nomi: non
-      // devono diventare il filtro giocatore (es. "apri la prenotazione…" → who='apri').
-      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi)$/.test(_norm(who))) who = '';
+      // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
+      // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
+      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       if (!cands.length && who) {
