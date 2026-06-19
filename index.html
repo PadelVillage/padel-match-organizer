@@ -40669,7 +40669,9 @@ Per confermare scrivi ELIMINA.`);
       // Stem, non forme esatte: "mi annulli", "annullami", "cancellami", "disdici/disdire" devono
       // valere come annullamento (prima matchava solo "annulla/cancella" → "annulli" finiva in CREA).
       const cancelVerb = /\b(annull\w*|cancell\w*|disd\w*|elimin\w*)\b/.test(tx) || (remV && !hasPerson);
-      const modifyVerb = /\b(modific\w*|sposta\w*|spostare|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
+      // spost\w* copre tutte le coniugazioni ("sposta/sposti/sposto/spostami/spostare/sposterei…":
+      // "Mi sposti la lezione…" cadeva in crea perché "sposti" non matchava "sposta\w*").
+      const modifyVerb = /\b(modific\w*|spost\w*|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
       const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
       // "aggiungi/togli … ALLA/DALLA partita|lezione|prenotazione|campo" = modifica dei giocatori
       // (apre l'editor), anche senza un nome esplicito ("aggiungi un giocatore alla partita delle
