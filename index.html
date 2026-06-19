@@ -7175,18 +7175,20 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
-    <!-- Assistente AI tab — pannello di gestione del motore conversazionale (Fase 1, solo TEST).
+    <!-- Assistente AI tab — pannello di gestione del motore conversazionale.
          La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui si testano i
-         comandi (sandbox), si vede cosa sa fare e il log delle ultime interazioni. -->
+         comandi (sandbox), si vede cosa sa fare e il log delle ultime interazioni.
+         Diario turni + Vocabolario (lessico) attivi in TEST e PROD da v5.838 (gated dal
+         permesso view_assistante_ai); il banco di prova resta sempre visibile. -->
     <div id="assistanteAI" class="tab-content">
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
-        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
+        <section class="ai-admin-card ai-admin-card-wide">
           <h3>📊 Autoapprendimento — diario turni</h3>
           <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
           <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
         </section>
-        <section class="ai-admin-card ai-admin-card-wide" data-test-env-only>
+        <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧩 Vocabolario (lessico)</h3>
           <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: una parola nuova → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia»). Solo le voci <strong>✅ Attive</strong> entrano nel parser. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna</button></p>
           <div class="ai-lex-add">
@@ -7704,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.836';
+    const APP_VERSION = '5.838';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -7743,8 +7745,9 @@ body.assessment-public-mode .assessment-public-only-card {
     // Assistente AI: attivo in TUTTI gli ambienti (TEST e PROD). Il gating fine per chi lo
     // vede resta il permesso ruolo `view_assistante_ai` (owner/admin sempre). Storicamente
     // l'assistente era legato a PMO_IS_TEST_ENV; promosso/attivato in PROD da v5.815.
-    // NB: il TAB di gestione/addestramento (banco di prova, sandbox, log) resta solo-TEST
-    // (vedi blocco "TEST ENV — Assistente AI Desktop Layout", gate isTestEnv()).
+    // NB: da v5.838 il TAB di gestione (diario turni, vocabolario, banco di prova, log) è
+    // raggiungibile anche in PROD — la voce capitolo è iniettata se PMO_AI_ASSISTANT_ENABLED
+    // e poi gated dal permesso view_assistante_ai (vedi blocco "Assistente AI — voce barra").
     const PMO_AI_ASSISTANT_ENABLED = true;
     const PMO_ENV_STORAGE_PREFIX = PMO_IS_TEST_ENV ? 'test:' : '';
     const PMO_DEFAULT_CONFIG_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}config-test.js` : `${PMO_PUBLIC_BASE_URL}config.js`;
@@ -34509,12 +34512,12 @@ Per confermare scrivi ELIMINA.`);
       }, 1500);
     }
 
-    // ── TEST ENV — Assistente AI Desktop Layout ───────────────────────
+    // ── Assistente AI — voce nella barra capitoli (TEST + PROD) ───────────────────────
     // Nuovo layout (v5.762+): i capitoli vivono nella barra orizzontale (#pmoChapterBar),
     // mentre la sidebar ospita la chat. Aggiungiamo la voce "Assistente AI" alla barra in
-    // alto (tab esclusivo del TEST) e spostiamo il pannello WA nel relativo tab.
-    // Mobile e produzione non vengono toccati.
-    if (isTestEnv()) {
+    // alto. Da v5.838 iniettata anche in PROD (lo staff lavora lì): la visibilità è poi
+    // gated dal permesso `view_assistante_ai` via pmoApplyTabVisibility() in fondo al blocco.
+    if (PMO_AI_ASSISTANT_ENABLED) {
 
       // Iniettiamo la voce SENZA gate sulla larghezza: la barra capitoli è display:none
       // sotto i 900px, quindi su mobile resta invisibile; così, però, se la finestra viene
@@ -39679,9 +39682,12 @@ Per confermare scrivi ELIMINA.`);
 
     // ══ Fase 1 autoapprendimento: diario turni (tabella pmo_ai_turns) ════════════
     // Cattura OGNI turno con il suo esito → carburante per analisi e proposte di
-    // miglioria. SOLO cattura: nessuna auto-applicazione. Gated a TEST per ora.
+    // miglioria. SOLO cattura: nessuna auto-applicazione. Attivo in TEST e PROD
+    // (v5.838): lo staff lavora su PROD, è lì che servono i dati reali. La riga è
+    // taggata con PMO_RUNTIME_ENV e scritta sul Supabase dell'ambiente corrente,
+    // quindi diario TEST e diario PROD restano separati.
     // Fire-and-forget: se la scrittura fallisce, l'assistente continua a funzionare.
-    const _AI_TURNS_ENABLED = (typeof PMO_IS_TEST_ENV !== 'undefined') ? PMO_IS_TEST_ENV : false;
+    const _AI_TURNS_ENABLED = true;
     const _AI_TURN_REFORMULATE_MS = 90 * 1000;   // riformulazione = nuovo turno entro 90s su uno debole
     let _aiTurnSession = null;
     let _aiPendingTurn = null;                    // turno "aperto" in attesa d'esito { id, at, weak, outcome }
