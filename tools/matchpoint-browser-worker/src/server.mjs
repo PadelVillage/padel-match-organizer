@@ -3165,12 +3165,18 @@ async function readTabelloneWithBrowser(options = {}) {
           .split(/<br\s*\/?>/i)
           .map((s) => s.replace(/<[^>]+>/g, '').trim())
           .filter(Boolean);
-        // Manutenzione = prenotazione SENZA giocatori, con solo eventuale nota. Sul tabellone è
-        // grigia e contiene il testo "Manutenzione" (che NON sta in .eventoTexto2). La riconosciamo
-        // SOLO dal testo "Manutenzione": il colore grigio NON basta (anche gli "STAGE" sono grigi →
-        // falsi positivi, collaudo 19/06). Ne estraiamo la nota.
+        // Manutenzione = blocco GRIGIO sul tabellone (chiusura campo). Vale a prescindere dal testo:
+        // anche "STAGE SANTIAGO" è una manutenzione, e quel testo è SOLO una nota (chiarimento utente
+        // 2026-06-19). La riconosciamo dal colore grigio (o dal testo "Manutenzione"); il testo
+        // dell'evento diventa la nota.
         const fullText = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
-        const manutenzione = /manutenz/i.test(fullText);
+        let grey = false;
+        try {
+          const bg = window.getComputedStyle(e).backgroundColor || '';
+          const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+          if (m) { const r = +m[1], g = +m[2], b = +m[3]; grey = Math.abs(r - g) < 35 && Math.abs(g - b) < 35 && r > 80 && r < 215; }
+        } catch (_e) {}
+        const manutenzione = grey || /manutenz/i.test(fullText);
         // Nota manutenzione: testo senza orari e senza la parola "Manutenzione".
         const nota = manutenzione
           ? fullText.replace(/\d{1,2}[:.]\d{2}\s*[-–]?\s*\d{0,2}[:.]?\d{0,2}/g, ' ').replace(/manutenzione/ig, ' ').replace(/\s+/g, ' ').trim()
