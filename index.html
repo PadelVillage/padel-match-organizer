@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.849';
+    const APP_VERSION = '5.850';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40774,10 +40774,13 @@ Per confermare scrivi ELIMINA.`);
       if (!azione) {
         if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
         else if (cancelVerb) azione = 'annulla';
-        // Durata nominata senza verbo d'azione esplicito ("porta/imposta la durata a 90",
-        // "fai durare … due ore"): modifica. Esclude i verbi di creazione, così
-        // "prenota campo 2 durata 90" resta una NUOVA prenotazione, non una modifica.
-        else if ((modifyVerb || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)) && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
+        // Durata o NOTA nominata senza verbo d'azione esplicito ("porta/imposta la durata a 90",
+        // "fai durare … due ore", "nota campo 1 alle 18: …"): modifica. Esclude i verbi di
+        // creazione, così "prenota campo 2 durata 90" resta una NUOVA prenotazione.
+        else if ((modifyVerb
+            || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)
+            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase))
+          && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
       if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
@@ -40920,7 +40923,7 @@ Per confermare scrivi ELIMINA.`);
     // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
     function _looksLikeNewCommand(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|modific\w+|disd\w+|scart\w+|allung\w+|accorci\w+|prolung\w+|estend\w+|riduc\w+|abbrevi\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|modific\w+|disd\w+|scart\w+|allung\w+|accorci\w+|prolung\w+|estend\w+|riduc\w+|abbrevi\w+|annot\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
       // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
       // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
@@ -40970,6 +40973,7 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'moveconfirm') return _confirmMoveAnswer(t);
           if (_k === 'movedest') return _continueMoveDest(t);
           if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
+          if (_k === 'notaconfirm') return _confirmNotaAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -41008,7 +41012,10 @@ Per confermare scrivi ELIMINA.`);
         const _sameCourt = !_c || Number(_c) === Number(staffCalPlayersState.campo);
         const _sameTime = !_tm || String(_tm) === String(staffCalPlayersState.ora);
         const _hasContact = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
-        if ((res.addAmbiguous || _addVerb) && _sameCourt && _sameTime && !_hasContact) {
+        // "aggiungi/metti una NOTA …" non è un giocatore: lascialo a _startNota (la parola "nota"
+        // qualifica l'oggetto). Senza questa guardia "metti una nota" diventerebbe un Ospite.
+        const _isNoteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
+        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && _sameCourt && _sameTime && !_hasContact) {
           return _addPlayerToOpenBooking(res, t);
         }
       }
@@ -42304,6 +42311,10 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       const nlow = _norm(text);
+      // NOTA/osservazioni: ha PRIORITÀ (la parola "nota" qualifica l'oggetto anche con
+      // aggiungi/togli, che altrimenti finirebbero su giocatori). Postulato in _startNota.
+      const isNote = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(nlow);
+      if (isNote) return _startNota(res, text, iso, court, time);
       // L'azione sulla scheda: aggiungere o togliere un giocatore (verbo nel comando).
       const isAdd = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow);
       // "da(lla) partita/lezione/prenotazione/campo" = togliere un giocatore DA dentro (non annullare).
@@ -42576,6 +42587,97 @@ Per confermare scrivi ELIMINA.`);
         return true;
       }
       return _say('Rispondi <strong>sì</strong> per cambiare la durata o <strong>no</strong> per lasciar perdere.');
+    }
+
+    // ── NOTA / OSSERVAZIONI (postulato: leggi prima il calendario) ───────────────
+    // Estrae il TESTO della nota dal comando: tutto ciò che segue i due punti che NON fanno
+    // parte di un orario (es. "…alle 18: campo bagnato" → "campo bagnato"; "18:30" è un orario).
+    function _extractNoteText(raw) {
+      const s = String(raw || '');
+      let idx = -1;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i] === ':') {
+          const prev = s[i - 1] || '', next = s[i + 1] || '';
+          const isTime = /\d/.test(prev) && /\d/.test(next);
+          if (!isTime) idx = i; // prendi l'ULTIMO due-punti non orario
+        }
+      }
+      if (idx >= 0) { const t = s.slice(idx + 1).trim(); if (t) return t; }
+      return '';
+    }
+    function _startNota(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      const nlow = _norm(text);
+      // SORGENTE (postulato): la scheda aperta, oppure la prenotazione che ESISTE sul calendario.
+      let src = null;
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) {
+        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      } else {
+        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        const tryCampi = campi.length ? campi : (court ? [court] : []);
+        const tryTimes = times.length ? times : (time ? [time] : []);
+        for (let di = 0; di < isoCands.length && !src; di++)
+          for (let ci = 0; ci < tryCampi.length && !src; ci++)
+            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
+              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+            }
+      }
+      if (!src) return _say('🔍 Non trovo la prenotazione a cui mettere la nota. Dimmi campo e ora, es. «<em>aggiungi una nota alla partita di campo 1 alle 18: campo bagnato</em>».');
+      // Rimozione nota vs impostazione.
+      const isRemoveNote = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|cancell\w*|elimin\w*|lev[ai]|svuot\w*|azzer\w*)/.test(nlow);
+      if (isRemoveNote) {
+        aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, remove: true };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      }
+      let noteText = _extractNoteText(text);
+      if (!noteText) {
+        // Nessun testo nel comando: lo chiedo (così non resta a metà).
+        aiFlowState = { kind: 'notaconfirm', stage: 'await', src: src };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('📝 Qual è il testo della nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Scrivi il testo (o “annulla”).');
+      }
+      if (noteText.length > 300) noteText = noteText.slice(0, 300);
+      aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, noteText: noteText, remove: false };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _confirmNotaAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'notaconfirm') { aiFlowState = null; return _say('Dimmi pure quale nota mettere.'); }
+      const n = ' ' + _norm(text) + ' ';
+      const isExit = /( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n);
+      // Stage 'await': il testo digitato È il corpo della nota (non un comando).
+      if (fs.stage === 'await') {
+        if (isExit) { aiFlowState = null; return _say('👍 Ok, nessuna nota.'); }
+        let body = String(text || '').trim();
+        if (!body) return _say('Scrivi il <strong>testo</strong> della nota (o “annulla”).');
+        if (body.length > 300) body = body.slice(0, 300);
+        fs.noteText = body; fs.remove = false; fs.stage = 'confirm';
+        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      }
+      if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la nota invariata.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const src = fs.src, noteText = fs.remove ? '' : (fs.noteText || ''); aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione.');
+        // Forzo il salvataggio della nota anche se la lettura autorevole da Matchpoint (in
+        // sottofondo) non è ancora arrivata: baseline sentinella → noteChanged sempre vero, così
+        // anche la RIMOZIONE arriva al worker (payload.note) invece di sembrare "nessuna modifica".
+        st.origNote = '\x00';
+        st.note = noteText;
+        _say((fs.remove ? '🗑️ Tolgo la nota' : '📝 Salvo la nota') + ' e aggiorno Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> o <strong>no</strong>.');
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
