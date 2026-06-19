@@ -502,6 +502,7 @@ async function enrichBookingsWithTabellone(
   }
 
   // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
+  const matchedKeys = new Set<string>();
   for (const booking of bookings) {
     const dayData = tabelloneData[booking.data] || [];
     const campoNum = Number(String(booking.campo).replace(/\D/g, '')) || 0;
@@ -511,8 +512,42 @@ async function enrichBookingsWithTabellone(
     if (match) {
       if (match.giocatori.length) booking.giocatori = match.giocatori;
       if (match.id) booking.idReserva = String(match.id);
+      matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
   }
+
+  // MANUTENZIONE (import 2026-06-19): i blocchi del tabellone marcati 'manutenzione' (senza
+  // giocatori, solo eventuale nota) NON sono nell'export Excel → li aggiungiamo come occupancy
+  // con tipo 'manutenzione', così l'app li mostra e li tratta come slot occupati. Il worker li
+  // marca con ev.tipo==='manutenzione' e ev.nota. Saltiamo quelli già coperti da una prenotazione.
+  const toMin = (t: string) => { const m = String(t || '').match(/(\d{1,2})[:.](\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
+  let added = 0;
+  try {
+    for (const [data, evs] of Object.entries(tabelloneData)) {
+      for (const ev of (evs || [])) {
+        if ((ev as any).tipo !== 'manutenzione') continue;
+        const campoNum = Number(ev.campo) || 0;
+        if (!campoNum || !ev.ora) continue;
+        if (matchedKeys.has(`${data}|${campoNum}|${ev.ora}`)) continue;
+        const mins = toMin((ev as any).oraFine) - toMin(ev.ora);
+        const oreStr = (Number.isFinite(mins) && mins > 0) ? String(mins / 60) : '1.5';
+        bookings.push({
+          numero: '',
+          giocatore: '',
+          data,
+          ora: ev.ora,
+          durata: oreStr,
+          campo: `Campo ${campoNum}`,
+          tipo: 'manutenzione',
+          descrizione: String((ev as any).nota || ''),
+        } as ParsedBooking);
+        added += 1;
+      }
+    }
+  } catch (err) {
+    console.warn(JSON.stringify({ event: 'manutenzione_occupancy_failed', error: String(err) }));
+  }
+  console.log(JSON.stringify({ event: 'manutenzione_occupancy_added', added }));
 }
 
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
