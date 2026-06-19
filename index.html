@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.847';
+    const APP_VERSION = '5.848';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40953,6 +40953,8 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'modifica') return _continueModifica(t);
           if (_k === 'addconfirm') return _confirmAddAnswer(t);
           if (_k === 'removeconfirm') return _confirmRemoveAnswer(t);
+          if (_k === 'moveconfirm') return _confirmMoveAnswer(t);
+          if (_k === 'movedest') return _continueMoveDest(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -41392,6 +41394,32 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|nell?[ae’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw)));
       return raw.trim();
+    }
+    // Tutti i campi citati in un comando (numeri o parole: "campo 1 … sul campo 2" → [1,2]).
+    function _allCampi(text) {
+      const n = _norm(text), out = [], wmap = { uno: 1, una: 1, due: 2, tre: 3, quattro: 4 };
+      const re = /\bcamp[oi]\s*(?:n(?:umero)?\.?\s*)?(\d|uno|una|due|tre|quattro)\b/g;
+      let m; while ((m = re.exec(n))) { const v = wmap[m[1]] || parseInt(m[1], 10); if (v >= 1 && v <= 4 && out.indexOf(v) < 0) out.push(v); }
+      return out;
+    }
+    // Tutti gli orari citati (HH o HH:MM, dopo alle/dalle/ore o nel range "dalle A alle B"), in ordine.
+    function _allTimes(text) {
+      const n = _norm(text), out = [];
+      const re = /\b(?:dalle|alle|dall['’]|all['’]|delle|dell['’]|ore|le|a)?\s*(\d{1,2})(?:[:.](\d{2}))?\b/g;
+      let m; while ((m = re.exec(n))) {
+        const h = parseInt(m[1], 10); if (h < 7 || h > 23) continue; // orari di apertura plausibili
+        const hh = (h < 10 ? '0' + h : '' + h) + ':' + (m[2] || '00');
+        if (out.indexOf(hh) < 0) out.push(hh);
+      }
+      return out;
+    }
+    // POSTULATO: legge dal calendario la prenotazione a (campo, ora, giorno), se esiste.
+    function _calBookingAt(iso, campo, ora) {
+      try {
+        const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+        const wc = Number(String(campo).replace(/\D/g, '')), wo = String(ora).trim();
+        return rows.find(function (r) { return r && Number(String(r.campo).replace(/\D/g, '')) === wc && String(r.ora).trim() === wo; }) || null;
+      } catch (e) { return null; }
     }
     function _resolvePlayers(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
@@ -42269,6 +42297,9 @@ Per confermare scrivi ELIMINA.`);
       // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
       const isRemove = !isAdd && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
         || (removeFromPat && /(^|\s)(cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(nlow)));
+      // SPOSTAMENTO: postulato → leggi il calendario per capire sorgente e destinazione.
+      const isMove = !isAdd && !isRemove && /(^|\s)spost\w*/.test(nlow);
+      if (isMove) return _startSposta(res, text, iso, court, time);
       // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
       const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
@@ -42317,6 +42348,95 @@ Per confermare scrivi ELIMINA.`);
       if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
       const pending = aiFlowState.pending || null;
       return _openEditor(iso, pick, pending);
+    }
+    // ── SPOSTAMENTO (postulato: leggi prima il calendario) ──────────────────────
+    function _dmy(iso) { return String(iso || '').split('-').reverse().join('/'); }
+    function _startSposta(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      // SORGENTE: la scheda aperta, oppure la prenotazione (campo+ora+giorno) che ESISTE sul calendario.
+      let src = null;
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) {
+        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      } else {
+        const isoCands = []; [_todayIso(), iso, slots.date].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        const tryCampi = campi.length ? campi : (court ? [court] : []);
+        const tryTimes = times.length ? times : (time ? [time] : []);
+        for (let di = 0; di < isoCands.length && !src; di++)
+          for (let ci = 0; ci < tryCampi.length && !src; ci++)
+            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
+              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+            }
+      }
+      if (!src) return _say('🔍 Non trovo la prenotazione da spostare. Dimmi campo e ora di partenza, es. «<em>sposta la partita di campo 1 alle 14 sul campo 2</em>».');
+      // DESTINAZIONE: ciò che differisce dalla sorgente (altro campo / altro orario / altro giorno).
+      let destCampo = null, destOra = null, destIso = null;
+      for (let i = 0; i < campi.length; i++) if (campi[i] !== src.campo) { destCampo = campi[i]; break; }
+      for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
+      if (slots.date && slots.date !== src.iso) destIso = slots.date;
+      if (destCampo == null && destOra == null && destIso == null) {
+        _openEditor(src.iso, { campo: src.campo, ora: src.ora, durata: src.durata, tipoReale: src.tipoR, nome: '' });
+        aiFlowState = { kind: 'movedest', stage: 'await', src: src };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('📝 Ho aperto la partita di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>. <strong>Dove la sposto?</strong> Dimmi un campo (“sul campo 2”), un orario (“alle 16”) o un giorno (“domani”).');
+      }
+      const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
+      dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
+      return _askMoveConfirm(src, dest);
+    }
+    function _askMoveConfirm(src, dest) {
+      // Postulato: controlla sul calendario che la destinazione sia LIBERA prima di confermare.
+      const occ = _calBookingAt(dest.iso, dest.campo, dest.ora);
+      const dstTxt = 'Campo ' + dest.campo + ' · ' + _dmy(dest.iso) + ' · ' + dest.ora;
+      if (occ && !(Number(occ.campo) === Number(src.campo) && String(occ.ora) === String(src.ora) && String(dest.iso) === String(src.iso))) {
+        return _say('⛔ La destinazione (<strong>' + dstTxt + '</strong>) è già occupata' + (occ.nome ? ' (' + _escapeHtml(String(occ.nome).replace(/\n/g, ', ')) + ')' : '') + '. Scegli un altro campo o orario.');
+      }
+      aiFlowState = { kind: 'moveconfirm', stage: 'confirm', src: src, dest: dest };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _say('🤔 Sposto la prenotazione da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _confirmMoveAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'moveconfirm') { aiFlowState = null; return _say('Dimmi pure cosa spostare.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho spostato nulla.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | spost\w* | giusto | esatto )/.test(n)) {
+        const src = fs.src, dest = fs.dest; aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione da spostare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione da spostare.');
+        st.mCampo = dest.campo; st.mIso = dest.iso; st.mOraIni = dest.ora; st.mOraFin = dest.oraFin || _staffCalEndTime(dest.ora, st.origDurMin);
+        _say('↪️ Sposto su <strong>Campo ' + dest.campo + ' · ' + _dmy(dest.iso) + ' · ' + dest.ora + '</strong> e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare lo spostamento: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> per spostare o <strong>no</strong> per lasciar perdere.');
+    }
+    // Risposta a "dove la sposto?" → interpreta campo/orario/giorno come DESTINAZIONE e conferma.
+    function _continueMoveDest(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'movedest') { aiFlowState = null; return _say('Dimmi pure cosa spostare.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non sposto nulla.'); }
+      const src = fs.src;
+      const campi = _allCampi(text), times = _allTimes(text);
+      let destCampo = null, destOra = null, destIso = null;
+      for (let i = 0; i < campi.length; i++) if (campi[i] !== src.campo) { destCampo = campi[i]; break; }
+      for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
+      const dt = _extractDate(_norm(text), '');
+      if (dt && dt !== src.iso) destIso = dt;
+      if (destCampo == null && destOra == null && destIso == null) {
+        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”), oppure “annulla”.');
+      }
+      aiFlowState = null;
+      const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
+      dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
+      return _askMoveConfirm(src, dest);
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
