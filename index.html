@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.852';
+    const APP_VERSION = '5.853';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37278,7 +37278,9 @@ Per confermare scrivi ELIMINA.`);
       svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
       return;
     }
-    if (moveChanged && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
+    // skipConfirm = percorso ASSISTENTE: la verifica/conferma occupazione è già stata fatta in chat
+    // (con possibilità di procedere comunque) → niente popup nativo che spezzerebbe il flusso vocale.
+    if (moveChanged && !opts.skipConfirm && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
       const proceed = confirm('⚠️ La destinazione (Campo ' + st.mCampo + ' · ' + st.mOraIni + '–' + st.mOraFin + ' del ' + st.mIso.split('-').reverse().join('/') + ') sembra già occupata.\n\nProcedere comunque?');
       if (!proceed) return;
     }
@@ -42545,18 +42547,20 @@ Per confermare scrivi ELIMINA.`);
         return _say('⛔ La durata minima è ' + STAFF_CAL_SLOT_MIN + '′. Con questa modifica scenderebbe a ' + (Number.isFinite(newDur) ? newDur : '?') + '′: dimmi una durata diversa.');
       }
       if (newDur === curDur) return _say('ℹ️ La durata è già di <strong>' + curDur + '′</strong>: niente da cambiare.');
-      // Postulato: l'estensione non deve sovrapporsi alla prenotazione successiva (esclude gli slot
-      // della prenotazione stessa). Per gli accorciamenti non serve.
+      const oraFin = _staffCalEndTime(src.ora, newDur);
+      const dove = '<strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>';
+      aiFlowState = { kind: 'durataconfirm', stage: 'confirm', src: src, newDur: newDur };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      // Estensione: se gli slot OLTRE la fine attuale risultano occupati AVVISO (non blocco): come
+      // l'editor manuale, l'operatore può procedere comunque (il controllo può dare falsi positivi
+      // su dati locali stantii). Per gli accorciamenti non serve.
       if (newDur > curDur) {
         const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
         if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
-          return _say('⛔ Non posso allungare a <strong>' + newDur + '′</strong>: lo slot successivo (Campo ' + src.campo + ' · ' + src.ora + ') è già occupato. Scegli una durata più breve o sposta prima l\'altra prenotazione.');
+          return _say('⚠️ Attenzione: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. Allungo <strong>comunque</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
         }
       }
-      aiFlowState = { kind: 'durataconfirm', stage: 'confirm', src: src, newDur: newDur };
-      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      const oraFin = _staffCalEndTime(src.ora, newDur);
-      return _say('🤔 Porto la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Porto la durata della prenotazione di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
     }
     function _durSrcFromCalendar(res, text, iso, court, time) {
       const slots = res.slots || {};
