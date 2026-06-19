@@ -3166,10 +3166,10 @@ async function readTabelloneWithBrowser(options = {}) {
           .map((s) => s.replace(/<[^>]+>/g, '').trim())
           .filter(Boolean);
         // Manutenzione = chiusura campo. Matchpoint NON espone un id/classe/attributo dedicato (tutti
-        // gli eventi sono "evento cursorNormal"). Due segnali DETERMINISTICI (verificati 19/06): il
-        // testo contiene SEMPRE "Manutenzione" (anche i blocchi con nota tipo "STAGE SANTIAGO"), e lo
-        // sfondo è il grigio esatto rgb(221,221,221) (canali uguali) — le prenotazioni reali hanno
-        // colori netti (verde/rosso/…), mai grigio a canali uguali. Il testo dell'evento è la nota.
+        // gli eventi sono "evento cursorNormal"). Richiediamo ENTRAMBI i segnali DETERMINISTICI
+        // (verificati 19/06, coesistono sempre): il testo contiene "Manutenzione" (anche i blocchi con
+        // nota tipo "STAGE SANTIAGO") E lo sfondo è il grigio esatto rgb(221,221,221) a canali uguali
+        // (le prenotazioni reali hanno colori netti). L'AND elimina ogni falso positivo. Il testo è la nota.
         const fullText = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
         let greyBlock = false;
         try {
@@ -3177,7 +3177,7 @@ async function readTabelloneWithBrowser(options = {}) {
           const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
           if (m) { const r = +m[1], g = +m[2], b = +m[3]; greyBlock = Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r >= 200 && r <= 235; }
         } catch (_e) {}
-        const manutenzione = /manutenz/i.test(fullText) || greyBlock;
+        const manutenzione = /manutenz/i.test(fullText) && greyBlock;
         // Nota manutenzione: testo senza orari e senza la parola "Manutenzione".
         const nota = manutenzione
           ? fullText.replace(/\d{1,2}[:.]\d{2}\s*[-–]?\s*\d{0,2}[:.]?\d{0,2}/g, ' ').replace(/manutenzione/ig, ' ').replace(/\s+/g, ' ').trim()
