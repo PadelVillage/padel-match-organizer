@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.839';
+    const APP_VERSION = '5.840';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40930,6 +40930,7 @@ Per confermare scrivi ELIMINA.`);
             return _continueCancella(t);
           }
           if (_k === 'modifica') return _continueModifica(t);
+          if (_k === 'addconfirm') return _confirmAddAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -41730,22 +41731,59 @@ Per confermare scrivi ELIMINA.`);
       if (!r.giocatori || !r.giocatori.length) {
         return _say('Chi devo aggiungere alla prenotazione aperta? Scrivi il <strong>nome</strong> del giocatore.');
       }
-      st.add = st.add || [];
-      r.giocatori.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
-      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
-      const nomi = r.giocatori.map(function (g) { return g.nome; }).join(', ');
-      // Salvataggio IMMEDIATO su Matchpoint (decisione utente 2026-06-19): l'aggiunta via
-      // comando non richiede più un "Salva" separato → chi dimentica di confermarlo non perde
-      // più la modifica. Per aggiungere più persone, elencarle in un solo comando ("Mario e Luca").
-      // staffCalPlayersSave gestisce da sé i messaggi "⏳ avviata" / "✅ aggiornata" e chiude la
-      // scheda; qui anticipiamo solo CHI stiamo aggiungendo (la save mostra dove/progresso).
-      let lead = '➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> (Campo ' +
-        st.campo + ' · ' + st.ora + ') e salvo su Matchpoint…';
-      if (r.notes && r.notes.length) lead += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + r.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
-      _say(lead);
-      try { staffCalPlayersSave({ skipConfirm: true }); }
-      catch (e) { return _say('❌ Non riesco a salvare l’aggiunta: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
-      return true;
+      // CONFERMA prima di scrivere (decisione utente 2026-06-19): rimando indietro il NOME
+      // capito e salvo su Matchpoint solo dopo un "sì". Così una dettatura sbagliata (nome
+      // errato, o non in anagrafica → Ospite) si intercetta PRIMA di toccare il gestionale.
+      // Nessuno stato a metà: se non confermi, non viene scritto né in app né su Matchpoint.
+      return _askAddConfirm(st, r.giocatori, r.notes);
+    }
+    // Chiede conferma dell'aggiunta (echo del nome capito) e apre il flusso 'addconfirm'.
+    function _askAddConfirm(st, players, notes) {
+      const nomi = players.map(function (g) { return g.nome; }).join(', ');
+      const anyOspite = players.some(function (g) { return g.ospite; });
+      aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      let msg = '🤔 Ho capito: aggiungere <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.';
+      if (notes && notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + notes.join('<br>⚠️ ') + '</span>';
+      msg += '<br>Confermo e salvo su Matchpoint? Scrivi <strong>sì</strong>' +
+        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' o <strong>no</strong> (oppure dimmi il nome giusto).');
+      return _say(msg);
+    }
+    // Risposta alla conferma: sì → mette in scheda + salva; no/chiudi → scarta; altro testo →
+    // lo interpreta come il nome corretto e ri-chiede conferma (così si rimedia a una dettatura
+    // sbagliata senza ripartire). Restituisce truthy: ha gestito la risposta.
+    function _confirmAddAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'addconfirm') { aiFlowState = null; return _say('Dimmi pure chi aggiungere.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) {
+        aiFlowState = null;
+        return _say('👍 Ok, non ho aggiunto nessuno. Se vuoi riprovare, dimmi il nome giusto.');
+      }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const st = staffCalPlayersState;
+        if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+        aiFlowState = null;
+        st.add = st.add || [];
+        fs.players.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
+        try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+        const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
+        _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      // Non è sì/no → probabilmente è il nome corretto: ri-risolvi e ri-chiedi conferma.
+      const st = staffCalPlayersState;
+      if (st && !st.busy) {
+        let raw = String(text || '').replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
+        raw = _stripCourtRefs(raw).trim();
+        if (raw) {
+          const rr = _resolvePlayers(raw);
+          if (rr.giocatori && rr.giocatori.length) return _askAddConfirm(st, rr.giocatori, rr.notes);
+        }
+      }
+      return _say('Rispondi <strong>sì</strong> per aggiungere, <strong>no</strong> per lasciar perdere, oppure scrivi il <strong>nome</strong> giusto.');
     }
     // Comandi vocali/testuali sulla SCHEDA prenotazione aperta: "salva/conferma/ok" → salva su
     // Matchpoint (come il pulsante Salva), "chiudi" → chiude senza salvare. Così l'aggiunta di un
