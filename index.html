@@ -40175,6 +40175,14 @@ Per confermare scrivi ELIMINA.`);
       const addToMatchCtx = /(^| )aggiung\w+( |$)/.test(n)
         && /(^| )giocator\w*( |$)/.test(n)
         && /(^| )(partit\w*|prenotazion\w*|campo|match)( |$)/.test(n);
+      // "apri/mostra/visualizza/gestisci LA PRENOTAZIONE/PARTITA/LEZIONE di campo X [alle Y]" =
+      // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
+      // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
+      // TROVA) e NON deve parlare di scheda socio/anagrafica ("apri la scheda di Mario" → anagrafica).
+      const openEditCtx = /(^| )(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*)( |$)/.test(n)
+        && /(^| )(prenotazion\w*|partit\w*|lezion\w*)( |$)/.test(n)
+        && /\bcamp[oi]\s*(?:\d|uno|una|due|tre|quattro)\b/.test(n)
+        && !/(^| )(scheda|socio|soci\w*|anagrafic\w*)( |$)/.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -40188,6 +40196,9 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
         if (name === 'CORREGGI' && addToMatchCtx) s += 3;
         if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
+        // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
+        if (name === 'CORREGGI' && openEditCtx) s += 4;
+        if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         // Lettura scheda socio → vince ANAGRAFICA, mai TROVA (che cerca tra le prenotazioni).
         if (name === 'ANAGRAFICA' && (anaReadCtx || anaCreateContactCtx)) s += 3;
@@ -40696,12 +40707,22 @@ Per confermare scrivi ELIMINA.`);
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
       const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
 
+      // "apri/riapri/gestisci/mostra/visualizza LA prenotazione di campo X [alle Y]" = aprire la
+      // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
+      // CAMPO specifico (così "mostra le prenotazioni di oggi" resta interroga) e nessun verbo di
+      // crea/annulla/aggiungi/togli (gestiti altrove). Priorità su 'crea' e su 'interroga'.
+      const openVerbStrong = /\b(apr\w*|riapr\w*|gestisc\w*)\b/.test(tx);
+      const openVerbSoft = /\b(mostr\w*|visualizz\w*|vedi|fammi\s+veder\w*)\b/.test(tx);
+      const openEditCtx2 = !!cx.campo && !rosterQ && !lessonsQ && !modifyVerb && !cancelVerb && !addV && !remV
+        && (openVerbStrong || (openVerbSoft && eventRef));
+
       // ── azione ──
       let azione = null;
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
+      if (openEditCtx2) azione = 'modifica';
+      else if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
@@ -41854,6 +41875,9 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      // I verbi di apertura/azione ("apri/mostra/visualizza/gestisci/riapri") non sono nomi: non
+      // devono diventare il filtro giocatore (es. "apri la prenotazione…" → who='apri').
+      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi)$/.test(_norm(who))) who = '';
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
@@ -41982,6 +42006,9 @@ Per confermare scrivi ELIMINA.`);
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
+      // I verbi di apertura/azione ("apri/mostra/visualizza/gestisci/riapri") non sono nomi: non
+      // devono diventare il filtro giocatore (es. "apri la prenotazione…" → who='apri').
+      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi)$/.test(_norm(who))) who = '';
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       if (!cands.length && who) {
