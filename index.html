@@ -42289,6 +42289,16 @@ Per confermare scrivi ELIMINA.`);
         if (lv != null) ch.level = lv.replace(',', '.');
       }
       else { const lv = _anaExtractLevel(text); if (lv !== '') ch.level = lv; }
+      // Posizione di gioco (Destra/Sinistra). "da destra a sinistra" → il NUOVO lato è il
+      // secondo (dopo "a"); "a sinistra"/"posizione sinistra" → quello indicato; altrimenti l'ultimo.
+      if (/posizion|destr|sinistr/.test(n)) {
+        let side = null;
+        let mm = String(text).match(/\bda\s+(?:destr\w*|sinistr\w*)\s+a\s+(destr\w*|sinistr\w*)\b/i);
+        if (!mm) mm = String(text).match(/\b(?:a|in|:|=)\s+(destr\w*|sinistr\w*)\b/i);
+        if (mm) side = mm[1];
+        else { const all = String(text).match(/\b(destr\w*|sinistr\w*)\b/gi); if (all && all.length) side = all[all.length - 1]; }
+        if (side) ch.position = /sinistr/i.test(side) ? 'Sinistra' : 'Destra';
+      }
       Object.assign(ch, _anaExtractNameChange(text));
       return ch;
     }
@@ -42355,9 +42365,9 @@ Per confermare scrivi ELIMINA.`);
     }
     function _showAnaUpdateSummary(member, changes) {
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'confirm', target: member, changes: changes };
-      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso', firstName: '👤 Nome', surname: '👤 Cognome' };
+      const lbl = { phone: '📞 Telefono', email: '✉️ Email', level: '🎾 Livello', gender: '⚧ Sesso', position: '📍 Posizione', firstName: '👤 Nome', surname: '👤 Cognome' };
       const rows = Object.keys(changes).map(function (k) {
-        const oldV = (k === 'gender') ? _anaGenderLabel(member.gender) : (k === 'level' ? String(member.level || '—') : (member[k] || '—'));
+        const oldV = (k === 'gender') ? _anaGenderLabel(member.gender) : (k === 'level' ? String(member.level || '—') : (k === 'position' ? (member.playingPosition || '—') : (member[k] || '—')));
         const newV = (k === 'gender') ? _anaGenderLabel(changes.gender) : (k === 'level' ? String(changes.level) : changes[k]);
         return (lbl[k] || k) + ': <span style="color:#98a2b3">' + _escapeHtml(String(oldV || '—')) + '</span> → <strong>' + _escapeHtml(String(newV)) + '</strong>';
       });
@@ -42443,6 +42453,7 @@ Per confermare scrivi ELIMINA.`);
         if (changes.phone != null) next.phone = (typeof normalizePhone === 'function') ? normalizePhone(changes.phone) : changes.phone;
         if (changes.email != null) next.email = changes.email;
         if (changes.gender != null) next.gender = changes.gender;
+        if (changes.position != null) next.playingPosition = changes.position;
         if (changes.level != null) next.level = parseLevel(changes.level, 3);
         if (changes.firstName != null || changes.surname != null) {
           const fn = changes.firstName != null ? changes.firstName : (cur.firstName || '');
