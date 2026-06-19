@@ -96,6 +96,8 @@ const CASES = [
  {id:24, cat:'Annulla', frase:'disdici la lezione di sabato con Santiago', esito:'DUBBIO', exp:{az:'annulla', data:'wd:6'}},
  {id:25, cat:'Annulla', frase:'elimina la partita delle 21 di domani campo 1', esito:'OK', exp:{az:'annulla', campo:1, data:'domani', ora:'21:00'}},
  {id:26, cat:'Annulla', frase:'togli la prenotazione di stasera sul 3', esito:'DUBBIO', exp:{az:'annulla', campo:3, data:'oggi', type:true}},
+ {id:72, cat:'Annulla', frase:'mi annulli la lezione di oggi alle 11 sul campo 4', esito:'OK', exp:{az:'annulla', campo:4, data:'oggi', ora:'11:00'}},
+ {id:73, cat:'Annulla', frase:'annullami la partita di domani campo 2 alle 18', esito:'OK', exp:{az:'annulla', campo:2, data:'domani', ora:'18:00'}},
 
  {id:27, cat:'Modifica', frase:'modifica la partita di Mario domani', esito:'DUBBIO', exp:{az:'modifica', data:'domani', surname:true}},
  {id:28, cat:'Modifica', frase:'sposta la partita del campo 2 di domani alle 19', esito:'DUBBIO', exp:{az:'modifica', campo:2, data:'domani'}},
