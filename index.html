@@ -40906,6 +40906,12 @@ Per confermare scrivi ELIMINA.`);
       if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
         return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
       }
+      // Scheda prenotazione APERTA + "aggiungi <nome>" → aggiungi il giocatore a QUELLA scheda,
+      // senza la domanda socio/giocatore (decisione utente 2026-06-19). Solo se la scheda accetta
+      // giocatori (hasPlayers) e non è occupata da un'altra operazione.
+      if (res.addAmbiguous && staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
+        return _addPlayerToOpenBooking(res, t);
+      }
       // "aggiungi <nome>" ambiguo (giocatore o nuovo socio?) → chiedi chiarimento mirato,
       // invece di assumere "giocatore". Decisione utente 2026-06-18 (mai vicolo cieco).
       if (res.addAmbiguous) {
@@ -41606,6 +41612,32 @@ Per confermare scrivi ELIMINA.`);
         div.appendChild(wrap);
       }
       return div;
+    }
+    // "Aggiungi <nome>" con una scheda prenotazione APERTA → aggiunge il giocatore a QUELLA
+    // scheda (st.add) e la riporta in cima, senza la domanda socio/giocatore (decisione utente
+    // 2026-06-19). Premere "Salva" nella scheda scrive davvero su Matchpoint. Il nome viene
+    // estratto dal testo grezzo (così "Lidia Comes" conserva il cognome) e risolto con
+    // _resolvePlayers (regola no-nuovi-nomi: nome non in anagrafica → Ospite + avviso).
+    function _addPlayerToOpenBooking(res, text) {
+      const st = staffCalPlayersState;
+      if (!st) return _say('Non c’è nessuna prenotazione aperta da modificare.');
+      let raw = String(text || '')
+        .replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ')
+        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|alla?\s+prenotazione|a\s+quest[ao]\s+prenotazione|alla\s+partita|alla\s+lezione)\b/ig, ' ');
+      raw = _stripCourtRefs(raw).trim();
+      if (!raw && res && res.giocatori && res.giocatori.length) raw = res.giocatori.join(' ');
+      const r = raw ? _resolvePlayers(raw) : { giocatori: [], notes: [] };
+      if (!r.giocatori || !r.giocatori.length) {
+        return _say('Chi devo aggiungere alla prenotazione aperta? Scrivi il <strong>nome</strong> del giocatore.');
+      }
+      st.add = st.add || [];
+      r.giocatori.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      const nomi = r.giocatori.map(function (g) { return g.nome; }).join(', ');
+      let msg = '➕ Ho aggiunto <strong>' + _escapeHtml(nomi) + '</strong> alla prenotazione aperta (Campo ' +
+        st.campo + ' · ' + st.ora + '). Premi <strong>Salva</strong> nella scheda per confermare su Matchpoint.';
+      if (r.notes && r.notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + r.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
+      return _say(msg);
     }
     // Conferma via testo (fallback ai pulsanti).
     function _confirmAnswer(text) {
