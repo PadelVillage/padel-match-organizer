@@ -3165,26 +3165,23 @@ async function readTabelloneWithBrowser(options = {}) {
           .split(/<br\s*\/?>/i)
           .map((s) => s.replace(/<[^>]+>/g, '').trim())
           .filter(Boolean);
-        // Manutenzione = blocco GRIGIO sul tabellone (chiusura campo). Vale a prescindere dal testo:
-        // anche "STAGE SANTIAGO" è una manutenzione, e quel testo è SOLO una nota (chiarimento utente
-        // 2026-06-19). La riconosciamo dal colore grigio (o dal testo "Manutenzione"); il testo
-        // dell'evento diventa la nota.
+        // Manutenzione = chiusura campo. Matchpoint NON espone un id/classe/attributo dedicato (tutti
+        // gli eventi sono "evento cursorNormal"). Due segnali DETERMINISTICI (verificati 19/06): il
+        // testo contiene SEMPRE "Manutenzione" (anche i blocchi con nota tipo "STAGE SANTIAGO"), e lo
+        // sfondo è il grigio esatto rgb(221,221,221) (canali uguali) — le prenotazioni reali hanno
+        // colori netti (verde/rosso/…), mai grigio a canali uguali. Il testo dell'evento è la nota.
         const fullText = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
-        let grey = false;
+        let greyBlock = false;
         try {
           const bg = window.getComputedStyle(e).backgroundColor || '';
           const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-          if (m) { const r = +m[1], g = +m[2], b = +m[3]; grey = Math.abs(r - g) < 35 && Math.abs(g - b) < 35 && r > 80 && r < 215; }
+          if (m) { const r = +m[1], g = +m[2], b = +m[3]; greyBlock = Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r >= 200 && r <= 235; }
         } catch (_e) {}
-        const manutenzione = grey || /manutenz/i.test(fullText);
+        const manutenzione = /manutenz/i.test(fullText) || greyBlock;
         // Nota manutenzione: testo senza orari e senza la parola "Manutenzione".
         const nota = manutenzione
           ? fullText.replace(/\d{1,2}[:.]\d{2}\s*[-–]?\s*\d{0,2}[:.]?\d{0,2}/g, ' ').replace(/manutenzione/ig, ' ').replace(/\s+/g, ' ').trim()
           : '';
-        // DEBUG DISCOVERY (manutenzione 2026-06-19): classe + tutti gli attributi del div.evento,
-        // per trovare un marcatore DETERMINISTICO della manutenzione (più robusto del colore). DA RIMUOVERE.
-        const cls = String(e.className || '');
-        const attrs = [...e.attributes].map((a) => `${a.name}=${a.value}`).slice(0, 30);
         return {
           id: e.getAttribute('id') || e.id || '',
           idrecurso: e.getAttribute('idrecurso') || '',
@@ -3193,8 +3190,6 @@ async function readTabelloneWithBrowser(options = {}) {
           giocatori,
           manutenzione,
           nota,
-          cls,
-          attrs,
         };
       });
     });
@@ -3287,8 +3282,6 @@ async function readTabelloneWithBrowser(options = {}) {
             // Campi additivi (manutenzione import 2026-06-19): i consumatori che non li conoscono
             // li ignorano. Solo per i blocchi manutenzione (senza giocatori, solo nota).
             ...(ev.manutenzione ? { tipo: 'manutenzione', nota: ev.nota || '' } : {}),
-            // DEBUG DISCOVERY: classe+attributi per trovare il marcatore deterministico. DA RIMUOVERE.
-            cls: ev.cls || '', attrs: ev.attrs || [],
           }))
           .filter((ev) => ev.campo > 0);
       } catch (err) {
