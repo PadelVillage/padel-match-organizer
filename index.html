@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.844';
+    const APP_VERSION = '5.845';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37417,9 +37417,9 @@ Per confermare scrivi ELIMINA.`);
           addArr.forEach(function (a) {
             const nm = String((a && a.nome) || '').trim();
             if (!nm) return;
-            if (!g.some(function (x) { return String((x && x.nome) || '').trim().toLowerCase() === nm.toLowerCase(); })) {
-              g.push({ nome: nm, codice: String((a && a.codice) || '') });
-            }
+            // Niente dedup per nome: un socio (in particolare "Ospite", jolly) può comparire
+            // PIÙ VOLTE nella stessa partita. Il dedup faceva sparire dal box il 2° Ospite.
+            g.push({ nome: nm, codice: String((a && a.codice) || '') });
           });
         }
         b.giocatori = g;
