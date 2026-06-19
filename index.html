@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.853';
+    const APP_VERSION = '5.854';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42391,6 +42391,36 @@ Per confermare scrivi ELIMINA.`);
     }
     // ── SPOSTAMENTO (postulato: leggi prima il calendario) ──────────────────────
     function _dmy(iso) { return String(iso || '').split('-').reverse().join('/'); }
+    // Aggiunge n giorni a una data ISO (locale, niente toISOString che sfasa nei fusi positivi).
+    function _addDaysIso(iso, n) {
+      const d = new Date(String(iso) + 'T12:00:00');
+      if (isNaN(d.getTime())) return iso;
+      d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    // Spostamento RELATIVO di giorni: "avanti/indietro di N giorni", "tra/fra N giorni",
+    // "il giorno dopo/prima", "tra una/N settimana/e". Ritorna l'offset firmato (giorni) o null.
+    function _relDayShift(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const W = { un: 1, una: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10 };
+      const NUM = "(\\d+|un|una|uno|due|tre|quattro|cinque|sei|sette|otto|nove|dieci)";
+      function num(t) { if (t == null) return null; if (W[t] != null) return W[t]; const v = parseInt(t, 10); return Number.isFinite(v) ? v : null; }
+      let m;
+      // settimane
+      if (/\b(?:tra|fra)\s+una\s+settiman/.test(n)) return 7;
+      m = n.match(new RegExp("\\b(?:tra|fra|in)\\s+" + NUM + "\\s+settiman")); if (m) { const k = num(m[1]); if (k != null) return k * 7; }
+      // INDIETRO (prima): controlla per primo, vince su "di N giorni"
+      m = n.match(new RegExp("\\bindietro\\s+di\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return -k; }
+      m = n.match(new RegExp("\\b" + NUM + "\\s+giorn\\w*\\s+(?:indietro|prima|fa)\\b")); if (m) { const k = num(m[1]); if (k != null) return -k; }
+      if (/\bgiorno\s+(?:prima|precedente)\b/.test(n)) return -1;
+      // AVANTI / generico "di N giorni" / "tra N giorni" / "N giorni dopo"
+      m = n.match(new RegExp("\\b(?:avanti|in\\s+avanti|piu\\s+avanti)\\s+di\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      m = n.match(new RegExp("\\b(?:tra|fra)\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      m = n.match(new RegExp("\\b" + NUM + "\\s+giorn\\w*\\s+dopo\\b")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      if (/\bgiorno\s+(?:dopo|seguente|successivo)\b/.test(n)) return 1;
+      m = n.match(new RegExp("\\bdi\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      return null;
+    }
     function _startSposta(res, text, iso, court, time) {
       const slots = res.slots || {};
       const campi = _allCampi(text);
@@ -42417,6 +42447,9 @@ Per confermare scrivi ELIMINA.`);
       for (let i = 0; i < campi.length; i++) if (campi[i] !== src.campo) { destCampo = campi[i]; break; }
       for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
       if (slots.date && slots.date !== src.iso) destIso = slots.date;
+      // Spostamento RELATIVO di giorni ("avanti/indietro di N giorni", "tra N giorni"): ha
+      // priorità sul giorno assoluto solo se questo non è stato indicato.
+      if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
       if (destCampo == null && destOra == null && destIso == null) {
         _openEditor(src.iso, { campo: src.campo, ora: src.ora, durata: src.durata, tipoReale: src.tipoR, nome: '' });
         aiFlowState = { kind: 'movedest', stage: 'await', src: src };
@@ -42428,6 +42461,10 @@ Per confermare scrivi ELIMINA.`);
       return _askMoveConfirm(src, dest);
     }
     function _askMoveConfirm(src, dest) {
+      // Niente spostamenti nel passato (data destinazione precedente a oggi).
+      if (String(dest.iso) < _todayIso()) {
+        return _say('⛔ Non posso spostare la prenotazione nel passato (' + _dmy(dest.iso) + '). Scegli una data da oggi in poi.');
+      }
       // Postulato: controlla sul calendario che la destinazione sia LIBERA prima di confermare.
       const occ = _calBookingAt(dest.iso, dest.campo, dest.ora);
       const dstTxt = 'Campo ' + dest.campo + ' · ' + _dmy(dest.iso) + ' · ' + dest.ora;
@@ -42470,8 +42507,9 @@ Per confermare scrivi ELIMINA.`);
       for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
       const dt = _extractDate(_norm(text), '');
       if (dt && dt !== src.iso) destIso = dt;
+      if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
       if (destCampo == null && destOra == null && destIso == null) {
-        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”), oppure “annulla”.');
+        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”), oppure “annulla”.');
       }
       aiFlowState = null;
       const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
