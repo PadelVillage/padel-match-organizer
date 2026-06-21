@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.838';
+    const APP_VERSION = '5.856';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37278,7 +37278,9 @@ Per confermare scrivi ELIMINA.`);
       svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
       return;
     }
-    if (moveChanged && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
+    // skipConfirm = percorso ASSISTENTE: la verifica/conferma occupazione è già stata fatta in chat
+    // (con possibilità di procedere comunque) → niente popup nativo che spezzerebbe il flusso vocale.
+    if (moveChanged && !opts.skipConfirm && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
       const proceed = confirm('⚠️ La destinazione (Campo ' + st.mCampo + ' · ' + st.mOraIni + '–' + st.mOraFin + ' del ' + st.mIso.split('-').reverse().join('/') + ') sembra già occupata.\n\nProcedere comunque?');
       if (!proceed) return;
     }
@@ -37417,9 +37419,9 @@ Per confermare scrivi ELIMINA.`);
           addArr.forEach(function (a) {
             const nm = String((a && a.nome) || '').trim();
             if (!nm) return;
-            if (!g.some(function (x) { return String((x && x.nome) || '').trim().toLowerCase() === nm.toLowerCase(); })) {
-              g.push({ nome: nm, codice: String((a && a.codice) || '') });
-            }
+            // Niente dedup per nome: un socio (in particolare "Ospite", jolly) può comparire
+            // PIÙ VOLTE nella stessa partita. Il dedup faceva sparire dal box il 2° Ospite.
+            g.push({ nome: nm, codice: String((a && a.codice) || '') });
           });
         }
         b.giocatori = g;
@@ -40050,6 +40052,13 @@ Per confermare scrivi ELIMINA.`);
     function _todayIso() {
       return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
     }
+    // Giorno ATTUALMENTE MOSTRATO nel calendario (date picker #staffCalDate). Per le azioni su
+    // prenotazioni esistenti senza data esplicita, l'operatore intende il giorno che sta guardando,
+    // NON per forza "oggi". Fallback a oggi se il selettore non è disponibile/valido.
+    function _calSelectedIso() {
+      try { const el = document.getElementById('staffCalDate'); const v = el && el.value; if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v; } catch (e) {}
+      return _todayIso();
+    }
     // Formattazione LOCALE (non toISOString, che in fusi positivi tipo UTC+2 sposta la
     // data al giorno prima e farebbe sbagliare "domani"/i giorni della settimana).
     function _fmtLocal(x) {
@@ -40131,7 +40140,9 @@ Per confermare scrivi ELIMINA.`);
       TROVA: ['chi', 'quando', 'quali', 'quanti', 'cosa', 'campi liberi', 'campo libero', 'liberi', 'libero', 'disponibile', 'disponibili', 'disponibilita', 'occupato', 'occupati', 'prenotazioni', 'agenda', 'mostra', 'vedi', 'gioca', 'giocano'],
       PRENOTA: ['prenotami', 'prenotarmi', 'prenotaci', 'bloccami', 'blocca', 'riservami', 'riserva', 'fissami', 'fissa', 'segnami'],
       CANCELLA: ['elimina', 'disdici', 'togli'],
-      CORREGGI: ['rinomina']
+      // CORREGGI include i verbi di DURATA ("allunga/accorcia/…"): cambiano l'ora di fine di una
+      // prenotazione esistente → editor in place, non spostamento. Vedi _startDurata.
+      CORREGGI: ['rinomina', 'allunga', 'allungare', 'allungami', 'accorcia', 'accorciare', 'accorciami', 'prolunga', 'prolungare', 'estendi', 'estendere', 'riduci', 'ridurre', 'abbrevia', 'durata']
     };
     // Verbo "prenotare" coniugato (imperativo/infinito/condizionale/imperfetto/presente) MA
     // NON il sostantivo "prenotazione/prenotazioni": rende l'assistente robusto a "mi prenoti…",
@@ -40186,6 +40197,14 @@ Per confermare scrivi ELIMINA.`);
       const addToMatchCtx = /(^| )aggiung\w+( |$)/.test(n)
         && /(^| )giocator\w*( |$)/.test(n)
         && /(^| )(partit\w*|prenotazion\w*|campo|match)( |$)/.test(n);
+      // "togli/cancella/elimina <nome> DALLA partita/lezione/prenotazione/campo" = togliere un
+      // GIOCATORE dalla prenotazione (CORREGGI → editor), NON annullare tutta la prenotazione.
+      // Distinzione chiave: la preposizione "da(lla)" (= da dentro) + il riferimento partita/
+      // lezione/prenotazione/campo. "cancella LA prenotazione / annulla LA partita di campo X"
+      // (con "la/il/di", senza "dalla") resta CANCELLA. In italiano cancella/elimina valgono
+      // anche per "leva un giocatore", quindi qui pesano come rimozione SOLO con "dalla …".
+      const removeFromMatchCtx = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n)
+        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
       // "apri/mostra/visualizza/gestisci LA PRENOTAZIONE/PARTITA/LEZIONE di campo X [alle Y]" =
       // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
       // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
@@ -40194,6 +40213,12 @@ Per confermare scrivi ELIMINA.`);
         && /(^| )(prenotazion\w*|partit\w*|lezion\w*)( |$)/.test(n)
         && /\bcamp[oi]\s*(?:\d|uno|una|due|tre|quattro)\b/.test(n)
         && !/(^| )(scheda|socio|soci\w*|anagrafic\w*)( |$)/.test(n);
+      // Verbo di DURATA (anche coniugato: "allungala", "accorciamo") → CORREGGI (edit in place
+      // dell'ora di fine). Robusto alle forme che il match a parola intera non catturerebbe.
+      // Guardia: serve un segnale di prenotazione/durata, così "riduci il livello di Mario"
+      // (anagrafica) o altri usi generici di "riduci/estendi" NON vengono dirottati su CORREGGI.
+      const durataCtx = /(^| )(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(n)
+        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n);
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -40207,9 +40232,16 @@ Per confermare scrivi ELIMINA.`);
         if (name === 'TROVA' && (rosterCtx || lessonCtx)) s += 2;
         if (name === 'CORREGGI' && addToMatchCtx) s += 3;
         if (name === 'ANAGRAFICA' && addToMatchCtx) s = 0;
+        // Rimozione di un giocatore "dalla partita/lezione" → CORREGGI (apre l'editor), mai
+        // CANCELLA (che annullerebbe l'intera prenotazione). Vince anche su cancella/elimina.
+        if (name === 'CORREGGI' && removeFromMatchCtx) s += 4;
+        if ((name === 'CANCELLA' || name === 'ANAGRAFICA') && removeFromMatchCtx) s = 0;
         // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
         if (name === 'CORREGGI' && openEditCtx) s += 4;
         if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
+        // Verbo durata → CORREGGI (modifica prenotazione esistente), mai PRENOTA/ANAGRAFICA.
+        if (name === 'CORREGGI' && durataCtx) s += 3;
+        if ((name === 'PRENOTA' || name === 'ANAGRAFICA') && durataCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         // Lettura scheda socio → vince ANAGRAFICA, mai TROVA (che cerca tra le prenotazioni).
         if (name === 'ANAGRAFICA' && (anaReadCtx || anaCreateContactCtx)) s += 3;
@@ -40670,9 +40702,18 @@ Per confermare scrivi ELIMINA.`);
       const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
       const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      // In italiano "cancella/elimina/scarta <nome> DALLA partita/lezione/prenotazione/campo" =
+      // togliere un GIOCATORE (non annullare la prenotazione). Vale SOLO con "da(lla) …": senza,
+      // "cancella la prenotazione / elimina la partita di Mario" resta annullamento (cancelVerb).
+      const removeFromBooking = /\b(cancell\w*|elimin\w*|scart\w*)\b/.test(tx)
+        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s*(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(tx);
       const replV = /\b(sostituisc\w*|scambia)\b/.test(tx);
-      const editNames = (addV || remV || replV) ? _editNames(tx) : [];
-      const hasPerson = editNames.length > 0;
+      const editNames = (addV || remV || replV || removeFromBooking) ? _editNames(tx) : [];
+      // "Ospite" è un SOCIO jolly (non un nuovo nominativo): "aggiungi/inserisci/metti un ospite"
+      // è una modifica-giocatori, non la creazione di un socio "ospite". Conta come persona.
+      const hasOspite = /\b(ospit[ei]|jolly)\b/.test(tx);
+      const ospiteEdit = (addV || remV || replV || removeFromBooking) && hasOspite;
+      const hasPerson = editNames.length > 0 || ospiteEdit;
       // verbo "prenotare" coniugato (NON il sostantivo "prenotazione/prenotazioni") + altri verbi di creazione
       const bookVerb = _BOOK_VERB.test(' ' + tx + ' ') || /\b(fissa\w*|fissare|blocc\w*|bloccare|segna|segnare|crea)\b/.test(tx);
       // "metti/fai una partita|lezione" = CREA; "metti Marco nella lezione" = aggiunta giocatore
@@ -40682,7 +40723,9 @@ Per confermare scrivi ELIMINA.`);
       const cancelVerb = /\b(annull\w*|cancell\w*|disd\w*|elimin\w*)\b/.test(tx) || (remV && !hasPerson);
       // spost\w* copre tutte le coniugazioni ("sposta/sposti/sposto/spostami/spostare/sposterei…":
       // "Mi sposti la lezione…" cadeva in crea perché "sposti" non matchava "sposta\w*").
-      const modifyVerb = /\b(modific\w*|spost\w*|allung\w*|allungare|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
+      // anticip*/posticip* = spostamento di ORARIO ("anticipa/posticipa la partita alle …"):
+      // sono modifiche, non nuove prenotazioni (bug 19/06: "anticipi alle 9" → crea un doppione).
+      const modifyVerb = /\b(modific\w*|spost\w*|anticip\w*|posticip\w*|allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|corregg\w*|rettific\w*|cambi\w*)\b/.test(tx);
       const eventRef = /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(tx);
       // "aggiungi/togli … ALLA/DALLA partita|lezione|prenotazione|campo" = modifica dei giocatori
       // (apre l'editor), anche senza un nome esplicito ("aggiungi un giocatore alla partita delle
@@ -40719,7 +40762,7 @@ Per confermare scrivi ELIMINA.`);
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
-      const playerEdit = (addV || remV || replV) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
+      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
 
       // "apri/riapri/gestisci/mostra/visualizza LA prenotazione di campo X [alle Y]" = aprire la
       // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
@@ -40736,13 +40779,19 @@ Per confermare scrivi ELIMINA.`);
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
       if (openEditCtx2) azione = 'modifica';
-      else if (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField) azione = 'anagrafica';
+      else if (!ospiteEdit && (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField)) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
       if (!azione) {
         if (c.intent === 'ANAGRAFICA' || (anaStatus && !eventRef)) azione = 'anagrafica';
         else if (cancelVerb) azione = 'annulla';
-        else if (modifyVerb && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
+        // Durata o NOTA nominata senza verbo d'azione esplicito ("porta/imposta la durata a 90",
+        // "fai durare … due ore", "nota campo 1 alle 18: …"): modifica. Esclude i verbi di
+        // creazione, così "prenota campo 2 durata 90" resta una NUOVA prenotazione.
+        else if ((modifyVerb
+            || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)
+            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase))
+          && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
       if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
@@ -40782,7 +40831,7 @@ Per confermare scrivi ELIMINA.`);
       else if (dx.koPast) { ko = true; koReason = 'data nel passato'; }
       else if (dx.koDate) { ko = true; koReason = 'data inesistente'; }
       else if (tmx.koOrder) { ko = true; koReason = 'orario incoerente (fine prima dell’inizio)'; }
-      else if (ana.isAna && ana.ko) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente)
+      else if (ana.isAna && ana.ko && !ospiteEdit) { ko = true; koReason = ana.koReason; } // KO anagrafica (livello/email/telefono/socio inesistente). Ospite-jolly escluso.
 
       // ── azione massiva (regola F) ──
       const confirmMassive = ((azione === 'annulla' || azione === 'modifica') && /\b(tutt[oei]|tutte)\b/.test(tx))
@@ -40885,7 +40934,7 @@ Per confermare scrivi ELIMINA.`);
     // (possibili risposte in anagrafica/modifica): solo verbi che non sono mai risposte a slot.
     function _looksLikeNewCommand(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/(^| )(prenot\w+|aggiung\w+|aggiorn\w+|cancell\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
+      if (/(^| )(prenot\w+|aggiung\w+|inserisc\w+|aggiorn\w+|cancell\w+|elimin\w+|togl\w+|tolg\w+|rimuov\w+|spost\w+|anticip\w+|posticip\w+|modific\w+|disd\w+|scart\w+|allung\w+|accorci\w+|prolung\w+|estend\w+|riduc\w+|abbrevi\w+|annot\w+|trova\w*|cerca\w*|mostr\w+)( |$)/.test(n)) return true;
       if (/( chi gioca| campi liber| campi disponib| campi prenotabil)/.test(n)) return true;
       // Comando anagrafica esplicito ("apri/mostra la scheda di X", "una scheda nuova",
       // "apri l'anagrafica"): mai una risposta a uno slot (nome/telefono/ora/campo…), quindi
@@ -40930,6 +40979,12 @@ Per confermare scrivi ELIMINA.`);
             return _continueCancella(t);
           }
           if (_k === 'modifica') return _continueModifica(t);
+          if (_k === 'addconfirm') return _confirmAddAnswer(t);
+          if (_k === 'removeconfirm') return _confirmRemoveAnswer(t);
+          if (_k === 'moveconfirm') return _confirmMoveAnswer(t);
+          if (_k === 'movedest') return _continueMoveDest(t);
+          if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
+          if (_k === 'notaconfirm') return _confirmNotaAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -40956,11 +41011,24 @@ Per confermare scrivi ELIMINA.`);
       if (res.confirmMassive && !(aiFlowState && aiFlowState.massiveOk)) {
         return _say('⚠️ Stai per fare un\'azione su <strong>molte prenotazioni</strong> (' + _escapeHtml(t) + '). Sei sicuro? Scrivi “sì, conferma” per procedere.');
       }
-      // Scheda prenotazione APERTA + "aggiungi <nome>" → aggiungi il giocatore a QUELLA scheda,
-      // senza la domanda socio/giocatore (decisione utente 2026-06-19). Solo se la scheda accetta
-      // giocatori (hasPlayers) e non è occupata da un'altra operazione.
-      if (res.addAmbiguous && staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
-        return _addPlayerToOpenBooking(res, t);
+      // Scheda prenotazione APERTA + comando di AGGIUNTA → aggiungi a QUELLA scheda (decisione
+      // utente 2026-06-19). Vale per "aggiungi <nome>" ma anche per "inserisci/metti un ospite"
+      // (Ospite è un socio jolly, non un nuovo nominativo: senza questa regola ANAGRAFICA lo
+      // scambiava per la creazione di un socio "ospite"). Condizioni: la scheda accetta giocatori,
+      // non è occupata, il comando NON punta a un'ALTRA prenotazione (campo/ora diversi) e non è
+      // una creazione-socio con contatto (telefono/email).
+      if (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
+        const _addVerb = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*|metti)\b/.test(_norm(t));
+        const _c = res.slots && res.slots.court, _tm = res.slots && res.slots.time;
+        const _sameCourt = !_c || Number(_c) === Number(staffCalPlayersState.campo);
+        const _sameTime = !_tm || String(_tm) === String(staffCalPlayersState.ora);
+        const _hasContact = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
+        // "aggiungi/metti una NOTA …" non è un giocatore: lascialo a _startNota (la parola "nota"
+        // qualifica l'oggetto). Senza questa guardia "metti una nota" diventerebbe un Ospite.
+        const _isNoteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
+        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && _sameCourt && _sameTime && !_hasContact) {
+          return _addPlayerToOpenBooking(res, t);
+        }
       }
       // "aggiungi <nome>" ambiguo (giocatore o nuovo socio?) → chiedi chiarimento mirato,
       // invece di assumere "giocatore". Decisione utente 2026-06-18 (mai vicolo cieco).
@@ -41031,7 +41099,7 @@ Per confermare scrivi ELIMINA.`);
       const n = _norm(t);
       const court = _extractCampo(n);
       const time = _extractTime(t);
-      const date = _extractDate(n, _todayIso());
+      const date = _extractDate(n, _calSelectedIso());
       const recap = [];
       if (court) recap.push('campo ' + court);
       if (time) recap.push('orario ' + time);
@@ -41077,7 +41145,8 @@ Per confermare scrivi ELIMINA.`);
     // ── TROVA (sola lettura) ────────────────────────────────────────────────────
     function _handleTrova(text, slots) {
       const n = _norm(text);
-      const iso = slots.date || _todayIso();
+      // Senza data esplicita, la domanda riguarda il GIORNO MOSTRATO nel calendario, non "oggi".
+      const iso = slots.date || _calSelectedIso();
       const dl = _dayLabel(iso);
       const all = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
       // Domanda sul ROSTER ("mancano giocatori", "ci sono tutti e quattro", "posti liberi
@@ -41126,7 +41195,7 @@ Per confermare scrivi ELIMINA.`);
       const instr = _detectIstruttore(text, n);
       const rangeDays = _extractDays(n);
       const days = rangeDays || (slots.date ? 1 : 7);
-      const startIso = slots.date || _todayIso();
+      const startIso = slots.date || _calSelectedIso();
       const found = [];
       for (let d = 0; d < days; d++) {
         const iso = _addDays(startIso, d);
@@ -41341,11 +41410,68 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b\d{1,2}[\/\-.]\d{1,2}(?:[\/\-.]\d{2,4})?\b/g, ' ')
         .replace(/\s+/g, ' ').trim();
     }
+    // Toglie i riferimenti d'ORARIO ("alle 18", "dalle 18:30 alle 20", "ore 19") dal testo
+    // del giocatore, così un orario in coda al comando non diventa parte del nome.
+    function _stripTimeRefs(s) {
+      return String(s || '')
+        .replace(/\b(?:dalle|alle|all['’]|dall['’]|delle|dell['’]|entro|ore|le)\s*\d{1,2}(?:[:.]\d{2})?\b/gi, ' ')
+        .replace(/\b\d{1,2}\s*[-–]\s*\d{1,2}(?:[:.]\d{2})?\b/g, ' ')
+        .replace(/\b\d{1,2}[:.]\d{2}\b/g, ' ')
+        .replace(/\s+/g, ' ').trim();
+    }
+    // Estrae il NOME del giocatore oggetto di un comando completo "aggiungi/togli <nome>
+    // alla/dalla partita|lezione|prenotazione di campo X alle Y": toglie verbo, parole di
+    // dominio e i riferimenti campo/data/ora, lasciando il solo nome (poi risolto in anagrafica).
+    function _extractEditPlayerName(text) {
+      let raw = String(text || '')
+        .replace(/^\s*\W*(?:(?:mi|me|ci|ti)\s+)?(aggiung\w*|aggiungimi|inserisc\w*|metti|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|cancell\w*|elimin\w*|scart\w*|caccia|add)\s+/i, ' ')
+        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|d[ae]ll?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*)|all?[ao’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|nell?[ae’']?\s+(?:prenotazion\w*|partit\w*|lezion\w*)|in\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
+      raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw)));
+      return raw.trim();
+    }
+    // Tutti i campi citati in un comando (numeri o parole: "campo 1 … sul campo 2" → [1,2]).
+    function _allCampi(text) {
+      const n = _norm(text), out = [], wmap = { uno: 1, una: 1, due: 2, tre: 3, quattro: 4 };
+      const re = /\bcamp[oi]\s*(?:n(?:umero)?\.?\s*)?(\d|uno|una|due|tre|quattro)\b/g;
+      let m; while ((m = re.exec(n))) { const v = wmap[m[1]] || parseInt(m[1], 10); if (v >= 1 && v <= 4 && out.indexOf(v) < 0) out.push(v); }
+      return out;
+    }
+    // Tutti gli orari citati (HH o HH:MM, dopo alle/dalle/ore o nel range "dalle A alle B"), in ordine.
+    function _allTimes(text) {
+      const n = _norm(text), out = [];
+      const re = /\b(?:dalle|alle|dall['’]|all['’]|delle|dell['’]|ore|le|a)?\s*(\d{1,2})(?:[:.](\d{2}))?\b/g;
+      let m; while ((m = re.exec(n))) {
+        const h = parseInt(m[1], 10); if (h < 7 || h > 23) continue; // orari di apertura plausibili
+        const hh = (h < 10 ? '0' + h : '' + h) + ':' + (m[2] || '00');
+        if (out.indexOf(hh) < 0) out.push(hh);
+      }
+      return out;
+    }
+    // POSTULATO: legge dal calendario la prenotazione a (campo, ora, giorno), se esiste.
+    function _calBookingAt(iso, campo, ora) {
+      try {
+        const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
+        const wc = Number(String(campo).replace(/\D/g, '')), wo = String(ora).trim();
+        return rows.find(function (r) { return r && Number(String(r.campo).replace(/\D/g, '')) === wc && String(r.ora).trim() === wo; }) || null;
+      } catch (e) { return null; }
+    }
     function _resolvePlayers(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
+        // "Ospite" è un SOCIO vero dell'anagrafica (ID cliente 000001), usato come giocatore
+        // jolly di identità ignota: si può inserire anche più volte. Va risolto su QUEL socio,
+        // MAI con un fuzzy che pescherebbe un tesserato a caso ("inserisci un ospite" → "Eri
+        // Beqiri"). Quantità opzionale: "due ospiti" → 2 slot.
+        const _onm = ' ' + _norm(nm) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_onm)) {
+          let _q = 1;
+          const _qm = _onm.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) giocatori.push(_ospitePlayer());
+          continue;
+        }
         const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
         // Regola ferma (LoZio): l'assistente NON crea nuovi nomi su Matchpoint. Un nome non
         // in anagrafica diventa OSPITE, mai scritto così com'è.
@@ -41376,10 +41502,10 @@ Per confermare scrivi ELIMINA.`);
         tipo: tipo,
         typePresent: typePresent,
         campoNum: p.campoNum || slots.court || 0,
-        // NIENTE default a "oggi": la data conta SOLO se l'utente l'ha detta esplicitamente
-        // (slots.date = _extractDate ha trovato oggi/domani/giorno/data). Altrimenti resta
-        // vuota e diventa uno slot da chiedere (l'utente poteva guardare un altro giorno).
-        data: slots.date || '',
+        // Data: se l'utente non l'ha detta esplicitamente, usa il GIORNO MOSTRATO nel calendario
+        // (come il booking manuale, che prenota sul giorno aperto) — non "oggi". La conferma
+        // mostra comunque il giorno prima di scrivere su Matchpoint.
+        data: slots.date || _calSelectedIso(),
         ora: p.ora || slots.time || '',
         oraFine: p.oraFine || '',
         durata: p.durata || 0,
@@ -41557,7 +41683,7 @@ Per confermare scrivi ELIMINA.`);
         if (!m) return _say('Non ho riconosciuto il maestro. Scrivi uno tra: <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong> (oppure “annulla”).');
         draft.istruttore = m;
       } else if (k === 'date') {
-        const iso = _extractDate(_norm(text), _todayIso());
+        const iso = _extractDate(_norm(text), _calSelectedIso());
         if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
         draft.data = iso;
       } else if (k === 'court') {
@@ -41723,21 +41849,161 @@ Per confermare scrivi ELIMINA.`);
       if (!st) return _say('Non c’è nessuna prenotazione aperta da modificare.');
       let raw = String(text || '')
         .replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ')
-        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|alla?\s+prenotazione|a\s+quest[ao]\s+prenotazione|alla\s+partita|alla\s+lezione)\b/ig, ' ');
-      raw = _stripCourtRefs(raw).trim();
+        .replace(/\b(come\s+(?:giocatore|allievo|allieva)|(?:a|ad|in|su|nel|nell['’]|nella|nelle|alla|alle|dalla|dalle)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
+      raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw))).trim();
       if (!raw && res && res.giocatori && res.giocatori.length) raw = res.giocatori.join(' ');
       const r = raw ? _resolvePlayers(raw) : { giocatori: [], notes: [] };
       if (!r.giocatori || !r.giocatori.length) {
         return _say('Chi devo aggiungere alla prenotazione aperta? Scrivi il <strong>nome</strong> del giocatore.');
       }
-      st.add = st.add || [];
-      r.giocatori.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
-      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
-      const nomi = r.giocatori.map(function (g) { return g.nome; }).join(', ');
-      let msg = '➕ Ho aggiunto <strong>' + _escapeHtml(nomi) + '</strong> alla prenotazione aperta (Campo ' +
-        st.campo + ' · ' + st.ora + '). Premi <strong>Salva</strong> nella scheda per confermare su Matchpoint.';
-      if (r.notes && r.notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + r.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
+      // CONFERMA prima di scrivere (decisione utente 2026-06-19): rimando indietro il NOME
+      // capito e salvo su Matchpoint solo dopo un "sì". Così una dettatura sbagliata (nome
+      // errato, o non in anagrafica → Ospite) si intercetta PRIMA di toccare il gestionale.
+      // Nessuno stato a metà: se non confermi, non viene scritto né in app né su Matchpoint.
+      return _askAddConfirm(st, r.giocatori, r.notes);
+    }
+    // Chiede conferma dell'aggiunta (echo del nome capito) e apre il flusso 'addconfirm'.
+    function _askAddConfirm(st, players, notes) {
+      const nomi = players.map(function (g) { return g.nome; }).join(', ');
+      const anyOspite = players.some(function (g) { return g.ospite; });
+      aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      let msg = '🤔 Ho capito: aggiungere <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.';
+      if (notes && notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + notes.join('<br>⚠️ ') + '</span>';
+      msg += '<br>Confermo e salvo su Matchpoint? Scrivi <strong>sì</strong>' +
+        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' o <strong>no</strong> (oppure dimmi il nome giusto).');
       return _say(msg);
+    }
+    // Risposta alla conferma: sì → mette in scheda + salva; no/chiudi → scarta; altro testo →
+    // lo interpreta come il nome corretto e ri-chiede conferma (così si rimedia a una dettatura
+    // sbagliata senza ripartire). Restituisce truthy: ha gestito la risposta.
+    function _confirmAddAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'addconfirm') { aiFlowState = null; return _say('Dimmi pure chi aggiungere.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) {
+        aiFlowState = null;
+        return _say('👍 Ok, non ho aggiunto nessuno. Se vuoi riprovare, dimmi il nome giusto.');
+      }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const st = staffCalPlayersState;
+        if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+        aiFlowState = null;
+        st.add = st.add || [];
+        fs.players.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
+        try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+        const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
+        _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      // Non è sì/no → probabilmente è il nome corretto: ri-risolvi e ri-chiedi conferma.
+      const st = staffCalPlayersState;
+      if (st && !st.busy) {
+        let raw = String(text || '').replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
+        raw = _stripCourtRefs(raw).trim();
+        if (raw) {
+          const rr = _resolvePlayers(raw);
+          if (rr.giocatori && rr.giocatori.length) return _askAddConfirm(st, rr.giocatori, rr.notes);
+        }
+      }
+      return _say('Rispondi <strong>sì</strong> per aggiungere, <strong>no</strong> per lasciar perdere, oppure scrivi il <strong>nome</strong> giusto.');
+    }
+    // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
+    // richiesto ai giocatori presenti (roster); se non c'è → lo dice; se più simili → fa scegliere.
+    // POSTULATO DI BASE: leggi PRIMA il calendario. Legge il roster reale di una prenotazione
+    // (gli stessi dati che disegnano il box) dallo store staff, per ancorare le decisioni a chi
+    // c'è davvero, non allo stato a metà di una scheda appena aperta.
+    function _rosterFromCalendar(st) {
+      if (!st) return [];
+      try {
+        const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const wc = Number(String((st.origCampo != null ? st.origCampo : st.campo) || '').replace(/\D/g, ''));
+        const wIso = String(st.origIso || st.isoDate || '').trim();
+        const wOra = String(st.origOra || st.ora || '').trim();
+        const b = (Array.isArray(list) ? list : []).find(function (x) {
+          return x && String(x.data).trim() === wIso && Number(String(x.campo).replace(/\D/g, '')) === wc && String(x.ora).trim() === wOra;
+        });
+        if (b && Array.isArray(b.giocatori)) {
+          return b.giocatori.map(function (g, i) { return { idx: (g && g.idx != null ? g.idx : i), nome: String((g && g.nome) || '').trim() }; }).filter(function (x) { return x.nome; });
+        }
+      } catch (e) {}
+      return [];
+    }
+    function _askRemoveConfirm(st, rawName) {
+      // Se la scheda è appena aperta e il roster non è ancora popolato, leggilo dal calendario,
+      // così il match (e la rimozione per idx) si basano su chi c'è davvero.
+      if (st && (!Array.isArray(st.roster) || !st.roster.length)) {
+        const cal = _rosterFromCalendar(st);
+        if (cal.length) st.roster = cal;
+      }
+      const roster = (st && Array.isArray(st.roster)) ? st.roster.filter(function (p) { return p && p.nome; }) : [];
+      if (!roster.length) return _say('Questa prenotazione non risulta avere giocatori da togliere (o non li ho ancora letti): riprova tra un istante o aprila e controlla.');
+      const q = _norm(rawName || '').trim();
+      // Parole generiche di ruolo NON sono un nome ("togli un giocatore" = nessun nome → "quale?").
+      const _GENERIC_ROLE = { giocatore: 1, giocatori: 1, alliev: 1, allievo: 1, allieva: 1, allievi: 1, persona: 1, qualcuno: 1, socio: 1, soci: 1, tizio: 1, uno: 1, una: 1 };
+      const qtok = q.split(/\s+/).filter(function (w) { return w.length >= 3 && !_GENERIC_ROLE[w]; });
+      // Nessun nome utile detto ("togli un giocatore", o estrazione a vuoto) → chiedi QUALE
+      // togliere elencando i presenti (caso legittimo, non un errore). NB: senza questa guardia,
+      // un q vuoto faceva matchare TUTTI (indexOf('') = 0) e sembrava "più giocatori simili".
+      if (!q || !qtok.length) {
+        aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? ' + roster.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Rispondi col <strong>numero</strong> (o “no”).');
+      }
+      // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
+      // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
+      const hits = roster.filter(function (p) {
+        const nm = _norm(p.nome);
+        if (!nm) return false;
+        if (nm === q) return true;
+        const ntok = nm.split(/\s+/);
+        return qtok.some(function (w) { return ntok.indexOf(w) >= 0; });
+      });
+      if (!hits.length) {
+        return _say('🔍 In questa prenotazione non trovo “<strong>' + _escapeHtml(rawName) + '</strong>”. Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '. Dimmi quale togliere (o “chiudi”).');
+      }
+      if (hits.length > 1) {
+        aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('Ci sono più giocatori simili: ' + hits.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Quale tolgo? Rispondi col <strong>numero</strong> (o “no”).');
+      }
+      aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _say('🤔 Tolgo <strong>' + _escapeHtml(hits[0].nome) + '</strong> dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    // Risposta alla conferma di rimozione: pick (scelta tra omonimi) → confirm; sì → segna remove
+    // e salva; no/chiudi → scarta. Restituisce truthy: ha gestito la risposta.
+    function _confirmRemoveAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'removeconfirm') { aiFlowState = null; return _say('Dimmi pure chi togliere.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) {
+        aiFlowState = null;
+        return _say('👍 Ok, non ho tolto nessuno.');
+      }
+      if (fs.stage === 'pick') {
+        const m = String(text || '').match(/\b(\d{1,2})\b/);
+        let target = null;
+        if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < fs.candidates.length) target = fs.candidates[i]; }
+        if (!target) return _say('Rispondi col <strong>numero</strong> del giocatore da togliere (o “no”).');
+        fs.target = target; fs.stage = 'confirm';
+        return _say('🤔 Tolgo <strong>' + _escapeHtml(target.nome) + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | togli\w* | rimuov\w* | giusto | esatto )/.test(n)) {
+        const st = staffCalPlayersState;
+        if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+        const target = fs.target; aiFlowState = null;
+        if (!target || target.idx == null) return _say('❌ Non ho più il riferimento del giocatore: riprova.');
+        st.remove = st.remove || {}; st.remove[target.idx] = true;
+        try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+        _say('➖ Tolgo <strong>' + _escapeHtml(target.nome) + '</strong> e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> per togliere, <strong>no</strong> per lasciar perdere.');
     }
     // Comandi vocali/testuali sulla SCHEDA prenotazione aperta: "salva/conferma/ok" → salva su
     // Matchpoint (come il pulsante Salva), "chiudi" → chiude senza salvare. Così l'aggiunta di un
@@ -41907,7 +42173,7 @@ Per confermare scrivi ELIMINA.`);
     function _startCancella(res, text) {
       const p = res.parsed || {};
       const slots = res.slots || {};
-      const iso = slots.date || p.data || _todayIso();
+      const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
@@ -42026,41 +42292,90 @@ Per confermare scrivi ELIMINA.`);
     // La modifica vera avviene nell'editor (ha il suo riepilogo+conferma). La modifica
     // "a voce pura" (capire il cambiamento dal testo) è comprensione → fase successiva.
     // ════════════════════════════════════════════════════════════════════════
-    function _openEditor(iso, slot) {
+    function _openEditor(iso, slot, pending) {
       aiFlowState = null;
       const tipoR = slot.tipoReale || (String(slot.tipo || '').indexOf('lez') >= 0 ? 'lezione' : 'partita');
       const nome = (slot.nome || '').replace(/\n/g, ', ');
       try {
         if (typeof staffCalEditPlayers === 'function') staffCalEditPlayers(iso, slot.campo, slot.ora, nome, slot.durata, tipoR);
-        else _say('❌ Editor di modifica non disponibile.');
-      } catch (e) { _say('❌ Non riesco ad aprire l’editor di modifica: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        else return _say('❌ Editor di modifica non disponibile.');
+      } catch (e) { return _say('❌ Non riesco ad aprire l’editor di modifica: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      // Comando completo "aggiungi/togli <nome> alla partita…": la scheda è appena stata aperta
+      // (staffCalEditPlayers costruisce lo stato in modo sincrono) → eseguo SUBITO l'azione col
+      // nome già noto, così l'utente non deve ripeterlo. Passo direttamente alla conferma.
+      if (pending && staffCalPlayersState && staffCalPlayersState.hasPlayers) return _runPendingEditAction(pending);
+    }
+    // Esegue sull'editor appena aperto l'azione estratta dal comando (aggiungi/togli un nome).
+    function _runPendingEditAction(pending) {
+      const st = staffCalPlayersState;
+      if (!st || !pending) return;
+      if (pending.type === 'add') {
+        const r = pending.rawName ? _resolvePlayers(pending.rawName) : { giocatori: [], notes: [] };
+        if (!r.giocatori || !r.giocatori.length) return _say('Chi devo aggiungere alla prenotazione? Dimmi il <strong>nome</strong>.');
+        return _askAddConfirm(st, r.giocatori, r.notes);
+      }
+      if (pending.type === 'remove') return _askRemoveConfirm(st, pending.rawName);
     }
     function _startModifica(res, text) {
       const p = res.parsed || {};
       const slots = res.slots || {};
-      const iso = slots.date || p.data || _todayIso();
+      const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
+      const nlow = _norm(text);
+      // NOTA/osservazioni: ha PRIORITÀ (la parola "nota" qualifica l'oggetto anche con
+      // aggiungi/togli, che altrimenti finirebbero su giocatori). Postulato in _startNota.
+      const isNote = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(nlow);
+      if (isNote) return _startNota(res, text, iso, court, time);
+      // L'azione sulla scheda: aggiungere o togliere un giocatore (verbo nel comando).
+      const isAdd = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow);
+      // "da(lla) partita/lezione/prenotazione/campo" = togliere un giocatore DA dentro (non annullare).
+      const removeFromPat = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(nlow);
+      // togli/rimuovi/leva valgono sempre; cancella/elimina/scarta SOLO col pattern "dalla …"
+      // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
+      const isRemove = !isAdd && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
+        || (removeFromPat && /(^|\s)(cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(nlow)));
+      // SPOSTAMENTO: postulato → leggi il calendario per capire sorgente e destinazione.
+      // Include lo spostamento di solo ORARIO: "anticipa/posticipa la partita alle …".
+      const isMove = !isAdd && !isRemove && /(^|\s)(spost\w*|anticip\w*|posticip\w*)/.test(nlow);
+      if (isMove) return _startSposta(res, text, iso, court, time);
+      // DURATA: postulato → leggi il calendario per la prenotazione e la sua durata attuale, poi
+      // cambia SOLO l'ora di fine (edit in place, non spostamento). Vale per i verbi diretti
+      // (allunga/accorcia/…) e per la durata nominata ("porta/imposta/cambia la durata a 90",
+      // "fai durare … due ore").
+      const isDurata = !isAdd && !isRemove && !isMove && (
+        /(^|\s)(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(nlow)
+        || /(^|\s)durat\w*/.test(nlow)
+        || /\bdurar\w*/.test(nlow));
+      if (isDurata) return _startDurata(res, text, iso, court, time);
+      // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
+      const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
       // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
       if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
+      // Per l'AGGIUNTA il nome è il giocatore DA INSERIRE (non ancora nella prenotazione): non va
+      // usato come filtro per trovarla, altrimenti non la trova mai. Per la rimozione invece aiuta.
+      const findWho = isAdd ? '' : who;
       const dl = _dayLabel(iso);
-      let cands = _cancelCandidates(iso, court, time, who);
-      if (!cands.length && who) {
+      let cands = _cancelCandidates(iso, court, time, findWho);
+      if (!cands.length && findWho) {
         const base = _cancelCandidates(iso, court, time, '');
-        if (base.length) { cands = base; who = ''; }
+        if (base.length) { cands = base; }
       }
       if (!cands.length) {
-        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (who ? ' · ' + _escapeHtml(who) : '');
+        const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (findWho ? ' · ' + _escapeHtml(findWho) : '');
         return _say('🔍 Non trovo prenotazioni da modificare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
       }
-      if (cands.length === 1) return _openEditor(iso, cands[0]);
-      aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands };
+      const pending = (isAdd && actionName) ? { type: 'add', rawName: actionName }
+        : (isRemove && actionName) ? { type: 'remove', rawName: actionName } : null;
+      if (cands.length === 1) return _openEditor(iso, cands[0], pending);
+      aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
+      const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
       const items = cands.map(function (r, i) {
         return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
       });
-      return _say('❓ Quale prenotazione vuoi <strong>modificare</strong>? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+      return _say('❓ Quale prenotazione vuoi ' + azLbl + '? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
     }
     function _continueModifica(text) {
       const n = ' ' + _norm(text) + ' ';
@@ -42079,7 +42394,379 @@ Per confermare scrivi ELIMINA.`);
         if (f.length === 1) pick = f[0];
       }
       if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
-      return _openEditor(iso, pick);
+      const pending = aiFlowState.pending || null;
+      return _openEditor(iso, pick, pending);
+    }
+    // ── SPOSTAMENTO (postulato: leggi prima il calendario) ──────────────────────
+    function _dmy(iso) { return String(iso || '').split('-').reverse().join('/'); }
+    // Aggiunge n giorni a una data ISO (locale, niente toISOString che sfasa nei fusi positivi).
+    function _addDaysIso(iso, n) {
+      const d = new Date(String(iso) + 'T12:00:00');
+      if (isNaN(d.getTime())) return iso;
+      d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    // Spostamento RELATIVO di giorni: "avanti/indietro di N giorni", "tra/fra N giorni",
+    // "il giorno dopo/prima", "tra una/N settimana/e". Ritorna l'offset firmato (giorni) o null.
+    function _relDayShift(text) {
+      const n = ' ' + _norm(text) + ' ';
+      const W = { un: 1, una: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10 };
+      const NUM = "(\\d+|un|una|uno|due|tre|quattro|cinque|sei|sette|otto|nove|dieci)";
+      function num(t) { if (t == null) return null; if (W[t] != null) return W[t]; const v = parseInt(t, 10); return Number.isFinite(v) ? v : null; }
+      let m;
+      // settimane
+      if (/\b(?:tra|fra)\s+una\s+settiman/.test(n)) return 7;
+      m = n.match(new RegExp("\\b(?:tra|fra|in)\\s+" + NUM + "\\s+settiman")); if (m) { const k = num(m[1]); if (k != null) return k * 7; }
+      // INDIETRO (prima): controlla per primo, vince su "di N giorni"
+      m = n.match(new RegExp("\\bindietro\\s+di\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return -k; }
+      m = n.match(new RegExp("\\b" + NUM + "\\s+giorn\\w*\\s+(?:indietro|prima|fa)\\b")); if (m) { const k = num(m[1]); if (k != null) return -k; }
+      if (/\bgiorno\s+(?:prima|precedente)\b/.test(n)) return -1;
+      // AVANTI / generico "di N giorni" / "tra N giorni" / "N giorni dopo"
+      m = n.match(new RegExp("\\b(?:avanti|in\\s+avanti|piu\\s+avanti)\\s+di\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      m = n.match(new RegExp("\\b(?:tra|fra)\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      m = n.match(new RegExp("\\b" + NUM + "\\s+giorn\\w*\\s+dopo\\b")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      if (/\bgiorno\s+(?:dopo|seguente|successivo)\b/.test(n)) return 1;
+      m = n.match(new RegExp("\\bdi\\s+" + NUM + "\\s+giorn")); if (m) { const k = num(m[1]); if (k != null) return k; }
+      return null;
+    }
+    function _startSposta(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      // SORGENTE: la scheda aperta, oppure la prenotazione (campo+ora+giorno) che ESISTE sul calendario.
+      let src = null;
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) {
+        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      } else {
+        // Priorità data sorgente: data ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+        // (Prima si assumeva "oggi", e modificava la prenotazione di un altro giorno rispetto a quello
+        // che l'operatore stava guardando.)
+        const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        const tryCampi = campi.length ? campi : (court ? [court] : []);
+        const tryTimes = times.length ? times : (time ? [time] : []);
+        for (let di = 0; di < isoCands.length && !src; di++)
+          for (let ci = 0; ci < tryCampi.length && !src; ci++)
+            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
+              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+            }
+      }
+      if (!src) return _say('🔍 Non trovo la prenotazione da spostare. Dimmi campo e ora di partenza, es. «<em>sposta la partita di campo 1 alle 14 sul campo 2</em>».');
+      // DESTINAZIONE: ciò che differisce dalla sorgente (altro campo / altro orario / altro giorno).
+      let destCampo = null, destOra = null, destIso = null;
+      for (let i = 0; i < campi.length; i++) if (campi[i] !== src.campo) { destCampo = campi[i]; break; }
+      for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
+      if (slots.date && slots.date !== src.iso) destIso = slots.date;
+      // Spostamento RELATIVO di giorni ("avanti/indietro di N giorni", "tra N giorni"): ha
+      // priorità sul giorno assoluto solo se questo non è stato indicato.
+      if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
+      if (destCampo == null && destOra == null && destIso == null) {
+        _openEditor(src.iso, { campo: src.campo, ora: src.ora, durata: src.durata, tipoReale: src.tipoR, nome: '' });
+        aiFlowState = { kind: 'movedest', stage: 'await', src: src };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('📝 Ho aperto la partita di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>. <strong>Dove la sposto?</strong> Dimmi un campo (“sul campo 2”), un orario (“alle 16”) o un giorno (“domani”).');
+      }
+      const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
+      dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
+      return _askMoveConfirm(src, dest);
+    }
+    function _askMoveConfirm(src, dest) {
+      // Niente spostamenti PIÙ indietro nel passato: blocca solo se la destinazione è prima della
+      // sorgente E prima di oggi (così correggere/spostare una prenotazione già passata sullo stesso
+      // giorno — o spostarla in avanti — resta possibile).
+      if (String(dest.iso) < String(src.iso) && String(dest.iso) < _todayIso()) {
+        return _say('⛔ Non posso spostare la prenotazione più indietro nel passato (' + _dmy(dest.iso) + '). Scegli una data da oggi in poi.');
+      }
+      // Postulato: controlla sul calendario che la destinazione sia LIBERA prima di confermare.
+      const occ = _calBookingAt(dest.iso, dest.campo, dest.ora);
+      const dstTxt = 'Campo ' + dest.campo + ' · ' + _dmy(dest.iso) + ' · ' + dest.ora;
+      if (occ && !(Number(occ.campo) === Number(src.campo) && String(occ.ora) === String(src.ora) && String(dest.iso) === String(src.iso))) {
+        return _say('⛔ La destinazione (<strong>' + dstTxt + '</strong>) è già occupata' + (occ.nome ? ' (' + _escapeHtml(String(occ.nome).replace(/\n/g, ', ')) + ')' : '') + '. Scegli un altro campo o orario.');
+      }
+      aiFlowState = { kind: 'moveconfirm', stage: 'confirm', src: src, dest: dest };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _say('🤔 Sposto la prenotazione da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _confirmMoveAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'moveconfirm') { aiFlowState = null; return _say('Dimmi pure cosa spostare.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho spostato nulla.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | spost\w* | giusto | esatto )/.test(n)) {
+        const src = fs.src, dest = fs.dest; aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione da spostare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione da spostare.');
+        st.mCampo = dest.campo; st.mIso = dest.iso; st.mOraIni = dest.ora; st.mOraFin = dest.oraFin || _staffCalEndTime(dest.ora, st.origDurMin);
+        _say('↪️ Sposto su <strong>Campo ' + dest.campo + ' · ' + _dmy(dest.iso) + ' · ' + dest.ora + '</strong> e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare lo spostamento: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> per spostare o <strong>no</strong> per lasciar perdere.');
+    }
+    // Risposta a "dove la sposto?" → interpreta campo/orario/giorno come DESTINAZIONE e conferma.
+    function _continueMoveDest(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'movedest') { aiFlowState = null; return _say('Dimmi pure cosa spostare.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non sposto nulla.'); }
+      const src = fs.src;
+      const campi = _allCampi(text), times = _allTimes(text);
+      let destCampo = null, destOra = null, destIso = null;
+      for (let i = 0; i < campi.length; i++) if (campi[i] !== src.campo) { destCampo = campi[i]; break; }
+      for (let i = 0; i < times.length; i++) if (times[i] !== src.ora) { destOra = times[i]; break; }
+      const dt = _extractDate(_norm(text), '');
+      if (dt && dt !== src.iso) destIso = dt;
+      if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
+      if (destCampo == null && destOra == null && destIso == null) {
+        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”), oppure “annulla”.');
+      }
+      aiFlowState = null;
+      const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
+      dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
+      return _askMoveConfirm(src, dest);
+    }
+
+    // ── DURATA (postulato: leggi prima il calendario) ───────────────────────────
+    // Interpreta una durata detta in linguaggio naturale → minuti. Gestisce ore/minuti, numeri
+    // a parole ("un'ora e mezza"), mezz'ora, quarti d'ora e formati "1h30". null se non trova nulla.
+    function _durToMin(text) {
+      // Normalizzo l'apostrofo ricurvo → dritto, così "un'ora"/"mezz'ora" matchano sempre.
+      const n = ' ' + _norm(text).replace(/[’']/g, "'") + ' ';
+      const W = { "un'": 1, "una": 1, "uno": 1, "un": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6 };
+      function hw(tok) { if (tok == null) return null; if (W[tok] != null) return W[tok]; const f = parseFloat(String(tok).replace(',', '.')); return Number.isFinite(f) ? f : null; }
+      const HNUM = "(\\d+(?:[.,]\\d+)?|un'|una|uno|due|tre|quattro|cinque|sei|un)";
+      let m;
+      // "un quarto d'ora" = 15 · "tre quarti d'ora" = 45
+      m = n.match(/\b(un|tre)\s+quart[oi]\s+d['’\s]?or/);
+      if (m) return m[1] === 'tre' ? 45 : 15;
+      // "X ore e mezza/mezzo" = X*60+30
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\s+e\\s+mezz"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60 + 30); }
+      // "X ore e Y (minuti)" = X*60+Y
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\s+e\\s+(\\d{1,2})\\b"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60 + (parseInt(m[2], 10) || 0)); }
+      // "1h30" / "1 h 30"
+      m = n.match(/\b(\d{1,2})\s*h\s*(\d{2})\b/);
+      if (m) return (parseInt(m[1], 10) || 0) * 60 + (parseInt(m[2], 10) || 0);
+      // "mezz'ora" / "mezzora" = 30
+      if (/\bmezz['’\s]?or/.test(n)) return 30;
+      // "X ore" / "X ora" (anche 1.5 ore)
+      m = n.match(new RegExp("\\b" + HNUM + "\\s*or[ae]\\b"));
+      if (m) { const h = hw(m[1]); if (h != null) return Math.round(h * 60); }
+      // "X minuti" / "X min" / "X'"
+      m = n.match(/\b(\d{2,3})\s*(?:'|min|minut)/);
+      if (m) return parseInt(m[1], 10);
+      return null;
+    }
+    // Orario di FINE assoluto ("…fino alle 11:30", "che finisce alle 11", "termina alle 20:30").
+    // Ritorna 'HH:MM' o null. Distinto da una durata: qui l'utente dà l'ORA in cui finire.
+    function _endTimeTarget(text) {
+      const n = _norm(text);
+      let m = n.match(/\bfino\s+a(?:lle|ll['’]|l|d)?\s+(?:ore\s+|le\s+)?(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (!m) m = n.match(/\b(?:che\s+)?(?:finisc\w*|termin\w*|finir\w*|chiud\w*)\s+a(?:lle|ll['’]|l)?\s+(?:ore\s+|le\s+)?(\d{1,2})(?:[:.](\d{2}))?\b/);
+      if (m) { const h = parseInt(m[1], 10); if (h >= 7 && h <= 23) return (h < 10 ? '0' + h : '' + h) + ':' + (m[2] || '00'); }
+      return null;
+    }
+    // Calcola la NUOVA durata (minuti) dal testo, dato src e direzione (allunga/accorcia).
+    // Ordine: 1) ora di fine assoluta ("fino alle 11:30") → durata = fine − inizio; 2) durata
+    // esplicita ("di 30 minuti", "a un'ora e mezza"); 3) numero nudo in contesto assoluto.
+    // Ritorna { newDur } oppure { ask:true } se non ha trovato alcuna quantità.
+    function _computeNewDur(src, isShorten, text) {
+      const curDur = src.durata || 90;
+      const endT = _endTimeTarget(text);
+      if (endT) return { newDur: _staffCalToMin(endT) - _staffCalToMin(src.ora) };
+      const napo = ' ' + _norm(text).replace(/[’']/g, "'") + ' ';
+      const _DLEAD = "(?=\\d|un'|una|uno|un|due|tre|quattro|cinque|sei|mezz|quart)";
+      const isAbs = /(^| )(durat\w*|fai?\s+durar\w*|deve\s+durar\w*)/.test(napo)
+        || new RegExp("\\b(?:a|ad|fino a)\\s+" + _DLEAD).test(napo);
+      let amount = _durToMin(text);
+      if (amount == null && isAbs) {
+        const bm = napo.match(/\b(\d{2,3})\b/g);
+        if (bm) { for (let i = 0; i < bm.length; i++) { const v = parseInt(bm[i], 10); if (v >= 30 && v <= 240) { amount = v; break; } } }
+      }
+      if (amount == null) return { ask: true };
+      return { newDur: isAbs ? amount : curDur + (isShorten ? -amount : amount) };
+    }
+    // Valida la nuova durata e apre la conferma (o spiega perché no).
+    function _finalizeDurata(src, newDur) {
+      const curDur = src.durata || 90;
+      if (!Number.isFinite(newDur) || newDur < STAFF_CAL_SLOT_MIN) {
+        return _say('⛔ La durata minima è ' + STAFF_CAL_SLOT_MIN + '′. Con questa modifica scenderebbe a ' + (Number.isFinite(newDur) ? newDur : '?') + '′: dimmi una durata diversa.');
+      }
+      if (newDur === curDur) return _say('ℹ️ La durata è già di <strong>' + curDur + '′</strong>: niente da cambiare.');
+      const oraFin = _staffCalEndTime(src.ora, newDur);
+      const dove = '<strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>';
+      aiFlowState = { kind: 'durataconfirm', stage: 'confirm', src: src, newDur: newDur };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      // Estensione: se gli slot OLTRE la fine attuale risultano occupati AVVISO (non blocco): come
+      // l'editor manuale, l'operatore può procedere comunque (il controllo può dare falsi positivi
+      // su dati locali stantii). Per gli accorciamenti non serve.
+      if (newDur > curDur) {
+        const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
+        if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
+          return _say('⚠️ Attenzione: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. Allungo <strong>comunque</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        }
+      }
+      return _say('🤔 Porto la durata della prenotazione di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _durSrcFromCalendar(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) return { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      // Priorità data: ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+      const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+      const tryCampi = campi.length ? campi : (court ? [court] : []);
+      const tryTimes = times.length ? times : (time ? [time] : []);
+      for (let di = 0; di < isoCands.length; di++)
+        for (let ci = 0; ci < tryCampi.length; ci++)
+          for (let ti = 0; ti < tryTimes.length; ti++) {
+            const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+            if (b) return { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+          }
+      return null;
+    }
+    function _startDurata(res, text, iso, court, time) {
+      const nlow = _norm(text);
+      // SORGENTE (postulato): scheda aperta o prenotazione che ESISTE sul calendario.
+      const src = _durSrcFromCalendar(res, text, iso, court, time);
+      if (!src) return _say('🔍 Non trovo la prenotazione di cui cambiare la durata. Dimmi campo e ora, es. «<em>allunga la partita di campo 1 alle 18 di mezz\'ora</em>».');
+      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow);
+      const r = _computeNewDur(src, isShorten, text);
+      if (r.ask) {
+        // Quantità non detta: apro un flusso in ATTESA così la risposta successiva viene catturata.
+        aiFlowState = { kind: 'durataconfirm', stage: 'await', src: src, isShorten: isShorten };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('Di quanto cambio la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>» (o “annulla”).');
+      }
+      return _finalizeDurata(src, r.newDur);
+    }
+    function _confirmDurataAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'durataconfirm') { aiFlowState = null; return _say('Dimmi pure di quale prenotazione cambiare la durata.'); }
+      const n = ' ' + _norm(text) + ' ';
+      const isExit = /( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n);
+      // Stage 'await': la risposta È la quantità/ora di fine (non un comando nuovo).
+      if (fs.stage === 'await') {
+        if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
+        const r = _computeNewDur(fs.src, fs.isShorten, text);
+        if (r.ask) return _say('Non ho capito la durata. Dimmi i minuti o le ore — es. «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>» (o “annulla”).');
+        return _finalizeDurata(fs.src, r.newDur);
+      }
+      if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const src = fs.src, newDur = fs.newDur; aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione.');
+        // Stessa data/campo/ora di inizio: cambia SOLO l'ora di fine → edit in place (non spostamento).
+        st.mOraFin = _staffCalEndTime(st.mOraIni, newDur);
+        _say('⏱️ Porto la durata a <strong>' + newDur + '′</strong> (fine ' + st.mOraFin + ') e salvo su Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> per cambiare la durata o <strong>no</strong> per lasciar perdere.');
+    }
+
+    // ── NOTA / OSSERVAZIONI (postulato: leggi prima il calendario) ───────────────
+    // Estrae il TESTO della nota dal comando: tutto ciò che segue i due punti che NON fanno
+    // parte di un orario (es. "…alle 18: campo bagnato" → "campo bagnato"; "18:30" è un orario).
+    function _extractNoteText(raw) {
+      const s = String(raw || '');
+      let idx = -1;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i] === ':') {
+          const prev = s[i - 1] || '', next = s[i + 1] || '';
+          const isTime = /\d/.test(prev) && /\d/.test(next);
+          if (!isTime) idx = i; // prendi l'ULTIMO due-punti non orario
+        }
+      }
+      if (idx >= 0) { const t = s.slice(idx + 1).trim(); if (t) return t; }
+      return '';
+    }
+    function _startNota(res, text, iso, court, time) {
+      const slots = res.slots || {};
+      const campi = _allCampi(text);
+      const times = _allTimes(text);
+      const nlow = _norm(text);
+      // SORGENTE (postulato): la scheda aperta, oppure la prenotazione che ESISTE sul calendario.
+      let src = null;
+      const open = (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (open) {
+        src = { iso: open.origIso, campo: Number(open.origCampo), ora: open.origOra, durata: open.origDurMin || 90, tipoR: open.tipoReale || 'partita' };
+      } else {
+        // Priorità data sorgente: data ESPLICITA nel comando → giorno MOSTRATO nel calendario → oggi.
+        // (Prima si assumeva "oggi", e modificava la prenotazione di un altro giorno rispetto a quello
+        // che l'operatore stava guardando.)
+        const isoCands = []; [slots.date, _calSelectedIso(), _todayIso()].forEach(function (x) { if (x && isoCands.indexOf(x) < 0) isoCands.push(x); });
+        const tryCampi = campi.length ? campi : (court ? [court] : []);
+        const tryTimes = times.length ? times : (time ? [time] : []);
+        for (let di = 0; di < isoCands.length && !src; di++)
+          for (let ci = 0; ci < tryCampi.length && !src; ci++)
+            for (let ti = 0; ti < tryTimes.length && !src; ti++) {
+              const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
+              if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+            }
+      }
+      if (!src) return _say('🔍 Non trovo la prenotazione a cui mettere la nota. Dimmi campo e ora, es. «<em>aggiungi una nota alla partita di campo 1 alle 18: campo bagnato</em>».');
+      // Rimozione nota vs impostazione.
+      const isRemoveNote = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|cancell\w*|elimin\w*|lev[ai]|svuot\w*|azzer\w*)/.test(nlow);
+      if (isRemoveNote) {
+        aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, remove: true };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      }
+      let noteText = _extractNoteText(text);
+      if (!noteText) {
+        // Nessun testo nel comando: lo chiedo (così non resta a metà).
+        aiFlowState = { kind: 'notaconfirm', stage: 'await', src: src };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('📝 Qual è il testo della nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Scrivi il testo (o “annulla”).');
+      }
+      if (noteText.length > 300) noteText = noteText.slice(0, 300);
+      aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, noteText: noteText, remove: false };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+    }
+    function _confirmNotaAnswer(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'notaconfirm') { aiFlowState = null; return _say('Dimmi pure quale nota mettere.'); }
+      const n = ' ' + _norm(text) + ' ';
+      const isExit = /( no | annull\w* | lascia\w* | stop | niente | chiud\w* | esci )/.test(n);
+      // Stage 'await': il testo digitato È il corpo della nota (non un comando).
+      if (fs.stage === 'await') {
+        if (isExit) { aiFlowState = null; return _say('👍 Ok, nessuna nota.'); }
+        let body = String(text || '').trim();
+        if (!body) return _say('Scrivi il <strong>testo</strong> della nota (o “annulla”).');
+        if (body.length > 300) body = body.slice(0, 300);
+        fs.noteText = body; fs.remove = false; fs.stage = 'confirm';
+        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      }
+      if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la nota invariata.'); }
+      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
+        const src = fs.src, noteText = fs.remove ? '' : (fs.noteText || ''); aiFlowState = null;
+        try { staffCalEditPlayers(src.iso, src.campo, src.ora, '', src.durata, src.tipoR); }
+        catch (e) { return _say('❌ Non riesco ad aprire la prenotazione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        const st = staffCalPlayersState;
+        if (!st) return _say('❌ Non riesco ad aprire la prenotazione.');
+        // Forzo il salvataggio della nota anche se la lettura autorevole da Matchpoint (in
+        // sottofondo) non è ancora arrivata: baseline sentinella → noteChanged sempre vero, così
+        // anche la RIMOZIONE arriva al worker (payload.note) invece di sembrare "nessuna modifica".
+        st.origNote = '\x00';
+        st.note = noteText;
+        _say((fs.remove ? '🗑️ Tolgo la nota' : '📝 Salvo la nota') + ' e aggiorno Matchpoint…');
+        try { staffCalPlayersSave({ skipConfirm: true }); }
+        catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+        return true;
+      }
+      return _say('Rispondi <strong>sì</strong> o <strong>no</strong>.');
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
