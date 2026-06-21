@@ -5815,9 +5815,16 @@ async function editBookingWithBrowser(input = {}) {
       diagnostic.steps.push('cerca_evento');
       const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
         const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
+        const _norm = (s) => { const m = String(s || '').match(/(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''; };
+        const _target = _norm(ora);
         const eventi = [...document.querySelectorAll('div.evento')]
           .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+        // Match per ATTRIBUTO `inicio` (l'orario dell'evento sta lì, NON nel testo: una card
+        // che non scrive l'ora — es. "Ospite" — col vecchio innerText.includes non si trovava).
+        // Fallback al testo per compatibilità.
         const hit = eventi.find((e) => {
+          const ini = _norm(e.getAttribute('inicio'));
+          if (_target && ini === _target) return true;
           const t = e.innerText || '';
           return variants.some((v) => t.includes(v));
         });
@@ -6227,9 +6234,16 @@ async function cancelBookingWithBrowser(input = {}) {
       diagnostic.steps.push('cerca_evento');
       const _resEvento = await page.evaluate(({ recurso: rec, ora }) => {
         const variants = [ora, ora.replace(/^0(\d:)/, '$1')];
+        const _norm = (s) => { const m = String(s || '').match(/(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''; };
+        const _target = _norm(ora);
         const eventi = [...document.querySelectorAll('div.evento')]
           .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+        // Match per ATTRIBUTO `inicio` (l'orario dell'evento sta lì, NON nel testo: una card
+        // che non scrive l'ora — es. "Ospite" — col vecchio innerText.includes non si trovava).
+        // Fallback al testo per compatibilità.
         const hit = eventi.find((e) => {
+          const ini = _norm(e.getAttribute('inicio'));
+          if (_target && ini === _target) return true;
           const t = e.innerText || '';
           return variants.some((v) => t.includes(v));
         });
