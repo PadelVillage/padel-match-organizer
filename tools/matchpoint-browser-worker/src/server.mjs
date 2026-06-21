@@ -1468,7 +1468,7 @@ async function leggiDataTabellone(tabCtx) {
 
 // Imposta la data sul tabellone e attende che la griglia si aggiorni.
 // isoDate: 'YYYY-MM-DD'
-async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
+async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic, opts = {}) {
   const [year, month, day] = isoDate.split('-');
   const italianDate = `${day}/${month}/${year}`;
   diagnostic.steps.push(`tabellone_set_date_${isoDate}`);
@@ -1478,7 +1478,7 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
   // Il suo callback onSelect() aggiorna la griglia via AJAX (non postback ASP.NET).
   // Chiamarlo direttamente è l'unico modo affidabile per cambiare data senza
   // navigazione diretta (bloccata da EventValidation / Error.aspx).
-  const onSelectResult = await tabCtx.evaluate((dateStr) => {
+  const _fireOnSelect = () => tabCtx.evaluate((dateStr) => {
     const [d2, m2, y2] = dateStr.split('/').map(Number);
     const targetDate = new Date(y2, m2 - 1, d2);
     // 1a. jQuery onSelect diretto
@@ -1503,6 +1503,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
     return { ok: false, reason: 'jquery_not_available' };
   }, italianDate).catch((err) => ({ ok: false, reason: String(err) }));
 
+  const onSelectResult = await _fireOnSelect();
+
   if (onSelectResult?.ok) {
     diagnostic.dateInputSelector = onSelectResult.method;
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
@@ -1519,6 +1521,22 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
       return;
     }
     diagnostic.steps.push(`date_mismatch_onSelect:want=${italianDate}:got=${shown1}`);
+  }
+
+  // Modalità FAST (solo lookup idReserva post-create): NIENTE Strategia 2 (navigazione popup
+  // mesi, lenta e a volte buggata: ~15-20s, ha persino sbagliato anno → 2028). Il grid però è
+  // spesso solo IN RITARDO sull'AJAX dell'onSelect → ritenta la via VELOCE qualche volta (cap
+  // ~5s) prima di rinunciare. Se non ci riesce, id nullo: il sync ogni 2 min lo riassegna.
+  if (opts.fast) {
+    for (let i = 0; i < 3; i++) {
+      await _fireOnSelect();
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      const shownF = await leggiDataTabellone(tabCtx);
+      if (shownF === italianDate) { diagnostic.dateShown = shownF; diagnostic.steps.push(`date_fast_ok:retry${i}`); return; }
+    }
+    diagnostic.steps.push('date_fast_giveup');
+    return;
   }
 
   // ── Strategia 2: clic nativo sul popup jQuery datepicker ─────────────────
@@ -5364,7 +5382,6 @@ async function createBookingWithBrowser(options = {}) {
     steps: [],
     navigationAttempts: [],
   };
-
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
   const page = acq.page;
   let _opFailed = false;
@@ -5466,7 +5483,7 @@ async function createBookingWithBrowser(options = {}) {
       let _idReservaCreated = null;
       try {
         await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
+        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
         diagnostic.steps.push('cerca_idreserva');
         const _resEv = await page.evaluate(({ rec, oraStr }) => {
           const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
@@ -5575,7 +5592,7 @@ async function createBookingWithBrowser(options = {}) {
       let _idReservaLezione = null;
       try {
         await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
+        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
         diagnostic.steps.push('cerca_idreserva');
         const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
           const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
@@ -5673,7 +5690,7 @@ async function createBookingWithBrowser(options = {}) {
       let _idReservaManutenzione = null;
       try {
         await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
+        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
         diagnostic.steps.push('cerca_idreserva');
         const _resEvMan = await page.evaluate(({ rec, oraStr }) => {
           const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
