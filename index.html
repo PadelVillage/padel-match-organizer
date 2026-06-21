@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.871';
+    const APP_VERSION = '5.872';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36933,9 +36933,15 @@ Per confermare scrivi ELIMINA.`);
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
     const _pk = _staffCalEditKey(isoDate, campo, ora);
     if (_staffCalPendingEdits.has(_pk)) {
+      // Regola: NON rifiutare. La prenotazione è ancora in propagazione su Matchpoint →
+      // aspetto che finisca, poi procedo da solo con la modifica richiesta.
       if (typeof svcOpenChat === 'function') svcOpenChat();
-      svcAddMessage('system', '⏳ Su questa prenotazione c\'è già una modifica in corso su Matchpoint: attendi l\'esito prima di riaprirla.');
-      return;
+      svcAddMessage('system', '⏳ Aspetto che Matchpoint finisca l\'operazione su questo slot, poi procedo…');
+      const _freed = await _staffCalWaitPending(_pk, 40000);
+      if (!_freed) {
+        svcAddMessage('system', '⚠️ Matchpoint ci sta mettendo più del previsto. Riprova tra poco.');
+        return;
+      }
     }
     if (typeof svcOpenChat === 'function') svcOpenChat();
     svcClearLog();
@@ -37312,6 +37318,20 @@ Per confermare scrivi ELIMINA.`);
   const _staffCalPendingEdits = new Set();
   function _staffCalEditKey(iso, campo, ora) {
     return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
+  }
+  // Attende che la propagazione su Matchpoint dello slot `key` finisca (la chiave esce da
+  // _staffCalPendingEdits). Regola: un'operazione che dipende da una prenotazione ancora in
+  // propagazione NON va rifiutata, ma messa in attesa e poi eseguita. Ritorna true se libero,
+  // false se scaduto il timeout.
+  function _staffCalWaitPending(key, maxMs) {
+    return new Promise(function (resolve) {
+      if (!_staffCalPendingEdits.has(key)) return resolve(true);
+      const t0 = Date.now();
+      const iv = setInterval(function () {
+        if (!_staffCalPendingEdits.has(key)) { clearInterval(iv); resolve(true); }
+        else if (Date.now() - t0 > (maxMs || 30000)) { clearInterval(iv); resolve(false); }
+      }, 200);
+    });
   }
 
   async function staffCalPlayersSave(opts) {
@@ -38469,6 +38489,7 @@ Per confermare scrivi ELIMINA.`);
           staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
           try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
           if (parsed.data === isoDate) renderStaffCalendar();
+          staffCalSetStatus(`✅ ${tipoLabel} salvata su Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
         } else if (result.status === 'error') {
           _failStatus(result.error || 'errore sconosciuto');
         } else {
@@ -42329,12 +42350,17 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) {}
       const _sbId = _staffCalNewSbId();
       const dl = _dayLabel(parsed.data);
-      const _syncNote = '<br><span style="color:#98a2b3;font-size:12px">↻ La sto scrivendo su Matchpoint…</span>';
+      const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto scrivendo su Matchpoint…</span>';
+      let _msgEl = null;
       if (parsed.tipo === 'lezione') {
-        _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
+        _msgEl = _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
       } else {
-        _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
+        _msgEl = _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
       }
+      // Aggiorna la nota "↻ scrivo…" quando Matchpoint conferma (o fallisce).
+      const _setSyncNote = function (html, color) {
+        try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+      };
       // Diario autoapprendimento — esito REALE agganciato al turno chat (executed/failed).
       const _aiCreateRef = _aiTurnExecBegin();
       // ── Propagazione su Matchpoint in BACKGROUND (non blocca la chat) ──
@@ -42343,6 +42369,7 @@ Per confermare scrivi ELIMINA.`);
           try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
+          _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
           _say('⚠️ <strong>Attenzione</strong>: la prenotazione di Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _escapeHtml(String(why)) + '). L\'ho <strong>rimossa</strong> dal calendario.');
         };
         try {
@@ -42354,6 +42381,7 @@ Per confermare scrivi ELIMINA.`);
             try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
             try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
             try { renderStaffCalendar(); } catch (e) {}
+            _setSyncNote('✅ Salvata su Matchpoint', '#067647');
             _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
           } else if (result.status === 'error') {
             _failMsg(result.error || 'rifiutata da Matchpoint');
