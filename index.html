@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.876';
+    const APP_VERSION = '5.877';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38737,115 +38737,160 @@ Per confermare scrivi ELIMINA.`);
     return staffCalDoCancel(isoDate, campo, ora, nome);
   }
 
+  // Rimozione locale (ottimistica) di una prenotazione annullata: toglie la copia da
+  // staffBookings, marca lo slot soppresso e propaga al cloud (staff_booking deleted +
+  // staff_suppress) così sparisce su tutti i device. `removed` = copie locali catturate PRIMA.
+  function _staffCalCommitLocalCancel(isoDate, campo, ora, removed) {
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    const match = (b) => (
+      String(b.data).trim() === isoDate &&
+      Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+      String(b.ora).trim() === wantOra
+    );
+    const filtered = existing.filter((b) => !match(b));
+    if (typeof save === 'function') save('staffBookings', filtered);
+    _staffCalAddSuppressed(isoDate, campo, ora);
+    try {
+      if (typeof pmoSyncCloudRecordsNow === 'function') {
+        const _campoNum = wantCampo || 0;
+        const records = (removed || []).filter(b => b && b.id).map(b => ({
+          record_type: 'staff_booking', local_key: b.id,
+          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
+          deleted: true
+        }));
+        records.push({
+          record_type: 'staff_suppress',
+          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
+          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
+          deleted: false
+        });
+        pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
+      }
+    } catch (e) { console.warn('staff cancel cloud sync:', e); }
+  }
+
+  // Inverso di _staffCalCommitLocalCancel: ripristina la prenotazione in locale (su rifiuto
+  // Matchpoint dopo un annullo ottimistico), toglie la soppressione e annulla la propagazione
+  // cloud (staff_booking deleted:false + staff_suppress deleted:true).
+  function _staffCalRevertLocalCancel(isoDate, campo, ora, removed) {
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const present = (b) => existing.some(x =>
+      String(x.data).trim() === String(b.data).trim() &&
+      Number(String(x.campo).replace(/\D/g, '')) === Number(String(b.campo).replace(/\D/g, '')) &&
+      String(x.ora).trim() === String(b.ora).trim());
+    let changed = false;
+    (removed || []).forEach(b => { if (b && !present(b)) { existing.push(b); changed = true; } });
+    if (changed && typeof save === 'function') save('staffBookings', existing);
+    try { _staffCalClearSuppressed(isoDate, campo, ora); } catch (e) {}
+    try {
+      if (typeof pmoSyncCloudRecordsNow === 'function') {
+        const _campoNum = wantCampo || 0;
+        const records = (removed || []).filter(b => b && b.id).map(b => ({
+          record_type: 'staff_booking', local_key: b.id,
+          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, giocatori: b.giocatori || [], id_reserva: (b.idReserva != null ? String(b.idReserva) : '') },
+          deleted: false
+        }));
+        records.push({
+          record_type: 'staff_suppress',
+          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
+          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
+          deleted: true
+        });
+        pmoSyncCloudRecordsNow(records, 'ripristinare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel revert cloud:', e); });
+      }
+    } catch (e) { console.warn('staff cancel revert cloud:', e); }
+  }
+
   // Esegue l'annullamento su Matchpoint SENZA confirm() nativo: la conferma è già
   // avvenuta a monte (dialog a pulsanti del calendario, oppure dialogo in chat
   // dell'assistente AI). Estratto da staffCalAskCancel per riuso. v5.785.
+  // OTTIMISTICO (v5.877): rimuove in locale + chiude l'editor + ridisegna SUBITO ("fatto
+  // sull'app"); la cancellazione su Matchpoint prosegue in background con conferma esplicita;
+  // su rifiuto reale ripristina la prenotazione e avvisa.
   async function staffCalDoCancel(isoDate, campo, ora, nome) {
     const dataIt = isoDate.split('-').reverse().join('/');
-    const inProgress = svcAddMessage('system', '⏳ Annullamento in corso su Matchpoint…');
-    let _sec = 0;
-    const _timer = setInterval(function() {
-      _sec += 1;
-      const last = inProgress.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '⏳ Annullamento in corso su Matchpoint… (' + _sec + 's)';
-    }, 1000);
+    const _wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const _wantOra = String(ora).trim();
+    const _matchB = (b) => (
+      String(b.data).trim() === isoDate &&
+      Number(String(b.campo).replace(/\D/g, '')) === _wantCampo &&
+      String(b.ora).trim() === _wantOra
+    );
+    // idReserva e copia locale catturati PRIMA della rimozione (il lookup legge staffBookings,
+    // e la copia serve per l'eventuale ripristino su rifiuto).
+    const _idReservaCancel = _staffCalLookupIdReserva(isoDate, campo, ora);
+    const _removedBefore = ((typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : []).filter(_matchB);
 
     const _pendCancelKey = _staffCalEditKey(isoDate, campo, ora);
     _staffCalPendingEdits.add(_pendCancelKey);
+
+    // ── OTTIMISTICO (app-done): chiudi l'editor se mostra questo slot, rimuovi in locale, ridisegna. ──
     try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
-      const _idReservaCancel = _staffCalLookupIdReserva(isoDate, campo, ora);
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${staff.accessToken}`,
-        },
-        body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
-      });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      const st = staffCalPlayersState;
+      if (st && String(st.origIso).trim() === isoDate && Number(String(st.origCampo).replace(/\D/g, '')) === _wantCampo && String(st.origOra).trim() === _wantOra) staffCalPlayersState = null;
+    } catch (e) {}
+    _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore);
+    renderStaffCalendar();
+    svcResetToNeutral(); svcAutoCloseIfMobile();
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto annullando su Matchpoint…</span>';
+    const _msgEl = svcAddMessage('system',
+      '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+      (nome ? '<br>👥 ' + nome : '') + _syncNote, 'ok');
+    const _setSync = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} };
 
-      clearInterval(_timer);
+    // ── Propagazione su Matchpoint in BACKGROUND ──
+    (async function () {
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+        const _ctrl = new AbortController();
+        const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
+          signal: _ctrl.signal,
+        });
+        const respText = await response.text();
+        let data = null;
+        try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+        clearTimeout(_to);
+        _staffCalPendingEdits.delete(_pendCancelKey);
+        const _msgTxt = ((data && (data.message || data.error)) || '') + '';
+        const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
 
-      // Rimozione robusta della copia locale: campo confrontato come NUMERO (alcune card vecchie
-      // lo hanno salvato come stringa, per questo prima non sparivano), data e ora normalizzate.
-      const removeLocalCopy = () => {
-        const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        const wantCampo = Number(String(campo).replace(/\D/g, ''));
-        const wantOra = String(ora).trim();
-        const match = (b) => (
-          String(b.data).trim() === isoDate &&
-          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
-          String(b.ora).trim() === wantOra
-        );
-        const removed = existing.filter(match);
-        const filtered = existing.filter((b) => !match(b));
-        if (typeof save === 'function') save('staffBookings', filtered);
-        _staffCalAddSuppressed(isoDate, campo, ora);
-        // Propaga l'annullamento al cloud: record staff_booking → deleted PIÙ un record
-        // 'staff_suppress' (con ts) che fa nascondere lo slot annullato su TUTTI i device
-        // finché lo scrape non aggiorna l'occupazione Matchpoint. Prima la soppressione era
-        // solo locale: l'altro device continuava a mostrare la copia "occupazione". Il push
-        // avviene SEMPRE (anche senza staff_booking locale, es. card 🔒 Matchpoint), così
-        // parte comunque il ping realtime verso gli altri device. v5.685.
-        try {
-          if (typeof pmoSyncCloudRecordsNow === 'function') {
-            const _campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
-            const records = removed.filter(b => b && b.id).map(b => ({
-              record_type: 'staff_booking', local_key: b.id,
-              payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
-              deleted: true
-            }));
-            records.push({
-              record_type: 'staff_suppress',
-              local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + String(ora).trim(),
-              payload: { data: isoDate, campo: _campoNum, ora: String(ora).trim(), ts: Date.now() },
-              deleted: false
-            });
-            pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
-          }
-        } catch (e) { console.warn('staff cancel cloud sync:', e); }
-      };
-      const _msgTxt = ((data && (data.message || data.error)) || '') + '';
-      const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
-
-      if (response.ok && data?.ok !== false) {
-        removeLocalCopy();
-        // Diario autoapprendimento (Fase 1): annullo manuale prenotazione → diario.
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
-        svcAddMessage('system',
-          '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
-          (nome ? '<br>👥 ' + nome : ''),
-          'ok'
-        );
-        renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else if (notFoundOnMatchpoint) {
-        // Non c'è più su Matchpoint (ghost locale rimasto dai test): pulisci comunque la card.
-        removeLocalCopy();
-        svcAddMessage('system',
-          '🧹 <strong>Non più presente su Matchpoint</strong> — card rimossa dal calendario: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora,
-          'ok'
-        );
-        renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else {
-        const msg = _msgTxt || ('errore HTTP ' + response.status);
-        const _gCampo = Number(String(campo).replace(/\D/g, '')) || 0;
-        const _gArgs = "'" + String(isoDate) + "','" + _gCampo + "','" + String(ora) + "'";
-        const _gBtn = '<button type="button" onclick="staffCalForceRemoveSlot(' + _gArgs + ')" style="margin-top:6px;padding:6px 10px;border:1px solid var(--color-border-secondary,#cbd5e1);border-radius:8px;background:#fff;color:inherit;cursor:pointer;font-size:.82rem;">🧹 Non è su Matchpoint: rimuovi comunque dal calendario</button>';
-        svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br>' + _gBtn);
+        if (response.ok && data?.ok !== false) {
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
+          _setSync('✅ Annullata su Matchpoint', '#067647');
+        } else if (notFoundOnMatchpoint) {
+          // Non era più su Matchpoint (ghost): la rimozione locale resta valida.
+          _setSync('🧹 Non era più su Matchpoint — rimossa', '#067647');
+        } else {
+          // Rifiuto reale: RIPRISTINA la prenotazione in locale e avvisa.
+          const msg = _msgTxt || ('errore HTTP ' + response.status);
+          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
+          renderStaffCalendar();
+          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+        }
+      } catch (err) {
+        _staffCalPendingEdits.delete(_pendCancelKey);
+        if (err && err.name === 'AbortError') {
+          // Timeout: NON ripristinare alla cieca (potrebbe essere stata annullata lo stesso).
+          _setSync('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ L\'annullamento <strong>potrebbe essere passato lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarlo.', 'error');
+        } else {
+          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
+          renderStaffCalendar();
+          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+        }
       }
-    } catch (err) {
-      clearInterval(_timer);
-      svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto'));
-    } finally {
-      _staffCalPendingEdits.delete(_pendCancelKey);
-    }
+    })();
   }
 
   // Rimozione FORZATA di uno slot "fantasma" (prenotazione non presente su Matchpoint).
@@ -42584,6 +42629,14 @@ Per confermare scrivi ELIMINA.`);
       const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
+      // SCHEDA APERTA = bersaglio implicito: "cancella la partita" senza coordinate annulla la
+      // prenotazione aperta nell'assistente (mobile e desktop), invece di elencare tutto il giorno.
+      const _openCancel = (staffCalPlayersState && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (_openCancel && !slots.court && !slots.time && !p.campoNum && !p.ora && !(slots.who && slots.who !== 'Staff')) {
+        const _oc = Number(String(_openCancel.origCampo).replace(/\D/g, '')) || _openCancel.origCampo;
+        const oSlot = { campo: _oc, ora: _openCancel.origOra, durata: _openCancel.origDurMin || 90, nome: (_openCancel.nome || ''), istruttore: '', tipoReale: _openCancel.tipoReale || 'partita' };
+        return _showCancelSummary(_openCancel.origIso, oSlot);
+      }
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
       // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
