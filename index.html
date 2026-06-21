@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.872';
+    const APP_VERSION = '5.882';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36931,18 +36931,10 @@ Per confermare scrivi ELIMINA.`);
   }
 
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
-    const _pk = _staffCalEditKey(isoDate, campo, ora);
-    if (_staffCalPendingEdits.has(_pk)) {
-      // Regola: NON rifiutare. La prenotazione è ancora in propagazione su Matchpoint →
-      // aspetto che finisca, poi procedo da solo con la modifica richiesta.
-      if (typeof svcOpenChat === 'function') svcOpenChat();
-      svcAddMessage('system', '⏳ Aspetto che Matchpoint finisca l\'operazione su questo slot, poi procedo…');
-      const _freed = await _staffCalWaitPending(_pk, 40000);
-      if (!_freed) {
-        svcAddMessage('system', '⚠️ Matchpoint ci sta mettendo più del previsto. Riprova tra poco.');
-        return;
-      }
-    }
+    // FASE B — NON aspetto più la propagazione prima di aprire: la prenotazione (anche appena
+    // creata) è già visibile in locale, quindi la scheda si apre SUBITO e l'operatore aggiunge il
+    // giocatore/nota all'istante. Se la create è ancora in volo, è `staffCalPlayersSave` a
+    // differire la sola chiamata al worker dell'edit finché Matchpoint conosce la prenotazione.
     if (typeof svcOpenChat === 'function') svcOpenChat();
     svcClearLog();
     const dataIt = isoDate.split('-').reverse().join('/');
@@ -37334,6 +37326,34 @@ Per confermare scrivi ELIMINA.`);
     });
   }
 
+  // ── FASE B (caso concatenato "crea → aggiungi X") ──────────────────────────────────────────
+  // Stato della CREATE ottimistica per slot, così un EDIT successivo sulla STESSA prenotazione
+  // può applicarsi SUBITO in locale e DIFFERIRE solo la chiamata al worker finché la
+  // prenotazione esiste davvero su Matchpoint (non si può modificare ciò che non c'è ancora).
+  // Valori: 'pending' | 'failed' (assente = nessuna create in volo / già conclusa con successo).
+  const _staffCalCreateState = new Map();
+  function _staffCalCreateBegin(key) { try { _staffCalCreateState.set(key, 'pending'); } catch (e) {} }
+  function _staffCalCreateSettle(key, ok) {
+    try {
+      if (ok) { _staffCalCreateState.delete(key); }
+      else { _staffCalCreateState.set(key, 'failed'); setTimeout(function () { if (_staffCalCreateState.get(key) === 'failed') _staffCalCreateState.delete(key); }, 60000); }
+    } catch (e) {}
+  }
+  // Attende che la CREATE dello slot esca da 'pending'. Ritorna 'done' (libera/mai stata),
+  // 'failed' (create fallita) o 'timeout'.
+  function _staffCalWaitCreate(key, maxMs) {
+    return new Promise(function (resolve) {
+      const cur = _staffCalCreateState.get(key);
+      if (cur !== 'pending') return resolve(cur === 'failed' ? 'failed' : 'done');
+      const t0 = Date.now();
+      const iv = setInterval(function () {
+        const s = _staffCalCreateState.get(key);
+        if (s !== 'pending') { clearInterval(iv); resolve(s === 'failed' ? 'failed' : 'done'); }
+        else if (Date.now() - t0 > (maxMs || 90000)) { clearInterval(iv); resolve('timeout'); }
+      }, 200);
+    });
+  }
+
   async function staffCalPlayersSave(opts) {
     opts = opts || {};
     const st = staffCalPlayersState;
@@ -37374,7 +37394,7 @@ Per confermare scrivi ELIMINA.`);
       origIso: st.origIso, origCampo: st.origCampo, origOra: st.origOra, dataIt: st.dataIt,
       mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
-      note: (st.note || ''), noteChanged: noteChanged,
+      note: (st.note || ''), origNote: (st.origNote || ''), noteChanged: noteChanged,
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
     const _idReservaEdit = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
@@ -37397,78 +37417,110 @@ Per confermare scrivi ELIMINA.`);
       try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
     }
 
-    // Chiudi la schedina: l'operatore torna libero immediatamente.
+    // ── OTTIMISTICO: applica SUBITO tutte le modifiche in locale; l'operatore è libero all'istante.
+    //    La scrittura su Matchpoint prosegue in BACKGROUND (anche ~60s). Su rifiuto → annullo + avviso.
     staffCalPlayersState = null;
-    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); renderStaffCalendar(); }
+    // Lo "slot" della prenotazione è identificato da campo + data + ora di INIZIO. Una modifica di
+    // sola durata (allunga/accorcia) NON cambia lo slot → non è uno spostamento, ma un edit in place.
+    const _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
+    const _curIso = _slotMoved ? op.mIso : op.origIso;
+    const _curCampo = _slotMoved ? op.mCampo : op.origCampo;
+    const _curOra = _slotMoved ? op.mOraIni : op.origOra;
+    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
+    if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
+    if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
+    try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
+    renderStaffCalendar();
+    svcResetToNeutral(); svcAutoCloseIfMobile();
+
     const destTxt = moveChanged
       ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
       : ('Campo ' + op.origCampo + ' \xb7 ' + op.dataIt + ' \xb7 ' + op.origOra);
-    const inProgress = svcAddMessage('system', '⏳ <strong>Modifica avviata su Matchpoint</strong> (in sottofondo): ' + destTxt + '<br><span style="color:var(--text-muted);font-size:.78rem;">Può richiedere 1–2 minuti. Puoi continuare a lavorare: ti avviso qui quando è pronta.</span>');
-    let _sec = 0;
-    const _timer = setInterval(function () {
-      _sec += 1;
-      const last = inProgress.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">⏳ In corso da ' + _sec + 's… puoi continuare a lavorare.</span>';
-    }, 1000);
+    const _playersTxt = (op.hasPlayers && playersChanged)
+      ? ('<br>👥 ' + (addArr.length ? ('+' + addArr.map(function (a) { return a.nome; }).join(', ')) : '') + (remove.length ? ((addArr.length ? ' · ' : '') + '-' + remove.join(', ')) : ''))
+      : '';
+    const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : '';
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto scrivendo su Matchpoint…</span>';
+    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _noteTxt + _syncNote, 'ok');
+    const _setEditSyncNote = function (html, color) {
+      try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+    };
 
-    try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
-      const _ctrl = new AbortController();
-      const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify(payload),
-        signal: _ctrl.signal,
-      });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
-      clearInterval(_timer);
-      clearTimeout(_to);
-      _staffCalPendingEdits.delete(pendKey);
+    // ── Propagazione su Matchpoint in BACKGROUND (non blocca l'operatore) ──
+    (async function () {
+      try {
+        // FASE B — se questa stessa prenotazione è ancora in CREAZIONE su Matchpoint, l'edit è già
+        // applicato/visibile in locale ma aspetto che la prenotazione esista prima di chiamare il
+        // worker dell'edit (non si modifica ciò che non c'è ancora). Caso "crea → aggiungi X".
+        if (_staffCalCreateState.get(pendKey) === 'pending') _setEditSyncNote('↻ aspetto che la prenotazione sia su Matchpoint, poi salvo…');
+        const _creState = await _staffCalWaitCreate(pendKey, 90000);
+        if (_creState === 'failed') {
+          // La creazione è fallita → la prenotazione non esiste: annullo l'edit locale e avviso.
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata: la prenotazione non è stata creata su Matchpoint', '#d92d20');
+          try { _staffCalPendingEdits.delete(pendKey); } catch (e) {}
+          _aiExecSettle(false, 'create-failed');
+          renderStaffCalendar();
+          return;
+        }
+        // La create, concludendosi, può aver rimosso la chiave (condivisa) dal set di protezione del
+        // pull e reso disponibile l'idReserva: ripristino la protezione e ri-cerco l'id adesso.
+        try { _staffCalPendingEdits.add(pendKey); } catch (e) {}
+        if (!payload.idReserva) { try { const _idLate = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra); if (_idLate) payload.idReserva = _idLate; } catch (e) {} }
+        _setEditSyncNote('↻ La sto scrivendo su Matchpoint…');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+        const _ctrl = new AbortController();
+        const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify(payload),
+          signal: _ctrl.signal,
+        });
+        const respText = await response.text();
+        let data = null;
+        try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+        clearTimeout(_to);
+        _staffCalPendingEdits.delete(pendKey);
 
-      if (response.ok && data && data.ok !== false) {
-        const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-        const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
-        // Lo spostamento è già applicato in modo ottimistico al click. Per le sole modifiche
-        // giocatori (senza spostamento) applico ora; e fisso i nomi alla posizione CORRENTE.
-        if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
-        if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
-        if (op.hasPlayers) staffCalApplyLocalGiocatori(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, addArr, remove);
-        // Lo "slot" della prenotazione e identificato da campo + data + ora di INIZIO. Una modifica
-        // di sola durata (allunga/accorcia) NON cambia lo slot: NON va trattata come spostamento
-        // (che emetterebbe una soppressione sullo slot ancora occupato), ma come edit in place,
-        // lo stesso ramo che funziona per le modifiche giocatori.
-        var _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
-        // Persisti la nota in locale allo slot CORRENTE (spostato o in place) PRIMA del cloud sync,
-        // così il record staff_booking spinto sul cloud la include.
-        if (op.noteChanged) { try { staffCalApplyLocalNote(_slotMoved ? op.mIso : op.origIso, _slotMoved ? op.mCampo : op.origCampo, _slotMoved ? op.mOraIni : op.origOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
-        try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
-        const lastP = inProgress.querySelector(':scope > div:last-child');
-        if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
-        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : '') + (op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : ''), 'ok');
-        _aiExecSettle(true, null);
+        if (response.ok && data && data.ok !== false) {
+          // Riconcilia col roster AUTOREVOLE del worker: fissa i nomi reali alla posizione corrente.
+          const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
+          const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
+          if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(_curIso, _curCampo, _curOra, nomi);
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          // Push cloud (con giocatori/nota correnti) solo a propagazione riuscita: un edit poi
+          // revertito non deve sporcare il cloud.
+          try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
+          _setEditSyncNote('✅ Salvata su Matchpoint', '#067647');
+          _aiExecSettle(true, null);
+          renderStaffCalendar();
+        } else {
+          const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          _aiExecSettle(false, String(msg || 'errore'));
+          renderStaffCalendar();
+        }
+      } catch (err) {
+        _staffCalPendingEdits.delete(pendKey);
+        if (err && err.name === 'AbortError') {
+          // Timeout: NON revertire alla cieca (la modifica potrebbe essere passata lo stesso su MP).
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
+          _aiExecSettle(false, 'timeout');
+        } else {
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          _aiExecSettle(false, (err && err.message ? err.message : String(err)));
+        }
         renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else {
-        const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-        if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
-        svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione alla posizione di prima.</span>', 'error');
-        _aiExecSettle(false, String(msg || 'errore'));
       }
-    } catch (err) {
-      clearInterval(_timer);
-      _staffCalPendingEdits.delete(pendKey);
-      if (err && err.name === 'AbortError') {
-        svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di ritentare (non rifarla alla cieca, rischi un doppione).', 'error');
-        _aiExecSettle(false, 'timeout');
-      } else {
-        svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
-        _aiExecSettle(false, (err && err.message ? err.message : String(err)));
-      }
-    }
+    })();
   }
 
   function _staffCalRevertMoveLocal(op) {
@@ -37487,6 +37539,45 @@ Per confermare scrivi ELIMINA.`);
     });
     if (changed) save('staffBookings', existing);
     _staffCalClearSuppressed(op.origIso, op.origCampo, op.origOra);
+  }
+
+  // Marca/smarca il flag `syncing` sul record staffBooking dello slot: la card mostra il puntino
+  // arancione discreto (renderStaffCalendar) finché Matchpoint non conferma. Solo display in locale;
+  // la protezione del pull resta affidata a _staffCalPendingEdits.
+  function _staffCalSetSyncing(iso, campo, ora, on) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function (b) {
+      if (String(b.data).trim() === String(iso).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        if (on) { if (b.syncing !== true) { b.syncing = true; changed = true; } }
+        else if (b.syncing) { delete b.syncing; changed = true; }
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
+
+  // Inverte un edit giocatori applicato in modo ottimistico: ri-aggiunge i rimossi, toglie gli aggiunti.
+  // (Limite noto, come sul percorso create: la rimozione è per nome → con omonimi/Ospite duplicati può
+  // togliere più del dovuto; caso raro perché scatta solo su rifiuto Matchpoint.)
+  function _staffCalRevertPlayersLocal(iso, campo, ora, addArr, removeArr) {
+    const reAdd = (Array.isArray(removeArr) ? removeArr : []).map(function (n) { return { nome: n }; });
+    const reRemove = (Array.isArray(addArr) ? addArr : []).map(function (a) { return a && a.nome; }).filter(Boolean);
+    staffCalApplyLocalGiocatori(iso, campo, ora, reAdd, reRemove);
+  }
+
+  // Annulla in locale un edit ottimistico fallito su Matchpoint: ripristina giocatori, nota e
+  // posizione (spostamento) com'erano prima, e toglie il puntino di sincronizzazione.
+  function _staffCalEditRevertAll(op, addArr, removeArr, curIso, curCampo, curOra, slotMoved, moveChanged) {
+    try { if (op.hasPlayers && ((addArr && addArr.length) || (removeArr && removeArr.length))) _staffCalRevertPlayersLocal(curIso, curCampo, curOra, addArr, removeArr); } catch (e) {}
+    try { if (op.noteChanged) staffCalApplyLocalNote(curIso, curCampo, curOra, op.origNote); } catch (e) {}
+    try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
+    try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
+    try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
   }
 
   // Aggiorna l'array `giocatori` della prenotazione staff in locale applicando gli add/remove
@@ -38475,6 +38566,7 @@ Per confermare scrivi ELIMINA.`);
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca lo staff) ──
     (async function () {
       const _failStatus = function (why) {
+        try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
         try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
         try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
         try { if (parsed.data === isoDate) renderStaffCalendar(); } catch (e) {}
@@ -38487,6 +38579,7 @@ Per confermare scrivi ELIMINA.`);
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
           staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
+          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
           if (parsed.data === isoDate) renderStaffCalendar();
           staffCalSetStatus(`✅ ${tipoLabel} salvata su Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
@@ -38644,115 +38737,160 @@ Per confermare scrivi ELIMINA.`);
     return staffCalDoCancel(isoDate, campo, ora, nome);
   }
 
+  // Rimozione locale (ottimistica) di una prenotazione annullata: toglie la copia da
+  // staffBookings, marca lo slot soppresso e propaga al cloud (staff_booking deleted +
+  // staff_suppress) così sparisce su tutti i device. `removed` = copie locali catturate PRIMA.
+  function _staffCalCommitLocalCancel(isoDate, campo, ora, removed) {
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    const match = (b) => (
+      String(b.data).trim() === isoDate &&
+      Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+      String(b.ora).trim() === wantOra
+    );
+    const filtered = existing.filter((b) => !match(b));
+    if (typeof save === 'function') save('staffBookings', filtered);
+    _staffCalAddSuppressed(isoDate, campo, ora);
+    try {
+      if (typeof pmoSyncCloudRecordsNow === 'function') {
+        const _campoNum = wantCampo || 0;
+        const records = (removed || []).filter(b => b && b.id).map(b => ({
+          record_type: 'staff_booking', local_key: b.id,
+          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
+          deleted: true
+        }));
+        records.push({
+          record_type: 'staff_suppress',
+          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
+          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
+          deleted: false
+        });
+        pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
+      }
+    } catch (e) { console.warn('staff cancel cloud sync:', e); }
+  }
+
+  // Inverso di _staffCalCommitLocalCancel: ripristina la prenotazione in locale (su rifiuto
+  // Matchpoint dopo un annullo ottimistico), toglie la soppressione e annulla la propagazione
+  // cloud (staff_booking deleted:false + staff_suppress deleted:true).
+  function _staffCalRevertLocalCancel(isoDate, campo, ora, removed) {
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+    const present = (b) => existing.some(x =>
+      String(x.data).trim() === String(b.data).trim() &&
+      Number(String(x.campo).replace(/\D/g, '')) === Number(String(b.campo).replace(/\D/g, '')) &&
+      String(x.ora).trim() === String(b.ora).trim());
+    let changed = false;
+    (removed || []).forEach(b => { if (b && !present(b)) { existing.push(b); changed = true; } });
+    if (changed && typeof save === 'function') save('staffBookings', existing);
+    try { _staffCalClearSuppressed(isoDate, campo, ora); } catch (e) {}
+    try {
+      if (typeof pmoSyncCloudRecordsNow === 'function') {
+        const _campoNum = wantCampo || 0;
+        const records = (removed || []).filter(b => b && b.id).map(b => ({
+          record_type: 'staff_booking', local_key: b.id,
+          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, giocatori: b.giocatori || [], id_reserva: (b.idReserva != null ? String(b.idReserva) : '') },
+          deleted: false
+        }));
+        records.push({
+          record_type: 'staff_suppress',
+          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
+          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
+          deleted: true
+        });
+        pmoSyncCloudRecordsNow(records, 'ripristinare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel revert cloud:', e); });
+      }
+    } catch (e) { console.warn('staff cancel revert cloud:', e); }
+  }
+
   // Esegue l'annullamento su Matchpoint SENZA confirm() nativo: la conferma è già
   // avvenuta a monte (dialog a pulsanti del calendario, oppure dialogo in chat
   // dell'assistente AI). Estratto da staffCalAskCancel per riuso. v5.785.
+  // OTTIMISTICO (v5.877): rimuove in locale + chiude l'editor + ridisegna SUBITO ("fatto
+  // sull'app"); la cancellazione su Matchpoint prosegue in background con conferma esplicita;
+  // su rifiuto reale ripristina la prenotazione e avvisa.
   async function staffCalDoCancel(isoDate, campo, ora, nome) {
     const dataIt = isoDate.split('-').reverse().join('/');
-    const inProgress = svcAddMessage('system', '⏳ Annullamento in corso su Matchpoint…');
-    let _sec = 0;
-    const _timer = setInterval(function() {
-      _sec += 1;
-      const last = inProgress.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '⏳ Annullamento in corso su Matchpoint… (' + _sec + 's)';
-    }, 1000);
+    const _wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const _wantOra = String(ora).trim();
+    const _matchB = (b) => (
+      String(b.data).trim() === isoDate &&
+      Number(String(b.campo).replace(/\D/g, '')) === _wantCampo &&
+      String(b.ora).trim() === _wantOra
+    );
+    // idReserva e copia locale catturati PRIMA della rimozione (il lookup legge staffBookings,
+    // e la copia serve per l'eventuale ripristino su rifiuto).
+    const _idReservaCancel = _staffCalLookupIdReserva(isoDate, campo, ora);
+    const _removedBefore = ((typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : []).filter(_matchB);
 
     const _pendCancelKey = _staffCalEditKey(isoDate, campo, ora);
     _staffCalPendingEdits.add(_pendCancelKey);
+
+    // ── OTTIMISTICO (app-done): chiudi l'editor se mostra questo slot, rimuovi in locale, ridisegna. ──
     try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
-      const _idReservaCancel = _staffCalLookupIdReserva(isoDate, campo, ora);
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${staff.accessToken}`,
-        },
-        body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
-      });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      const st = staffCalPlayersState;
+      if (st && String(st.origIso).trim() === isoDate && Number(String(st.origCampo).replace(/\D/g, '')) === _wantCampo && String(st.origOra).trim() === _wantOra) staffCalPlayersState = null;
+    } catch (e) {}
+    _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore);
+    renderStaffCalendar();
+    svcResetToNeutral(); svcAutoCloseIfMobile();
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto annullando su Matchpoint…</span>';
+    const _msgEl = svcAddMessage('system',
+      '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+      (nome ? '<br>👥 ' + nome : '') + _syncNote, 'ok');
+    const _setSync = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} };
 
-      clearInterval(_timer);
+    // ── Propagazione su Matchpoint in BACKGROUND ──
+    (async function () {
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+        const _ctrl = new AbortController();
+        const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
+          signal: _ctrl.signal,
+        });
+        const respText = await response.text();
+        let data = null;
+        try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+        clearTimeout(_to);
+        _staffCalPendingEdits.delete(_pendCancelKey);
+        const _msgTxt = ((data && (data.message || data.error)) || '') + '';
+        const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
 
-      // Rimozione robusta della copia locale: campo confrontato come NUMERO (alcune card vecchie
-      // lo hanno salvato come stringa, per questo prima non sparivano), data e ora normalizzate.
-      const removeLocalCopy = () => {
-        const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        const wantCampo = Number(String(campo).replace(/\D/g, ''));
-        const wantOra = String(ora).trim();
-        const match = (b) => (
-          String(b.data).trim() === isoDate &&
-          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
-          String(b.ora).trim() === wantOra
-        );
-        const removed = existing.filter(match);
-        const filtered = existing.filter((b) => !match(b));
-        if (typeof save === 'function') save('staffBookings', filtered);
-        _staffCalAddSuppressed(isoDate, campo, ora);
-        // Propaga l'annullamento al cloud: record staff_booking → deleted PIÙ un record
-        // 'staff_suppress' (con ts) che fa nascondere lo slot annullato su TUTTI i device
-        // finché lo scrape non aggiorna l'occupazione Matchpoint. Prima la soppressione era
-        // solo locale: l'altro device continuava a mostrare la copia "occupazione". Il push
-        // avviene SEMPRE (anche senza staff_booking locale, es. card 🔒 Matchpoint), così
-        // parte comunque il ping realtime verso gli altri device. v5.685.
-        try {
-          if (typeof pmoSyncCloudRecordsNow === 'function') {
-            const _campoNum = Number(String(campo).replace(/\D/g, '')) || 0;
-            const records = removed.filter(b => b && b.id).map(b => ({
-              record_type: 'staff_booking', local_key: b.id,
-              payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
-              deleted: true
-            }));
-            records.push({
-              record_type: 'staff_suppress',
-              local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + String(ora).trim(),
-              payload: { data: isoDate, campo: _campoNum, ora: String(ora).trim(), ts: Date.now() },
-              deleted: false
-            });
-            pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
-          }
-        } catch (e) { console.warn('staff cancel cloud sync:', e); }
-      };
-      const _msgTxt = ((data && (data.message || data.error)) || '') + '';
-      const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
-
-      if (response.ok && data?.ok !== false) {
-        removeLocalCopy();
-        // Diario autoapprendimento (Fase 1): annullo manuale prenotazione → diario.
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
-        svcAddMessage('system',
-          '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
-          (nome ? '<br>👥 ' + nome : ''),
-          'ok'
-        );
-        renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else if (notFoundOnMatchpoint) {
-        // Non c'è più su Matchpoint (ghost locale rimasto dai test): pulisci comunque la card.
-        removeLocalCopy();
-        svcAddMessage('system',
-          '🧹 <strong>Non più presente su Matchpoint</strong> — card rimossa dal calendario: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora,
-          'ok'
-        );
-        renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else {
-        const msg = _msgTxt || ('errore HTTP ' + response.status);
-        const _gCampo = Number(String(campo).replace(/\D/g, '')) || 0;
-        const _gArgs = "'" + String(isoDate) + "','" + _gCampo + "','" + String(ora) + "'";
-        const _gBtn = '<button type="button" onclick="staffCalForceRemoveSlot(' + _gArgs + ')" style="margin-top:6px;padding:6px 10px;border:1px solid var(--color-border-secondary,#cbd5e1);border-radius:8px;background:#fff;color:inherit;cursor:pointer;font-size:.82rem;">🧹 Non è su Matchpoint: rimuovi comunque dal calendario</button>';
-        svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br>' + _gBtn);
+        if (response.ok && data?.ok !== false) {
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
+          _setSync('✅ Annullata su Matchpoint', '#067647');
+        } else if (notFoundOnMatchpoint) {
+          // Non era più su Matchpoint (ghost): la rimozione locale resta valida.
+          _setSync('🧹 Non era più su Matchpoint — rimossa', '#067647');
+        } else {
+          // Rifiuto reale: RIPRISTINA la prenotazione in locale e avvisa.
+          const msg = _msgTxt || ('errore HTTP ' + response.status);
+          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
+          renderStaffCalendar();
+          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+        }
+      } catch (err) {
+        _staffCalPendingEdits.delete(_pendCancelKey);
+        if (err && err.name === 'AbortError') {
+          // Timeout: NON ripristinare alla cieca (potrebbe essere stata annullata lo stesso).
+          _setSync('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ L\'annullamento <strong>potrebbe essere passato lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarlo.', 'error');
+        } else {
+          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
+          renderStaffCalendar();
+          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+        }
       }
-    } catch (err) {
-      clearInterval(_timer);
-      svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto'));
-    } finally {
-      _staffCalPendingEdits.delete(_pendCancelKey);
-    }
+    })();
   }
 
   // Rimozione FORZATA di uno slot "fantasma" (prenotazione non presente su Matchpoint).
@@ -39534,51 +39672,77 @@ Per confermare scrivi ELIMINA.`);
       svcSetInputMode('normal');
       return;
     }
+    // Permessi + config (veloci) prima di confermare allo staff.
+    let staff, supabaseUrl, supabaseKey;
     try {
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const inProgress = svcAddMessage('system', '⏳ Prenotazione in corso su Matchpoint…');
-      const _sbId = _staffCalNewSbId();
-      const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
-      const jobId = submit && submit.jobId;
-      if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
-      const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function(sec) {
-        const last = inProgress.querySelector(':scope > div:last-child');
-        if (last) last.innerHTML = '⏳ Prenotazione in corso su Matchpoint… (' + sec + 's)';
-      });
-      if (result.status === 'done') {
-        staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
-        // Diario autoapprendimento (Fase 1): prenotazione manuale da slot → diario.
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
-        if (tipoEngine === 'lezione') {
-          const allievi = (players && players.length) ? nomeStr : '—';
-          svcAddMessage('system',
-            '✅ <strong>Lezione prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
-            '👨‍🏫 <strong>' + istruttore + '</strong> 👥 ' + allievi,
-            'ok'
-          );
-        } else {
-          svcAddMessage('system',
-            '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>' +
-            '👥 ' + parsed.nome,
-            'ok'
-          );
-        }
-        renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else if (result.status === 'error') {
-        svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(result.error || 'errore') }); } catch (e) {}
-      } else {
-        svcAddMessage('system', '⚠️ Esito NON confermato (timeout). La prenotazione potrebbe NON essere su Matchpoint: controllala su Matchpoint prima di riprovare, per non rischiare doppioni.');
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'timeout' }); } catch (e) {}
-      }
+      staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+      const cfg = await loadAssessmentSupabaseConfig();
+      supabaseUrl = cfg && cfg.supabaseUrl; supabaseKey = cfg && cfg.supabaseKey;
     } catch (err) {
       svcAddMessage('system', '❌ Errore: ' + (err.message || err));
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+      return;
     }
-    svcFlowState = null;
-    svcSetInputMode('normal');
+    // ── Commit OTTIMISTICO: prenotazione mostrata SUBITO come fatta; la scheda si CHIUDE e si
+    //    torna al calendario all'istante (fatto sull'app). La scrittura su Matchpoint prosegue in
+    //    background con conferma esplicita; su rifiuto reale si annulla e si avvisa. v5.878.
+    const _optimKey = parsed.data + '|' + parsed.campoNum + '|' + parsed.ora;
+    const _optimId = staffCalAddOptimistic(parsed);
+    try { _staffCalPendingEdits.add(_optimKey); } catch (e) {}
+    try { _staffCalCreateBegin(_optimKey); } catch (e) {}
+    try { staffCalRtBroadcastPending(parsed); } catch (e) {}
+    const _sbId = _staffCalNewSbId();
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto scrivendo su Matchpoint…</span>';
+    let _msgEl;
+    if (tipoEngine === 'lezione') {
+      const allievi = (players && players.length) ? nomeStr : '—';
+      _msgEl = svcAddMessage('system', '✅ <strong>Lezione prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>👨‍🏫 <strong>' + istruttore + '</strong> 👥 ' + allievi + _syncNote, 'ok');
+    } else if (tipoEngine === 'manutenzione') {
+      _msgEl = svcAddMessage('system', '✅ <strong>Manutenzione registrata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + _syncNote, 'ok');
+    } else {
+      _msgEl = svcAddMessage('system', '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>👥 ' + parsed.nome + _syncNote, 'ok');
+    }
+    const _setSyncNote = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} };
+    // Ciclo concluso lato app: CHIUDI la scheda e torna al calendario (l'esito ✅ resta nei messaggi).
+    renderStaffCalendar();
+    svcResetToNeutral(); svcAutoCloseIfMobile();
+
+    // ── Propagazione su Matchpoint in BACKGROUND ──
+    (async function () {
+      const _failMsg = function (why) {
+        try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
+        try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
+        try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+        svcAddMessage('system', '⚠️ <strong>Attenzione</strong>: Campo ' + campo + ' \xb7 ' + ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + why + '). L\'ho <strong>rimossa</strong> dal calendario.');
+      };
+      try {
+        const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
+        const jobId = submit && submit.jobId;
+        if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+        const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
+        if (result.status === 'done') {
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
+          try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
+          try { renderStaffCalendar(); } catch (e) {}
+          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
+          _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
+        } else if (result.status === 'error') {
+          _failMsg(result.error || 'rifiutata da Matchpoint');
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(result.error || 'errore') }); } catch (e) {}
+        } else {
+          _failMsg('esito non confermato (timeout)');
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'timeout' }); } catch (e) {}
+        }
+      } catch (err) {
+        _failMsg((err && err.message) ? err.message : String(err));
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+      } finally {
+        try { _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
+      }
+    })();
   }
 
   function svcAddResolvedChip(member, raw) {
@@ -41143,15 +41307,35 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        // Allo stadio CONFERMA di una prenotazione, una risposta BREVE fatta SOLO di parole di
-        // conferma/annullo è la risposta al riepilogo — incl. "prenota"/"prenotala" e combinazioni
-        // come "ok prenota", "sì conferma", "va bene prenota" (collaudo 19/06), che
-        // _looksLikeNewCommand scambierebbe per un nuovo comando e farebbe ripartire da capo.
-        // NB: ancorata a ^…$ e composta SOLO da token di conferma, così "prenota campo 2 domani"
-        // (comando pieno) NON entra qui e abbandona regolarmente il flusso.
-        if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'prenota' &&
-            /^\s*(?:(?:prenot\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|salva|annull\w*|no|lascia\w*|stop|niente)[\s,.!]*)+$/i.test(t)) {
-          return _confirmAnswer(t);
+        // GUARDIA CONFERMA (generica, per OGNI flusso allo stage 'confirm'). Una risposta BREVE
+        // fatta SOLO di parole di conferma/annullo — INCLUSO il verbo dell'azione ripetuto
+        // ("sì cancella", "sì sposta", "sì allunga", "cancella", "annulla", "ok prenota") — è la
+        // risposta al riepilogo, NON un comando nuovo. Senza questa guardia il verbo farebbe
+        // scattare _looksLikeNewCommand (che matcha i verbi d'azione) → il flusso verrebbe
+        // abbandonato e ripartito da capo (spesso senza bersaglio). I verbi accettati sono
+        // SPECIFICI del kind (non si confondono flussi diversi). Un comando PIENO ("cancella
+        // campo 2 domani") ha token extra → non matcha → abbandona regolarmente il flusso.
+        if (aiFlowState.stage === 'confirm') {
+          const _kc = aiFlowState.kind || 'prenota';
+          const _verbs = {
+            prenota: 'prenot\\w*',
+            cancella: 'cancell\\w*|annull\\w*|elimin\\w*|disd\\w*|togl\\w*',
+            addconfirm: 'aggiung\\w*|inseris\\w*|metti',
+            removeconfirm: 'togl\\w*|tolg\\w*|rimuov\\w*|elimin\\w*|lev\\w*|scart\\w*',
+            moveconfirm: 'spost\\w*|anticip\\w*|posticip\\w*',
+            durataconfirm: 'allung\\w*|accorci\\w*|prolung\\w*|estend\\w*|riduc\\w*|abbrevi\\w*',
+            notaconfirm: 'annot\\w*|nota',
+            anagrafica: '',
+            modifica: 'modific\\w*'
+          }[_kc];
+          if (_verbs !== undefined) {
+            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
+            const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
+            if (_re.test(t)) {
+              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
+              if (_h) return _h(t);
+            }
+          }
         }
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
@@ -41233,12 +41417,68 @@ Per confermare scrivi ELIMINA.`);
           && !/(giocator\w*|allie\w*)/.test(_rn);
         const _timeQty = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_rn);
         const _noteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_rn);
-        if (_rmVerb && !_wholeBooking && !_timeQty && !_noteCmd) {
-          let _rawName = String(t || '')
-            .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\s+/i, ' ')
-            .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
-          _rawName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_rawName))).trim();
+        let _rawName = String(t || '')
+          .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b\s*/i, ' ')
+          .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
+        _rawName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_rawName))).trim();
+        // SOLO se c'è un NOME dopo il verbo è una rimozione-giocatore. "cancella"/"elimina" da
+        // SOLI (nome vuoto) NON sono rimozione: cadono su CANCELLA → annulla la prenotazione aperta.
+        if (_rmVerb && _rawName && !_wholeBooking && !_timeQty && !_noteCmd) {
           return _askRemoveConfirm(staffCalPlayersState, _rawName);
+        }
+      }
+      // SCHEDA APERTA + comando di ANNULLAMENTO dell'INTERA prenotazione ("cancella"/"annulla"/
+      // "elimina" da soli, o "cancella la partita/lezione") → annulla QUELLA prenotazione. Serve
+      // perché "cancella"/"annulla" da soli il parser li manda altrove (es. ANAGRAFICA), e perché
+      // così l'annullo dalla scheda aperta funziona sempre (postulato scheda-master). Non scatta se
+      // il comando punta a un'ALTRA prenotazione (campo/ora/giorno) o se è una rimozione-giocatore
+      // (nome presente, gestita sopra), una durata o una nota.
+      if (staffCalPlayersState && !staffCalPlayersState.busy) {
+        const _cn = _norm(t);
+        const _cancelVerb = /(^|\s)(cancell\w*|annull\w*|elimin\w*|disd\w*|scart\w*)\b/.test(_cn);
+        const _timeQ = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_cn);
+        const _noteC = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_cn);
+        const _otherTarget = !!(res.slots && (res.slots.court || res.slots.time || res.slots.date));
+        let _resName = String(t || '')
+          .replace(/^\s*\W*(cancell\w*|annull\w*|elimin\w*|disd\w*|scart\w*)\b\s*/i, ' ')
+          .replace(/\b((?:il|la|lo|l['’]|un|una|questa|questo)\s+)?(partit\w*|lezion\w*|prenotazion\w*|match|slot)\b/ig, ' ');
+        _resName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_resName))).trim();
+        if (_cancelVerb && !_resName && !_timeQ && !_noteC && !_otherTarget) {
+          const st = staffCalPlayersState;
+          const _oc = Number(String(st.origCampo).replace(/\D/g, '')) || st.origCampo;
+          const oSlot = { campo: _oc, ora: st.origOra, durata: st.origDurMin || 90, nome: (st.nome || ''), istruttore: '', tipoReale: st.tipoReale || 'partita' };
+          // Con una prenotazione che HA giocatori, "cancella/annulla" da solo è ambiguo (togliere
+          // un giocatore o annullare l'intera prenotazione?): NON agire alla cieca, CHIEDI con i
+          // pulsanti (postulato: mai vicolo cieco). Senza giocatori (es. manutenzione) → annullo diretto.
+          if (st.hasPlayers) {
+            let _roster = (Array.isArray(st.roster) && st.roster.length) ? st.roster : _rosterFromCalendar(st);
+            _roster = (_roster || []).filter(function (p) { return p && p.nome; });
+            const _doCancelBooking = function () { _showCancelSummary(st.origIso, oSlot); };
+            const _CANCEL_LABEL = '🗑️ Annulla la prenotazione';
+            if (_roster.length === 1) {
+              const _nm = _roster[0].nome;
+              const _m = _say('🤔 Vuoi <strong>togliere ' + _escapeHtml(_nm) + '</strong> oppure <strong>annullare l\'intera prenotazione</strong>?');
+              const _b = svcMakeStepButtons(['👤 Togli ' + _nm, _CANCEL_LABEL], function (label) {
+                try { svcFreezeMsg(_m); } catch (e) {}
+                if (label === _CANCEL_LABEL) _doCancelBooking(); else _removePlayerNow(_roster[0]);
+              }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
+              if (_m && _m.appendChild) _m.appendChild(_b);
+              return true;
+            }
+            if (_roster.length > 1) {
+              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>? Tocca un pulsante o rispondi a voce.');
+              _choiceButtons(_m, _roster.map(function (p) { return '👤 ' + p.nome; }).concat([_CANCEL_LABEL]),
+                function (i) { if (i >= _roster.length) _doCancelBooking(); else _removePlayerNow(_roster[i]); },
+                function () { });
+              return true;
+            }
+            // hasPlayers ma roster non noto: chiedi annulla vs togli (un pulsante per annullare).
+            const _m = _say('🤔 Vuoi <strong>annullare l\'intera prenotazione</strong> oppure <strong>togliere un giocatore</strong>? Per togliere qualcuno scrivi «<em>togli [nome]</em>».');
+            const _b = svcMakeStepButtons([_CANCEL_LABEL], function () { try { svcFreezeMsg(_m); } catch (e) {} _doCancelBooking(); }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
+            if (_m && _m.appendChild) _m.appendChild(_b);
+            return true;
+          }
+          return _showCancelSummary(st.origIso, oSlot);
         }
       }
       // ⭐ STEP 2 — Nessuna scheda aperta, ma una prenotazione è stata CREATA in chat da poco e
@@ -41271,9 +41511,26 @@ Per confermare scrivi ELIMINA.`);
         const _nm = (res.giocatori && res.giocatori.length) ? res.giocatori.join(' ') : '';
         const _nmEsc = _escapeHtml(_nm);
         const _label = _nm ? ('<strong>' + _nmEsc + '</strong>') : 'questa persona';
-        return _say('Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>?<br>' +
-          '• Nuovo socio: scrivi “<em>iscrivi ' + (_nmEsc || '[nome cognome]') + '</em>”.<br>' +
-          '• In una prenotazione: dimmi quale, es. “<em>aggiungi ' + (_nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>”.');
+        const _m = _say('🤔 Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>? Tocca un pulsante o dimmelo a voce.');
+        _choiceButtons(_m, ['👥 Giocatore in una prenotazione', '👤 Iscrivilo come nuovo socio'], function (i) {
+          if (i === 1) {
+            // Nuovo socio: avvia l'anagrafica di creazione (senza eco di un finto messaggio utente).
+            (async function () { try { const r2 = await _parseWithAi('iscrivi ' + _nm); _startAnagrafica(r2, 'iscrivi ' + _nm); } catch (e) { _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); } })();
+            return;
+          }
+          // Giocatore: scegli a quale prenotazione del giorno aggiungerlo (a pulsanti).
+          const _iso = (typeof _calSelectedIso === 'function') ? _calSelectedIso() : _todayIso();
+          const _cands = _cancelCandidates(_iso, 0, '', '');
+          if (!_cands.length) {
+            return _say('Non trovo prenotazioni ' + _dayLabel(_iso) + ' a cui aggiungerlo. Dimmi quale, es. «<em>aggiungi ' + (_nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>».');
+          }
+          const _m2 = _say('A quale prenotazione aggiungo <strong>' + (_nmEsc || 'il giocatore') + '</strong>? Tocca un pulsante o dimmi campo e ora.');
+          _choiceButtons(_m2, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }), function (j) {
+            const _c = _cands[j];
+            (async function () { try { await staffCalEditPlayers(_iso, _c.campo, _c.ora, '', _c.durata, _c.tipoReale || _c.tipo); } catch (e) {} if (staffCalPlayersState && !staffCalPlayersState.busy) _addPlayerToOpenBooking(res, t); })();
+          }, function () { _say('👍 Ok.'); });
+        }, function () { _say('👍 Ok.'); });
+        return true;
       }
       // Punto UNICO di chiarimento (trasversale): se la richiesta non è azionabile —
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
@@ -41345,6 +41602,16 @@ Per confermare scrivi ELIMINA.`);
         const verbo = info.intent === 'CANCELLA' ? 'annullare' : 'modificare';
         const ic = info.intent === 'CANCELLA' ? '🗑️' : '✏️';
         const es = info.intent === 'CANCELLA' ? 'annulla campo 2 oggi alle 18' : 'modifica campo 2 oggi alle 18';
+        // Voce-friendly: mostra le prenotazioni del giorno VISUALIZZATO come pulsanti → scegli e agisci.
+        const _iso = date || _calSelectedIso();
+        const _cands = (typeof _cancelCandidates === 'function') ? _cancelCandidates(_iso, court || 0, time || '', '') : [];
+        if (_cands.length) {
+          const _m = _say(ic + ' <strong>Quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Tocca un pulsante, oppure dimmi giorno/campo/ora.');
+          _choiceButtons(_m, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+            function (i) { if (info.intent === 'CANCELLA') _showCancelSummary(_iso, _cands[i]); else _openEditor(_iso, _cands[i], null); },
+            function () { _say('👍 Ok.'); });
+          return;
+        }
         msg = ic + ' Volentieri — <strong>quale</strong> prenotazione vuoi ' + verbo + '?' + recapTxt
           + ' Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «' + es + '».';
       } else if (recap.length) {
@@ -41816,9 +42083,9 @@ Per confermare scrivi ELIMINA.`);
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
       if (k === 'type') { const div = _say('🎾 È una <strong>partita</strong> o una <strong>lezione</strong>?'); _appendTypeButtons(div, aiFlowState.draft); return div; }
-      if (k === 'maestro') return _say('👨‍🏫 Con quale <strong>maestro</strong> vuoi prenotare la lezione? (' + _escapeHtml(_maestri().join(', ')) + ')');
+      if (k === 'maestro') { const div = _say('👨‍🏫 Con quale <strong>maestro</strong>? Tocca un pulsante o dimmi il nome.'); _appendMaestroButtons(div, aiFlowState.draft); return div; }
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
-      if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
+      if (k === 'court') { const div = _say('🎾 Su quale <strong>campo</strong>? Tocca un pulsante o dimmi il numero.'); _appendCourtButtons(div, aiFlowState.draft); return div; }
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
       if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
     }
@@ -41842,6 +42109,42 @@ Per confermare scrivi ELIMINA.`);
       };
       wrap.appendChild(mk('🎾 Partita', 'partita'));
       wrap.appendChild(mk('📚 Lezione', 'lezione'));
+      div.appendChild(wrap);
+    }
+    // Pulsanti CAMPO (1–4) per lo slot mancante (fallback testuale in _continuePrenota).
+    function _appendCourtButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      [1, 2, 3, 4].forEach(function (n) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = 'Campo ' + n;
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          b.classList.add('selected');
+          draft.campoNum = n; aiFlowState = null; _advancePrenota(draft);
+        });
+        wrap.appendChild(b);
+      });
+      div.appendChild(wrap);
+    }
+    // Pulsanti MAESTRO per lo slot mancante della lezione (fallback testuale in _continuePrenota).
+    function _appendMaestroButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      _maestri().forEach(function (m) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = '👨‍🏫 ' + m;
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          b.classList.add('selected');
+          draft.istruttore = m; aiFlowState = null; _advancePrenota(draft);
+        });
+        wrap.appendChild(b);
+      });
       div.appendChild(wrap);
     }
     // Chiede se prenotare a nome Ospite quando manca il giocatore (Sì → Ospite; No → chiede il nome).
@@ -42197,7 +42500,9 @@ Per confermare scrivi ELIMINA.`);
       if (!q || !qtok.length) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? ' + roster.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Rispondi col <strong>numero</strong> (o “no”).');
+        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Tocca un nome o rispondi a voce.');
+        _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
+        return true;
       }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
       // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
@@ -42214,7 +42519,9 @@ Per confermare scrivi ELIMINA.`);
       if (hits.length > 1) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Ci sono più giocatori simili: ' + hits.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Quale tolgo? Rispondi col <strong>numero</strong> (o “no”).');
+        const _mh = _say('Ci sono più giocatori simili. Quale tolgo? Tocca un nome o rispondi a voce.');
+        _choiceButtons(_mh, hits.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
+        return true;
       }
       aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
@@ -42339,6 +42646,7 @@ Per confermare scrivi ELIMINA.`);
       const _optimKey = parsed.data + '|' + parsed.campoNum + '|' + parsed.ora;
       const _optimId = staffCalAddOptimistic(parsed);
       try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(_optimKey); } catch (e) {}
+      try { _staffCalCreateBegin(_optimKey); } catch (e) {}
       try { staffCalRtBroadcastPending(parsed); } catch (e) {}
       // ⭐ STEP 2 — ricorda la prenotazione appena creata: un successivo "aggiungi <nome>" la aggancia.
       try {
@@ -42361,11 +42669,16 @@ Per confermare scrivi ELIMINA.`);
       const _setSyncNote = function (html, color) {
         try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
       };
+      // Ciclo concluso lato app: chiudi la scheda/flow e torna al calendario (mobile). L'esito ✅
+      // resta nei messaggi (non è una flow-card). Per altre modifiche si riapre la prenotazione.
+      try { svcResetToNeutral(); } catch (e) {}
+      try { svcAutoCloseIfMobile(); } catch (e) {}
       // Diario autoapprendimento — esito REALE agganciato al turno chat (executed/failed).
       const _aiCreateRef = _aiTurnExecBegin();
       // ── Propagazione su Matchpoint in BACKGROUND (non blocca la chat) ──
       (async function () {
         const _failMsg = function (why) {
+          try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
           try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
@@ -42381,6 +42694,7 @@ Per confermare scrivi ELIMINA.`);
             try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
             try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
             try { renderStaffCalendar(); } catch (e) {}
+            try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
             _setSyncNote('✅ Salvata su Matchpoint', '#067647');
             _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
           } else if (result.status === 'error') {
@@ -42410,6 +42724,34 @@ Per confermare scrivi ELIMINA.`);
       if (t.indexOf('lez') >= 0) return '📚 lezione' + (r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '');
       if (t.indexOf('manut') >= 0) return '🔧 manutenzione';
       return '🎾 partita';
+    }
+    // Disambiguazione a PULSANTI (postulato: voce-friendly, mai vicolo cieco). Appende al messaggio
+    // dei pulsanti numerati per scegliere fra opzioni note; onPick riceve l'INDICE (robusto anche
+    // con etichette duplicate, es. due "Ospite"). La risposta vocale/testuale resta gestita dal
+    // flow (aiFlowState pick) in parallelo. Vedi [[assistente-disambiguazione-bottoni]].
+    function _choiceButtons(msgEl, baseLabels, onPick, onCancel) {
+      if (!msgEl || !msgEl.appendChild || typeof svcMakeStepButtons !== 'function') return;
+      const labels = (baseLabels || []).map(function (s, i) { return (i + 1) + '. ' + s; });
+      const b = svcMakeStepButtons(labels, function (label) {
+        try { svcFreezeMsg(msgEl); } catch (e) {}
+        const i = parseInt(label, 10) - 1;
+        if (i >= 0) onPick(i);
+      }, function () { try { svcFreezeMsg(msgEl); } catch (e) {} if (typeof onCancel === 'function') onCancel(); });
+      msgEl.appendChild(b);
+    }
+    // Toglie SUBITO il giocatore scelto (tap esplicito su un pulsante) e salva: niente ulteriore
+    // conferma (la rimozione è reversibile, l'azione è già esplicita). Mirror del ramo "sì" di
+    // _confirmRemoveAnswer.
+    function _removePlayerNow(target) {
+      const st = staffCalPlayersState;
+      if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+      aiFlowState = null;
+      if (!target || target.idx == null) return _say('❌ Non ho più il riferimento del giocatore: riprova.');
+      st.remove = st.remove || {}; st.remove[target.idx] = true;
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      _say('➖ Tolgo <strong>' + _escapeHtml(target.nome) + '</strong> e salvo su Matchpoint…');
+      try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      return true;
     }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
@@ -42467,6 +42809,14 @@ Per confermare scrivi ELIMINA.`);
       const iso = slots.date || p.data || _calSelectedIso();
       const court = slots.court || p.campoNum || 0;
       const time = slots.time || p.ora || '';
+      // SCHEDA APERTA = bersaglio implicito: "cancella la partita" senza coordinate annulla la
+      // prenotazione aperta nell'assistente (mobile e desktop), invece di elencare tutto il giorno.
+      const _openCancel = (staffCalPlayersState && !staffCalPlayersState.busy) ? staffCalPlayersState : null;
+      if (_openCancel && !slots.court && !slots.time && !p.campoNum && !p.ora && !(slots.who && slots.who !== 'Staff')) {
+        const _oc = Number(String(_openCancel.origCampo).replace(/\D/g, '')) || _openCancel.origCampo;
+        const oSlot = { campo: _oc, ora: _openCancel.origOra, durata: _openCancel.origDurMin || 90, nome: (_openCancel.nome || ''), istruttore: '', tipoReale: _openCancel.tipoReale || 'partita' };
+        return _showCancelSummary(_openCancel.origIso, oSlot);
+      }
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
       // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
@@ -42485,10 +42835,12 @@ Per confermare scrivi ELIMINA.`);
       }
       if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
       aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
-      const items = cands.map(function (r, i) {
-        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
-      });
-      return _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. Quale vuoi annullare? Rispondi col <strong>numero</strong> (oppure “annulla” per uscire):<br>' + items.join('<br>'));
+      const _m = _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. <strong>Quale vuoi annullare?</strong> Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      _choiceButtons(_m,
+        cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+        function (i) { aiFlowState = null; _showCancelSummary(iso, cands[i]); },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
+      return true;
     }
     function _showCancelSummary(iso, slot) {
       const durata = slot.durata || 90;
@@ -42556,7 +42908,7 @@ Per confermare scrivi ELIMINA.`);
     function _confirmCancellaAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
       if (/( no | lascia\w* | stop | niente | nessun\w* )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho annullato nulla.'); }
-      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | elimina | disdici | togli )/.test(n)) {
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | cancell\w* | annull\w* | elimin\w* | disd\w* | togl\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
       }
       _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
@@ -42671,10 +43023,12 @@ Per confermare scrivi ELIMINA.`);
       if (cands.length === 1) return _openEditor(iso, cands[0], pending);
       aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
       const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
-      const items = cands.map(function (r, i) {
-        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
-      });
-      return _say('❓ Quale prenotazione vuoi ' + azLbl + '? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+      const _m = _say('❓ Quale prenotazione vuoi ' + azLbl + '? Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      _choiceButtons(_m,
+        cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+        function (i) { const _p = aiFlowState && aiFlowState.pending; aiFlowState = null; _openEditor(iso, cands[i], _p || pending); },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
+      return true;
     }
     function _continueModifica(text) {
       const n = ' ' + _norm(text) + ' ';
@@ -43245,8 +43599,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaAnswerMember(matches[0].member, fields);
       aiFlowState = { kind: 'anagrafica', op: 'read', stage: 'pick', matches: matches, fields: fields };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Di quale socio? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Di quale socio?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'read', fields, null);
+      return true;
     }
     function _anaAnswerMember(member, fields) {
       if (!member) return _say('Socio non trovato.');
@@ -43283,8 +43638,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaDeactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'pick', matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi disattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'deactivate', null, null);
+      return true;
     }
     function _anaDeactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
@@ -43342,8 +43698,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaReactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'pick', matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi riattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'reactivate', null, null);
+      return true;
     }
     function _anaReactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
@@ -43565,8 +43922,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi aggiornare? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'update', null, changes);
+      return true;
     }
     function _continueAnaPick(text) {
       const n = ' ' + _norm(text) + ' ';
@@ -43585,6 +43943,21 @@ Per confermare scrivi ELIMINA.`);
       if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
       if (op === 'reactivate') return _anaReactivateWithTarget(pick);
       return _anaUpdateWithTarget(pick, changes);
+    }
+    // Pulsanti per scegliere fra più soci omonimi (voce-friendly). Instrada come _continueAnaPick
+    // in base all'operazione; la risposta vocale/testuale (numero/cognome) resta gestita da quello.
+    function _anaPickButtons(msgEl, matches, op, fields, changes) {
+      _choiceButtons(msgEl, (matches || []).map(function (mm) { const g = mm.member; return playerFullName(g) + (g.memberId ? ' (' + g.memberId + ')' : ''); }),
+        function (i) {
+          const pick = matches[i] && matches[i].member;
+          aiFlowState = null;
+          if (!pick) return;
+          if (op === 'read') return _anaAnswerMember(pick, fields);
+          if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
+          if (op === 'reactivate') return _anaReactivateWithTarget(pick);
+          return _anaUpdateWithTarget(pick, changes);
+        },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
     }
     function _anaUpdateWithTarget(member, changes) {
       if (!member) return _say('Socio non trovato.');
