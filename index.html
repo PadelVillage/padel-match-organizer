@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.874';
+    const APP_VERSION = '5.875';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41247,6 +41247,16 @@ Per confermare scrivi ELIMINA.`);
             /^\s*(?:(?:prenot\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|salva|annull\w*|no|lascia\w*|stop|niente)[\s,.!]*)+$/i.test(t)) {
           return _confirmAnswer(t);
         }
+        // Idem per la CONFERMA di un ANNULLAMENTO: una risposta breve fatta SOLO di parole di
+        // conferma/annullo — incl. "sì cancella", "cancella", "annulla", "sì annulla" — è la
+        // risposta al riepilogo, NON un nuovo comando. Senza questa guardia "sì cancella"
+        // contiene "cancella" e _looksLikeNewCommand lo scambierebbe per un comando nuovo
+        // (senza bersaglio), facendo ripartire tutto da capo. Un comando pieno ("cancella
+        // campo 2 domani") NON entra qui (token extra) e abbandona regolarmente il flusso.
+        if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'cancella' &&
+            /^\s*(?:(?:cancell\w*|annull\w*|elimin\w*|disd\w*|togl\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|no|lascia\w*|stop|niente|nessun\w*)[\s,.!]*)+$/i.test(t)) {
+          return _confirmCancellaAnswer(t);
+        }
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
         // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
@@ -42653,7 +42663,7 @@ Per confermare scrivi ELIMINA.`);
     function _confirmCancellaAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
       if (/( no | lascia\w* | stop | niente | nessun\w* )/.test(n)) { aiFlowState = null; return _say('👍 Ok, non ho annullato nulla.'); }
-      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | elimina | disdici | togli )/.test(n)) {
+      if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | cancell\w* | annull\w* | elimin\w* | disd\w* | togl\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
       }
       _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
