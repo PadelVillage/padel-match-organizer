@@ -4981,52 +4981,30 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // una riga è valida se il suo HiddenFieldIdCliente combacia col codice cliente atteso
   // o con l'id agganciato (confronto su onlyDigits, ignora gli zeri iniziali).
   let addedIdCliente = null;
-  let righeViste = [];
+  const righeViste = [];
   const wantCode = onlyDigits(expectedClientCode);
   const wantPeople = onlyDigits(lockedId);
-  // Verifica con qualche ritentativo: dopo il postback parziale la riga partecipante
-  // può renderizzarsi con un piccolo ritardo (specie sulla ficha lezione singola
-  // "PorUsuario") → senza retry si ottiene un falso PLAYER_ADD_NOT_CONFIRMED.
-  for (let scan = 0; scan < 3 && addedIdCliente === null; scan++) {
-    if (scan > 0) await page.waitForTimeout(800);
-    righeViste = [];
-    const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
-    const righeTot = await nomeInputs.count().catch(() => 0);
-    for (let r = 0; r < righeTot; r++) {
-      const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
-      const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
-      let idCliVal = '', idPplVal = '';
-      if (rowId) {
-        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
-        idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
-        // La riga griglia può esporre l'id agganciato nel campo HiddenFieldIdPeople
-        // (= lockedId, id interno) invece del codice cliente: lo leggiamo per confermare
-        // anche quando HiddenFieldIdCliente non riporta il codice atteso.
-        const idPplId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdPeople');
-        idPplVal = (await page.locator(`input[id="${idPplId}"]`).first().inputValue().catch(() => '')).trim();
-      }
-      const idCliDigits = onlyDigits(idCliVal);
-      const idPplDigits = onlyDigits(idPplVal);
-      righeViste.push(`${rowId}=${nomeVal}#cli=${idCliVal}#ppl=${idPplVal}`);
-      const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
-      // Conferma per ID su ENTRAMBI i campi nascosti della riga (codice cliente o id
-      // interno agganciato): copre i form dove la riga porta l'uno o l'altro.
-      const matchById =
-        (!!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople))) ||
-        (!!idPplDigits && ((wantPeople && idPplDigits === wantPeople) || (wantCode && idPplDigits === wantCode)));
-      if (matchByName || matchById) {
-        addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
-        diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}:idPpl=${idPplVal}:scan=${scan}`);
-        break;
-      }
+  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+  const righeTot = await nomeInputs.count().catch(() => 0);
+  for (let r = 0; r < righeTot; r++) {
+    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+    let idCliVal = '';
+    if (rowId) {
+      const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+      idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+    }
+    const idCliDigits = onlyDigits(idCliVal);
+    righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
+    const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
+    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+    if (matchByName || matchById) {
+      addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
+      diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}`);
+      break;
     }
   }
   diagnostic.partecipantiRighe = righeViste.slice(0, 30);
-  // Marcatore versione + contenuto righe negli steps (gli steps sono l'unico campo
-  // diagnostico che risale fino all'app): così, se la verifica fallisce ancora, si vede
-  // COSA contengono davvero le righe (#cli=/#ppl=) e si conferma che gira il worker nuovo.
-  diagnostic.steps.push('player_verify_v2:want_cli=' + wantCode + ':want_ppl=' + wantPeople +
-    ':rows=' + (righeViste.slice(0, 6).join(' | ').slice(0, 260) || '(nessuna)'));
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
