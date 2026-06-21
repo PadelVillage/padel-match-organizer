@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.862';
+    const APP_VERSION = '5.863';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37341,6 +37341,17 @@ Per confermare scrivi ELIMINA.`);
     const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
     _staffCalPendingEdits.add(pendKey);
 
+    // Diario autoapprendimento — esito REALE: cattura il turno chat che ha avviato
+    // l'azione (solo percorso assistente). Per il Salva MANUALE resta null → execEnd
+    // registrerà una riga dedicata col vero esito (chiude anche la lacuna sulla cattura
+    // delle modifiche manuali della scheda).
+    const _aiExecRef = (opts.skipConfirm && window.PMOAi && PMOAi.execBegin) ? PMOAi.execBegin() : null;
+    const _aiExecVia = opts.skipConfirm ? 'assistente' : 'calendario';
+    const _aiExecAzione = playersChanged ? 'giocatori' : (moveChanged ? 'sposta' : (noteChanged ? 'nota' : 'durata'));
+    function _aiExecSettle(ok, reason) {
+      try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
+    }
+
     // Chiudi la schedina: l'operatore torna libero immediatamente.
     staffCalPlayersState = null;
     if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); renderStaffCalendar(); }
@@ -37393,20 +37404,24 @@ Per confermare scrivi ELIMINA.`);
         const lastP = inProgress.querySelector(':scope > div:last-child');
         if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
         svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : '') + (op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : ''), 'ok');
+        _aiExecSettle(true, null);
         renderStaffCalendar();
         svcResetToNeutral(); svcAutoCloseIfMobile();
       } else {
         const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
         if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
         svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione alla posizione di prima.</span>', 'error');
+        _aiExecSettle(false, String(msg || 'errore'));
       }
     } catch (err) {
       clearInterval(_timer);
       _staffCalPendingEdits.delete(pendKey);
       if (err && err.name === 'AbortError') {
         svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di ritentare (non rifarla alla cieca, rischi un doppione).', 'error');
+        _aiExecSettle(false, 'timeout');
       } else {
         svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
+        _aiExecSettle(false, (err && err.message ? err.message : String(err)));
       }
     }
   }
@@ -39794,7 +39809,7 @@ Per confermare scrivi ELIMINA.`);
       // Chiudi il turno precedente ancora aperto: se era DEBOLE e segue subito un nuovo
       // messaggio → riformulazione; se era PULITO e azionabile → confermato (l'utente è andato
       // avanti senza lamentele). Un debole non seguìto subito resta aperto (potrà essere segnalato).
-      if (_aiPendingTurn && !_aiPendingTurn.outcome) {
+      if (_aiPendingTurn && !_aiPendingTurn.outcome && !_aiPendingTurn._execPending) {
         const quick = (Date.now() - _aiPendingTurn.at) < _AI_TURN_REFORMULATE_MS;
         if (_aiPendingTurn.weak && quick) _aiTurnFinalize(_aiPendingTurn, 'reformulated', { next_utterance: text });
         else if (!_aiPendingTurn.weak) _aiTurnFinalize(_aiPendingTurn, 'confirmed');
@@ -39844,6 +39859,29 @@ Per confermare scrivi ELIMINA.`);
       };
       _aiTurnInsert(row);
     }
+    // ── Esito REALE di esecuzione ────────────────────────────────────────────────
+    // L'euristica "è arrivato un altro messaggio" non sa se l'azione è andata a buon
+    // fine sul worker Matchpoint. Questi due ganci agganciano l'esito VERO (executed/
+    // failed) al turno chat che ha avviato l'azione; per le azioni MANUALI (nessun
+    // turno chat aperto) registrano una riga dedicata col vero esito.
+    function _aiTurnExecBegin() {
+      // Marca il turno chat aperto come "in esecuzione": così l'euristica dei 90s non
+      // lo chiude prima che il worker risponda. Restituisce il riferimento per execEnd.
+      if (_aiPendingTurn && !_aiPendingTurn.outcome) { _aiPendingTurn._execPending = true; return _aiPendingTurn; }
+      return null;
+    }
+    function _aiTurnExecEnd(ref, ok, detail) {
+      if (!_AI_TURNS_ENABLED) return;
+      const outcome = ok ? 'executed' : 'failed';
+      detail = detail || {};
+      if (ref && !ref.outcome) {
+        ref._execPending = false;
+        _aiTurnFinalize(ref, outcome, { meta: { exec: true, via: detail.via || 'assistente', azione: detail.azione || null, reason: detail.reason || null } });
+      } else {
+        // azione manuale (o turno già chiuso): riga dedicata col vero esito
+        _aiTurnLogManual('prenotazione', detail.azione || 'modifica', outcome, detail);
+      }
+    }
     // Legge gli ultimi turni dal diario (richiede sessione staff: SELECT per authenticated).
     async function _aiTurnsFetch(limitN) {
       const cfg = await loadAssessmentSupabaseConfig();
@@ -39857,7 +39895,7 @@ Per confermare scrivi ELIMINA.`);
     }
     function _aiTurnIsNegative(r) {
       if (r && r.meta && r.meta.negative) return true;
-      return !!(r && (r.outcome === 'reformulated' || r.outcome === 'reported'));
+      return !!(r && (r.outcome === 'reformulated' || r.outcome === 'reported' || r.outcome === 'failed'));
     }
     async function loadTurnsInsight() {
       const el = document.getElementById('aiTurnsInsight');
@@ -44024,7 +44062,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
