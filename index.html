@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.861';
+    const APP_VERSION = '5.862';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41442,8 +41442,17 @@ Per confermare scrivi ELIMINA.`);
     function _lezionePlayerText(after, istruttore) {
       let s = String(after || '');
       if (istruttore) {
+        // Rimuovi il maestro dal testo-giocatori: nome canonico + suoi token + ALIAS fuzzy che
+        // mappano a questo istruttore (es. "lo zio"/"Lo Zio" → "LoZio"). Senza gli alias, "con lo
+        // zio" lasciava "zio" come giocatore → fuzzy su un socio a caso (bug live 21/06).
         const variants = String(istruttore).split(/\s+/).concat([istruttore]);
-        variants.forEach(function (v) { if (v && v.length >= 2) { try { s = s.replace(new RegExp('\\b' + _escapeReg(v) + '\\b', 'ig'), ' '); } catch (e) {} } });
+        try {
+          const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
+          for (const k in fuzzy) { if (_norm(fuzzy[k]) === _norm(istruttore)) variants.push(k); }
+        } catch (e) {}
+        // Più lunghi prima ("lo zio" prima di "zio"), così non resta un frammento risolvibile.
+        variants.sort(function (a, b) { return String(b).length - String(a).length; });
+        variants.forEach(function (v) { if (v && String(v).length >= 2) { try { s = s.replace(new RegExp('\\b' + _escapeReg(v) + '\\b', 'ig'), ' '); } catch (e) {} } });
       }
       return s.replace(/\b(con|per|maestr[oa]|allievi?|insegnante|lezione)\b/ig, ' ').replace(/\s+/g, ' ').trim();
     }
