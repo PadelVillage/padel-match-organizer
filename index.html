@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.858';
+    const APP_VERSION = '5.859';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35956,7 +35956,8 @@ Per confermare scrivi ELIMINA.`);
     // dell'archivio (storicoPrenotazioni) NON popolano prenotazioni/occupazione, quindi il
     // calendario mostrava "Libero". Le aggiungiamo come FALLBACK a bassa priorità: solo per gli
     // slot (campo|ora) ancora liberi, così non sovrascrivono mai il live di oggi/futuro. Marcate
-    // `storico:true` (sola lettura: sono prenotazioni Matchpoint già passate, non più modificabili).
+    // `storico:true`; sono cliccabili/MODIFICABILI come le occupazioni Matchpoint: il click le
+    // promuove e l'edit usa la terna campo+data+ora (il worker ricava l'idReserva dal tabellone).
     const storico = (typeof storicoPrenotazioni !== 'undefined' && Array.isArray(storicoPrenotazioni))
       ? storicoPrenotazioni : [];
     for (const p of storico) {
@@ -36850,15 +36851,31 @@ Per confermare scrivi ELIMINA.`);
       if (!exists) {
         // Recupera i dati dall'occupancy per quello slot
         const occ = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) ? prenotazioniOccupazione : [];
-        const src = occ.find(function (x) {
+        let src = occ.find(function (x) {
           return x && String(x.data).trim() === wIso
             && Number(String(x.campo).replace(/\D/g, '')) === cn
             && String(x.ora).trim() === wOra;
         });
+        // v5.859 — STORICO editabile: una prenotazione passata non è nell'occupancy live e non
+        // porta l'idReserva (l'export storico non lo riporta). La cerchiamo nello storico e la
+        // promuoviamo COMUNQUE: il worker di edit ricava l'idReserva dal tabellone Matchpoint
+        // partendo dalla terna campo+data+ora (anche per le date passate). Niente guardia qui.
+        let fromStorico = false;
+        if (!src) {
+          const sto = (typeof storicoPrenotazioni !== 'undefined' && Array.isArray(storicoPrenotazioni)) ? storicoPrenotazioni : [];
+          src = sto.find(function (x) {
+            return x && String(x.data).trim() === wIso
+              && Number(String(x.campo).replace(/\D/g, '')) === cn
+              && String(x.ora).trim() === wOra;
+          });
+          fromStorico = !!src;
+        }
         const _idr = (src && src.idReserva) ? String(src.idReserva) : null;
-        if (!_idr) {
-          // GUARDIA: senza idReserva non si promuove (creerebbe uno shadow permanente).
-          // Mostra la vista in sola lettura e avvisa di sincronizzare prima.
+        if (!_idr && !fromStorico) {
+          // GUARDIA: per le occupazioni LIVE non ancora sincronizzate senza idReserva non si
+          // promuove (creerebbe uno shadow permanente; l'idReserva arriva con "Aggiorna
+          // prenotazioni"). Per lo storico NON vale: l'idReserva non arriverà mai, ma il worker
+          // lo ricava dalla terna → si procede.
           if (typeof svcOpenChat === 'function') svcOpenChat();
           svcAddMessage('system', '🔒 Questa prenotazione Matchpoint non è ancora sincronizzata (manca l\'idReserva). Fai prima <strong>Aggiorna prenotazioni</strong>, poi potrai modificarla.', 'error');
           if (typeof staffCalViewMatchpointPlayers === 'function') staffCalViewMatchpointPlayers(iso, campo, ora);
@@ -36871,7 +36888,7 @@ Per confermare scrivi ELIMINA.`);
           id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now()),
           data: wIso, ora: wOra, oraFine: _staffCalEndTime(wOra, _dur), campo: cn,
           nome: (src && src.giocatore) || nome || '', durata: _dur, tipo: _tipo, istruttore: '',
-          giocatori: _gioc, idReserva: _idr, promoted: true, createdAt: new Date().toISOString(),
+          giocatori: _gioc, idReserva: _idr, promoted: true, storico: fromStorico, createdAt: new Date().toISOString(),
         };
         list.push(entry);
         if (typeof save === 'function') save('staffBookings', list);
