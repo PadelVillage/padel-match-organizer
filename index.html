@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.872';
+    const APP_VERSION = '5.873';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37374,7 +37374,7 @@ Per confermare scrivi ELIMINA.`);
       origIso: st.origIso, origCampo: st.origCampo, origOra: st.origOra, dataIt: st.dataIt,
       mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
-      note: (st.note || ''), noteChanged: noteChanged,
+      note: (st.note || ''), origNote: (st.origNote || ''), noteChanged: noteChanged,
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
     const _idReservaEdit = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
@@ -37397,78 +37397,91 @@ Per confermare scrivi ELIMINA.`);
       try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
     }
 
-    // Chiudi la schedina: l'operatore torna libero immediatamente.
+    // ── OTTIMISTICO: applica SUBITO tutte le modifiche in locale; l'operatore è libero all'istante.
+    //    La scrittura su Matchpoint prosegue in BACKGROUND (anche ~60s). Su rifiuto → annullo + avviso.
     staffCalPlayersState = null;
-    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); renderStaffCalendar(); }
+    // Lo "slot" della prenotazione è identificato da campo + data + ora di INIZIO. Una modifica di
+    // sola durata (allunga/accorcia) NON cambia lo slot → non è uno spostamento, ma un edit in place.
+    const _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
+    const _curIso = _slotMoved ? op.mIso : op.origIso;
+    const _curCampo = _slotMoved ? op.mCampo : op.origCampo;
+    const _curOra = _slotMoved ? op.mOraIni : op.origOra;
+    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
+    if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
+    if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
+    try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
+    renderStaffCalendar();
+    svcResetToNeutral(); svcAutoCloseIfMobile();
+
     const destTxt = moveChanged
       ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
       : ('Campo ' + op.origCampo + ' \xb7 ' + op.dataIt + ' \xb7 ' + op.origOra);
-    const inProgress = svcAddMessage('system', '⏳ <strong>Modifica avviata su Matchpoint</strong> (in sottofondo): ' + destTxt + '<br><span style="color:var(--text-muted);font-size:.78rem;">Può richiedere 1–2 minuti. Puoi continuare a lavorare: ti avviso qui quando è pronta.</span>');
-    let _sec = 0;
-    const _timer = setInterval(function () {
-      _sec += 1;
-      const last = inProgress.querySelector(':scope > div:last-child');
-      if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">⏳ In corso da ' + _sec + 's… puoi continuare a lavorare.</span>';
-    }, 1000);
+    const _playersTxt = (op.hasPlayers && playersChanged)
+      ? ('<br>👥 ' + (addArr.length ? ('+' + addArr.map(function (a) { return a.nome; }).join(', ')) : '') + (remove.length ? ((addArr.length ? ' · ' : '') + '-' + remove.join(', ')) : ''))
+      : '';
+    const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : '';
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto scrivendo su Matchpoint…</span>';
+    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _noteTxt + _syncNote, 'ok');
+    const _setEditSyncNote = function (html, color) {
+      try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+    };
 
-    try {
-      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-      const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
-      const _ctrl = new AbortController();
-      const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
-      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-        body: JSON.stringify(payload),
-        signal: _ctrl.signal,
-      });
-      const respText = await response.text();
-      let data = null;
-      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
-      clearInterval(_timer);
-      clearTimeout(_to);
-      _staffCalPendingEdits.delete(pendKey);
+    // ── Propagazione su Matchpoint in BACKGROUND (non blocca l'operatore) ──
+    (async function () {
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+        const _ctrl = new AbortController();
+        const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
+        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify(payload),
+          signal: _ctrl.signal,
+        });
+        const respText = await response.text();
+        let data = null;
+        try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+        clearTimeout(_to);
+        _staffCalPendingEdits.delete(pendKey);
 
-      if (response.ok && data && data.ok !== false) {
-        const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-        const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
-        // Lo spostamento è già applicato in modo ottimistico al click. Per le sole modifiche
-        // giocatori (senza spostamento) applico ora; e fisso i nomi alla posizione CORRENTE.
-        if (!moveChanged) _staffCalApplyLocalEdit(op, false, durMin, finalRoster);
-        if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, nomi);
-        if (op.hasPlayers) staffCalApplyLocalGiocatori(moveChanged ? op.mIso : op.origIso, moveChanged ? op.mCampo : op.origCampo, moveChanged ? op.mOraIni : op.origOra, addArr, remove);
-        // Lo "slot" della prenotazione e identificato da campo + data + ora di INIZIO. Una modifica
-        // di sola durata (allunga/accorcia) NON cambia lo slot: NON va trattata come spostamento
-        // (che emetterebbe una soppressione sullo slot ancora occupato), ma come edit in place,
-        // lo stesso ramo che funziona per le modifiche giocatori.
-        var _slotMoved = (Number(op.origCampo) !== Number(op.mCampo)) || (String(op.origIso) !== String(op.mIso)) || (String(op.origOra) !== String(op.mOraIni));
-        // Persisti la nota in locale allo slot CORRENTE (spostato o in place) PRIMA del cloud sync,
-        // così il record staff_booking spinto sul cloud la include.
-        if (op.noteChanged) { try { staffCalApplyLocalNote(_slotMoved ? op.mIso : op.origIso, _slotMoved ? op.mCampo : op.origCampo, _slotMoved ? op.mOraIni : op.origOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
-        try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(op.origIso, op.origCampo, op.origOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
-        const lastP = inProgress.querySelector(':scope > div:last-child');
-        if (lastP) lastP.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">Conclusa in ' + _sec + 's.</span>';
-        svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + (op.hasPlayers && nomi != null ? '<br>👥 ' + (nomi || '(nessuno)') : '') + (op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : ''), 'ok');
-        _aiExecSettle(true, null);
+        if (response.ok && data && data.ok !== false) {
+          // Riconcilia col roster AUTOREVOLE del worker: fissa i nomi reali alla posizione corrente.
+          const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
+          const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
+          if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(_curIso, _curCampo, _curOra, nomi);
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          // Push cloud (con giocatori/nota correnti) solo a propagazione riuscita: un edit poi
+          // revertito non deve sporcare il cloud.
+          try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
+          _setEditSyncNote('✅ Salvata su Matchpoint', '#067647');
+          _aiExecSettle(true, null);
+          renderStaffCalendar();
+        } else {
+          const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          _aiExecSettle(false, String(msg || 'errore'));
+          renderStaffCalendar();
+        }
+      } catch (err) {
+        _staffCalPendingEdits.delete(pendKey);
+        if (err && err.name === 'AbortError') {
+          // Timeout: NON revertire alla cieca (la modifica potrebbe essere passata lo stesso su MP).
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
+          _aiExecSettle(false, 'timeout');
+        } else {
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+          svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          _aiExecSettle(false, (err && err.message ? err.message : String(err)));
+        }
         renderStaffCalendar();
-        svcResetToNeutral(); svcAutoCloseIfMobile();
-      } else {
-        const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-        if (moveChanged) { _staffCalRevertMoveLocal(op); renderStaffCalendar(); }
-        svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione alla posizione di prima.</span>', 'error');
-        _aiExecSettle(false, String(msg || 'errore'));
       }
-    } catch (err) {
-      clearInterval(_timer);
-      _staffCalPendingEdits.delete(pendKey);
-      if (err && err.name === 'AbortError') {
-        svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di ritentare (non rifarla alla cieca, rischi un doppione).', 'error');
-        _aiExecSettle(false, 'timeout');
-      } else {
-        svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err), 'error');
-        _aiExecSettle(false, (err && err.message ? err.message : String(err)));
-      }
-    }
+    })();
   }
 
   function _staffCalRevertMoveLocal(op) {
@@ -37487,6 +37500,45 @@ Per confermare scrivi ELIMINA.`);
     });
     if (changed) save('staffBookings', existing);
     _staffCalClearSuppressed(op.origIso, op.origCampo, op.origOra);
+  }
+
+  // Marca/smarca il flag `syncing` sul record staffBooking dello slot: la card mostra il puntino
+  // arancione discreto (renderStaffCalendar) finché Matchpoint non conferma. Solo display in locale;
+  // la protezione del pull resta affidata a _staffCalPendingEdits.
+  function _staffCalSetSyncing(iso, campo, ora, on) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function (b) {
+      if (String(b.data).trim() === String(iso).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        if (on) { if (b.syncing !== true) { b.syncing = true; changed = true; } }
+        else if (b.syncing) { delete b.syncing; changed = true; }
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
+
+  // Inverte un edit giocatori applicato in modo ottimistico: ri-aggiunge i rimossi, toglie gli aggiunti.
+  // (Limite noto, come sul percorso create: la rimozione è per nome → con omonimi/Ospite duplicati può
+  // togliere più del dovuto; caso raro perché scatta solo su rifiuto Matchpoint.)
+  function _staffCalRevertPlayersLocal(iso, campo, ora, addArr, removeArr) {
+    const reAdd = (Array.isArray(removeArr) ? removeArr : []).map(function (n) { return { nome: n }; });
+    const reRemove = (Array.isArray(addArr) ? addArr : []).map(function (a) { return a && a.nome; }).filter(Boolean);
+    staffCalApplyLocalGiocatori(iso, campo, ora, reAdd, reRemove);
+  }
+
+  // Annulla in locale un edit ottimistico fallito su Matchpoint: ripristina giocatori, nota e
+  // posizione (spostamento) com'erano prima, e toglie il puntino di sincronizzazione.
+  function _staffCalEditRevertAll(op, addArr, removeArr, curIso, curCampo, curOra, slotMoved, moveChanged) {
+    try { if (op.hasPlayers && ((addArr && addArr.length) || (removeArr && removeArr.length))) _staffCalRevertPlayersLocal(curIso, curCampo, curOra, addArr, removeArr); } catch (e) {}
+    try { if (op.noteChanged) staffCalApplyLocalNote(curIso, curCampo, curOra, op.origNote); } catch (e) {}
+    try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
+    try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
+    try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
   }
 
   // Aggiorna l'array `giocatori` della prenotazione staff in locale applicando gli add/remove
