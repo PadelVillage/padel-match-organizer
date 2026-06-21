@@ -25,3 +25,12 @@ pmo_deploy_key.pub
 
 # Config locale editor/agent (non versionata)
 .claude/
+
+# Dipendenze npm locali (helper docx, non fanno parte del deploy index.html)
+node_modules/
+package.json
+package-lock.json
+
+# Artefatti temporanei locali (debug/scratch)
+_chromerr.txt
+_doc.html
