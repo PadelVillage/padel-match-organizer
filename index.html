@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.885';
+    const APP_VERSION = '5.886';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42835,6 +42835,17 @@ Per confermare scrivi ELIMINA.`);
         const _oc = Number(String(_openCancel.origCampo).replace(/\D/g, '')) || _openCancel.origCampo;
         const oSlot = { campo: _oc, ora: _openCancel.origOra, durata: _openCancel.origDurMin || 90, nome: (_openCancel.nome || ''), istruttore: '', tipoReale: _openCancel.tipoReale || 'partita' };
         return _showCancelSummary(_openCancel.origIso, oSlot);
+      }
+      // ULTIMA PRENOTAZIONE CREATA IN CHAT = bersaglio implicito: subito dopo una create, un "cancella"
+      // NUDO (senza scheda aperta, senza campo/ora/giorno/nome) annulla QUELLA, invece di elencare tutte
+      // le prenotazioni del giorno. Mirror dello STEP 2 di "aggiungi <nome>" (_lastChatBooking). Il
+      // riepilogo di conferma mostra comunque cosa si annulla, quindi è sicuro anche se il dato è vecchio.
+      const _nowC = (Date.now ? Date.now() : new Date().getTime());
+      if (!_openCancel && _lastChatBooking && (_nowC - (_lastChatBooking.at || 0)) <= AI_FLOW_TTL_MS
+          && !slots.court && !slots.time && !slots.date && !p.campoNum && !p.ora && !_extractCancelWho(text)) {
+        const _lcb = _lastChatBooking;
+        const oSlot = { campo: _lcb.campo, ora: _lcb.ora, durata: _lcb.durata || 90, nome: _lcb.nome || '', istruttore: '', tipoReale: _lcb.tipo || 'partita' };
+        return _showCancelSummary(_lcb.iso, oSlot);
       }
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
