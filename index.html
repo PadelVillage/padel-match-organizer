@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.881';
+    const APP_VERSION = '5.882';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41603,6 +41603,16 @@ Per confermare scrivi ELIMINA.`);
         const verbo = info.intent === 'CANCELLA' ? 'annullare' : 'modificare';
         const ic = info.intent === 'CANCELLA' ? '🗑️' : '✏️';
         const es = info.intent === 'CANCELLA' ? 'annulla campo 2 oggi alle 18' : 'modifica campo 2 oggi alle 18';
+        // Voce-friendly: mostra le prenotazioni del giorno VISUALIZZATO come pulsanti → scegli e agisci.
+        const _iso = date || _calSelectedIso();
+        const _cands = (typeof _cancelCandidates === 'function') ? _cancelCandidates(_iso, court || 0, time || '', '') : [];
+        if (_cands.length) {
+          const _m = _say(ic + ' <strong>Quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Tocca un pulsante, oppure dimmi giorno/campo/ora.');
+          _choiceButtons(_m, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+            function (i) { if (info.intent === 'CANCELLA') _showCancelSummary(_iso, _cands[i]); else _openEditor(_iso, _cands[i], null); },
+            function () { _say('👍 Ok.'); });
+          return;
+        }
         msg = ic + ' Volentieri — <strong>quale</strong> prenotazione vuoi ' + verbo + '?' + recapTxt
           + ' Dimmi almeno il <strong>giorno</strong> (oggi, domani o una data) e, se lo sai, anche <strong>campo</strong> e <strong>ora</strong>. Esempio: «' + es + '».';
       } else if (recap.length) {
@@ -43590,8 +43600,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaAnswerMember(matches[0].member, fields);
       aiFlowState = { kind: 'anagrafica', op: 'read', stage: 'pick', matches: matches, fields: fields };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Di quale socio? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Di quale socio?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'read', fields, null);
+      return true;
     }
     function _anaAnswerMember(member, fields) {
       if (!member) return _say('Socio non trovato.');
@@ -43628,8 +43639,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaDeactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'pick', matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi disattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'deactivate', null, null);
+      return true;
     }
     function _anaDeactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
@@ -43687,8 +43699,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaReactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'pick', matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi riattivare? Rispondi col <strong>numero</strong> (oppure «annulla»):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'reactivate', null, null);
+      return true;
     }
     function _anaReactivateWithTarget(member) {
       if (!member) return _say('Socio non trovato.');
@@ -43910,8 +43923,9 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
-      const items = matches.map(function (mm, i) { const g = mm.member; return (i + 1) + '. <strong>' + _escapeHtml(playerFullName(g)) + '</strong>' + (g.memberId ? ' <span style="color:#98a2b3">(' + _escapeHtml(g.memberId) + ')</span>' : ''); });
-      return _say('❓ Quale socio vuoi aggiornare? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Tocca un pulsante o dimmi il cognome.');
+      _anaPickButtons(_m, matches, 'update', null, changes);
+      return true;
     }
     function _continueAnaPick(text) {
       const n = ' ' + _norm(text) + ' ';
@@ -43930,6 +43944,21 @@ Per confermare scrivi ELIMINA.`);
       if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
       if (op === 'reactivate') return _anaReactivateWithTarget(pick);
       return _anaUpdateWithTarget(pick, changes);
+    }
+    // Pulsanti per scegliere fra più soci omonimi (voce-friendly). Instrada come _continueAnaPick
+    // in base all'operazione; la risposta vocale/testuale (numero/cognome) resta gestita da quello.
+    function _anaPickButtons(msgEl, matches, op, fields, changes) {
+      _choiceButtons(msgEl, (matches || []).map(function (mm) { const g = mm.member; return playerFullName(g) + (g.memberId ? ' (' + g.memberId + ')' : ''); }),
+        function (i) {
+          const pick = matches[i] && matches[i].member;
+          aiFlowState = null;
+          if (!pick) return;
+          if (op === 'read') return _anaAnswerMember(pick, fields);
+          if (op === 'deactivate') return _anaDeactivateWithTarget(pick);
+          if (op === 'reactivate') return _anaReactivateWithTarget(pick);
+          return _anaUpdateWithTarget(pick, changes);
+        },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
     }
     function _anaUpdateWithTarget(member, changes) {
       if (!member) return _say('Socio non trovato.');
