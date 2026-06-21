@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.865';
+    const APP_VERSION = '5.866';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40295,8 +40295,13 @@ Per confermare scrivi ELIMINA.`);
       // dell'ora di fine). Robusto alle forme che il match a parola intera non catturerebbe.
       // Guardia: serve un segnale di prenotazione/durata, così "riduci il livello di Mario"
       // (anagrafica) o altri usi generici di "riduci/estendi" NON vengono dirottati su CORREGGI.
-      const durataCtx = /(^| )(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(n)
-        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n);
+      // "levi/togli <quantità di tempo>" (mezz'ora, 30 minuti, un'ora…) è un ACCORCIAMENTO della
+      // durata, NON una rimozione giocatore: richiede una quantità di tempo esplicita, così
+      // "togli Mario" resta rimozione e "levi mezz'ora" diventa durata.
+      const durataQtyLev = /(^| )(lev[ai]|togl\w*|tolg\w*)\b/.test(n)
+        && /(mezz|minut|\bor[ae]\b|quart\w|un['’]?\s*ora)/.test(n);
+      const durataCtx = (/(^| )(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(n)
+        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n)) || durataQtyLev;
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -42488,9 +42493,12 @@ Per confermare scrivi ELIMINA.`);
       const isAdd = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow);
       // "da(lla) partita/lezione/prenotazione/campo" = togliere un giocatore DA dentro (non annullare).
       const removeFromPat = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(nlow);
+      // "levi/togli <quantità di tempo>" = accorcia la DURATA, non rimuovere un giocatore.
+      const durQtyLev = /(^|\s)(lev[ai]|togl\w*|tolg\w*)\b/.test(nlow)
+        && /(mezz|minut|\bor[ae]\b|quart\w|un['’]?\s*ora)/.test(nlow);
       // togli/rimuovi/leva valgono sempre; cancella/elimina/scarta SOLO col pattern "dalla …"
       // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
-      const isRemove = !isAdd && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
+      const isRemove = !isAdd && !durQtyLev && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
         || (removeFromPat && /(^|\s)(cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(nlow)));
       // SPOSTAMENTO: postulato → leggi il calendario per capire sorgente e destinazione.
       // Include lo spostamento di solo ORARIO: "anticipa/posticipa la partita alle …".
@@ -42501,9 +42509,10 @@ Per confermare scrivi ELIMINA.`);
       // (allunga/accorcia/…) e per la durata nominata ("porta/imposta/cambia la durata a 90",
       // "fai durare … due ore").
       const isDurata = !isAdd && !isRemove && !isMove && (
-        /(^|\s)(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*)/.test(nlow)
+        /(^|\s)(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow)
         || /(^|\s)durat\w*/.test(nlow)
-        || /\bdurar\w*/.test(nlow));
+        || /\bdurar\w*/.test(nlow)
+        || durQtyLev);
       if (isDurata) return _startDurata(res, text, iso, court, time);
       // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
       const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
@@ -42793,7 +42802,7 @@ Per confermare scrivi ELIMINA.`);
       // SORGENTE (postulato): scheda aperta o prenotazione che ESISTE sul calendario.
       const src = _durSrcFromCalendar(res, text, iso, court, time);
       if (!src) return _say('🔍 Non trovo la prenotazione di cui cambiare la durata. Dimmi campo e ora, es. «<em>allunga la partita di campo 1 alle 18 di mezz\'ora</em>».');
-      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow);
+      const isShorten = /(^|\s)(accorci\w*|riduc\w*|abbrevi\w*|diminuisc\w*|lev[ai]|togl\w*|tolg\w*)/.test(nlow);
       const r = _computeNewDur(src, isShorten, text);
       if (r.ask) {
         // Quantità non detta: apro un flusso in ATTESA così la risposta successiva viene catturata.
