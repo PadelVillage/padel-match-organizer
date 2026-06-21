@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.864';
+    const APP_VERSION = '5.865';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41112,6 +41112,28 @@ Per confermare scrivi ELIMINA.`);
         const _isNoteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
         if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && _sameCourt && _sameTime && !_hasContact) {
           return _addPlayerToOpenBooking(res, t);
+        }
+      }
+      // Scheda aperta + comando di RIMOZIONE di un GIOCATORE: con la scheda già aperta non serve
+      // dire "dalla partita" → "togli/leva/elimina/cancella <nome>" qui significa togliere un
+      // GIOCATORE, NON annullare l'intera prenotazione (senza questa guardia "elimina Mario"
+      // cadeva nel parser e pesava come CANCELLA = annulla tutta la partita/lezione). Si distingue:
+      // • "cancella/elimina LA partita/lezione/prenotazione" (senza nome) → resta CANCELLA;
+      // • "leva mezz'ora / togli 30 minuti" (durata) → lasciato al verbo durata/parser;
+      // • "elimina la nota" → lasciato a _startNota.
+      if (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
+        const _rn = _norm(t);
+        const _rmVerb = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(_rn);
+        const _wholeBooking = /(^|\s)(tutt[oa]|la|le|l['’]|il|lo)?\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(_rn)
+          && !/(giocator\w*|allie\w*)/.test(_rn);
+        const _timeQty = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_rn);
+        const _noteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_rn);
+        if (_rmVerb && !_wholeBooking && !_timeQty && !_noteCmd) {
+          let _rawName = String(t || '')
+            .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\s+/i, ' ')
+            .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
+          _rawName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_rawName))).trim();
+          return _askRemoveConfirm(staffCalPlayersState, _rawName);
         }
       }
       // ⭐ STEP 2 — Nessuna scheda aperta, ma una prenotazione è stata CREATA in chat da poco e
