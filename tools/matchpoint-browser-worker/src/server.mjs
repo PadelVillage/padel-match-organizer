@@ -5022,6 +5022,11 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
     }
   }
   diagnostic.partecipantiRighe = righeViste.slice(0, 30);
+  // Marcatore versione + contenuto righe negli steps (gli steps sono l'unico campo
+  // diagnostico che risale fino all'app): così, se la verifica fallisce ancora, si vede
+  // COSA contengono davvero le righe (#cli=/#ppl=) e si conferma che gira il worker nuovo.
+  diagnostic.steps.push('player_verify_v2:want_cli=' + wantCode + ':want_ppl=' + wantPeople +
+    ':rows=' + (righeViste.slice(0, 6).join(' | ').slice(0, 260) || '(nessuna)'));
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
