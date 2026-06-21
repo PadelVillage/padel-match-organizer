@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.867';
+    const APP_VERSION = '5.868';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9087,6 +9087,9 @@ Grazie.`
       if (!wantedKey || wantedKey.length < 3) return [];
       const wantedParts = wantedKey.split(/\s+/).filter(Boolean);
       const allowFirstNameOnly = wantedParts.length === 1;
+      // Token dei nomi presi dal canonico CON spazi: normalizeKey toglie gli spazi
+      // ("lidia ciao comes" → "lidiaciaocomes"), quindi il confronto a token va fatto qui.
+      const wantedTokens = wanted.split(/\s+/).filter(Boolean);
       return (Array.isArray(giocatori) ? giocatori : [])
         .filter(g => memberMatchesNameSuggestionFilters(g, filters))
         .map(g => {
@@ -9094,11 +9097,24 @@ Grazie.`
           const reverse = canonicalPlayerLookupName(`${g.surname || ''} ${g.firstName || ''}`.trim());
           const first = canonicalPlayerLookupName(g.firstName || '');
           const keys = [full, reverse, ...(allowFirstNameOnly ? [first] : [])].map(normalizeKey).filter(Boolean);
-          const distance = Math.min(...keys.map(key => {
+          let distance = Math.min(...keys.map(key => {
             if (key === wantedKey) return 0;
             if (key.includes(wantedKey) || wantedKey.includes(key)) return 1;
             return editDistance(wantedKey, key);
           }));
+          // Token-subset: TUTTI i token cercati presenti nel nome del tesserato, anche NON
+          // contigui ("Lidia Comes" ⊆ "Lidia Ciao Comes": secondo nome in mezzo) o in ordine
+          // invertito ("Comes Lidia"). Senza, editDistance penalizza il token mancante (~+5)
+          // oltre soglia → falso "non in anagrafica" → Ospite / worker fallito.
+          if (wantedTokens.length >= 2) {
+            const subset = [full, reverse].some(name => {
+              const parts = String(name).split(/\s+/).filter(Boolean);
+              return wantedTokens.every(w => parts.includes(w));
+            });
+            // 0.5: segnale più forte di un match per solo-nome (distanza 1, es. "Lidia" →
+            // "Lidia Verdi") ma più debole dell'esatto (0) → vince senza creare ambiguità spuria.
+            if (subset) distance = Math.min(distance, 0.5);
+          }
           return { member:g, distance };
         })
         .filter(item => item.distance <= Math.max(1, Math.floor(wantedKey.length / 3)))
@@ -41656,6 +41672,9 @@ Per confermare scrivi ELIMINA.`);
         const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
         giocatori.push({ nome: nomeSocio, codice: codice, codiceCliente: codiceCliente });
         if (ambiguous) notes.push('Più soci simili a “' + nm + '”: ho scelto ' + nomeSocio + ' (se sbaglio, annulla e specifica meglio).');
+        // Nome digitato/dettato incompleto o diverso dal tesserato (es. "Lidia Comes" →
+        // "Lidia Ciao Comes"): annuncia il riconoscimento così l'utente conferma dal riepilogo.
+        else if (_norm(nomeSocio) !== _norm(nm)) notes.push('Ho riconosciuto “' + nm + '” come <strong>' + nomeSocio + '</strong>' + (codiceCliente ? ' (socio ' + codiceCliente + ')' : '') + '.');
       }
       return { giocatori: giocatori, notes: notes };
     }
