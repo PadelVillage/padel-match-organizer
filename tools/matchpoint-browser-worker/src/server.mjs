@@ -1448,6 +1448,24 @@ async function navigaFinoAlTabellone(page, diagnostic, baseUrl = DEFAULT_BASE_UR
   );
 }
 
+// Legge la data attualmente mostrata dal tabellone (input datepicker #fechaTabla),
+// normalizzata a 'dd/mm/yyyy'. '' se non leggibile. Serve a VERIFICARE che la griglia
+// sia passata davvero al giorno richiesto (vedi nota minDate in impostaDataTabellone).
+async function leggiDataTabellone(tabCtx) {
+  return await tabCtx.evaluate(() => {
+    try {
+      const el = document.querySelector('#fechaTabla');
+      const v = el && el.value ? String(el.value).trim() : '';
+      const m = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (!m) return '';
+      const dd = String(m[1]).padStart(2, '0');
+      const mm = String(m[2]).padStart(2, '0');
+      let yy = String(m[3]); if (yy.length === 2) yy = '20' + yy;
+      return `${dd}/${mm}/${yy}`;
+    } catch (e) { return ''; }
+  }).catch(() => '');
+}
+
 // Imposta la data sul tabellone e attende che la griglia si aggiorni.
 // isoDate: 'YYYY-MM-DD'
 async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
@@ -1489,7 +1507,18 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
     diagnostic.dateInputSelector = onSelectResult.method;
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(1200);
-    return;
+    // VERIFICA che la griglia mostri davvero il giorno richiesto. Il datepicker jQuery UI,
+    // se ha un minDate, CLAMPA setDate() a oggi: onSelect scatta con la data di oggi e la
+    // griglia non si sposta sul giorno passato → l'evento non si trova ("nessun evento").
+    // Se la data mostrata ≠ target, NON usciamo: passiamo alla navigazione esplicita del
+    // popup (Strategia 2), che è esattamente ciò che fa l'operatore a mano.
+    const shown1 = await leggiDataTabellone(tabCtx);
+    diagnostic.dateShownAfterOnSelect = shown1;
+    if (!shown1 || shown1 === italianDate) {
+      diagnostic.dateShown = shown1 || italianDate;
+      return;
+    }
+    diagnostic.steps.push(`date_mismatch_onSelect:want=${italianDate}:got=${shown1}`);
   }
 
   // ── Strategia 2: clic nativo sul popup jQuery datepicker ─────────────────
@@ -1525,7 +1554,15 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
         diagnostic.dateInputSelector = 'datepicker_popup_click';
         await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
         await page.waitForTimeout(1200);
-        return;
+        const shown2 = await leggiDataTabellone(tabCtx);
+        diagnostic.dateShownAfterPopup = shown2;
+        if (!shown2 || shown2 === italianDate) {
+          diagnostic.dateShown = shown2 || italianDate;
+          return;
+        }
+        // La data ancora non combacia (es. giorno disabilitato da minDate): non usciamo,
+        // proviamo le strategie successive (fill/DOM).
+        diagnostic.steps.push(`date_mismatch_popup:want=${italianDate}:got=${shown2}`);
       }
     }
   } catch (dpErr) {
@@ -1605,6 +1642,12 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
   diagnostic.afterDateUrl = page.url();
   // Registra anche l'URL del frame (più utile di page.url() per capire se c'è stato reload)
   diagnostic.afterDateFrameUrl = await tabCtx.evaluate(() => location.href).catch(() => '');
+  // Data effettivamente mostrata dopo tutti i tentativi: se ≠ target, chi cerca l'evento
+  // saprà (e potrà segnalarlo) che la griglia non si è spostata sul giorno richiesto.
+  diagnostic.dateShown = await leggiDataTabellone(tabCtx);
+  if (diagnostic.dateShown && diagnostic.dateShown !== italianDate) {
+    diagnostic.dateMismatch = `want=${italianDate}:got=${diagnostic.dateShown}`;
+  }
 }
 
 // Legge l'intera griglia del tabellone e restituisce uno snapshot strutturato.
@@ -5784,7 +5827,8 @@ async function editBookingWithBrowser(input = {}) {
       diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
 
       if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
-        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
+        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}` +
+        ` (griglia su ${diagnostic.dateShown || '?'}, eventi totali ${_resEvento.eventiTot}, su questo campo ${_resEvento.eventiRecurso}).`, diagnostic);
       diagnostic.idReserva = idReserva;
     }
 
@@ -6195,7 +6239,8 @@ async function cancelBookingWithBrowser(input = {}) {
       diagnostic.steps.push(`cerca_evento_esito:recurso=${recurso}:eventiRecurso=${_resEvento.eventiRecurso}:eventiTot=${_resEvento.eventiTot}:found=${!!idReserva}`);
 
       if (!idReserva) throw fail('PRENOTAZIONE_NON_TROVATA',
-        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}.`, diagnostic);
+        `Nessun evento su campo ${input.campo} (recurso ${recurso}) all'ora ${input.ora} del ${fechaTab}` +
+        ` (griglia su ${diagnostic.dateShown || '?'}, eventi totali ${_resEvento.eventiTot}, su questo campo ${_resEvento.eventiRecurso}).`, diagnostic);
     }
     diagnostic.idReserva = idReserva;
 
