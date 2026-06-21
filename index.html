@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.880';
+    const APP_VERSION = '5.881';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41512,9 +41512,26 @@ Per confermare scrivi ELIMINA.`);
         const _nm = (res.giocatori && res.giocatori.length) ? res.giocatori.join(' ') : '';
         const _nmEsc = _escapeHtml(_nm);
         const _label = _nm ? ('<strong>' + _nmEsc + '</strong>') : 'questa persona';
-        return _say('Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>?<br>' +
-          '• Nuovo socio: scrivi “<em>iscrivi ' + (_nmEsc || '[nome cognome]') + '</em>”.<br>' +
-          '• In una prenotazione: dimmi quale, es. “<em>aggiungi ' + (_nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>”.');
+        const _m = _say('🤔 Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>? Tocca un pulsante o dimmelo a voce.');
+        _choiceButtons(_m, ['👥 Giocatore in una prenotazione', '👤 Iscrivilo come nuovo socio'], function (i) {
+          if (i === 1) {
+            // Nuovo socio: avvia l'anagrafica di creazione (senza eco di un finto messaggio utente).
+            (async function () { try { const r2 = await _parseWithAi('iscrivi ' + _nm); _startAnagrafica(r2, 'iscrivi ' + _nm); } catch (e) { _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); } })();
+            return;
+          }
+          // Giocatore: scegli a quale prenotazione del giorno aggiungerlo (a pulsanti).
+          const _iso = (typeof _calSelectedIso === 'function') ? _calSelectedIso() : _todayIso();
+          const _cands = _cancelCandidates(_iso, 0, '', '');
+          if (!_cands.length) {
+            return _say('Non trovo prenotazioni ' + _dayLabel(_iso) + ' a cui aggiungerlo. Dimmi quale, es. «<em>aggiungi ' + (_nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>».');
+          }
+          const _m2 = _say('A quale prenotazione aggiungo <strong>' + (_nmEsc || 'il giocatore') + '</strong>? Tocca un pulsante o dimmi campo e ora.');
+          _choiceButtons(_m2, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }), function (j) {
+            const _c = _cands[j];
+            (async function () { try { await staffCalEditPlayers(_iso, _c.campo, _c.ora, '', _c.durata, _c.tipoReale || _c.tipo); } catch (e) {} if (staffCalPlayersState && !staffCalPlayersState.busy) _addPlayerToOpenBooking(res, t); })();
+          }, function () { _say('👍 Ok.'); });
+        }, function () { _say('👍 Ok.'); });
+        return true;
       }
       // Punto UNICO di chiarimento (trasversale): se la richiesta non è azionabile —
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
@@ -42057,9 +42074,9 @@ Per confermare scrivi ELIMINA.`);
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
       if (k === 'type') { const div = _say('🎾 È una <strong>partita</strong> o una <strong>lezione</strong>?'); _appendTypeButtons(div, aiFlowState.draft); return div; }
-      if (k === 'maestro') return _say('👨‍🏫 Con quale <strong>maestro</strong> vuoi prenotare la lezione? (' + _escapeHtml(_maestri().join(', ')) + ')');
+      if (k === 'maestro') { const div = _say('👨‍🏫 Con quale <strong>maestro</strong>? Tocca un pulsante o dimmi il nome.'); _appendMaestroButtons(div, aiFlowState.draft); return div; }
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
-      if (k === 'court') return _say('🎾 Su quale <strong>campo</strong> vuoi prenotare? (1, 2, 3 o 4)');
+      if (k === 'court') { const div = _say('🎾 Su quale <strong>campo</strong>? Tocca un pulsante o dimmi il numero.'); _appendCourtButtons(div, aiFlowState.draft); return div; }
       if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
       if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
     }
@@ -42083,6 +42100,42 @@ Per confermare scrivi ELIMINA.`);
       };
       wrap.appendChild(mk('🎾 Partita', 'partita'));
       wrap.appendChild(mk('📚 Lezione', 'lezione'));
+      div.appendChild(wrap);
+    }
+    // Pulsanti CAMPO (1–4) per lo slot mancante (fallback testuale in _continuePrenota).
+    function _appendCourtButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      [1, 2, 3, 4].forEach(function (n) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = 'Campo ' + n;
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          b.classList.add('selected');
+          draft.campoNum = n; aiFlowState = null; _advancePrenota(draft);
+        });
+        wrap.appendChild(b);
+      });
+      div.appendChild(wrap);
+    }
+    // Pulsanti MAESTRO per lo slot mancante della lezione (fallback testuale in _continuePrenota).
+    function _appendMaestroButtons(div, draft) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      _maestri().forEach(function (m) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'svc-btn-step'; b.textContent = '👨‍🏫 ' + m;
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          wrap.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          b.classList.add('selected');
+          draft.istruttore = m; aiFlowState = null; _advancePrenota(draft);
+        });
+        wrap.appendChild(b);
+      });
       div.appendChild(wrap);
     }
     // Chiede se prenotare a nome Ospite quando manca il giocatore (Sì → Ospite; No → chiede il nome).
