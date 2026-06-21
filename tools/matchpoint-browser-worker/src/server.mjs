@@ -4783,6 +4783,26 @@ async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
   } catch (e) { /* timeout: proseguiamo comunque, c'è il fallback dei 3 tentativi */ }
 }
 
+// ── Helper: chiude un avviso SweetAlert2 ("importi in attesa", semaforo) se presente ──
+// Alcuni soci con semaforo GIALLO (es. pagamenti in sospeso) fanno comparire uno swal2
+// al momento della SELEZIONE / dell'AGGIUNTA dell'allievo in una lezione: il popup copre
+// la pagina, il click su "+ Aggiungere" viene intercettato e l'allievo non entra mai in
+// elenco → falso PLAYER_ADD_NOT_CONFIRMED (caso reale "Lidia Ciao Comes": 8,00 in attesa).
+// ⚠️ Controllo IMMEDIATO e non bloccante: isVisible() non auto-attende, quindi se l'avviso
+// non c'è si esce subito (nessun rischio del timeout-trap che ruppe le prenotazioni).
+async function dismissSwalOk(page, diagnostic, where) {
+  let dismissed = false;
+  for (let i = 0; i < 6; i++) {
+    const ok = page.locator('button.swal2-confirm');
+    if (!(await ok.isVisible().catch(() => false))) break;
+    await ok.first().click({ timeout: 1500 }).catch(() => {});
+    dismissed = true;
+    diagnostic.steps.push('swal_dismiss:' + where);
+    await page.waitForTimeout(300);
+  }
+  return dismissed;
+}
+
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
@@ -4960,12 +4980,28 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       diagnostic);
   }
 
-  // Clicca "Aggiungere" solo con id valido E nome combaciante
-  await addLink.first().click({ timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1200);
-  // L'aggiunta scatena un postback parziale: attende che la riga partecipante sia
-  // renderizzata prima di scansionare (riduce i falsi PLAYER_ADD_NOT_CONFIRMED).
-  await mpWaitAsyncPostbackIdle(page, 8000).catch(() => {});
+  // Avviso semaforo (es. "importi in attesa") eventualmente già presente: chiudilo.
+  await dismissSwalOk(page, diagnostic, 'pre_add');
+
+  // Clicca "+ Aggiungere all'elenco". Per un socio con semaforo GIALLO il PRIMO click
+  // mostra solo l'avviso swal2 ("importi in attesa") e NON inserisce l'allievo: va
+  // chiuso l'avviso (OK) e ri-cliccato "Aggiungere" per inserirlo davvero. Ritenta
+  // finché la riga compare nell'elenco "Allievi" (input TextBoxNombreValor della
+  // griglia Listado), max 3 tentativi.
+  const rowSel = 'input[id*="Listado"][id*="TextBoxNombreValor"]';
+  const baseRows = await page.locator(rowSel).count().catch(() => 0);
+  for (let addTry = 0; addTry < 3; addTry++) {
+    // Guardia anti-doppio: se la riga è già comparsa (anche da un click precedente con
+    // postback lento) non ri-clicca → evita di inserire l'allievo due volte.
+    if ((await page.locator(rowSel).count().catch(() => 0)) > baseRows) break;
+    await addLink.first().click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await dismissSwalOk(page, diagnostic, 'add' + addTry);
+    await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
+    const rows = await page.locator(rowSel).count().catch(() => 0);
+    diagnostic.steps.push(`player_add_try:${addTry}:rows=${rows}/base${baseRows}`);
+    if (rows > baseRows) break;
+  }
 
   // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
   // tipo di form. La partita usa il repeater "WUCUsuarioPartida", la lezione
