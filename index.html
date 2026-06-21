@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.873';
+    const APP_VERSION = '5.874';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36931,18 +36931,10 @@ Per confermare scrivi ELIMINA.`);
   }
 
   async function staffCalEditPlayers(isoDate, campo, ora, nome, durata, tipoReale) {
-    const _pk = _staffCalEditKey(isoDate, campo, ora);
-    if (_staffCalPendingEdits.has(_pk)) {
-      // Regola: NON rifiutare. La prenotazione è ancora in propagazione su Matchpoint →
-      // aspetto che finisca, poi procedo da solo con la modifica richiesta.
-      if (typeof svcOpenChat === 'function') svcOpenChat();
-      svcAddMessage('system', '⏳ Aspetto che Matchpoint finisca l\'operazione su questo slot, poi procedo…');
-      const _freed = await _staffCalWaitPending(_pk, 40000);
-      if (!_freed) {
-        svcAddMessage('system', '⚠️ Matchpoint ci sta mettendo più del previsto. Riprova tra poco.');
-        return;
-      }
-    }
+    // FASE B — NON aspetto più la propagazione prima di aprire: la prenotazione (anche appena
+    // creata) è già visibile in locale, quindi la scheda si apre SUBITO e l'operatore aggiunge il
+    // giocatore/nota all'istante. Se la create è ancora in volo, è `staffCalPlayersSave` a
+    // differire la sola chiamata al worker dell'edit finché Matchpoint conosce la prenotazione.
     if (typeof svcOpenChat === 'function') svcOpenChat();
     svcClearLog();
     const dataIt = isoDate.split('-').reverse().join('/');
@@ -37334,6 +37326,34 @@ Per confermare scrivi ELIMINA.`);
     });
   }
 
+  // ── FASE B (caso concatenato "crea → aggiungi X") ──────────────────────────────────────────
+  // Stato della CREATE ottimistica per slot, così un EDIT successivo sulla STESSA prenotazione
+  // può applicarsi SUBITO in locale e DIFFERIRE solo la chiamata al worker finché la
+  // prenotazione esiste davvero su Matchpoint (non si può modificare ciò che non c'è ancora).
+  // Valori: 'pending' | 'failed' (assente = nessuna create in volo / già conclusa con successo).
+  const _staffCalCreateState = new Map();
+  function _staffCalCreateBegin(key) { try { _staffCalCreateState.set(key, 'pending'); } catch (e) {} }
+  function _staffCalCreateSettle(key, ok) {
+    try {
+      if (ok) { _staffCalCreateState.delete(key); }
+      else { _staffCalCreateState.set(key, 'failed'); setTimeout(function () { if (_staffCalCreateState.get(key) === 'failed') _staffCalCreateState.delete(key); }, 60000); }
+    } catch (e) {}
+  }
+  // Attende che la CREATE dello slot esca da 'pending'. Ritorna 'done' (libera/mai stata),
+  // 'failed' (create fallita) o 'timeout'.
+  function _staffCalWaitCreate(key, maxMs) {
+    return new Promise(function (resolve) {
+      const cur = _staffCalCreateState.get(key);
+      if (cur !== 'pending') return resolve(cur === 'failed' ? 'failed' : 'done');
+      const t0 = Date.now();
+      const iv = setInterval(function () {
+        const s = _staffCalCreateState.get(key);
+        if (s !== 'pending') { clearInterval(iv); resolve(s === 'failed' ? 'failed' : 'done'); }
+        else if (Date.now() - t0 > (maxMs || 90000)) { clearInterval(iv); resolve('timeout'); }
+      }, 200);
+    });
+  }
+
   async function staffCalPlayersSave(opts) {
     opts = opts || {};
     const st = staffCalPlayersState;
@@ -37429,6 +37449,25 @@ Per confermare scrivi ELIMINA.`);
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca l'operatore) ──
     (async function () {
       try {
+        // FASE B — se questa stessa prenotazione è ancora in CREAZIONE su Matchpoint, l'edit è già
+        // applicato/visibile in locale ma aspetto che la prenotazione esista prima di chiamare il
+        // worker dell'edit (non si modifica ciò che non c'è ancora). Caso "crea → aggiungi X".
+        if (_staffCalCreateState.get(pendKey) === 'pending') _setEditSyncNote('↻ aspetto che la prenotazione sia su Matchpoint, poi salvo…');
+        const _creState = await _staffCalWaitCreate(pendKey, 90000);
+        if (_creState === 'failed') {
+          // La creazione è fallita → la prenotazione non esiste: annullo l'edit locale e avviso.
+          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+          _setEditSyncNote('⚠️ NON salvata: la prenotazione non è stata creata su Matchpoint', '#d92d20');
+          try { _staffCalPendingEdits.delete(pendKey); } catch (e) {}
+          _aiExecSettle(false, 'create-failed');
+          renderStaffCalendar();
+          return;
+        }
+        // La create, concludendosi, può aver rimosso la chiave (condivisa) dal set di protezione del
+        // pull e reso disponibile l'idReserva: ripristino la protezione e ri-cerco l'id adesso.
+        try { _staffCalPendingEdits.add(pendKey); } catch (e) {}
+        if (!payload.idReserva) { try { const _idLate = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra); if (_idLate) payload.idReserva = _idLate; } catch (e) {} }
+        _setEditSyncNote('↻ La sto scrivendo su Matchpoint…');
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
         const _ctrl = new AbortController();
@@ -38527,6 +38566,7 @@ Per confermare scrivi ELIMINA.`);
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca lo staff) ──
     (async function () {
       const _failStatus = function (why) {
+        try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
         try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
         try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
         try { if (parsed.data === isoDate) renderStaffCalendar(); } catch (e) {}
@@ -38539,6 +38579,7 @@ Per confermare scrivi ELIMINA.`);
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
           staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
+          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
           if (parsed.data === isoDate) renderStaffCalendar();
           staffCalSetStatus(`✅ ${tipoLabel} salvata su Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
@@ -42392,6 +42433,7 @@ Per confermare scrivi ELIMINA.`);
       const _optimKey = parsed.data + '|' + parsed.campoNum + '|' + parsed.ora;
       const _optimId = staffCalAddOptimistic(parsed);
       try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(_optimKey); } catch (e) {}
+      try { _staffCalCreateBegin(_optimKey); } catch (e) {}
       try { staffCalRtBroadcastPending(parsed); } catch (e) {}
       // ⭐ STEP 2 — ricorda la prenotazione appena creata: un successivo "aggiungi <nome>" la aggancia.
       try {
@@ -42419,6 +42461,7 @@ Per confermare scrivi ELIMINA.`);
       // ── Propagazione su Matchpoint in BACKGROUND (non blocca la chat) ──
       (async function () {
         const _failMsg = function (why) {
+          try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
           try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
@@ -42434,6 +42477,7 @@ Per confermare scrivi ELIMINA.`);
             try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
             try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
             try { renderStaffCalendar(); } catch (e) {}
+            try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
             _setSyncNote('✅ Salvata su Matchpoint', '#067647');
             _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
           } else if (result.status === 'error') {
