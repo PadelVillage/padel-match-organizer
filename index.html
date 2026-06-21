@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.878';
+    const APP_VERSION = '5.879';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41419,7 +41419,7 @@ Per confermare scrivi ELIMINA.`);
         const _timeQty = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_rn);
         const _noteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_rn);
         let _rawName = String(t || '')
-          .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\s+/i, ' ')
+          .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b\s*/i, ' ')
           .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
         _rawName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_rawName))).trim();
         // SOLO se c'è un NOME dopo il verbo è una rimozione-giocatore. "cancella"/"elimina" da
@@ -41448,6 +41448,42 @@ Per confermare scrivi ELIMINA.`);
           const st = staffCalPlayersState;
           const _oc = Number(String(st.origCampo).replace(/\D/g, '')) || st.origCampo;
           const oSlot = { campo: _oc, ora: st.origOra, durata: st.origDurMin || 90, nome: (st.nome || ''), istruttore: '', tipoReale: st.tipoReale || 'partita' };
+          // Con una prenotazione che HA giocatori, "cancella/annulla" da solo è ambiguo (togliere
+          // un giocatore o annullare l'intera prenotazione?): NON agire alla cieca, CHIEDI con i
+          // pulsanti (postulato: mai vicolo cieco). Senza giocatori (es. manutenzione) → annullo diretto.
+          if (st.hasPlayers) {
+            let _roster = (Array.isArray(st.roster) && st.roster.length) ? st.roster : _rosterFromCalendar(st);
+            _roster = (_roster || []).filter(function (p) { return p && p.nome; });
+            const _doCancelBooking = function () { _showCancelSummary(st.origIso, oSlot); };
+            const _CANCEL_LABEL = '🗑️ Annulla la prenotazione';
+            if (_roster.length === 1) {
+              const _nm = _roster[0].nome;
+              const _m = _say('🤔 Vuoi <strong>togliere ' + _escapeHtml(_nm) + '</strong> oppure <strong>annullare l\'intera prenotazione</strong>?');
+              const _b = svcMakeStepButtons(['👤 Togli ' + _nm, _CANCEL_LABEL], function (label) {
+                svcFreezeMsg(_m);
+                if (label === _CANCEL_LABEL) _doCancelBooking(); else _askRemoveConfirm(st, _nm);
+              }, function () { svcFreezeMsg(_m); });
+              if (_m && _m.appendChild) _m.appendChild(_b);
+              return true;
+            }
+            if (_roster.length > 1) {
+              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>?');
+              const _labels = _roster.map(function (p) { return '👤 ' + p.nome; });
+              _labels.push(_CANCEL_LABEL);
+              const _b = svcMakeStepButtons(_labels, function (label) {
+                svcFreezeMsg(_m);
+                if (label === _CANCEL_LABEL) { _doCancelBooking(); return; }
+                _askRemoveConfirm(st, label.replace(/^👤\s*/, ''));
+              }, function () { svcFreezeMsg(_m); });
+              if (_m && _m.appendChild) _m.appendChild(_b);
+              return true;
+            }
+            // hasPlayers ma roster non noto: chiedi annulla vs togli (un pulsante per annullare).
+            const _m = _say('🤔 Vuoi <strong>annullare l\'intera prenotazione</strong> oppure <strong>togliere un giocatore</strong>? Per togliere qualcuno scrivi «<em>togli [nome]</em>».');
+            const _b = svcMakeStepButtons([_CANCEL_LABEL], function () { svcFreezeMsg(_m); _doCancelBooking(); }, function () { svcFreezeMsg(_m); });
+            if (_m && _m.appendChild) _m.appendChild(_b);
+            return true;
+          }
           return _showCancelSummary(st.origIso, oSlot);
         }
       }
