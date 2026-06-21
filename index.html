@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.886';
+    const APP_VERSION = '5.888';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35887,11 +35887,17 @@ Per confermare scrivi ELIMINA.`);
           records.push({ record_type: 'staff_booking', local_key: newEntry.id, payload: { data: newEntry.data, ora: newEntry.ora, ora_fine: newEntry.oraFine, campo: newEntry.campo, nome: newEntry.nome, durata: newEntry.durata, tipo: newEntry.tipo, istruttore: '', giocatori: _gioc, id_reserva: newEntry.idReserva, promoted: true }, deleted: false });
         }
       }
-      // v5.743 — TOMBSTONE del vecchio slot cross-device. Solo se abbiamo costruito un record al
-      // destino (_destId): leggiamo dal cloud gli staff_booking al VECCHIO slot e li marchiamo
-      // deleted, TRANNE quello appena spostato (local_key === _destId). Così l'eventuale orfano al
-      // vecchio slot sparisce su TUTTI i device (il reconcile rimuove per id via staffBookingsDeletedIds),
-      // senza dipendere dal staff_suppress. Se la lettura fallisce, procediamo comunque col push.
+      // ⭐ Push ESSENZIALE SUBITO (soppressione vecchio slot + prenotazione al nuovo): scatena il
+      // broadcast `staff-changed` all'istante, così il secondo device si aggiorna senza aspettare la
+      // lettura cloud della pulizia-orfani (sotto). Quella lettura, awaited, costava ~20s su mobile
+      // (rete lenta + read paginata di TUTTI gli staff_booking) → il broadcast partiva tardi e il
+      // device che riceveva vedeva lo spostamento in ritardo (latenza dipendente dal mittente).
+      pmoSyncCloudRecordsNow(records.slice(), 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
+      // v5.743 — TOMBSTONE del vecchio slot cross-device, come SECONDA push (fuori dal percorso
+      // critico del broadcast). Solo se abbiamo costruito un record al destino (_destId): leggiamo dal
+      // cloud gli staff_booking al VECCHIO slot e li marchiamo deleted, TRANNE quello appena spostato
+      // (local_key === _destId). Rimuove eventuali ORFANI/duplicati al vecchio slot su tutti i device
+      // (il caso comune — singola prenotazione — è già coperto dalla push essenziale + soppressione).
       if (_destId && typeof pmoStaffRpcPaged === 'function') {
         try {
           const cloudRows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['staff_booking'], p_since: null }, 'cloud_sync', 'rimuovere la card al vecchio slot dal cloud');
@@ -35900,15 +35906,16 @@ Per confermare scrivi ELIMINA.`);
               && Number(String(p.campo).replace(/\D/g, '')) === fCn
               && String(p.ora).trim() === fOra;
           };
+          const tombstones = [];
           (Array.isArray(cloudRows) ? cloudRows : []).forEach(function (row) {
             if (row && row.record_type === 'staff_booking' && !row.deleted && row.local_key
                 && row.local_key !== _destId && fromMatch(row.payload || {})) {
-              records.push({ record_type: 'staff_booking', local_key: row.local_key, payload: row.payload || {}, deleted: true });
+              tombstones.push({ record_type: 'staff_booking', local_key: row.local_key, payload: row.payload || {}, deleted: true });
             }
           });
+          if (tombstones.length) pmoSyncCloudRecordsNow(tombstones, 'rimuovere le card orfane al vecchio slot').catch(function (e) { console.warn('staff move orphan cleanup sync:', e); });
         } catch (e) { console.warn('staff move orphan cleanup read:', e); }
       }
-      pmoSyncCloudRecordsNow(records, 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
     } catch (e) { console.warn('staff move cloud sync:', e); }
   }
   function _staffCalEnsureStaffBookingIds() {
@@ -37429,6 +37436,12 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
     if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
     if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
+    // ⭐ CROSS-DEVICE OTTIMISTICO (sposta campo): spingi SUBITO il reassign al cloud, così un SECONDO
+    // device vede lo spostamento all'istante (come create/cancel), senza aspettare la conferma
+    // Matchpoint. Su rifiuto, _staffCalEditRevertAll spinge il reassign INVERSO (nuovo→origine). Solo
+    // per lo SLOT-move (campo/giorno/ora-inizio): gli edit in-place (giocatori/nota/durata) restano
+    // push-on-confirm. Il push di successo (sotto) ri-spinge con il roster autorevole del worker.
+    if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud optimistic:', e); } }
     try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
     renderStaffCalendar();
     svcResetToNeutral(); svcAutoCloseIfMobile();
@@ -37578,6 +37591,11 @@ Per confermare scrivi ELIMINA.`);
     try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
     try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
     try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
+    // ⭐ CROSS-DEVICE: lo spostamento era già stato propagato al cloud in ottimistico (al commit).
+    // Ora che Matchpoint l'ha rifiutato e il locale è tornato a ORIGINE, spingi il reassign INVERSO
+    // (nuovo→origine) così anche il SECONDO device riporta la prenotazione com'era. Simmetrico al
+    // commit; solo per lo slot-move.
+    try { if (slotMoved) staffCalCloudReassignAndSyncMove(op.mIso, op.mCampo, op.mOraIni, op.origIso, op.origCampo, op.origOra, _staffCalEndTime(op.origOra, op.origDurMin)); } catch (e) { console.warn('staff move revert cloud:', e); }
   }
 
   // Aggiorna l'array `giocatori` della prenotazione staff in locale applicando gli add/remove
