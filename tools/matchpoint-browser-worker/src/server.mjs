@@ -2271,6 +2271,37 @@ async function mpWarmStartup() {
   }
 }
 
+// Keepalive proattivo: ricostruisce la sessione warm PRIMA del tetto `createdAt`
+// (MP_WARM_MAX_AGE_MS), così nessuna operazione utente paga il login a freddo
+// dopo ~30 min di inattività. Passa per la coda (serializzato con le altre op →
+// nessun login concorrente sull'account Matchpoint unico). Il rebuild è raro
+// (~ogni 24 min) e occupa la coda ~13s solo se serve davvero.
+const MP_WARM_KEEPALIVE_MS = 4 * 60 * 1000;       // controlla ogni 4 min
+const MP_WARM_REBUILD_MARGIN_MS = 6 * 60 * 1000;  // ricostruisci 6 min prima del cap
+function startWarmKeepalive() {
+  if (!MP_WARM_ENABLED) return;
+  const baseUrl = env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const username = env('MATCHPOINT_USERNAME');
+  const password = env('MATCHPOINT_PASSWORD');
+  if (!username || !password) return;
+  const tick = () => {
+    mpQueueRun({ op: 'keepalive', label: 'keepalive sessione', operatore: '—' }, async () => {
+      const dead = !_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed();
+      const age = _mpWarm ? Date.now() - (_mpWarm.createdAt || 0) : Infinity;
+      if (dead || age > (MP_WARM_MAX_AGE_MS - MP_WARM_REBUILD_MARGIN_MS)) {
+        await mpWarmInvalidate();
+        await mpBuildWarm(baseUrl, username, password, { steps: [] });
+        console.log(JSON.stringify({ event: 'mp_warm_keepalive_rebuild' }));
+      }
+      return { ok: true };
+    }).catch((e) => {
+      console.log(JSON.stringify({ event: 'mp_warm_keepalive_error', error: String((e && e.message) || e) }));
+    });
+  };
+  const t = setInterval(tick, MP_WARM_KEEPALIVE_MS);
+  if (t && t.unref) t.unref();
+}
+
 async function mpAcquirePage(baseUrl, username, password, diagnostic) {
   if (MP_WARM_ENABLED) {
     try {
@@ -6920,4 +6951,7 @@ server.listen(port, () => {
   // Scalda la sessione Matchpoint subito dopo il boot: la prima op reale dopo un
   // deploy/restart non paga il login a freddo (~13s). Non blocca il listen.
   mpWarmStartup().catch(() => {});
+  // Mantiene la sessione sempre calda: rebuild proattivo prima del tetto 30 min,
+  // così nessuna op utente paga il login a freddo dopo inattività.
+  startWarmKeepalive();
 });
