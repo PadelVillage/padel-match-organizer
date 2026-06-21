@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.863';
+    const APP_VERSION = '5.864';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39509,11 +39509,14 @@ Per confermare scrivi ELIMINA.`);
         svcResetToNeutral(); svcAutoCloseIfMobile();
       } else if (result.status === 'error') {
         svcAddMessage('system', '❌ Prenotazione non riuscita: ' + (result.error || 'errore'));
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(result.error || 'errore') }); } catch (e) {}
       } else {
         svcAddMessage('system', '⚠️ Esito NON confermato (timeout). La prenotazione potrebbe NON essere su Matchpoint: controllala su Matchpoint prima di riprovare, per non rischiare doppioni.');
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'timeout' }); } catch (e) {}
       }
     } catch (err) {
       svcAddMessage('system', '❌ Errore: ' + (err.message || err));
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
     }
     svcFlowState = null;
     svcSetInputMode('normal');
@@ -42191,11 +42194,15 @@ Per confermare scrivi ELIMINA.`);
         if (c) { draft.__started = false; return _suggestFreeCourts(draft, c); }
       } catch (e) {}
       let prog = null;
+      let _aiCreateRef = null;
       try {
         const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
         const cfg = await loadAssessmentSupabaseConfig();
         const supabaseUrl = cfg && cfg.supabaseUrl, supabaseKey = cfg && cfg.supabaseKey;
         prog = _say('⏳ Prenotazione in corso su Matchpoint…');
+        // Diario autoapprendimento — esito REALE: aggancia executed/failed al turno chat che
+        // ha avviato la creazione (invece dell'euristica dei 90s).
+        _aiCreateRef = _aiTurnExecBegin();
         const _sbId = _staffCalNewSbId();
         const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
         const jobId = submit && submit.jobId;
@@ -42212,6 +42219,7 @@ Per confermare scrivi ELIMINA.`);
             _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome), 'ok');
           }
           try { renderStaffCalendar(); } catch (e) {}
+          _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
           // ⭐ STEP 2 — ricorda la prenotazione appena creata: un successivo "aggiungi <nome>"
           // la aggancia (vedi handle()). Coordinate dal parsed; idReserva non serve qui (la
           // scheda la riapre per coordinate via staffCalEditPlayers).
@@ -42224,11 +42232,14 @@ Per confermare scrivi ELIMINA.`);
           } catch (e) {}
         } else if (result.status === 'error') {
           _say('❌ Prenotazione non riuscita: ' + _escapeHtml(result.error || 'errore sconosciuto'));
+          _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String(result.error || 'errore') });
         } else {
           _say('⚠️ Esito <strong>non confermato</strong> (timeout). Controlla su Matchpoint prima di riprovare, per evitare doppioni.');
+          _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: 'timeout' });
         }
       } catch (err) {
         _say('❌ Errore: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
+        try { _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String((err && err.message) || err) }); } catch (e) {}
       }
     }
 
