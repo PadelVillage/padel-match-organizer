@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.869';
+    const APP_VERSION = '5.870';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40279,8 +40279,13 @@ Per confermare scrivi ELIMINA.`);
       const anaCreateContactCtx = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/.test(n)
         && (/(?:\+?\d[\s.\-]?){6,}/.test(text) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(text))
         && !/(^| )(partit\w*|prenotazion\w*|camp[oi]|match|lezion\w*|tornei?|slot)( |$)/.test(n);
-      // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
-      const anaCtx = (playerCtx || anaUpdateCtx || anaReadCtx || anaCreateContactCtx) && !rosterCtx && !/(^| )(partit\w*|tornei?)( |$)/.test(n);
+      // L'anagrafica NON vale se la frase è una PRENOTAZIONE: oltre a partita/tornei, escludi
+      // anche lezione/prenotazione/slot e il verbo "prenota". Senza questo, "mi prenoti una
+      // lezione … e metti un giocatore come ospite" attivava anaCtx via la sola parola
+      // "giocatore" (playerCtx) → ANAGRAFICA vinceva su PRENOTA e cadeva nel "crea socio".
+      const anaCtx = (playerCtx || anaUpdateCtx || anaReadCtx || anaCreateContactCtx) && !rosterCtx
+        && !/(^| )(partit\w*|tornei?|lezion\w*|prenotazion\w*|slot)( |$)/.test(n)
+        && !_BOOK_VERB.test(n);
       // Domanda sulle LEZIONI di un maestro / su un range di giorni ("lezioni di Santiago dei
       // prossimi 5 giorni") → DOMANDA (TROVA), purché non sia una prenotazione.
       const lessonCtx = /(^| )lezion\w*( |$)/.test(n)
