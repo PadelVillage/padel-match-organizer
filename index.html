@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.856';
+    const APP_VERSION = '5.857';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8216,7 +8216,6 @@ Grazie.`
       return stableDataString(a) === stableDataString(b);
     }
     function save(key, value) {
-      if (PMO_IS_TEST_ENV && key === 'storicoPrenotazioni') return;
       const next = pmoEncodeForStorage(key, value);
       if (pmoLocalGetItem(key) === next) return false;
       try {
@@ -12448,7 +12447,7 @@ Grazie.`
         p_since: null
       }, 'cloud_sync', 'scaricare storico Matchpoint dal cloud');
       const list = Array.isArray(rows) ? rows : [];
-      const history = PMO_IS_TEST_ENV ? [] : list
+      const history = list
         .filter(row => row?.record_type === 'booking_history' && !row.deleted && row.payload)
         .map(row => ({ ...row.payload }))
         .sort((a, b) => `${a.data || ''} ${a.ora || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''}`));
@@ -12457,10 +12456,6 @@ Grazie.`
     }
 
     async function importMatchpointHistoryAutomatic() {
-      if (PMO_IS_TEST_ENV) {
-        showAlert('📦 Storico disattivato in ambiente TEST (non serve qui).', 'info');
-        return;
-      }
       const button = document.getElementById('matchpointHistoryImportButton');
       try {
         setDataActionStatus('history', 'pending', 'Aggiornamento storico in corso');
