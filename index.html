@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.866';
+    const APP_VERSION = '5.867';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40295,13 +40295,23 @@ Per confermare scrivi ELIMINA.`);
       // dell'ora di fine). Robusto alle forme che il match a parola intera non catturerebbe.
       // Guardia: serve un segnale di prenotazione/durata, così "riduci il livello di Mario"
       // (anagrafica) o altri usi generici di "riduci/estendi" NON vengono dirottati su CORREGGI.
-      // "levi/togli <quantità di tempo>" (mezz'ora, 30 minuti, un'ora…) è un ACCORCIAMENTO della
-      // durata, NON una rimozione giocatore: richiede una quantità di tempo esplicita, così
-      // "togli Mario" resta rimozione e "levi mezz'ora" diventa durata.
-      const durataQtyLev = /(^| )(lev[ai]|togl\w*|tolg\w*)\b/.test(n)
-        && /(mezz|minut|\bor[ae]\b|quart\w|un['’]?\s*ora)/.test(n);
+      // Durata VERA presente nel testo (mezz'ora, 30 minuti, un'ora, "sessanta minuti"…),
+      // riconosciuta dal parser di durata. NB: "delle ore 13" è un ORARIO, non una durata →
+      // _durToMin la ignora, così non viene scambiata per una quantità.
+      const _hasDur = (typeof _durToMin === 'function') && _durToMin(n) != null;
+      // "levi/togli <durata>" = ACCORCIAMENTO (non rimozione giocatore: "togli Mario" senza
+      // durata resta rimozione).
+      const durataQtyLev = /(^| )(lev[ai]|togl\w*|tolg\w*)\b/.test(n) && _hasDur;
+      // "aggiungi/metti [in più] <durata>" = ALLUNGAMENTO ("aggiungi Mario" senza durata resta
+      // aggiunta giocatore).
+      const durataQtyAdd = /(^| )(aggiung\w*|aggiungimi|mett\w*)\b/.test(n) && _hasDur;
       const durataCtx = (/(^| )(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(n)
-        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n)) || durataQtyLev;
+        && /(partit\w*|lezion\w*|prenotazion\w*|camp[oi]|or[ae]|minut\w*|durat\w*|mezz)/.test(n)) || durataQtyLev || durataQtyAdd;
+      // "leva/levi/levami/togli LA partita/lezione/prenotazione" (l'INTERA, senza un nome e senza
+      // una durata) = ANNULLARE la prenotazione. Distinto da "leva Mario" (giocatore), "levi
+      // mezz'ora" (durata) e "togli X dalla partita" (rimozione giocatore, removeFromMatchCtx).
+      const cancelWholeCtx = /(^| )(lev[ai]|levami|togl\w*|tolg\w*)\s+(?:mi\s+)?(?:la|lo|l['’]|il)\s*(partit\w*|lezion\w*|prenotazion\w*)\b/.test(n)
+        && !removeFromMatchCtx && !_hasDur;
       function score(list) {
         let s = 0;
         (list || []).forEach(function (kw) { const k = _norm(kw); if (k && _wordHit(n, k)) s += (k.indexOf(' ') !== -1 ? 2 : 1); });
@@ -40325,6 +40335,10 @@ Per confermare scrivi ELIMINA.`);
         // Verbo durata → CORREGGI (modifica prenotazione esistente), mai PRENOTA/ANAGRAFICA.
         if (name === 'CORREGGI' && durataCtx) s += 3;
         if ((name === 'PRENOTA' || name === 'ANAGRAFICA') && durataCtx) s = 0;
+        // "leva/levi la partita" (intera) → ANNULLA: vince su PRENOTA/CORREGGI (senza questa
+        // regola "mi levi la partita … delle ore 13" diventava una nuova PRENOTA).
+        if (name === 'CANCELLA' && cancelWholeCtx) s += 4;
+        if ((name === 'PRENOTA' || name === 'CORREGGI' || name === 'ANAGRAFICA') && cancelWholeCtx) s = 0;
         if (name === 'ANAGRAFICA' && anaCtx) s += 2;
         // Lettura scheda socio → vince ANAGRAFICA, mai TROVA (che cerca tra le prenotazioni).
         if (name === 'ANAGRAFICA' && (anaReadCtx || anaCreateContactCtx)) s += 3;
@@ -40867,7 +40881,19 @@ Per confermare scrivi ELIMINA.`);
       // L'anagrafica-socio (lettura/creazione-contatto/disattivazione) ha PRIORITÀ sul generico
       // "interroga" e su "giocatori": una domanda sul telefono di un socio NON è una ricerca tra
       // le prenotazioni, e "aggiungi <nome> <telefono>" è un socio nuovo, non un giocatore in partita.
-      if (openEditCtx2) azione = 'modifica';
+      // PRIORITÀ ALTA su verbi sovrapposti (decisi dalla presenza di una DURATA vera o dal
+      // bersaglio "la partita"), che i router anagrafica/giocatori/crea sbagliano:
+      //  • "leva/levi/levami/togli LA partita/lezione" (senza nome né durata) = ANNULLA;
+      //  • "levi/togli/aggiungi/metti/accorci/allunga… <durata>" = MODIFICA durata.
+      const _durMinX = (typeof _durToMin === 'function') ? _durToMin(text) : null;
+      const _cancelWholeX = /(^|\s)(lev[ai]|levami|togl\w*|tolg\w*)\s+(?:mi\s+)?(?:la|lo|l['’]|il)\s*(partit\w*|lezion\w*|prenotazion\w*)\b/.test(tx)
+        && !removeFromBooking && _durMinX == null;
+      const _durQtyVerbX = _durMinX != null
+        && /(^|\s)(lev[ai]|togl\w*|tolg\w*|aggiung\w*|aggiungimi|mett\w*|accorci\w*|riduc\w*|allung\w*|prolung\w*|estend\w*|abbrevi\w*|diminuisc\w*)\b/.test(tx)
+        && !createPhrase;
+      if (_cancelWholeX) azione = 'annulla';
+      else if (_durQtyVerbX) azione = 'modifica';
+      else if (openEditCtx2) azione = 'modifica';
       else if (!ospiteEdit && (ana.isAna || anaReadish || anaCreateContact || anaDeact || anaReactivate || anaRename || anaUpdateField)) azione = 'anagrafica';
       else if (isQuestion || rosterQ || lessonsQ) azione = 'interroga';
       else if (playerEdit) azione = 'giocatori';
@@ -41115,7 +41141,10 @@ Per confermare scrivi ELIMINA.`);
         // "aggiungi/metti una NOTA …" non è un giocatore: lascialo a _startNota (la parola "nota"
         // qualifica l'oggetto). Senza questa guardia "metti una nota" diventerebbe un Ospite.
         const _isNoteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
-        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && _sameCourt && _sameTime && !_hasContact) {
+        // "aggiungi/metti <durata>" (es. "aggiungi 60 minuti") = ALLUNGA la durata, non aggiunge
+        // un giocatore: se c'è una durata vera, lascia proseguire verso la modifica durata.
+        const _isDurQty = (typeof _durToMin === 'function') && _durToMin(t) != null;
+        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && !_isDurQty && _sameCourt && _sameTime && !_hasContact) {
           return _addPlayerToOpenBooking(res, t);
         }
       }
@@ -42489,13 +42518,17 @@ Per confermare scrivi ELIMINA.`);
       // aggiungi/togli, che altrimenti finirebbero su giocatori). Postulato in _startNota.
       const isNote = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(nlow);
       if (isNote) return _startNota(res, text, iso, court, time);
+      // Durata VERA nel testo (mezz'ora/X minuti/un'ora/"sessanta minuti"…), riconosciuta dal
+      // parser di durata. NB: "delle ore 13" è un ORARIO, non una durata → _durToMin la ignora.
+      const _hasDurM = (typeof _durToMin === 'function') && _durToMin(text) != null;
+      // "levi/togli <durata>" = accorcia; "aggiungi/metti <durata>" = allunga: è DURATA, non
+      // un'azione su un giocatore. Senza durata, "togli/aggiungi Mario" restano sul giocatore.
+      const durQtyLev = /(^|\s)(lev[ai]|togl\w*|tolg\w*)\b/.test(nlow) && _hasDurM;
+      const durQtyAdd = /(^|\s)(aggiung\w*|aggiungimi|mett\w*)\b/.test(nlow) && _hasDurM;
       // L'azione sulla scheda: aggiungere o togliere un giocatore (verbo nel comando).
-      const isAdd = /(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow);
+      const isAdd = !durQtyAdd && (/(^|\s)(aggiung\w*|aggiungimi|inserisc\w*)\b/.test(nlow) || /\bmetti\s+(?:dentro|in)\b/.test(nlow));
       // "da(lla) partita/lezione/prenotazione/campo" = togliere un giocatore DA dentro (non annullare).
       const removeFromPat = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(nlow);
-      // "levi/togli <quantità di tempo>" = accorcia la DURATA, non rimuovere un giocatore.
-      const durQtyLev = /(^|\s)(lev[ai]|togl\w*|tolg\w*)\b/.test(nlow)
-        && /(mezz|minut|\bor[ae]\b|quart\w|un['’]?\s*ora)/.test(nlow);
       // togli/rimuovi/leva valgono sempre; cancella/elimina/scarta SOLO col pattern "dalla …"
       // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
       const isRemove = !isAdd && !durQtyLev && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
@@ -42512,7 +42545,7 @@ Per confermare scrivi ELIMINA.`);
         /(^|\s)(allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|abbrevi\w*|diminuisc\w*)/.test(nlow)
         || /(^|\s)durat\w*/.test(nlow)
         || /\bdurar\w*/.test(nlow)
-        || durQtyLev);
+        || durQtyLev || durQtyAdd);
       if (isDurata) return _startDurata(res, text, iso, court, time);
       // Nome del giocatore oggetto dell'azione, ripulito da campo/ora/data.
       const actionName = (isAdd || isRemove) ? _extractEditPlayerName(text) : '';
@@ -42726,6 +42759,11 @@ Per confermare scrivi ELIMINA.`);
       // "X minuti" / "X min" / "X'"
       m = n.match(/\b(\d{2,3})\s*(?:'|min|minut)/);
       if (m) return parseInt(m[1], 10);
+      // Minuti "a parole" (dettatura: esce la parola, non la cifra): "trenta/quaranta/
+      // quarantacinque/sessanta/novanta… minuti". Le forme composte vanno PRIMA delle tens.
+      const WMIN = { dieci: 10, dodici: 12, quindici: 15, venti: 20, venticinque: 25, trenta: 30, trentacinque: 35, quaranta: 40, quarantacinque: 45, cinquanta: 50, cinquantacinque: 55, sessanta: 60, sessantacinque: 65, settanta: 70, settantacinque: 75, ottanta: 80, ottantacinque: 85, novanta: 90, novantacinque: 95 };
+      m = n.match(/\b(venticinque|trentacinque|quarantacinque|cinquantacinque|sessantacinque|settantacinque|ottantacinque|novantacinque|dieci|dodici|quindici|venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta)\s*(?:'|min|minut)/);
+      if (m && WMIN[m[1]] != null) return WMIN[m[1]];
       return null;
     }
     // Orario di FINE assoluto ("…fino alle 11:30", "che finisce alle 11", "termina alle 20:30").
