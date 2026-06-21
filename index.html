@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.879';
+    const APP_VERSION = '5.880';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41460,27 +41460,22 @@ Per confermare scrivi ELIMINA.`);
               const _nm = _roster[0].nome;
               const _m = _say('🤔 Vuoi <strong>togliere ' + _escapeHtml(_nm) + '</strong> oppure <strong>annullare l\'intera prenotazione</strong>?');
               const _b = svcMakeStepButtons(['👤 Togli ' + _nm, _CANCEL_LABEL], function (label) {
-                svcFreezeMsg(_m);
-                if (label === _CANCEL_LABEL) _doCancelBooking(); else _askRemoveConfirm(st, _nm);
-              }, function () { svcFreezeMsg(_m); });
+                try { svcFreezeMsg(_m); } catch (e) {}
+                if (label === _CANCEL_LABEL) _doCancelBooking(); else _removePlayerNow(_roster[0]);
+              }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
               if (_m && _m.appendChild) _m.appendChild(_b);
               return true;
             }
             if (_roster.length > 1) {
-              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>?');
-              const _labels = _roster.map(function (p) { return '👤 ' + p.nome; });
-              _labels.push(_CANCEL_LABEL);
-              const _b = svcMakeStepButtons(_labels, function (label) {
-                svcFreezeMsg(_m);
-                if (label === _CANCEL_LABEL) { _doCancelBooking(); return; }
-                _askRemoveConfirm(st, label.replace(/^👤\s*/, ''));
-              }, function () { svcFreezeMsg(_m); });
-              if (_m && _m.appendChild) _m.appendChild(_b);
+              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>? Tocca un pulsante o rispondi a voce.');
+              _choiceButtons(_m, _roster.map(function (p) { return '👤 ' + p.nome; }).concat([_CANCEL_LABEL]),
+                function (i) { if (i >= _roster.length) _doCancelBooking(); else _removePlayerNow(_roster[i]); },
+                function () { });
               return true;
             }
             // hasPlayers ma roster non noto: chiedi annulla vs togli (un pulsante per annullare).
             const _m = _say('🤔 Vuoi <strong>annullare l\'intera prenotazione</strong> oppure <strong>togliere un giocatore</strong>? Per togliere qualcuno scrivi «<em>togli [nome]</em>».');
-            const _b = svcMakeStepButtons([_CANCEL_LABEL], function () { svcFreezeMsg(_m); _doCancelBooking(); }, function () { svcFreezeMsg(_m); });
+            const _b = svcMakeStepButtons([_CANCEL_LABEL], function () { try { svcFreezeMsg(_m); } catch (e) {} _doCancelBooking(); }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
             if (_m && _m.appendChild) _m.appendChild(_b);
             return true;
           }
@@ -42443,7 +42438,9 @@ Per confermare scrivi ELIMINA.`);
       if (!q || !qtok.length) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? ' + roster.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Rispondi col <strong>numero</strong> (o “no”).');
+        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Tocca un nome o rispondi a voce.');
+        _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
+        return true;
       }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
       // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
@@ -42460,7 +42457,9 @@ Per confermare scrivi ELIMINA.`);
       if (hits.length > 1) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Ci sono più giocatori simili: ' + hits.map(function (p, i) { return (i + 1) + '. <strong>' + _escapeHtml(p.nome) + '</strong>'; }).join(' · ') + '. Quale tolgo? Rispondi col <strong>numero</strong> (o “no”).');
+        const _mh = _say('Ci sono più giocatori simili. Quale tolgo? Tocca un nome o rispondi a voce.');
+        _choiceButtons(_mh, hits.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
+        return true;
       }
       aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
@@ -42664,6 +42663,34 @@ Per confermare scrivi ELIMINA.`);
       if (t.indexOf('manut') >= 0) return '🔧 manutenzione';
       return '🎾 partita';
     }
+    // Disambiguazione a PULSANTI (postulato: voce-friendly, mai vicolo cieco). Appende al messaggio
+    // dei pulsanti numerati per scegliere fra opzioni note; onPick riceve l'INDICE (robusto anche
+    // con etichette duplicate, es. due "Ospite"). La risposta vocale/testuale resta gestita dal
+    // flow (aiFlowState pick) in parallelo. Vedi [[assistente-disambiguazione-bottoni]].
+    function _choiceButtons(msgEl, baseLabels, onPick, onCancel) {
+      if (!msgEl || !msgEl.appendChild || typeof svcMakeStepButtons !== 'function') return;
+      const labels = (baseLabels || []).map(function (s, i) { return (i + 1) + '. ' + s; });
+      const b = svcMakeStepButtons(labels, function (label) {
+        try { svcFreezeMsg(msgEl); } catch (e) {}
+        const i = parseInt(label, 10) - 1;
+        if (i >= 0) onPick(i);
+      }, function () { try { svcFreezeMsg(msgEl); } catch (e) {} if (typeof onCancel === 'function') onCancel(); });
+      msgEl.appendChild(b);
+    }
+    // Toglie SUBITO il giocatore scelto (tap esplicito su un pulsante) e salva: niente ulteriore
+    // conferma (la rimozione è reversibile, l'azione è già esplicita). Mirror del ramo "sì" di
+    // _confirmRemoveAnswer.
+    function _removePlayerNow(target) {
+      const st = staffCalPlayersState;
+      if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+      aiFlowState = null;
+      if (!target || target.idx == null) return _say('❌ Non ho più il riferimento del giocatore: riprova.');
+      st.remove = st.remove || {}; st.remove[target.idx] = true;
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      _say('➖ Tolgo <strong>' + _escapeHtml(target.nome) + '</strong> e salvo su Matchpoint…');
+      try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      return true;
+    }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
       const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
@@ -42746,10 +42773,12 @@ Per confermare scrivi ELIMINA.`);
       }
       if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
       aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
-      const items = cands.map(function (r, i) {
-        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
-      });
-      return _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. Quale vuoi annullare? Rispondi col <strong>numero</strong> (oppure “annulla” per uscire):<br>' + items.join('<br>'));
+      const _m = _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. <strong>Quale vuoi annullare?</strong> Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      _choiceButtons(_m,
+        cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+        function (i) { aiFlowState = null; _showCancelSummary(iso, cands[i]); },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
+      return true;
     }
     function _showCancelSummary(iso, slot) {
       const durata = slot.durata || 90;
@@ -42932,10 +42961,12 @@ Per confermare scrivi ELIMINA.`);
       if (cands.length === 1) return _openEditor(iso, cands[0], pending);
       aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
       const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
-      const items = cands.map(function (r, i) {
-        return (i + 1) + '. <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + (_escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>') + ' (' + _cancelTipoLabel(r) + ')';
-      });
-      return _say('❓ Quale prenotazione vuoi ' + azLbl + '? Rispondi col <strong>numero</strong> (oppure “annulla”):<br>' + items.join('<br>'));
+      const _m = _say('❓ Quale prenotazione vuoi ' + azLbl + '? Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      _choiceButtons(_m,
+        cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+        function (i) { const _p = aiFlowState && aiFlowState.pending; aiFlowState = null; _openEditor(iso, cands[i], _p || pending); },
+        function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
+      return true;
     }
     function _continueModifica(text) {
       const n = ' ' + _norm(text) + ' ';
