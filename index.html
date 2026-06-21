@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.875';
+    const APP_VERSION = '5.876';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41237,25 +41237,35 @@ Per confermare scrivi ELIMINA.`);
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
-        // Allo stadio CONFERMA di una prenotazione, una risposta BREVE fatta SOLO di parole di
-        // conferma/annullo è la risposta al riepilogo — incl. "prenota"/"prenotala" e combinazioni
-        // come "ok prenota", "sì conferma", "va bene prenota" (collaudo 19/06), che
-        // _looksLikeNewCommand scambierebbe per un nuovo comando e farebbe ripartire da capo.
-        // NB: ancorata a ^…$ e composta SOLO da token di conferma, così "prenota campo 2 domani"
-        // (comando pieno) NON entra qui e abbandona regolarmente il flusso.
-        if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'prenota' &&
-            /^\s*(?:(?:prenot\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|salva|annull\w*|no|lascia\w*|stop|niente)[\s,.!]*)+$/i.test(t)) {
-          return _confirmAnswer(t);
-        }
-        // Idem per la CONFERMA di un ANNULLAMENTO: una risposta breve fatta SOLO di parole di
-        // conferma/annullo — incl. "sì cancella", "cancella", "annulla", "sì annulla" — è la
-        // risposta al riepilogo, NON un nuovo comando. Senza questa guardia "sì cancella"
-        // contiene "cancella" e _looksLikeNewCommand lo scambierebbe per un comando nuovo
-        // (senza bersaglio), facendo ripartire tutto da capo. Un comando pieno ("cancella
-        // campo 2 domani") NON entra qui (token extra) e abbandona regolarmente il flusso.
-        if (aiFlowState.stage === 'confirm' && (aiFlowState.kind || 'prenota') === 'cancella' &&
-            /^\s*(?:(?:cancell\w*|annull\w*|elimin\w*|disd\w*|togl\w*|conferm\w*|confermo|s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|no|lascia\w*|stop|niente|nessun\w*)[\s,.!]*)+$/i.test(t)) {
-          return _confirmCancellaAnswer(t);
+        // GUARDIA CONFERMA (generica, per OGNI flusso allo stage 'confirm'). Una risposta BREVE
+        // fatta SOLO di parole di conferma/annullo — INCLUSO il verbo dell'azione ripetuto
+        // ("sì cancella", "sì sposta", "sì allunga", "cancella", "annulla", "ok prenota") — è la
+        // risposta al riepilogo, NON un comando nuovo. Senza questa guardia il verbo farebbe
+        // scattare _looksLikeNewCommand (che matcha i verbi d'azione) → il flusso verrebbe
+        // abbandonato e ripartito da capo (spesso senza bersaglio). I verbi accettati sono
+        // SPECIFICI del kind (non si confondono flussi diversi). Un comando PIENO ("cancella
+        // campo 2 domani") ha token extra → non matcha → abbandona regolarmente il flusso.
+        if (aiFlowState.stage === 'confirm') {
+          const _kc = aiFlowState.kind || 'prenota';
+          const _verbs = {
+            prenota: 'prenot\\w*',
+            cancella: 'cancell\\w*|annull\\w*|elimin\\w*|disd\\w*|togl\\w*',
+            addconfirm: 'aggiung\\w*|inseris\\w*|metti',
+            removeconfirm: 'togl\\w*|tolg\\w*|rimuov\\w*|elimin\\w*|lev\\w*|scart\\w*',
+            moveconfirm: 'spost\\w*|anticip\\w*|posticip\\w*',
+            durataconfirm: 'allung\\w*|accorci\\w*|prolung\\w*|estend\\w*|riduc\\w*|abbrevi\\w*',
+            notaconfirm: 'annot\\w*|nota',
+            anagrafica: '',
+            modifica: 'modific\\w*'
+          }[_kc];
+          if (_verbs !== undefined) {
+            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
+            const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
+            if (_re.test(t)) {
+              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
+              if (_h) return _h(t);
+            }
+          }
         }
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
