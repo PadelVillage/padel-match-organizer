@@ -154,7 +154,14 @@ const CASES = [
  {id:57, cat:'Robustezza',  frase:'iscrivi Marco Gialli uomo livello 3 telefono 3330000009', esito:'OK',   exp:{az:'anagrafica', esito:'OK', subj:'marco gialli'}, note:'"iscrivi"=crea + soggetto corretto (non "iscrivi marco")'},
  {id:58, cat:'Robustezza',  frase:'cerca Carla Mezza',                                      esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carla mezza'}, note:'cognome "Mezza" non più scartato dalla stop-list'},
  {id:59, cat:'Robustezza',  frase:'mostrami la scheda di Carlo Porta',                       esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carlo porta'}, note:'cognome-verbo "Porta": lettura, non modifica; cognome non scartato'},
- {id:60, cat:'Robustezza',  frase:'aggiorna il telefono di Carlo Porta in 3331112223',       esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carlo porta'}, note:'modifica di "Carlo Porta": cognome-verbo mantenuto'}
+ {id:60, cat:'Robustezza',  frase:'aggiorna il telefono di Carlo Porta in 3331112223',       esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'carlo porta'}, note:'modifica di "Carlo Porta": cognome-verbo mantenuto'},
+
+ // ── Imperativi con pronome enclitico (2026-06-21): "inseriscimi/aggiungimi…" non venivano
+ //    riconosciuti come verbo → il pronome attaccato passava per nome e perdeva il cognome
+ //    (bug live "inseriscimi Lidia Comes" → soggetto "inseriscimi lidia"). ──
+ {id:61, cat:'Enclitico',  frase:'inseriscimi Mario Rossi',                                  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', subj:'mario rossi'}, note:'"inseriscimi"=inserisci: soggetto "mario rossi", non "inseriscimi mario"'},
+ {id:62, cat:'Enclitico',  frase:'aggiungimi la socia Anna Verdi',                           esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', subj:'anna verdi'}, note:'"aggiungimi"+socia=crea; soggetto "anna verdi"'},
+ {id:63, cat:'Enclitico',  frase:'mettimi Luca Bianchi a livello 5',                         esito:'OK',     exp:{az:'anagrafica', esito:'OK', subj:'luca bianchi'}, note:'"mettimi"=metti: modifica livello, soggetto "luca bianchi"'}
 ];
 
 function normalize(win, frase){
