@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.882';
+    const APP_VERSION = '5.883';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42630,17 +42630,11 @@ Per confermare scrivi ELIMINA.`);
         const c = (typeof staffCalFindConflict === 'function') ? staffCalFindConflict(parsed) : null;
         if (c) { draft.__started = false; return _suggestFreeCourts(draft, c); }
       } catch (e) {}
-      // Permessi + config (veloci) prima di confermare allo staff.
+      // Permessi + config: NON più bloccanti prima del "✅" (v5.883). Vengono caricati nel
+      // BACKGROUND insieme alla scrittura Matchpoint, così la prenotazione appare SUBITO anche a
+      // freddo (profilo non in cache). Se permesso/config falliscono → la card ottimistica viene
+      // annullata con avviso (stesso _failMsg di un rifiuto Matchpoint).
       let staff, supabaseUrl, supabaseKey;
-      try {
-        staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
-        const cfg = await loadAssessmentSupabaseConfig();
-        supabaseUrl = cfg && cfg.supabaseUrl; supabaseKey = cfg && cfg.supabaseKey;
-      } catch (err) {
-        draft.__started = false;
-        _say('❌ Errore: ' + _escapeHtml((err && err.message) ? err.message : String(err)));
-        return;
-      }
       // ── Commit OTTIMISTICO: mostra SUBITO la prenotazione come fatta; la scrittura su
       //    Matchpoint avviene in background (anche ~60s). Niente attesa/contatore per lo staff.
       const _optimKey = parsed.data + '|' + parsed.campoNum + '|' + parsed.ora;
@@ -42686,6 +42680,10 @@ Per confermare scrivi ELIMINA.`);
           _say('⚠️ <strong>Attenzione</strong>: la prenotazione di Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _escapeHtml(String(why)) + '). L\'ho <strong>rimossa</strong> dal calendario.');
         };
         try {
+          // Permesso + config ora qui (background): se mancano, _failMsg annulla la card ottimistica.
+          staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
+          const cfg = await loadAssessmentSupabaseConfig();
+          supabaseUrl = cfg && cfg.supabaseUrl; supabaseKey = cfg && cfg.supabaseKey;
           const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
           const jobId = submit && submit.jobId;
           if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
