@@ -2238,15 +2238,45 @@ async function mpWarmEnsureLogged(baseUrl, username, password, diagnostic) {
   }
 }
 
+// Costruisce la sessione warm (login a freddo). Guard `_mpWarmBuilding` per
+// deduplicare chiamate concorrenti (warmup all'avvio + primo request reale): la
+// seconda attende il login già in corso invece di lanciare un secondo browser.
+let _mpWarmBuilding = null;
+async function mpBuildWarm(baseUrl, username, password, diagnostic) {
+  if (_mpWarmBuilding) { await _mpWarmBuilding; return; }
+  _mpWarmBuilding = (async () => {
+    const browser = await chromium.launch(mpLaunchOptions());
+    const { context, page } = await mpNewContextPage(browser);
+    await mpDoLogin(page, baseUrl, username, password, diagnostic);
+    _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+  })();
+  try { await _mpWarmBuilding; } finally { _mpWarmBuilding = null; }
+}
+
+// Scalda la sessione all'avvio del worker, così la PRIMA operazione reale dopo
+// un deploy/restart (pm2) non paga il login a freddo (~13s). Best-effort.
+async function mpWarmStartup() {
+  if (!MP_WARM_ENABLED) return;
+  const baseUrl = env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const username = env('MATCHPOINT_USERNAME');
+  const password = env('MATCHPOINT_PASSWORD');
+  if (!username || !password) return;
+  const t0 = Date.now();
+  try {
+    await mpBuildWarm(baseUrl, username, password, { steps: [] });
+    console.log(JSON.stringify({ event: 'mp_warm_startup_ok', ms: Date.now() - t0 }));
+  } catch (e) {
+    await mpWarmInvalidate();
+    console.log(JSON.stringify({ event: 'mp_warm_startup_failed', error: String((e && e.message) || e) }));
+  }
+}
+
 async function mpAcquirePage(baseUrl, username, password, diagnostic) {
   if (MP_WARM_ENABLED) {
     try {
       if (_mpWarm && (Date.now() - (_mpWarm.createdAt || 0) > MP_WARM_MAX_AGE_MS)) await mpWarmInvalidate();
       if (!_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed()) {
-        const browser = await chromium.launch(mpLaunchOptions());
-        const { context, page } = await mpNewContextPage(browser);
-        await mpDoLogin(page, baseUrl, username, password, diagnostic);
-        _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+        await mpBuildWarm(baseUrl, username, password, diagnostic);
         diagnostic.session = 'warm_new';
       } else if (Date.now() - (_mpWarm.lastOkAt || 0) < MP_WARM_FRESH_MS) {
         // Usata con successo da poco → riuso diretto, niente navigazione di verifica.
@@ -5340,6 +5370,23 @@ async function verifyBookingCreated(page, tabCtx, cellSel, data, baseUrl, diagno
   }
 }
 
+// Post-save la Ficha (partita/lezione) espone l'idReserva nel campo nascosto
+// `CC_Datos_HiddenFieldId`. Il postback ASP.NET può popolarlo con lieve ritardo →
+// poll breve (≤maxMs). Ritorna l'id numerico o '' (→ fallback tabellone).
+async function readReservaIdFromFicha(page, maxMs = 1200) {
+  const deadline = Date.now() + maxMs;
+  for (;;) {
+    const v = await page.evaluate(() => {
+      const el = document.getElementById('CC_Datos_HiddenFieldId');
+      const s = el && el.value ? el.value.trim() : '';
+      return /^\d+$/.test(s) ? s : '';
+    }).catch(() => '');
+    if (v) return v;
+    if (Date.now() >= deadline) return '';
+    await page.waitForTimeout(250);
+  }
+}
+
 // createBookingWithBrowser: naviga al tabellone Matchpoint, imposta la data, trova la cella
 // libera per il campo e l'ora target.
 // Per tipo=partita: apre il form Ficha via URL diretto (più affidabile del clic-cella);
@@ -5469,33 +5516,38 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
 
-      // Sonda idea 1: HiddenFieldIdReserva già popolato post-save? (ASP.NET postback)
-      // Se restituisce un id numerico, elimina il cerca_evento che segue (~10s risparmiati).
-      diagnostic.hiddenIdReservaPostSave = await page.evaluate(() => {
-        const el = document.getElementById('CC_Datos_FormViewFicha_WUCCabeceraReserva_HiddenFieldIdReserva');
-        return (el && el.value && /^\d+$/.test(el.value.trim())) ? el.value.trim() : '';
-      }).catch(() => '');
-      if (diagnostic.hiddenIdReservaPostSave) {
-        diagnostic.steps.push(`idReserva_from_hidden:${diagnostic.hiddenIdReservaPostSave}`);
-      }
-
-      // Cattura idReserva dal tabellone subito dopo la creazione (una sola volta, non distruttivo)
+      // idReserva veloce: post-save la Ficha espone l'id nel campo nascosto
+      // `CC_Datos_HiddenFieldId`. Se è numerico lo usiamo e saltiamo del tutto il
+      // tabellone (~3.5s risparmiati). Fallback al lookup tabellone solo se vuoto.
       let _idReservaCreated = null;
-      try {
-        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
-        diagnostic.steps.push('cerca_idreserva');
-        const _resEv = await page.evaluate(({ rec, oraStr }) => {
-          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
-          const eventi = [...document.querySelectorAll('div.evento')]
-            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
-          return { id: hit ? hit.id : null };
-        }, { rec: recurso, oraStr: ora });
-        _idReservaCreated = _resEv.id || null;
-        diagnostic.steps.push(`idReserva:${_idReservaCreated}`);
-      } catch (err) {
-        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      const _hiddenId = await readReservaIdFromFicha(page);
+      if (_hiddenId) {
+        _idReservaCreated = _hiddenId;
+        diagnostic.steps.push(`idReserva_from_hidden:${_hiddenId}`);
+        // Parcheggia la sessione warm sul tabellone: lasciarla sulla Ficha "fancy"
+        // romperebbe la navigazione dell'op successiva (read/get-slots/sync 2min).
+        // `commit` ritorna appena parte la navigazione (la coda serializza le op,
+        // basta sganciarsi dalla Ficha) → quasi gratis.
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'commit', timeout: 20000 }).catch(() => {});
+        diagnostic.steps.push('park_tabellone');
+      } else {
+        // Fallback: cattura idReserva dal tabellone (più lento ma affidabile)
+        try {
+          await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
+          diagnostic.steps.push('cerca_idreserva');
+          const _resEv = await page.evaluate(({ rec, oraStr }) => {
+            const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+            const eventi = [...document.querySelectorAll('div.evento')]
+              .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+            const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+            return { id: hit ? hit.id : null };
+          }, { rec: recurso, oraStr: ora });
+          _idReservaCreated = _resEv.id || null;
+          diagnostic.steps.push(`idReserva:${_idReservaCreated}`);
+        } catch (err) {
+          diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+        }
       }
 
       const resolvedPlayers = playersResult
@@ -5588,23 +5640,33 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
-      // Cattura idReserva dal tabellone subito dopo la creazione (lezione)
+      // idReserva veloce dal campo nascosto post-save (vedi ramo partita); fallback
+      // al tabellone se vuoto. Stessa logica → ~3s risparmiati anche sulle lezioni.
       let _idReservaLezione = null;
-      try {
-        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
-        diagnostic.steps.push('cerca_idreserva');
-        const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
-          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
-          const eventi = [...document.querySelectorAll('div.evento')]
-            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
-          return { id: hit ? hit.id : null };
-        }, { rec: recurso, oraStr: ora });
-        _idReservaLezione = _resEvLezione.id || null;
-        diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
-      } catch (err) {
-        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      const _hiddenIdLez = await readReservaIdFromFicha(page);
+      if (_hiddenIdLez) {
+        _idReservaLezione = _hiddenIdLez;
+        diagnostic.steps.push(`idReserva_from_hidden:${_hiddenIdLez}`);
+        // Parcheggia la sessione warm sul tabellone (sgancia dalla Ficha fancy).
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'commit', timeout: 20000 }).catch(() => {});
+        diagnostic.steps.push('park_tabellone');
+      } else {
+        try {
+          await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
+          diagnostic.steps.push('cerca_idreserva');
+          const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
+            const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+            const eventi = [...document.querySelectorAll('div.evento')]
+              .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+            const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+            return { id: hit ? hit.id : null };
+          }, { rec: recurso, oraStr: ora });
+          _idReservaLezione = _resEvLezione.id || null;
+          diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
+        } catch (err) {
+          diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+        }
       }
 
       const resolvedPlayersLezione = playersResult
@@ -6855,4 +6917,7 @@ server.listen(port, () => {
     headless: boolEnv('MATCHPOINT_HEADLESS', true),
   }));
   startPoller();
+  // Scalda la sessione Matchpoint subito dopo il boot: la prima op reale dopo un
+  // deploy/restart non paga il login a freddo (~13s). Non blocca il listen.
+  mpWarmStartup().catch(() => {});
 });
