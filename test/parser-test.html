@@ -148,7 +148,9 @@ const CASES = [
  {id:68, cat:'Ora/Data', frase:'prenota campo 2 lunedi prossimo alle 18', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wdNext:1', ora:'18:00', players:'ospite', type:true}},
  {id:69, cat:'Ora/Data', frase:"campo 4 oggi tra un'ora", esito:'DUBBIO', exp:{az:'crea', campo:4, data:'oggi', players:'ospite', type:true}},
  {id:70, cat:'Ora/Data', frase:'prenota campo 1 domani dalle 18.00 alle 19.00', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'domani', ora:'18:00', oraFine:'19:00', players:'ospite', type:true}},
- {id:71, cat:'Ora/Data', frase:'campo 2 venerdi h21', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wd:5', ora:'21:00', players:'ospite', type:true}}
+ {id:71, cat:'Ora/Data', frase:'campo 2 venerdi h21', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wd:5', ora:'21:00', players:'ospite', type:true}},
+ // ── Imperativo con pronome enclitico (2026-06-21): "aggiungimi Luca" = "aggiungi Luca" ──
+ {id:72, cat:'Giocatori', frase:'aggiungimi Luca alla partita di domani campo 2 alle 18', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', players:'names', surname:true}}
 ];
 
 const INTENT2AZ = {PRENOTA:'crea', TROVA:'interroga', CANCELLA:'annulla', CORREGGI:'modifica', ANAGRAFICA:'anagrafica', SUGGERISCI:'suggerisci'};
