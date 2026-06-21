@@ -696,6 +696,76 @@ async function saveValidationDiagnostic(
   return { saved: true };
 }
 
+// ── MANUTENZIONE STORICA (finestra recente) ────────────────────────────────────
+// I blocchi "Manutenzione" (chiusure campo: prenotazioni senza giocatore che lo staff mette
+// per bloccare campo+orario) NON sono nell'export Excel dello storico → senza questo l'app
+// mostrava "Libero" sui giorni passati dove c'era una manutenzione e lasciava prenotarci sopra.
+// Il worker /read-tabellone le marca (ev.tipo==='manutenzione', ev.nota) anche per le date passate.
+// Le scriviamo come record `booking_history` (append-only): il live-sync pruna SOLO booking/
+// booking_occupancy, quindi qui non vengono mai cancellate. L'app le carica nello storico e
+// staffCalGetSlots le rende come slot occupati di tipo manutenzione. NON bloccante: se fallisce,
+// lo storico Excel resta comunque salvato.
+async function importManutenzioneStorico(
+  admin: any,
+  existingByKey: Map<string, any>,
+  importedAt: string,
+  days: number,
+): Promise<{ rows: ParsedBooking[]; daysScanned: number; error?: string }> {
+  const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
+  const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
+  if (!workerUrl || !workerApiKey) return { rows: [], daysScanned: 0, error: 'WORKER_SECRETS_MISSING' };
+
+  const n = Math.max(1, Math.min(60, days || DEFAULT_HISTORY_DAYS));
+  const today = todayIsoRome();
+  const dates: string[] = [];
+  for (let i = 1; i <= n; i++) dates.push(addDaysIso(today, -i)); // ieri → n giorni fa
+  dates.sort();
+
+  const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
+  let tabelloneData: Record<string, any[]> = {};
+  try {
+    // username/password/baseUrl omessi: il worker usa il proprio env MATCHPOINT_*.
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${workerApiKey}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ dates }),
+    });
+    if (!res.ok) return { rows: [], daysScanned: n, error: `WORKER_HTTP_${res.status}` };
+    const data = await res.json().catch(() => ({}));
+    if (data?.ok && data?.result) tabelloneData = data.result;
+  } catch (err) {
+    return { rows: [], daysScanned: n, error: errorText((err as any)?.message || err) };
+  }
+
+  const toMin = (t: string) => { const m = String(t || '').match(/(\d{1,2})[:.](\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
+  const records: any[] = [];
+  const rows: ParsedBooking[] = [];
+  for (const [data, evs] of Object.entries(tabelloneData)) {
+    for (const ev of ((evs as any[]) || [])) {
+      if (ev?.tipo !== 'manutenzione') continue;
+      const campoNum = Number(ev.campo) || 0;
+      if (!campoNum || !ev.ora) continue;
+      const mins = toMin(ev.oraFine) - toMin(ev.ora);
+      const oreStr = (Number.isFinite(mins) && mins > 0) ? String(mins / 60) : '1.5';
+      const booking: ParsedBooking = {
+        numero: '', giocatore: '', data, ora: String(ev.ora), durata: oreStr,
+        campo: `Campo ${campoNum}`, tipo: 'manutenzione', descrizione: String(ev.nota || ''),
+      };
+      // Namespace 'manut' separato dalle righe Excel ('history') per non collidere mai.
+      const localKey = `manut|${data}|${String(ev.ora)}|Campo ${campoNum}|${oreStr}`;
+      if (existingByKey.has(localKey)) continue; // cumulativo: niente doppioni
+      existingByKey.set(localKey, { local_key: localKey, payload: booking });
+      records.push({ record_type: 'booking_history', local_key: localKey, payload: booking, payload_hash: null, deleted: false, synced_at: importedAt });
+      rows.push(booking);
+    }
+  }
+  if (records.length) {
+    const { error } = await admin.from('pmo_cloud_records').upsert(records, { onConflict: 'record_type,local_key' });
+    if (error) return { rows: [], daysScanned: n, error: errorText(error.message || error) };
+  }
+  return { rows, daysScanned: n };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Usa POST per avviare import storico Matchpoint.');
@@ -842,9 +912,21 @@ Deno.serve(async (req) => {
       upserted: records.length,
     });
 
+    // Manutenzioni storiche (finestra recente) dal tabellone — non bloccante: lo storico Excel
+    // è già stato upsertato sopra, quindi un eventuale fallimento qui non lo compromette.
+    let manutenzione: { rows: ParsedBooking[]; daysScanned: number; error?: string } = { rows: [], daysScanned: 0 };
+    try {
+      manutenzione = await importManutenzioneStorico(admin, existingByKey, importedAt, DEFAULT_HISTORY_DAYS);
+      console.log(JSON.stringify({ event: 'manutenzione_storico', added: manutenzione.rows.length, daysScanned: manutenzione.daysScanned, error: manutenzione.error || '' }));
+    } catch (err) {
+      manutenzione = { rows: [], daysScanned: 0, error: errorText((err as any)?.message || err) };
+      console.warn(JSON.stringify({ event: 'manutenzione_storico_failed', error: manutenzione.error }));
+    }
+
     const cloudHistory = [
       ...existingRecords.map((record) => record?.payload).filter(Boolean),
       ...newHistoryRows,
+      ...manutenzione.rows,
     ].sort((a, b) => `${a.data || ''} ${a.ora || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''}`));
 
     return okResponse({
@@ -853,7 +935,7 @@ Deno.serve(async (req) => {
       recordType: 'booking_history',
       summary: summaryPayload,
       cloud: {
-        upserted: records.length,
+        upserted: records.length + manutenzione.rows.length,
         historyRows: validation.bookings.length,
         newRows,
         alreadyPresentRows,
@@ -861,6 +943,9 @@ Deno.serve(async (req) => {
         totalBefore,
         totalAfter,
         history: cloudHistory,
+        manutenzioneAdded: manutenzione.rows.length,
+        manutenzioneDaysScanned: manutenzione.daysScanned,
+        manutenzioneError: manutenzione.error || '',
       },
     });
   } catch (error) {
