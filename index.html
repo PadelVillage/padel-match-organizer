@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.860';
+    const APP_VERSION = '5.861';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39704,6 +39704,11 @@ Per confermare scrivi ELIMINA.`);
     let aiFlowState = null;
     let _aiFlowAt = 0;                       // timestamp dell'ultimo messaggio (scadenza flusso)
     const AI_FLOW_TTL_MS = 5 * 60 * 1000;    // 5 min: un flusso in sospeso ripreso più tardi riparte pulito
+    // ⭐ STEP 2 — Ultima prenotazione CREATA in chat (coordinate + timestamp): se subito dopo
+    // arriva "aggiungi/inserisci/inseriscimi <nome>" senza una scheda aperta, la apriamo e ci
+    // aggiungiamo il giocatore (postulato: tutto ancorato al calendario), invece di instradare
+    // ad anagrafica/creazione socio. Scade col TTL del flusso.
+    let _lastChatBooking = null;             // { iso, campo, ora, nome, durata, tipo, at }
     // Ultimo socio "in discorso" in anagrafica (scheda mostrata / appena usato): permette i
     // follow-up con pronome — «voglio modificarlo», «aggiorna il suo telefono» — senza ripetere
     // il nome (niente vicolo cieco). Scade come il flusso (5 min).
@@ -41068,6 +41073,30 @@ Per confermare scrivi ELIMINA.`);
           return _addPlayerToOpenBooking(res, t);
         }
       }
+      // ⭐ STEP 2 — Nessuna scheda aperta, ma una prenotazione è stata CREATA in chat da poco e
+      // ora arriva "aggiungi/inserisci/inseriscimi <nome>": la apriamo per coordinate e ci
+      // aggiungiamo il giocatore (postulato: tutto ancorato al calendario), invece di instradare
+      // ad anagrafica/creazione socio. Solo se il comando NON punta a un'ALTRA prenotazione
+      // (campo/ora/giorno diversi), non è una NOTA e non è una creazione-socio con contatto.
+      if (!staffCalPlayersState && _lastChatBooking && (_now - (_lastChatBooking.at || 0)) <= AI_FLOW_TTL_MS) {
+        const _nLC = _norm(t);
+        const _addVerbLC = /(^|\s)(aggiung\w*|inserisc\w*|metti\w*)\b/.test(_nLC);
+        const _isNoteLC = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_nLC);
+        const _hasContactLC = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
+        const _cLC = res.slots && res.slots.court, _tmLC = res.slots && res.slots.time, _dLC = res.slots && res.slots.date;
+        const _sameCLC = !_cLC || Number(_cLC) === Number(_lastChatBooking.campo);
+        const _sameTLC = !_tmLC || String(_tmLC) === String(_lastChatBooking.ora);
+        const _sameDLC = !_dLC || String(_dLC) === String(_lastChatBooking.iso);
+        // Nome da aggiungere: caso "aggiungi X" ambiguo (giocatore/socio) oppure caso instradato
+        // ad ANAGRAFICA/crea ("inseriscimi Lidia Comes" → anaSubject). _addPlayerToOpenBooking
+        // ri-estrae il nome dal testo (gestisce già "inseriscimi" via inserisc\w*) e CHIEDE
+        // conferma prima di scrivere su Matchpoint.
+        const _isAddPerson = res.addAmbiguous || (res.intent === 'ANAGRAFICA' && res.anaSub === 'crea' && !!res.anaSubject);
+        if (_addVerbLC && _isAddPerson && !_isNoteLC && !_hasContactLC && _sameCLC && _sameTLC && _sameDLC) {
+          try { await staffCalEditPlayers(_lastChatBooking.iso, _lastChatBooking.campo, _lastChatBooking.ora, _lastChatBooking.nome, _lastChatBooking.durata, _lastChatBooking.tipo); } catch (e) {}
+          if (staffCalPlayersState && !staffCalPlayersState.busy) return _addPlayerToOpenBooking(res, t);
+        }
+      }
       // "aggiungi <nome>" ambiguo (giocatore o nuovo socio?) → chiedi chiarimento mirato,
       // invece di assumere "giocatore". Decisione utente 2026-06-18 (mai vicolo cieco).
       if (res.addAmbiguous) {
@@ -42136,6 +42165,16 @@ Per confermare scrivi ELIMINA.`);
             _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome), 'ok');
           }
           try { renderStaffCalendar(); } catch (e) {}
+          // ⭐ STEP 2 — ricorda la prenotazione appena creata: un successivo "aggiungi <nome>"
+          // la aggancia (vedi handle()). Coordinate dal parsed; idReserva non serve qui (la
+          // scheda la riapre per coordinate via staffCalEditPlayers).
+          try {
+            _lastChatBooking = {
+              iso: parsed.data, campo: parsed.campoNum, ora: parsed.ora,
+              nome: parsed.nome || '', durata: parsed.durata || 90, tipo: parsed.tipo || 'partita',
+              at: (Date.now ? Date.now() : new Date().getTime())
+            };
+          } catch (e) {}
         } else if (result.status === 'error') {
           _say('❌ Prenotazione non riuscita: ' + _escapeHtml(result.error || 'errore sconosciuto'));
         } else {
