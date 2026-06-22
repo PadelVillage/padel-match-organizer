@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.896';
+    const APP_VERSION = '5.897';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -12231,10 +12231,10 @@ Grazie.`
       const sortBookings = items => (items || []).sort((a, b) => `${a.data || ''} ${a.ora || ''} ${a.campo || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''} ${b.campo || ''}`));
       const bookings = sortBookings(list
         .filter(row => row?.record_type === 'booking' && !row.deleted && row.payload)
-        .map(row => ({ ...row.payload })));
+        .map(row => ({ ...row.payload, _lk: row.local_key })));
       const occupancyBookings = sortBookings(list
         .filter(row => row?.record_type === 'booking_occupancy' && !row.deleted && row.payload)
-        .map(row => ({ ...row.payload })));
+        .map(row => ({ ...row.payload, _lk: row.local_key })));
       const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_bookings_auto_import_last')?.payload || null;
       const staffBookings = list
         .filter(row => row?.record_type === 'staff_booking' && !row.deleted && row.payload)
@@ -38823,6 +38823,26 @@ Per confermare scrivi ELIMINA.`);
     const filtered = existing.filter((b) => !match(b));
     if (typeof save === 'function') save('staffBookings', filtered);
     _staffCalAddSuppressed(isoDate, campo, ora);
+    // v5.897 — Cura del flicker-annullo: rimuove SUBITO (locale + tombstone cloud) le copie
+    // booking/booking_occupancy Matchpoint dello slot annullato, invece di affidarsi al solo
+    // staff_suppress. Senza, nella finestra prima che il reaper del sync le ripulisca, un refresh
+    // realtime ri-renderizzava la copia (loop bookings hardcoded → "partita") per qualche secondo.
+    const _ghostTombstones = [];
+    try {
+      const _gMatch = (p) => p && String(p.data).trim() === isoDate
+        && Number(String(p.campo).replace(/\D/g, '')) === wantCampo
+        && String(p.ora).trim() === wantOra;
+      if (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) {
+        prenotazioniOccupazione.forEach((p) => { if (_gMatch(p) && p._lk) _ghostTombstones.push({ record_type: 'booking_occupancy', local_key: p._lk, payload: p, deleted: true }); });
+        const _occNext = prenotazioniOccupazione.filter((p) => !_gMatch(p));
+        if (_occNext.length !== prenotazioniOccupazione.length) { prenotazioniOccupazione = _occNext; if (typeof save === 'function') save('prenotazioniOccupazione', prenotazioniOccupazione); }
+      }
+      if (typeof prenotazioni !== 'undefined' && Array.isArray(prenotazioni)) {
+        prenotazioni.forEach((p) => { if (_gMatch(p) && p._lk) _ghostTombstones.push({ record_type: 'booking', local_key: p._lk, payload: p, deleted: true }); });
+        const _bkNext = prenotazioni.filter((p) => !_gMatch(p));
+        if (_bkNext.length !== prenotazioni.length) { prenotazioni = _bkNext; if (typeof save === 'function') save('prenotazioni', prenotazioni); }
+      }
+    } catch (e) { console.warn('staff cancel ghost cleanup:', e); }
     try {
       if (typeof pmoSyncCloudRecordsNow === 'function') {
         const _campoNum = wantCampo || 0;
@@ -38837,6 +38857,7 @@ Per confermare scrivi ELIMINA.`);
           payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
           deleted: false
         });
+        if (_ghostTombstones.length) records.push.apply(records, _ghostTombstones);
         pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
       }
     } catch (e) { console.warn('staff cancel cloud sync:', e); }
