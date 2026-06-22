@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.900';
+    const APP_VERSION = '5.901';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35268,6 +35268,10 @@ Per confermare scrivi ELIMINA.`);
         if (typeof staffCalRefreshFromCloud !== 'function') return;
         // Scheda in background: rete di sicurezza lenta (debounce interno 60s).
         if (document.hidden) { staffCalRefreshFromCloud(); return; }
+        // In primo piano: risveglia il canale realtime se è "addormentato" (mobile soprattutto), così
+        // il broadcast 'staff-changed' torna a essere consegnato entro il secondo e l'aggiornamento
+        // cross-device resta ISTANTANEO invece di ricadere sul poll. Idempotente. v5.901.
+        try { if (typeof staffCalRtKickIfStale === 'function') staffCalRtKickIfStale(); } catch (e) {}
         // Scheda in primo piano: su mobile il push realtime può tardare (WebSocket strozzato dal
         // browser), quindi facciamo da soli un pull forzato ravvicinato. È leggero: i soci non
         // vengono ri-scaricati (vedi withMembers) e il calendario si ridisegna solo se qualcosa
@@ -35292,8 +35296,12 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) {}
     }, 4000);
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && typeof staffCalRefreshFromCloud === 'function') {
-        try { staffCalRefreshFromCloud({ force: true, withMembers: true }); } catch (e) {}
+      if (!document.hidden) {
+        // Al rientro in primo piano (tipico mobile): prima rianima il socket realtime, poi tira i dati.
+        try { if (typeof staffCalRtKickIfStale === 'function') staffCalRtKickIfStale(); } catch (e) {}
+        if (typeof staffCalRefreshFromCloud === 'function') {
+          try { staffCalRefreshFromCloud({ force: true, withMembers: true }); } catch (e) {}
+        }
       }
     });
   }
@@ -35332,7 +35340,10 @@ Per confermare scrivi ELIMINA.`);
       if (!_staffCalRtClient) {
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         _staffCalRtClient = supabase.createClient(supabaseUrl, supabaseKey, {
-          realtime: { heartbeatIntervalMs: 15000, timeout: 10000 }
+          // heartbeat più frequente (10s) e timeout più corto (7s): un socket caduto in silenzio viene
+          // rilevato prima → riconnessione + resubscribe + refresh più rapidi. Il resubscribe-pull è
+          // economico (idratazione condizionale, v5.900) quindi più riconnessioni non pesano. v5.901.
+          realtime: { heartbeatIntervalMs: 10000, timeout: 7000 }
         });
       }
       // Rimuovi un eventuale canale precedente prima di crearne uno nuovo.
@@ -35367,8 +35378,24 @@ Per confermare scrivi ELIMINA.`);
     clearTimeout(_staffCalRtRetryTimer);
     _staffCalRtRetryDelay = Math.min(_staffCalRtRetryDelay ? _staffCalRtRetryDelay * 2 : 3000, 60000);
     _staffCalRtRetryTimer = setTimeout(function () {
+      _staffCalRtRetryTimer = null;                                              // azzera: consente nuovi risvegli (staffCalRtKickIfStale)
       try { staffCalRtStart(); } catch (e) {}
     }, _staffCalRtRetryDelay);
+  }
+  // Risveglia il canale realtime se risulta "addormentato" (socket WebSocket strozzato dal browser,
+  // tipico su MOBILE in primo piano dopo inattività, o un socket desktop caduto in silenzio): senza
+  // questo il broadcast 'staff-changed' non arriva finché l'heartbeat non se ne accorge → l'altro
+  // device si aggiorna solo via poll. Idempotente: non fa nulla se il canale è già connesso o se un
+  // retry è già in coda (evita backoff infinito). Chiamato dal poll 4s e al rientro in primo piano. v5.901.
+  function staffCalRtKickIfStale() {
+    try {
+      if (_staffCalRtRetryTimer) return;                                         // retry già in coda → lascialo fare
+      if (!_staffCalRtStarted) { staffCalRtStart(); return; }                    // non attivo → (ri)avvia
+      var st = _staffCalRtChannel && _staffCalRtChannel.state;
+      if (!_staffCalRtChannel || (st !== 'joined' && st !== 'joining')) {
+        staffCalRtScheduleRetry();                                               // cleanup + restart con backoff
+      }
+    } catch (e) {}
   }
   function staffCalRtOnRemoteChange() {
     clearTimeout(_staffCalRtPullTimer);
