@@ -145,6 +145,8 @@ async function saveStaffBookingRecord(opts: {
   const { supabaseUrl, supabaseKey, actor, booking, workerResult } = opts;
   const client = createClient(supabaseUrl, supabaseKey);
   const localKey = `staff_booking|${booking.data}|${booking.ora}|Campo ${booking.campo}|${actor.userId}`;
+  // idReserva è dentro al risultato del worker (stesso campo che l'app legge da worker_result.idReserva).
+  const idReserva = clean((workerResult as JsonMap)?.idReserva ?? (workerResult as JsonMap)?.id_reserva);
 
   await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_booking',
@@ -155,9 +157,15 @@ async function saveStaffBookingRecord(opts: {
       ora: booking.ora,
       ora_fine: booking.oraFine,
       durata: booking.durata,
+      // tipo/istruttore/id_reserva: SENZA questi, in app il record diventava "Partita" (tipo mancante)
+      // e, se vinceva il dedup per-slot, perdeva istruttore/idReserva. Ora è un peer fedele del record
+      // che l'app pusha per conto suo (staffCalSaveLocal). v5.902.
+      tipo: booking.tipo ?? 'partita',
       nome: booking.nome,
+      istruttore: booking.istruttore ?? '',
       note: booking.note ?? '',
       giocatori: booking.giocatori ?? [],
+      id_reserva: idReserva,
       created_by_email: actor.email,
       created_by_role: actor.role,
       worker_result: workerResult,
