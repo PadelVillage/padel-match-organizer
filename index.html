@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.895';
+    const APP_VERSION = '5.896';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35822,7 +35822,7 @@ Per confermare scrivi ELIMINA.`);
       if (!b || !b.id) return;
       pmoSyncCloudRecordsNow([{
         record_type: 'staff_booking', local_key: b.id,
-        payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', note: b.note || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [] },
+        payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', note: b.note || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], id_reserva: (b.idReserva != null ? String(b.idReserva) : '') },
         deleted: false
       }], 'aggiornare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff edit cloud sync:', e); });
     } catch (e) { console.warn('staff edit cloud sync:', e); }
@@ -38721,15 +38721,28 @@ Per confermare scrivi ELIMINA.`);
     var wantOra = String(ora).trim();
     var list = safeLoad('staffBookings', []);
     var changed = false;
+    var touched = [];
     (Array.isArray(list) ? list : []).forEach(function (b) {
       if (b && String(b.data).trim() === wantData
           && Number(String(b.campo).replace(/\D/g, '')) === wantCampo
           && String(b.ora).trim() === wantOra
           && String(b.idReserva || '') !== String(idr)) {
         b.idReserva = String(idr); changed = true;
+        if (b.id) touched.push(b);
       }
     });
     if (changed) save('staffBookings', list);
+    // Ri-spinge al cloud l'entry con l'idReserva appena appreso: senza, il record cloud resta con
+    // id_reserva vuoto e la rete durevole "nascondi-per-idReserva" (v5.742) non aggancia cross-device
+    // → la copia all'origine di uno spostamento resta visibile sul 2° device oltre il TTL del suppress.
+    try {
+      if (changed && touched.length && typeof pmoSyncCloudRecordsNow === 'function') {
+        var recs = touched.map(function (b) {
+          return { record_type: 'staff_booking', local_key: b.id, payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, istruttore: b.istruttore || '', note: b.note || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], id_reserva: String(idr) }, deleted: false };
+        });
+        pmoSyncCloudRecordsNow(recs, 'aggiornare idReserva della prenotazione staff sul cloud').catch(function (e) { console.warn('persist idReserva cloud push:', e); });
+      }
+    } catch (e) { console.warn('persist idReserva cloud push:', e); }
   }
 
   function staffCalSaveLocal(parsed, sbId, idReserva) {
@@ -38775,7 +38788,7 @@ Per confermare scrivi ELIMINA.`);
         records.push({
           record_type: 'staff_booking',
           local_key: entry.id,
-          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori, note: entry.note || '' },
+          payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori, note: entry.note || '', id_reserva: (entry.idReserva != null ? String(entry.idReserva) : '') },
           deleted: false
         });
         pmoSyncCloudRecordsNow(records, 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
