@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.897';
+    const APP_VERSION = '5.898';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35284,7 +35284,10 @@ Per confermare scrivi ELIMINA.`);
         _staffCalPullTick++;
         if (window.innerWidth >= 900 && (_staffCalPullTick % 15) !== 0) return;
         _staffCalFastPullBusy = true;
+        var _pr0 = _annulloRenderCount;
+        _annulloDiag('POLL', 'fast-pull tick=' + _staffCalPullTick);
         Promise.resolve(staffCalRefreshFromCloud({ force: true }))
+          .then(function () { if (_annulloRenderCount !== _pr0) _annulloDiag('POLL-RENDER', 'rendered=' + (_annulloRenderCount - _pr0)); })
           .catch(function () {})
           .finally(function () { _staffCalFastPullBusy = false; });
       } catch (e) {}
@@ -35306,6 +35309,18 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalRtClient = null, _staffCalRtChannel = null, _staffCalRtStarted = false, _staffCalRtPullTimer = null;
   let _staffCalRtRetryTimer = null, _staffCalRtRetryDelay = 0;
   let _staffCalMemberBackstopAt = 0;   // throttle del backstop pull-based dei soci (vedi staffCalReconcileMembersFromCloud)
+  // ── DIAG TEMPORANEO (solo /test/) — latenza cross-device annullo ─────────────
+  // Strumenta SEND (device che annulla) / RECV+REFRESH (device che riceve) / SUB / POLL
+  // per capire se il collo è la CONSEGNA del broadcast realtime o la VELOCITÀ del refresh.
+  // NON promuovere a PROD. Gated PMO_IS_TEST_ENV. Filtra la console con "[ANNULLO-DIAG]".
+  var _annulloRenderCount = 0;
+  function _annulloDiag(tag, extra) {
+    try {
+      if (typeof PMO_IS_TEST_ENV === 'undefined' || !PMO_IS_TEST_ENV) return;
+      var st = (_staffCalRtChannel && _staffCalRtChannel.state) || 'no-channel';
+      console.log('[ANNULLO-DIAG][' + tag + '] ' + new Date().toISOString() + ' ch=' + st + (extra ? ' ' + extra : ''));
+    } catch (e) {}
+  }
   function staffCalRtChannelName() {
     return 'pv-staff-cal-' + ((typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) ? 'test' : 'prod');
   }
@@ -35337,17 +35352,18 @@ Per confermare scrivi ELIMINA.`);
       staffCalRtCleanupChannel();
       _staffCalRtChannel = _staffCalRtClient
         .channel(staffCalRtChannelName(), { config: { broadcast: { self: false } } })
-        .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
+        .on('broadcast', { event: 'staff-changed' }, function (msg) { staffCalRtOnRemoteChange(msg && msg.payload); })
         .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
         .on('broadcast', { event: 'member-changed' }, function (msg) { staffCalRtOnRemoteMemberChanged(msg && msg.payload); })
         .on('broadcast', { event: 'member-mp-changed' }, function (msg) { staffCalRtApplyMatchpointMember(msg && msg.payload && msg.payload.member); })
         .subscribe(function (status, errObj) {
           console.log('[staff-cal-rt] subscribe status:', status, 'channel:', staffCalRtChannelName(), errObj || '');
+          _annulloDiag('SUB', status + (errObj ? (' err=' + (errObj.message || errObj)) : ''));
           if (status === 'SUBSCRIBED') {
             _staffCalRtRetryDelay = 0;                                             // reset backoff
             // (Ri)connessi: recupera subito eventuali cambiamenti persi mentre il socket era giù.
-            try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+            try { if (typeof staffCalRefreshFromCloud === 'function') { _annulloDiag('REFRESH-START', 'via=subscribe'); staffCalRefreshFromCloud({ force: true }); } } catch (e) {}
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             staffCalRtScheduleRetry();                                             // cleanup + retry con backoff
           }
@@ -35368,10 +35384,20 @@ Per confermare scrivi ELIMINA.`);
       try { staffCalRtStart(); } catch (e) {}
     }, _staffCalRtRetryDelay);
   }
-  function staffCalRtOnRemoteChange() {
+  function staffCalRtOnRemoteChange(payload) {
+    var _delivery = (payload && payload.ts) ? (Date.now() - payload.ts) : null;
+    _annulloDiag('RECV', 'delivery=' + (_delivery == null ? '?' : _delivery + 'ms'));
     clearTimeout(_staffCalRtPullTimer);
     _staffCalRtPullTimer = setTimeout(function () {                               // coalescenza raffiche, resta sotto il secondo
-      try { if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud({ force: true }); } catch (e) {}
+      var _r0 = _annulloRenderCount, _t0 = Date.now();
+      _annulloDiag('REFRESH-START', 'via=broadcast');
+      try {
+        if (typeof staffCalRefreshFromCloud === 'function') {
+          Promise.resolve(staffCalRefreshFromCloud({ force: true }))
+            .then(function () { _annulloDiag('REFRESH-DONE', 'via=broadcast dur=' + (Date.now() - _t0) + 'ms rendered=' + (_annulloRenderCount - _r0)); })
+            .catch(function () {});
+        }
+      } catch (e) {}
     }, 150);
   }
   function staffCalRtOnRemoteMemberChanged(payload) {
@@ -35449,7 +35475,11 @@ Per confermare scrivi ELIMINA.`);
   function staffCalRtBroadcast() {
     try {
       if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
-        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: Date.now() } });
+        var _ts = Date.now();
+        _annulloDiag('SEND', 'ts=' + _ts);
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-changed', payload: { ts: _ts } });
+      } else {
+        _annulloDiag('SEND-SKIP', 'no channel/send');
       }
     } catch (e) { console.warn('staff-cal realtime broadcast:', e); }
   }
@@ -36076,6 +36106,7 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalResizeTimer = null;
 
   function renderStaffCalendar() {
+    try { _annulloRenderCount++; } catch (e) {}
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
     // Nome del giorno accanto alla data (desktop): es. "Giovedì".
     const _wd = document.getElementById('staffCalDateWeekday');
