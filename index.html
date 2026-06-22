@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.889';
+    const APP_VERSION = '5.890';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37451,12 +37451,14 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
     if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
     if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
-    // ⭐ CROSS-DEVICE OTTIMISTICO (sposta campo): spingi SUBITO il reassign al cloud, così un SECONDO
-    // device vede lo spostamento all'istante (come create/cancel), senza aspettare la conferma
-    // Matchpoint. Su rifiuto, _staffCalEditRevertAll spinge il reassign INVERSO (nuovo→origine). Solo
-    // per lo SLOT-move (campo/giorno/ora-inizio): gli edit in-place (giocatori/nota/durata) restano
-    // push-on-confirm. Il push di successo (sotto) ri-spinge con il roster autorevole del worker.
+    // ⭐ CROSS-DEVICE OTTIMISTICO: spingi SUBITO lo stato al cloud, così un SECONDO device vede la
+    // modifica all'istante (come create/cancel), senza aspettare la conferma Matchpoint. Lo SLOT-move
+    // (campo/giorno/ora-inizio) va come reassign (annulla origine + crea destinazione); gli edit
+    // IN-PLACE (durata/giocatori/nota) vanno come sync del record corrente. Su rifiuto del worker,
+    // _staffCalEditRevertAll ri-spinge lo stato ripristinato (reassign inverso per il move, sync del
+    // record ripristinato per l'in-place). Il push di successo (sotto) ri-spinge col roster autorevole.
     if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud optimistic:', e); } }
+    else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud optimistic:', e); } }
     try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
     renderStaffCalendar();
     svcResetToNeutral(); svcAutoCloseIfMobile();
@@ -37606,11 +37608,14 @@ Per confermare scrivi ELIMINA.`);
     try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
     try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
     try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
-    // ⭐ CROSS-DEVICE: lo spostamento era già stato propagato al cloud in ottimistico (al commit).
-    // Ora che Matchpoint l'ha rifiutato e il locale è tornato a ORIGINE, spingi il reassign INVERSO
-    // (nuovo→origine) così anche il SECONDO device riporta la prenotazione com'era. Simmetrico al
-    // commit; solo per lo slot-move.
-    try { if (slotMoved) staffCalCloudReassignAndSyncMove(op.mIso, op.mCampo, op.mOraIni, op.origIso, op.origCampo, op.origOra, _staffCalEndTime(op.origOra, op.origDurMin)); } catch (e) { console.warn('staff move revert cloud:', e); }
+    // ⭐ CROSS-DEVICE su rifiuto: lo stato era già stato propagato al cloud in ottimistico (al commit).
+    // Cross-device su rifiuto: per lo slot-move spingi il reassign INVERSO; per l'in-place ri-spingi
+    // il record ORA ripristinato (il revert locale sopra ha già rimesso durata/giocatori/nota originali)
+    // così anche il SECONDO device torna com'era. Simmetrico al push ottimistico al commit.
+    try {
+      if (slotMoved) staffCalCloudReassignAndSyncMove(op.mIso, op.mCampo, op.mOraIni, op.origIso, op.origCampo, op.origOra, _staffCalEndTime(op.origOra, op.origDurMin));
+      else staffCalCloudSyncEdit(curIso, curCampo, curOra);
+    } catch (e) { console.warn('staff edit revert cloud:', e); }
   }
 
   // Aggiorna l'array `giocatori` della prenotazione staff in locale applicando gli add/remove
