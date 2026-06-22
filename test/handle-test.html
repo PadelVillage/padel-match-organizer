@@ -658,6 +658,47 @@ const CASES = [
       checks.push({ label: 'payload players.remove = [Luca…]', ok: !!wp && wp.body.players && Array.isArray(wp.body.players.remove) && wp.body.players.remove.some(n => /Luca/.test(n)) });
       return checks;
     }
+  },
+  {
+    id: 23, flow: 'Blocco/Maestro', name: 'handle: "prenota una lezione …" senza maestro → BLOCCA (no create) finché non si dà il maestro; poi crea',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // 1) Lezione senza maestro → deve BLOCCARE (chiede il maestro): NIENTE create.
+      await handleSeq(win, ['prenota una lezione domani campo 3 alle 18']);
+      checks.push({ label: 'nessun create finché manca il maestro', ok: workerPushes('create').length === 0 });
+      // 2) Indico il maestro → deve chiedere l'allievo: ancora NIENTE create.
+      await handleSeq(win, ['Santiago']);
+      checks.push({ label: 'dopo il maestro ancora nessun create (chiede l’allievo)', ok: workerPushes('create').length === 0 });
+      // 3) Allievo "ospite" esplicito + conferma → ora crea, con tipo lezione + istruttore Santiago.
+      await handleSeq(win, ['ospite', 'conferma']);
+      const created = await waitFor(() => workerPushes('create').some(w => w.body && w.body.tipo), 4000);
+      const wp = workerPushes('create').find(w => w.body && w.body.tipo);
+      checks.push({ label: 'create inviato dopo maestro+allievo', ok: created });
+      checks.push({ label: 'payload create tipo=lezione + istruttore=Santiago', ok: !!wp && wp.body.tipo === 'lezione' && wp.body.istruttore === 'Santiago' });
+      return checks;
+    }
+  },
+  {
+    id: 24, flow: 'Blocco/Giocatore', name: 'handle: "prenota una partita …" senza giocatore → BLOCCA (no auto-Ospite) finché non si dà un nominativo; "ospite" esplicito → crea',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // 1) Partita senza giocatore → deve BLOCCARE (niente auto-Ospite): NIENTE create.
+      await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+      checks.push({ label: 'nessun create finché manca il giocatore (niente auto-Ospite)', ok: workerPushes('create').length === 0 });
+      // 2) "ospite" ESPLICITO + conferma → consentito → crea (escape intenzionale).
+      await handleSeq(win, ['ospite', 'conferma']);
+      const created = await waitFor(() => workerPushes('create').some(w => w.body && w.body.tipo), 4000);
+      const wp = workerPushes('create').find(w => w.body && w.body.tipo);
+      checks.push({ label: 'create inviato dopo "ospite" esplicito', ok: created });
+      checks.push({ label: 'payload create tipo=partita', ok: !!wp && wp.body.tipo === 'partita' });
+      return checks;
+    }
   }
 ];
 
