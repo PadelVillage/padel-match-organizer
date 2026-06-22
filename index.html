@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.902';
+    const APP_VERSION = '5.903';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39819,6 +39819,19 @@ Per confermare scrivi ELIMINA.`);
         note: svcFlowState.note || ''
       };
     }
+    // ⛔ BLOCCO (parità con l'assistente): niente lezione senza maestro, niente prenotazione senza un
+    //    giocatore. Nel manuale l'Ospite è "esplicito" se l'utente lo ha digitato nel campo. Manutenzione
+    //    esclusa (per definizione senza giocatori). NON azzero svcFlowState: la scheda resta aperta.
+    if (tipoEngine === 'lezione' && !istruttore) {
+      svcAddMessage('system', '👨‍🏫 Aggiungi un <strong>maestro</strong> prima di confermare la lezione.');
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine, 'validation_error', { via: 'slot calendario', reason: 'manca maestro', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
+      return;
+    }
+    if (tipoEngine !== 'manutenzione' && !(giocatori || []).some(function (g) { return g && g.nome; })) {
+      svcAddMessage('system', '👥 Aggiungi un <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'validation_error', { via: 'slot calendario', reason: 'manca giocatore', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
+      return;
+    }
     // Pre-check conflitto istantaneo
     const c = staffCalFindConflict(parsed);
     if (c) {
@@ -42351,7 +42364,7 @@ Per confermare scrivi ELIMINA.`);
       aiFlowState = { kind: 'prenota', stage: 'ospite', draft: draft };
       const isLez = (draft.tipo || 'partita') === 'lezione';
       const who = isLez ? 'allievo' : 'giocatore';
-      const div = _say('👥 Non hai indicato un <strong>' + who + '</strong>. ' + (isLez ? 'Faccio la lezione' : 'Prenoto') + ' a nome <strong>Ospite</strong>, oppure hai un nome da inserire?');
+      const div = _say('👥 Serve un <strong>' + who + '</strong> per prenotare: scrivi il <strong>nome</strong>. Se è davvero un ospite, tocca <strong>Ospite</strong>.');
       _appendOspiteButtons(div, draft);
     }
     function _appendOspiteButtons(div, draft) {
@@ -42359,9 +42372,9 @@ Per confermare scrivi ELIMINA.`);
       const wrap = document.createElement('div');
       wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
       const yes = document.createElement('button');
-      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Sì, a nome Ospite';
+      yes.type = 'button'; yes.className = 'svc-btn-step-cancel'; yes.textContent = '👥 È un ospite';
       const no = document.createElement('button');
-      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✍️ No, inserisco il nome';
+      no.type = 'button'; no.className = 'svc-btn-step'; no.textContent = '✍️ Inserisco il nome';
       yes.addEventListener('click', function () {
         if (yes.disabled) return;
         yes.disabled = true; no.disabled = true; yes.classList.add('selected');
@@ -42375,7 +42388,7 @@ Per confermare scrivi ELIMINA.`);
         aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
         _askNext();
       });
-      wrap.appendChild(yes); wrap.appendChild(no);
+      wrap.appendChild(no); wrap.appendChild(yes);
       div.appendChild(wrap);
     }
     // Risposta testuale alla domanda Ospite (fallback ai pulsanti): sì/ospite → Ospite; no/nome → chiede;
@@ -42383,9 +42396,9 @@ Per confermare scrivi ELIMINA.`);
     function _ospiteAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
       const draft = aiFlowState.draft;
-      // "Ospite" esplicito (o sola affermazione "sì/ok") → prenota a nome Ospite.
-      if (/( ospite | nessuno | anonimo | senza nome )/.test(n) ||
-          /^\s*(s[iì]|ok(?:ay|ey)?|va\s+bene|vabene|conferm\w*|confermo|procedi|certo)\s*$/i.test(_norm(text))) {
+      // "Ospite" ESPLICITO → prenota a nome Ospite (escape intenzionale, blocco duro). NB: il bare
+      // "sì/ok/conferma" NON vale più come Ospite (ambiguo): se non c'è un nome reale si ri-chiede.
+      if (/( ospite | nessuno | anonimo | senza nome )/.test(n)) {
         draft.giocatori = [_ospitePlayer()];
         aiFlowState = null;
         return _showSummary(draft);
@@ -42409,7 +42422,7 @@ Per confermare scrivi ELIMINA.`);
         aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
         return _askNext();
       }
-      return _say('Rispondi <strong>Sì</strong> (a nome Ospite) o <strong>No</strong> (inserisco il nome), oppure scrivi direttamente il nome del giocatore.');
+      return _say('Scrivi il <strong>nome del giocatore</strong>. Se è davvero un ospite, scrivi <em>Ospite</em>.');
     }
     // Risposta dell'utente mentre raccolgo gli slot mancanti.
     function _continuePrenota(text) {
@@ -42497,11 +42510,9 @@ Per confermare scrivi ELIMINA.`);
           if (_c) { aiFlowState = null; return _suggestFreeCourts(draft, _c); }
         }
       } catch (e) {}
-      // Partita senza giocatori indicati → la prenota sotto l'OSPITE (vedi _ospitePlayer).
-      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length)) {
-        draft.giocatori = [_ospitePlayer()];
-      }
-      draft.nome = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite');
+      // NB: niente auto-Ospite qui (blocco duro). Se manca un giocatore reale ci pensa la guardia in
+      // _executePrenota a ri-chiederlo; l'Ospite si crea solo se chiesto ESPRESSAMENTE.
+      draft.nome = (draft.giocatori && draft.giocatori.length) ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite');
       aiFlowState = { kind: 'prenota', stage: 'confirm', draft: draft };
       let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
       if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
@@ -42824,11 +42835,20 @@ Per confermare scrivi ELIMINA.`);
     async function _executePrenota(draft) {
       if (!draft || draft.__started) return;
       draft.__started = true;
-      // Rete di sicurezza (anche per la conferma testuale che salta _showSummary): una partita
-      // senza giocatori va sotto l'Ospite, mai sotto "Staff" (che il worker non sa agganciare).
-      if ((draft.tipo || 'partita') !== 'lezione' && (!draft.giocatori || !draft.giocatori.length)) {
-        draft.giocatori = [_ospitePlayer()];
-        if (!draft.nome || draft.nome === 'Staff') draft.nome = 'Ospite';
+      // ⛔ BLOCCO al collo di bottiglia della create (copre TUTTI i rami, anche la conferma testuale
+      //    che salta _showSummary): non si crea una LEZIONE senza maestro, né una prenotazione senza
+      //    aver indicato un giocatore. NB: l'auto-Ospite silenzioso è stato rimosso, quindi giocatori
+      //    è non-vuoto SOLO se l'utente ha fornito un'intenzione (nome reale, "ospite" esplicito o nome
+      //    sconosciuto già mappato a Ospite con avviso). Vuoto = ha dimenticato → si ri-chiede.
+      if ((draft.tipo || 'partita') === 'lezione' && !draft.istruttore) {
+        draft.__started = false;
+        aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['maestro'] };
+        return _askNext();
+      }
+      if (!draft.giocatori || !draft.giocatori.length) {
+        draft.__started = false;
+        draft.__ospiteAsked = false;
+        return _askOspite(draft);
       }
       const parsed = {
         campoNum: draft.campoNum,
