@@ -1468,7 +1468,7 @@ async function leggiDataTabellone(tabCtx) {
 
 // Imposta la data sul tabellone e attende che la griglia si aggiorni.
 // isoDate: 'YYYY-MM-DD'
-async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
+async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic, opts = {}) {
   const [year, month, day] = isoDate.split('-');
   const italianDate = `${day}/${month}/${year}`;
   diagnostic.steps.push(`tabellone_set_date_${isoDate}`);
@@ -1478,7 +1478,7 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
   // Il suo callback onSelect() aggiorna la griglia via AJAX (non postback ASP.NET).
   // Chiamarlo direttamente è l'unico modo affidabile per cambiare data senza
   // navigazione diretta (bloccata da EventValidation / Error.aspx).
-  const onSelectResult = await tabCtx.evaluate((dateStr) => {
+  const _fireOnSelect = () => tabCtx.evaluate((dateStr) => {
     const [d2, m2, y2] = dateStr.split('/').map(Number);
     const targetDate = new Date(y2, m2 - 1, d2);
     // 1a. jQuery onSelect diretto
@@ -1503,6 +1503,8 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
     return { ok: false, reason: 'jquery_not_available' };
   }, italianDate).catch((err) => ({ ok: false, reason: String(err) }));
 
+  const onSelectResult = await _fireOnSelect();
+
   if (onSelectResult?.ok) {
     diagnostic.dateInputSelector = onSelectResult.method;
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
@@ -1519,6 +1521,22 @@ async function impostaDataTabellone(tabCtx, page, isoDate, diagnostic) {
       return;
     }
     diagnostic.steps.push(`date_mismatch_onSelect:want=${italianDate}:got=${shown1}`);
+  }
+
+  // Modalità FAST (solo lookup idReserva post-create): NIENTE Strategia 2 (navigazione popup
+  // mesi, lenta e a volte buggata: ~15-20s, ha persino sbagliato anno → 2028). Il grid però è
+  // spesso solo IN RITARDO sull'AJAX dell'onSelect → ritenta la via VELOCE qualche volta (cap
+  // ~5s) prima di rinunciare. Se non ci riesce, id nullo: il sync ogni 2 min lo riassegna.
+  if (opts.fast) {
+    for (let i = 0; i < 3; i++) {
+      await _fireOnSelect();
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      const shownF = await leggiDataTabellone(tabCtx);
+      if (shownF === italianDate) { diagnostic.dateShown = shownF; diagnostic.steps.push(`date_fast_ok:retry${i}`); return; }
+    }
+    diagnostic.steps.push('date_fast_giveup');
+    return;
   }
 
   // ── Strategia 2: clic nativo sul popup jQuery datepicker ─────────────────
@@ -2220,15 +2238,76 @@ async function mpWarmEnsureLogged(baseUrl, username, password, diagnostic) {
   }
 }
 
+// Costruisce la sessione warm (login a freddo). Guard `_mpWarmBuilding` per
+// deduplicare chiamate concorrenti (warmup all'avvio + primo request reale): la
+// seconda attende il login già in corso invece di lanciare un secondo browser.
+let _mpWarmBuilding = null;
+async function mpBuildWarm(baseUrl, username, password, diagnostic) {
+  if (_mpWarmBuilding) { await _mpWarmBuilding; return; }
+  _mpWarmBuilding = (async () => {
+    const browser = await chromium.launch(mpLaunchOptions());
+    const { context, page } = await mpNewContextPage(browser);
+    await mpDoLogin(page, baseUrl, username, password, diagnostic);
+    _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+  })();
+  try { await _mpWarmBuilding; } finally { _mpWarmBuilding = null; }
+}
+
+// Scalda la sessione all'avvio del worker, così la PRIMA operazione reale dopo
+// un deploy/restart (pm2) non paga il login a freddo (~13s). Best-effort.
+async function mpWarmStartup() {
+  if (!MP_WARM_ENABLED) return;
+  const baseUrl = env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const username = env('MATCHPOINT_USERNAME');
+  const password = env('MATCHPOINT_PASSWORD');
+  if (!username || !password) return;
+  const t0 = Date.now();
+  try {
+    await mpBuildWarm(baseUrl, username, password, { steps: [] });
+    console.log(JSON.stringify({ event: 'mp_warm_startup_ok', ms: Date.now() - t0 }));
+  } catch (e) {
+    await mpWarmInvalidate();
+    console.log(JSON.stringify({ event: 'mp_warm_startup_failed', error: String((e && e.message) || e) }));
+  }
+}
+
+// Keepalive proattivo: ricostruisce la sessione warm PRIMA del tetto `createdAt`
+// (MP_WARM_MAX_AGE_MS), così nessuna operazione utente paga il login a freddo
+// dopo ~30 min di inattività. Passa per la coda (serializzato con le altre op →
+// nessun login concorrente sull'account Matchpoint unico). Il rebuild è raro
+// (~ogni 24 min) e occupa la coda ~13s solo se serve davvero.
+const MP_WARM_KEEPALIVE_MS = 4 * 60 * 1000;       // controlla ogni 4 min
+const MP_WARM_REBUILD_MARGIN_MS = 6 * 60 * 1000;  // ricostruisci 6 min prima del cap
+function startWarmKeepalive() {
+  if (!MP_WARM_ENABLED) return;
+  const baseUrl = env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const username = env('MATCHPOINT_USERNAME');
+  const password = env('MATCHPOINT_PASSWORD');
+  if (!username || !password) return;
+  const tick = () => {
+    mpQueueRun({ op: 'keepalive', label: 'keepalive sessione', operatore: '—' }, async () => {
+      const dead = !_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed();
+      const age = _mpWarm ? Date.now() - (_mpWarm.createdAt || 0) : Infinity;
+      if (dead || age > (MP_WARM_MAX_AGE_MS - MP_WARM_REBUILD_MARGIN_MS)) {
+        await mpWarmInvalidate();
+        await mpBuildWarm(baseUrl, username, password, { steps: [] });
+        console.log(JSON.stringify({ event: 'mp_warm_keepalive_rebuild' }));
+      }
+      return { ok: true };
+    }).catch((e) => {
+      console.log(JSON.stringify({ event: 'mp_warm_keepalive_error', error: String((e && e.message) || e) }));
+    });
+  };
+  const t = setInterval(tick, MP_WARM_KEEPALIVE_MS);
+  if (t && t.unref) t.unref();
+}
+
 async function mpAcquirePage(baseUrl, username, password, diagnostic) {
   if (MP_WARM_ENABLED) {
     try {
       if (_mpWarm && (Date.now() - (_mpWarm.createdAt || 0) > MP_WARM_MAX_AGE_MS)) await mpWarmInvalidate();
       if (!_mpWarm || !_mpWarm.page || _mpWarm.page.isClosed()) {
-        const browser = await chromium.launch(mpLaunchOptions());
-        const { context, page } = await mpNewContextPage(browser);
-        await mpDoLogin(page, baseUrl, username, password, diagnostic);
-        _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+        await mpBuildWarm(baseUrl, username, password, diagnostic);
         diagnostic.session = 'warm_new';
       } else if (Date.now() - (_mpWarm.lastOkAt || 0) < MP_WARM_FRESH_MS) {
         // Usata con successo da poco → riuso diretto, niente navigazione di verifica.
@@ -2256,6 +2335,35 @@ async function mpAcquirePage(baseUrl, username, password, diagnostic) {
     isWarm: false,
     release: async () => { try { await browser.close(); } catch (_e) {} },
   };
+}
+
+// ── W2 — RETRY per operazioni di SOLA LETTURA del tabellone (idempotenti) ────
+// `MATCHPOINT_TABELLONE_NOT_FOUND` è una flakiness TRANSITORIA della navigazione
+// (Matchpoint lento / interstiziale / sessione scaduta lato server): oggi esce come
+// 500 al primo colpo e rompe il READ (idReserva stantio → edit per coordinate) e il
+// POLLER (occupancy non aggiornato → fantasmi/ricomparse). Qui la ritentiamo a parità
+// di operazione: invalidiamo la sessione calda (→ login fresco al prossimo acquire) e
+// riproviamo. USARE SOLO su letture idempotenti (get-slots/poller, read-tabellone):
+// MAI su create/edit/cancel (un retry su una mutazione parzialmente riuscita = doppione).
+const MP_READ_NAV_RETRIES = Math.max(0, Math.min(4, Number(env('MATCHPOINT_READ_NAV_RETRIES', '2'))));
+const MP_READ_NAV_RETRY_GAP_MS = Math.max(0, Number(env('MATCHPOINT_READ_NAV_RETRY_GAP_MS', '800')));
+function _isRetriableNavError(e) {
+  return !!(e && e.code === 'MATCHPOINT_TABELLONE_NOT_FOUND');
+}
+async function mpReadRetry(label, fn) {
+  let lastErr = null;
+  for (let attempt = 0; attempt <= MP_READ_NAV_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (!_isRetriableNavError(e) || attempt === MP_READ_NAV_RETRIES) throw e;
+      console.log(JSON.stringify({ event: 'mp_read_nav_retry', label: String(label || ''), attempt: attempt + 1, code: e.code, time: new Date().toISOString() }));
+      await mpWarmInvalidate();        // forza un login fresco al prossimo mpAcquirePage
+      if (MP_READ_NAV_RETRY_GAP_MS) await new Promise((r) => setTimeout(r, MP_READ_NAV_RETRY_GAP_MS));
+    }
+  }
+  throw lastErr;
 }
 
 async function getSlotsWithBrowser(options = {}) {
@@ -3358,7 +3466,7 @@ async function handleReadTabellone(req, res) {
   // read + poller/edit) pilotano la stessa pagina insieme → cambi data incrociati e
   // roster parziali/scambiati (causa #1 del "lampeggio" dei nomi). La coda con
   // concorrenza 1 garantisce che un read non condivida mai la pagina con un'altra op.
-  const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => readTabelloneWithBrowser(body));
+  const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => mpReadRetry('read-tabellone', () => readTabelloneWithBrowser(body)));
   json(res, 200, result);
 }
 
@@ -4783,6 +4891,26 @@ async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
   } catch (e) { /* timeout: proseguiamo comunque, c'è il fallback dei 3 tentativi */ }
 }
 
+// ── Helper: chiude un avviso SweetAlert2 ("importi in attesa", semaforo) se presente ──
+// Alcuni soci con semaforo GIALLO (es. pagamenti in sospeso) fanno comparire uno swal2
+// al momento della SELEZIONE / dell'AGGIUNTA dell'allievo in una lezione: il popup copre
+// la pagina, il click su "+ Aggiungere" viene intercettato e l'allievo non entra mai in
+// elenco → falso PLAYER_ADD_NOT_CONFIRMED (caso reale "Lidia Ciao Comes": 8,00 in attesa).
+// ⚠️ Controllo IMMEDIATO e non bloccante: isVisible() non auto-attende, quindi se l'avviso
+// non c'è si esce subito (nessun rischio del timeout-trap che ruppe le prenotazioni).
+async function dismissSwalOk(page, diagnostic, where) {
+  let dismissed = false;
+  for (let i = 0; i < 6; i++) {
+    const ok = page.locator('button.swal2-confirm');
+    if (!(await ok.isVisible().catch(() => false))) break;
+    await ok.first().click({ timeout: 1500 }).catch(() => {});
+    dismissed = true;
+    diagnostic.steps.push('swal_dismiss:' + where);
+    await page.waitForTimeout(300);
+  }
+  return dismissed;
+}
+
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
@@ -4960,12 +5088,28 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       diagnostic);
   }
 
-  // Clicca "Aggiungere" solo con id valido E nome combaciante
-  await addLink.first().click({ timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(1200);
-  // L'aggiunta scatena un postback parziale: attende che la riga partecipante sia
-  // renderizzata prima di scansionare (riduce i falsi PLAYER_ADD_NOT_CONFIRMED).
-  await mpWaitAsyncPostbackIdle(page, 8000).catch(() => {});
+  // Avviso semaforo (es. "importi in attesa") eventualmente già presente: chiudilo.
+  await dismissSwalOk(page, diagnostic, 'pre_add');
+
+  // Clicca "+ Aggiungere all'elenco". Per un socio con semaforo GIALLO il PRIMO click
+  // mostra solo l'avviso swal2 ("importi in attesa") e NON inserisce l'allievo: va
+  // chiuso l'avviso (OK) e ri-cliccato "Aggiungere" per inserirlo davvero. Ritenta
+  // finché la riga compare nell'elenco "Allievi" (input TextBoxNombreValor della
+  // griglia Listado), max 3 tentativi.
+  const rowSel = 'input[id*="Listado"][id*="TextBoxNombreValor"]';
+  const baseRows = await page.locator(rowSel).count().catch(() => 0);
+  for (let addTry = 0; addTry < 3; addTry++) {
+    // Guardia anti-doppio: se la riga è già comparsa (anche da un click precedente con
+    // postback lento) non ri-clicca → evita di inserire l'allievo due volte.
+    if ((await page.locator(rowSel).count().catch(() => 0)) > baseRows) break;
+    await addLink.first().click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await dismissSwalOk(page, diagnostic, 'add' + addTry);
+    await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
+    const rows = await page.locator(rowSel).count().catch(() => 0);
+    diagnostic.steps.push(`player_add_try:${addTry}:rows=${rows}/base${baseRows}`);
+    if (rows > baseRows) break;
+  }
 
   // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
   // tipo di form. La partita usa il repeater "WUCUsuarioPartida", la lezione
@@ -4981,52 +5125,30 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // una riga è valida se il suo HiddenFieldIdCliente combacia col codice cliente atteso
   // o con l'id agganciato (confronto su onlyDigits, ignora gli zeri iniziali).
   let addedIdCliente = null;
-  let righeViste = [];
+  const righeViste = [];
   const wantCode = onlyDigits(expectedClientCode);
   const wantPeople = onlyDigits(lockedId);
-  // Verifica con qualche ritentativo: dopo il postback parziale la riga partecipante
-  // può renderizzarsi con un piccolo ritardo (specie sulla ficha lezione singola
-  // "PorUsuario") → senza retry si ottiene un falso PLAYER_ADD_NOT_CONFIRMED.
-  for (let scan = 0; scan < 3 && addedIdCliente === null; scan++) {
-    if (scan > 0) await page.waitForTimeout(800);
-    righeViste = [];
-    const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
-    const righeTot = await nomeInputs.count().catch(() => 0);
-    for (let r = 0; r < righeTot; r++) {
-      const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
-      const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
-      let idCliVal = '', idPplVal = '';
-      if (rowId) {
-        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
-        idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
-        // La riga griglia può esporre l'id agganciato nel campo HiddenFieldIdPeople
-        // (= lockedId, id interno) invece del codice cliente: lo leggiamo per confermare
-        // anche quando HiddenFieldIdCliente non riporta il codice atteso.
-        const idPplId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdPeople');
-        idPplVal = (await page.locator(`input[id="${idPplId}"]`).first().inputValue().catch(() => '')).trim();
-      }
-      const idCliDigits = onlyDigits(idCliVal);
-      const idPplDigits = onlyDigits(idPplVal);
-      righeViste.push(`${rowId}=${nomeVal}#cli=${idCliVal}#ppl=${idPplVal}`);
-      const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
-      // Conferma per ID su ENTRAMBI i campi nascosti della riga (codice cliente o id
-      // interno agganciato): copre i form dove la riga porta l'uno o l'altro.
-      const matchById =
-        (!!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople))) ||
-        (!!idPplDigits && ((wantPeople && idPplDigits === wantPeople) || (wantCode && idPplDigits === wantCode)));
-      if (matchByName || matchById) {
-        addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
-        diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}:idPpl=${idPplVal}:scan=${scan}`);
-        break;
-      }
+  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+  const righeTot = await nomeInputs.count().catch(() => 0);
+  for (let r = 0; r < righeTot; r++) {
+    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+    let idCliVal = '';
+    if (rowId) {
+      const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+      idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+    }
+    const idCliDigits = onlyDigits(idCliVal);
+    righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
+    const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
+    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+    if (matchByName || matchById) {
+      addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
+      diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}`);
+      break;
     }
   }
   diagnostic.partecipantiRighe = righeViste.slice(0, 30);
-  // Marcatore versione + contenuto righe negli steps (gli steps sono l'unico campo
-  // diagnostico che risale fino all'app): così, se la verifica fallisce ancora, si vede
-  // COSA contengono davvero le righe (#cli=/#ppl=) e si conferma che gira il worker nuovo.
-  diagnostic.steps.push('player_verify_v2:want_cli=' + wantCode + ':want_ppl=' + wantPeople +
-    ':rows=' + (righeViste.slice(0, 6).join(' | ').slice(0, 260) || '(nessuna)'));
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
@@ -5308,6 +5430,23 @@ async function verifyBookingCreated(page, tabCtx, cellSel, data, baseUrl, diagno
   }
 }
 
+// Post-save la Ficha (partita/lezione) espone l'idReserva nel campo nascosto
+// `CC_Datos_HiddenFieldId`. Il postback ASP.NET può popolarlo con lieve ritardo →
+// poll breve (≤maxMs). Ritorna l'id numerico o '' (→ fallback tabellone).
+async function readReservaIdFromFicha(page, maxMs = 1200) {
+  const deadline = Date.now() + maxMs;
+  for (;;) {
+    const v = await page.evaluate(() => {
+      const el = document.getElementById('CC_Datos_HiddenFieldId');
+      const s = el && el.value ? el.value.trim() : '';
+      return /^\d+$/.test(s) ? s : '';
+    }).catch(() => '');
+    if (v) return v;
+    if (Date.now() >= deadline) return '';
+    await page.waitForTimeout(250);
+  }
+}
+
 // createBookingWithBrowser: naviga al tabellone Matchpoint, imposta la data, trova la cella
 // libera per il campo e l'ora target.
 // Per tipo=partita: apre il form Ficha via URL diretto (più affidabile del clic-cella);
@@ -5350,7 +5489,6 @@ async function createBookingWithBrowser(options = {}) {
     steps: [],
     navigationAttempts: [],
   };
-
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
   const page = acq.page;
   let _opFailed = false;
@@ -5438,33 +5576,38 @@ async function createBookingWithBrowser(options = {}) {
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
 
-      // Sonda idea 1: HiddenFieldIdReserva già popolato post-save? (ASP.NET postback)
-      // Se restituisce un id numerico, elimina il cerca_evento che segue (~10s risparmiati).
-      diagnostic.hiddenIdReservaPostSave = await page.evaluate(() => {
-        const el = document.getElementById('CC_Datos_FormViewFicha_WUCCabeceraReserva_HiddenFieldIdReserva');
-        return (el && el.value && /^\d+$/.test(el.value.trim())) ? el.value.trim() : '';
-      }).catch(() => '');
-      if (diagnostic.hiddenIdReservaPostSave) {
-        diagnostic.steps.push(`idReserva_from_hidden:${diagnostic.hiddenIdReservaPostSave}`);
-      }
-
-      // Cattura idReserva dal tabellone subito dopo la creazione (una sola volta, non distruttivo)
+      // idReserva veloce: post-save la Ficha espone l'id nel campo nascosto
+      // `CC_Datos_HiddenFieldId`. Se è numerico lo usiamo e saltiamo del tutto il
+      // tabellone (~3.5s risparmiati). Fallback al lookup tabellone solo se vuoto.
       let _idReservaCreated = null;
-      try {
-        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
-        diagnostic.steps.push('cerca_idreserva');
-        const _resEv = await page.evaluate(({ rec, oraStr }) => {
-          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
-          const eventi = [...document.querySelectorAll('div.evento')]
-            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
-          return { id: hit ? hit.id : null };
-        }, { rec: recurso, oraStr: ora });
-        _idReservaCreated = _resEv.id || null;
-        diagnostic.steps.push(`idReserva:${_idReservaCreated}`);
-      } catch (err) {
-        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      const _hiddenId = await readReservaIdFromFicha(page);
+      if (_hiddenId) {
+        _idReservaCreated = _hiddenId;
+        diagnostic.steps.push(`idReserva_from_hidden:${_hiddenId}`);
+        // Parcheggia la sessione warm sul tabellone: lasciarla sulla Ficha "fancy"
+        // romperebbe la navigazione dell'op successiva (read/get-slots/sync 2min).
+        // `commit` ritorna appena parte la navigazione (la coda serializza le op,
+        // basta sganciarsi dalla Ficha) → quasi gratis.
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'commit', timeout: 20000 }).catch(() => {});
+        diagnostic.steps.push('park_tabellone');
+      } else {
+        // Fallback: cattura idReserva dal tabellone (più lento ma affidabile)
+        try {
+          await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
+          diagnostic.steps.push('cerca_idreserva');
+          const _resEv = await page.evaluate(({ rec, oraStr }) => {
+            const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+            const eventi = [...document.querySelectorAll('div.evento')]
+              .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+            const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+            return { id: hit ? hit.id : null };
+          }, { rec: recurso, oraStr: ora });
+          _idReservaCreated = _resEv.id || null;
+          diagnostic.steps.push(`idReserva:${_idReservaCreated}`);
+        } catch (err) {
+          diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+        }
       }
 
       const resolvedPlayers = playersResult
@@ -5557,23 +5700,33 @@ async function createBookingWithBrowser(options = {}) {
       await page.waitForTimeout(2000);
       diagnostic.postSubmitUrl = page.url();
       diagnostic.steps.push('done');
-      // Cattura idReserva dal tabellone subito dopo la creazione (lezione)
+      // idReserva veloce dal campo nascosto post-save (vedi ramo partita); fallback
+      // al tabellone se vuoto. Stessa logica → ~3s risparmiati anche sulle lezioni.
       let _idReservaLezione = null;
-      try {
-        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
-        diagnostic.steps.push('cerca_idreserva');
-        const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
-          const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
-          const eventi = [...document.querySelectorAll('div.evento')]
-            .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
-          const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
-          return { id: hit ? hit.id : null };
-        }, { rec: recurso, oraStr: ora });
-        _idReservaLezione = _resEvLezione.id || null;
-        diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
-      } catch (err) {
-        diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+      const _hiddenIdLez = await readReservaIdFromFicha(page);
+      if (_hiddenIdLez) {
+        _idReservaLezione = _hiddenIdLez;
+        diagnostic.steps.push(`idReserva_from_hidden:${_hiddenIdLez}`);
+        // Parcheggia la sessione warm sul tabellone (sgancia dalla Ficha fancy).
+        await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'commit', timeout: 20000 }).catch(() => {});
+        diagnostic.steps.push('park_tabellone');
+      } else {
+        try {
+          await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
+          diagnostic.steps.push('cerca_idreserva');
+          const _resEvLezione = await page.evaluate(({ rec, oraStr }) => {
+            const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
+            const eventi = [...document.querySelectorAll('div.evento')]
+              .filter((e) => String(e.getAttribute('idrecurso')) === String(rec));
+            const hit = eventi.find((e) => variants.some((v) => (e.innerText || '').includes(v)));
+            return { id: hit ? hit.id : null };
+          }, { rec: recurso, oraStr: ora });
+          _idReservaLezione = _resEvLezione.id || null;
+          diagnostic.steps.push(`idReserva:${_idReservaLezione}`);
+        } catch (err) {
+          diagnostic.steps.push(`idReserva_lookup_error:${String(err.message || err)}`);
+        }
       }
 
       const resolvedPlayersLezione = playersResult
@@ -5659,7 +5812,7 @@ async function createBookingWithBrowser(options = {}) {
       let _idReservaManutenzione = null;
       try {
         await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await impostaDataTabellone(page, page, data, diagnostic);
+        await impostaDataTabellone(page, page, data, diagnostic, { fast: true });
         diagnostic.steps.push('cerca_idreserva');
         const _resEvMan = await page.evaluate(({ rec, oraStr }) => {
           const variants = [oraStr, oraStr.replace(/^0(\d:)/, '$1')];
@@ -6126,40 +6279,44 @@ async function editBookingWithBrowser(input = {}) {
 
     const pageText = await page.evaluate(() => document.body.innerText || '').catch(() => '');
 
-    // Leggi slot dal testo
+    // Leggi slot dal testo (best-effort, solo per diagnostica/visualizzazione)
     let slotFinale = null;
     if (move) {
       const normalizeHour = (hhmm) => (hhmm ? hhmm.replace(/^0(\d:)/, '$1') : '');
-      const expectedData = move.data
-        ? (() => { const [y, m, d] = move.data.split('-'); return `${d}/${m}/${y}`; })()
-        : null;
-      const oraFineCalc = move.oraFine || (move.oraInizio && move.durationMinutes
-        ? computeEndTime(move.oraInizio, move.durationMinutes) : null);
-      const expectedOraInizio = normalizeHour(move.oraInizio);
-
       const dataMatch = pageText.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{1,2}:\d{2})\s*[-–]?\s*(\d{1,2}:\d{2})/);
       const campoMatch = pageText.match(/Prenotazione\s+(Campo\s+\d+)/i) || pageText.match(/(Campo\s+\d+)/i);
       const campoName = campoMatch ? campoMatch[1] : null;
-      slotFinale = dataMatch
-        ? `${campoName || '?'} · ${dataMatch[1]} · ${dataMatch[2]}–${dataMatch[3]}`
-        : null;
-
-      if (expectedData && dataMatch && !dataMatch[1].includes(expectedData)) {
-        throw fail('EDIT_VERIFICA_FALLITA',
-          `Data attesa ${expectedData} ma pagina mostra ${dataMatch[1]}`, diagnostic);
-      }
-      if (expectedOraInizio && dataMatch) {
-        // Normalizza ENTRAMBI i lati allo stesso formato: la manutenzione mostra "07:00",
-        // partita/lezione "7:00". Senza normalizzare anche pageOra il confronto dava un
-        // falso EDIT_VERIFICA_FALLITA pur essendo lo spostamento corretto.
-        const pageOra = normalizeHour(dataMatch[2]);
-        const expOra  = expectedOraInizio; // già normalizzato
-        if (pageOra !== expOra) {
-          throw fail('EDIT_VERIFICA_FALLITA',
-            `Ora inizio attesa ${expOra} ma trovata ${pageOra}`, diagnostic);
-        }
-      }
+      slotFinale = dataMatch ? `${campoName || '?'} · ${dataMatch[1]} · ${dataMatch[2]}–${dataMatch[3]}` : null;
       diagnostic.slotFinale = slotFinale;
+
+      // ── VERIFICA ROBUSTA dello spostamento ──────────────────────────────────
+      // La vecchia verifica si fidava di UNA regex rigida (data-ora-ora adiacenti, separatori
+      // fissi e PRIMO match nella pagina): una minima variazione di formato della Ficha — o un
+      // altro orario presente nel testo — faceva scattare un FALSO EDIT_VERIFICA_FALLITA PUR
+      // essendo lo spostamento applicato su Matchpoint. L'app faceva quindi il revert ottimistico
+      // → lo slot restava vecchio in app ma spostato su MP (disallineamento cross-device).
+      // Ora cerchiamo data e ora-inizio ATTESE in modo INDIPENDENTE e TOLLERANTE al formato:
+      //  • entrambe presenti → confermato OK;
+      //  • altrimenti, se la scheda mostra ANCORA lo slot di ORIGINE (e origine≠destinazione)
+      //    → fallimento REALE (non spostato): solo qui falliamo;
+      //  • altrimenti → inconcludente: NON falliamo (l'Actualizar è già andato a buon fine; il
+      //    sync periodico riconcilia), lo segnaliamo solo nella diagnostica.
+      const _dateForms = (iso) => { if (!iso) return []; const [y, m, d] = String(iso).split('-'); const dd = String(d).padStart(2, '0'), mm = String(m).padStart(2, '0'); return [`${dd}/${mm}/${y}`, `${+d}/${+m}/${y}`, `${dd}-${mm}-${y}`, `${dd}.${mm}.${y}`]; };
+      const _hourForms = (h) => { if (!h) return []; const n = normalizeHour(h); const [hh, mi] = n.split(':'); return [n, `${String(hh).padStart(2, '0')}:${mi}`]; };
+      const _present = (forms) => forms.length === 0 ? true : forms.some((f) => pageText.includes(f));
+      const targetConfirmed = _present(_dateForms(move.data)) && _present(_hourForms(move.oraInizio));
+      const sameAsOrigin = String(move.data || '') === String(input.data || '')
+        && normalizeHour(move.oraInizio || '') === normalizeHour(input.ora || '');
+      const stillAtOrigin = !sameAsOrigin && _present(_dateForms(input.data)) && _present(_hourForms(input.ora));
+      if (targetConfirmed) {
+        diagnostic.steps.push('move_verify_ok');
+      } else if (stillAtOrigin) {
+        throw fail('EDIT_VERIFICA_FALLITA',
+          `Spostamento non applicato: la scheda mostra ancora lo slot di origine (${input.data} ${input.ora}).`, diagnostic);
+      } else {
+        diagnostic.moveVerifyInconclusive = true;
+        diagnostic.steps.push('move_verify_inconclusive');
+      }
     }
 
     // Scansiona righe partecipanti
@@ -6184,18 +6341,30 @@ async function editBookingWithBrowser(input = {}) {
     }
     diagnostic.partecipantiFinali = partecipantiFinali;
 
-    // Verifica giocatori vs richiesta
+    // Verifica giocatori vs richiesta — TOLLERANTE al formato del nome.
     if (players) {
-      const nomiFinali = partecipantiFinali.map((p) => p.nome.toLowerCase().trim());
+      const _stripAccents = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const _tokens = (s) => _stripAccents(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+      // match per SOTTOINSIEME di token: "Anna" combacia con "Anna Verdi" e viceversa,
+      // tollerante ad accenti/spazi/maiuscole. La verifica esatta del vecchio codice dava
+      // falsi EDIT_VERIFICA_FALLITA quando la Ficha rendeva il nome in forma diversa.
+      const _nameMatch = (a, b) => { const ta = _tokens(a), tb = _tokens(b); if (!ta.length || !tb.length) return false; const A = new Set(ta), B = new Set(tb); return ta.every((t) => B.has(t)) || tb.every((t) => A.has(t)); };
+      const rosterNames = partecipantiFinali.map((p) => p.nome);
+      // ADD: l'inserimento è già verificato a monte da searchAndAddPlayer (che fallisce con
+      // PLAYER_ADD_NOT_CONFIRMED se non entra). Qui NON falliamo per un mancato match di nome:
+      // confermiamo per sottoinsieme di token, altrimenti segnaliamo soltanto (soft-pass) per
+      // non revertire un'aggiunta in realtà riuscita.
       for (const p of (players.add || [])) {
-        if (!nomiFinali.includes(p.nome.toLowerCase().trim())) {
-          throw fail('EDIT_VERIFICA_FALLITA',
-            `Giocatore aggiunto ${p.nome} non trovato nella verifica finale.`, diagnostic);
+        if (!rosterNames.some((rn) => _nameMatch(rn, p.nome))) {
+          diagnostic.addVerifyInconclusive = (diagnostic.addVerifyInconclusive || []).concat(p.nome);
+          diagnostic.steps.push('add_verify_inconclusive:' + p.nome);
         }
       }
+      // REMOVE: qui invece FALLIAMO se il giocatore risulta ANCORA presente. Il match per
+      // sottoinsieme di token lo riconosce anche con formato diverso → niente falso "rimosso ok".
       if (!players.removeAll) {
         for (const nome of (players.remove || [])) {
-          if (nomiFinali.includes(nome.toLowerCase().trim())) {
+          if (rosterNames.some((rn) => _nameMatch(rn, nome))) {
             throw fail('EDIT_VERIFICA_FALLITA',
               `Giocatore ${nome} doveva essere rimosso ma è ancora presente.`, diagnostic);
           }
@@ -6533,7 +6702,7 @@ async function runPollCycle() {
     try {
       const result = await mpQueueRun(
         { op: 'poll', label: `sync slot ${isoDate}`, operatore: 'sistema' },
-        () => getSlotsWithBrowser({ date: isoDate }),
+        () => mpReadRetry(`poller ${isoDate}`, () => getSlotsWithBrowser({ date: isoDate })),
       );
       consecutiveFails = 0;
       bailCode = null;
@@ -6824,4 +6993,10 @@ server.listen(port, () => {
     headless: boolEnv('MATCHPOINT_HEADLESS', true),
   }));
   startPoller();
+  // Scalda la sessione Matchpoint subito dopo il boot: la prima op reale dopo un
+  // deploy/restart non paga il login a freddo (~13s). Non blocca il listen.
+  mpWarmStartup().catch(() => {});
+  // Mantiene la sessione sempre calda: rebuild proattivo prima del tetto 30 min,
+  // così nessuna op utente paga il login a freddo dopo inattività.
+  startWarmKeepalive();
 });
