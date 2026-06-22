@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.901';
+    const APP_VERSION = '5.902';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -38897,6 +38897,32 @@ Per confermare scrivi ELIMINA.`);
         });
         if (_ghostTombstones.length) records.push.apply(records, _ghostTombstones);
         pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
+        // v5.902 — Cura del fantasma "ri-comparso come Partita": la CREAZIONE via edge function
+        // (matchpoint-bookings-create) scrive un SECONDO staff_booking nel cloud con local_key
+        // `staff_booking|<data>|<ora>|Campo <campo>|<userId>` e SENZA `tipo` (→ in render diventa
+        // "Partita"). L'annullo locale qui sopra tombstona solo gli staff_booking con id-UUID
+        // dell'app (quelli in `removed`), NON questo gemello dell'edge → resta ATTIVO nel cloud e
+        // la logica di render "slot soppresso ma con staff-booking attivo = ri-prenotazione, tienila"
+        // (≈36082) lo mostra. Spazziamo quindi TUTTI gli staff_booking ATTIVI di QUESTO slot dal
+        // cloud (per local_key, qualunque sia il creatore), come fa staffCalForceRemoveSlot.
+        (async function () {
+          try {
+            if (typeof pmoStaffRpcPaged !== 'function') return;
+            const _already = new Set(records.filter(r => r.record_type === 'staff_booking').map(r => r.local_key));
+            let rows = [];
+            try { rows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['staff_booking'], p_since: null }, 'cloud_sync', 'pulire eventuali doppioni della prenotazione annullata'); } catch (e) { rows = []; }
+            const slotMatch = (p) => p && String(p.data).trim() === isoDate
+              && Number(String(p.campo).replace(/\D/g, '')) === wantCampo
+              && String(p.ora).trim() === wantOra;
+            const extra = (Array.isArray(rows) ? rows : [])
+              .filter(row => row && row.record_type === 'staff_booking' && row.local_key && !row.deleted
+                          && !_already.has(row.local_key) && slotMatch(row.payload || {}))
+              .map(row => ({ record_type: 'staff_booking', local_key: row.local_key, payload: row.payload || {}, deleted: true }));
+            if (extra.length && typeof pmoSyncCloudRecordsNow === 'function') {
+              pmoSyncCloudRecordsNow(extra, 'rimuovere i doppioni della prenotazione annullata').catch(function(e){ console.warn('staff cancel sweep cloud:', e); });
+            }
+          } catch (e) { console.warn('staff cancel sweep:', e); }
+        })();
       }
     } catch (e) { console.warn('staff cancel cloud sync:', e); }
   }
