@@ -1,0 +1,47 @@
+name: Guard worker sync (main↔test-preview)
+
+# Il worker (tools/matchpoint-browser-worker/src/server.mjs) gira come UN solo processo
+# Hetzner condiviso TEST+PROD e si deploya SOLO da main. Se il server.mjs di test-preview
+# diverge da quello di main, una promozione può riportare in PROD un worker vecchio
+# (perdere fix recenti) → "il deploy rompe un fix precedente". Questo guard fallisce se i
+# due branch hanno server.mjs diverso, così il drift non passa mai inosservato.
+
+on:
+  push:
+    branches: [main, test-preview]
+    paths:
+      - 'tools/matchpoint-browser-worker/src/server.mjs'
+  schedule:
+    - cron: '0 6 * * *'   # backstop giornaliero (06:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: server.mjs deve essere IDENTICO tra main e test-preview
+        run: |
+          set -euo pipefail
+          WORKER="tools/matchpoint-browser-worker/src/server.mjs"
+          git fetch -q origin main test-preview
+          if git diff --quiet origin/main origin/test-preview -- "$WORKER"; then
+            echo "✅ server.mjs IDENTICO tra main e test-preview — nessun drift del worker."
+            exit 0
+          fi
+          echo "::error::DRIFT WORKER: server.mjs differisce tra main e test-preview."
+          echo "Il worker si deploya SOLO da main (condiviso TEST+PROD): i due branch DEVONO restare allineati,"
+          echo "altrimenti una promozione può riportare in PROD un worker vecchio (perdere fix recenti)."
+          echo "----- diffstat (main vs test-preview) -----"
+          git --no-pager diff --stat origin/main origin/test-preview -- "$WORKER" || true
+          echo "-------------------------------------------"
+          echo "RIMEDIO (riallinea test-preview a main; NON deploya il worker):"
+          echo "  git checkout test-preview"
+          echo "  git checkout origin/main -- $WORKER"
+          echo "  git commit -m 'chore(worker): riallinea server.mjs a main' && git push origin test-preview"
+          exit 1
