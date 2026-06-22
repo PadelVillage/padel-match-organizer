@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.893';
+    const APP_VERSION = '5.894';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41631,6 +41631,14 @@ Per confermare scrivi ELIMINA.`);
           return _askWhichBookingForPlayer(res, t, _nmEsc);
         }, function () { _say('👍 Ok.'); });
         return true;
+      }
+      // MOBILE: se siamo arrivati qui, il comando NON era diretto alla scheda aperta (i comandi della
+      // scheda — salva/chiudi/aggiungi-stesso-slot/togli/annulla — sono già stati gestiti con return
+      // sopra). Una scheda rimasta aperta non deve restare lì a "catturare"/confondere i comandi
+      // successivi: la chiudo (così torna a vedersi il calendario) e il comando viene letto da zero.
+      // Su desktop la scheda resta visibile, invariato. Richiesta utente (mobile, 2026-06-22).
+      if (window.innerWidth < 900 && staffCalPlayersState && !staffCalPlayersState.busy) {
+        try { svcResetToNeutral(); } catch (e) {}
       }
       // Punto UNICO di chiarimento (trasversale): se la richiesta non è azionabile —
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
