@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.891';
+    const APP_VERSION = '5.892';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40816,12 +40816,22 @@ Per confermare scrivi ELIMINA.`);
     // "sostituisci Mario con Luca", "aggiungi Anna e Sara").
     function _editNames(tx) {
       const out = [];
-      let m = tx.match(/\b(?:aggiungi|aggiungere|metti|inserisci|togli|togliere|rimuovi|rimuovere|leva|levare|sostituisci|sostituisce|scambia)\s+([a-zà-ÿ]+)\b/);
-      if (m && !_pmoIsStop(m[1])) out.push(m[1]);
-      m = tx.match(/\bcon\s+([a-zà-ÿ]+)\b/);
-      if (m && !_pmoIsStop(m[1]) && out.indexOf(m[1]) < 0) out.push(m[1]);
-      m = tx.match(/\b([a-zà-ÿ]+)\s+e\s+([a-zà-ÿ]+)\b/);
-      if (m) { [m[1], m[2]].forEach(function (w) { if (!_pmoIsStop(w) && out.indexOf(w) < 0) out.push(w); }); }
+      const _isEditVerb = function (w) { return /^(aggiung\w*|inserisc\w*|mett\w*|togl\w*|tolg\w*|rimuov\w*|lev[ai]\w*|sostitu\w*|scambi\w*|cancell\w*|elimin\w*|scart\w*)$/.test(w); };
+      const pushName = function (nm) {
+        const toks = String(nm || '').split(/\s+/).filter(function (w) { return _pmoNameOk(w) && !_isEditVerb(w); });
+        const full = toks.join(' ');
+        if (full && out.indexOf(full) < 0) out.push(full);
+      };
+      // Nome/i COMPLETI: stesso estrattore della fase di esecuzione (_extractEditPlayerName), che
+      // scarta verbo, "come giocatore/allievo", articoli e i riferimenti campo/data/ora e TIENE i
+      // nomi multi-parola ("Maurizio Aprea"). La vecchia regex prendeva UN solo token (perdeva il
+      // cognome) e scambiava "come" per un nome. Split sui connettori per più giocatori.
+      let nameText = '';
+      try { nameText = (typeof _extractEditPlayerName === 'function') ? (_extractEditPlayerName(tx) || '') : ''; } catch (e) { nameText = ''; }
+      if (nameText) nameText.split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\s+e\s+/i).forEach(pushName);
+      // "con <nome>" (eventuale compagno) se non già incluso.
+      const mc = tx.match(/\bcon\s+([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+)?)\b/);
+      if (mc) pushName(mc[1]);
       return out;
     }
 
