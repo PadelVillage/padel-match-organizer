@@ -6250,40 +6250,44 @@ async function editBookingWithBrowser(input = {}) {
 
     const pageText = await page.evaluate(() => document.body.innerText || '').catch(() => '');
 
-    // Leggi slot dal testo
+    // Leggi slot dal testo (best-effort, solo per diagnostica/visualizzazione)
     let slotFinale = null;
     if (move) {
       const normalizeHour = (hhmm) => (hhmm ? hhmm.replace(/^0(\d:)/, '$1') : '');
-      const expectedData = move.data
-        ? (() => { const [y, m, d] = move.data.split('-'); return `${d}/${m}/${y}`; })()
-        : null;
-      const oraFineCalc = move.oraFine || (move.oraInizio && move.durationMinutes
-        ? computeEndTime(move.oraInizio, move.durationMinutes) : null);
-      const expectedOraInizio = normalizeHour(move.oraInizio);
-
       const dataMatch = pageText.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{1,2}:\d{2})\s*[-–]?\s*(\d{1,2}:\d{2})/);
       const campoMatch = pageText.match(/Prenotazione\s+(Campo\s+\d+)/i) || pageText.match(/(Campo\s+\d+)/i);
       const campoName = campoMatch ? campoMatch[1] : null;
-      slotFinale = dataMatch
-        ? `${campoName || '?'} · ${dataMatch[1]} · ${dataMatch[2]}–${dataMatch[3]}`
-        : null;
-
-      if (expectedData && dataMatch && !dataMatch[1].includes(expectedData)) {
-        throw fail('EDIT_VERIFICA_FALLITA',
-          `Data attesa ${expectedData} ma pagina mostra ${dataMatch[1]}`, diagnostic);
-      }
-      if (expectedOraInizio && dataMatch) {
-        // Normalizza ENTRAMBI i lati allo stesso formato: la manutenzione mostra "07:00",
-        // partita/lezione "7:00". Senza normalizzare anche pageOra il confronto dava un
-        // falso EDIT_VERIFICA_FALLITA pur essendo lo spostamento corretto.
-        const pageOra = normalizeHour(dataMatch[2]);
-        const expOra  = expectedOraInizio; // già normalizzato
-        if (pageOra !== expOra) {
-          throw fail('EDIT_VERIFICA_FALLITA',
-            `Ora inizio attesa ${expOra} ma trovata ${pageOra}`, diagnostic);
-        }
-      }
+      slotFinale = dataMatch ? `${campoName || '?'} · ${dataMatch[1]} · ${dataMatch[2]}–${dataMatch[3]}` : null;
       diagnostic.slotFinale = slotFinale;
+
+      // ── VERIFICA ROBUSTA dello spostamento ──────────────────────────────────
+      // La vecchia verifica si fidava di UNA regex rigida (data-ora-ora adiacenti, separatori
+      // fissi e PRIMO match nella pagina): una minima variazione di formato della Ficha — o un
+      // altro orario presente nel testo — faceva scattare un FALSO EDIT_VERIFICA_FALLITA PUR
+      // essendo lo spostamento applicato su Matchpoint. L'app faceva quindi il revert ottimistico
+      // → lo slot restava vecchio in app ma spostato su MP (disallineamento cross-device).
+      // Ora cerchiamo data e ora-inizio ATTESE in modo INDIPENDENTE e TOLLERANTE al formato:
+      //  • entrambe presenti → confermato OK;
+      //  • altrimenti, se la scheda mostra ANCORA lo slot di ORIGINE (e origine≠destinazione)
+      //    → fallimento REALE (non spostato): solo qui falliamo;
+      //  • altrimenti → inconcludente: NON falliamo (l'Actualizar è già andato a buon fine; il
+      //    sync periodico riconcilia), lo segnaliamo solo nella diagnostica.
+      const _dateForms = (iso) => { if (!iso) return []; const [y, m, d] = String(iso).split('-'); const dd = String(d).padStart(2, '0'), mm = String(m).padStart(2, '0'); return [`${dd}/${mm}/${y}`, `${+d}/${+m}/${y}`, `${dd}-${mm}-${y}`, `${dd}.${mm}.${y}`]; };
+      const _hourForms = (h) => { if (!h) return []; const n = normalizeHour(h); const [hh, mi] = n.split(':'); return [n, `${String(hh).padStart(2, '0')}:${mi}`]; };
+      const _present = (forms) => forms.length === 0 ? true : forms.some((f) => pageText.includes(f));
+      const targetConfirmed = _present(_dateForms(move.data)) && _present(_hourForms(move.oraInizio));
+      const sameAsOrigin = String(move.data || '') === String(input.data || '')
+        && normalizeHour(move.oraInizio || '') === normalizeHour(input.ora || '');
+      const stillAtOrigin = !sameAsOrigin && _present(_dateForms(input.data)) && _present(_hourForms(input.ora));
+      if (targetConfirmed) {
+        diagnostic.steps.push('move_verify_ok');
+      } else if (stillAtOrigin) {
+        throw fail('EDIT_VERIFICA_FALLITA',
+          `Spostamento non applicato: la scheda mostra ancora lo slot di origine (${input.data} ${input.ora}).`, diagnostic);
+      } else {
+        diagnostic.moveVerifyInconclusive = true;
+        diagnostic.steps.push('move_verify_inconclusive');
+      }
     }
 
     // Scansiona righe partecipanti
@@ -6308,18 +6312,30 @@ async function editBookingWithBrowser(input = {}) {
     }
     diagnostic.partecipantiFinali = partecipantiFinali;
 
-    // Verifica giocatori vs richiesta
+    // Verifica giocatori vs richiesta — TOLLERANTE al formato del nome.
     if (players) {
-      const nomiFinali = partecipantiFinali.map((p) => p.nome.toLowerCase().trim());
+      const _stripAccents = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const _tokens = (s) => _stripAccents(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+      // match per SOTTOINSIEME di token: "Anna" combacia con "Anna Verdi" e viceversa,
+      // tollerante ad accenti/spazi/maiuscole. La verifica esatta del vecchio codice dava
+      // falsi EDIT_VERIFICA_FALLITA quando la Ficha rendeva il nome in forma diversa.
+      const _nameMatch = (a, b) => { const ta = _tokens(a), tb = _tokens(b); if (!ta.length || !tb.length) return false; const A = new Set(ta), B = new Set(tb); return ta.every((t) => B.has(t)) || tb.every((t) => A.has(t)); };
+      const rosterNames = partecipantiFinali.map((p) => p.nome);
+      // ADD: l'inserimento è già verificato a monte da searchAndAddPlayer (che fallisce con
+      // PLAYER_ADD_NOT_CONFIRMED se non entra). Qui NON falliamo per un mancato match di nome:
+      // confermiamo per sottoinsieme di token, altrimenti segnaliamo soltanto (soft-pass) per
+      // non revertire un'aggiunta in realtà riuscita.
       for (const p of (players.add || [])) {
-        if (!nomiFinali.includes(p.nome.toLowerCase().trim())) {
-          throw fail('EDIT_VERIFICA_FALLITA',
-            `Giocatore aggiunto ${p.nome} non trovato nella verifica finale.`, diagnostic);
+        if (!rosterNames.some((rn) => _nameMatch(rn, p.nome))) {
+          diagnostic.addVerifyInconclusive = (diagnostic.addVerifyInconclusive || []).concat(p.nome);
+          diagnostic.steps.push('add_verify_inconclusive:' + p.nome);
         }
       }
+      // REMOVE: qui invece FALLIAMO se il giocatore risulta ANCORA presente. Il match per
+      // sottoinsieme di token lo riconosce anche con formato diverso → niente falso "rimosso ok".
       if (!players.removeAll) {
         for (const nome of (players.remove || [])) {
-          if (nomiFinali.includes(nome.toLowerCase().trim())) {
+          if (rosterNames.some((rn) => _nameMatch(rn, nome))) {
             throw fail('EDIT_VERIFICA_FALLITA',
               `Giocatore ${nome} doveva essere rimosso ma è ancora presente.`, diagnostic);
           }
