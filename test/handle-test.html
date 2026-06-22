@@ -635,6 +635,29 @@ const CASES = [
       if (!got || !promoted) ctx.diag['21'] = 'bookings=' + JSON.stringify(H.getBookings().map(b => ({ c: b.campo, o: b.ora, prom: b.promoted, idr: b.idReserva }))) + ' worker=' + JSON.stringify(editSavePushes().map(w => w.body));
       return checks;
     }
+  },
+  {
+    // A1 — l'idReserva è la chiave PRIMARIA dell'edit: catturato all'apertura della scheda e
+    // passato SEMPRE al worker → Ficha diretta, niente risoluzione per campo+data+ora (che in
+    // PROD falliva con PRENOTAZIONE_NON_TROVATA dopo uno spostamento o su slot fantasma).
+    id: 22, flow: 'idReserva (A1)', name: 'edit con idReserva PERSISTENTE: catturato all\'apertura + presente nel payload worker',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      const checks = [];
+      checks.push({ label: 'idReserva catturato sulla scheda all\'apertura (R12345)', ok: !!st && String(st.idReserva) === 'R12345' });
+      // togli un giocatore: è uno dei due flussi che falliva in PROD per idReserva mancante
+      const luca = st.roster.find(p => /Luca/.test(p.nome));
+      if (luca) st.remove[luca.idx] = true;
+      WORKER_NEXT = { ok: true };
+      await H.playersSave({ skipConfirm: true });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload worker porta idReserva R12345 (Ficha diretta, no lookup coordinate)', ok: !!wp && String(wp.body.idReserva) === 'R12345' });
+      checks.push({ label: 'payload players.remove = [Luca…]', ok: !!wp && wp.body.players && Array.isArray(wp.body.players.remove) && wp.body.players.remove.some(n => /Luca/.test(n)) });
+      return checks;
+    }
   }
 ];
 

@@ -36949,6 +36949,11 @@ Per confermare scrivi ELIMINA.`);
     const durMin = _staffCalDurMin(durata);
     const tipoR = String(tipoReale || 'partita').toLowerCase();
     const hasPlayers = ['partita', 'lezione'].includes(tipoR);
+    // A1 — idReserva PERSISTENTE: lo catturo all'apertura dal record locale e lo porto in `st`,
+    // così il salvataggio lo passa SEMPRE (Ficha diretta) a prescindere dalle coordinate, anche
+    // dopo uno spostamento. L'idReserva Matchpoint è stabile tra gli spostamenti. La lettura
+    // autorevole in sottofondo (sotto) lo aggiorna se il worker ne restituisce uno fresco.
+    const _initIdReserva = (function () { try { return _staffCalLookupIdReserva(isoDate, campoNum, ora); } catch (e) { return null; } })();
 
     // Nota nota in locale (staff_booking.note) per pre-popolare il campo. La lettura autorevole
     // dal worker (sotto, per partita/lezione) la sovrascrive se l'utente non l'ha ancora toccata.
@@ -36973,6 +36978,7 @@ Per confermare scrivi ELIMINA.`);
         // note = valore corrente del campo; origNote = baseline per il confronto (da locale, poi
         // sovrascritto dalla lettura autorevole Matchpoint se l'utente non ha ancora toccato la nota).
         msg: null, box: null, busy: false, nome: nome, note: String(note0 || ''), origNote: String(note0 || ''),
+        idReserva: _initIdReserva || null,
       };
       const editor = svcAddMessage('system', '', 'flow');
       const box = document.createElement('div');
@@ -37042,6 +37048,12 @@ Per confermare scrivi ELIMINA.`);
             ? _normRoster(data.worker.partecipantiFinali) : null;
           const st = staffCalPlayersState;
           const stillOpen = st && st === _stOpen && !st.busy;
+          // A1 — l'idReserva del worker è AUTOREVOLE (non è dato editabile dall'utente): aggiornalo
+          // sempre sulla scheda aperta e persistilo sul record locale, anche se stavi già modificando.
+          if (stillOpen && ok && data && data.worker && data.worker.idReserva) {
+            st.idReserva = String(data.worker.idReserva);
+            try { _staffCalPersistIdReserva(isoDate, campoNum, ora, st.idReserva); } catch (e) {}
+          }
           const untouched = stillOpen && (!st.add || !st.add.length) && (!st.remove || !Object.keys(st.remove).length);
           // Nota autorevole da Matchpoint (Osservazioni). Aggiorna sempre il baseline origNote per il
           // confronto; pre-popola il campo SOLO se l'utente non l'ha ancora toccato (note === origNote).
@@ -37402,9 +37414,12 @@ Per confermare scrivi ELIMINA.`);
       mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
       note: (st.note || ''), origNote: (st.origNote || ''), noteChanged: noteChanged,
+      idReserva: (st.idReserva || null),
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
-    const _idReservaEdit = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
+    // A1 — preferisci l'idReserva catturato sulla scheda (apertura + lettura autorevole); il lookup
+    // per coordinate resta solo come fallback (fallisce dopo uno spostamento o su slot fantasma).
+    const _idReservaEdit = op.idReserva || _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra);
     if (_idReservaEdit) payload.idReserva = _idReservaEdit;
     if (moveChanged) payload.move = { campo: op.mCampo, data: op.mIso, oraInizio: op.mOraIni, oraFine: op.mOraFin };
     if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
@@ -38690,6 +38705,26 @@ Per confermare scrivi ELIMINA.`);
     var o = (Array.isArray(occ) ? occ : []).find(match);
     if (o && o.idReserva) return String(o.idReserva);
     return null;
+  }
+
+  // A1 — scrive l'idReserva (autorevole, dalla lettura worker) sul record staff locale dello slot,
+  // così resta disponibile per le aperture/edit successive anche se la lettura poi fallisce.
+  function _staffCalPersistIdReserva(iso, campoNum, ora, idr) {
+    if (!idr || typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    var wantData = String(iso).trim();
+    var wantCampo = Number(String(campoNum).replace(/\D/g, ''));
+    var wantOra = String(ora).trim();
+    var list = safeLoad('staffBookings', []);
+    var changed = false;
+    (Array.isArray(list) ? list : []).forEach(function (b) {
+      if (b && String(b.data).trim() === wantData
+          && Number(String(b.campo).replace(/\D/g, '')) === wantCampo
+          && String(b.ora).trim() === wantOra
+          && String(b.idReserva || '') !== String(idr)) {
+        b.idReserva = String(idr); changed = true;
+      }
+    });
+    if (changed) save('staffBookings', list);
   }
 
   function staffCalSaveLocal(parsed, sbId, idReserva) {
