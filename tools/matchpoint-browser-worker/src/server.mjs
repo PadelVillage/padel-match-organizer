@@ -2337,6 +2337,35 @@ async function mpAcquirePage(baseUrl, username, password, diagnostic) {
   };
 }
 
+// ── W2 — RETRY per operazioni di SOLA LETTURA del tabellone (idempotenti) ────
+// `MATCHPOINT_TABELLONE_NOT_FOUND` è una flakiness TRANSITORIA della navigazione
+// (Matchpoint lento / interstiziale / sessione scaduta lato server): oggi esce come
+// 500 al primo colpo e rompe il READ (idReserva stantio → edit per coordinate) e il
+// POLLER (occupancy non aggiornato → fantasmi/ricomparse). Qui la ritentiamo a parità
+// di operazione: invalidiamo la sessione calda (→ login fresco al prossimo acquire) e
+// riproviamo. USARE SOLO su letture idempotenti (get-slots/poller, read-tabellone):
+// MAI su create/edit/cancel (un retry su una mutazione parzialmente riuscita = doppione).
+const MP_READ_NAV_RETRIES = Math.max(0, Math.min(4, Number(env('MATCHPOINT_READ_NAV_RETRIES', '2'))));
+const MP_READ_NAV_RETRY_GAP_MS = Math.max(0, Number(env('MATCHPOINT_READ_NAV_RETRY_GAP_MS', '800')));
+function _isRetriableNavError(e) {
+  return !!(e && e.code === 'MATCHPOINT_TABELLONE_NOT_FOUND');
+}
+async function mpReadRetry(label, fn) {
+  let lastErr = null;
+  for (let attempt = 0; attempt <= MP_READ_NAV_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (!_isRetriableNavError(e) || attempt === MP_READ_NAV_RETRIES) throw e;
+      console.log(JSON.stringify({ event: 'mp_read_nav_retry', label: String(label || ''), attempt: attempt + 1, code: e.code, time: new Date().toISOString() }));
+      await mpWarmInvalidate();        // forza un login fresco al prossimo mpAcquirePage
+      if (MP_READ_NAV_RETRY_GAP_MS) await new Promise((r) => setTimeout(r, MP_READ_NAV_RETRY_GAP_MS));
+    }
+  }
+  throw lastErr;
+}
+
 async function getSlotsWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -3437,7 +3466,7 @@ async function handleReadTabellone(req, res) {
   // read + poller/edit) pilotano la stessa pagina insieme → cambi data incrociati e
   // roster parziali/scambiati (causa #1 del "lampeggio" dei nomi). La coda con
   // concorrenza 1 garantisce che un read non condivida mai la pagina con un'altra op.
-  const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => readTabelloneWithBrowser(body));
+  const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => mpReadRetry('read-tabellone', () => readTabelloneWithBrowser(body)));
   json(res, 200, result);
 }
 
@@ -6673,7 +6702,7 @@ async function runPollCycle() {
     try {
       const result = await mpQueueRun(
         { op: 'poll', label: `sync slot ${isoDate}`, operatore: 'sistema' },
-        () => getSlotsWithBrowser({ date: isoDate }),
+        () => mpReadRetry(`poller ${isoDate}`, () => getSlotsWithBrowser({ date: isoDate })),
       );
       consecutiveFails = 0;
       bailCode = null;
