@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.890';
+    const APP_VERSION = '5.891';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40618,7 +40618,7 @@ Per confermare scrivi ELIMINA.`);
       // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
       // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
       // TROVA) e NON deve parlare di scheda socio/anagrafica ("apri la scheda di Mario" → anagrafica).
-      const openEditCtx = /(^| )(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*)( |$)/.test(n)
+      const openEditCtx = /(^| )(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*)( |$)/.test(n)
         && /(^| )(prenotazion\w*|partit\w*|lezion\w*)( |$)/.test(n)
         && /\bcamp[oi]\s*(?:\d|uno|una|due|tre|quattro)\b/.test(n)
         && !/(^| )(scheda|socio|soci\w*|anagrafic\w*)( |$)/.test(n);
@@ -41215,7 +41215,7 @@ Per confermare scrivi ELIMINA.`);
       // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
       // CAMPO specifico (così "mostra le prenotazioni di oggi" resta interroga) e nessun verbo di
       // crea/annulla/aggiungi/togli (gestiti altrove). Priorità su 'crea' e su 'interroga'.
-      const openVerbStrong = /\b(apr\w*|riapr\w*|gestisc\w*)\b/.test(tx);
+      const openVerbStrong = /\b(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|gestisc\w*)\b/.test(tx);
       const openVerbSoft = /\b(mostr\w*|visualizz\w*|vedi|fammi\s+veder\w*)\b/.test(tx);
       const openEditCtx2 = !!cx.campo && !rosterQ && !lessonsQ && !modifyVerb && !cancelVerb && !addV && !remV
         && (openVerbStrong || (openVerbSoft && eventRef));
@@ -42938,7 +42938,7 @@ Per confermare scrivi ELIMINA.`);
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
       // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
-      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
+      if (who && /^(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, who);
       // Il filtro-nome non trova nulla ma il giorno ha prenotazioni → "who" non era un nome
@@ -43122,7 +43122,7 @@ Per confermare scrivi ELIMINA.`);
       let who = (slots.who && slots.who !== 'Staff') ? slots.who : _extractCancelWho(text);
       // Verbi/pronomi/parole comuni che NON sono nomi non devono diventare il filtro giocatore
       // (es. "apri la prenotazione…" → who='apri'; "Mi aggiungi un giocatore…" → who='mi').
-      if (who && /^(apr\w*|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
+      if (who && /^(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
       // Per l'AGGIUNTA il nome è il giocatore DA INSERIRE (non ancora nella prenotazione): non va
       // usato come filtro per trovarla, altrimenti non la trova mai. Per la rimozione invece aiuta.
       const findWho = isAdd ? '' : who;
