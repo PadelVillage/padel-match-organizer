@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.904';
+    const APP_VERSION = '5.905';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39825,14 +39825,27 @@ Per confermare scrivi ELIMINA.`);
     // ⛔ BLOCCO (parità con l'assistente): niente lezione senza maestro, niente prenotazione senza un
     //    giocatore. Nel manuale l'Ospite è "esplicito" se l'utente lo ha digitato nel campo. Manutenzione
     //    esclusa (per definizione senza giocatori). NON azzero svcFlowState: la scheda resta aperta.
+    //    Il click su "Conferma" ha già DISABILITATO i bottoni della scheda: se blocco, li RIABILITO
+    //    così l'utente può aggiungere il dato mancante e riprovare (altrimenti la scheda resta bloccata).
+    const _svcUnlockCardFooter = function () {
+      try {
+        const _card = document.querySelector('#svcChatMessages .svc-flow-card');
+        if (!_card) return;
+        _card.querySelectorAll('button').forEach(function (b) {
+          if (/Conferma|Annulla/i.test(b.textContent || '')) { b.disabled = false; b.style.opacity = ''; }
+        });
+      } catch (e) {}
+    };
     if (tipoEngine === 'lezione' && !istruttore) {
       svcAddMessage('system', '👨‍🏫 Aggiungi un <strong>maestro</strong> prima di confermare la lezione.');
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine, 'validation_error', { via: 'slot calendario', reason: 'manca maestro', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
+      _svcUnlockCardFooter();
       return;
     }
     if (tipoEngine !== 'manutenzione' && !(giocatori || []).some(function (g) { return g && g.nome; })) {
       svcAddMessage('system', '👥 Aggiungi un <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'validation_error', { via: 'slot calendario', reason: 'manca giocatore', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
+      _svcUnlockCardFooter();
       return;
     }
     // Pre-check conflitto istantaneo
