@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco di prova — Test ESECUZIONE 6 flussi staff</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { margin: 0; padding: 18px; background:#0f172a; color:#e2e8f0; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color:#94a3b8; font-size:13px; margin-bottom:14px; max-width:980px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  button { background:#2563eb; color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  button.sec { background:#334155; }
+  .pill { padding:4px 10px; border-radius:999px; font-size:13px; font-weight:600; }
+  .ok { background:#064e3b; color:#6ee7b7; }
+  .ko { background:#7f1d1d; color:#fca5a5; }
+  table { border-collapse: collapse; width:100%; font-size:12.5px; }
+  th, td { border:1px solid #1e293b; padding:5px 7px; text-align:left; vertical-align:top; }
+  th { background:#1e293b; position:sticky; top:0; }
+  tr.pass td:first-child { box-shadow: inset 4px 0 0 #10b981; }
+  tr.fail td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
+  .res-ok { color:#6ee7b7; font-weight:700; }
+  .res-fail { color:#fca5a5; font-weight:700; }
+  code { background:#1e293b; padding:1px 4px; border-radius:4px; }
+  .muted { color:#94a3b8; }
+  .fail-reasons { color:#fca5a5; white-space:pre-wrap; }
+  iframe { display:none; }
+  .cat { color:#a5b4fc; font-weight:600; }
+</style>
+</head>
+<body>
+  <h1>Test ESECUZIONE — 6 flussi staff (cancel / move / giocatori / durata / cross-device)</h1>
+  <div class="sub">
+    Esercita l'<b>esecuzione reale</b> (non solo <code>parse()</code>): applica le operazioni con worker
+    Matchpoint e push cloud <b>finti</b> (mock su <code>fetch</code>), poi verifica lo stato ottimistico in
+    <code>staffBookings</code>, il <b>payload</b> inviato al worker e i <b>record cloud</b>. I casi 9–10 sono la
+    rete anti-regressione cross-flusso: «aggiungere un giocatore non deve toccare la durata» e viceversa.
+    Niente rete reale: sessione+profilo staff seedati, worker/cloud intercettati. Richiede l'hook test-only
+    <code>__PMOStaffCalTest</code> (gated <code>PMO_IS_TEST_ENV</code>).
+  </div>
+  <div class="bar">
+    <button id="run">▶︎ Esegui test</button>
+    <button class="sec" id="onlyfail">Mostra solo NON-PASSA</button>
+    <span id="summary" class="pill muted">in attesa…</span>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>#</th><th>Flusso</th><th>Scenario</th><th>Esito</th><th>Check falliti</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Chiavi storage (prefisso 'test:' in ambiente TEST) — vedi PMO_ENV_STORAGE_PREFIX.
+// ─────────────────────────────────────────────────────────────────────────────
+const SESSION_KEY = 'test:pmoStaffSupabaseSessionV1';
+const PROFILE_KEY = 'test:pmoStaffProfileV1';
+const ASSESS_KEY  = 'test:assessmentSettings';
+
+// Seed PRIMA del boot dell'iframe: la sessione/profilo vengono letti all'avvio
+// (pmoStaffProfile = pmoReadStaffProfile()). localStorage è condiviso per-origin
+// tra questa pagina (test/handle-test.html) e l'iframe (../index.html).
+function seedStorage() {
+  const fresh = {
+    access_token: 'test-access-token',
+    refresh_token: 'test-refresh-token',
+    expires_at_ms: Date.now() + 3600 * 1000,   // sessione fresca → nessun refresh di rete
+    user: { id: 'test-user', email: 'test@local' },
+    saved_at: Date.now()
+  };
+  const profile = { status: 'active', role: 'admin', email: 'test@local', permissions: { cloud_sync: true } };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(fresh));
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  // Config locale (offline): evita di caricare config-test.js da rete remota.
+  try {
+    localStorage.setItem(ASSESS_KEY, JSON.stringify({ configUrl: 'test/config-test.js' }));
+  } catch (e) {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mock di rete: un solo wrapper su win.fetch con routing per URL.
+//   worker  → /functions/v1/matchpoint-bookings-{cancel,edit,create}
+//   cloud↑  → /rest/v1/rpc/pmo_upsert_records_admin
+//   cloud↓  → /rest/v1/rpc/pmo_get_records_admin(_page) → fakeRows
+//   profilo → /rest/v1/rpc/pmo_get_my_staff_profile → profilo attivo
+//   auth    → /auth/v1/token → token finto
+//   diario  → /rest/v1/pmo_ai_turns → 200
+// ─────────────────────────────────────────────────────────────────────────────
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS;
+function captureReset() {
+  CAPTURED = { worker: [], cloud: [], turns: [] };
+  WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
+  CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
+}
+function jsonResponse(win, obj, status) {
+  const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
+  return new win.Response(body, { status: status || 200, headers: { 'Content-Type': 'application/json' } });
+}
+function installFetchMock(win) {
+  const realFetch = win.fetch.bind(win);
+  win.fetch = async function (url, opts) {
+    const u = (typeof url === 'string') ? url : (url && url.url) || '';
+    let body = null;
+    try { body = opts && opts.body ? JSON.parse(opts.body) : null; } catch (e) { body = opts && opts.body; }
+
+    if (/\/functions\/v1\/matchpoint-bookings-(cancel|edit|create)/.test(u)) {
+      const kind = u.match(/matchpoint-bookings-(\w+)/)[1];
+      CAPTURED.worker.push({ url: u, kind, body });
+      if (WORKER_NEXT && WORKER_NEXT.reject) {
+        return jsonResponse(win, WORKER_NEXT.body || { ok: false, message: 'SLOT_OCCUPATO' }, WORKER_NEXT.status || 200);
+      }
+      if (WORKER_NEXT && WORKER_NEXT.throw) { throw new Error('network down (simulato)'); }
+      return jsonResponse(win, Object.assign({ ok: true }, WORKER_NEXT && WORKER_NEXT.body || {}), 200);
+    }
+    if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
+      const list = (body && body.p_records) || [];
+      CAPTURED.cloud.push({ records: list });
+      return jsonResponse(win, { ok: true, count: list.length }, 200);
+    }
+    if (/\/rest\/v1\/rpc\/pmo_get_records_admin/.test(u)) {
+      return jsonResponse(win, CLOUD_FAKEROWS || [], 200);
+    }
+    if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
+      return jsonResponse(win, [{ status: 'active', role: 'admin', permissions: { cloud_sync: true } }], 200);
+    }
+    if (/\/auth\/v1\/token/.test(u)) {
+      return jsonResponse(win, { access_token: 'test-access-token', refresh_token: 'test-refresh-token', expires_in: 3600 }, 200);
+    }
+    if (/\/rest\/v1\/pmo_ai_turns/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
+    // Tutto il resto (realtime websocket non passa di qui) → rete reale.
+    return realFetch(url, opts);
+  };
+}
+function installStubs(win) {
+  try { win.confirm = function () { return true; }; } catch (e) {}
+  try { win.alert = function () {}; } catch (e) {}
+  try { win.prompt = function () { return ''; }; } catch (e) {}
+  try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
+  installFetchMock(win);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper asincroni
+// ─────────────────────────────────────────────────────────────────────────────
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function waitFor(predicate, timeoutMs, stepMs) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (timeoutMs || 4000)) {
+    let v = false; try { v = predicate(); } catch (e) { v = false; }
+    if (v) return true;
+    await sleep(stepMs || 30);
+  }
+  return false;
+}
+// Normalizza una booking per match: terna (data, campo, ora).
+function findBooking(bookings, iso, campo, ora) {
+  const cn = Number(String(campo).replace(/\D/g, ''));
+  return (bookings || []).filter(b =>
+    String(b.data).trim() === iso &&
+    Number(String(b.campo).replace(/\D/g, '')) === cn &&
+    String(b.ora).trim() === String(ora).trim());
+}
+function cloudRecords() { return CAPTURED.cloud.reduce((a, c) => a.concat(c.records || []), []); }
+function workerPushes(kind) { return CAPTURED.worker.filter(w => !kind || w.kind === kind); }
+// L'apertura scheda fa una lettura worker (edit con body.read=true): la escludo
+// per isolare il payload del SALVATAGGIO vero.
+function editSavePushes() { return workerPushes('edit').filter(w => !(w.body && w.body.read === true)); }
+async function openCard(H, iso, campo, ora, durata, tipo) {
+  await H.openCard(iso, campo, ora, '', durata, tipo || 'partita');
+  await waitFor(() => !!H.getPlayersState(), 2000);
+  return H.getPlayersState();
+}
+function namesOf(bookings, iso, campo, ora) {
+  const b = findBooking(bookings, iso, campo, ora)[0];
+  if (!b) return '__NO_BOOKING__';
+  return (Array.isArray(b.giocatori) ? b.giocatori : []).map(g => (g && g.nome != null) ? g.nome : g).join('|');
+}
+// Trascrizione chat (per diagnosticare cosa risponde l'assistente quando un caso routing fallisce).
+function chatTranscript(W) {
+  try {
+    const log = W.document.getElementById('svcChatLog') || W.document.getElementById('staffCalLog') || W.document.querySelector('.svc-chat-log');
+    if (!log) return '(log non trovato)';
+    return (log.innerText || '').replace(/\s+\n/g, '\n').trim().slice(-600);
+  } catch (e) { return '(err ' + e.message + ')'; }
+}
+// Imposta il giorno mostrato nel calendario (alcune azioni senza data usano #staffCalDate).
+function setCalDay(W, iso) { try { const el = W.document.getElementById('staffCalDate'); if (el) el.value = iso; } catch (e) {} }
+// Pilota handle() per una sequenza di frasi (comando + conferma), con piccola attesa.
+async function handleSeq(W, phrases) {
+  for (const p of phrases) { try { await W.PMOAi.handle(p); } catch (e) {} await sleep(120); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fixtures
+// ─────────────────────────────────────────────────────────────────────────────
+function bookingFixture(iso, over) {
+  return Object.assign({
+    // `id` = local_key della prenotazione app-created: senza, il commit cloud NON pusha
+    // il record staff_booking deleted:true (vedi _staffCalCommitLocalCancel filter b.id).
+    id: 'sb-' + iso + '-c2-1800',
+    data: iso, campo: '2', ora: '18:00', oraFine: '19:30', durata: 90,
+    // giocatori = array di OGGETTI {nome, codice} come li salva staffCalApplyLocalGiocatori.
+    tipo: 'partita', nome: 'Mario Rossi', giocatori: [{ nome: 'Mario Rossi' }, { nome: 'Luca Bianchi' }],
+    idReserva: 'R12345', stato: 'confermata'
+  }, over || {});
+}
+// Prenotazione IMPORTATA da Matchpoint (occupancy): niente `id` locale, ha idReserva.
+// Campi usati dal ramo PROMOTE: data, campo, ora, idReserva, durata, tipo, giocatore.
+function occFixture(iso, over) {
+  return Object.assign({
+    data: iso, campo: '2', ora: '18:00', oraFine: '19:30', durata: 90,
+    tipo: 'Partita', giocatore: 'Cliente MP', idReserva: 'R999'
+  }, over || {});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CASI — ogni caso: { id, flow, name, run: async (win, H, ctx) => [ {label, ok}, ... ] }
+//   H = win.__PMOStaffCalTest (hook). ctx.iso = data di domani.
+// ─────────────────────────────────────────────────────────────────────────────
+const CASES = [
+  {
+    id: 1, flow: 'Cancel', name: 'annullo ottimistico: sparisce subito + payload worker + cloud',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { ok: true };
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      // ottimistico: rimossa subito dal locale
+      checks.push({ label: 'rimossa da staffBookings (ottimistico)', ok: findBooking(H.getBookings(), iso, 2, '18:00').length === 0 });
+      // worker push catturato con payload corretto
+      const got = await waitFor(() => workerPushes('cancel').length > 0, 4000);
+      checks.push({ label: 'worker push cancel inviato', ok: got });
+      const wp = workerPushes('cancel')[0];
+      checks.push({ label: 'payload worker {campo,data,ora,idReserva}', ok: !!wp && Number(wp.body.campo) === 2 && wp.body.data === iso && wp.body.ora === '18:00' && wp.body.idReserva === 'R12345' });
+      // cloud push: staff_booking deleted + staff_suppress
+      await waitFor(() => cloudRecords().length > 0, 2000);
+      const recs = cloudRecords();
+      checks.push({ label: 'cloud: staff_booking deleted:true', ok: recs.some(r => r.record_type === 'staff_booking' && r.deleted === true) });
+      checks.push({ label: 'cloud: staff_suppress presente', ok: recs.some(r => r.record_type === 'staff_suppress') });
+      return checks;
+    }
+  },
+  {
+    id: 2, flow: 'Cancel', name: 'annullo rifiutato dal worker → ripristino locale',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'SLOT_OCCUPATO' } };
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      // subito sparita (ottimistico)
+      checks.push({ label: 'rimossa subito (ottimistico)', ok: findBooking(H.getBookings(), iso, 2, '18:00').length === 0 });
+      // dopo il rifiuto del worker → ripristinata
+      const restored = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length > 0, 4000);
+      checks.push({ label: 'ripristinata in locale dopo rifiuto', ok: restored });
+      return checks;
+    }
+  },
+  {
+    id: 3, flow: 'Cancel', name: 'annullo a scheda APERTA → chiude la scheda di quello slot',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { ok: true };
+      // apre la scheda su quello slot
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 2000);
+      const wasOpen = !!H.getPlayersState();
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      checks.push({ label: 'scheda era aperta sullo slot', ok: wasOpen });
+      checks.push({ label: 'scheda chiusa dopo annullo (no scheda orfana)', ok: !H.getPlayersState() });
+      checks.push({ label: 'prenotazione rimossa', ok: findBooking(H.getBookings(), iso, 2, '18:00').length === 0 });
+      return checks;
+    }
+  },
+  {
+    id: 4, flow: 'Move', name: 'sposta campo (assistente): worker move + booking sul nuovo campo',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      H.setMoveState({ iso: iso, campo: 2, ora: '18:00', durata: 90, nome: 'Mario Rossi' });
+      WORKER_NEXT = { ok: true };
+      await H.doMove(iso, 3, '18:00');
+      const checks = [];
+      const got = await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: 'worker edit inviato', ok: got });
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload move {campo:3, oraInizio:18:00}', ok: !!wp && wp.body.move && Number(wp.body.move.campo) === 3 && wp.body.move.oraInizio === '18:00' });
+      checks.push({ label: 'payload move porta idReserva', ok: !!wp && wp.body.idReserva === 'R12345' });
+      // dopo OK worker: booking spostata sul campo 3, niente più sul 2
+      const moved = await waitFor(() => findBooking(H.getBookings(), iso, 3, '18:00').length === 1 && findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 4000);
+      checks.push({ label: 'booking spostata sul campo 3 (no doppione sul 2)', ok: moved });
+      return checks;
+    }
+  },
+  {
+    id: 5, flow: 'Move', name: 'sposta rifiutato dal worker → resta sul campo origine',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      H.setMoveState({ iso: iso, campo: 2, ora: '18:00', durata: 90, nome: 'Mario Rossi' });
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'SLOT_OCCUPATO' } };
+      await H.doMove(iso, 3, '18:00');
+      const checks = [];
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const stayed = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 1 && findBooking(H.getBookings(), iso, 3, '18:00').length === 0, 4000);
+      checks.push({ label: 'resta sul campo 2 (nessuno spostamento applicato)', ok: stayed });
+      return checks;
+    }
+  },
+  {
+    id: 6, flow: 'Giocatori', name: 'aggiungi giocatore: roster +Anna, payload players.add, NESSUN move',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const added = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 2000);
+      checks.push({ label: 'roster locale +Anna (ottimistico)', ok: added });
+      const got = await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: 'worker edit inviato', ok: got });
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload players.add = [Anna Verdi]', ok: !!wp && wp.body.players && Array.isArray(wp.body.players.add) && wp.body.players.add.some(p => /Anna Verdi/.test(p.nome)) });
+      checks.push({ label: 'payload SENZA move (è solo giocatori)', ok: !!wp && !wp.body.move });
+      return checks;
+    }
+  },
+  {
+    id: 7, flow: 'Giocatori', name: 'togli giocatore: roster -Luca, payload players.remove, NESSUN move',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      const luca = st.roster.find(p => /Luca/.test(p.nome));
+      if (luca) st.remove[luca.idx] = true;
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      checks.push({ label: 'Luca era nel roster', ok: !!luca });
+      const removed = await waitFor(() => !/Luca/.test(namesOf(H.getBookings(), iso, 2, '18:00')) && /Mario/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 2000);
+      checks.push({ label: 'roster locale -Luca, Mario resta (ottimistico)', ok: removed });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload players.remove = [Luca…]', ok: !!wp && wp.body.players && Array.isArray(wp.body.players.remove) && wp.body.players.remove.some(n => /Luca/.test(n)) });
+      checks.push({ label: 'payload SENZA move', ok: !!wp && !wp.body.move });
+      return checks;
+    }
+  },
+  {
+    id: 8, flow: 'Durata', name: 'allunga durata in-place: oraFine→20:00, payload move oraFine, cloud edit (no suppress)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.mOraFin = '20:00';   // allunga (18:00–20:00)
+      WORKER_NEXT = { ok: true };
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const lengthened = await waitFor(() => { const b = findBooking(H.getBookings(), iso, 2, '18:00')[0]; return b && String(b.oraFine) === '20:00'; }, 2000);
+      checks.push({ label: 'oraFine locale = 20:00 (ottimistico)', ok: lengthened });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload move.oraFine = 20:00, oraInizio invariato 18:00', ok: !!wp && wp.body.move && wp.body.move.oraFine === '20:00' && wp.body.move.oraInizio === '18:00' });
+      checks.push({ label: 'payload SENZA players (è solo durata)', ok: !!wp && !wp.body.players });
+      // cloud edit in-place: NIENTE staff_suppress (non è un reassign di slot)
+      await waitFor(() => cloudRecords().length > 0, 2500);
+      checks.push({ label: 'cloud SENZA staff_suppress (in-place, non reassign)', ok: !cloudRecords().some(r => r.record_type === 'staff_suppress') });
+      return checks;
+    }
+  },
+  {
+    id: 9, flow: 'Cross-flow', name: 'aggiungere giocatore NON deve toccare la durata (no move nel payload)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // durata 120 → oraFine 20:00
+      H.setBookings([bookingFixture(iso, { durata: 120, oraFine: '20:00' })]);
+      const st = await openCard(H, iso, 2, '18:00', 120, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const b = findBooking(H.getBookings(), iso, 2, '18:00')[0];
+      checks.push({ label: 'oraFine resta 20:00 dopo aggiunta giocatore', ok: !!b && String(b.oraFine) === '20:00' });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload ha players.add', ok: !!wp && wp.body.players && wp.body.players.add });
+      checks.push({ label: 'payload NON ha move (regressione: add non sposta!)', ok: !!wp && !wp.body.move });
+      return checks;
+    }
+  },
+  {
+    id: 10, flow: 'Cross-flow', name: 'allungare durata NON deve azzerare i giocatori (no players nel payload)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);  // [Mario, Luca]
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.mOraFin = '20:00';
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const names = namesOf(H.getBookings(), iso, 2, '18:00');
+      checks.push({ label: 'Mario e Luca restano dopo cambio durata', ok: /Mario/.test(names) && /Luca/.test(names) });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'payload ha move (durata)', ok: !!wp && !!wp.body.move });
+      checks.push({ label: 'payload NON ha players (regressione: durata non tocca giocatori!)', ok: !!wp && !wp.body.players });
+      return checks;
+    }
+  },
+  {
+    id: 11, flow: 'idReserva', name: 'cancel senza idReserva: payload worker SENZA idReserva',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { idReserva: '' })]);
+      WORKER_NEXT = { ok: true };
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      await waitFor(() => workerPushes('cancel').length > 0, 4000);
+      const wp = workerPushes('cancel')[0];
+      checks.push({ label: 'worker push inviato', ok: !!wp });
+      checks.push({ label: 'payload SENZA idReserva (assente in fixture)', ok: !!wp && !('idReserva' in wp.body) });
+      return checks;
+    }
+  },
+  {
+    id: 12, flow: 'Cross-device', name: 'sposta campo: cloud push = suppress origine + booking nuovo slot (no doppione)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.mCampo = 3;   // sposta campo via editor → _slotMoved → reassign cloud ottimistico
+      WORKER_NEXT = { ok: true };
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const pushed = await waitFor(() => cloudRecords().length > 0, 3000);
+      checks.push({ label: 'push cloud avvenuto', ok: pushed });
+      const recs = cloudRecords();
+      checks.push({ label: 'cloud: staff_suppress per lo slot origine', ok: recs.some(r => r.record_type === 'staff_suppress') });
+      const activeBookings = recs.filter(r => r.record_type === 'staff_booking' && r.deleted !== true);
+      checks.push({ label: 'cloud: almeno un staff_booking attivo (nuovo slot)', ok: activeBookings.length >= 1 });
+      // niente DUE booking attivi DISTINTI per lo STESSO nuovo slot (campo 3) = niente doppione.
+      // Il push ottimistico + quello di conferma riusano la STESSA local_key → upsert, non doppione.
+      const newKeys = new Set(activeBookings.filter(r => r.payload && Number(String(r.payload.campo).replace(/\D/g, '')) === 3).map(r => r.local_key));
+      checks.push({ label: 'nessun doppione sul nuovo slot (≤1 local_key attiva su campo 3)', ok: newKeys.size <= 1 });
+      return checks;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ROUTING — guidati da PMOAi.handle() (comando NL + conferma). Riproducono i 6
+  // guasti reali. Se FALLISCONO, il bug è nell'instradamento (non nell'esecuzione,
+  // già verde nei casi 1–12). ctx.diag raccoglie la trascrizione su fallimento.
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 13, flow: 'Routing/Cancel', name: 'handle: "annulla la partita di campo 2 di domani alle 18" + sì',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['annulla la partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      const gone = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 4000);
+      const pushed = await waitFor(() => workerPushes('cancel').length > 0, 2000);
+      checks.push({ label: 'booking annullata in locale', ok: gone });
+      checks.push({ label: 'worker cancel inviato', ok: pushed });
+      if (!gone || !pushed) ctx.diag['13'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 14, flow: 'Routing/Cancel', name: 'handle a SCHEDA APERTA: apro scheda, poi "annulla …" + sì (guasto #1)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await openCard(H, iso, 2, '18:00', 90, 'partita');
+      await handleSeq(win, ['annulla la partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      const gone = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 4000);
+      const pushed = await waitFor(() => workerPushes('cancel').length > 0, 2000);
+      checks.push({ label: 'booking annullata anche con scheda aperta', ok: gone });
+      checks.push({ label: 'worker cancel inviato', ok: pushed });
+      if (!gone || !pushed) ctx.diag['14'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 15, flow: 'Routing/Move', name: 'handle: "sposta la partita di campo 2 di domani alle 18 sul campo 3" + sì (guasto #2)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['sposta la partita di campo 2 di domani alle 18 sul campo 3', 'sì']);
+      const checks = [];
+      const moved = await waitFor(() => findBooking(H.getBookings(), iso, 3, '18:00').length === 1, 5000);
+      const pushed = await waitFor(() => editSavePushes().some(w => w.body.move && Number(w.body.move.campo) === 3), 2000);
+      checks.push({ label: 'booking spostata sul campo 3', ok: moved });
+      checks.push({ label: 'worker move(campo:3) inviato', ok: pushed });
+      if (!moved || !pushed) ctx.diag['15'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 16, flow: 'Routing/Giocatori', name: 'handle: "togli Luca Bianchi dalla partita di campo 2 di domani alle 18" + sì (guasto #3)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['togli Luca Bianchi dalla partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      const removed = await waitFor(() => { const n = namesOf(H.getBookings(), iso, 2, '18:00'); return /Mario/.test(n) && !/Luca/.test(n); }, 5000);
+      const pushed = await waitFor(() => editSavePushes().some(w => w.body.players && w.body.players.remove), 2000);
+      checks.push({ label: 'Luca rimosso, Mario resta', ok: removed });
+      checks.push({ label: 'worker players.remove inviato', ok: pushed });
+      if (!removed || !pushed) ctx.diag['16'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 17, flow: 'Routing/Giocatori', name: 'handle: "aggiungi Anna alla partita di campo 2 di domani alle 18" + sì (guasto #4)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['aggiungi Anna alla partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      const pushed = await waitFor(() => editSavePushes().some(w => w.body.players && w.body.players.add && w.body.players.add.length), 5000);
+      const grew = await waitFor(() => { const n = namesOf(H.getBookings(), iso, 2, '18:00'); return n !== '__NO_BOOKING__' && n.split('|').filter(Boolean).length >= 3; }, 2000);
+      checks.push({ label: 'worker players.add inviato', ok: pushed });
+      checks.push({ label: 'roster locale cresciuto (+1 giocatore)', ok: grew });
+      if (!pushed || !grew) ctx.diag['17'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 18, flow: 'Routing/Durata', name: 'handle: "allunga la partita di campo 2 di domani alle 18 fino alle 20" + sì (guasto #5)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['allunga la partita di campo 2 di domani alle 18 fino alle 20', 'sì']);
+      const checks = [];
+      const lengthened = await waitFor(() => { const b = findBooking(H.getBookings(), iso, 2, '18:00')[0]; return b && String(b.oraFine) === '20:00'; }, 5000);
+      const pushed = await waitFor(() => editSavePushes().some(w => w.body.move && w.body.move.oraFine === '20:00'), 2000);
+      checks.push({ label: 'oraFine locale = 20:00', ok: lengthened });
+      checks.push({ label: 'worker move.oraFine=20:00 inviato', ok: pushed });
+      if (!lengthened || !pushed) ctx.diag['18'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 19, flow: 'Cross-device', name: 'device B RICEVE un move e TOGLIE lo slot vecchio (guasto #6)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // ── DEVICE A: ha la booking su campo 2, la sposta su campo 3 → cattura i record cloud reali.
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.mCampo = 3;
+      WORKER_NEXT = { ok: true };
+      await H.playersSave({ skipConfirm: true });
+      await waitFor(() => editSavePushes().length > 0, 4000); // worker edit → pendKey si libera
+      await sleep(400);
+      const recsFromA = cloudRecords().map(r => ({
+        record_type: r.record_type, local_key: r.local_key, payload: r.payload,
+        deleted: !!r.deleted, updated_at: new Date().toISOString()
+      }));
+      const checks = [];
+      checks.push({ label: 'device A ha prodotto record cloud (suppress+booking)', ok: recsFromA.length >= 1 });
+      // ── DEVICE B: stato STANTIO con la booking ancora su campo 2; riceve i record di A dal cloud.
+      H.setBookings([bookingFixture(iso)]); // campo 2 (vecchio)
+      CLOUD_FAKEROWS = recsFromA;
+      await H.refreshFromCloud({ force: true });
+      await sleep(500);
+      const bk = H.getBookings();
+      const oldGone = findBooking(bk, iso, 2, '18:00').length === 0;
+      const newHere = findBooking(bk, iso, 3, '18:00').length >= 1;
+      checks.push({ label: 'device B: slot VECCHIO (campo 2) rimosso', ok: oldGone });
+      checks.push({ label: 'device B: slot NUOVO (campo 3) presente', ok: newHere });
+      checks.push({ label: 'device B: nessun doppione (no campo 2 + campo 3 insieme)', ok: !(findBooking(bk, iso, 2, '18:00').length && findBooking(bk, iso, 3, '18:00').length) });
+      if (!oldGone || !newHere) ctx.diag['19'] = 'recsFromA=' + JSON.stringify(recsFromA.map(r => ({ t: r.record_type, k: r.local_key, c: r.payload && r.payload.campo, del: r.deleted }))) + ' | localB=' + JSON.stringify(bk.map(b => ({ c: b.campo, o: b.ora, id: b.id })));
+      return checks;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // (C) PRENOTAZIONI IMPORTATE da Matchpoint: vivono in prenotazioniOccupazione,
+  // SENZA `id` locale. Path di risoluzione diverso (lookup idReserva su occupancy,
+  // ramo PROMOTE per il move). Sospetti per "non sposta / non cancella".
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 20, flow: 'Importata/Cancel', name: 'annulla prenotazione IMPORTATA: idReserva da occupancy + suppress',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([]);                                  // niente in staffBookings
+      H.setOccupancy([occFixture(iso)]);                  // solo occupancy (idReserva R999)
+      WORKER_NEXT = { ok: true };
+      await H.doCancel(iso, 2, '18:00', 'Cliente MP');
+      const checks = [];
+      await waitFor(() => workerPushes('cancel').length > 0, 4000);
+      const wp = workerPushes('cancel')[0];
+      checks.push({ label: 'worker cancel inviato', ok: !!wp });
+      checks.push({ label: 'idReserva R999 risolto dall\'occupancy', ok: !!wp && wp.body.idReserva === 'R999' });
+      await waitFor(() => cloudRecords().length > 0, 2000);
+      checks.push({ label: 'cloud staff_suppress (nasconde l\'occupancy)', ok: cloudRecords().some(r => r.record_type === 'staff_suppress') });
+      return checks;
+    }
+  },
+  {
+    id: 21, flow: 'Importata/Move', name: 'sposta prenotazione IMPORTATA: PROMOTE crea la card al nuovo slot',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([]);
+      H.setOccupancy([occFixture(iso)]);
+      H.setMoveState({ iso: iso, campo: 2, ora: '18:00', durata: 90, nome: 'Cliente MP' });
+      WORKER_NEXT = { ok: true };
+      await H.doMove(iso, 3, '18:00');
+      const checks = [];
+      const got = await waitFor(() => editSavePushes().length > 0, 4000);
+      const wp = editSavePushes()[0];
+      checks.push({ label: 'worker move inviato con idReserva R999', ok: !!wp && wp.body.move && Number(wp.body.move.campo) === 3 && wp.body.idReserva === 'R999' });
+      // PROMOTE: dopo OK worker la card deve comparire in staffBookings sul nuovo slot
+      const promoted = await waitFor(() => { const b = findBooking(H.getBookings(), iso, 3, '18:00')[0]; return b && b.promoted === true && String(b.idReserva) === 'R999'; }, 4000);
+      checks.push({ label: 'card PROMOSSA al nuovo slot (campo 3, promoted, idReserva)', ok: promoted });
+      if (!got || !promoted) ctx.diag['21'] = 'bookings=' + JSON.stringify(H.getBookings().map(b => ({ c: b.campo, o: b.ora, prom: b.promoted, idr: b.idReserva }))) + ' worker=' + JSON.stringify(editSavePushes().map(w => w.body));
+      return checks;
+    }
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Runner
+// ─────────────────────────────────────────────────────────────────────────────
+function pad(n){ return String(n).padStart(2,'0'); }
+function isoOf(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+async function run() {
+  // (Ri)crea l'iframe DOPO aver seedato lo storage → il boot legge sessione/profilo.
+  seedStorage();
+  let frame = document.getElementById('app');
+  if (frame) frame.remove();
+  frame = document.createElement('iframe');
+  frame.id = 'app';
+  frame.src = '../index.html?env=test';
+  document.body.appendChild(frame);
+
+  const win = frame.contentWindow;
+  const summary = document.getElementById('summary');
+  summary.className = 'pill muted'; summary.textContent = 'carico app…';
+
+  // attendi l'app + l'hook test-only
+  const ready = await waitFor(() => frame.contentWindow && frame.contentWindow.PMOAi && frame.contentWindow.__PMOStaffCalTest, 15000, 100);
+  const W = frame.contentWindow;
+  if (!ready) {
+    summary.className = 'pill ko';
+    summary.textContent = 'App o hook __PMOStaffCalTest non caricati (PMOAi=' + !!(W && W.PMOAi) + ', hook=' + !!(W && W.__PMOStaffCalTest) + ')';
+    window.__RESULTS__ = { ready: false };
+    return;
+  }
+  installStubs(W);
+  const H = W.__PMOStaffCalTest;
+  const todayIso = (typeof W.staffCalTodayIso === 'function') ? W.staffCalTodayIso() : isoOf(new Date());
+  const tomorrow = new Date(todayIso + 'T00:00:00'); tomorrow.setDate(tomorrow.getDate() + 1);
+  const ctx = { iso: isoOf(tomorrow), todayIso, diag: {} };
+
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML = '';
+  let pass = 0; const rows = [];
+  for (const c of CASES) {
+    captureReset();
+    let checks, err = null;
+    try { checks = await c.run(W, H, ctx); }
+    catch (e) { checks = [{ label: 'EXCEPTION: ' + (e && e.message || e), ok: false }]; err = e; }
+    const failed = checks.filter(x => !x.ok);
+    const ok = failed.length === 0;
+    if (ok) pass++;
+    rows.push({ id: c.id, flow: c.flow, name: c.name, pass: ok, failed: failed.map(f => f.label) });
+    const tr = document.createElement('tr');
+    tr.className = ok ? 'pass' : 'fail';
+    tr.dataset.pass = ok ? '1' : '0';
+    tr.innerHTML =
+      '<td>' + c.id + '</td>' +
+      '<td class="cat">' + c.flow + '</td>' +
+      '<td>' + c.name.replace(/</g, '&lt;') + '</td>' +
+      '<td class="' + (ok ? 'res-ok' : 'res-fail') + '">' + (ok ? 'PASSA' : 'NON PASSA') + '</td>' +
+      '<td class="fail-reasons">' + failed.map(f => f.label).join('\n').replace(/</g, '&lt;') + '</td>';
+    tbody.appendChild(tr);
+  }
+  const total = CASES.length;
+  summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
+  summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
+  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows };
+}
+
+document.getElementById('run').addEventListener('click', run);
+document.getElementById('onlyfail').addEventListener('click', function () {
+  this.dataset.on = this.dataset.on === '1' ? '0' : '1';
+  const on = this.dataset.on === '1';
+  document.querySelectorAll('#tbl tbody tr').forEach(tr => { tr.style.display = (on && tr.dataset.pass === '1') ? 'none' : ''; });
+  this.textContent = on ? 'Mostra tutti' : 'Mostra solo NON-PASSA';
+});
+window.addEventListener('load', () => setTimeout(run, 400));
+</script>
+</body>
+</html>

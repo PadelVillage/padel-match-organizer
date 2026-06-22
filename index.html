@@ -39958,6 +39958,36 @@ Per confermare scrivi ELIMINA.`);
   /* Banner "Sincronizzazione automatica in corso" rimosso (v5.627): nessun polling, nessun banner. */
   // svcStartQueuePolling();
 
+  // ── Hook test-only per l'harness di esecuzione (test/handle-test.html) ──────
+  // Esposto SOLO in TEST (PMO_IS_TEST_ENV) → zero impatto su PROD. Dà all'harness
+  // di regressione i ganci che le closure dell'IIFE non espongono su window:
+  // aprire la scheda, seedare/leggere staffBookings con l'encoding interno,
+  // leggere lo stato scheda, iniettare eventi realtime e forzare il refresh cloud.
+  // Serve a esercitare l'ESECUZIONE dei 6 flussi (cancel/move/giocatori/durata/
+  // cross-device), non solo PMOAi.parse(). Vedi piano "rete di regressione".
+  if (PMO_IS_TEST_ENV) {
+    try {
+      window.__PMOStaffCalTest = {
+        openCard: function () { return staffCalEditPlayers.apply(null, arguments); },
+        getPlayersState: function () { return staffCalPlayersState; },
+        setBookings: function (arr) { return save('staffBookings', Array.isArray(arr) ? arr : []); },
+        getBookings: function () { return safeLoad('staffBookings', []); },
+        setOccupancy: function (arr) { prenotazioniOccupazione = Array.isArray(arr) ? arr : []; try { save('prenotazioniOccupazione', prenotazioniOccupazione); } catch (e) {} },
+        getOccupancy: function () { return (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) ? prenotazioniOccupazione : []; },
+        lookupIdReserva: function () { return _staffCalLookupIdReserva.apply(null, arguments); },
+        doCancel: function () { return staffCalDoCancel.apply(null, arguments); },
+        doMove: function () { return staffCalDoMove.apply(null, arguments); },
+        setMoveState: function (s) { staffCalMoveState = s || null; },
+        getMoveState: function () { return staffCalMoveState; },
+        playersSave: function () { return staffCalPlayersSave.apply(null, arguments); },
+        onRemoteChange: function () { return staffCalRtOnRemoteChange(); },
+        onRemotePending: function (p) { return staffCalRtOnRemotePending(p); },
+        onRemoteResolved: function (p) { return staffCalRtOnRemoteResolved(p); },
+        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); }
+      };
+    } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // PMOAi — Assistente AI conversazionale a regole (Fase 1 — solo TEST)
   // Router di intent costruito SOPRA PARSER_RULES (intents PRENOTA/CANCELLA/TROVA/
