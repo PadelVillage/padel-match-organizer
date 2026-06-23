@@ -98,10 +98,22 @@ function absoluteUrl(baseUrl, pathOrUrl) {
 const QUEUE_JOB_TIMEOUT_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_MS', '180000')); // 3 min di sicurezza
 const mpQueue = {
   seq: 0,
-  running: null, // { id, op, label, operatore, startedAt }
-  waiting: [],   // [{ id, op, label, operatore, enqueuedAt }]
-  _chain: Promise.resolve(),
+  running: null, // { id, op, label, operatore, priority, startedAt }
+  waiting: [],   // [{ id, op, label, operatore, priority, enqueuedAt, fn, resolve, reject }]
 };
+
+// PRIORITÀ CODA (fix latenza BUG2): le operazioni INTERATTIVE dell'operatore
+// (create/edit/cancel + gestione cliente) scavalcano in coda i job di BACKGROUND
+// (read-tabellone del sync, poll, keepalive), così l'operatore non aspetta ~30s
+// dietro una lettura tabellone in coda. NON è preemption: un job già in esecuzione
+// non si interrompe (page warm condivisa → una sola op per volta sulla pagina); la
+// priorità agisce solo nella SCELTA del prossimo job. Il "cedere il passo" durante
+// il sync è ottenuto spezzando read-tabellone in chunk (vedi handleReadTabellone).
+const MP_INTERACTIVE_OPS = new Set(['create', 'edit', 'cancel', 'client', 'disable-client', 'reactivate-client']);
+function mpJobPriority(meta) {
+  if (meta && typeof meta.priority === 'number') return meta.priority;
+  return (meta && MP_INTERACTIVE_OPS.has(meta.op)) ? 1 : 0;
+}
 
 // Etichetta leggibile ("cosa") per /queue/status, ricavata dal payload della richiesta.
 // `operatore` ("chi") arriverà dall'app in Fase 2; per ora ripiega su '—'.
@@ -137,10 +149,11 @@ function mpQueueSnapshot() {
       op: mpQueue.running.op,
       label: mpQueue.running.label,
       operatore: mpQueue.running.operatore,
+      priority: mpQueue.running.priority,
       runningMs: now - mpQueue.running.startedAt,
     } : null,
     waitingCount: mpQueue.waiting.length,
-    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore })),
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, priority: j.priority })),
     time: new Date().toISOString(),
   };
 }
@@ -168,27 +181,56 @@ function instrumentStepTiming(diagnostic) {
 }
 
 // Esegue `fn` (async) in modo serializzato: una sola operazione browser alla volta.
-// `meta` = { op, label, operatore } (solo per /queue/status).
-// Ritorna/propaga ESATTAMENTE ciò che ritorna/lancia `fn`, così gli handler non cambiano semantica.
+// `meta` = { op, label, operatore, priority? } (priority opzionale; default da mpJobPriority).
+// Ritorna/propaga ESATTAMENTE ciò che ritorna/lancia `fn`, così gli handler non cambiano
+// semantica. La scelta del prossimo job è per PRIORITÀ (poi FIFO a pari priorità).
 function mpQueueRun(meta, fn) {
-  const job = {
-    id: ++mpQueue.seq,
-    op: meta.op || 'op',
-    label: meta.label || meta.op || 'operazione',
-    operatore: meta.operatore || '—',
-    enqueuedAt: Date.now(),
-  };
-  mpQueue.waiting.push(job);
+  return new Promise((resolve, reject) => {
+    const job = {
+      id: ++mpQueue.seq,
+      op: meta.op || 'op',
+      label: meta.label || meta.op || 'operazione',
+      operatore: meta.operatore || '—',
+      priority: mpJobPriority(meta),
+      enqueuedAt: Date.now(),
+      fn,
+      resolve,
+      reject,
+    };
+    mpQueue.waiting.push(job);
+    mpQueuePump();
+  });
+}
 
-  const result = mpQueue._chain.then(async () => {
-    const idx = mpQueue.waiting.findIndex((j) => j.id === job.id);
-    if (idx >= 0) mpQueue.waiting.splice(idx, 1);
-    const startedAt = Date.now();
-    const queueWaitMs = startedAt - job.enqueuedAt;
-    mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, startedAt };
+// Sceglie l'indice del prossimo job: priorità più alta; a pari priorità, chi è in
+// coda da più tempo (FIFO stabile). Ritorna -1 se non c'è nulla in attesa.
+function mpQueuePickNextIdx() {
+  let best = -1;
+  for (let i = 0; i < mpQueue.waiting.length; i++) {
+    const j = mpQueue.waiting[i];
+    if (best < 0) { best = i; continue; }
+    const b = mpQueue.waiting[best];
+    if (j.priority > b.priority || (j.priority === b.priority && j.enqueuedAt < b.enqueuedAt)) best = i;
+  }
+  return best;
+}
+
+// Pompa la coda: se nessun job è in esecuzione, pesca il prossimo (per priorità) e lo
+// avvia. Concorrenza 1 garantita dal guard `mpQueue.running`. Richiamato all'enqueue e
+// a fine di ogni job. La sezione fino a `mpQueue.running = …` è SINCRONA → niente race.
+function mpQueuePump() {
+  if (mpQueue.running) return;
+  const idx = mpQueuePickNextIdx();
+  if (idx < 0) return;
+  const job = mpQueue.waiting.splice(idx, 1)[0];
+  const startedAt = Date.now();
+  const queueWaitMs = startedAt - job.enqueuedAt;
+  mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, priority: job.priority, startedAt };
+  (async () => {
     let timer = null;
     let _err = null;
     let _val;
+    let _hasErr = false;
     try {
       // Timeout di sicurezza: un job piantato non deve bloccare la coda all'infinito.
       const guard = new Promise((_resolve, reject) => {
@@ -196,11 +238,10 @@ function mpQueueRun(meta, fn) {
           `Operazione "${job.label}" oltre ${Math.round(QUEUE_JOB_TIMEOUT_MS / 1000)}s: annullata per non bloccare la coda.`)),
           QUEUE_JOB_TIMEOUT_MS);
       });
-      _val = await Promise.race([Promise.resolve().then(fn), guard]);
-      return _val;
+      _val = await Promise.race([Promise.resolve().then(job.fn), guard]);
     } catch (e) {
       _err = e;
-      throw e;
+      _hasErr = true;
     } finally {
       if (timer) clearTimeout(timer);
       mpQueue.running = null;
@@ -214,7 +255,8 @@ function mpQueueRun(meta, fn) {
           op: job.op,
           label: job.label,
           operatore: job.operatore,
-          ok: !_err,
+          priority: job.priority,
+          ok: !_hasErr,
           code: (_err && _err.code) || undefined,
           queueWaitMs,
           runMs,
@@ -224,12 +266,12 @@ function mpQueueRun(meta, fn) {
           time: new Date().toISOString(),
         }));
       } catch (_e) {}
+      // Risolve/rigetta il chiamante con ESATTAMENTE ciò che fn ha prodotto, poi avvia
+      // il prossimo job (eventuale op interattiva accodata nel frattempo passa avanti).
+      if (_hasErr) job.reject(_err); else job.resolve(_val);
+      mpQueuePump();
     }
-  });
-
-  // La catena prosegue SEMPRE (anche se questo job fallisce) così il prossimo parte.
-  mpQueue._chain = result.then(() => {}, () => {});
-  return result;
+  })();
 }
 
 // Handler per GET /queue/status (autenticato come gli altri).
@@ -3508,6 +3550,11 @@ async function handleGetSlots(req, res) {
   json(res, 200, result);
 }
 
+// Quante date legge ogni job read-tabellone. Letture multi-giorno (il sync ~22 date,
+// ~32s) vengono spezzate in più job low-priority così le op interattive si infilano TRA
+// un chunk e l'altro (attesa max ~1 chunk invece dell'intera lettura). Vedi mpQueuePump.
+const MP_READ_TAB_CHUNK = Math.max(1, Math.min(31, Number(env('MATCHPOINT_READ_TAB_CHUNK', '4'))));
+
 async function handleReadTabellone(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
@@ -3516,6 +3563,24 @@ async function handleReadTabellone(req, res) {
   // read + poller/edit) pilotano la stessa pagina insieme → cambi data incrociati e
   // roster parziali/scambiati (causa #1 del "lampeggio" dei nomi). La coda con
   // concorrenza 1 garantisce che un read non condivida mai la pagina con un'altra op.
+  const allDates = (Array.isArray(body.dates) ? body.dates : [body.date]).filter(Boolean);
+  // CHUNKING (fix latenza BUG2): se ci sono più date della soglia, spezza in job
+  // separati ed esegui in sequenza. Ogni chunk è un job a sé in coda → tra un chunk e
+  // l'altro un'op interattiva (priorità più alta) viene servita prima del chunk
+  // successivo. Risultato merge identico ({ 'YYYY-MM-DD': [...] }). Sotto soglia: 1 job.
+  if (allDates.length > MP_READ_TAB_CHUNK) {
+    const merged = {};
+    const parts = [];
+    for (let i = 0; i < allDates.length; i += MP_READ_TAB_CHUNK) {
+      const slice = allDates.slice(i, i + MP_READ_TAB_CHUNK);
+      const chunkBody = { ...body, dates: slice, date: undefined };
+      // eslint-disable-next-line no-await-in-loop
+      const r = await mpQueueRun(mpJobMeta('read-tabellone', chunkBody), () => mpReadRetry('read-tabellone', () => readTabelloneWithBrowser(chunkBody)));
+      if (r && r.result) Object.assign(merged, r.result);
+      if (r && r.diagnostic && r.diagnostic.settle) parts.push({ dates: slice, settle: r.diagnostic.settle });
+    }
+    return json(res, 200, { ok: true, result: merged, diagnostic: { flow: 'read_tabellone', chunked: allDates.length, chunkSize: MP_READ_TAB_CHUNK, parts } });
+  }
   const result = await mpQueueRun(mpJobMeta('read-tabellone', body), () => mpReadRetry('read-tabellone', () => readTabelloneWithBrowser(body)));
   json(res, 200, result);
 }
