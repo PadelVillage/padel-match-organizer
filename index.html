@@ -2896,25 +2896,28 @@
       .smc-soci-sheet.open { transform:translateY(0); }
       .smc-soci-head { display:flex; flex-direction:column; gap:0; padding:0; border-bottom:1.5px solid #e2e8f0; flex:0 0 auto; background:#f1f5f9; border-radius:14px 14px 0 0; }
       .smc-soci-tabs { display:flex; gap:6px; flex:1; padding:0 12px; }
-      .smc-soci-tab { flex:1; background:#e2e8f0; border:none; border-radius:20px 20px 0 0; padding:8px 10px; font-size:14px; font-weight:700; color:#64748b; font-family:inherit; cursor:pointer; }
+      .smc-soci-tab { flex:1; background:#e2e8f0; border:none; border-radius:20px 20px 0 0; padding:11px 10px; font-size:16px; font-weight:700; color:#64748b; font-family:inherit; cursor:pointer; }
       .smc-soci-tab.active { background:#1a4fa0; border-color:#1a4fa0; color:#fff; }
-      .smc-soci-close { background:#e2e8f0; border:none; font-size:13px; font-weight:500; line-height:1; color:#475569; cursor:pointer; padding:5px 10px; border-radius:6px; flex-shrink:0; }
-      .smc-soci-body { padding:10px 12px 12px; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#fff; }
-      .smc-soci-input { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:10px; padding:9px 12px; font-size:14px; font-family:inherit; outline:none; background:#f8fafc; color:#1e293b; }
+      .smc-soci-close { background:#e2e8f0; border:none; font-size:14px; font-weight:500; line-height:1; color:#475569; cursor:pointer; padding:7px 12px; border-radius:6px; flex-shrink:0; }
+      .smc-soci-body { padding:12px 14px 14px; overflow-y:auto; -webkit-overflow-scrolling:touch; background:#fff; }
+      .smc-soci-input { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:10px; padding:13px 14px; font-size:17px; font-family:inherit; outline:none; background:#f8fafc; color:#1e293b; }
       .smc-soci-input:focus { border-color:#1a4fa0; }
-      .smc-soci-results { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
-      .smc-soci-hint { padding:18px 4px; text-align:center; font-size:15px; color:var(--text-muted,#6b7280); }
-      .smc-soci-form { display:flex; flex-direction:column; gap:10px; }
+      select.smc-soci-input { height:50px; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 14px center; padding-right:38px; }
+      .smc-soci-field { display:flex; flex-direction:column; gap:5px; }
+      .smc-soci-label { font-size:13px; font-weight:500; color:#64748b; }
+      .smc-soci-results { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+      .smc-soci-hint { padding:18px 4px; text-align:center; font-size:16px; color:var(--text-muted,#6b7280); }
+      .smc-soci-form { display:flex; flex-direction:column; gap:14px; }
       .smc-soci-row { display:flex; gap:10px; }
       .smc-soci-row > * { flex:1; min-width:0; }
-      .smc-soci-save { margin-top:4px; background:#1a4fa0; border:none; color:#fff; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
+      .smc-soci-save { margin-top:6px; background:#1a4fa0; border:none; color:#fff; border-radius:10px; padding:15px; font-size:17px; font-weight:500; font-family:inherit; cursor:pointer; }
       .smc-soci-save:active { background:#163d80; }
-      .smc-soci-result { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:0.5px solid #e2e8f0; border-radius:10px; padding:13px 14px; font-family:inherit; }
+      .smc-soci-result { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:0.5px solid #e2e8f0; border-radius:10px; padding:15px 14px; font-family:inherit; }
       .smc-soci-result:active { background:#f0f7ff; }
       .smc-soci-result-info { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
       .smc-soci-result-row1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-      .smc-soci-result-name { font-size:16px; font-weight:500; color:#1e293b; }
-      .smc-soci-result-meta { font-size:13px; color:#64748b; }
+      .smc-soci-result-name { font-size:18px; font-weight:500; color:#1e293b; }
+      .smc-soci-result-meta { font-size:14px; color:#64748b; }
       .smc-soci-result-badges { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:3px; }
       .smc-soci-badge { display:inline-flex; align-items:center; border-radius:20px; padding:3px 9px; font-size:12px; font-weight:700; }
       .smc-soci-badge-m { background:#E6F1FB; color:#0C447C; }
@@ -2924,15 +2927,15 @@
       .smc-soci-badge-pos { background:#ede7f6; color:#4527a0; }
       .smc-soci-badge-lv { background:#1a4fa0; color:#fff; border-radius:12px; padding:3px 10px; font-size:13px; font-weight:700; flex-shrink:0; }
       .smc-soci-phone { font-size:13px; color:#64748b; }
-      .smc-soci-edit-btn { flex-shrink:0; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:9px 13px; font-size:16px; color:#374151; cursor:pointer; font-family:inherit; }
-      .smc-soci-edit-idline { font-size:12px; color:#64748b; padding-bottom:4px; border-bottom:0.5px solid #e2e8f0; margin-bottom:2px; }
-      .smc-soci-active-row { display:flex; align-items:center; gap:8px; font-size:14px; color:#1e293b; cursor:pointer; padding:4px 0; }
-      .smc-soci-active-row input[type=checkbox] { width:17px; height:17px; accent-color:#1a4fa0; flex-shrink:0; }
-      .smc-soci-cancel-btn { flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#374151; border-radius:10px; padding:12px; font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; }
-      .smc-soci-titlebar { display:flex; align-items:center; justify-content:space-between; padding:12px 14px 10px; }
-      .smc-soci-titlebar-left { display:flex; flex-direction:column; gap:1px; }
-      .smc-soci-title { font-size:15px; font-weight:500; color:#1e293b; }
-      .smc-soci-subtitle { font-size:12px; color:#64748b; }
+      .smc-soci-edit-btn { flex-shrink:0; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:11px 15px; font-size:18px; color:#374151; cursor:pointer; font-family:inherit; }
+      .smc-soci-edit-idline { font-size:13px; color:#64748b; padding-bottom:6px; border-bottom:0.5px solid #e2e8f0; margin-bottom:2px; }
+      .smc-soci-active-row { display:flex; align-items:center; gap:10px; font-size:16px; color:#1e293b; cursor:pointer; padding:6px 0; }
+      .smc-soci-active-row input[type=checkbox] { width:22px; height:22px; accent-color:#1a4fa0; flex-shrink:0; }
+      .smc-soci-cancel-btn { flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#374151; border-radius:10px; padding:15px; font-size:17px; font-weight:500; font-family:inherit; cursor:pointer; }
+      .smc-soci-titlebar { display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; }
+      .smc-soci-titlebar-left { display:flex; flex-direction:column; gap:2px; }
+      .smc-soci-title { font-size:17px; font-weight:500; color:#1e293b; }
+      .smc-soci-subtitle { font-size:13px; color:#64748b; }
       .smc-soci-tabrow { display:flex; padding:0 12px; border-top:0.5px solid #e2e8f0; }
       .smc-team-wrap { position:relative; flex-shrink:0; }
       .smc-team-menu { position:absolute; top:calc(100% + 6px); right:0; z-index:1000; min-width:190px; background:var(--surface,#fff); border:1px solid var(--border,#d8d7d2); border-radius:12px; box-shadow:0 10px 28px rgba(15,23,42,0.20); padding:6px; display:flex; flex-direction:column; gap:2px; }
@@ -6333,24 +6336,28 @@ body.assessment-public-mode .assessment-public-only-card {
                   <div class="smc-soci-pane" data-soci-pane="new" hidden>
                     <div class="smc-soci-form">
                       <div class="smc-soci-row">
-                        <input type="text" id="staffCalSociNewFirst" class="smc-soci-input" placeholder="Nome">
-                        <input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome">
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewFirst">Nome</label><input type="text" id="staffCalSociNewFirst" class="smc-soci-input" placeholder="Nome"></div>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewSurname">Cognome</label><input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome"></div>
                       </div>
-                      <input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono">
-                      <input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email">
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPhone">Telefono</label><input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono"></div>
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewEmail">Email</label><input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email"></div>
                       <div class="smc-soci-row">
-                        <select id="staffCalSociNewGender" class="smc-soci-input">
-                          <option value="">Sesso…</option>
-                          <option value="M">Maschio</option>
-                          <option value="F">Femmina</option>
-                        </select>
-                        <input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="Livello (es. 3)" inputmode="decimal">
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewGender">Sesso</label>
+                          <select id="staffCalSociNewGender" class="smc-soci-input">
+                            <option value="">Sesso…</option>
+                            <option value="M">Maschio</option>
+                            <option value="F">Femmina</option>
+                          </select>
+                        </div>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewLevel">Livello</label><input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="es. 3" inputmode="decimal"></div>
                       </div>
-                      <select id="staffCalSociNewPosition" class="smc-soci-input">
-                        <option value="">Posizione…</option>
-                        <option value="Destra">Destra</option>
-                        <option value="Sinistra">Sinistra</option>
-                      </select>
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPosition">Posizione</label>
+                        <select id="staffCalSociNewPosition" class="smc-soci-input">
+                          <option value="">Posizione…</option>
+                          <option value="Destra">Destra</option>
+                          <option value="Sinistra">Sinistra</option>
+                        </select>
+                      </div>
                       <button type="button" class="smc-soci-save" onclick="staffCalSociSheetSaveNew()">Salva socio</button>
                     </div>
                   </div>
@@ -7706,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.914';
+    const APP_VERSION = '5.915';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -45248,24 +45255,27 @@ Per confermare scrivi ELIMINA.`);
     var editHtml = '<div class="smc-soci-form">'
       + '<div class="smc-soci-edit-idline">' + esc(idLabel) + '</div>'
       + '<div class="smc-soci-row">'
-      + '<input type="text" id="smeFirst" class="smc-soci-input" placeholder="Nome" value="' + esc(g.firstName || '') + '">'
-      + '<input type="text" id="smeSurname" class="smc-soci-input" placeholder="Cognome" value="' + esc(g.surname || '') + '">'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smeFirst">Nome</label><input type="text" id="smeFirst" class="smc-soci-input" placeholder="Nome" value="' + esc(g.firstName || '') + '"></div>'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smeSurname">Cognome</label><input type="text" id="smeSurname" class="smc-soci-input" placeholder="Cognome" value="' + esc(g.surname || '') + '"></div>'
       + '</div>'
-      + '<input type="tel" id="smePhone" class="smc-soci-input" placeholder="Telefono" value="' + esc(g.phone || '') + '">'
-      + '<input type="email" id="smeEmail" class="smc-soci-input" placeholder="Email" value="' + esc(g.email || '') + '">'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smePhone">Telefono</label><input type="tel" id="smePhone" class="smc-soci-input" placeholder="Telefono" value="' + esc(g.phone || '') + '"></div>'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smeEmail">Email</label><input type="email" id="smeEmail" class="smc-soci-input" placeholder="Email" value="' + esc(g.email || '') + '"></div>'
       + '<div class="smc-soci-row">'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smeGender">Sesso</label>'
       + '<select id="smeGender" class="smc-soci-input">'
       + '<option value="">Sesso…</option>'
       + '<option value="M"' + (g.gender === 'M' ? ' selected' : '') + '>Maschio</option>'
       + '<option value="F"' + (g.gender === 'F' ? ' selected' : '') + '>Femmina</option>'
-      + '</select>'
-      + '<select id="smeLevel" class="smc-soci-input">' + lvOptions + '</select>'
+      + '</select></div>'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smeLevel">Livello</label>'
+      + '<select id="smeLevel" class="smc-soci-input">' + lvOptions + '</select></div>'
       + '</div>'
+      + '<div class="smc-soci-field"><label class="smc-soci-label" for="smePosition">Posizione</label>'
       + '<select id="smePosition" class="smc-soci-input">'
       + '<option value="">Posizione…</option>'
       + '<option value="Destra"' + (g.playingPosition === 'Destra' ? ' selected' : '') + '>Destra</option>'
       + '<option value="Sinistra"' + (g.playingPosition === 'Sinistra' ? ' selected' : '') + '>Sinistra</option>'
-      + '</select>'
+      + '</select></div>'
       + '<label class="smc-soci-active-row">'
       + '<input type="checkbox" id="smeActive"' + (g.active !== false ? ' checked' : '') + '>'
       + '<span>Socio attivo</span>'
