@@ -5125,28 +5125,43 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // una riga è valida se il suo HiddenFieldIdCliente combacia col codice cliente atteso
   // o con l'id agganciato (confronto su onlyDigits, ignora gli zeri iniziali).
   let addedIdCliente = null;
-  const righeViste = [];
+  let righeViste = [];
   const wantCode = onlyDigits(expectedClientCode);
   const wantPeople = onlyDigits(lockedId);
-  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
-  const righeTot = await nomeInputs.count().catch(() => 0);
-  for (let r = 0; r < righeTot; r++) {
-    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
-    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
-    let idCliVal = '';
-    if (rowId) {
-      const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
-      idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+  // Verifica post-aggiunta con RETRY: il Repeater partecipanti (RepeaterParticipantes
+  // → WUCUsuarioClase_Listado / WUCUsuarioPartida) si popola via postback async; una
+  // lettura singola può arrivare PRIMA che la riga compaia → falso PLAYER_ADD_NOT_CONFIRMED.
+  // È il caso "Lidia" su ficha LEZIONE nuova: l'allievo viene aggiunto ma la scansione,
+  // letta troppo presto, trova `rows=(nessuna)`. Si ritenta la scansione per ~5s,
+  // chiudendo eventuali avvisi swal residui ("importi in attesa") tra i tentativi.
+  for (let vTry = 0; vTry < 5 && addedIdCliente === null; vTry++) {
+    if (vTry > 0) {
+      await dismissSwalOk(page, diagnostic, 'verify' + vTry);
+      await mpWaitAsyncPostbackIdle(page, 4000).catch(() => {});
+      await page.waitForTimeout(700);
     }
-    const idCliDigits = onlyDigits(idCliVal);
-    righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
-    const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
-    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
-    if (matchByName || matchById) {
-      addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
-      diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}`);
-      break;
+    righeViste = [];
+    const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+    const righeTot = await nomeInputs.count().catch(() => 0);
+    for (let r = 0; r < righeTot; r++) {
+      const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+      const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+      let idCliVal = '';
+      if (rowId) {
+        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+        idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+      }
+      const idCliDigits = onlyDigits(idCliVal);
+      righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
+      const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
+      const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+      if (matchByName || matchById) {
+        addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
+        diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}:vtry=${vTry}`);
+        break;
+      }
     }
+    diagnostic.steps.push(`player_verify_scan:vtry=${vTry}:rows=${righeViste.length || '(nessuna)'}`);
   }
   diagnostic.partecipantiRighe = righeViste.slice(0, 30);
 
