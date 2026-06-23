@@ -4294,33 +4294,125 @@ async function updateClientWithBrowser(options = {}) {
       throw fail('CLIENT_UPDATE_VALIDATION', `Matchpoint ha rifiutato l'aggiornamento del cliente ${codice}.`, diagnostic);
     }
 
-    // ── Aggiornamento livello (pagina separata, come nel create) ──
+    // ── Aggiornamento livello ─────────────────────────────────────────────────
+    // ATTENZIONE: per un cliente ESISTENTE il livello va MODIFICATO sulla riga gia'
+    // presente. La pagina "Nuovo" (FichaDeportePracticaClienteDatosNivel?id_people)
+    // funziona solo nel CREATE (cliente senza alcun livello): per chi ha gia' la riga
+    // sport NON la tocca, quindi il livello restava invariato pur dando esito "ok"
+    // (bug confermato live 23/06: app=4, Matchpoint restava 5). Qui:
+    //  1) apro la tab "Livello" della Ficha aperta e leggo la griglia (arg "Editar$<id>");
+    //  2) se la riga sport esiste -> lancio il postback "Editar$<id>#..." e compilo/salvo
+    //     il campo livello (stessi controlli del create); se NON esiste -> fallback "Nuovo";
+    //  3) VERIFICA OBBLIGATORIA: rileggo la griglia. 'livello' va in updatedFields SOLO
+    //     se il valore e' davvero cambiato, altrimenti levelError reale (niente falso ok).
     if (hasLivello && livelloStr) {
-      try {
-        diagnostic.steps.push('goto_livello');
-        const livelloUrl = absoluteUrl(baseUrl,
-          `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
-          + `&cbf=callbackRefrescarPestanyaJuegoNivel`
-          + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
-        await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-        const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
-        let lvlField = page.locator(L + 'TextBoxNivelNumerico').first();
-        if (!(await lvlField.count().catch(() => 0))) {
-          lvlField = page.locator('[id$="TextBoxNivelNumerico"]').first();
+      const GRID_PB = 'ctl01$ctl00$CC$Datos$FormViewFicha$GridViewListadoDeportes';
+      const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
+      const livelloNumTarget = Number(String(livelloStr).replace(',', '.'));
+      // Apre la tab "Livello" della Ficha (postback ASP.NET) e attende la griglia.
+      const openLivelloTab = async () => {
+        await page.evaluate(() => {
+          const a = document.getElementById('CC_Datos_FormViewFicha_A2');
+          if (a && typeof a.click === 'function') { a.click(); return; }
+          if (typeof window.__doPostBack === 'function') window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$A2', '');
+        }).catch(() => {});
+        await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+        await page.waitForTimeout(1200);
+      };
+      // Legge le righe della griglia livelli: { sport, livelloNum, arg("<id>#<people>#<sport>") }.
+      // Ritorna null se la griglia NON e' leggibile (per non fare un ADD alla cieca
+      // che creerebbe un livello duplicato), [] se griglia trovata ma senza righe.
+      const readLivelloRows = async () => page.evaluate(() => {
+        const grid = document.getElementById('CC_Datos_FormViewFicha_GridViewListadoDeportes');
+        if (!grid) return null;
+        const out = [];
+        grid.querySelectorAll('tr').forEach((tr) => {
+          const tds = tr.querySelectorAll('td');
+          if (tds.length < 2) return;
+          const editBtn = tr.querySelector('[onclick*="Editar$"]');
+          const m = editBtn ? (editBtn.getAttribute('onclick') || '').match(/Editar\$([^']+)/) : null;
+          const sport = (tds[0].innerText || '').replace(/\s+/g, ' ').trim();
+          const lvlTxt = (tds[1].innerText || '').replace(/\s+/g, ' ').trim();
+          const lvlNum = parseFloat(lvlTxt.replace(',', '.').replace(/[^\d.]/g, ''));
+          out.push({ sport, lvlTxt, lvlNum: Number.isFinite(lvlNum) ? lvlNum : null, arg: m ? m[1] : '' });
+        });
+        return out;
+      }).catch(() => null);
+      // Cerca il campo livello in QUALSIASI frame (inline o popup) e lo salva.
+      const fillAndSaveLivello = async () => {
+        for (const fr of page.frames()) {
+          try {
+            let field = fr.locator(L + 'TextBoxNivelNumerico').first();
+            if (!(await field.count().catch(() => 0))) field = fr.locator('[id$="TextBoxNivelNumerico"]').first();
+            if (!(await field.count().catch(() => 0))) continue;
+            await field.fill(livelloStr, { timeout: 10000 });
+            diagnostic.steps.push('salva_livello');
+            const saveBtn = fr.locator(L + 'ButtonActualizar, #CC_Datos_FormViewFicha_ButtonActualizar, [id$="ButtonActualizar"]').first();
+            await Promise.all([
+              page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
+              saveBtn.click({ timeout: 15000 }).catch(() => {}),
+            ]);
+            await page.waitForTimeout(1800);
+            return true;
+          } catch (_) { /* prova il frame successivo */ }
         }
-        if (await lvlField.count().catch(() => 0)) {
-          await lvlField.fill(livelloStr, { timeout: 10000 });
-          diagnostic.steps.push('salva_livello');
-          await Promise.all([
-            page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {}),
-            page.locator('#CC_Datos_FormViewFicha_ButtonActualizar, [id$="ButtonActualizar"]').first().click({ timeout: 15000 }).catch(() => {}),
-          ]);
-          await page.waitForTimeout(1500);
-          diagnostic.updatedFields.push('livello');
+        diagnostic.steps.push('field_not_found:TextBoxNivelNumerico');
+        return false;
+      };
+      try {
+        diagnostic.steps.push('open_tab_livello');
+        await openLivelloTab();
+        const rows = await readLivelloRows();
+        diagnostic.livelloRows = rows;
+        const target = Array.isArray(rows)
+          ? (rows.find((r) => /padel/i.test(r.sport) && r.arg) || rows.find((r) => r.arg) || null)
+          : null;
+
+        let attempted = false;
+        if (target && target.arg) {
+          diagnostic.steps.push('editar_riga:' + target.arg);
+          await page.evaluate(({ pb, arg }) => {
+            if (typeof window.__doPostBack === 'function') window.__doPostBack(pb, 'Editar$' + arg);
+          }, { pb: GRID_PB, arg: target.arg }).catch(() => {});
+          await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+          await page.waitForTimeout(1200);
+          attempted = await fillAndSaveLivello();
+        } else if (Array.isArray(rows) && rows.length === 0 && idInterno) {
+          // Griglia confermata VUOTA (nessun livello) -> AGGIUNGI (form "Nuovo", come nel create).
+          diagnostic.steps.push('aggiungi_livello');
+          const livelloUrl = absoluteUrl(baseUrl,
+            `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
+            + `&cbf=callbackRefrescarPestanyaJuegoNivel`
+            + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
+          await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+          attempted = await fillAndSaveLivello();
         } else {
-          diagnostic.steps.push('field_not_found:TextBoxNivelNumerico');
+          // Griglia non leggibile (null) o senza riga editabile: NON aggiungo alla cieca
+          // (eviterei un livello duplicato). Esito onesto -> levelError piu' sotto.
+          diagnostic.steps.push('skip_livello:griglia_non_letta_o_riga_assente');
+        }
+
+        // ── VERIFICA: rileggo la griglia e confermo il valore ──
+        if (attempted) {
+          if (idInterno) {
+            await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+            await openLivelloTab();
+          }
+          const after = await readLivelloRows();
+          diagnostic.livelloRowsAfter = after;
+          const confirmed = Array.isArray(after) && after.some((r) => r.lvlNum != null && Math.abs(r.lvlNum - livelloNumTarget) < 0.001);
+          if (confirmed) {
+            diagnostic.updatedFields.push('livello');
+            diagnostic.livelloVerified = true;
+          } else {
+            diagnostic.livelloVerified = false;
+            diagnostic.levelError = `Livello NON confermato dopo il salvataggio (atteso ${livelloStr}); righe=${JSON.stringify(after).slice(0, 220)}`;
+          }
+        } else {
+          diagnostic.levelError = diagnostic.levelError || 'Livello non salvato: campo/riga non trovati.';
         }
       } catch (levelError) {
+        diagnostic.livelloVerified = false;
         diagnostic.levelError = (levelError && levelError.message) || String(levelError);
       }
     }
