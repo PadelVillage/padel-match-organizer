@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.905';
+    const APP_VERSION = '5.906';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37323,6 +37323,26 @@ Per confermare scrivi ELIMINA.`);
     box.appendChild(actions);
   }
 
+  // Traduce l'errore GREZZO del worker in un messaggio CHIARO per l'operatore: niente codici interni
+  // ("recurso 13"), niente rumore di debug (steps=[…], url=…). Riconosce i casi noti; altrimenti tiene
+  // solo la parte umana accorciata. NB: il diario (execEnd/logManual) continua a salvare il motivo
+  // COMPLETO — questo è solo ciò che si MOSTRA in chat.
+  function _staffCalFriendlyOpError(raw) {
+    const s = String(raw == null ? '' : (raw.message != null ? raw.message : raw));
+    // NB: il caso giocatore-non-confermato va controllato PRIMA del "non trovata" generico, altrimenti
+    // "…non trovato nelle righe partecipanti…" verrebbe scambiato per una prenotazione mancante.
+    if (/non trovato nelle righe partecipanti|player_verify|partecipanti dopo l’aggiunta|partecipanti dopo l'aggiunta/i.test(s))
+      return 'Il giocatore è stato aggiunto ma il gestionale non ne ha confermato l’inserimento. Controlla la scheda su Matchpoint prima di rifare l’operazione.';
+    if (/PRENOTAZIONE_NON_TROVATA|nessun evento|prenotazione non trovat/i.test(s))
+      return 'La prenotazione non risulta più su Matchpoint (forse già rimossa o spostata). Ricarica con «Aggiorna prenotazioni» per riallineare il calendario.';
+    if (/Failed to fetch|NetworkError|ERR_|net::|fetch failed|ECONN/i.test(s))
+      return 'Connessione al gestionale Matchpoint momentaneamente non disponibile. Riprova tra poco.';
+    // Generico: tieni solo la parte umana, togli i dettagli di debug.
+    let human = s.split(/\s*(?:\|\s*steps=|\s+url=|\(griglia)/i)[0].trim();
+    if (human.length > 180) human = human.slice(0, 177) + '…';
+    return human || 'errore sconosciuto';
+  }
+
   function staffCalBringEditorToTop() {
     const st = staffCalPlayersState;
     const cont = document.getElementById('svcChatMessages');
@@ -37569,7 +37589,7 @@ Per confermare scrivi ELIMINA.`);
           const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
           _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
           _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
           _aiExecSettle(false, String(msg || 'errore'));
           renderStaffCalendar();
         }
@@ -37584,7 +37604,7 @@ Per confermare scrivi ELIMINA.`);
         } else {
           _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
           _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Errore: ' + (err && err.message ? err.message : err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          svcAddMessage('system', '❌ ' + _staffCalFriendlyOpError(err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
           _aiExecSettle(false, (err && err.message ? err.message : String(err)));
         }
         renderStaffCalendar();
@@ -39032,7 +39052,7 @@ Per confermare scrivi ELIMINA.`);
           _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
           renderStaffCalendar();
           _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Annullamento non riuscito: ' + msg + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+          svcAddMessage('system', '❌ Annullamento non riuscito: ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
         }
       } catch (err) {
         _staffCalPendingEdits.delete(_pendCancelKey);
@@ -39044,7 +39064,7 @@ Per confermare scrivi ELIMINA.`);
           _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
           renderStaffCalendar();
           _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + (err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+          svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + _staffCalFriendlyOpError(err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
         }
       }
     })();
@@ -39900,7 +39920,7 @@ Per confermare scrivi ELIMINA.`);
         try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
         try { renderStaffCalendar(); } catch (e) {}
         _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-        svcAddMessage('system', '⚠️ <strong>Attenzione</strong>: Campo ' + campo + ' \xb7 ' + ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + why + '). L\'ho <strong>rimossa</strong> dal calendario.');
+        svcAddMessage('system', '⚠️ <strong>Attenzione</strong>: Campo ' + campo + ' \xb7 ' + ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _staffCalFriendlyOpError(why) + '). L\'ho <strong>rimossa</strong> dal calendario.');
       };
       try {
         const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
@@ -40310,7 +40330,9 @@ Per confermare scrivi ELIMINA.`);
         outcome: outcome || 'confirmed',
         outcome_at: new Date().toISOString(),
         versione_parser: (function () { try { return _rules().versione || 'unknown'; } catch (e) { return 'unknown'; } })(),
-        meta: { manual: true }
+        // reason/via/azione anche in meta (oltre a parsed_json) → diagnosi uniforme col path chat,
+        // interrogabile con meta->>'reason' come le righe dell'assistente.
+        meta: { manual: true, via: (detail && detail.via) || null, azione: (detail && detail.azione) || azione || null, reason: (detail && detail.reason) || null }
       };
       _aiTurnInsert(row);
     }
@@ -42963,7 +42985,7 @@ Per confermare scrivi ELIMINA.`);
           try { staffCalRtBroadcastResolved(parsed, false); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
           _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-          _say('⚠️ <strong>Attenzione</strong>: la prenotazione di Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _escapeHtml(String(why)) + '). L\'ho <strong>rimossa</strong> dal calendario.');
+          _say('⚠️ <strong>Attenzione</strong>: la prenotazione di Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _escapeHtml(_staffCalFriendlyOpError(why)) + '). L\'ho <strong>rimossa</strong> dal calendario.');
         };
         try {
           // Permesso + config ora qui (background): se mancano, _failMsg annulla la card ottimistica.
