@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.909';
+    const APP_VERSION = '5.910';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37520,7 +37520,9 @@ Per confermare scrivi ELIMINA.`);
     else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud optimistic:', e); } }
     try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
     renderStaffCalendar();
-    svcResetToNeutral(); svcAutoCloseIfMobile();
+    // Mobile: NON chiudere qui (app-done ottimistico). La chiusura del bottom-sheet
+    // avviene alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
+    svcResetToNeutral();
 
     const destTxt = moveChanged
       ? ('Campo ' + op.mCampo + ' \xb7 ' + op.mIso.split('-').reverse().join('/') + ' \xb7 ' + op.mOraIni + '–' + op.mOraFin)
@@ -39014,7 +39016,8 @@ Per confermare scrivi ELIMINA.`);
     } catch (e) {}
     _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore);
     renderStaffCalendar();
-    svcResetToNeutral(); svcAutoCloseIfMobile();
+    // Mobile: chiusura rimandata alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
+    svcResetToNeutral();
     const _syncNote = '<br><span class="mp-sync-note" style="color:#98a2b3;font-size:12px">↻ La sto annullando su Matchpoint…</span>';
     const _msgEl = svcAddMessage('system',
       '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
@@ -39210,7 +39213,15 @@ Per confermare scrivi ELIMINA.`);
   // Da chiamare quando la nota di sync di un'operazione cambia stato: programma la
   // pulizia SOLO sul verde di conferma Matchpoint (#067647); su errore/timeout no.
   function svcMpSyncConfirmed(color) {
-    if (color === '#067647') svcScheduleAutoClear();
+    if (color === '#067647') {
+      // Conferma reale di Matchpoint: solo ORA, su mobile, chiudi il bottom-sheet
+      // (prima si chiudeva all'app-done ottimistico, a 700ms, senza aspettare l'ok
+      // MP) e programma la pulizia della chat. Su desktop niente chiusura: il
+      // messaggio resta finché svcScheduleAutoClear non ripulisce. Su errore/timeout
+      // (colore rosso/arancio) NON si chiude né si pulisce: l'esito resta visibile.
+      svcAutoCloseIfMobile();
+      svcScheduleAutoClear();
+    }
   }
 
   function svcCloseChat() {
@@ -39949,9 +39960,10 @@ Per confermare scrivi ELIMINA.`);
       _msgEl = svcAddMessage('system', '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>👥 ' + parsed.nome + _syncNote, 'ok');
     }
     const _setSyncNote = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} svcMpSyncConfirmed(color); };
-    // Ciclo concluso lato app: CHIUDI la scheda e torna al calendario (l'esito ✅ resta nei messaggi).
+    // Ciclo concluso lato app: smonta la flow-card; su mobile la chiusura del bottom-sheet
+    // avviene alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde). L'esito ✅ resta.
     renderStaffCalendar();
-    svcResetToNeutral(); svcAutoCloseIfMobile();
+    svcResetToNeutral();
 
     // ── Propagazione su Matchpoint in BACKGROUND ──
     (async function () {
@@ -43016,7 +43028,7 @@ Per confermare scrivi ELIMINA.`);
       // Ciclo concluso lato app: chiudi la scheda/flow e torna al calendario (mobile). L'esito ✅
       // resta nei messaggi (non è una flow-card). Per altre modifiche si riapre la prenotazione.
       try { svcResetToNeutral(); } catch (e) {}
-      try { svcAutoCloseIfMobile(); } catch (e) {}
+      // Mobile: chiusura rimandata alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
       // Diario autoapprendimento — esito REALE agganciato al turno chat (executed/failed).
       const _aiCreateRef = _aiTurnExecBegin();
       // ── Propagazione su Matchpoint in BACKGROUND (non blocca la chat) ──
