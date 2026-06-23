@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.908';
+    const APP_VERSION = '5.909';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37533,6 +37533,7 @@ Per confermare scrivi ELIMINA.`);
     const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _noteTxt + _syncNote, 'ok');
     const _setEditSyncNote = function (html, color) {
       try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+      svcMpSyncConfirmed(color);
     };
 
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca l'operatore) ──
@@ -37853,6 +37854,7 @@ Per confermare scrivi ELIMINA.`);
           'ok');
         renderStaffCalendar();
         svcResetToNeutral(); svcAutoCloseIfMobile();
+        svcScheduleAutoClear(); // spostamento confermato dal worker → pulizia chat
       } else {
         const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
         svcAddMessage('system', '❌ Spostamento non riuscito: ' + msg);
@@ -39017,7 +39019,7 @@ Per confermare scrivi ELIMINA.`);
     const _msgEl = svcAddMessage('system',
       '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
       (nome ? '<br>👥 ' + nome : '') + _syncNote, 'ok');
-    const _setSync = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} };
+    const _setSync = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} svcMpSyncConfirmed(color); };
 
     // ── Propagazione su Matchpoint in BACKGROUND ──
     (async function () {
@@ -39109,6 +39111,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (typeof svcAddMessage === 'function') svcAddMessage('system', '🧹 <strong>Card rimossa dal calendario</strong>: Campo ' + cn + ' \xb7 ' + dataIt + ' \xb7 ' + oraN, 'ok');
       if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
+      svcScheduleAutoClear(); // rimozione card fantasma (solo locale) → pulizia chat
     } catch (e) {
       if (typeof svcAddMessage === 'function') svcAddMessage('system', '❌ Rimozione non riuscita: ' + (e && e.message || e));
     }
@@ -39178,14 +39181,18 @@ Per confermare scrivi ELIMINA.`);
     if (c) c.innerHTML = '';
   }
 
-  // ── Auto-pulizia chat a fine operazione ────────────────────────────────────
-  // Dopo un esito positivo (messaggio 'ok': prenotazione creata/aggiornata,
-  // spostata, annullata, card rimossa) la chat si svuota da sola dopo un paio di
-  // secondi, per lasciare spazio pulito alla prossima operazione. Stesso
-  // container #svcChatMessages su desktop e mobile → un'unica logica copre
-  // entrambi. Qualunque altro messaggio nel frattempo (errore tardivo dal
-  // worker, nuova scelta, input dello staff) annulla la pulizia così resta
-  // visibile (vedi svcAddMessage).
+  // ── Auto-pulizia chat dopo la CONFERMA reale di Matchpoint ──────────────────
+  // La chat si svuota da sola ~4s dopo che l'operazione è stata CONFERMATA su
+  // Matchpoint (non al semplice esito ottimistico): per le operazioni che
+  // scrivono su Matchpoint in background (crea/modifica/annulla) la pulizia parte
+  // quando la nota di sync diventa verde "✅ …su Matchpoint" (svcMpSyncConfirmed,
+  // colore #067647); se Matchpoint fallisce o va in timeout (nota rossa/arancio)
+  // la chat NON si pulisce e l'errore resta visibile. Le operazioni senza
+  // scrittura Matchpoint (spostamento già confermato dal worker, rimozione card
+  // fantasma locale) programmano la pulizia direttamente. Stesso container
+  // #svcChatMessages su desktop e mobile → un'unica logica. Qualunque nuovo
+  // messaggio nel frattempo (errore, nuova scelta, input staff) annulla la
+  // pulizia pendente (vedi svcAddMessage).
   let _svcAutoClearTimer = null;
   function svcCancelAutoClear() {
     if (_svcAutoClearTimer) { clearTimeout(_svcAutoClearTimer); _svcAutoClearTimer = null; }
@@ -39199,6 +39206,11 @@ Per confermare scrivi ELIMINA.`);
       try { if (svcFlowState || staffCalPlayersState || staffCalMoveState) return; } catch (e) {}
       try { svcClearLog(); } catch (e) {}
     }, 4000);
+  }
+  // Da chiamare quando la nota di sync di un'operazione cambia stato: programma la
+  // pulizia SOLO sul verde di conferma Matchpoint (#067647); su errore/timeout no.
+  function svcMpSyncConfirmed(color) {
+    if (color === '#067647') svcScheduleAutoClear();
   }
 
   function svcCloseChat() {
@@ -39258,11 +39270,11 @@ Per confermare scrivi ELIMINA.`);
     // e si scrolla in basso così resta visibile. Coerente in tutta la web app.
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    // Auto-pulizia: un esito positivo programma lo svuotamento della chat dopo un
-    // paio di secondi; qualsiasi altro messaggio (errore tardivo, nuova scelta,
-    // input staff) lo annulla così l'utente fa sempre in tempo a leggerlo.
-    if (extraClass === 'ok') svcScheduleAutoClear();
-    else svcCancelAutoClear();
+    // Auto-pulizia: il timer parte SOLO alla conferma reale di Matchpoint
+    // (svcMpSyncConfirmed) o a fine di un'operazione sincrona; qui ogni nuovo
+    // messaggio annulla un eventuale timer pendente, così un errore tardivo o una
+    // nuova azione restano sempre visibili.
+    svcCancelAutoClear();
     return div;
   }
 
@@ -39936,7 +39948,7 @@ Per confermare scrivi ELIMINA.`);
     } else {
       _msgEl = svcAddMessage('system', '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>👥 ' + parsed.nome + _syncNote, 'ok');
     }
-    const _setSyncNote = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} };
+    const _setSyncNote = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} svcMpSyncConfirmed(color); };
     // Ciclo concluso lato app: CHIUDI la scheda e torna al calendario (l'esito ✅ resta nei messaggi).
     renderStaffCalendar();
     svcResetToNeutral(); svcAutoCloseIfMobile();
@@ -42999,6 +43011,7 @@ Per confermare scrivi ELIMINA.`);
       // Aggiorna la nota "↻ scrivo…" quando Matchpoint conferma (o fallisce).
       const _setSyncNote = function (html, color) {
         try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+        svcMpSyncConfirmed(color);
       };
       // Ciclo concluso lato app: chiudi la scheda/flow e torna al calendario (mobile). L'esito ✅
       // resta nei messaggi (non è una flow-card). Per altre modifiche si riapre la prenotazione.
