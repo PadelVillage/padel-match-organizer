@@ -4309,35 +4309,56 @@ async function updateClientWithBrowser(options = {}) {
       const GRID_PB = 'ctl01$ctl00$CC$Datos$FormViewFicha$GridViewListadoDeportes';
       const L = '#CC_Datos_FormViewFicha_WUCDeportePraticaClienteEdicionNivel_';
       const livelloNumTarget = Number(String(livelloStr).replace(',', '.'));
-      // Apre la tab "Livello" della Ficha (postback ASP.NET) e attende la griglia.
+      const GRID_SEL = '[id$="GridViewListadoDeportes"]';
+      // Restituisce il frame che contiene la griglia livelli (la Ficha potrebbe essere
+      // in un iframe; il postback Editar va lanciato nel frame giusto).
+      const findGridFrame = async () => {
+        for (const fr of page.frames()) {
+          try { if (await fr.locator(GRID_SEL).count().catch(() => 0)) return fr; } catch (_) {}
+        }
+        return null;
+      };
+      // Apre la tab "Livello" della Ficha (postback ASP.NET). Il contenuto arriva spesso
+      // via postback AJAX (UpdatePanel): domcontentloaded non basta -> attendo che la
+      // griglia (o l'icona Editar) COMPAIA davvero, non un timeout fisso.
       const openLivelloTab = async () => {
         await page.evaluate(() => {
           const a = document.getElementById('CC_Datos_FormViewFicha_A2');
           if (a && typeof a.click === 'function') { a.click(); return; }
           if (typeof window.__doPostBack === 'function') window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$A2', '');
         }).catch(() => {});
-        await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-        await page.waitForTimeout(1200);
+        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+        await page.waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: 12000 }).catch(() => {});
+        await page.waitForTimeout(600);
       };
-      // Legge le righe della griglia livelli: { sport, livelloNum, arg("<id>#<people>#<sport>") }.
-      // Ritorna null se la griglia NON e' leggibile (per non fare un ADD alla cieca
-      // che creerebbe un livello duplicato), [] se griglia trovata ma senza righe.
-      const readLivelloRows = async () => page.evaluate(() => {
-        const grid = document.getElementById('CC_Datos_FormViewFicha_GridViewListadoDeportes');
-        if (!grid) return null;
-        const out = [];
-        grid.querySelectorAll('tr').forEach((tr) => {
-          const tds = tr.querySelectorAll('td');
-          if (tds.length < 2) return;
-          const editBtn = tr.querySelector('[onclick*="Editar$"]');
-          const m = editBtn ? (editBtn.getAttribute('onclick') || '').match(/Editar\$([^']+)/) : null;
-          const sport = (tds[0].innerText || '').replace(/\s+/g, ' ').trim();
-          const lvlTxt = (tds[1].innerText || '').replace(/\s+/g, ' ').trim();
-          const lvlNum = parseFloat(lvlTxt.replace(',', '.').replace(/[^\d.]/g, ''));
-          out.push({ sport, lvlTxt, lvlNum: Number.isFinite(lvlNum) ? lvlNum : null, arg: m ? m[1] : '' });
-        });
-        return out;
-      }).catch(() => null);
+      // Legge le righe della griglia livelli da QUALSIASI frame:
+      // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
+      // NON e' leggibile (per non fare un ADD alla cieca che creerebbe un duplicato),
+      // [] se trovata ma senza righe.
+      const readLivelloRows = async () => {
+        for (const fr of page.frames()) {
+          try {
+            const res = await fr.evaluate((sel) => {
+              const grid = document.querySelector(sel);
+              if (!grid) return null;
+              const out = [];
+              grid.querySelectorAll('tr').forEach((tr) => {
+                const tds = tr.querySelectorAll('td');
+                if (tds.length < 2) return;
+                const editBtn = tr.querySelector('[onclick*="Editar$"]');
+                const m = editBtn ? (editBtn.getAttribute('onclick') || '').match(/Editar\$([^']+)/) : null;
+                const sport = (tds[0].innerText || '').replace(/\s+/g, ' ').trim();
+                const lvlTxt = (tds[1].innerText || '').replace(/\s+/g, ' ').trim();
+                const lvlNum = parseFloat(lvlTxt.replace(',', '.').replace(/[^\d.]/g, ''));
+                out.push({ sport, lvlTxt, lvlNum: Number.isFinite(lvlNum) ? lvlNum : null, arg: m ? m[1] : '' });
+              });
+              return out;
+            }, GRID_SEL);
+            if (res) return res;
+          } catch (_) { /* prova frame successivo */ }
+        }
+        return null;
+      };
       // Cerca il campo livello in QUALSIASI frame (inline o popup) e lo salva.
       const fillAndSaveLivello = async () => {
         for (const fr of page.frames()) {
@@ -4364,6 +4385,18 @@ async function updateClientWithBrowser(options = {}) {
         await openLivelloTab();
         const rows = await readLivelloRows();
         diagnostic.livelloRows = rows;
+        if (rows === null) {
+          // Sonda: perche' la griglia non e' leggibile? (url, presenza grid, n. Editar, frame)
+          try {
+            diagnostic.livelloProbe = await page.evaluate(() => ({
+              url: location.href,
+              hasGrid: !!document.querySelector('[id$="GridViewListadoDeportes"]'),
+              editarCount: document.querySelectorAll('[onclick*="Editar$"]').length,
+              bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 300),
+            }));
+          } catch (_) {}
+          diagnostic.frameUrls = page.frames().map((f) => { try { return f.url(); } catch (_) { return '?'; } });
+        }
         const target = Array.isArray(rows)
           ? (rows.find((r) => /padel/i.test(r.sport) && r.arg) || rows.find((r) => r.arg) || null)
           : null;
@@ -4371,11 +4404,12 @@ async function updateClientWithBrowser(options = {}) {
         let attempted = false;
         if (target && target.arg) {
           diagnostic.steps.push('editar_riga:' + target.arg);
-          await page.evaluate(({ pb, arg }) => {
+          const gf = (await findGridFrame()) || page.mainFrame();
+          await gf.evaluate(({ pb, arg }) => {
             if (typeof window.__doPostBack === 'function') window.__doPostBack(pb, 'Editar$' + arg);
           }, { pb: GRID_PB, arg: target.arg }).catch(() => {});
-          await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-          await page.waitForTimeout(1200);
+          await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+          await page.waitForTimeout(1000);
           attempted = await fillAndSaveLivello();
         } else if (Array.isArray(rows) && rows.length === 0 && idInterno) {
           // Griglia confermata VUOTA (nessun livello) -> AGGIUNGI (form "Nuovo", come nel create).
