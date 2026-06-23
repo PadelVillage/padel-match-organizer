@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.907';
+    const APP_VERSION = '5.908';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39198,7 +39198,7 @@ Per confermare scrivi ELIMINA.`);
       // sarebbe una nuova operazione in corso, non la chat da ripulire.
       try { if (svcFlowState || staffCalPlayersState || staffCalMoveState) return; } catch (e) {}
       try { svcClearLog(); } catch (e) {}
-    }, 2500);
+    }, 4000);
   }
 
   function svcCloseChat() {
