@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.911';
+    const APP_VERSION = '5.912';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -36749,6 +36749,17 @@ Per confermare scrivi ELIMINA.`);
     const fn = (typeof playerFullName === 'function') ? playerFullName(member) : '';
     return (fn || (member && member.name) || fallback || '').trim();
   }
+  // Etichetta ID per i chip giocatore: rispecchia il menù di autocompletamento
+  // (ID interno Matchpoint preferito, altrimenti codice cliente). Accetta sia un chip
+  // {codice, codiceCliente} sia un socio dell'anagrafica (matchpointIdInterno/memberId).
+  function _staffCalPlayerIdLabel(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    const mid = String(obj.codice || obj.matchpointIdInterno || '').trim();
+    const cc = String(obj.codiceCliente || obj.memberId || '').trim();
+    if (/^\d{1,12}$/.test(mid)) return 'ID ' + mid;
+    if (/^\d{3,}$/.test(cc)) return 'cod. ' + cc;
+    return '';
+  }
 
   function _staffCalToMin(hhmm) {
     const [h, m] = String(hhmm).split(':').map(Number);
@@ -37235,11 +37246,11 @@ Per confermare scrivi ELIMINA.`);
         const addChips = document.createElement('div');
         addChips.className = 'svc-player-chips';
         st.add.forEach(function (p, i) {
-          const _codeShown = p.codice || p.codiceCliente || '';
+          const _idLbl = _staffCalPlayerIdLabel(p);
           const chip = document.createElement('span');
           chip.className = 'svc-player-chip';
           const nm = document.createElement('span');
-          nm.textContent = p.nome + (_codeShown ? ' (' + _codeShown + ')' : ' (senza codice)');
+          nm.textContent = p.nome + (_idLbl ? ' (' + _idLbl + ')' : ' (senza codice)');
           nm.style.color = 'var(--green)';
           chip.appendChild(nm);
           const x = document.createElement('button');
@@ -39521,6 +39532,8 @@ Per confermare scrivi ELIMINA.`);
       svcFlowState.players.forEach(function(nm,idx){
         const c=document.createElement('span'); c.style.cssText='display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:'+FS.chip+'px;color:var(--text);';
         c.appendChild(document.createTextNode((nm && typeof nm==='object') ? nm.nome : nm));
+        const _idLbl=(nm && typeof nm==='object') ? _staffCalPlayerIdLabel(nm) : '';
+        if (_idLbl){ const idEl=document.createElement('small'); idEl.textContent=_idLbl; idEl.style.cssText='color:#166534;font-weight:600;'; c.appendChild(idEl); }
         const x=document.createElement('button'); x.type='button'; x.textContent='✕'; x.setAttribute('aria-label','Rimuovi'); x.style.cssText='border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:'+_l(12,18)+'px;padding:0 2px;';
         x.addEventListener('click',function(){ svcFlowState.players.splice(idx,1); renderChips(); });
         c.appendChild(x); chips.appendChild(c);
