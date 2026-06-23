@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.912';
+    const APP_VERSION = '5.913';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35353,6 +35353,8 @@ Per confermare scrivi ELIMINA.`);
         .on('broadcast', { event: 'staff-changed' }, function () { staffCalRtOnRemoteChange(); })
         .on('broadcast', { event: 'staff-pending' }, function (msg) { staffCalRtOnRemotePending(msg && msg.payload); })
         .on('broadcast', { event: 'staff-resolved' }, function (msg) { staffCalRtOnRemoteResolved(msg && msg.payload); })
+        .on('broadcast', { event: 'staff-cancel-pending' }, function (msg) { staffCalRtOnRemoteCancelPending(msg && msg.payload); })
+        .on('broadcast', { event: 'staff-cancel-resolved' }, function (msg) { staffCalRtOnRemoteCancelResolved(msg && msg.payload); })
         .on('broadcast', { event: 'member-changed' }, function (msg) { staffCalRtOnRemoteMemberChanged(msg && msg.payload); })
         .on('broadcast', { event: 'member-mp-changed' }, function (msg) { staffCalRtApplyMatchpointMember(msg && msg.payload && msg.payload.member); })
         .subscribe(function (status, errObj) {
@@ -35570,6 +35572,77 @@ Per confermare scrivi ELIMINA.`);
     if (still.some(b => b && b.id === entry.optimId) && typeof staffCalRemoveOptimistic === 'function') {
       staffCalRemoveOptimistic(entry.optimId);
     }
+  }
+
+  // ── ANNULLO ottimistico cross-device (v5.913) — simmetrico a staff-pending del CREATE ──
+  // Il device che annulla manda SUBITO 'staff-cancel-pending {slot}'; gli altri device
+  // nascondono lo slot all'ISTANTE (senza aspettare il round-trip al cloud), eliminando il
+  // flicker "la card annullata resta un attimo" lato ricevente. L'hide è REVERSIBILE e tutto
+  // in-memory (NIENTE staff_suppress durevole da 30'): finché è attivo, il merge tiene il
+  // locale per quello slot (via _staffCalPendingEdits → ignora il cloud) e il render lo
+  // nasconde (via _staffCalRemoteCancelHide, unito alla soppressione). Al 'staff-cancel-resolved'
+  // (o safety timeout) si smonta l'hide e si fa un pull AUTOREVOLE: se l'annullo è andato a buon
+  // fine il cloud porta tombstone + staff_suppress condiviso (resta nascosto), se è FALLITO
+  // (revert a monte) la prenotazione RICOMPARE. Nessun phantom.
+  const _staffCalRemoteCancel = new Map();       // slotKey -> { timer }
+  const _staffCalRemoteCancelHide = new Set();   // slotKey nascosti in modo ottimistico (render)
+  function staffCalRtBroadcastCancelPending(isoDate, campo, ora) {
+    try {
+      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-cancel-pending', payload: {
+          data: isoDate, campoNum: Number(String(campo).replace(/\D/g, '')), ora: ora,
+        } });
+      }
+    } catch (e) { console.warn('staff-cal rt cancel-pending:', e); }
+  }
+  function staffCalRtBroadcastCancelResolved(isoDate, campo, ora) {
+    try {
+      if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
+        _staffCalRtChannel.send({ type: 'broadcast', event: 'staff-cancel-resolved', payload: {
+          data: isoDate, campoNum: Number(String(campo).replace(/\D/g, '')), ora: ora,
+        } });
+      }
+    } catch (e) { console.warn('staff-cal rt cancel-resolved:', e); }
+  }
+  function staffCalRtOnRemoteCancelPending(payload) {
+    try {
+      if (!payload || !payload.data || payload.ora == null) return;
+      const key = _staffCalRemoteKey(payload);             // = data|campoNum|ora, identico a _staffCalEditKey
+      if (_staffCalRemoteCancel.has(key)) return;          // già in corso per questo slot
+      // Nascondi SUBITO: gate del merge staffBooking + hide del render (copre anche l'occupazione).
+      try { if (typeof _staffCalPendingEdits !== 'undefined' && _staffCalPendingEdits) _staffCalPendingEdits.add(key); } catch (e) {}
+      _staffCalRemoteCancelHide.add(key);
+      // Rimuovi l'eventuale copia locale staffBooking dello slot (solo in-memory, niente cloud).
+      try {
+        const cur = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+        const wantCampo = Number(String(payload.campoNum).replace(/\D/g, ''));
+        const wantOra = String(payload.ora).trim();
+        const next = cur.filter(b => !(b && String(b.data).trim() === String(payload.data).trim()
+          && Number(String(b.campo).replace(/\D/g, '')) === wantCampo && String(b.ora).trim() === wantOra));
+        if (next.length !== cur.length && typeof save === 'function') save('staffBookings', next);
+      } catch (e) {}
+      try { if (typeof renderStaffCalendar === 'function') renderStaffCalendar(); } catch (e) {}
+      // Safety timeout: se non arriva 'staff-cancel-resolved' → smonta comunque e riconcilia dal cloud.
+      const timer = setTimeout(function () { staffCalRtResolveRemoteCancel(key); }, 30000);
+      _staffCalRemoteCancel.set(key, { timer });
+    } catch (e) { console.warn('staff-cal rt on-cancel-pending:', e); }
+  }
+  function staffCalRtOnRemoteCancelResolved(payload) {
+    try {
+      if (!payload || !payload.data || payload.ora == null) return;
+      staffCalRtResolveRemoteCancel(_staffCalRemoteKey(payload));
+    } catch (e) { console.warn('staff-cal rt on-cancel-resolved:', e); }
+  }
+  // Smonta l'hide ottimistico e lascia decidere il cloud (autorevole). Sempre: ok non serve
+  // (il pull ri-mostra se l'annullo è fallito, tiene nascosto se è riuscito grazie a tombstone+suppress).
+  async function staffCalRtResolveRemoteCancel(key) {
+    const entry = _staffCalRemoteCancel.get(key);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    _staffCalRemoteCancel.delete(key);
+    try { if (typeof _staffCalPendingEdits !== 'undefined' && _staffCalPendingEdits) _staffCalPendingEdits.delete(key); } catch (e) {}
+    _staffCalRemoteCancelHide.delete(key);
+    try { if (typeof staffCalRefreshFromCloud === 'function') await staffCalRefreshFromCloud({ force: true }); } catch (e) {}
   }
 
   let _staffCalCloudRefreshAt = 0;
@@ -35817,7 +35890,11 @@ Per confermare scrivi ELIMINA.`);
     const now = Date.now();
     const live = list.filter(e => e && e.key && (now - (e.ts || 0)) < _STAFFCAL_SUPPRESS_TTL_MS);
     if (live.length !== list.length && typeof save === 'function') save('staffCalCancelled', live);
-    return new Set(live.map(e => e.key));
+    const s = new Set(live.map(e => e.key));
+    // Hide ottimistico cross-device dell'annullo (v5.913): nasconde lo slot finché il device che
+    // annulla non conferma e il pull riconcilia. In-memory, reversibile (vedi staffCalRtResolveRemoteCancel).
+    try { _staffCalRemoteCancelHide.forEach(k => s.add(k)); } catch (e) {}
+    return s;
   }
   function _staffCalAddSuppressed(data, campo, ora) {
     const arr = (typeof safeLoad === 'function') ? safeLoad('staffCalCancelled', []) : [];
@@ -39027,6 +39104,9 @@ Per confermare scrivi ELIMINA.`);
     } catch (e) {}
     _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore);
     renderStaffCalendar();
+    // Cross-device (v5.913): avvisa SUBITO gli altri device così nascondono lo slot all'istante
+    // (no flicker), prima ancora che la scrittura sul cloud propaghi. Riconciliano al resolve.
+    try { staffCalRtBroadcastCancelPending(isoDate, campo, ora); } catch (e) {}
     // Mobile: chiusura rimandata alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
     svcResetToNeutral();
     const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto annullando su Matchpoint…</span>';
@@ -39053,6 +39133,9 @@ Per confermare scrivi ELIMINA.`);
         try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
         clearTimeout(_to);
         _staffCalPendingEdits.delete(_pendCancelKey);
+        // Cross-device (v5.913): l'operazione è conclusa → l'altro device smonta l'hide ottimistico
+        // e riconcilia dal cloud (resta nascosto se annullata, ricompare se rifiutata/ripristinata).
+        try { staffCalRtBroadcastCancelResolved(isoDate, campo, ora); } catch (e) {}
         const _msgTxt = ((data && (data.message || data.error)) || '') + '';
         const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
 
@@ -39072,6 +39155,9 @@ Per confermare scrivi ELIMINA.`);
         }
       } catch (err) {
         _staffCalPendingEdits.delete(_pendCancelKey);
+        // Cross-device (v5.913): conclusa (anche su errore/timeout) → l'altro device smonta l'hide
+        // e riconcilia dal cloud (autorevole: ricompare se non è stata annullata davvero).
+        try { staffCalRtBroadcastCancelResolved(isoDate, campo, ora); } catch (e) {}
         if (err && err.name === 'AbortError') {
           // Timeout: NON ripristinare alla cieca (potrebbe essere stata annullata lo stesso).
           _setSync('⌛ Esito non confermato', '#b54708');
