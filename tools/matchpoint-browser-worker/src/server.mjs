@@ -3553,7 +3553,10 @@ async function handleGetSlots(req, res) {
 // Quante date legge ogni job read-tabellone. Letture multi-giorno (il sync ~22 date,
 // ~32s) vengono spezzate in più job low-priority così le op interattive si infilano TRA
 // un chunk e l'altro (attesa max ~1 chunk invece dell'intera lettura). Vedi mpQueuePump.
-const MP_READ_TAB_CHUNK = Math.max(1, Math.min(31, Number(env('MATCHPOINT_READ_TAB_CHUNK', '4'))));
+// Il caso peggiore di attesa per un'op interattiva ≈ chunkSize × settleMaxMs (~7s/data):
+// con chunk=2 → ~14-16s anche se ogni data del chunk tarda ad assestarsi (misurato live:
+// un chunk da 4 date "lente" arrivava a ~35s e una cancel ci finiva dietro).
+const MP_READ_TAB_CHUNK = Math.max(1, Math.min(31, Number(env('MATCHPOINT_READ_TAB_CHUNK', '2'))));
 
 async function handleReadTabellone(req, res) {
   requireWorkerAuth(req);
