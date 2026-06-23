@@ -145,6 +145,28 @@ function mpQueueSnapshot() {
   };
 }
 
+// DIAGNOSI LATENZA (BUG2 >120s): stampa ogni step del diagnostic col tempo cumulato
+// (ms dall'inizio dell'operazione), così i log pm2 mostrano ESATTAMENTE quale attesa
+// pesa. Avvolge `diagnostic.steps.push` lasciando le etichette intatte e accodando il
+// tempo in `diagnostic.stepTimes` (parallelo). Best-effort: se qualcosa va storto,
+// l'array resta quello standard. Da chiamare subito dopo aver creato `diagnostic`.
+function instrumentStepTiming(diagnostic) {
+  try {
+    if (!diagnostic || !Array.isArray(diagnostic.steps) || diagnostic.__timed) return diagnostic;
+    const t0 = Date.now();
+    diagnostic.__timed = true;
+    diagnostic.stepTimes = [];
+    const arr = diagnostic.steps;
+    const origPush = arr.push.bind(arr);
+    arr.push = function (...labels) {
+      const t = Date.now() - t0;
+      for (let i = 0; i < labels.length; i++) diagnostic.stepTimes.push(t);
+      return origPush(...labels);
+    };
+  } catch (_e) {}
+  return diagnostic;
+}
+
 // Esegue `fn` (async) in modo serializzato: una sola operazione browser alla volta.
 // `meta` = { op, label, operatore } (solo per /queue/status).
 // Ritorna/propaga ESATTAMENTE ciò che ritorna/lancia `fn`, così gli handler non cambiano semantica.
@@ -161,8 +183,12 @@ function mpQueueRun(meta, fn) {
   const result = mpQueue._chain.then(async () => {
     const idx = mpQueue.waiting.findIndex((j) => j.id === job.id);
     if (idx >= 0) mpQueue.waiting.splice(idx, 1);
-    mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, startedAt: Date.now() };
+    const startedAt = Date.now();
+    const queueWaitMs = startedAt - job.enqueuedAt;
+    mpQueue.running = { id: job.id, op: job.op, label: job.label, operatore: job.operatore, startedAt };
     let timer = null;
+    let _err = null;
+    let _val;
     try {
       // Timeout di sicurezza: un job piantato non deve bloccare la coda all'infinito.
       const guard = new Promise((_resolve, reject) => {
@@ -170,10 +196,34 @@ function mpQueueRun(meta, fn) {
           `Operazione "${job.label}" oltre ${Math.round(QUEUE_JOB_TIMEOUT_MS / 1000)}s: annullata per non bloccare la coda.`)),
           QUEUE_JOB_TIMEOUT_MS);
       });
-      return await Promise.race([Promise.resolve().then(fn), guard]);
+      _val = await Promise.race([Promise.resolve().then(fn), guard]);
+      return _val;
+    } catch (e) {
+      _err = e;
+      throw e;
     } finally {
       if (timer) clearTimeout(timer);
       mpQueue.running = null;
+      // DIAGNOSI LATENZA: una riga per operazione con attesa-in-coda, durata e — se
+      // disponibile — la sequenza di step coi tempi cumulati. Vale per successi ED errori.
+      try {
+        const runMs = Date.now() - startedAt;
+        const diag = (_err && _err.diagnostic) || (_val && _val.diagnostic) || null;
+        console.log(JSON.stringify({
+          event: 'mp_op_timing',
+          op: job.op,
+          label: job.label,
+          operatore: job.operatore,
+          ok: !_err,
+          code: (_err && _err.code) || undefined,
+          queueWaitMs,
+          runMs,
+          session: (diag && diag.session) || undefined,
+          steps: (diag && Array.isArray(diag.steps)) ? diag.steps : undefined,
+          stepTimes: (diag && Array.isArray(diag.stepTimes)) ? diag.stepTimes : undefined,
+          time: new Date().toISOString(),
+        }));
+      } catch (_e) {}
     }
   });
 
@@ -5504,6 +5554,7 @@ async function createBookingWithBrowser(options = {}) {
     steps: [],
     navigationAttempts: [],
   };
+  instrumentStepTiming(diagnostic);
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
   const page = acq.page;
   let _opFailed = false;
@@ -5978,6 +6029,7 @@ async function editBookingWithBrowser(input = {}) {
   if (!move && !players && !readOnly && !noteProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note fornito.');
 
   const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided } };
+  instrumentStepTiming(diagnostic);
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
@@ -6413,6 +6465,7 @@ async function cancelBookingWithBrowser(input = {}) {
     steps: [],
     input: { idReserva: input.idReserva, campo: input.campo, data: input.data, ora: input.ora },
   };
+  instrumentStepTiming(diagnostic);
 
   const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
   const page = acq.page;
