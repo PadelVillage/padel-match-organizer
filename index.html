@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.913';
+    const APP_VERSION = '5.914';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37520,6 +37520,25 @@ Per confermare scrivi ELIMINA.`);
     });
   }
 
+  // Dedup giocatori per IDENTITÀ prima di inviarli al worker: lo stesso socio non va
+  // mai aggiunto due volte alla stessa prenotazione (sul tabellone diventerebbe un
+  // doppione identico). Chiave: codiceCliente, poi codice, poi nome normalizzato.
+  // Difesa a strati: il worker è comunque idempotente per id (searchAndAddPlayer).
+  function _dedupPlayersByIdentity(arr) {
+    const seen = {};
+    const out = [];
+    (arr || []).forEach(function (p) {
+      const cc = (p && p.codiceCliente) ? String(p.codiceCliente).replace(/\D/g, '').replace(/^0+/, '') : '';
+      const cd = (p && p.codice) ? String(p.codice).replace(/\D/g, '').replace(/^0+/, '') : '';
+      const nm = ((p && typeof p === 'object') ? (p.nome || '') : String(p || '')).toLowerCase().trim();
+      const key = cc ? 'c:' + cc : (cd ? 'd:' + cd : 'n:' + nm);
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(p);
+    });
+    return out;
+  }
+
   async function staffCalPlayersSave(opts) {
     opts = opts || {};
     const st = staffCalPlayersState;
@@ -37532,7 +37551,7 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
     const remove = st.hasPlayers ? st.roster.filter(function (p) { return st.remove[p.idx]; }).map(function (p) { return p.nome; }) : [];
-    const addArr = st.hasPlayers ? st.add.map(function (p) { const o = { nome: p.nome }; if (p.codice) o.codice = p.codice; if (p.codiceCliente) o.codiceCliente = p.codiceCliente; return o; }) : [];
+    const addArr = st.hasPlayers ? _dedupPlayersByIdentity(st.add).map(function (p) { const o = { nome: p.nome }; if (p.codice) o.codice = p.codice; if (p.codiceCliente) o.codiceCliente = p.codiceCliente; return o; }) : [];
     const playersChanged = addArr.length || remove.length;
     // Nota cambiata vs il valore caricato (origNote): include l'azzeramento ('' diverso da nota esistente).
     const noteChanged = String((st && st.note) || '') !== String((st && st.origNote) || '');
@@ -39949,7 +39968,7 @@ Per confermare scrivi ELIMINA.`);
   // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
     const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
-    const giocatori = (players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '', codiceCliente: (p && p.codiceCliente) || '' }; });
+    const giocatori = _dedupPlayersByIdentity((players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '', codiceCliente: (p && p.codiceCliente) || '' }; }));
     const nomeStr = giocatori.map(function(g) { return g.nome; }).join(', ');
     let parsed;
     if (tipoEngine === 'lezione') {
@@ -42861,6 +42880,8 @@ Per confermare scrivi ELIMINA.`);
         aiFlowState = null;
         st.add = st.add || [];
         fs.players.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
+        st.add = _dedupPlayersByIdentity(st.add); // niente doppioni dello stesso socio
+
         try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
         const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
         _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');

@@ -5029,6 +5029,40 @@ async function dismissSwalOk(page, diagnostic, where) {
   return dismissed;
 }
 
+// ── Helper: cerca una riga partecipante già presente (per nome o per id) ──────
+// Scansiona TUTTI gli input "TextBoxNombreValor" (qualunque repeater: partita
+// WUCUsuarioPartida o lezione WUCUsuarioClase_Listado) e ricava l'id cliente
+// sostituendo nello stesso id "TextBoxNombreValor" → "HiddenFieldIdCliente".
+// Match per nome (substring bidirezionale) o per id (onlyDigits, ignora zeri
+// iniziali) contro wantCode (codice cliente atteso) / wantPeople (id agganciato).
+// ⚠️ OSPITE / righe senza nome: il match per id copre i partecipanti che NON
+// espongono il nome nel campo (es. cliente "Ospite", codice 000001).
+// Ritorna { idCliente, matchBy, righeViste }: idCliente === null se non trovato.
+async function scanParticipantRow(page, nome, wantCode, wantPeople) {
+  const _norm = (s) => String(s || '').toLowerCase().trim();
+  const _onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
+  const righeViste = [];
+  const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
+  const righeTot = await nomeInputs.count().catch(() => 0);
+  for (let r = 0; r < righeTot; r++) {
+    const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
+    const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
+    let idCliVal = '';
+    if (rowId) {
+      const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
+      idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
+    }
+    const idCliDigits = _onlyDigits(idCliVal);
+    righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
+    const matchByName = !!nomeVal && (nomeVal.includes(_norm(nome)) || _norm(nome).includes(nomeVal));
+    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+    if (matchByName || matchById) {
+      return { idCliente: idCliVal || '', matchBy: matchByName ? 'name' : 'id', righeViste };
+    }
+  }
+  return { idCliente: null, matchBy: null, righeViste };
+}
+
 // ── Helper: cerca giocatore in autocomplete e lo aggiunge all'elenco ──────────
 // ⚠️ INDURIMENTO: verifica HiddenFieldIdPeople dopo selezione <li>, ritenta fino a
 // 3 volte se vuoto, poi fallisce esplicitamente. Verifica anche la riga post-aggiunta.
@@ -5209,24 +5243,49 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // Avviso semaforo (es. "importi in attesa") eventualmente già presente: chiudilo.
   await dismissSwalOk(page, diagnostic, 'pre_add');
 
+  // Identità del giocatore agganciato: codice cliente atteso (etichetta) e id interno
+  // (HiddenFieldIdPeople). Serve sia al pre-check d'idempotenza sia alla verifica.
+  const wantCode = onlyDigits(expectedClientCode);
+  const wantPeople = onlyDigits(lockedId);
+
+  // 🔒 PRE-CHECK IDEMPOTENZA: se questo giocatore è GIÀ tra i partecipanti (per id o
+  // per nome) non aggiungerlo di nuovo. Evita il doppione quando un click precedente
+  // (o un EDIT che re-invia lo stesso add) lo ha già inserito.
+  {
+    const pre = await scanParticipantRow(page, nome, wantCode, wantPeople);
+    if (pre.idCliente !== null) {
+      diagnostic.steps.push('player_already_present:' + nome);
+      diagnostic.partecipantiRighe = pre.righeViste.slice(0, 30);
+      diagnostic.steps.push('player_added:' + nome);
+      return { nome, added: true, alreadyPresent: true, idCliente: pre.idCliente, idPeople: lockedId, codiceCliente: expectedClientCode };
+    }
+  }
+
   // Clicca "+ Aggiungere all'elenco". Per un socio con semaforo GIALLO il PRIMO click
   // mostra solo l'avviso swal2 ("importi in attesa") e NON inserisce l'allievo: va
-  // chiuso l'avviso (OK) e ri-cliccato "Aggiungere" per inserirlo davvero. Ritenta
-  // finché la riga compare nell'elenco "Allievi" (input TextBoxNombreValor della
-  // griglia Listado), max 3 tentativi.
+  // chiuso l'avviso (OK) e ri-cliccato "Aggiungere" per inserirlo davvero.
+  // ⚠️ Il RE-CLICK è condizionato alla CHIUSURA di un avviso swal, NON a un timeout:
+  // se il primo click NON ha aperto avvisi, l'aggiunta è già stata registrata →
+  // ri-cliccare sotto latenza alta (postback non ancora riflesso) inserirebbe il
+  // giocatore DUE volte. Senza swal si attende solo il postback; con swal si ritenta
+  // (max 3). A inizio iterazione si esce comunque se la riga è già comparsa.
   const rowSel = 'input[id*="Listado"][id*="TextBoxNombreValor"]';
   const baseRows = await page.locator(rowSel).count().catch(() => 0);
+  let prevDismissedSwal = true; // addTry 0 clicca sempre
   for (let addTry = 0; addTry < 3; addTry++) {
-    // Guardia anti-doppio: se la riga è già comparsa (anche da un click precedente con
-    // postback lento) non ri-clicca → evita di inserire l'allievo due volte.
-    if ((await page.locator(rowSel).count().catch(() => 0)) > baseRows) break;
+    if ((await scanParticipantRow(page, nome, wantCode, wantPeople)).idCliente !== null) break;
+    if (addTry > 0 && !prevDismissedSwal) {
+      // Click precedente già registrato (nessun avviso): attendi il postback, non ri-cliccare.
+      await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
+      await page.waitForTimeout(700);
+      continue;
+    }
     await addLink.first().click({ timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(1000);
-    await dismissSwalOk(page, diagnostic, 'add' + addTry);
+    prevDismissedSwal = await dismissSwalOk(page, diagnostic, 'add' + addTry);
     await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
     const rows = await page.locator(rowSel).count().catch(() => 0);
-    diagnostic.steps.push(`player_add_try:${addTry}:rows=${rows}/base${baseRows}`);
-    if (rows > baseRows) break;
+    diagnostic.steps.push(`player_add_try:${addTry}:rows=${rows}/base${baseRows}:swal=${prevDismissedSwal}`);
   }
 
   // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
@@ -5244,8 +5303,6 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // o con l'id agganciato (confronto su onlyDigits, ignora gli zeri iniziali).
   let addedIdCliente = null;
   let righeViste = [];
-  const wantCode = onlyDigits(expectedClientCode);
-  const wantPeople = onlyDigits(lockedId);
   // Verifica post-aggiunta con RETRY: il Repeater partecipanti (RepeaterParticipantes
   // → WUCUsuarioClase_Listado / WUCUsuarioPartida) si popola via postback async; una
   // lettura singola può arrivare PRIMA che la riga compaia → falso PLAYER_ADD_NOT_CONFIRMED.
@@ -5258,26 +5315,11 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       await mpWaitAsyncPostbackIdle(page, 4000).catch(() => {});
       await page.waitForTimeout(700);
     }
-    righeViste = [];
-    const nomeInputs = page.locator('input[id*="TextBoxNombreValor"]');
-    const righeTot = await nomeInputs.count().catch(() => 0);
-    for (let r = 0; r < righeTot; r++) {
-      const rowId = (await nomeInputs.nth(r).getAttribute('id').catch(() => '')) || '';
-      const nomeVal = (await nomeInputs.nth(r).inputValue().catch(() => '')).toLowerCase().trim();
-      let idCliVal = '';
-      if (rowId) {
-        const idCliId = rowId.replace(/TextBoxNombreValor/g, 'HiddenFieldIdCliente');
-        idCliVal = (await page.locator(`input[id="${idCliId}"]`).first().inputValue().catch(() => '')).trim();
-      }
-      const idCliDigits = onlyDigits(idCliVal);
-      righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
-      const matchByName = !!nomeVal && (nomeVal.includes(norm(nome)) || norm(nome).includes(nomeVal));
-      const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
-      if (matchByName || matchById) {
-        addedIdCliente = idCliVal || ''; // riga confermata (per nome o per id); id può mancare
-        diagnostic.steps.push(`player_row_match:${nome}:by=${matchByName ? 'name' : 'id'}:idCli=${idCliVal}:vtry=${vTry}`);
-        break;
-      }
+    const found = await scanParticipantRow(page, nome, wantCode, wantPeople);
+    righeViste = found.righeViste;
+    if (found.idCliente !== null) {
+      addedIdCliente = found.idCliente; // riga confermata (per nome o per id); id può mancare
+      diagnostic.steps.push(`player_row_match:${nome}:by=${found.matchBy}:idCli=${found.idCliente}:vtry=${vTry}`);
     }
     diagnostic.steps.push(`player_verify_scan:vtry=${vTry}:rows=${righeViste.length || '(nessuna)'}`);
   }
