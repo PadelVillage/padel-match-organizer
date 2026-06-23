@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.906';
+    const APP_VERSION = '5.907';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39173,8 +39173,32 @@ Per confermare scrivi ELIMINA.`);
 
   // Svuota il log del pannello svc: chiamata all'apertura di una NUOVA azione.
   function svcClearLog() {
+    svcCancelAutoClear();
     const c = document.getElementById('svcChatMessages');
     if (c) c.innerHTML = '';
+  }
+
+  // ── Auto-pulizia chat a fine operazione ────────────────────────────────────
+  // Dopo un esito positivo (messaggio 'ok': prenotazione creata/aggiornata,
+  // spostata, annullata, card rimossa) la chat si svuota da sola dopo un paio di
+  // secondi, per lasciare spazio pulito alla prossima operazione. Stesso
+  // container #svcChatMessages su desktop e mobile → un'unica logica copre
+  // entrambi. Qualunque altro messaggio nel frattempo (errore tardivo dal
+  // worker, nuova scelta, input dello staff) annulla la pulizia così resta
+  // visibile (vedi svcAddMessage).
+  let _svcAutoClearTimer = null;
+  function svcCancelAutoClear() {
+    if (_svcAutoClearTimer) { clearTimeout(_svcAutoClearTimer); _svcAutoClearTimer = null; }
+  }
+  function svcScheduleAutoClear() {
+    svcCancelAutoClear();
+    _svcAutoClearTimer = setTimeout(function () {
+      _svcAutoClearTimer = null;
+      // Non svuotare se nel frattempo è ripartito un flow (scheda/scelta aperta):
+      // sarebbe una nuova operazione in corso, non la chat da ripulire.
+      try { if (svcFlowState || staffCalPlayersState || staffCalMoveState) return; } catch (e) {}
+      try { svcClearLog(); } catch (e) {}
+    }, 2500);
   }
 
   function svcCloseChat() {
@@ -39234,6 +39258,11 @@ Per confermare scrivi ELIMINA.`);
     // e si scrolla in basso così resta visibile. Coerente in tutta la web app.
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    // Auto-pulizia: un esito positivo programma lo svuotamento della chat dopo un
+    // paio di secondi; qualsiasi altro messaggio (errore tardivo, nuova scelta,
+    // input staff) lo annulla così l'utente fa sempre in tempo a leggerlo.
+    if (extraClass === 'ok') svcScheduleAutoClear();
+    else svcCancelAutoClear();
     return div;
   }
 
