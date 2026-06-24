@@ -4451,14 +4451,48 @@ async function updateClientWithBrowser(options = {}) {
           ? (rows.find((r) => /padel/i.test(r.sport) && r.arg) || rows.find((r) => r.arg) || null)
           : null;
 
+        // Apre il form di modifica della riga. Come per il tab "Livelli", il postback
+        // programmatico (__doPostBack) NON basta: serve un CLICK REALE sulla matita
+        // "Editar" (trusted), con fallback al __doPostBack. Poi attende che il campo
+        // TextBoxNivelNumerico compaia (AJAX) prima di compilarlo.
+        const openEditRow = async (arg) => {
+          const gf = (await findGridFrame()) || fichaFrame() || page.mainFrame();
+          // metodo 1: click reale sull'elemento con onclick Editar$<arg> (matita)
+          try {
+            const pencil = gf.locator(`[onclick*="Editar$${arg}"]`).first();
+            if (await pencil.count().catch(() => 0)) await pencil.click({ timeout: 6000 });
+          } catch (_) {}
+          // metodo 2: fallback __doPostBack nel frame della griglia
+          await page.waitForTimeout(800);
+          await gf.evaluate(({ pb, a }) => {
+            if (!document.querySelector('[id$="TextBoxNivelNumerico"]') && typeof window.__doPostBack === 'function') {
+              window.__doPostBack(pb, 'Editar$' + a);
+            }
+          }, { pb: GRID_PB, a: arg }).catch(() => {});
+          // attendi la comparsa del campo livello in QUALSIASI frame (max ~9s)
+          for (let i = 0; i < 12; i++) {
+            for (const fr of page.frames()) {
+              try { if (await fr.locator('[id$="TextBoxNivelNumerico"]').count().catch(() => 0)) return true; } catch (_) {}
+            }
+            await page.waitForTimeout(750);
+          }
+          // sonda: stato del frame griglia per capire perche' il form non compare
+          try {
+            const f = (await findGridFrame()) || fichaFrame();
+            diagnostic.editProbe = f ? await f.evaluate(() => ({
+              hasField: !!document.querySelector('[id$="TextBoxNivelNumerico"]'),
+              hasSave: !!document.querySelector('[id$="ButtonActualizar"]'),
+              editInputs: Array.from(document.querySelectorAll('input[id*="Nivel"],input[id*="nivel"]')).map((e) => e.id).slice(0, 8),
+              body: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400),
+            })) : null;
+          } catch (_) {}
+          return false;
+        };
+
         let attempted = false;
         if (target && target.arg) {
           diagnostic.steps.push('editar_riga:' + target.arg);
-          const gf = (await findGridFrame()) || fichaFrame() || page.mainFrame();
-          await gf.evaluate(({ pb, arg }) => {
-            if (typeof window.__doPostBack === 'function') window.__doPostBack(pb, 'Editar$' + arg);
-          }, { pb: GRID_PB, arg: target.arg }).catch(() => {});
-          await page.waitForTimeout(2800);
+          await openEditRow(target.arg);
           attempted = await fillAndSaveLivello();
         } else if (Array.isArray(rows) && rows.length === 0 && idInterno) {
           // Griglia confermata VUOTA (nessun livello) -> AGGIUNGI (form "Nuovo", standalone).
