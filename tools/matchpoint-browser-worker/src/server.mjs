@@ -4347,48 +4347,33 @@ async function updateClientWithBrowser(options = {}) {
         return (await f.locator(`${GRID_SEL}, [onclick*="Editar$"]`).count().catch(() => 0)) > 0;
       };
       // Apre la sezione Livelli DENTRO il frame Ficha. Prima un CLICK REALE (trusted) come
-      // fa il mouse dell'utente, poi __doPostBack estratto; alla fine sonda lo stato del frame.
+      // fa il mouse dell'utente, poi __doPostBack estratto come fallback.
       const openLivelloInFrame = async () => {
         const fr = fichaFrame();
-        if (!fr) { diagnostic.tabMethod = 'no_frame'; return false; }
+        if (!fr) return false;
         // metodo 1: click reale Playwright sull'anchor "Livelli" del frame
         try {
           const link = fr.locator('a').filter({ hasText: /^\s*Livelli\s*$/ }).first();
           if (await link.count().catch(() => 0)) await link.click({ timeout: 6000 });
         } catch (_) {}
         await page.waitForTimeout(2800);
-        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_click'; return true; }
-        // metodo 2: __doPostBack estratto, eseguito dentro il frame
-        diagnostic.tabFire = await (async () => {
+        if (await gridInFrame()) return true;
+        // metodo 2 (fallback): __doPostBack dell'anchor "Livelli" estratto, dentro il frame
+        await (async () => {
           const f = fichaFrame();
-          if (!f) return 'no_frame';
-          return f.evaluate(() => {
+          if (!f) return;
+          await f.evaluate(() => {
             const a = Array.from(document.querySelectorAll('a'))
               .find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
-            if (!a) return 'no_link';
+            if (!a) return;
             const h = a.getAttribute('href') || a.getAttribute('onclick') || '';
             const m = h.match(/__doPostBack\('([^']+)'\s*,\s*'([^']*)'\)/);
-            if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb:' + m[1]; }
-            a.click(); return 'click';
-          }).catch(() => 'err');
+            if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return; }
+            a.click();
+          }).catch(() => {});
         })();
         await page.waitForTimeout(2800);
-        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_pb'; return true; }
-        // sonda: stato del frame dopo i tentativi (tab attivo? griglia? anchor Livelli?)
-        try {
-          const f = fichaFrame();
-          diagnostic.frameProbe = f ? await f.evaluate(() => ({
-            hasGrid: !!document.querySelector('[id$="GridViewListadoDeportes"]'),
-            editarCount: document.querySelectorAll('[onclick*="Editar$"]').length,
-            livelliAnchor: (() => {
-              const a = Array.from(document.querySelectorAll('a')).find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
-              return a ? { id: a.id || '', href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 170) } : null;
-            })(),
-            body: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400),
-          })) : null;
-        } catch (_) {}
-        diagnostic.tabMethod = 'none';
-        return false;
+        return await gridInFrame();
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
@@ -4442,8 +4427,6 @@ async function updateClientWithBrowser(options = {}) {
       try {
         diagnostic.steps.push('shell_load_ficha');
         await loadFichaInShell(idInterno);
-        const fr0 = fichaFrame();
-        diagnostic.fichaFrameUrl = fr0 ? fr0.url() : null;
         await openLivelloInFrame();
         const rows = await readLivelloRows();
         diagnostic.livelloRows = rows;
@@ -4476,16 +4459,6 @@ async function updateClientWithBrowser(options = {}) {
             }
             await page.waitForTimeout(750);
           }
-          // sonda: stato del frame griglia per capire perche' il form non compare
-          try {
-            const f = (await findGridFrame()) || fichaFrame();
-            diagnostic.editProbe = f ? await f.evaluate(() => ({
-              hasField: !!document.querySelector('[id$="TextBoxNivelNumerico"]'),
-              hasSave: !!document.querySelector('[id$="ButtonActualizar"]'),
-              editInputs: Array.from(document.querySelectorAll('input[id*="Nivel"],input[id*="nivel"]')).map((e) => e.id).slice(0, 8),
-              body: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400),
-            })) : null;
-          } catch (_) {}
           return false;
         };
 
