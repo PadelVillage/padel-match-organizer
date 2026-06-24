@@ -43,19 +43,6 @@ function errorText(value: unknown) {
   try { return JSON.stringify(value); } catch { return String(value); }
 }
 
-// DEBUG TEMPORANEO (24/06): registra la diagnostica del worker in pmo_worker_debug
-// per verificare i campi anagrafica senza far toccare la console all'utente. Best-effort:
-// non deve MAI bloccare o far fallire l'update. Rimuovere a verifica chiusa.
-async function recordDebug(kind: string, codice: string, payload: JsonMap) {
-  try {
-    const url = Deno.env.get('SUPABASE_URL') ?? '';
-    const svc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    if (!url || !svc) return;
-    const dbg = createClient(url, svc, { auth: { persistSession: false } });
-    await dbg.from('pmo_worker_debug').insert({ kind, codice, payload });
-  } catch (_) { /* best effort */ }
-}
-
 // Errori LOGICI: ritentare NON aiuta (richiesta/dato non valido, cliente inesistente,
 // config mancante). Tutto il resto (login glitch, form non trovato, timeout/crash
 // Playwright, rete verso il worker) è TRANSITORIO → ritentabile. Sconosciuto = transitorio.
@@ -216,14 +203,12 @@ Deno.serve(async (req: Request) => {
     const code = clean(we?.code) || 'WORKER_ERROR';
     const retryable = typeof we?.retryable === 'boolean' ? we.retryable : isRetryableCode(code);
     const diagnostic = we?.diagnostic;
-    await recordDebug('update_err', codice, { client, code, retryable, diagnostic: diagnostic ?? null, actor: actor.email });
     // Stato HTTP granulare: 502 = transitorio (l'app può ritentare), 422 = logico
     // (ritentare non aiuta). L'app legge comunque il booleano esplicito `retryable`.
     const status = retryable ? 502 : 422;
     return err(status, code, errorText(workerErr), { client, retryable, ...(diagnostic ? { diagnostic } : {}) });
   }
 
-  await recordDebug('update_ok', codice, { client, worker: workerResult, actor: actor.email });
   const { firstName, surname } = client;
   return ok({
     message: `Socio aggiornato su Matchpoint: ${firstName} ${surname} (codice ${codice})`,

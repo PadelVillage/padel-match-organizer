@@ -4143,8 +4143,12 @@ async function updateClientWithBrowser(options = {}) {
           });
           candidates.push({ id, codeHit });
         }
-        const hit = candidates.find((c) => c.codeHit);
-        if (hit) return { id: hit.id, how: 'code_token', rows: rows.length, candidates: candidates.length };
+        // code_token affidabile SOLO se UNA sola riga (id distinto) contiene il codice:
+        // con codici corti (es. "000004" -> "4") un "4" qualsiasi in un'altra riga creava
+        // falsi match. Se piu' righe "matchano" il codice -> ambiguo, non indovinare.
+        const hitIds = [...new Set(candidates.filter((c) => c.codeHit).map((c) => c.id))];
+        if (hitIds.length === 1) return { id: hitIds[0], how: 'code_token', rows: rows.length, candidates: candidates.length };
+        if (hitIds.length > 1) return { id: '', how: 'ambiguous_code', rows: rows.length, candidates: candidates.length };
         const uniqueIds = [...new Set(candidates.map((c) => c.id))];
         if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate', rows: rows.length, candidates: candidates.length };
         return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate', rows: rows.length, candidates: candidates.length };
@@ -4163,19 +4167,39 @@ async function updateClientWithBrowser(options = {}) {
     let idInterno = '';
     let onFichaNow = false;
     let resolvedOk = false;
+    const codNormTarget = String(codice).replace(/^0+/, '');
+    const readFichaCodice = () => page.evaluate(() => {
+      const t = (document.body ? document.body.innerText : '');
+      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      return m ? m[1] : '';
+    }).catch(() => '');
     for (const a of attempts) {
       const r = await trySearch(a.by, a.val, a.acceptSingle);
-      diagnostic.attempts.push({ by: a.by, how: r.how, id: r.id || '' });
-      // Successo = id risolto OPPURE gia' atterrati sulla ficha giusta (codice gia'
-      // verificato in trySearch). Il caso onFicha senza id in URL e' valido: si resta
-      // sulla scheda aperta e si compila li' (come faceva il vecchio percorso diretto).
-      if (r.id || r.onFicha) {
-        idInterno = r.id || '';
-        onFichaNow = r.onFicha;
-        resolvedOk = true;
+      const att = { by: a.by, how: r.how, id: r.id || '' };
+      diagnostic.attempts.push(att);
+      if (!(r.id || r.onFicha)) continue;
+      if (r.onFicha) {
+        // trySearch ha gia' verificato il codice inline (schedaMatch) prima di tornare onFicha.
+        idInterno = r.id || ''; onFichaNow = true; resolvedOk = true;
         diagnostic.resolve = { how: r.how, by: a.by, id: idInterno };
         break;
       }
+      // id risolto da una LISTA (code_token/single_candidate): il match sul testo puo'
+      // agganciare la riga SBAGLIATA. Carico la Ficha e VERIFICO il codice; se non
+      // coincide NON mi fermo: provo il termine di ricerca successivo (telefono/email/
+      // cognome, anche i valori 'prev'). Cosi' un mismatch transitorio si auto-corregge
+      // invece di dare CLIENT_NOT_FOUND.
+      await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(r.id)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      const cod = await readFichaCodice();
+      if (cod && cod.replace(/^0+/, '') !== codNormTarget) {
+        att.rejected = `codice_diverso(${cod})`;
+        continue; // scheda sbagliata: prova il termine successivo
+      }
+      // Codice giusto (o non leggibile -> best-effort come prima): accetto, gia' sulla Ficha.
+      idInterno = r.id; onFichaNow = true; resolvedOk = true;
+      diagnostic.resolve = { how: r.how, by: a.by, id: idInterno };
+      break;
     }
     diagnostic.idInterno = idInterno;
     diagnostic.afterSearchUrl = page.url();
