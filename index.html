@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.925';
+    const APP_VERSION = '5.926';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -45398,6 +45398,9 @@ Per confermare scrivi ELIMINA.`);
     if (which === 'search') {
       setTimeout(function () { var s = document.getElementById('staffCalSociSearch'); if (s) s.focus(); }, 60);
     } else {
+      // Livello di default 0,5 (= da autovalutare), come nel form Anagrafica, se vuoto.
+      var lvl = document.getElementById('staffCalSociNewLevel');
+      if (lvl && !String(lvl.value || '').trim()) lvl.value = '0.5';
       setTimeout(function () { var f = document.getElementById('staffCalSociNewFirst'); if (f) f.focus(); }, 60);
     }
   }
