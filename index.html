@@ -7183,76 +7183,30 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <!-- Assistente AI tab — pannello di gestione del motore conversazionale.
-         La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui si testano i
-         comandi (sandbox), si vede cosa sa fare e il log delle ultime interazioni.
-         Diario turni + Vocabolario (lessico) attivi in TEST e PROD da v5.838 (gated dal
-         permesso view_assistante_ai); il banco di prova resta sempre visibile. -->
+         La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui c'è il
+         VOCABOLARIO (lessico): insegnare modi di dire (con verifica a esempi di Gemini) e
+         rivedere le proposte automatiche (routine oraria ai-propose-lexicon).
+         Attivo in TEST e PROD da v5.838, gated dal permesso view_assistante_ai. Da v5.936
+         rimossi i riquadri Banco di prova / Ultime interazioni / Segnalazioni / Diario turni
+         (codice JS dormiente, non più in UI). -->
     <div id="assistanteAI" class="tab-content">
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
         <section class="ai-admin-card ai-admin-card-wide">
-          <h3>📊 Autoapprendimento — diario turni</h3>
-          <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
-          <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧩 Vocabolario (lessico)</h3>
-          <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: una parola nuova → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia»). Solo le voci <strong>✅ Attive</strong> entrano nel parser. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna</button></p>
+          <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: scrivi una <strong>parola o frase nuova</strong> → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia», oppure «butta giù» → «annulla»), premi <strong>🔎 Prova</strong> e ti mostro alcune <strong>frasi d'esempio</strong> di cosa capirei (puoi <strong>correggerle ✏️</strong>, toglierne o aggiungerne di tue). Se è giusto, <strong>confermi e salvi</strong>. Solo le voci <strong>✅ Attive</strong> entrano nel parser.</p>
           <div class="ai-lex-add">
-            <input id="aiLexSurface" class="ai-lex-input" placeholder="parola nuova (es. spostare)">
+            <input id="aiLexSurface" class="ai-lex-input" placeholder="parola o frase (es. spostare, butta giù)">
             <span class="ai-lex-arrow">→</span>
             <input id="aiLexCanonical" class="ai-lex-input" placeholder="che già capisce (es. cambia)">
             <select id="aiLexDomain" class="ai-lex-input"><option value="">entrambi</option><option value="prenotazione">prenotazione</option><option value="anagrafica">anagrafica</option></select>
-            <button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(e){}">+ Aggiungi</button>
+            <button class="btn-primary small-btn" onclick="try{PMOAi.lexPreview()}catch(e){}">🔎 Prova</button>
             <span id="aiLexAddState" class="ai-admin-hint"></span>
           </div>
-          <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere i termini.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>🧪 Banco di prova</h3>
-          <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
-
-          <label class="ai-sbx-step">1 · Scrivi o detta 🎤 la frase da provare</label>
-          <div class="ai-sbx-input-wrap">
-            <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
-            <button type="button" id="aiSandboxMic" class="ai-sbx-mic" style="position:absolute;right:8px;bottom:8px;" title="Detta la frase con la voce" onclick="try{PMOAi.toggleSandboxDictation()}catch(e){}">🎤</button>
-          </div>
-
-          <label class="ai-sbx-step">2 · Premi “Analizza” e leggi il risultato</label>
-          <div class="ai-sandbox-actions">
-            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">🔍 Analizza</button>
-          </div>
-          <pre id="aiSandboxOutput" class="ai-sandbox-output">—</pre>
-
-          <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
-          <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
-          <div class="ai-sandbox-report" id="aiSandboxReportBox">
-            <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
-            <div class="ai-sbx-drop" id="aiSandboxDrop">
-              <input type="file" id="aiSandboxImgInput" accept="image/*" hidden onchange="try{PMOAi.onSandboxImagePicked(this.files)}catch(e){}">
-              <button type="button" class="btn-secondary small-btn" onclick="document.getElementById('aiSandboxImgInput').click()">📎 Allega immagine</button>
-              <span class="ai-admin-hint">o trascina qui un'immagine dal desktop · o incolla con Ctrl/⌘+V</span>
-            </div>
-            <div id="aiSandboxImgPreview" class="ai-sbx-img-preview" style="display:none"></div>
-            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
-              <span id="aiSandboxReportState" class="ai-admin-hint"></span>
-            </div>
-          </div>
-          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
-            <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
-          </div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>📋 Ultime interazioni</h3>
-          <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
-          <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>🐞 Le mie segnalazioni</h3>
-          <p class="ai-admin-hint">Le frasi che hai segnalato con 🐞. <strong>🟠 Aperta</strong> = ancora da sistemare · <strong>✅ Risolta</strong> = corretta (con versione e nota di cosa è stato fatto). <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadMyReports()}catch(e){}">↻ Aggiorna</button></p>
-          <div id="aiReportsList" class="ai-reports-list"><div class="ai-admin-hint">—</div></div>
+          <div id="aiLexPreview" class="ai-lex-preview" style="display:none;margin-top:10px"></div>
+          <div class="ai-turn-sub" style="margin-top:14px">📋 Termini del vocabolario <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna l'elenco</button></div>
+          <p class="ai-admin-hint" style="margin:2px 0 6px">Qui sotto l'elenco: ✅ <strong>Attivi</strong>, 🟠 <strong>Proposti</strong> da rivedere, 🚫 Rifiutati. <strong>Ogni ora</strong> l'assistente guarda da solo le frasi che le regole non hanno capito e ti <strong>propone</strong> qui i termini nuovi (🟠). Non cambia niente da solo: <strong>Approva</strong>, ✏️ <strong>Correggi</strong> o <strong>Rifiuta</strong> tu.</p>
+          <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
         </section>
       </div>
     </div>
@@ -7713,7 +7667,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.927';
+    const APP_VERSION = '5.937';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9943,6 +9897,7 @@ Grazie.`
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
             if (tabName === 'matchHistory') renderMatchHistoryDashboard();
+            if (tabName === 'assistanteAI' && typeof PMOAi !== 'undefined' && PMOAi.loadLessico) { try { PMOAi.loadLessico(); } catch (e) {} }
           }, 0);
         });
       }
@@ -40752,8 +40707,9 @@ Per confermare scrivi ELIMINA.`);
         _lessico = (Array.isArray(rows) ? rows : []).map(function (r) {
           const s = String(r.surface || '').trim().toLowerCase();
           const c = String(r.canonical || '').trim();
-          // Guardie base: surface ≥3 lettere, solo lettere/spazio/apostrofo (mai stop-word di 1-2 char).
-          if (s.length < 3 || !c || !/^[a-zà-ÿ' -]+$/.test(s)) return null;
+          // Guardie base: surface ≥2 lettere (ammessi «ok», «sì», termini stranieri corti),
+          // solo lettere/spazio/apostrofo (mai parola di 1 char).
+          if (s.length < 2 || !c || !/^[a-zà-ÿ' -]+$/.test(s)) return null;
           let re; try { re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'); } catch (e) { return null; }
           return { surface: s, canonical: c, re: re };
         }).filter(Boolean);
@@ -40775,7 +40731,7 @@ Per confermare scrivi ELIMINA.`);
       let token = cfg.supabaseKey;
       try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
       const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
-      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source';
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source,meta';
       const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
@@ -40784,8 +40740,11 @@ Per confermare scrivi ELIMINA.`);
       const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical'), dEl = document.getElementById('aiLexDomain'), st = document.getElementById('aiLexAddState');
       const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim(), domain = (dEl && dEl.value) || null;
       if (st) st.textContent = '';
-      if (surface.length < 3 || !canonical) { if (st) st.textContent = 'Serve una parola nuova (≥3 lettere) e la forma che il parser già capisce.'; return; }
-      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola nuova può contenere solo lettere/spazi.'; return; }
+      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Serve una parola o frase nuova (≥2 lettere) e la forma che il parser già capisce.'; return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola/frase nuova può contenere solo lettere e spazi.'; return; }
+      // Esempi in contesto approvati nel pannello «Prova» → salvati nella colonna examples.
+      const examples = (_lexProva && _lexProva.surface === surface && Array.isArray(_lexProva.examples))
+        ? _lexProva.examples.map(function (e) { return e.phrase; }).filter(Boolean).slice(0, 12) : [];
       try {
         const cfg = await loadAssessmentSupabaseConfig();
         let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
@@ -40793,11 +40752,12 @@ Per confermare scrivi ELIMINA.`);
         const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({ env: env, domain: domain, surface: surface, canonical: canonical, kind: 'sinonimo', status: 'approved', source: 'manual', approved_by: _aiTurnStaffId(), approved_at: new Date().toISOString() })
+          body: JSON.stringify({ env: env, domain: domain, surface: surface, canonical: canonical, kind: 'sinonimo', status: 'approved', source: 'manual', examples: examples, approved_by: _aiTurnStaffId(), approved_at: new Date().toISOString() })
         });
         if (!res.ok) { if (st) st.textContent = 'Non salvato (HTTP ' + res.status + ').'; return; }
         if (sEl) sEl.value = ''; if (cEl) cEl.value = '';
-        if (st) st.textContent = '✅ Aggiunto e attivo.';
+        _lexProvaClear();
+        if (st) st.textContent = '✅ Aggiunto e attivo' + (examples.length ? ' (' + examples.length + ' esempi salvati).' : '.');
         await _lessicoLoad(); loadLessico();
       } catch (e) { if (st) st.textContent = 'Errore: ' + e.message; }
     }
@@ -40818,14 +40778,338 @@ Per confermare scrivi ELIMINA.`);
       el.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
       let rows; try { rows = await _lessicoFetchAll(); } catch (e) { el.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere il lessico (sessione scaduta?): esci e rientra. [' + _escapeHtml(e.message) + ']</div>'; return; }
       if (!Array.isArray(rows) || !rows.length) { el.innerHTML = '<div class="ai-admin-hint">Nessun termine ancora. Aggiungine uno qui sopra (es. «spostare» → «cambia»).</div>'; return; }
-      el.innerHTML = rows.map(function (r) {
+      // Fase 3: proposte in cima (da rivedere), poi attive, poi rifiutate.
+      const _rank = { proposed: 0, approved: 1, rejected: 2 };
+      rows = rows.slice().sort(function (a, b) { return (_rank[a.status] == null ? 1 : _rank[a.status]) - (_rank[b.status] == null ? 1 : _rank[b.status]); });
+      const nProposed = rows.filter(function (r) { return r.status === 'proposed'; }).length;
+      const header = nProposed ? '<div class="ai-turn-sub">🟠 ' + nProposed + ' proposta/e da rivedere — approva quelle giuste, rifiuta le altre.</div>' : '';
+      el.innerHTML = header + rows.map(function (r) {
         const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">🟠 Proposto</span>');
         const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
+        const cnt = (r.status === 'proposed' && r.meta && r.meta.count) ? (' · visto ' + r.meta.count + '×') : '';
+        const origin = (r.status === 'proposed' && r.source === 'gemini-distill') ? ' · ✨ proposto dall\'assistente' : ((r.status === 'proposed' && r.source === 'auto') ? ' · dal diario' : '');
+        const fromTxt = (r.status === 'proposed' && r.meta && r.meta.from) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(r.meta.from) + '»</div>' : '';
         let actions = '';
         if (r.status !== 'approved') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'approved\')}catch(e){}">Approva</button> ';
+        if (r.status === 'proposed') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
         if (r.status !== 'rejected') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'rejected\')}catch(e){}">Rifiuta</button>';
-        return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + '</span><span class="ai-turn-meta">' + badge + dom + '</span><span class="ai-turn-next">' + actions + '</span></div>';
+        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface) + '" data-canonical="' + _escapeHtml(r.canonical) + '">'
+          + '<span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + fromTxt + '</span>'
+          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + '</span>'
+          + '<span class="ai-turn-next">' + actions + '</span></div>';
       }).join('');
+    }
+    // Fase 3: correggi una proposta (surface/canonical) prima di approvarla.
+    function lexEditProposal(id) {
+      const row = document.getElementById('lexrow-' + id); if (!row) return;
+      const s = row.getAttribute('data-surface') || '', c = row.getAttribute('data-canonical') || '';
+      row.innerHTML = '<span class="ai-turn-utt" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+        + '<input id="lexEditS-' + id + '" class="ai-lex-input" style="min-width:120px" value="' + _escapeHtml(s) + '">'
+        + '<span class="ai-lex-arrow">→</span>'
+        + '<input id="lexEditC-' + id + '" class="ai-lex-input" style="min-width:120px" value="' + _escapeHtml(c) + '"></span>'
+        + '<span class="ai-turn-next">'
+        + '<button class="btn-primary small-btn" onclick="try{PMOAi.lexSaveProposal(\'' + id + '\')}catch(e){}">💾 Salva</button> '
+        + '<button class="btn-secondary small-btn" onclick="try{PMOAi.loadLessico()}catch(e){}">✕ Annulla</button>'
+        + ' <span id="lexEditState-' + id + '" class="ai-admin-hint"></span></span>';
+    }
+    async function lexSaveProposal(id) {
+      const sEl = document.getElementById('lexEditS-' + id), cEl = document.getElementById('lexEditC-' + id), st = document.getElementById('lexEditState-' + id);
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
+      if (st) st.textContent = '';
+      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Servono parola (≥2) e forma base.'; return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'Solo lettere e spazi.'; return; }
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+          body: JSON.stringify({ surface: surface, canonical: canonical })
+        });
+        if (!res.ok) { if (st) st.textContent = 'Non salvato (HTTP ' + res.status + ').'; return; }
+        loadLessico();
+      } catch (e) { if (st) st.textContent = 'Errore: ' + e.message; }
+    }
+
+    // ══ Fase 3 autoapprendimento: minatore lessico dal diario (PROPONE, non applica) ══
+    // Dai turni in cui l'utente ha riformulato (next_utterance), trova la sostituzione
+    // PULITA 1-a-1 di una parola e la propone come voce di lessico in stato 'proposed'.
+    // Non approva mai nulla: l'attivazione resta umana (bottoni Approva/Rifiuta).
+    // Token in minuscolo "grezzo" (accenti/apostrofi conservati) come addLessico, così
+    // _applyLessico — che agisce sul testo grezzo prima del parse — riesce a riscrivere.
+    function _lexTokens(s) {
+      return String(s || '').toLowerCase().split(/\s+/)
+        .map(function (w) { return w.replace(/^[^a-zà-ÿ']+|[^a-zà-ÿ']+$/g, ''); })
+        .filter(Boolean);
+    }
+    function _lexValidSurface(s) { return !!(s && s.length >= 3 && /^[a-zà-ÿ' -]+$/.test(s)); }
+    async function _lessicoMineFromDiary() {
+      if (!_LESSICO_ENABLED) return { found: 0, inserted: 0 };
+      const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+      let turns = [], existing = [];
+      try { turns = await _aiTurnsFetch(200); } catch (e) { throw new Error('diario: ' + e.message); }
+      try { existing = await _lessicoFetchAll(); } catch (e) { existing = []; }
+      // Non riproporre surface già decise a mano/auto (qualunque stato, incl. rifiutate).
+      const seen = {};
+      (Array.isArray(existing) ? existing : []).forEach(function (r) {
+        seen[(r.domain || '') + '|' + String(r.surface || '').toLowerCase()] = true;
+      });
+      const cand = {};   // 'domain|surface|canonical' → {domain,surface,canonical,count,examples}
+      (Array.isArray(turns) ? turns : []).forEach(function (r) {
+        if (!_aiTurnIsNegative(r) || !r.utterance || !r.next_utterance) return;
+        const a = _lexTokens(r.utterance), b = _lexTokens(r.next_utterance);
+        const aSet = {}, bSet = {};
+        a.forEach(function (w) { aSet[w] = true; }); b.forEach(function (w) { bSet[w] = true; });
+        const removed = Object.keys(aSet).filter(function (w) { return !bSet[w]; });
+        const added = Object.keys(bSet).filter(function (w) { return !aSet[w]; });
+        if (removed.length !== 1 || added.length !== 1) return;   // solo sostituzione pulita 1-a-1
+        const surface = removed[0], canonical = added[0];
+        if (surface === canonical || !_lexValidSurface(surface) || !canonical) return;
+        const domain = r.domain || null;
+        if (seen[(domain || '') + '|' + surface]) return;
+        const key = (domain || '') + '|' + surface + '|' + canonical;
+        if (!cand[key]) cand[key] = { domain: domain, surface: surface, canonical: canonical, count: 0, examples: [] };
+        cand[key].count++;
+        if (cand[key].examples.length < 3) cand[key].examples.push(r.utterance);
+      });
+      let rows = Object.keys(cand).map(function (k) { return cand[k]; });
+      rows.sort(function (x, y) { return y.count - x.count; });
+      rows = rows.slice(0, 20);
+      if (!rows.length) return { found: 0, inserted: 0 };
+      const nowIso = new Date().toISOString();
+      const payload = rows.map(function (c) {
+        return {
+          env: env, domain: c.domain, surface: c.surface, canonical: c.canonical,
+          kind: 'sinonimo', status: 'proposed', source: 'auto',
+          examples: c.examples, meta: { count: c.count, mined_at: nowIso }
+        };
+      });
+      const cfg = await loadAssessmentSupabaseConfig();
+      let token = cfg.supabaseKey;
+      try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+      const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return { found: rows.length, inserted: rows.length };
+    }
+    async function mineLexicon() {
+      const st = document.getElementById('aiLexMineState');
+      if (st) st.textContent = 'Analizzo il diario…';
+      try {
+        const r = await _lessicoMineFromDiary();
+        if (st) st.textContent = !r.found ? 'Nessuna parola nuova da proporre (per ora). 👍'
+          : ('🟠 ' + r.inserted + ' nuova/e proposta/e qui sotto — controlla e approva.');
+        await loadLessico();
+      } catch (e) {
+        if (st) st.textContent = 'Non riuscito (' + e.message + '). Se la sessione è scaduta, esci e rientra.';
+      }
+    }
+
+    // ── Verifica del Vocabolario PRIMA di salvare: esempi "cosa capirei" ─────────
+    // Per la parola CHE GIÀ CAPISCE (canonical) provo alcune frasi modello e spiego in
+    // breve cosa interpreterei; mostro la stessa frase con la parola NUOVA. Così l'utente
+    // controlla che l'abbinamento sia giusto prima di confermare. null = non riconosciuta.
+    const _LEX_TEMPLATES = [
+      '{w} il campo 2 domani alle 18',
+      '{w} una lezione con Marco domani alle 18 al campo 1',
+      '{w} la prenotazione di campo 2 di domani',
+      '{w} di mezz\'ora la prenotazione di campo 2 di domani',
+      '{w} la prenotazione di campo 2 al campo 3',
+      '{w} Mario Rossi',
+      'per favore {w} il campo 2 di domani alle 18 e mezza',
+      'puoi {w} la partita di campo 3 di sabato alle 19'
+    ];
+    // Intent riconosciuto della frase (null se non capita / ko). Serve a capire se è
+    // davvero la PAROLA a farsi capire, confrontandola con una parola-fantasma.
+    function _lexIntentOf(text) {
+      let r; try { r = parse(text) || {}; } catch (e) { return null; }
+      if (!r.intent || r.intent === '—' || r.ko) return null;
+      return r.intent;
+    }
+    // Riconosce se la parola «che già capisce» è una CONFERMA («sì») o un RIFIUTO («no»),
+    // così «okk → sì» / «manco → no» si possono insegnare dal Vocabolario per le conversazioni.
+    // Allineato a _cw del dispatcher conferme (handle, stage 'confirm').
+    function _lexConfirmKind(canonical) {
+      const c = _norm(canonical);
+      if (/^(conferm\w*|si|ok(ay|ey)?|va bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto)$/.test(c)) return 'sì';
+      if (/^(no|lasci\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)$/.test(c)) return 'no';
+      return null;
+    }
+    function _lexShortExplain(text) {
+      let r; try { r = parse(text) || {}; } catch (e) { return null; }
+      if (!r.intent || r.intent === '—' || r.ko) return null;
+      if (r.intent === 'PRENOTA') {
+        let d = null; try { d = _buildPrenotaDraft(r, text); } catch (e) {}
+        let s = 'prenoti ' + (d && d.tipo === 'lezione' ? 'una lezione' : 'una partita');
+        if (d) {
+          if (d.campoNum) s += ', campo ' + d.campoNum;
+          if (d.data) { try { s += ', ' + _friendlyDate(d.data); } catch (e) {} }
+          if (d.ora) s += ', ore ' + d.ora + (d.oraFine ? '–' + d.oraFine : '');
+        }
+        return s;
+      }
+      if (r.intent === 'CANCELLA') return 'annulli una prenotazione';
+      if (r.intent === 'CORREGGI') return 'modifichi una prenotazione';
+      if (r.intent === 'TROVA') return 'fai una domanda (campi liberi / prenotazioni)';
+      if (r.intent === 'ANAGRAFICA') return 'aggiungi o aggiorni un giocatore in anagrafica';
+      return null;
+    }
+    // Stato corrente della verifica Vocabolario: regge esempi APPROVABILI (A) ed espressioni
+    // di più parole (B). { surface, canonical, domain, kind:'confirm'|'command'|'unknown',
+    // confirmKind:'sì'|'no'|null, examples:[{phrase, expl}] }.
+    let _lexProva = null;
+    let _lexProvaToken = 0;   // anti-corsa: ignora risposte Gemini di una Prova superata
+    function _lexProvaClear() { _lexProva = null; _lexProvaToken++; const b = document.getElementById('aiLexPreview'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+    // Spiega una frase intera scritta dall'utente: riscrive surface→canonical e interpreta.
+    function _lexExplainPhrase(phrase, surface, canonical) {
+      try {
+        const re = new RegExp('\\b' + surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+        return _lexShortExplain(String(phrase || '').replace(re, canonical));
+      } catch (e) { return null; }
+    }
+    // Frasi-modello LOCALI (fallback se Gemini non risponde): il termine in contesti vari.
+    // Tiene solo quelle dove è la PAROLA a cambiare l'interpretazione (vs parola-fantasma).
+    function _lexLocalExamples(surface, canonical) {
+      const examples = [], seen = {}, DUMMY = 'qwxztk';
+      for (let i = 0; i < _LEX_TEMPLATES.length && examples.length < 6; i++) {
+        const tpl = _LEX_TEMPLATES[i];
+        const canonPhrase = tpl.split('{w}').join(canonical);
+        const ci = _lexIntentOf(canonPhrase);
+        if (!ci) continue;
+        if (ci === _lexIntentOf(tpl.split('{w}').join(DUMMY))) continue;
+        const expl = _lexShortExplain(canonPhrase);
+        if (!expl) continue;
+        const phrase = tpl.split('{w}').join(surface);
+        if (seen[phrase]) continue; seen[phrase] = true;
+        examples.push({ phrase: phrase, expl: expl });
+      }
+      return examples;
+    }
+    // Chiede a Gemini (edge ai-lex-examples) frasi d'esempio col termine + cosa intende.
+    // null se non disponibile (offline/sessione/permesso/timeout) → si usa il fallback locale.
+    async function _lexFetchGeminiExamples(surface, canonical, domain) {
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/functions/v1/ai-lex-examples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ surface: surface, canonical: canonical, domain: domain || '' })
+        });
+        if (!res.ok) return null;
+        const data = await res.json().catch(function () { return null; });
+        if (!data || !data.ok || !Array.isArray(data.examples)) return null;
+        return data.examples
+          .map(function (e) { return { phrase: String(e.phrase || '').toLowerCase(), expl: String(e.intende || '') }; })
+          .filter(function (e) { return e.phrase; });
+      } catch (e) { return null; }
+    }
+    async function lexPreview() {
+      const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical'), dEl = document.getElementById('aiLexDomain');
+      const st = document.getElementById('aiLexAddState'), box = document.getElementById('aiLexPreview');
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
+      const domain = (dEl && dEl.value) || null;
+      if (st) st.textContent = '';
+      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Serve una parola o frase nuova (≥2 lettere) e la parola che già capisce.'; _lexProvaClear(); return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola/frase nuova può contenere solo lettere e spazi.'; _lexProvaClear(); return; }
+      if (!box) return;
+      const ck = _lexConfirmKind(canonical);
+      const token = ++_lexProvaToken;
+      _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: ck ? 'confirm' : 'command', confirmKind: ck || null, examples: [], loading: true, src: null };
+      _lexRenderProva();
+      // Gemini scrive gli esempi (così vedi se "ha capito"); fallback locale se non disponibile.
+      let gem = null;
+      try { gem = await _lexFetchGeminiExamples(surface, canonical, domain); } catch (e) {}
+      if (token !== _lexProvaToken) return;   // una Prova successiva ha già preso il posto
+      _lexProva.loading = false;
+      if (gem && gem.length) {
+        _lexProva.examples = gem; _lexProva.src = 'gemini';
+      } else {
+        _lexProva.src = 'locale';
+        if (!ck) {
+          const loc = _lexLocalExamples(surface, canonical);
+          _lexProva.examples = loc;
+          _lexProva.kind = loc.length ? 'command' : 'unknown';
+        }
+      }
+      _lexRenderProva();
+    }
+    // Disegna il pannello di verifica dallo stato _lexProva (gli esempi sono togliibili/aggiungibili).
+    function _lexRenderProva() {
+      const box = document.getElementById('aiLexPreview'); if (!box) return;
+      if (!_lexProva) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      const P = _lexProva, esc = _escapeHtml;
+      let html = '';
+      if (P.kind === 'confirm') {
+        const isYes = P.confirmKind === 'sì';
+        html += '<div class="ai-turn-sub">«' + esc(P.surface) + '» = ' + (isYes ? 'una CONFERMA' : 'un RIFIUTO') + ' (come dire «' + esc(P.canonical) + '»)</div>'
+          + '<div class="ai-turn-row"><span class="ai-turn-utt">Quando l\'assistente aspetta un sì/no e tu scrivi «' + esc(P.surface) + '»</span><span class="ai-turn-meta">→ ' + (isYes ? 'confermi l\'azione in sospeso' : 'annulli l\'azione in sospeso') + '</span></div>';
+      } else if (P.kind === 'unknown') {
+        html += '<div class="ai-admin-hint">⚠️ Con «' + esc(P.canonical) + '» non riconosco un comando chiaro. Forse la parola «che già capisce» va scritta come un termine che l\'assistente conosce (un verbo, es. <strong>prenota, sposta, annulla, modifica, accorcia, allunga</strong>…). Correggila e ripremi 🔎 Prova, oppure aggiungi sotto una tua frase.</div>';
+      } else {
+        html += '<div class="ai-turn-sub">Prova: leggerò «' + esc(P.surface) + '» come «' + esc(P.canonical) + '». Frasi d\'esempio (togli quelle sbagliate, aggiungi le tue):</div>';
+      }
+      if (P.loading) {
+        html += '<div class="ai-admin-hint">⏳ L\'assistente sta scrivendo alcuni esempi con «' + esc(P.surface) + '»…</div>';
+        box.innerHTML = html; box.style.display = 'block'; return;
+      }
+      if (P.src === 'gemini') html += '<div class="ai-admin-hint" style="margin:2px 0 6px">✍️ Esempi scritti dall\'assistente (così vedi se ha capito il termine):</div>';
+      else if (P.src === 'locale' && P.examples.length) html += '<div class="ai-admin-hint" style="margin:2px 0 6px">ℹ️ Assistente non raggiungibile: esempi di base.</div>';
+      if (P.examples.length) {
+        html += P.examples.map(function (e, i) {
+          if (P.editing === i) {
+            return '<div class="ai-turn-row"><span class="ai-turn-utt" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1">'
+              + '<input id="aiLexExEdit" class="ai-lex-input" style="flex:1;min-width:200px" value="' + esc(e.phrase) + '"></span>'
+              + '<span class="ai-turn-next"><button class="btn-primary small-btn" onclick="try{PMOAi.lexSaveExample(' + i + ')}catch(ex){}">💾 Salva</button> '
+              + '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexCancelEditExample()}catch(ex){}">✕ Annulla</button>'
+              + ' <span id="aiLexExEditState" class="ai-admin-hint"></span></span></div>';
+          }
+          return '<div class="ai-turn-row"><span class="ai-turn-utt">«' + esc(e.phrase) + '»</span><span class="ai-turn-meta">→ ' + esc(e.expl || '—')
+            + ' <button class="btn-secondary small-btn" title="Correggi questa frase" onclick="try{PMOAi.lexEditExample(' + i + ')}catch(ex){}">✏️</button>'
+            + ' <button class="btn-secondary small-btn" title="Togli questo esempio" onclick="try{PMOAi.lexRemoveExample(' + i + ')}catch(ex){}">✕</button></span></div>';
+        }).join('');
+      }
+      html += '<div class="ai-lex-add" style="margin-top:8px">'
+        + '<input id="aiLexCustom" class="ai-lex-input" style="flex:1;min-width:200px" placeholder="scrivi una tua frase con «' + esc(P.surface) + '» e premi +">'
+        + '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexAddCustom()}catch(ex){}">+ Aggiungi frase</button>'
+        + '<span id="aiLexCustomState" class="ai-admin-hint"></span></div>';
+      const nEx = P.examples.length;
+      html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+        + '<button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(ex){}">✅ Confermo, salva' + (nEx ? ' (' + nEx + ' esempi)' : '') + '</button>'
+        + '<span class="ai-admin-hint">Le frasi qui sopra vengono salvate come esempi della voce.</span></div>';
+      box.innerHTML = html; box.style.display = 'block';
+    }
+    function lexRemoveExample(i) { if (_lexProva && _lexProva.examples) { if (_lexProva.editing === i) _lexProva.editing = null; _lexProva.examples.splice(i, 1); _lexRenderProva(); } }
+    function lexEditExample(i) { if (_lexProva && _lexProva.examples && _lexProva.examples[i]) { _lexProva.editing = i; _lexRenderProva(); } }
+    function lexCancelEditExample() { if (_lexProva) { _lexProva.editing = null; _lexRenderProva(); } }
+    function lexSaveExample(i) {
+      if (!_lexProva || !_lexProva.examples || !_lexProva.examples[i]) return;
+      const inp = document.getElementById('aiLexExEdit'), st = document.getElementById('aiLexExEditState');
+      const phrase = ((inp && inp.value) || '').trim();
+      if (st) st.textContent = '';
+      if (phrase.length < 3) { if (st) st.textContent = 'Frase troppo corta.'; return; }
+      const expl = (_lexProva.kind === 'confirm') ? 'conferma/rifiuto in conversazione'
+        : (_lexExplainPhrase(phrase, _lexProva.surface, _lexProva.canonical) || '— (non riconosciuto: controlla)');
+      _lexProva.examples[i] = { phrase: phrase.toLowerCase(), expl: expl };
+      _lexProva.editing = null;
+      _lexRenderProva();
+    }
+    function lexAddCustom() {
+      if (!_lexProva) return;
+      const inp = document.getElementById('aiLexCustom'), st = document.getElementById('aiLexCustomState');
+      const phrase = ((inp && inp.value) || '').trim();
+      if (st) st.textContent = '';
+      if (phrase.length < 3) { if (st) st.textContent = 'Scrivi una frase un po\' più lunga.'; return; }
+      const has = new RegExp('\\b' + _lexProva.surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(phrase);
+      if (!has) { if (st) st.textContent = 'La frase deve contenere «' + _lexProva.surface + '».'; return; }
+      const expl = (_lexProva.kind === 'confirm') ? 'conferma/rifiuto in conversazione'
+        : (_lexExplainPhrase(phrase, _lexProva.surface, _lexProva.canonical) || '— (non riconosciuto: controlla)');
+      _lexProva.examples.push({ phrase: phrase.toLowerCase(), expl: expl });
+      if (inp) inp.value = '';
+      _lexRenderProva();
     }
 
     function _norm(s) {
@@ -41912,9 +42196,13 @@ Per confermare scrivi ELIMINA.`);
           if (_verbs !== undefined) {
             const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
             const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
-            if (_re.test(t)) {
+            // Vocabolario anche nelle CONFERME: una voce «okk → sì» / «daje → sì» / «manco → no»
+            // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
+            // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
+            const _tConf = _applyLessico(t);
+            if (_re.test(_tConf)) {
               const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
-              if (_h) return _h(t);
+              if (_h) return _h(_tConf);
             }
           }
         }
@@ -45248,7 +45536,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
