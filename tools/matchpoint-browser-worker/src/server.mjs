@@ -4330,21 +4330,33 @@ async function updateClientWithBrowser(options = {}) {
         .waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: ms })
         .then(() => true).catch(() => false);
       const openLivelloTab = async () => {
-        // Un CLICK REALE Playwright sul tab e' molto piu' affidabile di el.click() per i
-        // postback ASP.NET (el.click() in-page non attivava la scheda -> griglia mai caricata).
-        const tab = page.locator('#CC_Datos_FormViewFicha_A2, [id$="_A2"]').first();
+        // La Ficha aperta direttamente (fuori dalla shell default.aspx) non sempre attiva
+        // la tab via click. Provo PIU' metodi e registro quale funziona + gli ancore tab.
+        diagnostic.tabAnchors = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('a[id*="FormViewFicha_A"], a[title="Livello"], a[title="Livelli"]'))
+            .map((a) => ({ id: a.id, title: a.title || '', href: (a.getAttribute('href') || '').slice(0, 180) }))
+        ).catch(() => null);
+        const tabSel = '#CC_Datos_FormViewFicha_A2, a[title="Livello"], a[title="Livelli"]';
+        // metodo 1: click reale Playwright
         try {
-          if (await tab.count().catch(() => 0)) await tab.click({ timeout: 8000 });
-          else await livelloTabPostback();
-        } catch (_) { await livelloTabPostback(); }
-        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-        // Se la griglia non e' comparsa, ritenta col postback diretto.
-        if (!(await gridAppeared(8000))) {
-          await livelloTabPostback();
-          await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-          await gridAppeared(8000);
-        }
-        await page.waitForTimeout(500);
+          const t = page.locator(tabSel).first();
+          if (await t.count().catch(() => 0)) await t.click({ timeout: 6000 });
+        } catch (_) {}
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'click'; await page.waitForTimeout(400); return; }
+        // metodo 2: esegui l'href javascript: reale del tab (WebForm_DoPostBackWithOptions)
+        await page.evaluate((sel) => {
+          const a = document.querySelector(sel);
+          const h = a && a.getAttribute('href');
+          if (h && h.indexOf('javascript:') === 0) { try { (0, eval)(h.slice(11)); } catch (_) {} }
+        }, tabSel).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'href_eval'; await page.waitForTimeout(400); return; }
+        // metodo 3: __doPostBack diretto
+        await livelloTabPostback();
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+        diagnostic.tabMethod = (await gridAppeared(6000)) ? 'dopostback' : 'none';
+        await page.waitForTimeout(400);
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
