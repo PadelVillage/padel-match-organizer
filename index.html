@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.920';
+    const APP_VERSION = '5.921';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -25022,11 +25022,14 @@ Per confermare scrivi ELIMINA.`);
     // sincronizzati su MP cambiati; hasOther = sono cambiati anche dati solo-app
     // (disponibilità/preferenze). Se la chat NON è attiva ricade sui toast storici.
     async function pmoMemberEditChatFlow(member, prev, changedMp, hasOther) {
+      // La chat è il canale di feedback UNIVERSALE (le prenotazioni ci scrivono senza
+      // alcun gate). NON la condizioniamo a PMOAi.isEnabled(): su PROD il profilo staff
+      // vive su un altro progetto Supabase e isEnabled() poteva risultare false → la chat
+      // non si apriva (mentre su TEST sì). Basta che il pannello esista.
       const chatReady = !!document.getElementById('svcChatMessages')
-        && !!(window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled())
         && typeof svcAddMessage === 'function';
       if (!chatReady) {
-        // Nessuna chat visibile: comportamento storico (toast gestiti dal push).
+        // Nessun pannello chat: comportamento storico (toast gestiti dal push).
         return Promise.resolve(pmoPushMemberUpdateToMatchpoint(member, { prev: prev }))
           .catch(function (e) { console.warn('push update Matchpoint:', e); });
       }
