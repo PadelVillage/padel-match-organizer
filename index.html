@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.917';
+    const APP_VERSION = '5.918';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9501,8 +9501,10 @@ Grazie.`
     }
 
     // ── Riorganizzazione layout (desktop ≥900px) ──────────────────────────────
-    // Chat assistente: su desktop "esplode" nella sidebar (#sideNavChatHost), su
-    // mobile resta il bottom-sheet dentro #staffCalV36. Spostiamo il NODO (gli ID
+    // Chat assistente: su desktop "esplode" nella sidebar (#sideNavChatHost); su mobile
+    // è un bottom-sheet position:fixed che mettiamo nel <body> così è raggiungibile da
+    // QUALSIASI sezione (es. Anagrafica), non solo dal calendario — prima viveva dentro
+    // #staffCalV36 e restava nascosto fuori dal calendario. Spostiamo il NODO (gli ID
     // restano, quindi la logica JS della chat non cambia).
     const PMO_DESKTOP_MQ = window.matchMedia('(min-width:900px)');
     function pmoRelocateChat() {
@@ -9512,8 +9514,7 @@ Grazie.`
         const host = document.getElementById('sideNavChatHost');
         if (host && panel.parentElement !== host) host.appendChild(panel);
       } else {
-        const layout = document.querySelector('#staffCalV36 .svc-layout');
-        if (layout && panel.parentElement !== layout) layout.appendChild(panel);
+        if (panel.parentElement !== document.body) document.body.appendChild(panel);
       }
     }
     function pmoInitChatRelocation() {
@@ -25055,9 +25056,11 @@ Per confermare scrivi ELIMINA.`);
         : '';
       const _msgEl = svcAddMessage('system',
         '📝 <strong>Scheda aggiornata</strong>: ' + esc(fullName) + '<br>✏️ ' + esc(changesTxt) + syncNote, 'ok');
+      // NB: NON chiama svcMpSyncConfirmed: quello, sul verde, su mobile chiude il
+      // bottom-sheet a 700ms — troppo presto per leggere l'esito di una scheda. La
+      // permanenza e la chiusura mobile le gestiamo noi (vedi _lingerScheda).
       const _setSync = function (html, color) {
         try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
-        try { if (typeof svcMpSyncConfirmed === 'function') svcMpSyncConfirmed(color); } catch (e) {}
       };
       if (!willSyncMp) {
         // Solo dati app: niente da propagare a Matchpoint. Il push parte comunque in
@@ -25073,9 +25076,15 @@ Per confermare scrivi ELIMINA.`);
         res = { status: 'error', reason: (e && e.message) || String(e) };
       }
       const st = res && res.status;
-      // La conferma della scheda resta in chat un po' più a lungo (8s) della pulizia
-      // standard delle prenotazioni (4s), così c'è tempo di leggerla.
-      const _lingerScheda = function () { try { svcScheduleAutoClear(8000); } catch (e) {} };
+      // La conferma della scheda resta in chat ~8s (le prenotazioni 4s), così c'è tempo
+      // di leggerla; su mobile, dopo gli 8s, chiudiamo NOI il bottom-sheet (niente
+      // chiusura a 700ms). Su esiti negativi (errore/livello) NON si auto-chiude: resta
+      // visibile finché l'utente non agisce.
+      const _isMobileChat = window.innerWidth < 900;
+      const _lingerScheda = function () {
+        try { svcScheduleAutoClear(8000); } catch (e) {}
+        if (_isMobileChat) setTimeout(function () { try { if (typeof svcCloseChat === 'function') svcCloseChat(); } catch (e) {} }, 8000);
+      };
       if (st === 'ok') {
         _setSync('✅ Salvato su Matchpoint', '#067647');
         _lingerScheda();
