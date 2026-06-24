@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.921';
+    const APP_VERSION = '5.922';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -45279,6 +45279,28 @@ Per confermare scrivi ELIMINA.`);
     var realInput = document.getElementById('staffCalDate');
     if (mInput && realInput) { realInput.value = mInput.value; renderStaffCalendar(); }
   }
+  // Tastiera mobile: il pannello Soci è position:fixed bottom:0; quando si apre la
+  // tastiera resterebbe ancorato in fondo, DIETRO la tastiera (ricerca/risultati coperti).
+  // Con la VisualViewport API lo alziamo sopra la tastiera e limitiamo l'altezza all'area
+  // realmente visibile, così resta tutto leggibile e scrollabile.
+  function pmoSociSheetKeyboardFit() {
+    var sheet = document.getElementById('staffCalSociSheet');
+    if (!sheet || !sheet.classList.contains('open')) return;
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    sheet.style.bottom = kb + 'px';
+    sheet.style.maxHeight = Math.round(vv.height * 0.92) + 'px';
+  }
+  function pmoSociSheetKeyboardReset() {
+    var sheet = document.getElementById('staffCalSociSheet');
+    if (sheet) { sheet.style.bottom = ''; sheet.style.maxHeight = ''; }
+  }
+  if (window.visualViewport && !window.__pmoSociVVBound) {
+    window.__pmoSociVVBound = true;
+    window.visualViewport.addEventListener('resize', pmoSociSheetKeyboardFit);
+    window.visualViewport.addEventListener('scroll', pmoSociSheetKeyboardFit);
+  }
   function staffCalOpenSociSheet() {
     var countEl = document.getElementById('staffCalSociCount');
     if (countEl) {
@@ -45294,13 +45316,21 @@ Per confermare scrivi ELIMINA.`);
     staffCalRenderSociResults();
     ov.classList.add('active');
     sheet.classList.add('open');
-    setTimeout(function () { var i = document.getElementById('staffCalSociSearch'); if (i) i.focus(); }, 140);
+    setTimeout(function () {
+      var i = document.getElementById('staffCalSociSearch');
+      if (i) i.focus();
+      // la tastiera compare con un po' di ritardo/animazione: riadatto a più riprese
+      pmoSociSheetKeyboardFit();
+      setTimeout(pmoSociSheetKeyboardFit, 250);
+      setTimeout(pmoSociSheetKeyboardFit, 600);
+    }, 140);
   }
   function staffCalCloseSociSheet() {
     var sheet = document.getElementById('staffCalSociSheet');
     var ov = document.getElementById('staffCalSociOverlay');
     if (sheet) sheet.classList.remove('open');
     if (ov) ov.classList.remove('active');
+    pmoSociSheetKeyboardReset();
   }
   function staffCalSociSheetTab(which) {
     document.querySelectorAll('.smc-soci-tab').forEach(function (b) {
