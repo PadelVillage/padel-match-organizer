@@ -13883,7 +13883,11 @@ Grazie.`
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       updateStats();
       pmoQueueImmediateMemberCloudSync(giocatori[idx], 'salvare subito la scheda socio su Supabase');
-      showAlert('✅ Scheda salvata', 'success');
+      // Esito mostrato nella chat di sinistra (pmoMemberEditChatFlow). Il toast verde
+      // "Scheda salvata" resta SOLO per chi non ha la chat attiva (niente doppio avviso).
+      const _chatReadyToast = !!document.getElementById('svcChatMessages')
+        && !!(window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled());
+      if (!_chatReadyToast) showAlert('✅ Scheda salvata', 'success');
       // Diario autoapprendimento (Fase 1): azione manuale anagrafica → stesso diario della chat.
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('anagrafica', 'modifica', 'confirmed', { via: 'scheda socio', name: fullName }); } catch (e) {}
       // Push verso Matchpoint in background, raccontato nella chat di sinistra (come le
@@ -25054,13 +25058,18 @@ Per confermare scrivi ELIMINA.`);
         res = { status: 'error', reason: (e && e.message) || String(e) };
       }
       const st = res && res.status;
+      // La conferma della scheda resta in chat un po' più a lungo (8s) della pulizia
+      // standard delle prenotazioni (4s), così c'è tempo di leggerla.
+      const _lingerScheda = function () { try { svcScheduleAutoClear(8000); } catch (e) {} };
       if (st === 'ok') {
         _setSync('✅ Salvato su Matchpoint', '#067647');
+        _lingerScheda();
       } else if (st === 'ok_level_failed') {
         _setSync('⚠️ Salvato, ma il LIVELLO non è passato su Matchpoint', '#b54708');
         svcAddMessage('system', '⚠️ Gli altri dati sono su Matchpoint; il <strong>livello</strong> no. Riprova dal gestionale se serve.', 'error');
       } else if (st === 'test_env') {
         _setSync('💾 Salvato (Matchpoint scollegato in test)', '#067647');
+        _lingerScheda();
       } else if (st === 'skipped' || st === 'no_permission' || st === 'guest') {
         _setSync('💾 Salvato nell\'app', '#475467');
       } else {
@@ -39390,7 +39399,7 @@ Per confermare scrivi ELIMINA.`);
   function svcCancelAutoClear() {
     if (_svcAutoClearTimer) { clearTimeout(_svcAutoClearTimer); _svcAutoClearTimer = null; }
   }
-  function svcScheduleAutoClear() {
+  function svcScheduleAutoClear(ms) {
     svcCancelAutoClear();
     _svcAutoClearTimer = setTimeout(function () {
       _svcAutoClearTimer = null;
@@ -39398,7 +39407,7 @@ Per confermare scrivi ELIMINA.`);
       // sarebbe una nuova operazione in corso, non la chat da ripulire.
       try { if (svcFlowState || staffCalPlayersState || staffCalMoveState) return; } catch (e) {}
       try { svcClearLog(); } catch (e) {}
-    }, 4000);
+    }, ms || 4000);
   }
   // Da chiamare quando la nota di sync di un'operazione cambia stato: programma la
   // pulizia SOLO sul verde di conferma Matchpoint (#067647); su errore/timeout no.
