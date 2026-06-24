@@ -3,10 +3,12 @@
 -- con TEST). Su TEST il dispatcher resta DISATTIVATO/manuale
 -- (vedi supabase_pmo_data_routines_scheduler.sql e procedura-deploy-test-prod.md:354).
 --
--- Cadenza: ogni 2 minuti. Oltre ai 5 sync giornalieri "full" a orari fissi, esegue un sync
--- "live" delle prenotazioni nella fascia 07:00-23:00 (Europe/Rome) per portare i cambi
--- Matchpoint in app entro ~2 minuti. Il sync live riusa matchpoint-bookings-sync con la
--- finestra piena di 30 giorni (reconciliation corretta) + guard anti-accavallamento.
+-- Cadenza: ogni 2 minuti. Job FISSI giornalieri: Clienti (6x), Storico 05:00, Backup 05:45.
+-- Le PRENOTAZIONI FUTURE hanno UNA sola sorgente: il sync "live" (else), ogni 2 minuti,
+-- attivo SEMPRE tranne la pausa notturna 01:00-06:00 (Europe/Rome) → porta i cambi Matchpoint
+-- in app entro ~2 minuti. Riusa matchpoint-bookings-sync con la finestra piena di 30 giorni
+-- (reconciliation corretta) + guard anti-accavallamento. (2026-06-25: rimossi i job fissi
+-- bookings 05:30/10:30/14:30/17:30/21:30, ridondanti col live; finestra live 07-23 → 06-01.)
 --
 -- I secret vault PROD (pmo_data_routine_project_url / _publishable_key / _secret) sono GIA'
 -- configurati su PROD: questo file NON li ricrea, per non sovrascriverli.
@@ -58,8 +60,9 @@ declare
   v_last_live_dispatch timestamptz;
   v_last_import_done timestamptz;
 begin
-  -- NB: branche giornaliere = stato REALE di PROD letto via pg_get_functiondef
-  -- (clienti 6x/giorno + bookings 5x + storico + backup). NON ridurle.
+  -- NB: branche giornaliere FISSE = clienti 6x/giorno + storico 05:00 + backup 05:45.
+  -- I bookings NON hanno più job fissi: l'unica sorgente prenotazioni future è il sync
+  -- "live" (else, ogni 2 min, attivo 06:00-01:00). NON reintrodurre i fissi bookings.
   case v_local_time
     when '04:30' then
       v_routine_key := 'clients_0430';
@@ -69,11 +72,9 @@ begin
       v_routine_key := 'history';
       v_routine_label := 'Storico Matchpoint';
       v_function_slug := 'matchpoint-history-sync';
-    when '05:30' then
-      v_routine_key := 'bookings_morning';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
-    when '05:45' then
+    when '06:00' then
+      -- NB: 06:00 (minuto PARI) → scatta col cron */2. La vecchia 05:45 aveva minuto
+      -- DISPARI e non veniva MAI eseguita (il cron gira solo a minuti pari).
       v_routine_key := 'cloud_backup';
       v_routine_label := 'Backup cloud automatico';
       v_function_slug := 'pmo-cloud-backup-auto';
@@ -81,44 +82,30 @@ begin
       v_routine_key := 'clients_0730';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
-    when '10:30' then
-      v_routine_key := 'bookings_1030';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
     when '12:30' then
       v_routine_key := 'clients_1230';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
-    when '14:30' then
-      v_routine_key := 'bookings_1430';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
     when '16:30' then
       v_routine_key := 'clients_1630';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
-    when '17:30' then
-      v_routine_key := 'bookings_1730';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
     when '19:30' then
       v_routine_key := 'clients_1930';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
-    when '21:30' then
-      v_routine_key := 'bookings_2130';
-      v_routine_label := 'Prenotazioni future Matchpoint';
-      v_function_slug := 'matchpoint-bookings-sync';
     when '23:30' then
       v_routine_key := 'clients_2330';
       v_routine_label := 'Clienti Matchpoint';
       v_function_slug := 'matchpoint-clients-sync';
     else
-      -- Sync "live" prenotazioni: ogni 2 min nella fascia di apertura del circolo
-      -- (07:00-23:00 Europe/Rome). Riusa matchpoint-bookings-sync con la finestra piena
-      -- di 30 giorni (reconciliation corretta). I 5 full giornalieri restano come ancora
-      -- e, cadendo su orari esatti gestiti dai when sopra, non collidono mai col live.
-      if v_local_time >= '07:00' and v_local_time <= '23:00' then
+      -- Sync "live" prenotazioni: UNICA sorgente delle prenotazioni future, ogni 2 min,
+      -- attivo SEMPRE tranne la pausa notturna 01:00-06:00 (Europe/Rome). Riusa
+      -- matchpoint-bookings-sync con la finestra piena di 30 giorni (reconciliation corretta).
+      -- I vecchi job FISSI bookings (05:30/10:30/14:30/17:30/21:30) sono stati RIMOSSI:
+      -- erano la STESSA importazione del live e quindi ridondanti. Clienti/Storico/Backup
+      -- restano nei when sopra (anche dentro 01-06: non sono prenotazioni future).
+      if not (v_local_time >= '01:00' and v_local_time < '06:00') then
         -- Guard anti-accavallamento: salta se l'ultimo dispatch live e' partito da poco
         -- (<150s) e non risulta ancora un import completato dopo di esso (run in volo).
         -- Il completamento e' segnalato dal record matchpoint_bookings_auto_import_last,
