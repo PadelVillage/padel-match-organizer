@@ -4330,32 +4330,41 @@ async function updateClientWithBrowser(options = {}) {
         .waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: ms })
         .then(() => true).catch(() => false);
       const openLivelloTab = async () => {
-        // La Ficha aperta direttamente (fuori dalla shell default.aspx) non sempre attiva
-        // la tab via click. Provo PIU' metodi e registro quale funziona + gli ancore tab.
+        // La sezione livelli si apre cliccando la VOCE DI MENU "Livelli" della Ficha (sidebar),
+        // non un sotto-tab _A2 (che esiste solo DOPO essere entrati nella sezione). Cattura gli
+        // anchor candidati per diagnosi, poi prova: per nome link -> per href Nivel/Deporte -> _A2.
         diagnostic.tabAnchors = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('a[id*="FormViewFicha_A"], a[title="Livello"], a[title="Livelli"]'))
-            .map((a) => ({ id: a.id, title: a.title || '', href: (a.getAttribute('href') || '').slice(0, 180) }))
+          Array.from(document.querySelectorAll('a')).map((a) => ({
+            id: a.id || '',
+            txt: (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30),
+            title: a.title || '',
+            href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 140),
+          })).filter((x) => /livell|nivel|deporte/i.test(`${x.txt} ${x.title} ${x.href} ${x.id}`)).slice(0, 25)
         ).catch(() => null);
-        const tabSel = '#CC_Datos_FormViewFicha_A2, a[title="Livello"], a[title="Livelli"]';
-        // metodo 1: click reale Playwright
+        // metodo 1: link (role) con nome "Livelli"/"Livello"
+        for (const name of ['Livelli', 'Livello']) {
+          try {
+            const l = page.getByRole('link', { name, exact: true });
+            if (await l.count().catch(() => 0)) await l.first().click({ timeout: 6000 });
+          } catch (_) {}
+          await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+          if (await gridAppeared(6000)) { diagnostic.tabMethod = `role:${name}`; await page.waitForTimeout(400); return; }
+        }
+        // metodo 2: anchor il cui href/onclick punta alla sezione livelli (Nivel/Deporte)
         try {
-          const t = page.locator(tabSel).first();
-          if (await t.count().catch(() => 0)) await t.click({ timeout: 6000 });
+          const byHref = page.locator('a[href*="Nivel" i], a[href*="Deporte" i], a[onclick*="Nivel" i], a[onclick*="Deporte" i]').first();
+          if (await byHref.count().catch(() => 0)) await byHref.click({ timeout: 6000 });
         } catch (_) {}
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'click'; await page.waitForTimeout(400); return; }
-        // metodo 2: esegui l'href javascript: reale del tab (WebForm_DoPostBackWithOptions)
-        await page.evaluate((sel) => {
-          const a = document.querySelector(sel);
-          const h = a && a.getAttribute('href');
-          if (h && h.indexOf('javascript:') === 0) { try { (0, eval)(h.slice(11)); } catch (_) {} }
-        }, tabSel).catch(() => {});
+        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'href_nivel'; await page.waitForTimeout(400); return; }
+        // metodo 3: sotto-tab _A2 / __doPostBack (se ormai siamo nella sezione)
+        try {
+          const t = page.locator('#CC_Datos_FormViewFicha_A2, a[title="Livello"]').first();
+          if (await t.count().catch(() => 0)) await t.click({ timeout: 5000 });
+          else await livelloTabPostback();
+        } catch (_) { await livelloTabPostback(); }
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'href_eval'; await page.waitForTimeout(400); return; }
-        // metodo 3: __doPostBack diretto
-        await livelloTabPostback();
-        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        diagnostic.tabMethod = (await gridAppeared(6000)) ? 'dopostback' : 'none';
+        diagnostic.tabMethod = (await gridAppeared(6000)) ? 'tab_A2' : 'none';
         await page.waitForTimeout(400);
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
