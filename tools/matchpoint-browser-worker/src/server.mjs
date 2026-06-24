@@ -4321,15 +4321,30 @@ async function updateClientWithBrowser(options = {}) {
       // Apre la tab "Livello" della Ficha (postback ASP.NET). Il contenuto arriva spesso
       // via postback AJAX (UpdatePanel): domcontentloaded non basta -> attendo che la
       // griglia (o l'icona Editar) COMPAIA davvero, non un timeout fisso.
-      const openLivelloTab = async () => {
+      const livelloTabPostback = async () => {
         await page.evaluate(() => {
-          const a = document.getElementById('CC_Datos_FormViewFicha_A2');
-          if (a && typeof a.click === 'function') { a.click(); return; }
           if (typeof window.__doPostBack === 'function') window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$A2', '');
         }).catch(() => {});
+      };
+      const gridAppeared = async (ms) => page
+        .waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: ms })
+        .then(() => true).catch(() => false);
+      const openLivelloTab = async () => {
+        // Un CLICK REALE Playwright sul tab e' molto piu' affidabile di el.click() per i
+        // postback ASP.NET (el.click() in-page non attivava la scheda -> griglia mai caricata).
+        const tab = page.locator('#CC_Datos_FormViewFicha_A2, [id$="_A2"]').first();
+        try {
+          if (await tab.count().catch(() => 0)) await tab.click({ timeout: 8000 });
+          else await livelloTabPostback();
+        } catch (_) { await livelloTabPostback(); }
         await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-        await page.waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: 12000 }).catch(() => {});
-        await page.waitForTimeout(600);
+        // Se la griglia non e' comparsa, ritenta col postback diretto.
+        if (!(await gridAppeared(8000))) {
+          await livelloTabPostback();
+          await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+          await gridAppeared(8000);
+        }
+        await page.waitForTimeout(500);
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
