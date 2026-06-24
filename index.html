@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.940';
+    const APP_VERSION = '5.941';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37238,56 +37238,9 @@ Per confermare scrivi ELIMINA.`);
     };
 
     if (!hasPlayers) {
+      // MANUTENZIONE — campo Descrizione + Osservazioni gestiti dall'editor (vedi
+      // staffCalRenderPlayersEditor). La lettura autorevole dei due campi parte da lì.
       buildState([], _localNote);
-      // MANUTENZIONE (e altri slot senza giocatori): lettura AUTOREVOLE della nota (Osservazioni)
-      // da Matchpoint in sottofondo, così il campo riflette il valore REALE su MP e il salvataggio
-      // non rischia di sovrascrivere una nota non vista. Aggiorna il campo solo se non l'hai toccato.
-      if (String(tipoR).includes('manuten')) {
-        (function () {
-          const _stOpen = staffCalPlayersState;
-          const _msg = svcAddMessage('system', '⏳ Leggo la nota da Matchpoint… (puoi già scrivere)');
-          const _setNote = function (html) {
-            const last = _msg && _msg.querySelector(':scope > div:last-child');
-            if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">' + html + '</span>';
-          };
-          (async function () {
-            try {
-              const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-              const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere la nota della manutenzione');
-              const _ctrl = new AbortController();
-              const _to = setTimeout(function () { _ctrl.abort(); }, 60000);
-              const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-                body: JSON.stringify(Object.assign({ campo: campoNum, data: isoDate, ora: ora, read: true }, (function () { try { var _ir = _staffCalLookupIdReserva(isoDate, campoNum, ora); return _ir ? { idReserva: _ir } : {}; } catch (e) { return {}; } })())),
-                signal: _ctrl.signal,
-              });
-              const respText = await response.text();
-              let data = null;
-              try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
-              clearTimeout(_to);
-              const ok = response.ok && !(data && data.ok === false);
-              const st = staffCalPlayersState;
-              const stillOpen = st && st === _stOpen && !st.busy;
-              if (stillOpen && ok && data && data.worker && data.worker.idReserva) {
-                st.idReserva = String(data.worker.idReserva);
-                try { _staffCalPersistIdReserva(isoDate, campoNum, ora, st.idReserva); } catch (e) {}
-              }
-              const workerNote = (ok && data && data.worker && typeof data.worker.note === 'string') ? data.worker.note : null;
-              if (stillOpen && workerNote != null) {
-                const noteUntouched = String(st.note || '') === String(st.origNote || '');
-                st.origNote = workerNote;
-                if (noteUntouched && String(st.note || '') !== String(workerNote)) { st.note = workerNote; staffCalRenderPlayersEditor(); }
-                _setNote('Nota allineata a Matchpoint.');
-              } else {
-                _setNote(ok ? 'Nessuna nota su Matchpoint: uso quella salvata in locale.' : 'Lettura nota non riuscita: uso quella salvata in locale.');
-              }
-            } catch (err) {
-              _setNote((err && err.name === 'AbortError') ? 'Matchpoint lento: uso la nota salvata in locale.' : 'Uso la nota salvata in locale.');
-            }
-          })();
-        })();
-      }
       return;
     }
 
