@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.916';
+    const APP_VERSION = '5.917';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13886,9 +13886,19 @@ Grazie.`
       showAlert('✅ Scheda salvata', 'success');
       // Diario autoapprendimento (Fase 1): azione manuale anagrafica → stesso diario della chat.
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('anagrafica', 'modifica', 'confirmed', { via: 'scheda socio', name: fullName }); } catch (e) {}
-      // Push verso Matchpoint in background: la funzione gestisce da sé i toast di esito
-      // (skip/errore), posticipati per non sovrascrivere "Scheda salvata".
-      Promise.resolve(pmoPushMemberUpdateToMatchpoint(giocatori[idx], { prev: { surname: currentEditable.surname, phone: currentEditable.phone, email: currentEditable.email } })).catch(e => console.warn('push update Matchpoint:', e));
+      // Push verso Matchpoint in background, raccontato nella chat di sinistra (come le
+      // prenotazioni): "modifica → in gestione su Matchpoint → esito". Calcolo quali campi
+      // SINCRONIZZATI su MP sono cambiati e se sono cambiati anche dati solo-app.
+      const _mpFieldLabels = { firstName: 'nome', surname: 'cognome', phone: 'telefono', email: 'email', gender: 'sesso', level: 'livello' };
+      const _changedMp = [];
+      for (const _k in _mpFieldLabels) {
+        const _a = currentEditable[_k] == null ? '' : String(currentEditable[_k]);
+        const _b = nextEditable[_k] == null ? '' : String(nextEditable[_k]);
+        if (_a !== _b) _changedMp.push(_mpFieldLabels[_k]);
+      }
+      const _appOnlySig = (o) => JSON.stringify([o.guestJolly, o.prefDays, o.prefHours, o.availabilityProfile, o.availabilityTime, o.preferredDays, o.desiredFrequency, o.notice, o.preferredMatchType]);
+      const _hasOther = _appOnlySig(currentEditable) !== _appOnlySig(nextEditable);
+      pmoMemberEditChatFlow(giocatori[idx], { surname: currentEditable.surname, phone: currentEditable.phone, email: currentEditable.email }, _changedMp, _hasOther);
     }
     function toggleMemberActive(memberId) {
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
@@ -25017,6 +25027,63 @@ Per confermare scrivi ELIMINA.`);
 	        return { status: 'error', reason: (e && e.message) || String(e) };
 	      }
 	    }
+    // Riporta nella chat di sinistra il flusso "modifica scheda → in gestione su
+    // Matchpoint → esito", come per le prenotazioni. changedMp = etichette dei campi
+    // sincronizzati su MP cambiati; hasOther = sono cambiati anche dati solo-app
+    // (disponibilità/preferenze). Se la chat NON è attiva ricade sui toast storici.
+    async function pmoMemberEditChatFlow(member, prev, changedMp, hasOther) {
+      const chatReady = !!document.getElementById('svcChatMessages')
+        && !!(window.PMOAi && PMOAi.isEnabled && PMOAi.isEnabled())
+        && typeof svcAddMessage === 'function';
+      if (!chatReady) {
+        // Nessuna chat visibile: comportamento storico (toast gestiti dal push).
+        return Promise.resolve(pmoPushMemberUpdateToMatchpoint(member, { prev: prev }))
+          .catch(function (e) { console.warn('push update Matchpoint:', e); });
+      }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const fullName = (typeof playerFullName === 'function' ? playerFullName(member) : (member && member.name)) || 'Socio';
+      try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {}
+      const willSyncMp = Array.isArray(changedMp) && changedMp.length > 0;
+      const allList = (willSyncMp ? changedMp.slice() : []).concat(hasOther ? ['preferenze/disponibilità'] : []);
+      const changesTxt = allList.length ? allList.join(', ') : 'dati scheda';
+      const syncNote = willSyncMp
+        ? '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ Sto aggiornando su Matchpoint…</span>'
+        : '';
+      const _msgEl = svcAddMessage('system',
+        '📝 <strong>Scheda aggiornata</strong>: ' + esc(fullName) + '<br>✏️ ' + esc(changesTxt) + syncNote, 'ok');
+      const _setSync = function (html, color) {
+        try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+        try { if (typeof svcMpSyncConfirmed === 'function') svcMpSyncConfirmed(color); } catch (e) {}
+      };
+      if (!willSyncMp) {
+        // Solo dati app: niente da propagare a Matchpoint. Il push parte comunque in
+        // background (riscrive gli stessi contatti) ma non lo annunciamo come sync MP.
+        Promise.resolve(pmoPushMemberUpdateToMatchpoint(member, { prev: prev, notify: false }))
+          .catch(function (e) { console.warn('push update Matchpoint:', e); });
+        return;
+      }
+      let res;
+      try {
+        res = await pmoPushMemberUpdateToMatchpoint(member, { prev: prev, notify: false });
+      } catch (e) {
+        res = { status: 'error', reason: (e && e.message) || String(e) };
+      }
+      const st = res && res.status;
+      if (st === 'ok') {
+        _setSync('✅ Salvato su Matchpoint', '#067647');
+      } else if (st === 'ok_level_failed') {
+        _setSync('⚠️ Salvato, ma il LIVELLO non è passato su Matchpoint', '#b54708');
+        svcAddMessage('system', '⚠️ Gli altri dati sono su Matchpoint; il <strong>livello</strong> no. Riprova dal gestionale se serve.', 'error');
+      } else if (st === 'test_env') {
+        _setSync('💾 Salvato (Matchpoint scollegato in test)', '#067647');
+      } else if (st === 'skipped' || st === 'no_permission' || st === 'guest') {
+        _setSync('💾 Salvato nell\'app', '#475467');
+      } else {
+        const reason = (res && res.reason) ? String(res.reason).slice(0, 140) : 'errore sconosciuto';
+        _setSync('⚠️ NON salvato su Matchpoint', '#d92d20');
+        svcAddMessage('system', '❌ Aggiornamento su Matchpoint non riuscito: ' + esc(reason) + '<br><span style="color:var(--text-muted);font-size:.78rem;">I dati restano salvati nell\'app.</span>', 'error');
+      }
+    }
 	    // Disiscrive (disattiva) il socio su Matchpoint via edge matchpoint-clients-disable
     // → worker /disable-client (bottone "Disiscrivere" sulla Ficha). Ritorna sempre uno
     // stato ({status, reason}) e NON lancia. A differenza di create/update NON ha il
