@@ -2818,6 +2818,12 @@
     .svc-edit-label { font-size:.72rem; color:var(--text-muted); }
     .svc-edit-field { font-size:.82rem; padding:4px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); }
     .svc-edit-field:disabled { opacity:.5; cursor:not-allowed; }
+    /* Campo Note scheda modifica: testo ben leggibile, area chiara e ampia (era troppo piccolo/sbiadito) */
+    .svc-note-edit { width:100%; box-sizing:border-box; resize:vertical; font-family:inherit; font-size:14px; line-height:1.5; padding:10px 12px; min-height:64px; border:1.5px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; transition:border-color .12s, box-shadow .12s; }
+    .svc-note-edit::placeholder { color:#94a3b8; font-style:italic; }
+    .svc-note-edit:focus { outline:none; border-color:var(--primary,#2563eb); box-shadow:0 0 0 3px rgba(37,99,235,.14); }
+    .svc-note-edit:disabled { opacity:.55; cursor:not-allowed; background:#f1f5f9; }
+    .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -7667,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.937';
+    const APP_VERSION = '5.942';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37149,11 +37155,16 @@ Per confermare scrivi ELIMINA.`);
           fromStorico = !!src;
         }
         const _idr = (src && src.idReserva) ? String(src.idReserva) : null;
-        if (!_idr && !fromStorico) {
+        // MANUTENZIONE: i blocchi manutenzione sono scrapati dal tabellone per colore (non dall'export
+        // prenotazioni) → arrivano SEMPRE senza idReserva, e "Aggiorna prenotazioni" non potrà mai
+        // dargliene uno (l'export li esclude). Come per lo storico, l'idReserva non arriverà mai ma il
+        // worker lo ricava dalla terna campo+data+ora → si procede (la guardia sotto non si applica).
+        const _isManut = String((src && src.tipo) || tipoReale || '').toLowerCase().includes('manuten');
+        if (!_idr && !fromStorico && !_isManut) {
           // GUARDIA: per le occupazioni LIVE non ancora sincronizzate senza idReserva non si
           // promuove (creerebbe uno shadow permanente; l'idReserva arriva con "Aggiorna
-          // prenotazioni"). Per lo storico NON vale: l'idReserva non arriverà mai, ma il worker
-          // lo ricava dalla terna → si procede.
+          // prenotazioni"). Per lo storico/manutenzione NON vale: l'idReserva non arriverà mai, ma il
+          // worker lo ricava dalla terna → si procede.
           if (typeof svcOpenChat === 'function') svcOpenChat();
           svcAddMessage('system', '🔒 Questa prenotazione Matchpoint non è ancora sincronizzata (manca l\'idReserva). Fai prima <strong>Aggiorna prenotazioni</strong>, poi potrai modificarla.', 'error');
           if (typeof staffCalViewMatchpointPlayers === 'function') staffCalViewMatchpointPlayers(iso, campo, ora);
@@ -37161,11 +37172,19 @@ Per confermare scrivi ELIMINA.`);
         }
         const _dur = _staffCalDurMin(src && src.durata);
         const _gioc = (src && Array.isArray(src.giocatori)) ? src.giocatori : [];
-        const _tipo = String((src && src.tipo) || tipoReale || 'partita').toLowerCase().includes('lez') ? 'lezione' : 'partita';
+        const _tipoLow = String((src && src.tipo) || tipoReale || 'partita').toLowerCase();
+        // Preserva la manutenzione: NON collassarla in 'partita' (altrimenti la scheda crederebbe
+        // hasPlayers e il worker mirerebbe alla ficha sbagliata).
+        const _tipo = _tipoLow.includes('lez') ? 'lezione' : (_tipoLow.includes('manuten') ? 'manutenzione' : 'partita');
+        // Nota esistente: la portiamo nel record promosso così la scheda pre-popola il campo Note e
+        // NON la sovrascrive a vuoto. Per la manutenzione la nota è anche il "nome" mostrato sulla card.
+        // Per la manutenzione la NOTA (Osservazioni) non è nei dati locali — l'occupancy porta solo la
+        // descrizione (→ nome/card). Parte vuota e la riempie la lettura autorevole. Altri tipi: nota locale.
+        const _noteSrc = (_tipo === 'manutenzione') ? '' : String((src && (src.note || src.descrizione || src.nota)) || '');
         const entry = {
           id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now()),
           data: wIso, ora: wOra, oraFine: _staffCalEndTime(wOra, _dur), campo: cn,
-          nome: (src && src.giocatore) || nome || '', durata: _dur, tipo: _tipo, istruttore: '',
+          nome: (src && src.giocatore) || nome || '', durata: _dur, tipo: _tipo, istruttore: '', note: _noteSrc,
           giocatori: _gioc, idReserva: _idr, promoted: true, storico: fromStorico, createdAt: new Date().toISOString(),
         };
         list.push(entry);
@@ -37173,7 +37192,7 @@ Per confermare scrivi ELIMINA.`);
         // Push cross-device: gli altri dispositivi vedono subito la prenotazione come staff_booking.
         try {
           if (typeof pmoSyncCloudRecordsNow === 'function') {
-            pmoSyncCloudRecordsNow([{ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: '', giocatori: _gioc, id_reserva: _idr, promoted: true }, deleted: false }], 'promuovere la prenotazione Matchpoint sul cloud').catch(function (e) { console.warn('promote MP:', e); });
+            pmoSyncCloudRecordsNow([{ record_type: 'staff_booking', local_key: entry.id, payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: '', note: _noteSrc, giocatori: _gioc, id_reserva: _idr, promoted: true }, deleted: false }], 'promuovere la prenotazione Matchpoint sul cloud').catch(function (e) { console.warn('promote MP:', e); });
           }
         } catch (e) { console.warn('promote MP push:', e); }
         if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
@@ -37224,6 +37243,11 @@ Per confermare scrivi ELIMINA.`);
         // note = valore corrente del campo; origNote = baseline per il confronto (da locale, poi
         // sovrascritto dalla lettura autorevole Matchpoint se l'utente non ha ancora toccato la nota).
         msg: null, box: null, busy: false, nome: nome, note: String(note0 || ''), origNote: String(note0 || ''),
+        // MANUTENZIONE — due campi distinti su Matchpoint: descrizione (TextBox2, il testo della card)
+        // e osservazioni (= note). La descrizione parte dal nome card; la lettura autorevole le allinea.
+        isManut: String(tipoR).includes('manuten'),
+        descrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
+        origDescrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
         idReserva: _initIdReserva || null,
       };
       const editor = svcAddMessage('system', '', 'flow');
@@ -37235,7 +37259,65 @@ Per confermare scrivi ELIMINA.`);
       staffCalRenderPlayersEditor();
     };
 
-    if (!hasPlayers) { buildState([], _localNote); return; }
+    if (!hasPlayers) {
+      buildState([], _localNote);
+      // MANUTENZIONE — lettura AUTOREVOLE da Matchpoint dei DUE campi (descrizione = TextBox2,
+      // osservazioni = note) in sottofondo. Allinea i baseline e pre-popola i campi non toccati,
+      // così il salvataggio non sovrascrive valori non visti.
+      if (String(tipoR).includes('manuten')) {
+        (function () {
+          const _stOpen = staffCalPlayersState;
+          const _msg = svcAddMessage('system', '⏳ Leggo descrizione e note da Matchpoint… (puoi già scrivere)');
+          const _setNote = function (html) {
+            const last = _msg && _msg.querySelector(':scope > div:last-child');
+            if (last) last.innerHTML = '<span style="color:var(--text-muted);font-size:.78rem;">' + html + '</span>';
+          };
+          (async function () {
+            try {
+              const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+              const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere descrizione e note della manutenzione');
+              const _ctrl = new AbortController();
+              const _to = setTimeout(function () { _ctrl.abort(); }, 60000);
+              const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+                body: JSON.stringify(Object.assign({ campo: campoNum, data: isoDate, ora: ora, read: true }, (function () { try { var _ir = _staffCalLookupIdReserva(isoDate, campoNum, ora); return _ir ? { idReserva: _ir } : {}; } catch (e) { return {}; } })())),
+                signal: _ctrl.signal,
+              });
+              const respText = await response.text();
+              let data = null;
+              try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+              clearTimeout(_to);
+              const ok = response.ok && !(data && data.ok === false);
+              const st = staffCalPlayersState;
+              const stillOpen = st && st === _stOpen && !st.busy;
+              if (stillOpen && ok && data && data.worker && data.worker.idReserva) {
+                st.idReserva = String(data.worker.idReserva);
+                try { _staffCalPersistIdReserva(isoDate, campoNum, ora, st.idReserva); } catch (e) {}
+              }
+              const wDescr = (ok && data && data.worker && typeof data.worker.descrizione === 'string') ? data.worker.descrizione : null;
+              const wNote = (ok && data && data.worker && typeof data.worker.note === 'string') ? data.worker.note : null;
+              let _rendered = false;
+              if (stillOpen && wDescr != null) {
+                const untouched = String(st.descrizione || '') === String(st.origDescrizione || '');
+                st.origDescrizione = wDescr;
+                if (untouched && String(st.descrizione || '') !== wDescr) { st.descrizione = wDescr; _rendered = true; }
+              }
+              if (stillOpen && wNote != null) {
+                const untouched = String(st.note || '') === String(st.origNote || '');
+                st.origNote = wNote;
+                if (untouched && String(st.note || '') !== wNote) { st.note = wNote; _rendered = true; }
+              }
+              if (_rendered) staffCalRenderPlayersEditor();
+              _setNote(ok ? 'Descrizione e note allineate a Matchpoint.' : 'Lettura non riuscita: uso i dati salvati in locale.');
+            } catch (err) {
+              _setNote((err && err.name === 'AbortError') ? 'Matchpoint lento: uso i dati salvati in locale.' : 'Uso i dati salvati in locale.');
+            }
+          })();
+        })();
+      }
+      return;
+    }
 
     // Apri SUBITO la scheda con i giocatori già noti in locale (array `giocatori` della prenotazione
     // staff): modifica e annullo restano usabili anche se il worker Matchpoint è lento o non risponde.
@@ -37464,18 +37546,37 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
-    // Campo Note — scheda modifica (Tappa 36)
+    // MANUTENZIONE — campo DESCRIZIONE (TextBox2 di Matchpoint = il testo visibile sul tabellone).
+    // Sta SOPRA le osservazioni; modificandolo cambi ciò che si legge sulla card e su Matchpoint.
+    if (st.isManut) {
+      const editDescrWrap = document.createElement('div');
+      editDescrWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
+      const editDescrLbl = document.createElement('div');
+      editDescrLbl.className = 'svc-note-edit-lbl';
+      editDescrLbl.style.marginBottom = '5px';
+      editDescrLbl.textContent = '🔧 Descrizione (testo del blocco · es. "STAGE SANTIAGO")';
+      const editDescrTA = document.createElement('textarea');
+      editDescrTA.rows = 2; editDescrTA.maxLength = 300;
+      editDescrTA.placeholder = 'Descrizione della manutenzione…';
+      editDescrTA.className = 'svc-note-edit';
+      editDescrTA.value = st.descrizione || '';
+      editDescrTA.addEventListener('input', function () { st.descrizione = editDescrTA.value; });
+      editDescrWrap.appendChild(editDescrLbl);
+      editDescrWrap.appendChild(editDescrTA);
+      box.appendChild(editDescrWrap);
+    }
+
+    // Campo Note/Osservazioni — scheda modifica (Tappa 36)
     const editNoteWrap = document.createElement('div');
     editNoteWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
     const editNoteLbl = document.createElement('div');
-    editNoteLbl.className = 'svc-edit-label';
-    editNoteLbl.style.marginBottom = '4px';
-    editNoteLbl.textContent = 'Note (facoltativo · max 300 caratteri)';
+    editNoteLbl.className = 'svc-note-edit-lbl';
+    editNoteLbl.style.marginBottom = '5px';
+    editNoteLbl.textContent = st.isManut ? '📝 Osservazioni (facoltativo · max 300 caratteri)' : '📝 Note (facoltativo · max 300 caratteri)';
     const editNoteTA = document.createElement('textarea');
-    editNoteTA.rows = 2; editNoteTA.maxLength = 300;
-    editNoteTA.placeholder = 'Osservazioni per Matchpoint...';
-    editNoteTA.className = 'svc-edit-field';
-    editNoteTA.style.cssText = 'width:100%;box-sizing:border-box;resize:none;font-family:inherit;';
+    editNoteTA.rows = 3; editNoteTA.maxLength = 300;
+    editNoteTA.placeholder = st.isManut ? 'Osservazioni aggiuntive (campo separato dalla descrizione)…' : 'Scrivi qui le osservazioni… (verranno salvate su Matchpoint)';
+    editNoteTA.className = 'svc-note-edit';
     editNoteTA.value = st.note || '';
     editNoteTA.addEventListener('input', function () { st.note = editNoteTA.value.trim(); });
     editNoteWrap.appendChild(editNoteLbl);
@@ -37675,8 +37776,10 @@ Per confermare scrivi ELIMINA.`);
     const playersChanged = addArr.length || remove.length;
     // Nota cambiata vs il valore caricato (origNote): include l'azzeramento ('' diverso da nota esistente).
     const noteChanged = String((st && st.note) || '') !== String((st && st.origNote) || '');
+    // MANUTENZIONE — descrizione (TextBox2) cambiata vs il valore caricato.
+    const descrChanged = !!(st && st.isManut) && String((st && st.descrizione) || '') !== String((st && st.origDescrizione) || '');
 
-    if (!moveChanged && !playersChanged && !noteChanged) {
+    if (!moveChanged && !playersChanged && !noteChanged && !descrChanged) {
       svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
       return;
     }
@@ -37689,7 +37792,8 @@ Per confermare scrivi ELIMINA.`);
     const parts = [];
     if (moveChanged) parts.push('Sposta → Campo ' + st.mCampo + ' · ' + st.mIso.split('-').reverse().join('/') + ' · ' + st.mOraIni + '–' + st.mOraFin);
     if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
-    if (noteChanged) parts.push((st.note ? 'Nota aggiornata' : 'Nota rimossa'));
+    if (noteChanged) parts.push((st.note ? (st.isManut ? 'Osservazioni aggiornate' : 'Nota aggiornata') : (st.isManut ? 'Osservazioni rimosse' : 'Nota rimossa')));
+    if (descrChanged) parts.push('Descrizione aggiornata');
     // skipConfirm = chiamata dall'assistente ("salva" a voce): la conferma è già stata data a voce,
     // niente popup nativo (che spezzerebbe il flusso vocale). Il pulsante Salva manuale lo mantiene.
     if (!opts.skipConfirm && !confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
@@ -37700,6 +37804,7 @@ Per confermare scrivi ELIMINA.`);
       mIso: st.mIso, mCampo: st.mCampo, mOraIni: st.mOraIni, mOraFin: st.mOraFin,
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
       note: (st.note || ''), origNote: (st.origNote || ''), noteChanged: noteChanged,
+      isManut: !!st.isManut, descrizione: (st.descrizione || ''), origDescrizione: (st.origDescrizione || ''), descrChanged: descrChanged,
       idReserva: (st.idReserva || null),
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
@@ -37711,6 +37816,7 @@ Per confermare scrivi ELIMINA.`);
     if (playersChanged) { payload.players = {}; if (addArr.length) payload.players.add = addArr; if (remove.length) payload.players.remove = remove; }
 
     if (noteChanged) payload.note = st.note || '';
+    if (descrChanged) payload.descrizione = st.descrizione || '';
     const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
     _staffCalPendingEdits.add(pendKey);
 
@@ -37720,7 +37826,7 @@ Per confermare scrivi ELIMINA.`);
     // delle modifiche manuali della scheda).
     const _aiExecRef = (opts.skipConfirm && window.PMOAi && PMOAi.execBegin) ? PMOAi.execBegin() : null;
     const _aiExecVia = opts.skipConfirm ? 'assistente' : 'calendario';
-    const _aiExecAzione = playersChanged ? 'giocatori' : (moveChanged ? 'sposta' : (noteChanged ? 'nota' : 'durata'));
+    const _aiExecAzione = playersChanged ? 'giocatori' : (moveChanged ? 'sposta' : (noteChanged ? 'nota' : (descrChanged ? 'descrizione' : 'durata')));
     function _aiExecSettle(ok, reason) {
       try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
     }
@@ -37737,6 +37843,7 @@ Per confermare scrivi ELIMINA.`);
     if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
     if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
     if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
+    if (op.descrChanged) { try { staffCalApplyLocalDescrizione(_curIso, _curCampo, _curOra, op.descrizione); } catch (e) { console.warn('staff edit descrizione locale:', e); } }
     // ⭐ CROSS-DEVICE OTTIMISTICO: spingi SUBITO lo stato al cloud, così un SECONDO device vede la
     // modifica all'istante (come create/cancel), senza aspettare la conferma Matchpoint. Lo SLOT-move
     // (campo/giorno/ora-inizio) va come reassign (annulla origine + crea destinazione); gli edit
@@ -37757,9 +37864,10 @@ Per confermare scrivi ELIMINA.`);
     const _playersTxt = (op.hasPlayers && playersChanged)
       ? ('<br>👥 ' + (addArr.length ? ('+' + addArr.map(function (a) { return a.nome; }).join(', ')) : '') + (remove.length ? ((addArr.length ? ' · ' : '') + '-' + remove.join(', ')) : ''))
       : '';
-    const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ('Nota: ' + op.note) : 'Nota rimossa')) : '';
+    const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ((op.isManut ? 'Osservazioni: ' : 'Nota: ') + op.note) : (op.isManut ? 'Osservazioni rimosse' : 'Nota rimossa'))) : '';
+    const _descrTxt = op.descrChanged ? ('<br>🔧 Descrizione: ' + (op.descrizione || '(vuota)')) : '';
     const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto scrivendo su Matchpoint…</span>';
-    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _noteTxt + _syncNote, 'ok');
+    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _descrTxt + _noteTxt + _syncNote, 'ok');
     const _setEditSyncNote = function (html, color) {
       try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
       svcMpSyncConfirmed(color);
@@ -37894,6 +38002,7 @@ Per confermare scrivi ELIMINA.`);
   function _staffCalEditRevertAll(op, addArr, removeArr, curIso, curCampo, curOra, slotMoved, moveChanged) {
     try { if (op.hasPlayers && ((addArr && addArr.length) || (removeArr && removeArr.length))) _staffCalRevertPlayersLocal(curIso, curCampo, curOra, addArr, removeArr); } catch (e) {}
     try { if (op.noteChanged) staffCalApplyLocalNote(curIso, curCampo, curOra, op.origNote); } catch (e) {}
+    try { if (op.descrChanged) staffCalApplyLocalDescrizione(curIso, curCampo, curOra, op.origDescrizione); } catch (e) {}
     try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
     try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
     try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
@@ -37971,6 +38080,26 @@ Per confermare scrivi ELIMINA.`);
           Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
           String(b.ora).trim() === wantOra) {
         b.note = String(note || '');
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
+
+  // MANUTENZIONE — applica in locale la DESCRIZIONE (= il "nome" mostrato sulla card del calendario,
+  // che mappa il TextBox2 di Matchpoint). Così la card si aggiorna subito (ottimistico) e il revert
+  // su rifiuto ripristina il testo precedente.
+  function staffCalApplyLocalDescrizione(isoDate, campo, ora, descrizione) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function(b) {
+      if (String(b.data).trim() === String(isoDate).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        b.nome = String(descrizione || '');
         changed = true;
       }
     });
@@ -43476,7 +43605,8 @@ Per confermare scrivi ELIMINA.`);
         return _say('📝 Modifica chiusa (senza salvare).');
       }
       const hasChanges = (st.add && st.add.length) || (st.remove && Object.keys(st.remove).length) ||
-        _staffCalEditorMoveChanged(st) || (String(st.note || '') !== String(st.origNote || ''));
+        _staffCalEditorMoveChanged(st) || (String(st.note || '') !== String(st.origNote || '')) ||
+        (st.isManut && String(st.descrizione || '') !== String(st.origDescrizione || ''));
       // "salva/conferma/ok/sì/va bene/procedi/vai/fatto" con modifiche in sospeso → salva.
       if (hasChanges && /^\s*(salv\w*|conferm\w*|confermo|ok(?:ay|ey)?|va\s+bene|vabene|procedi|vai|fatto|s[iì])\s*$/.test(n)) {
         try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml(e.message || String(e))); }
