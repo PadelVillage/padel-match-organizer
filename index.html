@@ -7667,7 +7667,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.937';
+    const APP_VERSION = '5.938';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37149,11 +37149,16 @@ Per confermare scrivi ELIMINA.`);
           fromStorico = !!src;
         }
         const _idr = (src && src.idReserva) ? String(src.idReserva) : null;
-        if (!_idr && !fromStorico) {
+        // MANUTENZIONE: i blocchi manutenzione sono scrapati dal tabellone per colore (non dall'export
+        // prenotazioni) → arrivano SEMPRE senza idReserva, e "Aggiorna prenotazioni" non potrà mai
+        // dargliene uno (l'export li esclude). Come per lo storico, l'idReserva non arriverà mai ma il
+        // worker lo ricava dalla terna campo+data+ora → si procede (la guardia sotto non si applica).
+        const _isManut = String((src && src.tipo) || tipoReale || '').toLowerCase().includes('manuten');
+        if (!_idr && !fromStorico && !_isManut) {
           // GUARDIA: per le occupazioni LIVE non ancora sincronizzate senza idReserva non si
           // promuove (creerebbe uno shadow permanente; l'idReserva arriva con "Aggiorna
-          // prenotazioni"). Per lo storico NON vale: l'idReserva non arriverà mai, ma il worker
-          // lo ricava dalla terna → si procede.
+          // prenotazioni"). Per lo storico/manutenzione NON vale: l'idReserva non arriverà mai, ma il
+          // worker lo ricava dalla terna → si procede.
           if (typeof svcOpenChat === 'function') svcOpenChat();
           svcAddMessage('system', '🔒 Questa prenotazione Matchpoint non è ancora sincronizzata (manca l\'idReserva). Fai prima <strong>Aggiorna prenotazioni</strong>, poi potrai modificarla.', 'error');
           if (typeof staffCalViewMatchpointPlayers === 'function') staffCalViewMatchpointPlayers(iso, campo, ora);
@@ -37161,7 +37166,10 @@ Per confermare scrivi ELIMINA.`);
         }
         const _dur = _staffCalDurMin(src && src.durata);
         const _gioc = (src && Array.isArray(src.giocatori)) ? src.giocatori : [];
-        const _tipo = String((src && src.tipo) || tipoReale || 'partita').toLowerCase().includes('lez') ? 'lezione' : 'partita';
+        const _tipoLow = String((src && src.tipo) || tipoReale || 'partita').toLowerCase();
+        // Preserva la manutenzione: NON collassarla in 'partita' (altrimenti la scheda crederebbe
+        // hasPlayers e il worker mirerebbe alla ficha sbagliata).
+        const _tipo = _tipoLow.includes('lez') ? 'lezione' : (_tipoLow.includes('manuten') ? 'manutenzione' : 'partita');
         const entry = {
           id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now()),
           data: wIso, ora: wOra, oraFine: _staffCalEndTime(wOra, _dur), campo: cn,
