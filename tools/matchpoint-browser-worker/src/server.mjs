@@ -6387,9 +6387,13 @@ async function editBookingWithBrowser(input = {}) {
   // note: stringa (anche vuota, per azzerare). null = campo non fornito → non toccare le Osservazioni.
   const note = (typeof input.note === 'string') ? input.note : null;
   const noteProvided = note !== null;
-  if (!move && !players && !readOnly && !noteProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note fornito.');
+  // descrizione: SOLO manutenzione (TextBox2 = il testo visibile sul tabellone, es. "STAGE SANTIAGO").
+  // stringa (anche vuota) = scrivi; null = non fornito → non toccare la descrizione.
+  const descrizione = (typeof input.descrizione === 'string') ? input.descrizione : null;
+  const descrizioneProvided = descrizione !== null;
+  if (!move && !players && !readOnly && !noteProvided && !descrizioneProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note/descrizione fornito.');
 
-  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided } };
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided, descrizioneProvided } };
   instrumentStepTiming(diagnostic);
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
@@ -6513,8 +6517,18 @@ async function editBookingWithBrowser(input = {}) {
         }
       } catch { /* nota non leggibile → null */ }
       diagnostic.steps.push('read_only_nota:' + (notaLetta == null ? 'null' : 'len' + notaLetta.length));
+      // MANUTENZIONE — leggi anche la DESCRIZIONE (TextBox2): è il testo visibile sul tabellone.
+      // Lettura via evaluate (niente auto-wait del locator: se assente torna null, no timeout lungo).
+      let descrizioneLetta = null;
+      if (fichaUrl.includes('Mantenimiento')) {
+        descrizioneLetta = await page.evaluate(() => {
+          const el = document.querySelector('#CC_Datos_FormViewFicha_TextBox2');
+          return el ? (el.value || '') : null;
+        }).catch(() => null);
+        diagnostic.steps.push('read_only_descrizione:' + (descrizioneLetta == null ? 'null' : 'len' + descrizioneLetta.length));
+      }
       diagnostic.steps.push('done');
-      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, note: notaLetta, diagnostic };
+      return { ok: true, idReserva, readOnly: true, partecipantiFinali: partecipantiLettura, note: notaLetta, descrizione: descrizioneLetta, diagnostic };
     }
 
     let moved = false;
@@ -6603,9 +6617,36 @@ async function editBookingWithBrowser(input = {}) {
       }
     }
 
-    // === GIOCATORI ===
+    // === MANUTENZIONE (descrizione + osservazioni) ===
+    // La manutenzione non ha giocatori: ha la DESCRIZIONE (TextBox2, il testo del tabellone) e le
+    // OSSERVAZIONI (TextBoxObservaciones). Le gestiamo qui, prima del ramo giocatori.
     let addResults = [];
-    if (players) {
+    const isManutFicha = fichaUrl.includes('Mantenimiento');
+    if (isManutFicha && (descrizioneProvided || noteProvided)) {
+      if (descrizioneProvided) {
+        await page.locator('#CC_Datos_FormViewFicha_TextBox2').first().fill(String(descrizione ?? ''), { timeout: 6000 }).catch(() => {});
+        diagnostic.steps.push('manut_descrizione_set');
+      }
+      if (noteProvided) {
+        // Sul form manutenzione il textarea Osservazioni è già visibile (nessuna tab) → fill diretto.
+        await page.locator(OSSERVAZIONI_TEXTAREA).first().fill(String(note ?? ''), { timeout: 6000 }).catch(() => {});
+        diagnostic.steps.push('manut_osservazioni_set');
+      }
+      // Salvataggio TOLLERANTE: la scheda di MODIFICA manutenzione può esporre ButtonActualizar
+      // (update); se non c'è, ripieghiamo su clickFormSave (Salvare/Actualizar/Guardar/Insertar).
+      diagnostic.steps.push('salva_manut');
+      const _actBtn = page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first();
+      if (await _actBtn.isVisible({ timeout: 2500 }).catch(() => false)) {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
+          _actBtn.click({ timeout: 10000 }),
+        ]);
+        diagnostic.submitSelector = '#CC_Datos_FormViewFicha_ButtonActualizar';
+      } else {
+        await clickFormSave(page, page, ['Salvare', 'Actualizar', 'Guardar'], diagnostic);
+      }
+      await page.waitForTimeout(2500);
+    } else if (players) {
       const removeNames = (players.remove || []).map((n) => n.toLowerCase().trim());
       const removeAll = players.removeAll === true;
 
@@ -6804,7 +6845,7 @@ async function editBookingWithBrowser(input = {}) {
     const resolvedPlayersEdit = addResults
       .filter((r) => r.added && r.idPeople)
       .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
-    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
