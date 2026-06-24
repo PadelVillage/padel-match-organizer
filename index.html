@@ -7340,7 +7340,7 @@ body.assessment-public-mode .assessment-public-only-card {
                   <p class="matchpoint-data-copy">Controlla l'ultimo dato valido, l'esito e la prossima esecuzione delle routine dati.</p>
                   <div id="matchpointRoutineScheduleInfo" class="matchpoint-routine-schedule">
                     <strong>Sequenza proposta</strong>
-                    Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud automatico 05:45.
+                    Clienti 04:30, storico 05:00, backup cloud 06:00. Prenotazioni future: aggiornamento continuo ogni 2 minuti, in pausa dall'01:00 alle 06:00.
                   </div>
                 </div>
                 <div class="matchpoint-routine-table-wrap" aria-live="polite">
@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.942';
+    const APP_VERSION = '5.943';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -14378,7 +14378,7 @@ Grazie.`
       if (!box) return;
       box.innerHTML = PMO_IS_TEST_ENV
         ? `<strong>TEST manuale</strong> Scheduler automatico disattivato in TEST. Usa i bottoni Aggiorna ora per collaudi controllati; la routine automatica resta attiva solo in PROD.`
-        : `<strong>Sequenza automatica PROD</strong> Clienti 04:30, storico 05:00, prenotazioni 05:30 e refresh prenotazioni 10:30, 14:30, 17:30, 21:30. Backup cloud automatico 05:45.`;
+        : `<strong>Sequenza automatica PROD</strong> Clienti 04:30, storico 05:00, backup cloud 06:00. Prenotazioni future: aggiornamento continuo ogni 2 minuti, in pausa dall'01:00 alle 06:00.`;
     }
 
     function renderMatchpointRoutinePanel() {
@@ -14417,7 +14417,8 @@ Grazie.`
           anchorId:'anchor-matchpoint-prenotazioni',
           info:getLatestMatchpointImportSummaryByTypes(['prenotazioni future', 'prenotazioni']),
           lastValid:'',
-          nextTimes:['05:30','10:30','14:30','17:30','21:30'],
+          nextTimes:[],
+          nextLabel:'Ogni 2 min · pausa 01:00–06:00',
           manualLabel:'Aggiorna ora'
         },
         {
@@ -14428,7 +14429,7 @@ Grazie.`
           anchorId:'anchor-matchpoint-backup',
           info:getLastCloudBackupInfo(),
           lastValid:'',
-          nextTimes:['05:45'],
+          nextTimes:['06:00'],
           manualLabel:'Salva ora',
           formatter:formatBackupDateTime
         }
@@ -14436,7 +14437,7 @@ Grazie.`
       rows.forEach(row => {
         row.lastValid = formatMatchpointRoutineDate(row.info, row.formatter || formatImportDateTime);
         row.status = getMatchpointRoutineStatus(row);
-        row.next = PMO_IS_TEST_ENV ? 'Manuale in TEST' : formatMatchpointRoutineNextExecution(row.nextTimes);
+        row.next = PMO_IS_TEST_ENV ? 'Manuale in TEST' : (row.nextLabel || formatMatchpointRoutineNextExecution(row.nextTimes));
       });
       tbody.innerHTML = rows.map(row => `
         <tr>
