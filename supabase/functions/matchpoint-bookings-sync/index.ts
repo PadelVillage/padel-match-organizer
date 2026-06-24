@@ -469,13 +469,17 @@ async function enrichBookingsWithTabellone(
   password: string,
   baseUrl: string,
 ): Promise<void> {
-  // Raccoglie le date uniche future presenti nei booking
+  // Finestra PIENA: leggiamo il tabellone per OGNI giorno futuro (oggi..+DEFAULT_FUTURE_DAYS),
+  // non solo i giorni con prenotazioni. Motivo: la MANUTENZIONE vive solo sul tabellone e un
+  // giorno di SOLA manutenzione (senza partite/lezioni nell'export) altrimenti non verrebbe mai
+  // letto → la sua manutenzione non veniva importata (bug "sabato sì / domenica no"). Scrapando
+  // SEMPRE tutti i giorni la riconciliazione resta coerente (niente manutenzione che appare e
+  // sparisce). Costo modesto: ~30 giorni vs i ~21 già scrapati dai soli prenotati.
   const today = todayIsoRome();
-  const dates = [...new Set(
-    bookings
-      .filter((b) => b.data && b.data >= today)
-      .map((b) => b.data),
-  )].sort();
+  const dateSet = new Set<string>();
+  for (let i = 0; i <= DEFAULT_FUTURE_DAYS; i++) dateSet.add(addDaysIso(today, i));
+  for (const b of bookings) { if (b.data && b.data >= today) dateSet.add(b.data); }
+  const dates = [...dateSet].sort();
 
   if (!dates.length) return;
 
