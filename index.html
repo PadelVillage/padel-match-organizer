@@ -7668,7 +7668,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.930';
+    const APP_VERSION = '5.931';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40887,6 +40887,15 @@ Per confermare scrivi ELIMINA.`);
       if (!r.intent || r.intent === '—' || r.ko) return null;
       return r.intent;
     }
+    // Riconosce se la parola «che già capisce» è una CONFERMA («sì») o un RIFIUTO («no»),
+    // così «okk → sì» / «manco → no» si possono insegnare dal Vocabolario per le conversazioni.
+    // Allineato a _cw del dispatcher conferme (handle, stage 'confirm').
+    function _lexConfirmKind(canonical) {
+      const c = _norm(canonical);
+      if (/^(conferm\w*|si|ok(ay|ey)?|va bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto)$/.test(c)) return 'sì';
+      if (/^(no|lasci\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)$/.test(c)) return 'no';
+      return null;
+    }
     function _lexShortExplain(text) {
       let r; try { r = parse(text) || {}; } catch (e) { return null; }
       if (!r.intent || r.intent === '—' || r.ko) return null;
@@ -40915,6 +40924,18 @@ Per confermare scrivi ELIMINA.`);
       if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Serve una parola nuova (≥2 lettere) e la parola che già capisce.'; hide(); return; }
       if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola nuova può contenere solo lettere/spazi.'; hide(); return; }
       if (!box) return;
+      const confirmBtnEarly = '<button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(e){}">✅ Confermo, salva</button>';
+      // Caso speciale: sinonimo di CONFERMA/RIFIUTO per le conversazioni (es. «okk → sì»).
+      const ck = _lexConfirmKind(canonical);
+      if (ck) {
+        const isYes = ck === 'sì';
+        const label = isYes ? 'una CONFERMA' : 'un RIFIUTO';
+        const effetto = isYes ? 'confermi l\'azione in sospeso' : 'annulli l\'azione in sospeso';
+        box.innerHTML = '<div class="ai-turn-sub">«' + _escapeHtml(surface) + '» = ' + label + ' (come dire «' + _escapeHtml(canonical) + '»)</div>'
+          + '<div class="ai-turn-row"><span class="ai-turn-utt">Quando l\'assistente aspetta un sì/no e tu scrivi «' + _escapeHtml(surface) + '»</span><span class="ai-turn-meta">→ ' + effetto + '</span></div>'
+          + '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + confirmBtnEarly + '<span class="ai-admin-hint">Vale solo dentro una conversazione, quando c\'è qualcosa da confermare.</span></div>';
+        box.style.display = 'block'; return;
+      }
       const examples = [], seen = {}, DUMMY = 'qwxztk';
       for (let i = 0; i < _LEX_TEMPLATES.length && examples.length < 3; i++) {
         const tpl = _LEX_TEMPLATES[i];
@@ -42026,9 +42047,13 @@ Per confermare scrivi ELIMINA.`);
           if (_verbs !== undefined) {
             const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
             const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
-            if (_re.test(t)) {
+            // Vocabolario anche nelle CONFERME: una voce «okk → sì» / «daje → sì» / «manco → no»
+            // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
+            // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
+            const _tConf = _applyLessico(t);
+            if (_re.test(_tConf)) {
               const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
-              if (_h) return _h(t);
+              if (_h) return _h(_tConf);
             }
           }
         }
