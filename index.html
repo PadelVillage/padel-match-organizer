@@ -7668,7 +7668,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.933';
+    const APP_VERSION = '5.934';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40802,11 +40802,47 @@ Per confermare scrivi ELIMINA.`);
         const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">🟠 Proposto</span>');
         const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
         const cnt = (r.status === 'proposed' && r.meta && r.meta.count) ? (' · visto ' + r.meta.count + '×') : '';
+        const origin = (r.status === 'proposed' && r.source === 'gemini-distill') ? ' · ✨ proposto dall\'assistente' : ((r.status === 'proposed' && r.source === 'auto') ? ' · dal diario' : '');
+        const fromTxt = (r.status === 'proposed' && r.meta && r.meta.from) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(r.meta.from) + '»</div>' : '';
         let actions = '';
         if (r.status !== 'approved') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'approved\')}catch(e){}">Approva</button> ';
+        if (r.status === 'proposed') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
         if (r.status !== 'rejected') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'rejected\')}catch(e){}">Rifiuta</button>';
-        return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + '</span><span class="ai-turn-meta">' + badge + dom + cnt + '</span><span class="ai-turn-next">' + actions + '</span></div>';
+        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface) + '" data-canonical="' + _escapeHtml(r.canonical) + '">'
+          + '<span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + fromTxt + '</span>'
+          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + '</span>'
+          + '<span class="ai-turn-next">' + actions + '</span></div>';
       }).join('');
+    }
+    // Fase 3: correggi una proposta (surface/canonical) prima di approvarla.
+    function lexEditProposal(id) {
+      const row = document.getElementById('lexrow-' + id); if (!row) return;
+      const s = row.getAttribute('data-surface') || '', c = row.getAttribute('data-canonical') || '';
+      row.innerHTML = '<span class="ai-turn-utt" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+        + '<input id="lexEditS-' + id + '" class="ai-lex-input" style="min-width:120px" value="' + _escapeHtml(s) + '">'
+        + '<span class="ai-lex-arrow">→</span>'
+        + '<input id="lexEditC-' + id + '" class="ai-lex-input" style="min-width:120px" value="' + _escapeHtml(c) + '"></span>'
+        + '<span class="ai-turn-next">'
+        + '<button class="btn-primary small-btn" onclick="try{PMOAi.lexSaveProposal(\'' + id + '\')}catch(e){}">💾 Salva</button> '
+        + '<button class="btn-secondary small-btn" onclick="try{PMOAi.loadLessico()}catch(e){}">✕ Annulla</button>'
+        + ' <span id="lexEditState-' + id + '" class="ai-admin-hint"></span></span>';
+    }
+    async function lexSaveProposal(id) {
+      const sEl = document.getElementById('lexEditS-' + id), cEl = document.getElementById('lexEditC-' + id), st = document.getElementById('lexEditState-' + id);
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
+      if (st) st.textContent = '';
+      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Servono parola (≥2) e forma base.'; return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'Solo lettere e spazi.'; return; }
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+          body: JSON.stringify({ surface: surface, canonical: canonical })
+        });
+        if (!res.ok) { if (st) st.textContent = 'Non salvato (HTTP ' + res.status + ').'; return; }
+        loadLessico();
+      } catch (e) { if (st) st.textContent = 'Errore: ' + e.message; }
     }
 
     // ══ Fase 3 autoapprendimento: minatore lessico dal diario (PROPONE, non applica) ══
@@ -45493,7 +45529,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
