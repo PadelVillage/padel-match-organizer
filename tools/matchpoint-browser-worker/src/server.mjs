@@ -4318,46 +4318,57 @@ async function updateClientWithBrowser(options = {}) {
         }
         return null;
       };
-      // Apre la tab "Livello" della Ficha (postback ASP.NET). Il contenuto arriva spesso
-      // via postback AJAX (UpdatePanel): domcontentloaded non basta -> attendo che la
-      // griglia (o l'icona Editar) COMPAIA davvero, non un timeout fisso.
-      const livelloTabPostback = async () => {
-        await page.evaluate(() => {
-          if (typeof window.__doPostBack === 'function') window.__doPostBack('ctl01$ctl00$CC$Datos$FormViewFicha$A2', '');
-        }).catch(() => {});
+      // La sezione "Livelli" si renderizza SOLO dentro la shell default.aspx (iframe
+      // #iframeContenido). Carico li' la Ficha via navIframe e opero DENTRO quel frame.
+      const fichaFrame = () => page.frames().find((f) => /FichaCliente\.aspx/i.test(f.url())) || null;
+      const loadFichaInShell = async (id) => {
+        await page.goto(absoluteUrl(baseUrl, '/default.aspx'), { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await page.waitForTimeout(1200);
+        await page.evaluate((cid) => {
+          const url = 'Clientes/FichaCliente.aspx?id=' + cid;
+          if (typeof navIframe === 'function') { try { navIframe(url); return; } catch (_) {} }
+          const f = document.getElementById('iframeContenido');
+          if (f) f.src = url;
+        }, id).catch(() => {});
+        // attendi che il frame Ficha esista e abbia caricato (menu "Livelli" presente)
+        for (let i = 0; i < 30; i++) {
+          const fr = fichaFrame();
+          if (fr) {
+            const ok = await fr.locator('a:has-text("Livelli"), a:has-text("Livello")').count().catch(() => 0);
+            if (ok) { await page.waitForTimeout(400); return fr; }
+          }
+          await page.waitForTimeout(700);
+        }
+        return fichaFrame();
       };
-      const gridAppeared = async (ms) => page
-        .waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: ms })
-        .then(() => true).catch(() => false);
-      const openLivelloTab = async () => {
-        // "Livelli" e' un menu-tab gestito da CC_Menu2_RepeaterPestanyas con un postback
-        // specifico (es. ctl03$LinkButtonPestanya). I click generici non lo prendono:
-        // trovo l'anchor "Livelli", ESTRAGGO il suo __doPostBack e lo lancio (deterministico).
-        diagnostic.tabAnchors = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('a')).map((a) => ({
-            id: a.id || '',
-            txt: (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30),
-            href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 160),
-          })).filter((x) => /livell|nivel|deporte/i.test(`${x.txt} ${x.href} ${x.id}`)).slice(0, 25)
-        ).catch(() => null);
-        const fireLivelli = async () => page.evaluate(() => {
-          const a = Array.from(document.querySelectorAll('a'))
-            .find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
-          if (!a) return 'no_link';
-          const h = a.getAttribute('href') || a.getAttribute('onclick') || '';
-          const m = h.match(/__doPostBack\('([^']+)'\s*,\s*'([^']*)'\)/);
-          if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb:' + m[1]; }
-          if (h.indexOf('javascript:') === 0) { try { (0, eval)(h.slice(11)); return 'eval'; } catch (_) {} }
-          a.click(); return 'click';
-        }).catch(() => 'err');
-        diagnostic.tabFire = await fireLivelli();
-        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-        if (await gridAppeared(8000)) { diagnostic.tabMethod = 'menu_livelli'; await page.waitForTimeout(500); return; }
-        // ritenta una volta (il menu puo' richiedere il primo postback per render)
-        diagnostic.tabFire2 = await fireLivelli();
-        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-        diagnostic.tabMethod = (await gridAppeared(8000)) ? 'menu_livelli_retry' : 'none';
-        await page.waitForTimeout(500);
+      const gridInFrame = async () => {
+        const f = fichaFrame();
+        if (!f) return false;
+        return (await f.locator(`${GRID_SEL}, [onclick*="Editar$"]`).count().catch(() => 0)) > 0;
+      };
+      // Apre la sezione Livelli DENTRO il frame Ficha: trova l'anchor "Livelli" ed esegue
+      // il SUO __doPostBack (deterministico), poi attende la griglia. Ritenta una volta.
+      const openLivelloInFrame = async () => {
+        const fire = async () => {
+          const f = fichaFrame();
+          if (!f) return 'no_frame';
+          return f.evaluate(() => {
+            const a = Array.from(document.querySelectorAll('a'))
+              .find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
+            if (!a) return 'no_link';
+            const h = a.getAttribute('href') || a.getAttribute('onclick') || '';
+            const m = h.match(/__doPostBack\('([^']+)'\s*,\s*'([^']*)'\)/);
+            if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb'; }
+            a.click(); return 'click';
+          }).catch(() => 'err');
+        };
+        diagnostic.tabFire = await fire();
+        await page.waitForTimeout(2800);
+        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_menu'; return true; }
+        diagnostic.tabFire2 = await fire();
+        await page.waitForTimeout(2800);
+        diagnostic.tabMethod = (await gridInFrame()) ? 'shell_menu_retry' : 'none';
+        return diagnostic.tabMethod !== 'none';
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
@@ -4409,22 +4420,13 @@ async function updateClientWithBrowser(options = {}) {
         return false;
       };
       try {
-        diagnostic.steps.push('open_tab_livello');
-        await openLivelloTab();
+        diagnostic.steps.push('shell_load_ficha');
+        await loadFichaInShell(idInterno);
+        const fr0 = fichaFrame();
+        diagnostic.fichaFrameUrl = fr0 ? fr0.url() : null;
+        await openLivelloInFrame();
         const rows = await readLivelloRows();
         diagnostic.livelloRows = rows;
-        if (rows === null) {
-          // Sonda: perche' la griglia non e' leggibile? (url, presenza grid, n. Editar, frame)
-          try {
-            diagnostic.livelloProbe = await page.evaluate(() => ({
-              url: location.href,
-              hasGrid: !!document.querySelector('[id$="GridViewListadoDeportes"]'),
-              editarCount: document.querySelectorAll('[onclick*="Editar$"]').length,
-              bodySample: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 300),
-            }));
-          } catch (_) {}
-          diagnostic.frameUrls = page.frames().map((f) => { try { return f.url(); } catch (_) { return '?'; } });
-        }
         const target = Array.isArray(rows)
           ? (rows.find((r) => /padel/i.test(r.sport) && r.arg) || rows.find((r) => r.arg) || null)
           : null;
@@ -4432,34 +4434,29 @@ async function updateClientWithBrowser(options = {}) {
         let attempted = false;
         if (target && target.arg) {
           diagnostic.steps.push('editar_riga:' + target.arg);
-          const gf = (await findGridFrame()) || page.mainFrame();
+          const gf = (await findGridFrame()) || fichaFrame() || page.mainFrame();
           await gf.evaluate(({ pb, arg }) => {
             if (typeof window.__doPostBack === 'function') window.__doPostBack(pb, 'Editar$' + arg);
           }, { pb: GRID_PB, arg: target.arg }).catch(() => {});
-          await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(2800);
           attempted = await fillAndSaveLivello();
         } else if (Array.isArray(rows) && rows.length === 0 && idInterno) {
-          // Griglia confermata VUOTA (nessun livello) -> AGGIUNGI (form "Nuovo", come nel create).
+          // Griglia confermata VUOTA (nessun livello) -> AGGIUNGI (form "Nuovo", standalone).
           diagnostic.steps.push('aggiungi_livello');
           const livelloUrl = absoluteUrl(baseUrl,
             `/Clientes/FichaDeportePracticaClienteDatosNivel.aspx?id_people=${encodeURIComponent(idInterno)}`
             + `&cbf=callbackRefrescarPestanyaJuegoNivel`
             + `&return_url=${encodeURIComponent('/Clientes/FichaCliente.aspx?id=' + idInterno)}`);
-          await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+          await page.goto(livelloUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
           attempted = await fillAndSaveLivello();
         } else {
-          // Griglia non leggibile (null) o senza riga editabile: NON aggiungo alla cieca
-          // (eviterei un livello duplicato). Esito onesto -> levelError piu' sotto.
           diagnostic.steps.push('skip_livello:griglia_non_letta_o_riga_assente');
         }
 
-        // ── VERIFICA: rileggo la griglia e confermo il valore ──
+        // ── VERIFICA: ricarico la Ficha nella shell, riapro Livelli, rileggo la riga ──
         if (attempted) {
-          if (idInterno) {
-            await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
-            await openLivelloTab();
-          }
+          await loadFichaInShell(idInterno);
+          await openLivelloInFrame();
           const after = await readLivelloRows();
           diagnostic.livelloRowsAfter = after;
           const confirmed = Array.isArray(after) && after.some((r) => r.lvlNum != null && Math.abs(r.lvlNum - livelloNumTarget) < 0.001);
@@ -4471,22 +4468,7 @@ async function updateClientWithBrowser(options = {}) {
             diagnostic.levelError = `Livello NON confermato dopo il salvataggio (atteso ${livelloStr}); righe=${JSON.stringify(after).slice(0, 220)}`;
           }
         } else {
-          diagnostic.levelError = diagnostic.levelError || 'Livello non salvato: campo/riga non trovati.';
-        }
-        // PROBE SHELL (temporaneo): se il livello non e' passato, mappa default.aspx per
-        // capire come caricare la Ficha nel contesto giusto (iframe + funzione navIframe).
-        if (!diagnostic.livelloVerified) {
-          try {
-            await page.goto(absoluteUrl(baseUrl, '/default.aspx'), { waitUntil: 'domcontentloaded', timeout: 20000 });
-            await page.waitForTimeout(1800);
-            diagnostic.shellProbe = await page.evaluate(() => ({
-              url: location.href,
-              fnNames: ['navIframe', 'NavIframe', 'navegarIframe', 'cargarIframe', 'CargarIframe', 'abrirFicha', 'cargarPagina']
-                .filter((n) => typeof window[n] === 'function'),
-              globalFns: Object.keys(window).filter((k) => typeof window[k] === 'function' && /iframe|ficha|navig|cargar|pagina/i.test(k)).slice(0, 30),
-              iframes: Array.from(document.querySelectorAll('iframe,frame')).map((f) => ({ id: f.id || '', name: f.name || '', src: (f.getAttribute('src') || '').slice(0, 160) })),
-            }));
-          } catch (e) { diagnostic.shellProbeErr = String((e && e.message) || e).slice(0, 140); }
+          diagnostic.levelError = diagnostic.levelError || 'Livello non salvato: riga/campo non trovati nella sezione Livelli.';
         }
       } catch (levelError) {
         diagnostic.livelloVerified = false;
