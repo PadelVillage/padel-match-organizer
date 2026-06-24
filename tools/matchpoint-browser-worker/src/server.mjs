@@ -4330,42 +4330,34 @@ async function updateClientWithBrowser(options = {}) {
         .waitForSelector(`${GRID_SEL}, [onclick*="Editar$"]`, { timeout: ms })
         .then(() => true).catch(() => false);
       const openLivelloTab = async () => {
-        // La sezione livelli si apre cliccando la VOCE DI MENU "Livelli" della Ficha (sidebar),
-        // non un sotto-tab _A2 (che esiste solo DOPO essere entrati nella sezione). Cattura gli
-        // anchor candidati per diagnosi, poi prova: per nome link -> per href Nivel/Deporte -> _A2.
+        // "Livelli" e' un menu-tab gestito da CC_Menu2_RepeaterPestanyas con un postback
+        // specifico (es. ctl03$LinkButtonPestanya). I click generici non lo prendono:
+        // trovo l'anchor "Livelli", ESTRAGGO il suo __doPostBack e lo lancio (deterministico).
         diagnostic.tabAnchors = await page.evaluate(() =>
           Array.from(document.querySelectorAll('a')).map((a) => ({
             id: a.id || '',
             txt: (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30),
-            title: a.title || '',
-            href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 140),
-          })).filter((x) => /livell|nivel|deporte/i.test(`${x.txt} ${x.title} ${x.href} ${x.id}`)).slice(0, 25)
+            href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 160),
+          })).filter((x) => /livell|nivel|deporte/i.test(`${x.txt} ${x.href} ${x.id}`)).slice(0, 25)
         ).catch(() => null);
-        // metodo 1: link (role) con nome "Livelli"/"Livello"
-        for (const name of ['Livelli', 'Livello']) {
-          try {
-            const l = page.getByRole('link', { name, exact: true });
-            if (await l.count().catch(() => 0)) await l.first().click({ timeout: 6000 });
-          } catch (_) {}
-          await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-          if (await gridAppeared(6000)) { diagnostic.tabMethod = `role:${name}`; await page.waitForTimeout(400); return; }
-        }
-        // metodo 2: anchor il cui href/onclick punta alla sezione livelli (Nivel/Deporte)
-        try {
-          const byHref = page.locator('a[href*="Nivel" i], a[href*="Deporte" i], a[onclick*="Nivel" i], a[onclick*="Deporte" i]').first();
-          if (await byHref.count().catch(() => 0)) await byHref.click({ timeout: 6000 });
-        } catch (_) {}
-        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        if (await gridAppeared(6000)) { diagnostic.tabMethod = 'href_nivel'; await page.waitForTimeout(400); return; }
-        // metodo 3: sotto-tab _A2 / __doPostBack (se ormai siamo nella sezione)
-        try {
-          const t = page.locator('#CC_Datos_FormViewFicha_A2, a[title="Livello"]').first();
-          if (await t.count().catch(() => 0)) await t.click({ timeout: 5000 });
-          else await livelloTabPostback();
-        } catch (_) { await livelloTabPostback(); }
-        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-        diagnostic.tabMethod = (await gridAppeared(6000)) ? 'tab_A2' : 'none';
-        await page.waitForTimeout(400);
+        const fireLivelli = async () => page.evaluate(() => {
+          const a = Array.from(document.querySelectorAll('a'))
+            .find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
+          if (!a) return 'no_link';
+          const h = a.getAttribute('href') || a.getAttribute('onclick') || '';
+          const m = h.match(/__doPostBack\('([^']+)'\s*,\s*'([^']*)'\)/);
+          if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb:' + m[1]; }
+          if (h.indexOf('javascript:') === 0) { try { (0, eval)(h.slice(11)); return 'eval'; } catch (_) {} }
+          a.click(); return 'click';
+        }).catch(() => 'err');
+        diagnostic.tabFire = await fireLivelli();
+        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+        if (await gridAppeared(8000)) { diagnostic.tabMethod = 'menu_livelli'; await page.waitForTimeout(500); return; }
+        // ritenta una volta (il menu puo' richiedere il primo postback per render)
+        diagnostic.tabFire2 = await fireLivelli();
+        await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+        diagnostic.tabMethod = (await gridAppeared(8000)) ? 'menu_livelli_retry' : 'none';
+        await page.waitForTimeout(500);
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
