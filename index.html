@@ -7668,7 +7668,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.932';
+    const APP_VERSION = '5.933';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40939,7 +40939,8 @@ Per confermare scrivi ELIMINA.`);
     // di più parole (B). { surface, canonical, domain, kind:'confirm'|'command'|'unknown',
     // confirmKind:'sì'|'no'|null, examples:[{phrase, expl}] }.
     let _lexProva = null;
-    function _lexProvaClear() { _lexProva = null; const b = document.getElementById('aiLexPreview'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
+    let _lexProvaToken = 0;   // anti-corsa: ignora risposte Gemini di una Prova superata
+    function _lexProvaClear() { _lexProva = null; _lexProvaToken++; const b = document.getElementById('aiLexPreview'); if (b) { b.style.display = 'none'; b.innerHTML = ''; } }
     // Spiega una frase intera scritta dall'utente: riscrive surface→canonical e interpreta.
     function _lexExplainPhrase(phrase, surface, canonical) {
       try {
@@ -40947,20 +40948,9 @@ Per confermare scrivi ELIMINA.`);
         return _lexShortExplain(String(phrase || '').replace(re, canonical));
       } catch (e) { return null; }
     }
-    function lexPreview() {
-      const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical'), dEl = document.getElementById('aiLexDomain');
-      const st = document.getElementById('aiLexAddState'), box = document.getElementById('aiLexPreview');
-      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
-      const domain = (dEl && dEl.value) || null;
-      if (st) st.textContent = '';
-      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Serve una parola o frase nuova (≥2 lettere) e la parola che già capisce.'; _lexProvaClear(); return; }
-      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola/frase nuova può contenere solo lettere e spazi.'; _lexProvaClear(); return; }
-      if (!box) return;
-      // Caso CONFERMA/RIFIUTO per le conversazioni (es. «okk → sì», «manco → no»).
-      const ck = _lexConfirmKind(canonical);
-      if (ck) { _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: 'confirm', confirmKind: ck, examples: [] }; _lexRenderProva(); return; }
-      // Esempi: il termine inserito in contesti veri e diversi (anche frasi lunghe). Tengo solo
-      // quelli dove è la PAROLA a cambiare l'interpretazione (vs parola-fantasma) → no falsi positivi.
+    // Frasi-modello LOCALI (fallback se Gemini non risponde): il termine in contesti vari.
+    // Tiene solo quelle dove è la PAROLA a cambiare l'interpretazione (vs parola-fantasma).
+    function _lexLocalExamples(surface, canonical) {
       const examples = [], seen = {}, DUMMY = 'qwxztk';
       for (let i = 0; i < _LEX_TEMPLATES.length && examples.length < 6; i++) {
         const tpl = _LEX_TEMPLATES[i];
@@ -40974,7 +40964,56 @@ Per confermare scrivi ELIMINA.`);
         if (seen[phrase]) continue; seen[phrase] = true;
         examples.push({ phrase: phrase, expl: expl });
       }
-      _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: examples.length ? 'command' : 'unknown', confirmKind: null, examples: examples };
+      return examples;
+    }
+    // Chiede a Gemini (edge ai-lex-examples) frasi d'esempio col termine + cosa intende.
+    // null se non disponibile (offline/sessione/permesso/timeout) → si usa il fallback locale.
+    async function _lexFetchGeminiExamples(surface, canonical, domain) {
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/functions/v1/ai-lex-examples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ surface: surface, canonical: canonical, domain: domain || '' })
+        });
+        if (!res.ok) return null;
+        const data = await res.json().catch(function () { return null; });
+        if (!data || !data.ok || !Array.isArray(data.examples)) return null;
+        return data.examples
+          .map(function (e) { return { phrase: String(e.phrase || '').toLowerCase(), expl: String(e.intende || '') }; })
+          .filter(function (e) { return e.phrase; });
+      } catch (e) { return null; }
+    }
+    async function lexPreview() {
+      const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical'), dEl = document.getElementById('aiLexDomain');
+      const st = document.getElementById('aiLexAddState'), box = document.getElementById('aiLexPreview');
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
+      const domain = (dEl && dEl.value) || null;
+      if (st) st.textContent = '';
+      if (surface.length < 2 || !canonical) { if (st) st.textContent = 'Serve una parola o frase nuova (≥2 lettere) e la parola che già capisce.'; _lexProvaClear(); return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola/frase nuova può contenere solo lettere e spazi.'; _lexProvaClear(); return; }
+      if (!box) return;
+      const ck = _lexConfirmKind(canonical);
+      const token = ++_lexProvaToken;
+      _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: ck ? 'confirm' : 'command', confirmKind: ck || null, examples: [], loading: true, src: null };
+      _lexRenderProva();
+      // Gemini scrive gli esempi (così vedi se "ha capito"); fallback locale se non disponibile.
+      let gem = null;
+      try { gem = await _lexFetchGeminiExamples(surface, canonical, domain); } catch (e) {}
+      if (token !== _lexProvaToken) return;   // una Prova successiva ha già preso il posto
+      _lexProva.loading = false;
+      if (gem && gem.length) {
+        _lexProva.examples = gem; _lexProva.src = 'gemini';
+      } else {
+        _lexProva.src = 'locale';
+        if (!ck) {
+          const loc = _lexLocalExamples(surface, canonical);
+          _lexProva.examples = loc;
+          _lexProva.kind = loc.length ? 'command' : 'unknown';
+        }
+      }
       _lexRenderProva();
     }
     // Disegna il pannello di verifica dallo stato _lexProva (gli esempi sono togliibili/aggiungibili).
@@ -40992,6 +41031,12 @@ Per confermare scrivi ELIMINA.`);
       } else {
         html += '<div class="ai-turn-sub">Prova: leggerò «' + esc(P.surface) + '» come «' + esc(P.canonical) + '». Frasi d\'esempio (togli quelle sbagliate, aggiungi le tue):</div>';
       }
+      if (P.loading) {
+        html += '<div class="ai-admin-hint">⏳ L\'assistente sta scrivendo alcuni esempi con «' + esc(P.surface) + '»…</div>';
+        box.innerHTML = html; box.style.display = 'block'; return;
+      }
+      if (P.src === 'gemini') html += '<div class="ai-admin-hint" style="margin:2px 0 6px">✍️ Esempi scritti dall\'assistente (così vedi se ha capito il termine):</div>';
+      else if (P.src === 'locale' && P.examples.length) html += '<div class="ai-admin-hint" style="margin:2px 0 6px">ℹ️ Assistente non raggiungibile: esempi di base.</div>';
       if (P.examples.length) {
         html += P.examples.map(function (e, i) {
           return '<div class="ai-turn-row"><span class="ai-turn-utt">«' + esc(e.phrase) + '»</span><span class="ai-turn-meta">→ ' + esc(e.expl || '—') + ' <button class="btn-secondary small-btn" title="Togli questo esempio" onclick="try{PMOAi.lexRemoveExample(' + i + ')}catch(ex){}">✕</button></span></div>';
