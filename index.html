@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.926';
+    const APP_VERSION = '5.927';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -35247,7 +35247,7 @@ Per confermare scrivi ELIMINA.`);
   // ============================================================
 
   const STAFF_CAL_START_H = 8;
-  const STAFF_CAL_END_H = 22;
+  const STAFF_CAL_END_H = 24;
   const STAFF_CAL_SLOT_MIN = 30;
 
   // ── Parser Rules — regole di fallback hardcoded (usate se GitHub non è raggiungibile) ──
@@ -35343,9 +35343,9 @@ Per confermare scrivi ELIMINA.`);
 
   function staffCalSlots() {
     const slots = [];
-    for (let h = STAFF_CAL_START_H; h <= STAFF_CAL_END_H; h++) {
+    for (let h = STAFF_CAL_START_H; h < STAFF_CAL_END_H; h++) {
       slots.push(`${String(h).padStart(2,'0')}:00`);
-      if (h < STAFF_CAL_END_H) slots.push(`${String(h).padStart(2,'0')}:30`);
+      slots.push(`${String(h).padStart(2,'0')}:30`);
     }
     return slots;
   }
@@ -36644,7 +36644,7 @@ Per confermare scrivi ELIMINA.`);
 
     const FIELD_COLORS = ['#f87171', '#fbbf24', '#34d399', '#818cf8'];
     const MAP_START = 480;  // 08:00 in minutes
-    const MAP_END = 1350;   // 22:30 in minutes
+    const MAP_END = STAFF_CAL_END_H * 60;   // mezzanotte (00:00) in minutes
     const ROW_H = 24;       // px per 30-min slot
     const totalH = ((MAP_END - MAP_START) / 30) * ROW_H;
 
@@ -36694,11 +36694,11 @@ Per confermare scrivi ELIMINA.`);
     // Time gutter
     const gut = document.createElement('div');
     gut.style.cssText = 'position:relative;height:' + totalH + 'px;border-right:1px solid #e2e8f0;';
-    for (let h = 8; h <= 22; h++) {
+    for (let h = 8; h <= STAFF_CAL_END_H; h++) {
       const top = ((h * 60 - MAP_START) / 30) * ROW_H;
       const lbl = document.createElement('div');
       lbl.style.cssText = 'position:absolute;left:0;right:0;font-size:9.5px;color:#94a3b8;text-align:right;padding-right:4px;transform:translateY(-6px);top:' + top + 'px;';
-      lbl.textContent = String(h).padStart(2, '0') + ':00';
+      lbl.textContent = (h === 24 ? '00' : String(h).padStart(2, '0')) + ':00';
       gut.appendChild(lbl);
     }
     grid.appendChild(gut);
@@ -36786,7 +36786,7 @@ Per confermare scrivi ELIMINA.`);
   // ── Calendario ORIZZONTALE (campi = corsie, tempo = asse X) — desktop + mobile ──
   function _staffCalBuildHorizontal(isoDate, isDesktop) {
     const FIELD_COLORS = ['#f87171', '#fbbf24', '#34d399', '#818cf8'];
-    const START = 480, END = 1350, SLOT = 30, N = (END - START) / SLOT;
+    const START = 480, END = STAFF_CAL_END_H * 60, SLOT = 30, N = (END - START) / SLOT;
     const COLW = isDesktop ? 44 : 58;          // px per 30 min
     const LABELW = isDesktop ? 78 : 58;        // gutter etichette campo
     const HEADERH = 24;
@@ -36851,11 +36851,11 @@ Per confermare scrivi ELIMINA.`);
     content.style.cssText = 'width:' + totalW + 'px;position:relative;';
     const hdr = document.createElement('div');
     hdr.style.cssText = 'height:' + HEADERH + 'px;position:relative;border-bottom:1px solid #e2e8f0;background:#fafbfc;';
-    for (let h = 8; h <= 22; h++) {
+    for (let h = 8; h <= STAFF_CAL_END_H; h++) {
       const x = ((h * 60 - START) / 30) * COLW;
       const t = document.createElement('div');
       t.style.cssText = 'position:absolute;top:0;left:' + x + 'px;height:' + HEADERH + 'px;font-size:11px;font-weight:700;color:#334155;padding:4px 0 0 3px;border-left:1px solid #eef1f4;';
-      t.textContent = String(h).padStart(2, '0');
+      t.textContent = (h === 24 ? '00' : String(h).padStart(2, '0'));
       hdr.appendChild(t);
     }
     content.appendChild(hdr);
