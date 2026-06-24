@@ -4346,10 +4346,20 @@ async function updateClientWithBrowser(options = {}) {
         if (!f) return false;
         return (await f.locator(`${GRID_SEL}, [onclick*="Editar$"]`).count().catch(() => 0)) > 0;
       };
-      // Apre la sezione Livelli DENTRO il frame Ficha: trova l'anchor "Livelli" ed esegue
-      // il SUO __doPostBack (deterministico), poi attende la griglia. Ritenta una volta.
+      // Apre la sezione Livelli DENTRO il frame Ficha. Prima un CLICK REALE (trusted) come
+      // fa il mouse dell'utente, poi __doPostBack estratto; alla fine sonda lo stato del frame.
       const openLivelloInFrame = async () => {
-        const fire = async () => {
+        const fr = fichaFrame();
+        if (!fr) { diagnostic.tabMethod = 'no_frame'; return false; }
+        // metodo 1: click reale Playwright sull'anchor "Livelli" del frame
+        try {
+          const link = fr.locator('a').filter({ hasText: /^\s*Livelli\s*$/ }).first();
+          if (await link.count().catch(() => 0)) await link.click({ timeout: 6000 });
+        } catch (_) {}
+        await page.waitForTimeout(2800);
+        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_click'; return true; }
+        // metodo 2: __doPostBack estratto, eseguito dentro il frame
+        diagnostic.tabFire = await (async () => {
           const f = fichaFrame();
           if (!f) return 'no_frame';
           return f.evaluate(() => {
@@ -4358,17 +4368,27 @@ async function updateClientWithBrowser(options = {}) {
             if (!a) return 'no_link';
             const h = a.getAttribute('href') || a.getAttribute('onclick') || '';
             const m = h.match(/__doPostBack\('([^']+)'\s*,\s*'([^']*)'\)/);
-            if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb'; }
+            if (m && typeof window.__doPostBack === 'function') { window.__doPostBack(m[1], m[2]); return 'pb:' + m[1]; }
             a.click(); return 'click';
           }).catch(() => 'err');
-        };
-        diagnostic.tabFire = await fire();
+        })();
         await page.waitForTimeout(2800);
-        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_menu'; return true; }
-        diagnostic.tabFire2 = await fire();
-        await page.waitForTimeout(2800);
-        diagnostic.tabMethod = (await gridInFrame()) ? 'shell_menu_retry' : 'none';
-        return diagnostic.tabMethod !== 'none';
+        if (await gridInFrame()) { diagnostic.tabMethod = 'shell_pb'; return true; }
+        // sonda: stato del frame dopo i tentativi (tab attivo? griglia? anchor Livelli?)
+        try {
+          const f = fichaFrame();
+          diagnostic.frameProbe = f ? await f.evaluate(() => ({
+            hasGrid: !!document.querySelector('[id$="GridViewListadoDeportes"]'),
+            editarCount: document.querySelectorAll('[onclick*="Editar$"]').length,
+            livelliAnchor: (() => {
+              const a = Array.from(document.querySelectorAll('a')).find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase() === 'livelli');
+              return a ? { id: a.id || '', href: (a.getAttribute('href') || a.getAttribute('onclick') || '').slice(0, 170) } : null;
+            })(),
+            body: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400),
+          })) : null;
+        } catch (_) {}
+        diagnostic.tabMethod = 'none';
+        return false;
       };
       // Legge le righe della griglia livelli da QUALSIASI frame:
       // { sport, livelloNum, arg("<id>#<people>#<sport>") }. Ritorna null se la griglia
