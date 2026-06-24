@@ -4294,6 +4294,55 @@ async function updateClientWithBrowser(options = {}) {
       throw fail('CLIENT_UPDATE_VALIDATION', `Matchpoint ha rifiutato l'aggiornamento del cliente ${codice}.`, diagnostic);
     }
 
+    // ── VERIFICA contatti: ricarico la Ficha e rileggo i campi per confermare che i
+    // valori siano DAVVERO persistiti su Matchpoint (no falso "updatedFields", come
+    // imparato col livello). verifiedFields = confermati; contactMismatches = scritti
+    // ma non confermati (atteso vs trovato). ──
+    try {
+      if (idInterno) {
+        await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`),
+          { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+        await page.waitForTimeout(1200);
+      }
+      const norm = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+      const readSuffixValue = async (suffix) => {
+        const loc = await locateBySuffix(suffix);
+        if (!loc) return null;
+        return loc.evaluate((el) => (el.value != null ? el.value : (el.textContent || ''))).catch(() => null);
+      };
+      const checks = [
+        { key: 'nome', suffix: 'TextBoxNombre', want: nome, cmp: (s) => norm(s) },
+        { key: 'cognome', suffix: 'TextBoxApellido1', want: cognome, cmp: (s) => norm(s) },
+        { key: 'telefono', suffix: 'TextBoxMovil', want: telefono, cmp: (s) => norm(s).replace(/[^\d+]/g, '') },
+        { key: 'email', suffix: 'TextBoxEmail', want: email, cmp: (s) => norm(s).toLowerCase() },
+      ];
+      const verified = [];
+      const mismatches = [];
+      for (const c of checks) {
+        if (!c.want) continue; // campo non inviato -> niente da verificare
+        const got = await readSuffixValue(c.suffix);
+        if (got == null) { diagnostic.steps.push('verify_missing:' + c.suffix); continue; }
+        if (c.cmp(got) === c.cmp(c.want)) verified.push(c.key);
+        else mismatches.push({ field: c.key, want: c.want, got: norm(got).slice(0, 80) });
+      }
+      // sesso: confronto la label dell'opzione selezionata nella select
+      if (sessoLabel) {
+        const sel = await locateBySuffix('DropDownListSexo');
+        if (sel) {
+          const got = await sel.evaluate((el) => {
+            const o = el.options && el.options[el.selectedIndex];
+            return o ? (o.text || o.value || '') : (el.value || '');
+          }).catch(() => null);
+          if (got != null) {
+            if (norm(got).toLowerCase() === norm(sessoLabel).toLowerCase()) verified.push('sesso');
+            else mismatches.push({ field: 'sesso', want: sessoLabel, got: norm(got).slice(0, 40) });
+          }
+        }
+      }
+      diagnostic.verifiedFields = verified;
+      if (mismatches.length) diagnostic.contactMismatches = mismatches;
+    } catch (_) { /* la verifica è best-effort: non deve far fallire l'update */ }
+
     // ── Aggiornamento livello ─────────────────────────────────────────────────
     // ATTENZIONE: per un cliente ESISTENTE il livello va MODIFICATO sulla riga gia'
     // presente. La pagina "Nuovo" (FichaDeportePracticaClienteDatosNivel?id_people)
