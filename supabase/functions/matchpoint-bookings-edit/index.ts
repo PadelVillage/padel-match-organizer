@@ -32,6 +32,7 @@ type EditRequest = {
   move?: EditMove;
   players?: EditPlayers;
   note?: string;            // Osservazioni Matchpoint (← nota app). '' = azzera; assente = non toccare.
+  descrizione?: string;     // SOLO manutenzione: descrizione (TextBox2, testo del tabellone). '' = azzera; assente = non toccare.
   read?: boolean;           // lettura sola: restituisce i partecipanti attuali senza modificare
 };
 
@@ -118,7 +119,7 @@ async function callWorkerEditBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, note: edit.note, read: edit.read === true, operatore: operatore ?? '' }),
+      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, note: edit.note, descrizione: edit.descrizione, read: edit.read === true, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
@@ -193,6 +194,9 @@ Deno.serve(async (req: Request) => {
   // note: presente (anche stringa vuota = azzera) → si scrive sulle Osservazioni; assente = non toccare.
   const noteProvided = body.note !== undefined && body.note !== null;
   const note = noteProvided ? clean(body.note) : undefined;
+  // descrizione (solo manutenzione): presente (anche '') → si scrive su TextBox2; assente = non toccare.
+  const descrizioneProvided = body.descrizione !== undefined && body.descrizione !== null;
+  const descrizione = descrizioneProvided ? clean(body.descrizione) : undefined;
   const readOnly = body.read === true;
 
   // Validation: serve idReserva OPPURE (campo+data+ora). Per modificare serve almeno uno tra
@@ -207,11 +211,11 @@ Deno.serve(async (req: Request) => {
     (Array.isArray(players.remove) && players.remove.length > 0) ||
     players.removeAll === true
   );
-  if (!readOnly && !hasMove && !hasPlayers && !noteProvided) {
-    return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players e note.');
+  if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided) {
+    return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note e descrizione.');
   }
 
-  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, read: readOnly };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, read: readOnly };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -252,6 +256,7 @@ Deno.serve(async (req: Request) => {
   if (hasMove) parts.push(`sposta → Campo ${move?.campo ?? '?'} · ${move?.data ?? '?'} · ${move?.oraInizio ?? '?'}–${move?.oraFine ?? '?'}`);
   if (hasPlayers) parts.push('giocatori aggiornati');
   if (noteProvided) parts.push('nota aggiornata');
+  if (descrizioneProvided) parts.push('descrizione aggiornata');
 
   return ok({
     message: `Modifica richiesta: ${parts.join(' · ')}`,
