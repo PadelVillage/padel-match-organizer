@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.919';
+    const APP_VERSION = '5.920';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -45439,6 +45439,13 @@ Per confermare scrivi ELIMINA.`);
     var firstName = get('smeFirst');
     var surname = get('smeSurname');
     if (!firstName || !surname) { alert('Nome e cognome obbligatori.'); return; }
+    // Snapshot PRIMA della modifica: serve per rilevare i campi cambiati e per dare al
+    // worker i valori 'prev' (fallback ricerca su Matchpoint).
+    var prevSnap = {
+      firstName: g.firstName || '', surname: g.surname || '', phone: g.phone || '',
+      email: g.email || '', gender: g.gender || '', level: (g.level == null ? '' : String(g.level)),
+      position: g.playingPosition || '', active: g.active
+    };
     g.firstName = firstName;
     g.surname = surname;
     g.name = firstName + ' ' + surname;
@@ -45449,10 +45456,28 @@ Per confermare scrivi ELIMINA.`);
     var pos = get('smePosition'); if (pos) g.playingPosition = pos;
     var activeEl = document.getElementById('smeActive');
     if (activeEl) g.active = activeEl.checked;
+    g.updatedAt = new Date().toISOString();
     if (typeof save === 'function') save('giocatori', giocatori);
     if (typeof displayMembers === 'function') displayMembers();
-    staffCalSociCloseEdit();
-    staffCalRenderSociResults();
+    // Chiudo TUTTO il pannello soci (non torno alla ricerca) così la chat in basso è
+    // visibile, come per il salvataggio dalla scheda in Anagrafica.
+    staffCalCloseSociSheet();
+    // Salvataggio su Supabase + propagazione a Matchpoint raccontata in chat (stesso
+    // flusso del salvataggio scheda in Anagrafica): prima questo pannello salvava SOLO
+    // in locale, senza sincronizzare nulla.
+    try { if (typeof pmoQueueImmediateMemberCloudSync === 'function') pmoQueueImmediateMemberCloudSync(g, 'salvare subito la scheda socio su Supabase'); } catch (e) {}
+    try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('anagrafica', 'modifica', 'confirmed', { via: 'scheda socio', name: g.name }); } catch (e) {}
+    var nowSnap = {
+      firstName: g.firstName || '', surname: g.surname || '', phone: g.phone || '',
+      email: g.email || '', gender: g.gender || '', level: (g.level == null ? '' : String(g.level))
+    };
+    var mpLabels = { firstName: 'nome', surname: 'cognome', phone: 'telefono', email: 'email', gender: 'sesso', level: 'livello' };
+    var changedMp = [];
+    Object.keys(mpLabels).forEach(function (k) { if (String(prevSnap[k]) !== String(nowSnap[k])) changedMp.push(mpLabels[k]); });
+    var hasOther = (String(prevSnap.position) !== String(g.playingPosition || '')) || (prevSnap.active !== g.active);
+    if (typeof pmoMemberEditChatFlow === 'function') {
+      pmoMemberEditChatFlow(g, { surname: prevSnap.surname, phone: prevSnap.phone, email: prevSnap.email }, changedMp, hasOther);
+    }
   }
   function staffCalSociSheetSaveNew() {
     var setVal = function (id, val) { var el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
