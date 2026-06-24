@@ -2818,6 +2818,12 @@
     .svc-edit-label { font-size:.72rem; color:var(--text-muted); }
     .svc-edit-field { font-size:.82rem; padding:4px 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); }
     .svc-edit-field:disabled { opacity:.5; cursor:not-allowed; }
+    /* Campo Note scheda modifica: testo ben leggibile, area chiara e ampia (era troppo piccolo/sbiadito) */
+    .svc-note-edit { width:100%; box-sizing:border-box; resize:vertical; font-family:inherit; font-size:14px; line-height:1.5; padding:10px 12px; min-height:64px; border:1.5px solid #cbd5e1; border-radius:8px; background:#fff; color:#111827; transition:border-color .12s, box-shadow .12s; }
+    .svc-note-edit::placeholder { color:#94a3b8; font-style:italic; }
+    .svc-note-edit:focus { outline:none; border-color:var(--primary,#2563eb); box-shadow:0 0 0 3px rgba(37,99,235,.14); }
+    .svc-note-edit:disabled { opacity:.55; cursor:not-allowed; background:#f1f5f9; }
+    .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -7667,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.938';
+    const APP_VERSION = '5.939';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37476,14 +37482,13 @@ Per confermare scrivi ELIMINA.`);
     const editNoteWrap = document.createElement('div');
     editNoteWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
     const editNoteLbl = document.createElement('div');
-    editNoteLbl.className = 'svc-edit-label';
-    editNoteLbl.style.marginBottom = '4px';
-    editNoteLbl.textContent = 'Note (facoltativo · max 300 caratteri)';
+    editNoteLbl.className = 'svc-note-edit-lbl';
+    editNoteLbl.style.marginBottom = '5px';
+    editNoteLbl.textContent = '📝 Note (facoltativo · max 300 caratteri)';
     const editNoteTA = document.createElement('textarea');
-    editNoteTA.rows = 2; editNoteTA.maxLength = 300;
-    editNoteTA.placeholder = 'Osservazioni per Matchpoint...';
-    editNoteTA.className = 'svc-edit-field';
-    editNoteTA.style.cssText = 'width:100%;box-sizing:border-box;resize:none;font-family:inherit;';
+    editNoteTA.rows = 3; editNoteTA.maxLength = 300;
+    editNoteTA.placeholder = 'Scrivi qui le osservazioni… (verranno salvate su Matchpoint)';
+    editNoteTA.className = 'svc-note-edit';
     editNoteTA.value = st.note || '';
     editNoteTA.addEventListener('input', function () { st.note = editNoteTA.value.trim(); });
     editNoteWrap.appendChild(editNoteLbl);
