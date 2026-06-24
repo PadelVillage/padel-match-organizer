@@ -4473,6 +4473,21 @@ async function updateClientWithBrowser(options = {}) {
         } else {
           diagnostic.levelError = diagnostic.levelError || 'Livello non salvato: campo/riga non trovati.';
         }
+        // PROBE SHELL (temporaneo): se il livello non e' passato, mappa default.aspx per
+        // capire come caricare la Ficha nel contesto giusto (iframe + funzione navIframe).
+        if (!diagnostic.livelloVerified) {
+          try {
+            await page.goto(absoluteUrl(baseUrl, '/default.aspx'), { waitUntil: 'domcontentloaded', timeout: 20000 });
+            await page.waitForTimeout(1800);
+            diagnostic.shellProbe = await page.evaluate(() => ({
+              url: location.href,
+              fnNames: ['navIframe', 'NavIframe', 'navegarIframe', 'cargarIframe', 'CargarIframe', 'abrirFicha', 'cargarPagina']
+                .filter((n) => typeof window[n] === 'function'),
+              globalFns: Object.keys(window).filter((k) => typeof window[k] === 'function' && /iframe|ficha|navig|cargar|pagina/i.test(k)).slice(0, 30),
+              iframes: Array.from(document.querySelectorAll('iframe,frame')).map((f) => ({ id: f.id || '', name: f.name || '', src: (f.getAttribute('src') || '').slice(0, 160) })),
+            }));
+          } catch (e) { diagnostic.shellProbeErr = String((e && e.message) || e).slice(0, 140); }
+        }
       } catch (levelError) {
         diagnostic.livelloVerified = false;
         diagnostic.levelError = (levelError && levelError.message) || String(levelError);
