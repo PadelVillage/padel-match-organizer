@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.923';
+    const APP_VERSION = '5.924';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -45562,12 +45562,15 @@ Per confermare scrivi ELIMINA.`);
     setVal('level', get('staffCalSociNewLevel'));
     setVal('playingPosition', get('staffCalSociNewPosition'));
     ['prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
-    var created = (typeof addMember === 'function') ? addMember() : null;
+    // skipMatchpointChat: la chat la apriamo NOI dopo aver chiuso il pannello soci, così su
+    // mobile il bottom-sheet della chat è visibile (come per la modifica: chiudi → chat).
+    var created = (typeof addMember === 'function') ? addMember({ skipMatchpointChat: true }) : null;
     if (created) {
       ['staffCalSociNewFirst', 'staffCalSociNewSurname', 'staffCalSociNewPhone', 'staffCalSociNewEmail', 'staffCalSociNewLevel'].forEach(function (id) { setVal(id, ''); });
       var gsel = document.getElementById('staffCalSociNewGender'); if (gsel) gsel.value = '';
       var psel = document.getElementById('staffCalSociNewPosition'); if (psel) psel.value = '';
       staffCalCloseSociSheet();
+      if (typeof pmoMemberCreateChatFlow === 'function') pmoMemberCreateChatFlow(created);
     } else {
       ['firstName', 'surname', 'phone', 'email', 'prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
       setVal('level', '0.5');
