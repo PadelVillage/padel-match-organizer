@@ -72,7 +72,9 @@ begin
       v_routine_key := 'history';
       v_routine_label := 'Storico Matchpoint';
       v_function_slug := 'matchpoint-history-sync';
-    when '05:45' then
+    when '06:00' then
+      -- NB: 06:00 (minuto PARI) → scatta col cron */2. La vecchia 05:45 aveva minuto
+      -- DISPARI e non veniva MAI eseguita (il cron gira solo a minuti pari).
       v_routine_key := 'cloud_backup';
       v_routine_label := 'Backup cloud automatico';
       v_function_slug := 'pmo-cloud-backup-auto';
