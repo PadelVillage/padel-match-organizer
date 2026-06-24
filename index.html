@@ -7191,73 +7191,23 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-section-head"><div><h2>✨ Assistente AI</h2><p>Comandi in linguaggio naturale dalla chat: crea, modifica, annulla, interroga.</p></div></div>
       <div class="ai-admin-grid">
         <section class="ai-admin-card ai-admin-card-wide">
-          <h3>📊 Autoapprendimento — diario turni</h3>
-          <p class="ai-admin-hint">Ogni azione dello staff (chat <strong>e</strong> manuale) viene registrata con il suo <strong>esito</strong>, per capire dove l'assistente va migliorato. È <strong>solo cattura</strong>: il sistema non cambia nulla da solo. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadTurnsInsight()}catch(e){}">↻ Aggiorna</button></p>
-          <div id="aiTurnsInsight" class="ai-turns-insight"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere gli ultimi turni e le frasi da migliorare.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
           <h3>🧩 Vocabolario (lessico)</h3>
-          <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: una parola nuova → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia»). Solo le voci <strong>✅ Attive</strong> entrano nel parser. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna</button></p>
+          <p class="ai-admin-hint">Insegna all'assistente un <strong>modo di dire nuovo</strong> senza aggiornare l'app: scrivi una <strong>parola nuova</strong> → la parola che <strong>già capisce</strong> (es. «spostare» → «cambia»), premi <strong>🔎 Prova</strong> e ti mostro alcuni esempi di <strong>cosa capirei</strong>. Se è giusto, <strong>confermi e salvi</strong>. Solo le voci <strong>✅ Attive</strong> entrano nel parser. <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna</button></p>
           <div class="ai-lex-add">
             <input id="aiLexSurface" class="ai-lex-input" placeholder="parola nuova (es. spostare)">
             <span class="ai-lex-arrow">→</span>
             <input id="aiLexCanonical" class="ai-lex-input" placeholder="che già capisce (es. cambia)">
             <select id="aiLexDomain" class="ai-lex-input"><option value="">entrambi</option><option value="prenotazione">prenotazione</option><option value="anagrafica">anagrafica</option></select>
-            <button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(e){}">+ Aggiungi</button>
+            <button class="btn-primary small-btn" onclick="try{PMOAi.lexPreview()}catch(e){}">🔎 Prova</button>
             <span id="aiLexAddState" class="ai-admin-hint"></span>
           </div>
-          <div class="ai-lex-mine" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button class="btn-secondary small-btn" onclick="try{PMOAi.mineLexicon()}catch(e){}">🔎 Cerca nuove parole dal diario</button>
+          <div id="aiLexPreview" class="ai-lex-preview" style="display:none;margin-top:10px"></div>
+          <div class="ai-lex-mine" style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-secondary small-btn" onclick="try{PMOAi.mineLexicon()}catch(e){}">📒 Cerca nuove parole dal diario</button>
             <span id="aiLexMineState" class="ai-admin-hint"></span>
           </div>
-          <p class="ai-admin-hint" style="margin:4px 0 0">L'assistente impara dai casi in cui hai <strong>riformulato</strong> una frase: ti <strong>propone</strong> i sinonimi qui sotto come 🟠 <strong>Proposto</strong>. Non cambia niente da solo: entrano in vigore <strong>solo se li approvi</strong>.</p>
+          <p class="ai-admin-hint" style="margin:4px 0 0">L'assistente impara anche da solo dai casi in cui hai <strong>riformulato</strong> una frase: ti <strong>propone</strong> i sinonimi qui sotto come 🟠 <strong>Proposto</strong>. Non cambia niente da solo: entrano in vigore <strong>solo se li approvi</strong>.</p>
           <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Premi “↻ Aggiorna” per vedere i termini.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>🧪 Banco di prova</h3>
-          <p class="ai-admin-hint">Scrivi una frase e l'assistente ti dice, <strong>in parole semplici, cosa ha capito</strong> (cosa vuoi fare, quando, quale campo, chi gioca…): così controlli se ha capito giusto. È solo una prova: <strong>non esegue niente e non scrive nulla su Matchpoint</strong>.</p>
-
-          <label class="ai-sbx-step">1 · Scrivi o detta 🎤 la frase da provare</label>
-          <div class="ai-sbx-input-wrap">
-            <textarea id="aiSandboxInput" class="ai-sandbox-input" rows="2" placeholder='Es: prenota campo 2 domani 18-19:30 Mario Rossi'></textarea>
-            <button type="button" id="aiSandboxMic" class="ai-sbx-mic" style="position:absolute;right:8px;bottom:8px;" title="Detta la frase con la voce" onclick="try{PMOAi.toggleSandboxDictation()}catch(e){}">🎤</button>
-          </div>
-
-          <label class="ai-sbx-step">2 · Premi “Analizza” e leggi il risultato</label>
-          <div class="ai-sandbox-actions">
-            <button class="btn-primary small-btn" onclick="try{PMOAi.runSandbox()}catch(e){}">🔍 Analizza</button>
-          </div>
-          <pre id="aiSandboxOutput" class="ai-sandbox-output">—</pre>
-
-          <label class="ai-sbx-step">3 · Se il risultato è sbagliato (scegli una via)</label>
-          <p class="ai-admin-hint" style="margin:0 0 6px">🐞 <strong>Segnala</strong>: lo salvo e lo correggo io più tardi. — oppure — 📋 <strong>Copia per la chat</strong>: lo incolli qui nella nostra conversazione per parlarne subito.</p>
-          <div class="ai-sandbox-report" id="aiSandboxReportBox">
-            <textarea id="aiSandboxNote" class="ai-sandbox-input" rows="2" placeholder="Cosa è sbagliato? (facoltativo, a parole tue)"></textarea>
-            <div class="ai-sbx-drop" id="aiSandboxDrop">
-              <input type="file" id="aiSandboxImgInput" accept="image/*" hidden onchange="try{PMOAi.onSandboxImagePicked(this.files)}catch(e){}">
-              <button type="button" class="btn-secondary small-btn" onclick="document.getElementById('aiSandboxImgInput').click()">📎 Allega immagine</button>
-              <span class="ai-admin-hint">o trascina qui un'immagine dal desktop · o incolla con Ctrl/⌘+V</span>
-            </div>
-            <div id="aiSandboxImgPreview" class="ai-sbx-img-preview" style="display:none"></div>
-            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button class="btn-warning small-btn" onclick="try{PMOAi.reportSandbox()}catch(e){}">🐞 Segnala questo caso</button>
-              <span id="aiSandboxReportState" class="ai-admin-hint"></span>
-            </div>
-          </div>
-          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button class="btn-secondary small-btn" onclick="try{PMOAi.copySandboxReport()}catch(e){}">📋 Copia per la chat</button>
-            <span id="aiSandboxCopyState" class="ai-admin-hint"></span>
-          </div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>📋 Ultime interazioni</h3>
-          <p class="ai-admin-hint">Comandi reali di questa sessione. Premi 🐞 accanto a uno interpretato male per <strong>segnalarlo</strong> (lo trovi qui sotto in “Le mie segnalazioni”).</p>
-          <div id="aiConversationLog" class="ai-conv-log"><div class="ai-admin-hint">Nessuna interazione ancora.</div></div>
-        </section>
-        <section class="ai-admin-card ai-admin-card-wide">
-          <h3>🐞 Le mie segnalazioni</h3>
-          <p class="ai-admin-hint">Le frasi che hai segnalato con 🐞. <strong>🟠 Aperta</strong> = ancora da sistemare · <strong>✅ Risolta</strong> = corretta (con versione e nota di cosa è stato fatto). <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadMyReports()}catch(e){}">↻ Aggiorna</button></p>
-          <div id="aiReportsList" class="ai-reports-list"><div class="ai-admin-hint">—</div></div>
         </section>
       </div>
     </div>
@@ -7718,7 +7668,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.928';
+    const APP_VERSION = '5.929';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40817,6 +40767,7 @@ Per confermare scrivi ELIMINA.`);
         });
         if (!res.ok) { if (st) st.textContent = 'Non salvato (HTTP ' + res.status + ').'; return; }
         if (sEl) sEl.value = ''; if (cEl) cEl.value = '';
+        const pv = document.getElementById('aiLexPreview'); if (pv) { pv.style.display = 'none'; pv.innerHTML = ''; }
         if (st) st.textContent = '✅ Aggiunto e attivo.';
         await _lessicoLoad(); loadLessico();
       } catch (e) { if (st) st.textContent = 'Errore: ' + e.message; }
@@ -40929,6 +40880,80 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) {
         if (st) st.textContent = 'Non riuscito (' + e.message + '). Se la sessione è scaduta, esci e rientra.';
       }
+    }
+
+    // ── Verifica del Vocabolario PRIMA di salvare: esempi "cosa capirei" ─────────
+    // Per la parola CHE GIÀ CAPISCE (canonical) provo alcune frasi modello e spiego in
+    // breve cosa interpreterei; mostro la stessa frase con la parola NUOVA. Così l'utente
+    // controlla che l'abbinamento sia giusto prima di confermare. null = non riconosciuta.
+    const _LEX_TEMPLATES = [
+      '{w} il campo 2 domani alle 18',
+      '{w} una lezione con Marco domani alle 18 al campo 1',
+      '{w} la prenotazione di campo 2 di domani',
+      '{w} di mezz\'ora la prenotazione di campo 2 di domani',
+      '{w} la prenotazione di campo 2 al campo 3',
+      '{w} Mario Rossi'
+    ];
+    // Intent riconosciuto della frase (null se non capita / ko). Serve a capire se è
+    // davvero la PAROLA a farsi capire, confrontandola con una parola-fantasma.
+    function _lexIntentOf(text) {
+      let r; try { r = parse(text) || {}; } catch (e) { return null; }
+      if (!r.intent || r.intent === '—' || r.ko) return null;
+      return r.intent;
+    }
+    function _lexShortExplain(text) {
+      let r; try { r = parse(text) || {}; } catch (e) { return null; }
+      if (!r.intent || r.intent === '—' || r.ko) return null;
+      if (r.intent === 'PRENOTA') {
+        let d = null; try { d = _buildPrenotaDraft(r, text); } catch (e) {}
+        let s = 'prenoti ' + (d && d.tipo === 'lezione' ? 'una lezione' : 'una partita');
+        if (d) {
+          if (d.campoNum) s += ', campo ' + d.campoNum;
+          if (d.data) { try { s += ', ' + _friendlyDate(d.data); } catch (e) {} }
+          if (d.ora) s += ', ore ' + d.ora + (d.oraFine ? '–' + d.oraFine : '');
+        }
+        return s;
+      }
+      if (r.intent === 'CANCELLA') return 'annulli una prenotazione';
+      if (r.intent === 'CORREGGI') return 'modifichi una prenotazione';
+      if (r.intent === 'TROVA') return 'fai una domanda (campi liberi / prenotazioni)';
+      if (r.intent === 'ANAGRAFICA') return 'aggiungi o aggiorni un giocatore in anagrafica';
+      return null;
+    }
+    function lexPreview() {
+      const sEl = document.getElementById('aiLexSurface'), cEl = document.getElementById('aiLexCanonical');
+      const st = document.getElementById('aiLexAddState'), box = document.getElementById('aiLexPreview');
+      const surface = ((sEl && sEl.value) || '').trim().toLowerCase(), canonical = ((cEl && cEl.value) || '').trim();
+      if (st) st.textContent = '';
+      const hide = function () { if (box) { box.style.display = 'none'; box.innerHTML = ''; } };
+      if (surface.length < 3 || !canonical) { if (st) st.textContent = 'Serve una parola nuova (≥3 lettere) e la parola che già capisce.'; hide(); return; }
+      if (!/^[a-zà-ÿ' -]+$/.test(surface)) { if (st) st.textContent = 'La parola nuova può contenere solo lettere/spazi.'; hide(); return; }
+      if (!box) return;
+      const examples = [], seen = {}, DUMMY = 'qwxztk';
+      for (let i = 0; i < _LEX_TEMPLATES.length && examples.length < 3; i++) {
+        const tpl = _LEX_TEMPLATES[i];
+        const canonPhrase = tpl.split('{w}').join(canonical);
+        const ci = _lexIntentOf(canonPhrase);
+        if (!ci) continue;                                  // con questa parola non capisce nulla
+        if (ci === _lexIntentOf(tpl.split('{w}').join(DUMMY))) continue; // l'avrebbe capito uguale con una parola a caso → non è lei
+        const expl = _lexShortExplain(canonPhrase);
+        if (!expl || seen[expl]) continue;
+        seen[expl] = true;
+        examples.push({ phrase: tpl.split('{w}').join(surface), expl: expl });
+      }
+      const confirmBtn = '<button class="btn-primary small-btn" onclick="try{PMOAi.addLessico()}catch(e){}">✅ Confermo, salva</button>';
+      if (!examples.length) {
+        box.innerHTML = '<div class="ai-admin-hint">⚠️ Con «' + _escapeHtml(canonical) + '» non riconosco un comando chiaro. Forse la parola «che già capisce» va scritta come un termine che l\'assistente conosce (un verbo, es. <strong>prenota, sposta, annulla, modifica, accorcia, allunga</strong>…). Correggila e ripremi 🔎 Prova.</div>'
+          + '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + confirmBtn + '<span class="ai-admin-hint">Salvarla lo stesso? Solo se sei sicuro.</span></div>';
+        box.style.display = 'block'; return;
+      }
+      let html = '<div class="ai-turn-sub">Prova: leggerò «' + _escapeHtml(surface) + '» come «' + _escapeHtml(canonical) + '». Esempi:</div>';
+      html += examples.map(function (e) {
+        return '<div class="ai-turn-row"><span class="ai-turn-utt">«' + _escapeHtml(e.phrase) + '»</span><span class="ai-turn-meta">→ ' + _escapeHtml(e.expl) + '</span></div>';
+      }).join('');
+      html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + confirmBtn
+        + '<span class="ai-admin-hint">Esempi sbagliati? Cambia la parola «che già capisce» e ripremi 🔎 Prova.</span></div>';
+      box.innerHTML = html; box.style.display = 'block';
     }
 
     function _norm(s) {
@@ -45352,7 +45377,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, lexPreview: lexPreview, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
