@@ -6336,20 +6336,20 @@ body.assessment-public-mode .assessment-public-only-card {
                   <div class="smc-soci-pane" data-soci-pane="new" hidden>
                     <div class="smc-soci-form">
                       <div class="smc-soci-row">
-                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewFirst">Nome</label><input type="text" id="staffCalSociNewFirst" class="smc-soci-input" placeholder="Nome"></div>
-                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewSurname">Cognome</label><input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome"></div>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewFirst">Nome<span class="required-star">*</span></label><input type="text" id="staffCalSociNewFirst" class="smc-soci-input" placeholder="Nome"></div>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewSurname">Cognome<span class="required-star">*</span></label><input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome"></div>
                       </div>
-                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPhone">Telefono</label><input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono"></div>
-                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewEmail">Email</label><input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email"></div>
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPhone">Telefono<span class="required-star">*</span></label><input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono"></div>
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewEmail">Email<span class="required-star">*</span></label><input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email"></div>
                       <div class="smc-soci-row">
-                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewGender">Sesso</label>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewGender">Sesso<span class="required-star">*</span></label>
                           <select id="staffCalSociNewGender" class="smc-soci-input">
                             <option value="">Sesso…</option>
                             <option value="M">Maschio</option>
                             <option value="F">Femmina</option>
                           </select>
                         </div>
-                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewLevel">Livello</label><input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="es. 3" inputmode="decimal"></div>
+                        <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewLevel">Livello<span class="required-star">*</span></label><input type="text" id="staffCalSociNewLevel" class="smc-soci-input" placeholder="es. 3" inputmode="decimal"></div>
                       </div>
                       <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPosition">Posizione</label>
                         <select id="staffCalSociNewPosition" class="smc-soci-input">
@@ -6444,7 +6444,7 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
             <div class="row">
               <div class="col"><label>Telefono<span class="required-star">*</span></label><input id="phone" required /></div>
-              <div class="col"><label>Email</label><input id="email" /></div>
+              <div class="col"><label>Email<span class="required-star">*</span></label><input id="email" type="email" required /></div>
             </div>
             <div class="row">
               <div class="col"><label>Giorni preferiti</label><input id="prefDays" placeholder="Lunedi, Mercoledi" /></div>
@@ -7713,7 +7713,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.922';
+    const APP_VERSION = '5.926';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13025,8 +13025,10 @@ Grazie.`
       if (!guestJolly && (!genderValue || genderValue === 'NA')) { showAlert('❌ Sesso obbligatorio', 'danger'); return null; }
       if (!guestJolly && !levelRaw) { showAlert('❌ Livello obbligatorio', 'danger'); return null; }
       const emailVal = cleanCell(document.getElementById('email').value);
-      // Email FACOLTATIVA (parità con l'assistente: confermato da LoZio). Resta solo la
-      // validazione di formato/livello/telefono, condivisa con il parser AI.
+      // Email OBBLIGATORIA in creazione: il worker Matchpoint la richiede (oltre a
+      // telefono e sesso); senza, il socio si creava in locale ma la creazione su
+      // Matchpoint falliva. Meglio bloccare subito (eccezione: "Ospite").
+      if (!guestJolly && !emailVal) { showAlert('❌ Email obbligatoria', 'danger'); return null; }
       const _vErr = pmoAnaFieldError(levelRaw, emailVal, phone);
       if (!guestJolly && _vErr) { showAlert(_vErr, 'danger'); return null; }
       const candidate = {
@@ -13070,8 +13072,14 @@ Grazie.`
       hideAddMember(); displayMembers(); updateStats();
       try { displayAssessment(); } catch (err) { console.warn('Autovalutazione non aggiornata:', err); }
       pmoQueueImmediateMemberCloudSync(newMember, 'salvare subito il nuovo socio su Supabase');
-      if (!options.skipSuccessAlert) showAlert('✅ Socio aggiunto', 'success');
-      pmoCreateMemberInMatchpoint(newMember).catch(err => console.warn('create-in-matchpoint fallita', err));
+      // Esito creazione mostrato nella chat di sinistra (come la modifica). Il toast verde
+      // "Socio aggiunto" resta SOLO se la chat non è attiva (niente doppio avviso) e mai
+      // se chi chiama gestisce già il proprio esito (skipSuccessAlert).
+      const _chatReadyCreate = !!document.getElementById('svcChatMessages') && typeof svcAddMessage === 'function';
+      if (!options.skipSuccessAlert && !_chatReadyCreate) showAlert('✅ Socio aggiunto', 'success');
+      if (!options.skipMatchpointChat) {
+        pmoMemberCreateChatFlow(newMember);
+      }
       return newMember;
     }
     async function pmoCreateMemberInMatchpoint(member, options = {}) {
@@ -13083,11 +13091,11 @@ Grazie.`
         console.info('[TEST] creazione socio→Matchpoint disattivata: il socio resta in app + Supabase.');
         return { status: 'test_env' };
       }
-      if (isGuestJollyMember(member)) return;
+      if (isGuestJollyMember(member)) return { status: 'guest' };
       // Salta SOLO se ha già un vero codice Matchpoint (sole cifre, es. "001016").
       // Un memberId provvisorio dell'app (formato "PMO-XXXXXX") NON conta come già creato.
       const hasMatchpointCode = /^\d{4,6}$/.test(String(member.memberId || '').trim());
-      if (hasMatchpointCode) return;
+      if (hasMatchpointCode) return { status: 'skipped' };
       const sesso = member.gender === 'F' ? 'F' : 'M';
       try {
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -13124,13 +13132,60 @@ Grazie.`
           save('giocatori', giocatori);
           pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
           if (notify) showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
+          return { status: 'ok', codice: codiceClean };
         } else {
           const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
           if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+          return { status: 'error', reason: msg };
         }
       } catch (err) {
         const msg = err?.message || String(err) || 'errore sconosciuto';
         if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
+        return { status: 'error', reason: msg };
+      }
+    }
+    // Racconta nella chat di sinistra la creazione di un nuovo socio (come la modifica):
+    // "🆕 Nuovo socio → ↻ Sto creando su Matchpoint… → ✅ Creato (codice) / ⚠️ errore".
+    // Niente pop-up: l'esito vive in chat. Se la chat non c'è, ricade sui toast storici.
+    async function pmoMemberCreateChatFlow(member) {
+      const chatReady = !!document.getElementById('svcChatMessages') && typeof svcAddMessage === 'function';
+      if (!chatReady) {
+        return Promise.resolve(pmoCreateMemberInMatchpoint(member))
+          .catch(function (e) { console.warn('create-in-matchpoint fallita', e); });
+      }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const fullName = (typeof playerFullName === 'function' ? playerFullName(member) : (member && member.name)) || 'Socio';
+      try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {}
+      const _msgEl = svcAddMessage('system',
+        '🆕 <strong>Nuovo socio</strong>: ' + esc(fullName) +
+        '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ Sto creando su Matchpoint…</span>', 'ok');
+      const _setSync = function (html, color) {
+        try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+      };
+      const _isMobileChat = window.innerWidth < 900;
+      const _linger = function () {
+        try { svcScheduleAutoClear(8000); } catch (e) {}
+        if (_isMobileChat) setTimeout(function () { try { if (typeof svcCloseChat === 'function') svcCloseChat(); } catch (e) {} }, 8000);
+      };
+      let res;
+      try {
+        res = await pmoCreateMemberInMatchpoint(member, { notify: false });
+      } catch (e) {
+        res = { status: 'error', reason: (e && e.message) || String(e) };
+      }
+      const st = res && res.status;
+      if (st === 'ok') {
+        _setSync('✅ Creato su Matchpoint · codice ' + esc(res.codice || ''), '#067647');
+        _linger();
+      } else if (st === 'test_env') {
+        _setSync('💾 Creato (Matchpoint scollegato in test)', '#067647');
+        _linger();
+      } else if (st === 'guest' || st === 'skipped') {
+        _setSync('💾 Salvato nell\'app', '#475467');
+      } else {
+        const reason = (res && res.reason) ? String(res.reason).slice(0, 140) : 'errore sconosciuto';
+        _setSync('⚠️ NON creato su Matchpoint', '#d92d20');
+        svcAddMessage('system', '❌ Creazione su Matchpoint non riuscita: ' + esc(reason) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Il socio resta salvato nell\'app.</span>', 'error');
       }
     }
     function detectGender() {
@@ -45327,6 +45382,9 @@ Per confermare scrivi ELIMINA.`);
     if (which === 'search') {
       setTimeout(function () { var s = document.getElementById('staffCalSociSearch'); if (s) s.focus(); }, 60);
     } else {
+      // Livello di default 0,5 (= da autovalutare), come nel form Anagrafica, se vuoto.
+      var lvl = document.getElementById('staffCalSociNewLevel');
+      if (lvl && !String(lvl.value || '').trim()) lvl.value = '0.5';
       setTimeout(function () { var f = document.getElementById('staffCalSociNewFirst'); if (f) f.focus(); }, 60);
     }
   }
@@ -45507,12 +45565,15 @@ Per confermare scrivi ELIMINA.`);
     setVal('level', get('staffCalSociNewLevel'));
     setVal('playingPosition', get('staffCalSociNewPosition'));
     ['prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
-    var created = (typeof addMember === 'function') ? addMember() : null;
+    // skipMatchpointChat: la chat la apriamo NOI dopo aver chiuso il pannello soci, così su
+    // mobile il bottom-sheet della chat è visibile (come per la modifica: chiudi → chat).
+    var created = (typeof addMember === 'function') ? addMember({ skipMatchpointChat: true }) : null;
     if (created) {
       ['staffCalSociNewFirst', 'staffCalSociNewSurname', 'staffCalSociNewPhone', 'staffCalSociNewEmail', 'staffCalSociNewLevel'].forEach(function (id) { setVal(id, ''); });
       var gsel = document.getElementById('staffCalSociNewGender'); if (gsel) gsel.value = '';
       var psel = document.getElementById('staffCalSociNewPosition'); if (psel) psel.value = '';
       staffCalCloseSociSheet();
+      if (typeof pmoMemberCreateChatFlow === 'function') pmoMemberCreateChatFlow(created);
     } else {
       ['firstName', 'surname', 'phone', 'email', 'prefDays', 'prefHours', 'newDesiredFrequency', 'newNotice', 'newPreferredMatchType'].forEach(function (id) { setVal(id, ''); });
       setVal('level', '0.5');
