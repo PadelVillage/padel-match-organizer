@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.950';
+    const APP_VERSION = '5.951';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -10046,7 +10046,7 @@ Grazie.`
         </details>`;
       }).join('');
       return `<div class="pmo-section-tree" id="pmoSectionTree">
-        <div class="pmo-sect-hint">Spunta cosa può vedere l'utente. Nessuna spunta su tutto l'albero = vede tutto (default). Il Proprietario vede sempre tutto.</div>
+        <div class="pmo-sect-hint">Spunta le sezioni che l'utente potrà vedere: quelle non spuntate restano nascoste. Un nuovo utente parte senza nulla spuntato, quindi autorizza esplicitamente cosa può vedere. Il Proprietario vede sempre tutto.</div>
         ${rows}
       </div>`;
     }
@@ -25365,11 +25365,14 @@ Per confermare scrivi ELIMINA.`);
 	      target.innerHTML = `<div class="routine-table-wrap"><table class="routine-table"><thead><tr><th>Routine</th><th>Stato</th><th>Anticipo</th><th>Ultimo controllo</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 	    }
 	    function pmoDefaultPermissionsForRole(role) {
-	      const views = pmoDefaultViewPermissions();
-	      const all = { manage_users:true, cloud_sync:true, routines:true, ...views };
-	      if (role === 'owner' || role === 'admin') return all;
-	      // staff/readonly: nessun permesso operativo "forte"; le sezioni visibili sono gestite dall'albero view_*
-	      return { manage_users:false, cloud_sync:false, routines:false, ...views };
+	      const viewsAll = pmoDefaultViewPermissions();
+	      if (role === 'owner' || role === 'admin') return { manage_users:true, cloud_sync:true, routines:true, ...viewsAll };
+	      // staff/readonly: nessun permesso forte E nessuna sezione visibile di default →
+	      // l'admin sceglie ESPLICITAMENTE cosa autorizzare (whitelist). Tutte le view_* a false
+	      // significano "non vede nulla" finché non si spunta qualcosa.
+	      const viewsNone = {};
+	      pmoAllViewKeys().forEach(k => { viewsNone[k] = false; });
+	      return { manage_users:false, cloud_sync:false, routines:false, ...viewsNone };
 	    }
 	    function pmoRoleLabel(role) {
 	      return ({ owner:'Proprietario', admin:'Admin', staff:'Staff', readonly:'Solo lettura' })[role] || role || '-';
@@ -26171,7 +26174,7 @@ Per confermare scrivi ELIMINA.`);
 	          <div><label for="pmoStaffUserSurname">Cognome</label><input id="pmoStaffUserSurname" autocomplete="family-name" placeholder="Cognome" value="${escapeHtml(lastName)}" /></div>
 	          <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" value="${escapeHtml(email)}" ${editing ? 'disabled' : ''} /></div>
 	        </div>
-	        <details class="staff-permissions-details staff-advanced-options"${editing ? ' open' : ''}>
+	        <details class="staff-permissions-details staff-advanced-options" open>
 	          <summary>Opzioni avanzate (ruolo, stato e sezioni visibili)</summary>
 	          <div class="admin-form-grid staff-invite-grid" style="margin-top:10px;">
 	            <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()">${pmoStaffUserRoleOptions(role)}</select></div>
