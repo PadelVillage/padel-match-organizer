@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.949';
+    const APP_VERSION = '5.950';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8234,7 +8234,7 @@ Grazie.`
       const passwordInput = document.getElementById('pmoStaffAuthPassword');
       if (intro) {
         intro.textContent = nextMode === 'signup'
-          ? "Crea l'accesso solo con un'email gia autorizzata in Amministrazione. Scegli una password, poi conferma la mail ricevuta."
+          ? "Crea l'accesso solo con un'email gia autorizzata in Amministrazione. Scegli una password ed entri subito."
           : "Accedi con l'email autorizzata in Amministrazione e la password personale. Se non hai ancora creato l'accesso, registrati.";
       }
       if (modeName) modeName.textContent = nextMode === 'signup' ? 'Registrazione' : 'Accesso';
@@ -8653,14 +8653,16 @@ Grazie.`
           pmoStoreSupabaseStaffSession(data);
           const profile = await pmoLoadMyStaffProfile();
           if (pmoIsStaffProfileActive(profile)) {
-            const confirmedEmail = cleanCell(profile.email || email).toLowerCase();
-            clearStaffSession();
-            pmoRememberPendingStaffEmail(confirmedEmail);
-            pmoSetStaffEmailValue(confirmedEmail);
+            // Conferma email disattivata su Supabase: il signup restituisce gia una
+            // sessione attiva -> entra DIRETTAMENTE nell'app (niente 2a email ne 2o login).
+            // Stesso percorso del login riuscito (pmoHandleStaffEmailLogin).
+            rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
+            const emailInput = document.getElementById('pmoStaffEmail');
             const passwordInput = document.getElementById('pmoStaffAuthPassword');
+            if (emailInput) emailInput.value = '';
             if (passwordInput) passwordInput.value = '';
-            pmoSetLoginMode('login', { keepMessage: true });
-            pmoSetLoginMessage('Email confermata. Inserisci la password scelta per entrare.', 'success');
+            setStaffAuthState(true);
+            renderPmoAdministration();
             return;
           }
         }
@@ -42923,7 +42925,9 @@ Per confermare scrivi ELIMINA.`);
         const hh = parseInt(m[1], 10);
         if (hh >= 6 && hh <= 23) {
           const ora = String(hh).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
-          return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+          // Solo ora d'inizio (nessun range nel testo): durata 90 è un DEFAULT, non esplicita →
+          // chi consuma deve poterla rimpiazzare col default per tipo (Lezione 60'/Partita 90').
+          return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, durDefault: true };
         }
       }
       return null;
@@ -43114,7 +43118,7 @@ Per confermare scrivi ELIMINA.`);
       // Se ho l'inizio ma non la fine, prova a leggere il range dal testo, altrimenti il default per tipo.
       if (draft.ora && !draft.oraFine) {
         const tr = _parseTimeRange(text);
-        if (tr && tr.ora === draft.ora && tr.oraFine) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = false; }
+        if (tr && tr.ora === draft.ora && tr.oraFine && !tr.durDefault) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = false; }
         else { draft.durata = draft.durDefault ? _defDur(draft.tipo) : (draft.durata || _defDur(draft.tipo)); draft.oraFine = _endTime(draft.ora, draft.durata); }
       }
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
@@ -43329,7 +43333,7 @@ Per confermare scrivi ELIMINA.`);
       } else if (k === 'time') {
         const tr = _parseTimeRange(text);
         if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
-        draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata;
+        draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = !!tr.durDefault;
       } else if (k === 'player') {
         const nn = ' ' + _norm(text) + ' ';
         if (/( ospite | nessuno | anonimo | senza nome )/.test(nn)) {
