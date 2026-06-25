@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.961';
+    const APP_VERSION = '5.962';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -24944,6 +24944,61 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) { console.warn('staff-cal realtime member notify:', e); }
 	      return result;
 	    }
+	    // ── Avviso "non sincronizzata" per le operazioni STAFF sul calendario ────────────────
+	    // L'UI è ottimistica: una prenotazione/spostamento/annullo compare SUBITO in locale, poi
+	    // il push verso il cloud (pmoSyncCloudRecordsNow) la rende visibile sugli ALTRI device.
+	    // Se in quel momento manca la rete (anche col classico "WiFi connesso ma senza internet",
+	    // dove navigator.onLine resta true) il push fallisce/va in timeout: senza avviso lo staff
+	    // crede che sia fatto. Qui rileviamo il fallimento, avvisiamo in modo netto e marchiamo la
+	    // card come "non sincronizzata". NIENTE retry automatico (scelta: evita doppioni).
+	    function pmoLooksOffline(error) {
+	      try { if (typeof navigator !== 'undefined' && navigator.onLine === false) return true; } catch (e) {}
+	      const m = String((error && error.message) || error || '').toLowerCase();
+	      return /timeout|failed to fetch|networkerror|load failed|network request failed|pmo_push_timeout|err_internet|err_network/.test(m);
+	    }
+	    // Push dei record staff con TIMEOUT corto: su rete morta il fetch resta appeso a lungo,
+	    // così invece avvisiamo entro pochi secondi. Auto-correzione: se il push REALE riesce
+	    // (anche dopo lo scadere del timeout) il badge "non sincronizzata" viene tolto.
+	    function pmoStaffCloudPush(records, actionLabel, opts) {
+	      opts = opts || {};
+	      const real = pmoSyncCloudRecordsNow(records, actionLabel);
+	      // Auto-correzione: se il push REALE riesce (anche dopo lo scadere del timeout) togli il badge.
+	      // Il secondo handler intercetta anche un rifiuto tardivo del push reale (niente unhandled rejection).
+	      try { real.then(function () { if (opts.entryId) pmoClearStaffNotSynced(opts.entryId); }, function () {}); } catch (e) {}
+	      const TIMEOUT_MS = 12000;
+	      return new Promise(function (resolve, reject) {
+	        let done = false;
+	        const t = setTimeout(function () { if (!done) { done = true; reject(new Error('PMO_PUSH_TIMEOUT')); } }, TIMEOUT_MS);
+	        real.then(
+	          function (v) { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+	          function (e) { if (!done) { done = true; clearTimeout(t); reject(e); } }
+	        );
+	      });
+	    }
+	    function pmoMarkStaffNotSynced(entryId, on) {
+	      try {
+	        if (!entryId || typeof safeLoad !== 'function') return;
+	        const list = safeLoad('staffBookings', []);
+	        const hit = (Array.isArray(list) ? list : []).find(function (b) { return b && b.id === entryId; });
+	        if (!hit) return;
+	        let changed = false;
+	        if (on) {
+	          if (hit._notSynced !== true) { hit._notSynced = true; changed = true; }
+	          if (hit.syncing) { delete hit.syncing; changed = true; } // non è "in corso": è fallita
+	        } else if (hit._notSynced) { delete hit._notSynced; changed = true; }
+	        if (changed) { if (typeof save === 'function') save('staffBookings', list); if (typeof renderStaffCalendar === 'function') renderStaffCalendar(); }
+	      } catch (e) {}
+	    }
+	    function pmoClearStaffNotSynced(entryId) { pmoMarkStaffNotSynced(entryId, false); }
+	    function pmoWarnStaffNotSynced(error, opts) {
+	      opts = opts || {};
+	      console.warn('PMO_STAFF_CLOUD_PUSH_FAILED', opts.kind || '', error);
+	      if (opts.entryId) pmoMarkStaffNotSynced(opts.entryId, true);
+	      const cosa = opts.verbo || 'la prenotazione';
+	      if (typeof showAlert === 'function') {
+	        showAlert('⚠️ Connessione assente: ' + cosa + ' è salvata SOLO su questo dispositivo. NON è su Matchpoint né sugli altri dispositivi. Riprova quando torni online.', 'warning');
+	      }
+	    }
 	    function pmoNotifyImmediateMemberCloudFailure(error, actionLabel='aggiornare il socio su Supabase') {
 	      const message = pmoFriendlyCloudError(error?.message || error || 'Aggiornamento cloud non riuscito.', actionLabel);
 	      console.warn('PMO_MEMBER_IMMEDIATE_CLOUD_SYNC_FAILED', actionLabel, error);
@@ -36195,7 +36250,9 @@ Per confermare scrivi ELIMINA.`);
       // lettura cloud della pulizia-orfani (sotto). Quella lettura, awaited, costava ~20s su mobile
       // (rete lenta + read paginata di TUTTI gli staff_booking) → il broadcast partiva tardi e il
       // device che riceveva vedeva lo spostamento in ritardo (latenza dipendente dal mittente).
-      pmoSyncCloudRecordsNow(records.slice(), 'spostare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff move cloud sync:', e); });
+      pmoStaffCloudPush(records.slice(), 'spostare la prenotazione staff sul cloud', { entryId: _destId })
+        .then(function(){ if (_destId) pmoClearStaffNotSynced(_destId); })
+        .catch(function (e) { pmoWarnStaffNotSynced(e, { entryId: _destId, kind:'move', verbo:'lo spostamento' }); });
       // v5.743 — TOMBSTONE del vecchio slot cross-device, come SECONDA push (fuori dal percorso
       // critico del broadcast). Solo se abbiamo costruito un record al destino (_destId): leggiamo dal
       // cloud gli staff_booking al VECCHIO slot e li marchiamo deleted, TRANNE quello appena spostato
@@ -36276,7 +36333,7 @@ Per confermare scrivi ELIMINA.`);
     const staffBookings = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     for (const b of staffBookings) {
       if (b.data !== isoDate) continue;
-      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata), idReserva: (b.idReserva != null ? String(b.idReserva) : ''), syncing: b.syncing === true });
+      result.push({ ora: b.ora, campo: b.campo, nome: b.nome || 'Staff', tipo: 'staff-booking', tipoReale: b.tipo || 'partita', istruttore: b.istruttore || '', giocatori: Array.isArray(b.giocatori) ? b.giocatori : [], durata: _staffCalDurMin(b.durata), idReserva: (b.idReserva != null ? String(b.idReserva) : ''), syncing: b.syncing === true, notSynced: b._notSynced === true });
     }
     // v5.858 — STORICO sul calendario: per le date passate (e in generale) le prenotazioni
     // dell'archivio (storicoPrenotazioni) NON popolano prenotazioni/occupazione, quindi il
@@ -36487,6 +36544,16 @@ Per confermare scrivi ELIMINA.`);
             sd.style.cssText = 'color:#f0a020;font-size:9px;margin-left:4px;opacity:.85;align-self:center;';
             hdr.appendChild(sd);
           }
+          // Avviso "non sincronizzata": il push al cloud è fallito (offline) → questa card vive
+          // SOLO su questo dispositivo, non è sugli altri device né (probabilmente) su Matchpoint.
+          if (slot.notSynced) {
+            const ns = document.createElement('span');
+            ns.className = 'booking-notsync-badge';
+            ns.textContent = '⚠ non sincronizzata';
+            ns.title = 'Salvata solo su questo dispositivo (connessione assente). Riprova quando torni online.';
+            ns.style.cssText = 'color:#fff;background:#dc2626;font-size:9px;font-weight:700;margin-left:4px;padding:1px 5px;border-radius:8px;align-self:center;white-space:nowrap;';
+            hdr.appendChild(ns);
+          }
           if (!isMatchpoint) {
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
@@ -36600,6 +36667,13 @@ Per confermare scrivi ELIMINA.`);
         const lbl = _staffCalTipoLabel(entry.tipoReale || entry.tipo);
         typeEl.innerHTML = ico + '&nbsp;' + lbl;
         card.appendChild(typeEl);
+        if (entry.notSynced) {
+          const ns = document.createElement('div');
+          ns.className = 'agenda-card-notsync';
+          ns.textContent = '⚠ Non sincronizzata — solo su questo dispositivo';
+          ns.style.cssText = 'color:#fff;background:#dc2626;font-size:.72rem;font-weight:700;margin-top:3px;padding:2px 6px;border-radius:8px;display:inline-block;';
+          card.appendChild(ns);
+        }
         if (entry.nome || (entry.tipo !== 'staff-booking' && _staffCalMpPlayers[_staffCalMpKey(isoDate, entry.campo, slots[si])])) {
           const playersEl = document.createElement('div');
           playersEl.className = 'agenda-card-players';
@@ -39281,7 +39355,9 @@ Per confermare scrivi ELIMINA.`);
           payload: { data: entry.data, ora: entry.ora, ora_fine: entry.oraFine, campo: entry.campo, nome: entry.nome, durata: entry.durata, tipo: entry.tipo, istruttore: entry.istruttore, giocatori: entry.giocatori, note: entry.note || '', id_reserva: (entry.idReserva != null ? String(entry.idReserva) : '') },
           deleted: false
         });
-        pmoSyncCloudRecordsNow(records, 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
+        pmoStaffCloudPush(records, 'sincronizzare la prenotazione staff sul cloud', { entryId: entry.id })
+          .then(function(){ pmoClearStaffNotSynced(entry.id); })
+          .catch(function(e){ pmoWarnStaffNotSynced(e, { entryId: entry.id, kind:'create', verbo:'la prenotazione' }); });
       }
     } catch (e) { console.warn('staff_booking cloud push:', e); }
     return true;
@@ -39348,7 +39424,8 @@ Per confermare scrivi ELIMINA.`);
           deleted: false
         });
         if (_ghostTombstones.length) records.push.apply(records, _ghostTombstones);
-        pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
+        pmoStaffCloudPush(records, 'segnare annullata la prenotazione staff sul cloud', {})
+          .catch(function(e){ pmoWarnStaffNotSynced(e, { kind:'cancel', verbo:'l\'annullo' }); });
         // v5.902 — Cura del fantasma "ri-comparso come Partita": la CREAZIONE via edge function
         // (matchpoint-bookings-create) scrive un SECONDO staff_booking nel cloud con local_key
         // `staff_booking|<data>|<ora>|Campo <campo>|<userId>` e SENZA `tipo` (→ in render diventa
