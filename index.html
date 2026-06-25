@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.955';
+    const APP_VERSION = '5.956';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40867,6 +40867,14 @@ Per confermare scrivi ELIMINA.`);
     // Gating TEST (come il diario). L'approva resta UMANA: nessuna auto-applicazione.
     let _lessico = [];                           // [{surface, canonical, re}]
     const _LESSICO_ENABLED = _AI_TURNS_ENABLED;
+    // Regex-surface di un sinonimo con confini "parola" UNICODE-AWARE. Il \b di JS è ASCII e
+    // NON aggancia dopo lettere accentate (es. "butta giù" → \b dopo "ù" fallisce) → il sinonimo
+    // non si applicava. Usiamo lookaround con una classe che include À-ÿ. Helper unico (no drift).
+    function _lessicoRe(surface, flags) {
+      const esc = String(surface || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!esc) return null;
+      try { return new RegExp('(?<![A-Za-zÀ-ÿ0-9])' + esc + '(?![A-Za-zÀ-ÿ0-9])', flags || 'gi'); } catch (e) { return null; }
+    }
     async function _lessicoLoad() {
       if (!_LESSICO_ENABLED) return;
       try {
@@ -40884,7 +40892,7 @@ Per confermare scrivi ELIMINA.`);
           // Guardie base: surface ≥2 lettere (ammessi «ok», «sì», termini stranieri corti),
           // solo lettere/spazio/apostrofo (mai parola di 1 char).
           if (s.length < 2 || !c || !/^[a-zà-ÿ' -]+$/.test(s)) return null;
-          let re; try { re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'); } catch (e) { return null; }
+          const re = _lessicoRe(s); if (!re) return null;
           return { surface: s, canonical: c, re: re };
         }).filter(Boolean);
       } catch (e) { /* offline/anon → resta vuoto, no-op */ }
@@ -40932,7 +40940,7 @@ Per confermare scrivi ELIMINA.`);
         const s = String(cand.surface).trim().toLowerCase();
         const cw = String(cand.canonical).trim();
         if (s.length < 2 || !cw) return function () {};
-        let re; try { re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'); } catch (e) { return function () {}; }
+        const re = _lessicoRe(s); if (!re) return function () {};
         const entry = { surface: s, canonical: cw, re: re };
         _lessico.push(entry);
         return function () { const i = _lessico.indexOf(entry); if (i >= 0) _lessico.splice(i, 1); };
@@ -41228,7 +41236,7 @@ Per confermare scrivi ELIMINA.`);
     // Spiega una frase intera scritta dall'utente: riscrive surface→canonical e interpreta.
     function _lexExplainPhrase(phrase, surface, canonical) {
       try {
-        const re = new RegExp('\\b' + surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+        const re = _lessicoRe(surface); if (!re) return null;
         return _lexShortExplain(String(phrase || '').replace(re, canonical));
       } catch (e) { return null; }
     }
@@ -41377,7 +41385,7 @@ Per confermare scrivi ELIMINA.`);
       const phrase = ((inp && inp.value) || '').trim();
       if (st) st.textContent = '';
       if (phrase.length < 3) { if (st) st.textContent = 'Scrivi una frase un po\' più lunga.'; return; }
-      const has = new RegExp('\\b' + _lexProva.surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(phrase);
+      const _hr = _lessicoRe(_lexProva.surface, 'i'); const has = _hr ? _hr.test(phrase) : false;
       if (!has) { if (st) st.textContent = 'La frase deve contenere «' + _lexProva.surface + '».'; return; }
       const expl = (_lexProva.kind === 'confirm') ? 'conferma/rifiuto in conversazione'
         : (_lexExplainPhrase(phrase, _lexProva.surface, _lexProva.canonical) || '— (non riconosciuto: controlla)');
