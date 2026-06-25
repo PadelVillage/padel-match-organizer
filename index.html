@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.964';
+    const APP_VERSION = '5.965';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39758,6 +39758,10 @@ Per confermare scrivi ELIMINA.`);
     cancelBtn.textContent = '✕ Annulla';
     cancelBtn.addEventListener('click', onCancel);
     wrap.appendChild(cancelBtn);
+    // I pulsanti vengono inseriti DOPO il messaggio: senza ri-scroll resterebbero sotto il bordo
+    // visibile (l'autoscroll di svcAddMessage è già scattato sul solo testo). Dopo che il chiamante
+    // li ha appesi al DOM (rAF), riporta la chat in fondo così la domanda e le scelte si vedono.
+    try { requestAnimationFrame(function () { const c = document.getElementById('svcChatMessages'); if (c) c.scrollTop = c.scrollHeight; }); } catch (e) {}
     return wrap;
   }
 
@@ -41711,15 +41715,16 @@ Per confermare scrivi ELIMINA.`);
         return true;
       }
       // (B) Comando equivalente compreso → proponi di eseguirlo (conferma a pulsante) + impara.
+      // Imposta un flusso 'reasonconfirm' così una conferma DIGITATA ("sì", "sì procedi") esegue il
+      // comando invece di ri-entrare come nuovo "non capito" (che faceva ripetere la domanda).
       if (r.comando) {
         const interp = r.interpretazione ? _escapeHtml(r.interpretazione) : 'Ho capito cosa intendi';
+        aiFlowState = { kind: 'reasonconfirm', stage: 'confirm', comando: r.comando, proposta: r.proposta || null };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
         const _m = _say('🧭 ' + interp + '. Procedo con «<strong>' + _escapeHtml(r.comando) + '</strong>»?');
         _choiceButtons(_m, ['✅ Sì, procedi', '✏️ No, lascia'], function (i) {
-          if (i === 0) {
-            if (r.proposta) { _reasonRegisterProposal(r.proposta, _convHist.length ? _convHist[_convHist.length - 1].text : '').then(function () { _reasonAnnounceProposal(r.proposta); }); }
-            handle(r.comando);
-          } else { _say('👍 Ok, lascio perdere.'); }
-        }, function () { _say('👍 Ok.'); });
+          if (i === 0) { _reasonExecuteComando(); } else { aiFlowState = null; _say('👍 Ok, lascio perdere.'); }
+        }, function () { aiFlowState = null; _say('👍 Ok.'); });
         return true;
       }
       // (C) Solo un'interpretazione, senza azione/domanda → mostrala come spunto (non vicolo cieco).
@@ -41728,6 +41733,26 @@ Per confermare scrivi ELIMINA.`);
         return true;
       }
       return null;
+    }
+    // Esegue il comando proposto dal ragionatore (conferma 'reasonconfirm') e registra la proposta.
+    function _reasonExecuteComando() {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'reasonconfirm') return;
+      const comando = fs.comando, proposta = fs.proposta;
+      aiFlowState = null;
+      if (proposta) { _reasonRegisterProposal(proposta, comando).then(function () { _reasonAnnounceProposal(proposta); }); }
+      return handle(comando);
+    }
+    // Risposta alla conferma del comando proposto dal ragionatore: no/stop → scarta; altrimenti esegui.
+    function _confirmReasonAnswer(t) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'reasonconfirm') { aiFlowState = null; return _say('Dimmi pure cosa vuoi fare.'); }
+      const n = ' ' + _norm(t) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) {
+        aiFlowState = null;
+        return _say('👍 Ok, lascio perdere.');
+      }
+      return _reasonExecuteComando();
     }
 
     // ── Date/ora ─────────────────────────────────────────────────────────────
@@ -42745,6 +42770,7 @@ Per confermare scrivi ELIMINA.`);
             durataconfirm: 'allung\\w*|accorci\\w*|prolung\\w*|estend\\w*|riduc\\w*|abbrevi\\w*',
             notaconfirm: 'annot\\w*|nota',
             anagrafica: '',
+            reasonconfirm: '',
             modifica: 'modific\\w*'
           }[_kc];
           if (_verbs !== undefined) {
@@ -42754,8 +42780,13 @@ Per confermare scrivi ELIMINA.`);
             // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
             // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
             const _tConf = _applyLessico(t);
-            if (_re.test(_tConf)) {
-              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
+            // Tollera le parole di RIEMPIMENTO ("ok procedi pure CON LA prenotazione"): le togliamo
+            // prima del test ancorato, così una conferma naturale non viene scambiata per un comando
+            // nuovo (che deragliava il flusso → ragionatore). Sono glue grammaticale che non distingue
+            // mai conferma da comando: campo/ora/nomi sopravvivono e quindi un vero comando NON matcha.
+            const _tConfStrip = _tConf.replace(/\b(con|la|il|lo|le|i|gli|un|uno|una|di|del|dello|della|dei|degli|delle|al|allo|alla|alle|ai|agli|ed|mi|ti|ci|poi|allora|quindi|dai)\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip))) {
+              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer }[_kc];
               if (_h) return _h(_tConf);
             }
           }
@@ -42794,6 +42825,7 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'movedest') return _continueMoveDest(t);
           if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
           if (_k === 'notaconfirm') return _confirmNotaAnswer(t);
+          if (_k === 'reasonconfirm') return _confirmReasonAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
