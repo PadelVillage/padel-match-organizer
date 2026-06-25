@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.947';
+    const APP_VERSION = '5.948';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -26199,9 +26199,9 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoStaffDeleteConfirmHtml(user={}) {
 	      return `<div class="admin-inline-card delete-mode">
-	        <div class="admin-inline-title">Elimina autorizzazione</div>
-	        <p class="confirm-text">Confermi la rimozione di ${escapeHtml(user.full_name || user.email || 'questo utente')} dagli utenti autorizzati?</p>
-	        <div class="admin-user-form-note">Viene rimossa solo l'autorizzazione staff. L'utente Supabase Auth non viene cancellato.</div>
+	        <div class="admin-inline-title">Elimina utente staff</div>
+	        <p class="confirm-text">Confermi l'eliminazione di ${escapeHtml(user.full_name || user.email || 'questo utente')}?</p>
+	        <div class="admin-user-form-note">Vengono rimossi sia l'autorizzazione staff sia l'account di accesso Supabase. Se riaggiungi questa email in futuro, la persona si registrerà da zero scegliendo una nuova password.</div>
 	        <div class="admin-inline-actions">
 	          <button class="btn-danger small-btn" onclick="setActionAnchor(this); pmoDeleteStaffUser('${escapeJs(user.email || '')}')">Conferma elimina</button>
 	          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoCancelStaffUserInline()">Annulla</button>
@@ -26388,23 +26388,25 @@ Per confermare scrivi ELIMINA.`);
 	        return;
 	      }
 	      try {
-	        pmoSetAdminStatus('Rimuovo autorizzazione staff...', 'info');
-	        const result = await pmoStaffRpc('pmo_delete_staff_user_admin', { p_email: cleanEmail }, 'manage_users', 'eliminare autorizzazione staff');
-	        if (!result || result.ok !== true) {
-	          if (cleanCell(result?.error || '').includes('USER_NOT_FOUND')) {
-	            pmoAdminState.staffUsers = (pmoAdminState.staffUsers || []).filter(row => cleanCell(row.email || '').toLowerCase() !== cleanEmail);
-	            pmoAdminState.lastStaffReadAt = new Date().toISOString();
-	            save('pmoAdminState', pmoAdminState);
-	            pmoSetStaffFormMode('none');
-	            pmoRenderStaffUsersTable();
-	            pmoSetAdminStatus(`✅ ${cleanEmail} era gia assente da Supabase TEST. Lista locale aggiornata.`, 'success');
-	            return;
-	          }
-	          throw new Error(pmoFriendlyCloudError(result?.error || 'Eliminazione non riuscita.', 'eliminare autorizzazione staff'));
+	        pmoSetAdminStatus('Elimino utente staff (autorizzazione + accesso)...', 'info');
+	        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+	        const staff = await pmoRequireStaffPermission('manage_users', 'eliminare un utente staff');
+	        const response = await fetch(`${supabaseUrl}/functions/v1/assessment-email-send`, {
+	          method: 'POST',
+	          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${staff.accessToken}` },
+	          body: JSON.stringify({ action: 'staff_delete_full', email: cleanEmail, appVersion: APP_VERSION, runtimeEnv: PMO_RUNTIME_ENV })
+	        });
+	        const data = await response.json().catch(() => ({}));
+	        if (!response.ok || data?.ok === false) {
+	          throw new Error(pmoFriendlyCloudError(data?.message || data?.error || `HTTP ${response.status}`, 'eliminare un utente staff'));
 	        }
 	        pmoSetStaffFormMode('none');
 	        await pmoLoadStaffUsers({ silentLoading:true, silentSuccess:true });
-	        pmoSetAdminStatus(`✅ Autorizzazione rimossa: ${cleanEmail}. Supabase Auth non e stato modificato.`, 'success');
+	        const authNote = data.authDeleted
+	          ? 'anche l\'accesso Supabase è stato cancellato'
+	          : (data.authUserExisted ? ('⚠️ accesso Supabase NON rimosso: ' + (data.authError || 'errore')) : 'nessun accesso Supabase da rimuovere');
+	        const okFull = !!data.authDeleted || !data.authUserExisted;
+	        pmoSetAdminStatus(`✅ Utente eliminato: ${cleanEmail} (${authNote}).`, okFull ? 'success' : 'warning');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Eliminazione utente non riuscita: ' + (err.message || err), 'danger');
 	      }
@@ -39908,7 +39910,11 @@ Per confermare scrivi ELIMINA.`);
     function updateFine(){ fineRow.innerHTML='⏱ Fine prevista: <strong style="color:var(--text)">'+svcEndTime(oraSel.value, parseInt(durSel.value,10))+'</strong>'; }
     function applyAccent(){ const _eng=svcFlowState.tipoEngine; const tc=_staffCalTipoColors(_eng==='lezione'?'lezione':_eng==='manutenzione'?'manutenzione':'partita'); dot.style.background=tc.text; confBtn.style.background=tc.bg; confBtn.style.color=tc.text; confBtn.style.border='1px solid '+tc.border; }
     function selectTipo(tp){
+      // Default durata per tipo (Lezione 60', Partita 90') applicato SOLO quando l'engine cambia
+      // davvero, così ri-cliccare lo stesso tipo non azzera una durata scelta a mano dall'utente.
+      const _prevEngine=svcFlowState.tipoEngine;
       svcFlowState.tipoEngine=tp.engine; svcFlowState.tipo=tp.tipo; svcFlowState.tipoLabel=tp.key;
+      if(_prevEngine!==tp.engine) svcFlowState.durata=(tp.engine==='lezione'?60:90);
       tipoBtns.forEach(function(o){ if(o.tp.disabled) return;
         if(o.tp===tp){ const tc=_staffCalTipoColors(tp.engine==='lezione'?'lezione':'partita'); o.b.style.background=tc.bg; o.b.style.color=tc.text; o.b.style.borderColor=tc.border; o.b.style.fontWeight='700'; }
         else { o.b.style.background='var(--surface)'; o.b.style.color='var(--text)'; o.b.style.borderColor='var(--border)'; o.b.style.fontWeight='400'; } });
@@ -41732,7 +41738,7 @@ Per confermare scrivi ELIMINA.`);
       if (/\b(tra|fra)\s+un'?\s*ora\b/.test(t)) {
         const d = new Date(); d.setMinutes(d.getMinutes() + 60);
         const ora = _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
-        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, durDefault: true };
       }
       t = t.replace(/\bun'?\s*ora\s+e\s+mezz[ao]\b/g, ' 1 ora e mezza ');
       t = t.replace(/\bmezzogiorno\b/g, ' 12 ').replace(/\bmezzanotte\b/g, ' 0 ');
@@ -41760,13 +41766,13 @@ Per confermare scrivi ELIMINA.`);
         if (h < 0 || h > 23) return {};
         h = shift(h);
         const ora = _pad2(h) + ':' + _pad2(n);
-        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90 };
+        return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, durDefault: true };
       }
       // bare-hour: primo numero plausibile come ORA (6–23), così non prende il numero del campo
       const toks = t.match(/\b\d{1,2}(?::\d{2})?\b/g) || [];
       for (let i = 0; i < toks.length; i++) {
         const parts = toks[i].split(':'); let h = +parts[0]; const n = +(parts[1] || 0);
-        if (h >= 6 && h <= 23) { h = shift(h); const ora = _pad2(h) + ':' + _pad2(n); return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, bareHour: true }; }
+        if (h >= 6 && h <= 23) { h = shift(h); const ora = _pad2(h) + ':' + _pad2(n); return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, bareHour: true, durDefault: true }; }
       }
       return {};
     }
@@ -42264,7 +42270,7 @@ Per confermare scrivi ELIMINA.`);
 
       return {
         azione: azione, tipoEvento: ty.tipo || undefined, typePresent: ty.typePresent,
-        campo: cx.campo, data: dx.iso, oraInizio: tmx.ora, oraFine: tmx.oraFine, durata: tmx.durata,
+        campo: cx.campo, data: dx.iso, oraInizio: tmx.ora, oraFine: tmx.oraFine, durata: tmx.durata, durDefault: tmx.durDefault,
         istruttore: istruttore || undefined, giocatori: giocatori, ospite: ospite,
         needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
         needsLocate: needsLocate, needsMoreData: needsMoreData, addAmbiguous: addAmbiguous,
@@ -42927,6 +42933,8 @@ Per confermare scrivi ELIMINA.`);
       const p = String(ora).split(':'); const tot = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) + (parseInt(min, 10) || 0);
       return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '0');
     }
+    // Durata di default per tipo: Lezione 60', tutto il resto (Partita…) 90'.
+    function _defDur(tipo) { return tipo === 'lezione' ? 60 : 90; }
     function _extractCampoLoose(text) {
       const c = _extractCampo(_norm(text)); if (c) return c;
       const cx = _campoX(_norm(text)); if (cx && cx.campo) return cx.campo; // "campo quattro", "sul 2"
@@ -43094,17 +43102,20 @@ Per confermare scrivi ELIMINA.`);
         ora: p.ora || slots.time || '',
         oraFine: p.oraFine || '',
         durata: p.durata || 0,
+        // durata "defaultata" dal parser (ora-singola/bare-hour) o assente → da rimpiazzare col
+        // default per tipo (Lezione 60'/Partita 90') una volta noto il tipo.
+        durDefault: !!p.durDefault || !p.durata,
         istruttore: istruttore,
         giocatori: [],
         notes: [],
         nome: '',
         note: ''
       };
-      // Se ho l'inizio ma non la fine, prova a leggere il range dal testo, altrimenti 90'.
+      // Se ho l'inizio ma non la fine, prova a leggere il range dal testo, altrimenti il default per tipo.
       if (draft.ora && !draft.oraFine) {
         const tr = _parseTimeRange(text);
-        if (tr && tr.ora === draft.ora && tr.oraFine) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; }
-        else { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+        if (tr && tr.ora === draft.ora && tr.oraFine) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = false; }
+        else { draft.durata = draft.durDefault ? _defDur(draft.tipo) : (draft.durata || _defDur(draft.tipo)); draft.oraFine = _endTime(draft.ora, draft.durata); }
       }
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
       const after = _afterTime(text);
@@ -43118,6 +43129,10 @@ Per confermare scrivi ELIMINA.`);
 
     // Calcola gli slot mancanti: se ce ne sono chiede, altrimenti mostra il riepilogo.
     function _advancePrenota(draft) {
+      // Se la durata è ancora quella di default del parser (ora-singola/bare-hour), allineala al
+      // default del TIPO (Lezione 60'/Partita 90'). Il tipo può arrivare DOPO l'ora (es. "campo 2
+      // alle 18" e poi rispondere "lezione"): ricalcolo qui, idempotente, prima del check conflitti.
+      if (draft.durDefault && draft.ora) { draft.durata = _defDur(draft.tipo); draft.oraFine = _endTime(draft.ora, draft.durata); }
       // Disponibilità ANTICIPATA: appena campo+giorno+ora sono noti, se lo slot è occupato avvisa e
       // proponi i campi liberi PRIMA di chiedere maestro/giocatore (feedback immediato, decisione
       // utente 2026-06-19). I pulsanti "campo libero" rientrano qui e raccolgono gli slot mancanti
@@ -43125,7 +43140,7 @@ Per confermare scrivi ELIMINA.`);
       if (draft.campoNum && draft.data && draft.ora) {
         try {
           if (typeof staffCalFindConflict === 'function') {
-            const _c0 = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || 90 });
+            const _c0 = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || _defDur(draft.tipo) });
             if (_c0) { aiFlowState = null; return _suggestFreeCourts(draft, _c0); }
           }
         } catch (e) {}
@@ -43347,12 +43362,12 @@ Per confermare scrivi ELIMINA.`);
     function _ospitePlayer() { return { nome: 'Ospite', codice: '', codiceCliente: '000001' }; }
     function _summaryHtml(draft) {
       const tipoLabel = draft.tipo === 'lezione' ? '📚 Lezione' : '🎾 Partita';
-      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || 90);
+      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || _defDur(draft.tipo));
       const lines = [
         '<strong>' + tipoLabel + '</strong>',
         '📍 Campo ' + draft.campoNum,
         '📅 ' + _dayLabel(draft.data),
-        '🕐 ' + draft.ora + '–' + oraFine + ' (' + (draft.durata || 90) + '′)'
+        '🕐 ' + draft.ora + '–' + oraFine + ' (' + (draft.durata || _defDur(draft.tipo)) + '′)'
       ];
       if (draft.tipo === 'lezione') lines.push('👨‍🏫 Maestro: ' + _escapeHtml(draft.istruttore || '—'));
       const chi = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? '—' : 'Ospite');
@@ -43360,13 +43375,13 @@ Per confermare scrivi ELIMINA.`);
       return lines.join('<br>');
     }
     function _showSummary(draft) {
-      if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || 90; draft.oraFine = _endTime(draft.ora, draft.durata); }
+      if (draft.ora && !draft.oraFine) { draft.durata = draft.durata || _defDur(draft.tipo); draft.oraFine = _endTime(draft.ora, draft.durata); }
       // Disponibilità PRIMA del riepilogo: se il campo è occupato non mostrare "Conferma e prenota",
       // ma proponi subito gli altri campi liberi a quell'ora (decisione utente 2026-06-19). Il check
       // in _executePrenota resta come rete di sicurezza (race: qualcuno prenota nel frattempo).
       try {
         if (draft.campoNum && draft.ora && typeof staffCalFindConflict === 'function') {
-          const _c = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || 90 });
+          const _c = staffCalFindConflict({ campoNum: draft.campoNum, ora: draft.ora, data: draft.data, durata: draft.durata || _defDur(draft.tipo) });
           if (_c) { aiFlowState = null; return _suggestFreeCourts(draft, _c); }
         }
       } catch (e) {}
@@ -43409,7 +43424,7 @@ Per confermare scrivi ELIMINA.`);
     function _freeCourtsAt(draft) {
       const free = [];
       if (typeof staffCalFindConflict !== 'function') return free;
-      const base = { data: draft.data, ora: draft.ora, durata: draft.durata || 90 };
+      const base = { data: draft.data, ora: draft.ora, durata: draft.durata || _defDur(draft.tipo) };
       for (let c = 1; c <= 4; c++) {
         if (c === draft.campoNum) continue;
         try { if (!staffCalFindConflict(Object.assign({}, base, { campoNum: c }))) free.push(c); } catch (e) {}
@@ -43419,7 +43434,7 @@ Per confermare scrivi ELIMINA.`);
     // Slot occupato → niente vicolo cieco: proponi gli altri campi liberi a quell'ora (pulsanti
     // che riprenotano sul campo scelto). Se non ce n'è nessuno, suggerisci di cambiare orario/giorno.
     function _suggestFreeCourts(draft, conflict) {
-      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || 90);
+      const oraFine = draft.oraFine || _endTime(draft.ora, draft.durata || _defDur(draft.tipo));
       const occ = '⛔ Il <strong>Campo ' + draft.campoNum + '</strong> è già occupato ' + draft.ora + '–' + oraFine +
         (conflict && conflict.nome ? ' (' + _escapeHtml(conflict.nome) + ')' : '') + '.';
       const free = _freeCourtsAt(draft);
@@ -43719,8 +43734,8 @@ Per confermare scrivi ELIMINA.`);
         campo: 'Campo ' + draft.campoNum,
         data: draft.data,
         ora: draft.ora,
-        oraFine: draft.oraFine || _endTime(draft.ora, draft.durata || 90),
-        durata: draft.durata || 90,
+        oraFine: draft.oraFine || _endTime(draft.ora, draft.durata || _defDur(draft.tipo)),
+        durata: draft.durata || _defDur(draft.tipo),
         tipo: draft.tipo || 'partita',
         nome: draft.nome || (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite'),
         istruttore: draft.tipo === 'lezione' ? (draft.istruttore || undefined) : undefined,

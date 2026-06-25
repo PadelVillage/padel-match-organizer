@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite', 'staff_delete_full']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const LOGO_URL = 'https://app.padelvillage.club/logo-padel-village.jpeg';
 const emailLogoHeaderHtml = () => `<div style="text-align:center;margin:0 0 18px;">
@@ -2478,6 +2478,87 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
   };
 }
 
+// Eliminazione COMPLETA di un utente staff: rimuove sia l'autorizzazione (profilo staff)
+// sia l'account di accesso Supabase Auth (email+password), così se la persona viene
+// riaggiunta in futuro potrà registrarsi da zero scegliendo una nuova password.
+// Richiede manage_users (verificato a monte). Non si può eliminare il proprietario né se stessi.
+async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMap) {
+  const email = clean(params.email).toLocaleLowerCase('it-IT');
+  if (!isValidEmail(email)) throw new Error('INVALID_EMAIL');
+  if (email === 'padelvillage.club@gmail.com') throw new Error('CANNOT_DELETE_OWNER');
+  if (email === clean(actor.email).toLocaleLowerCase('it-IT')) throw new Error('CANNOT_DELETE_SELF');
+
+  // Profilo staff (per bloccare il proprietario e recuperare l'eventuale auth_user_id)
+  const { data: profile, error: profErr } = await admin
+    .from('pmo_staff_profiles')
+    .select('email, role, status, auth_user_id')
+    .eq('email', email)
+    .maybeSingle();
+  if (profErr) throw new Error(profErr.message || 'PROFILE_LOOKUP_FAILED');
+  if (profile && clean(profile.role) === 'owner') throw new Error('CANNOT_DELETE_OWNER');
+
+  // 1) Elimina l'autorizzazione staff (se presente)
+  const { error: delProfErr } = await admin
+    .from('pmo_staff_profiles')
+    .delete()
+    .eq('email', email);
+  if (delProfErr) throw new Error(delProfErr.message || 'PROFILE_DELETE_FAILED');
+
+  // 2) Elimina l'account Supabase Auth. Se non ho l'id sul profilo, lo cerco per email
+  //    scorrendo gli utenti (lo staff è poco numeroso). Un fallimento qui NON annulla
+  //    la rimozione dell'autorizzazione: lo segnalo nella risposta.
+  let authUserId = clean(profile?.auth_user_id || '');
+  let authDeleted = false;
+  let authError = '';
+  try {
+    if (!authUserId) {
+      let page = 1;
+      const perPage = 1000;
+      for (;;) {
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage });
+        if (listErr) { authError = listErr.message || String(listErr); break; }
+        const users = (list && list.users) || [];
+        const found = users.find((u: any) => clean(u.email).toLocaleLowerCase('it-IT') === email);
+        if (found) { authUserId = found.id; break; }
+        if (users.length < perPage) break;
+        page += 1;
+        if (page > 20) break; // guardia anti-loop
+      }
+    }
+    if (authUserId) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(authUserId);
+      if (delErr) authError = delErr.message || String(delErr);
+      else authDeleted = true;
+    } else if (!authError) {
+      // Nessun account Auth associato (persona invitata mai registrata): nulla da cancellare.
+      authDeleted = false;
+    }
+  } catch (e) {
+    authError = errorText(e);
+  }
+
+  try {
+    await logAudit(admin, actor, 'staff_user_delete_full', {
+      email,
+      profileExisted: !!profile,
+      authUserId: authUserId || null,
+      authDeleted,
+      authError: authError || null,
+    });
+  } catch (logErr) {
+    console.error('STAFF_DELETE_FULL_LOG_FAILED', errorText(logErr));
+  }
+
+  return {
+    action: 'staff_delete_full',
+    email,
+    profileDeleted: true,
+    authUserExisted: !!authUserId,
+    authDeleted,
+    authError: authError || null,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Usa POST per inviare email autovalutazione.');
@@ -2498,14 +2579,19 @@ Deno.serve(async (req) => {
     const action = clean(body.action || 'send');
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
 
-    // L'invito staff richiede manage_users; tutte le altre azioni richiedono cloud_sync.
-    const requiredPermission = action === 'staff_invite' ? 'manage_users' : 'cloud_sync';
+    // Invito ed eliminazione utente staff richiedono manage_users; le altre azioni cloud_sync.
+    const requiredPermission = (action === 'staff_invite' || action === 'staff_delete_full') ? 'manage_users' : 'cloud_sync';
     if (!hasPermission(actor, requiredPermission)) {
       return errorResponse(403, 'PERMISSION_DENIED', `Il profilo staff non ha il permesso ${requiredPermission}.`);
     }
 
     if (action === 'staff_invite') {
       const result = await sendStaffInviteEmail(admin, actor, body);
+      return okResponse(result);
+    }
+
+    if (action === 'staff_delete_full') {
+      const result = await deleteStaffUserFull(admin, actor, body);
       return okResponse(result);
     }
 
