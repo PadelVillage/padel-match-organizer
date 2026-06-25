@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.951';
+    const APP_VERSION = '5.952';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -25028,7 +25028,22 @@ Per confermare scrivi ELIMINA.`);
 	          } catch (netErr) {
 	            last = { ok: false, reason: (netErr && netErr.message) || String(netErr), retryable: true };
 	          }
-	          if (last.ok) return { status: 'ok', data: last.data };
+	          if (last.ok) {
+            // Esito LIVELLO esplicito: il worker mette 'livello' in updatedFields SOLO se
+            // il valore e' davvero atterrato su Matchpoint (verifica server-side). Se era
+            // richiesto un livello ma NON risulta confermato, avvisa: niente piu' falso
+            // "fatto su Matchpoint" (gli altri dati restano salvati comunque).
+            const levelRequested = !(payload.client.level === '' || payload.client.level == null);
+            const w = (last.data && last.data.worker) || {};
+            const levelConfirmed = Array.isArray(w.updatedFields) && w.updatedFields.includes('livello');
+            const levelErr = w.diagnostic && w.diagnostic.levelError;
+            if (levelRequested && !levelConfirmed) {
+              console.warn('Matchpoint: livello non confermato:', levelErr || '(nessun dettaglio)', w.diagnostic || '');
+              laterAlert('⚠️ Socio salvato, ma il LIVELLO non risulta aggiornato su Matchpoint (gli altri dati sì). Verifica/riprova dal gestionale.', 'warning');
+              return { status: 'ok_level_failed', data: last.data, reason: levelErr || 'level_not_confirmed' };
+            }
+            return { status: 'ok', data: last.data };
+          }
 	          if (attempt < 2 && last.retryable) { await new Promise(r => setTimeout(r, 3000)); continue; }
 	          break;
 	        }
@@ -35432,7 +35447,7 @@ Per confermare scrivi ELIMINA.`);
         // Desktop (>=900px): il realtime fa il push entro ~150ms, quindi il pull forzato serve come
         // rete di sicurezza per quando il broadcast NON viene consegnato (socket WebSocket stantio):
         // prima era RADO (~60s) perché ogni pull ridisegnava la griglia rendendola incliccabile; ora
-        // staffCalRefreshFromCloud ridisegna solo su cambiamento reale (v5.898), quindi possiamo
+        // staffCalRefreshFromCloud ridisegna solo su cambiamento reale (v5.900), quindi possiamo
         // infittire a ~8s senza effetti collaterali → la propagazione cross-device (es. annullo) non
         // resta più appesa ai ~15s dell'heartbeat realtime. Su mobile (<900px) il fast-pull a 4s resta.
         _staffCalPullTick++;
@@ -35942,7 +35957,7 @@ Per confermare scrivi ELIMINA.`);
       }
       // Hydrate local arrays silently (direct assign, no alerts/diffs/UI noise)
       if (cloud.occupancyBookings.length || cloud.bookings.length) {
-        // v5.898 — Ridisegna SOLO se il contenuto è davvero cambiato. Senza questa guardia OGNI
+        // v5.900 — Ridisegna SOLO se il contenuto è davvero cambiato. Senza questa guardia OGNI
         // pull (anche quello di sicurezza) chiamava renderStaffCalendar(), motivo per cui il poll
         // desktop era tenuto RADO (60s): un redisegno ogni 4s rendeva la griglia incliccabile.
         // Con il redisegno condizionale il poll desktop può infittirsi (vedi 4s-interval) senza
