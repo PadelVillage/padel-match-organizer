@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.967';
+    const APP_VERSION = '5.968';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -39710,9 +39710,28 @@ Per confermare scrivi ELIMINA.`);
     try { svcChatToggleAction(); } catch (e) {}
   }
 
+  // Auto-scroll ROBUSTO: i pulsanti vengono aggiunti DOPO il messaggio da funzioni diverse
+  // (svcMakeStepButtons, _appendOspiteButtons/_appendCourtButtons/_appendMaestroButtons/…), quindi
+  // un singolo scroll nel punto-messaggio non basta. Un MutationObserver sul contenitore riporta la
+  // chat in fondo a OGNI aggiunta (messaggi e pulsanti, qualunque sia il percorso), ma solo se
+  // l'utente è già vicino al fondo → non lo strappa via mentre scorre la cronologia. Installato 1 volta.
+  function _svcEnsureAutoScroll(container) {
+    if (!container || container.__pmoAutoScroll) return;
+    container.__pmoAutoScroll = true;
+    try {
+      const obs = new MutationObserver(function () {
+        if (container.scrollHeight - container.scrollTop - container.clientHeight < 260) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+      obs.observe(container, { childList: true, subtree: true });
+    } catch (e) { /* niente observer → resta lo scroll puntuale di svcAddMessage */ }
+  }
+
   function svcAddMessage(role, html, extraClass) {
     const container = document.getElementById('svcChatMessages');
     if (!container) { const d = document.createElement('div'); return d; }
+    _svcEnsureAutoScroll(container);
     const div = document.createElement('div');
     div.className = 'svc-msg ' + role + (extraClass ? ' ' + extraClass : '');
     const lbl = document.createElement('div');
