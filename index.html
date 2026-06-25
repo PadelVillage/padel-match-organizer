@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.973';
+    const APP_VERSION = '5.974';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42229,7 +42229,7 @@ Per confermare scrivi ELIMINA.`);
         if (m) after = m[1];
       }
       if (!after) return [];
-      const parts = after.split(/[,;&+]|\be\b|\bed\b/);
+      const parts = after.split(/[,;&+]|\be\b|\bed\b|\bpi[uù]\b/);
       const names = [];
       parts.forEach(function (p) {
         // Comando di creazione COMPOSTO ("crea una partita … e aggiungi X come giocatore"):
@@ -43512,7 +43512,10 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) { return null; }
     }
     function _resolvePlayers(rawStr) {
-      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      // Connettori tra giocatori: virgola/;/& / "e"/"ed" / a-capo, MA ANCHE "più" e "+"
+      // ("tre ospiti più Lidia Comes", "Marco + Anna"). Senza "più", il chunk "tre ospiti più
+      // Lidia Comes" restava unito → il ramo ospite-con-quantità faceva continue e Lidia spariva.
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
