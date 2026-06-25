@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.959';
+    const APP_VERSION = '5.960';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -8446,6 +8446,12 @@ Grazie.`
       if (pmoStaffProfile) localStorage.setItem(PMO_STAFF_PROFILE_KEY, JSON.stringify(pmoStaffProfile));
       else localStorage.removeItem(PMO_STAFF_PROFILE_KEY);
       try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
+      // Su rete lenta (4G) il profilo staff arriva DOPO i tentativi di initChatUI al boot →
+      // l'assistente non veniva inizializzato: barra mobile senza microfono, svcChatInput
+      // disabilitato, "Invia" muto. Ora che conosciamo il profilo (e quindi il permesso
+      // assistanteAI) re-inizializziamo la chat: idempotente, abilita input+mic e converte
+      // la barra mobile in launcher dell'assistente.
+      try { if (window.PMOAi && PMOAi.initChatUI) PMOAi.initChatUI(); } catch {}
     }
     function pmoClearSupabaseStaffSession() {
       try { localStorage.removeItem(PMO_STAFF_SUPABASE_SESSION_KEY); } catch {}
@@ -46403,6 +46409,10 @@ Per confermare scrivi ELIMINA.`);
     // Apre il pannello assistente completo (il composer del desktop: mic, testo grande,
     // a-capo e messaggi visibili) e sposta lì il focus, così la conversazione si vede.
     function openAssistant() {
+      // Difesa anti-timing: se il profilo staff è arrivato dopo i tentativi al boot, la chat
+      // potrebbe non essere ancora inizializzata (svcChatInput disabilitato). initChatUI è
+      // idempotente: abilita l'input prima di aprire/focalizzare.
+      if (aiOn()) { try { PMOAi.initChatUI(); } catch (e) {} }
       try { if (typeof svcOpenChat === 'function') svcOpenChat(); } catch (e) {}
       var ri = document.getElementById('svcChatInput');
       // iOS Safari apre la tastiera SOLO se .focus() è chiamato in modo SINCRONO dentro il
@@ -46439,6 +46449,10 @@ Per confermare scrivi ELIMINA.`);
     }
     if (mSend) {
       mSend.addEventListener('click', function () {
+        // Con assistente attivo l'invio NON deve dipendere dal timing dell'init: assicura
+        // l'inizializzazione (idempotente) così svcChatInput è abilitato e svcHandleSend non
+        // esce a vuoto (era la causa di "scrivo e premo Invia ma non succede nulla" su 4G).
+        if (aiOn()) { try { PMOAi.initChatUI(); } catch (e) {} }
         var ri = document.getElementById('svcChatInput');
         if (!ri || ri.disabled) return;
         ri.value = mInput ? mInput.value : '';
