@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.965';
+    const APP_VERSION = '5.966';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -43307,7 +43307,10 @@ Per confermare scrivi ELIMINA.`);
         const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
         for (const k in fuzzy) { if (_wordHit(n, _norm(k))) return fuzzy[k]; }
       } catch (e) {}
-      const m = String(text || '').match(/\b(?:con|maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
+      // SOLO "maestro/insegnante <Nome>": il "con <X>" generico introduce di norma l'ALLIEVO
+      // ("lezione con Mario") o un complemento ("con due ospiti" → catturava "due" come maestro!),
+      // non il maestro. I maestri NOMINATI ("con Santiago") sono già presi dalla lista/fuzzy sopra.
+      const m = String(text || '').match(/\b(?:maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
       if (m) return m[1];
       return '';
     }
