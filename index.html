@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.970';
+    const APP_VERSION = '5.971';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41724,7 +41724,7 @@ Per confermare scrivi ELIMINA.`);
       let thinkingEl = null;
       let r = null;
       try {
-        thinkingEl = _say('💭 Sto ragionando…', 'svc-thinking');
+        thinkingEl = _say(_pick(['💭 Fammi pensare un attimo…', '💭 Ci ragiono su…', '💭 Aspetta, ci sto…']), 'svc-thinking');
         r = await _callAiReason(_convHist.slice());
       } catch (e) { r = null; }
       if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
@@ -41741,10 +41741,10 @@ Per confermare scrivi ELIMINA.`);
       // Imposta un flusso 'reasonconfirm' così una conferma DIGITATA ("sì", "sì procedi") esegue il
       // comando invece di ri-entrare come nuovo "non capito" (che faceva ripetere la domanda).
       if (r.comando) {
-        const interp = r.interpretazione ? _escapeHtml(r.interpretazione) : 'Ho capito cosa intendi';
+        const interp = r.interpretazione ? _escapeHtml(r.interpretazione) : 'Mi sa che ho capito';
         aiFlowState = { kind: 'reasonconfirm', stage: 'confirm', comando: r.comando, proposta: r.proposta || null };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _m = _say('🧭 ' + interp + '. Procedo con «<strong>' + _escapeHtml(r.comando) + '</strong>»?');
+        const _m = _say('🧭 ' + interp + '. ' + _pick(['Procedo con «<strong>' + _escapeHtml(r.comando) + '</strong>»?', 'Faccio «<strong>' + _escapeHtml(r.comando) + '</strong>», ti va?']));
         _choiceButtons(_m, ['✅ Sì, procedi', '✏️ No, lascia'], function (i) {
           if (i === 0) { _reasonExecuteComando(); } else { aiFlowState = null; _say('👍 Ok, lascio perdere.'); }
         }, function () { aiFlowState = null; _say('👍 Ok.'); });
@@ -41752,7 +41752,7 @@ Per confermare scrivi ELIMINA.`);
       }
       // (C) Solo un'interpretazione, senza azione/domanda → mostrala come spunto (non vicolo cieco).
       if (r.interpretazione) {
-        _say('🧭 ' + _escapeHtml(r.interpretazione) + ' Puoi confermarmi cosa vuoi fare?');
+        _say('🧭 ' + _escapeHtml(r.interpretazione) + ' ' + _pick(['Mi confermi cosa vuoi fare?', 'Dimmi pure come procedo.']));
         return true;
       }
       return null;
@@ -42992,7 +42992,7 @@ Per confermare scrivi ELIMINA.`);
               return true;
             }
             if (_roster.length > 1) {
-              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>? Tocca un pulsante o rispondi a voce.');
+              const _m = _say(_pick(['🤔 <strong>Chi vuoi togliere?</strong> Oppure preferisci <strong>annullare tutta la prenotazione</strong>? Dimmi pure.', '🤔 Dimmi: tolgo <strong>un giocatore</strong> (e quale) o <strong>annullo tutta la prenotazione</strong>?']));
               _choiceButtons(_m, _roster.map(function (p) { return '👤 ' + p.nome; }).concat([_CANCEL_LABEL]),
                 function (i) { if (i >= _roster.length) _doCancelBooking(); else _removePlayerNow(_roster[i]); },
                 function () { });
@@ -43042,7 +43042,7 @@ Per confermare scrivi ELIMINA.`);
           return _askWhichBookingForPlayer(res, t, _nmEsc);
         }
         const _label = _nm ? ('<strong>' + _nmEsc + '</strong>') : 'questa persona';
-        const _m = _say('🤔 Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>? Tocca un pulsante o dimmelo a voce.');
+        const _m = _say('🤔 Una cosa al volo: ' + _label + ' lo metto in una <strong>prenotazione</strong> (come giocatore) o lo <strong>iscrivo come nuovo socio</strong>? Dimmi pure.');
         _choiceButtons(_m, ['👥 Giocatore in una prenotazione', '👤 Iscrivilo come nuovo socio'], function (i) {
           if (i === 1) {
             // Nuovo socio: avvia l'anagrafica di creazione (senza eco di un finto messaggio utente).
@@ -43134,7 +43134,7 @@ Per confermare scrivi ELIMINA.`);
         const _iso = date || _calSelectedIso();
         const _cands = (typeof _cancelCandidates === 'function') ? _cancelCandidates(_iso, court || 0, time || '', '') : [];
         if (_cands.length) {
-          const _m = _say(ic + ' <strong>Quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Tocca un pulsante, oppure dimmi giorno/campo/ora.');
+          const _m = _say(ic + ' Volentieri — <strong>quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Dimmi pure quale, o giorno, campo e ora.');
           _choiceButtons(_m, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
             function (i) { if (info.intent === 'CANCELLA') _showCancelSummary(_iso, _cands[i]); else _openEditor(_iso, _cands[i], null); },
             function () { _say('👍 Ok.'); });
@@ -43944,7 +43944,7 @@ Per confermare scrivi ELIMINA.`);
       if (!_cands.length) {
         return _say('Non trovo prenotazioni ' + _dayLabel(_iso) + ' a cui aggiungerlo. Dimmi quale, es. «<em>aggiungi ' + (nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>».');
       }
-      const _m2 = _say('A quale prenotazione aggiungo <strong>' + (nmEsc || 'il giocatore') + '</strong>? Tocca un pulsante o dimmi campo e ora.');
+      const _m2 = _say('A quale prenotazione aggiungo <strong>' + (nmEsc || 'il giocatore') + '</strong>? Dimmi pure campo e ora.');
       _choiceButtons(_m2, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }), function (j) {
         const _c = _cands[j];
         (async function () { try { await staffCalEditPlayers(_iso, _c.campo, _c.ora, '', _c.durata, _c.tipoReale || _c.tipo); } catch (e) {} if (staffCalPlayersState && !staffCalPlayersState.busy) _addPlayerToOpenBooking(res, t); })();
@@ -43980,10 +43980,10 @@ Per confermare scrivi ELIMINA.`);
       const anyOspite = players.some(function (g) { return g.ospite; });
       aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      let msg = '🤔 Ho capito: aggiungere <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.';
+      let msg = _pick(['🤔 Ci sono: aggiungo <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.', '🤔 Allora: metto <strong>' + _escapeHtml(nomi) + '</strong> sul Campo ' + st.campo + ' · ' + st.ora + '.']);
       if (notes && notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + notes.join('<br>⚠️ ') + '</span>';
-      msg += '<br>Confermo e salvo su Matchpoint? Scrivi <strong>sì</strong>' +
-        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' o <strong>no</strong> (oppure dimmi il nome giusto).');
+      msg += '<br>Dimmi <strong>sì</strong> e salvo su Matchpoint' +
+        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' — o <strong>no</strong>, oppure il <strong>nome giusto</strong> se ho sbagliato.');
       return _say(msg);
     }
     // Risposta alla conferma: sì → mette in scheda + salva; no/chiudi → scarta; altro testo →
@@ -44022,7 +44022,7 @@ Per confermare scrivi ELIMINA.`);
           if (rr.giocatori && rr.giocatori.length) return _askAddConfirm(st, rr.giocatori, rr.notes);
         }
       }
-      return _say('Rispondi <strong>sì</strong> per aggiungere, <strong>no</strong> per lasciar perdere, oppure scrivi il <strong>nome</strong> giusto.');
+      return _say('Dimmi <strong>sì</strong> e lo aggiungo, <strong>no</strong> se lasciamo stare — o il <strong>nome</strong> giusto se ho capito male.');
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
     // richiesto ai giocatori presenti (roster); se non c'è → lo dice; se più simili → fa scegliere.
@@ -44064,7 +44064,7 @@ Per confermare scrivi ELIMINA.`);
       if (!q || !qtok.length) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Tocca un nome o rispondi a voce.');
+        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Dimmi pure il nome.');
         _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
@@ -44083,13 +44083,13 @@ Per confermare scrivi ELIMINA.`);
       if (hits.length > 1) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _mh = _say('Ci sono più giocatori simili. Quale tolgo? Tocca un nome o rispondi a voce.');
+        const _mh = _say('Ci sono più nomi simili 🙂 — quale tolgo? Dimmi pure quale.');
         _choiceButtons(_mh, hits.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
       aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Tolgo <strong>' + _escapeHtml(hits[0].nome) + '</strong> dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Tolgo <strong>' + _escapeHtml(hits[0].nome) + '</strong> dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Dimmi <strong>sì</strong> o <strong>no</strong>.');
     }
     // Risposta alla conferma di rimozione: pick (scelta tra omonimi) → confirm; sì → segna remove
     // e salva; no/chiudi → scarta. Restituisce truthy: ha gestito la risposta.
@@ -44105,9 +44105,9 @@ Per confermare scrivi ELIMINA.`);
         const m = String(text || '').match(/\b(\d{1,2})\b/);
         let target = null;
         if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < fs.candidates.length) target = fs.candidates[i]; }
-        if (!target) return _say('Rispondi col <strong>numero</strong> del giocatore da togliere (o “no”).');
+        if (!target) return _say('Dimmi il <strong>numero</strong> del giocatore da togliere (o “no”).');
         fs.target = target; fs.stage = 'confirm';
-        return _say('🤔 Tolgo <strong>' + _escapeHtml(target.nome) + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🤔 Tolgo <strong>' + _escapeHtml(target.nome) + '</strong>? Dimmi <strong>sì</strong> o <strong>no</strong>.');
       }
       if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | togli\w* | rimuov\w* | giusto | esatto )/.test(n)) {
         const st = staffCalPlayersState;
@@ -44121,7 +44121,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per togliere, <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e lo tolgo, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> per toglierlo, <strong>no</strong> per lasciarlo.']));
     }
     // Comandi vocali/testuali sulla SCHEDA prenotazione aperta: "salva/conferma/ok" → salva su
     // Matchpoint (come il pulsante Salva), "chiudi" → chiude senza salvare. Così l'aggiunta di un
@@ -44438,7 +44438,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
       aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
-      const _m = _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. <strong>Quale vuoi annullare?</strong> Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      const _m = _say('Ne ho trovate <strong>' + cands.length + '</strong> ' + dl + '. <strong>Quale annullo?</strong> Dimmi il numero, oppure campo e ora.');
       _choiceButtons(_m,
         cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
         function (i) { aiFlowState = null; _showCancelSummary(iso, cands[i]); },
@@ -44452,13 +44452,13 @@ Per confermare scrivi ELIMINA.`);
       const draft = { iso: iso, campo: slot.campo, ora: slot.ora, durata: durata, nome: nome, istruttore: slot.istruttore || '', tipoLabel: _cancelTipoLabel(slot) };
       aiFlowState = { kind: 'cancella', stage: 'confirm', draft: draft };
       const lines = [
-        '🗑️ <strong>Annullare questa prenotazione?</strong>',
+        _pick(['🗑️ <strong>Allora, annullo questa?</strong>', '🗑️ <strong>Ci siamo — annullo questa?</strong>', '🗑️ <strong>Questa qui, la annullo?</strong>']),
         '📍 Campo ' + slot.campo,
         '📅 ' + _dayLabel(iso),
         '🕐 ' + slot.ora + '–' + oraFine + ' (' + durata + '′)',
         '👥 ' + (_escapeHtml(nome) || '<em>—</em>') + ' · ' + draft.tipoLabel
       ];
-      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">Verrà annullata <strong>davvero</strong> su Matchpoint. L’operazione è irreversibile.</span>';
+      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">' + _pick(['La tolgo <strong>davvero</strong> da Matchpoint e non si torna indietro.', 'Sparisce <strong>davvero</strong> da Matchpoint: l’operazione non è reversibile.']) + '</span>';
       const div = _say(html);
       _appendCancelButtons(div, draft);
     }
@@ -44502,7 +44502,7 @@ Per confermare scrivi ELIMINA.`);
         if (tm) f = f.filter(function (r) { return r.ora === tm; });
         if (f.length === 1) pick = f[0];
       }
-      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      if (!pick) return _say('Mmm, non ho colto quale 🙂 — dimmi il <strong>numero</strong> (1–' + list.length + ') o campo e ora.');
       aiFlowState = null;
       return _showCancelSummary(iso, pick);
     }
@@ -44514,7 +44514,7 @@ Per confermare scrivi ELIMINA.`);
       if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | cancell\w* | annull\w* | elimin\w* | disd\w* | togl\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
       }
-      _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
+      _say(_pick(['Dimmi <strong>sì</strong> e la annullo, oppure <strong>no</strong> e la lascio com’è.', 'Allora: <strong>sì</strong> per annullarla, <strong>no</strong> per tenerla.']));
     }
     // Annullamento reale su Matchpoint (riusa staffCalDoCancel: rete + cleanup locale/cloud).
     async function _executeCancella(draft) {
@@ -44626,7 +44626,7 @@ Per confermare scrivi ELIMINA.`);
       if (cands.length === 1) return _openEditor(iso, cands[0], pending);
       aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
       const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
-      const _m = _say('❓ Quale prenotazione vuoi ' + azLbl + '? Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      const _m = _say('Quale prenotazione vuoi ' + azLbl + '? Dimmi il numero, oppure campo e ora.');
       _choiceButtons(_m,
         cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
         function (i) { const _p = aiFlowState && aiFlowState.pending; aiFlowState = null; _openEditor(iso, cands[i], _p || pending); },
@@ -44649,7 +44649,7 @@ Per confermare scrivi ELIMINA.`);
         if (tm) f = f.filter(function (r) { return r.ora === tm; });
         if (f.length === 1) pick = f[0];
       }
-      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      if (!pick) return _say('Mmm, non ho colto quale 🙂 — dimmi il <strong>numero</strong> (1–' + list.length + ') o campo e ora.');
       const pending = aiFlowState.pending || null;
       return _openEditor(iso, pick, pending);
     }
@@ -44742,7 +44742,7 @@ Per confermare scrivi ELIMINA.`);
       }
       aiFlowState = { kind: 'moveconfirm', stage: 'confirm', src: src, dest: dest };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Sposto la prenotazione da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 La sposto da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Dimmi <strong>sì</strong> e ci penso io.');
     }
     function _confirmMoveAnswer(text) {
       const fs = aiFlowState;
@@ -44761,7 +44761,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare lo spostamento: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per spostare o <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e la sposto, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> per spostarla, <strong>no</strong> per lasciarla dov’è.']));
     }
     // Risposta a "dove la sposto?" → interpreta campo/orario/giorno come DESTINAZIONE e conferma.
     function _continueMoveDest(text) {
@@ -44778,7 +44778,7 @@ Per confermare scrivi ELIMINA.`);
       if (dt && dt !== src.iso) destIso = dt;
       if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
       if (destCampo == null && destOra == null && destIso == null) {
-        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”), oppure “annulla”.');
+        return _say('Dove la porto? Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”) 🙂');
       }
       aiFlowState = null;
       const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
@@ -44869,10 +44869,10 @@ Per confermare scrivi ELIMINA.`);
       if (newDur > curDur) {
         const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
         if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
-          return _say('⚠️ Attenzione: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. Allungo <strong>comunque</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+          return _say('⚠️ Occhio: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. La allungo <strong>lo stesso</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Dimmi <strong>sì</strong> o <strong>no</strong>.');
         }
       }
-      return _say('🤔 Porto la durata della prenotazione di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Porto la durata di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Dimmi <strong>sì</strong> e la sistemo.');
     }
     function _durSrcFromCalendar(res, text, iso, court, time) {
       const slots = res.slots || {};
@@ -44903,7 +44903,7 @@ Per confermare scrivi ELIMINA.`);
         // Quantità non detta: apro un flusso in ATTESA così la risposta successiva viene catturata.
         aiFlowState = { kind: 'durataconfirm', stage: 'await', src: src, isShorten: isShorten };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Di quanto cambio la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>» (o “annulla”).');
+        return _say('Di quanto la cambio, la durata di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>».');
       }
       return _finalizeDurata(src, r.newDur);
     }
@@ -44916,7 +44916,7 @@ Per confermare scrivi ELIMINA.`);
       if (fs.stage === 'await') {
         if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
         const r = _computeNewDur(fs.src, fs.isShorten, text);
-        if (r.ask) return _say('Non ho capito la durata. Dimmi i minuti o le ore — es. «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>» (o “annulla”).');
+        if (r.ask) return _say('Non ho colto la durata 🙂 — dimmi i minuti o le ore: «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>».');
         return _finalizeDurata(fs.src, r.newDur);
       }
       if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
@@ -44933,7 +44933,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per cambiare la durata o <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e cambio la durata, o <strong>no</strong> se lasciamo com’è.', 'Allora: <strong>sì</strong> per cambiarla, <strong>no</strong> per tenerla così.']));
     }
 
     // ── NOTA / OSSERVAZIONI (postulato: leggi prima il calendario) ───────────────
@@ -44982,19 +44982,19 @@ Per confermare scrivi ELIMINA.`);
       if (isRemoveNote) {
         aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, remove: true };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Dimmi <strong>sì</strong> o <strong>no</strong>.');
       }
       let noteText = _extractNoteText(text);
       if (!noteText) {
         // Nessun testo nel comando: lo chiedo (così non resta a metà).
         aiFlowState = { kind: 'notaconfirm', stage: 'await', src: src };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('📝 Qual è il testo della nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Scrivi il testo (o “annulla”).');
+        return _say('📝 Cosa scrivo nella nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi pure il testo.');
       }
       if (noteText.length > 300) noteText = noteText.slice(0, 300);
       aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, noteText: noteText, remove: false };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Dimmi <strong>sì</strong> e la salvo.');
     }
     function _confirmNotaAnswer(text) {
       const fs = aiFlowState;
@@ -45005,10 +45005,10 @@ Per confermare scrivi ELIMINA.`);
       if (fs.stage === 'await') {
         if (isExit) { aiFlowState = null; return _say('👍 Ok, nessuna nota.'); }
         let body = String(text || '').trim();
-        if (!body) return _say('Scrivi il <strong>testo</strong> della nota (o “annulla”).');
+        if (!body) return _say('Dimmi il <strong>testo</strong> della nota 🙂');
         if (body.length > 300) body = body.slice(0, 300);
         fs.noteText = body; fs.remove = false; fs.stage = 'confirm';
-        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Dimmi <strong>sì</strong> e la salvo.');
       }
       if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la nota invariata.'); }
       if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
@@ -45027,7 +45027,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> o <strong>no</strong>.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e procedo, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> o <strong>no</strong>?']));
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
@@ -45202,7 +45202,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaAnswerMember(matches[0].member, fields);
       aiFlowState = { kind: 'anagrafica', op: 'read', stage: 'pick', matches: matches, fields: fields };
-      const _m = _say('❓ <strong>Di quale socio?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Di quale socio?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'read', fields, null);
       return true;
     }
@@ -45241,7 +45241,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaDeactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'pick', matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'deactivate', null, null);
       return true;
     }
@@ -45302,7 +45302,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaReactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'pick', matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'reactivate', null, null);
       return true;
     }
@@ -45395,15 +45395,15 @@ Per confermare scrivi ELIMINA.`);
       const draft = aiFlowState.draft, k = aiFlowState.need[0], ans = String(text || '').trim();
       if (k === 'name') {
         const p = _anaParseNameAnswer(ans).split(/\s+/).filter(Boolean);
-        if (!p.length) return _say('Non ho capito il nome. Scrivi <strong>nome e cognome</strong> (oppure “annulla”).');
+        if (!p.length) return _say('Non ho colto il nome 🙂 — dimmi <strong>nome e cognome</strong>.');
         draft.firstName = p[0]; draft.surname = p.slice(1).join(' ');
       } else if (k === 'phone') {
         const ph = _anaExtractPhone(ans) || ((typeof normalizePhone === 'function') ? normalizePhone(ans) : ans.replace(/[^\d+]/g, ''));
-        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Telefono non valido. Scrivi un numero (es. 333 1234567).');
+        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Quel numero non mi torna 🤔 — dimmi un telefono valido (es. 333 1234567).');
         draft.phone = ph;
       } else if (k === 'gender') {
         const g = _anaExtractGender(ans) || (/^f/i.test(ans) ? 'F' : /^m/i.test(ans) ? 'M' : '');
-        if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
+        if (!g) return _say('Dimmi solo se è <strong>uomo</strong> o <strong>donna</strong> 🙂');
         draft.gender = g;
       } else if (k === 'level') {
         // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Accetta cifra
@@ -45527,7 +45527,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'update', null, changes);
       return true;
     }
@@ -45581,7 +45581,7 @@ Per confermare scrivi ELIMINA.`);
       if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, niente modifiche.'); }
       const target = aiFlowState.target;
       const changes = _anaExtractChanges(text);
-      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “cognome Bianchi”, “uomo/donna”.');
+      if (!Object.keys(changes).length) return _say('Cosa cambio, di preciso? Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “cognome Bianchi”, “uomo/donna”.');
       aiFlowState = null;
       return _showAnaUpdateSummary(target, changes);
     }
@@ -45606,14 +45606,14 @@ Per confermare scrivi ELIMINA.`);
       const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e salva';
       const no = document.createElement('button'); no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
       yes.addEventListener('click', function () { if (yes.disabled) return; yes.disabled = true; no.disabled = true; yes.classList.add('selected'); aiFlowState = null; _anaExecute(snap); });
-      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say('❌ Operazione annullata.'); });
+      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say(_pick(['👍 Va bene, lascio perdere.', '👍 Ok, non faccio nulla.'])); });
       wrap.appendChild(yes); wrap.appendChild(no); div.appendChild(wrap);
     }
     function _confirmAnagraficaAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say('❌ Operazione annullata.'); }
+      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say(_pick(['👍 Va bene, lascio perdere.', '👍 Ok, non faccio nulla.'])); }
       if (/( si | sì | conferm\w*| confermo| ok | va bene | vabene | procedi | certo | salva )/.test(n)) { const snap = aiFlowState; aiFlowState = null; return _anaExecute(snap); }
-      return _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+      return _say(_pick(['Dimmi <strong>sì</strong> e salvo, oppure <strong>no</strong> se lasciamo stare.', 'Allora: <strong>conferma</strong> e procedo, o <strong>annulla</strong> e non tocco nulla.']));
     }
     function _anaExecute(snap) {
       if (!snap) return;
