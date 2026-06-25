@@ -6120,7 +6120,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAdministration" class="side-submenu" data-section-key="administration">
-          <button class="side-sub-link" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
           <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
@@ -6167,7 +6167,7 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-chapter-group" data-section-key="administration">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="administration" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Amministrazione <span class="pmo-chapter-caret">▾</span></button>
         <div class="pmo-chapter-dropdown">
-          <button type="button" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti</button>
+          <button type="button" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button type="button" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
           <button type="button" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.944';
+    const APP_VERSION = '5.945';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9942,7 +9942,7 @@ Grazie.`
       { key:'view_members', tab:'members', label:'Anagrafica soci' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
-        { key:'view_admin_utenti', label:'Utenti', adminSection:'users' },
+        { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
         { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
         { key:'view_admin_matchpoint', label:'Dati Matchpoint', adminSection:'matchpoint-data' },
         { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
@@ -10056,7 +10056,7 @@ Grazie.`
         </details>`;
       }).join('');
       return `<div class="pmo-section-tree" id="pmoSectionTree">
-        <div class="pmo-sect-hint">Spunta cosa può vedere l'utente. Nessuna spunta su tutto l'albero = vede tutto (default). Proprietario e Admin vedono sempre tutto.</div>
+        <div class="pmo-sect-hint">Spunta cosa può vedere l'utente. Nessuna spunta su tutto l'albero = vede tutto (default). Il Proprietario vede sempre tutto.</div>
         ${rows}
       </div>`;
     }
@@ -25393,7 +25393,7 @@ Per confermare scrivi ELIMINA.`);
 	      panel.innerHTML = `
 	        <div class="admin-table-toolbar admin-users-toolbar">
 	          <div>
-	            <strong>Utenti autorizzati</strong>
+	            <strong>Utenti Staff</strong>
 	          </div>
 	          <div class="staff-access-toolbar">
 	            <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoOpenNewStaffUser()">+ Nuovo</button>
@@ -26122,15 +26122,13 @@ Per confermare scrivi ELIMINA.`);
 	    function pmoStaffUserRoleOptions(selected='staff') {
 	      const roles = [
 	        ['owner', 'Proprietario'],
-	        ['admin', 'Admin'],
 	        ['staff', 'Staff'],
 	        ['readonly', 'Solo lettura']
 	      ];
 	      return roles.map(([key, label]) => `<option value="${escapeHtml(key)}" ${key === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
 	    }
-	    function pmoStaffUserStatusOptions(selected='invited') {
+	    function pmoStaffUserStatusOptions(selected='active') {
 	      return [
-	        ['invited', 'Invitato'],
 	        ['active', 'Attivo'],
 	        ['paused', 'Sospeso']
 	      ].map(([key, label]) => `<option value="${escapeHtml(key)}" ${key === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
@@ -26139,7 +26137,7 @@ Per confermare scrivi ELIMINA.`);
 	      const editing = mode === 'edit';
 	      const email = cleanCell(user?.email || '').toLowerCase();
 	      const role = cleanCell(user?.role || (editing ? 'staff' : 'staff'));
-	      const status = cleanCell(user?.status || (editing ? 'invited' : 'invited'));
+	      const status = cleanCell(user?.status || (editing ? 'invited' : 'active'));
 	      const permissions = user?.permissions || pmoDefaultPermissionsForRole(role);
 	      // Nome e cognome sono campi distinti nella UI, ma sul profilo restano un solo full_name:
 	      // in modifica lo ri-spezzo sul primo spazio (Nome = prima parola, Cognome = resto).
@@ -26270,7 +26268,7 @@ Per confermare scrivi ELIMINA.`);
 	        save('pmoAdminState', pmoAdminState);
 	        renderPmoAdministration();
 	        if (opts.silentSuccess) pmoSetAdminStatus('', 'info');
-	        else pmoSetAdminStatus(`✅ Utenti autorizzati caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
+	        else pmoSetAdminStatus(`✅ Utenti staff caricati: ${pmoAdminState.staffUsers.length}.`, 'success');
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Lettura utenti non riuscita: ' + (err.message || err), 'danger');
 	      }
@@ -26282,7 +26280,7 @@ Per confermare scrivi ELIMINA.`);
 	        const lastName = compactSpaces(document.getElementById('pmoStaffUserSurname')?.value || '');
 	        const fullName = compactSpaces([firstName, lastName].filter(Boolean).join(' '));
 	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
-	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
+	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'active');
 	        const editingEmail = cleanCell(document.getElementById('pmoStaffAccessPanel')?.dataset.editingEmail || '').toLowerCase();
 	        const editing = !!editingEmail && editingEmail === email;
 	        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('Inserisci un indirizzo email valido.', 'warning');
