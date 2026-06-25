@@ -17,7 +17,7 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite']);
+const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite', 'staff_delete_full']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const LOGO_URL = 'https://app.padelvillage.club/logo-padel-village.jpeg';
 const emailLogoHeaderHtml = () => `<div style="text-align:center;margin:0 0 18px;">
@@ -2415,11 +2415,11 @@ function buildStaffInviteHtml(params: { greeting: string; inviteUrl: string; inv
     <p style="margin:0 0 14px;">Hai ricevuto questa email perche lo staff di ${escapeHtml(params.fromName)} ti ha aggiunto come collaboratore al gestionale interno.</p>
     <p style="margin:0 0 8px;">Per attivare il tuo accesso personale:</p>
     <ol style="margin:0 0 14px;padding-left:20px;line-height:1.6;">
-      <li>Apri questo link:<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1a56b0;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></li>
-      <li>Clicca "Crea accesso".</li>
-      <li>Inserisci la tua email (${escapeHtml(params.inviteEmail)}) e scegli una password.</li>
-      <li>Conferma l'email di verifica che riceverai.</li>
+      <li>Apri questo link (la tua email risultera gia compilata):<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1a56b0;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></li>
+      <li>Scegli una password (almeno 8 caratteri).</li>
+      <li>Clicca "Crea accesso": entrerai subito nel gestionale.</li>
     </ol>
+    <p style="margin:0 0 14px;color:#475569;font-size:14px;">La tua email di accesso e': ${escapeHtml(params.inviteEmail)}</p>
     <p style="margin:0 0 14px;color:#666666;font-size:14px;">Se non ti aspettavi questo messaggio puoi ignorarlo.</p>
     <p style="margin:0;">A presto,<br>${escapeHtml(params.fromName)}</p>
   </div></body></html>`;
@@ -2445,7 +2445,7 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
   const greeting = fullName ? `Ciao ${fullName},` : 'Ciao,';
   const subjectBase = 'Attiva il tuo accesso staff - Padel Village';
   const subject = forceTestRecipients ? `[TEST] ${subjectBase}` : subjectBase;
-  const textCore = `${greeting}\n\nHai ricevuto questa email perche lo staff di ${fromName} ti ha aggiunto come collaboratore al gestionale interno.\n\nPer attivare il tuo accesso personale:\n1) Apri questo link: ${inviteUrl}\n2) Clicca "Crea accesso"\n3) Inserisci la tua email (${inviteEmail}) e scegli una password\n4) Conferma l'email di verifica che riceverai\n\nSe non ti aspettavi questo messaggio puoi ignorarlo.\n\nA presto,\n${fromName}`;
+  const textCore = `${greeting}\n\nHai ricevuto questa email perche lo staff di ${fromName} ti ha aggiunto come collaboratore al gestionale interno.\n\nPer attivare il tuo accesso personale:\n1) Apri questo link (la tua email risultera gia compilata): ${inviteUrl}\n2) Scegli una password (almeno 8 caratteri)\n3) Clicca "Crea accesso": entrerai subito nel gestionale\n\nLa tua email di accesso e': ${inviteEmail}\n\nSe non ti aspettavi questo messaggio puoi ignorarlo.\n\nA presto,\n${fromName}`;
   const textBody = forceTestRecipients ? `[TEST INTERNO PMO]\nInvito staff in modalita prova. Destinatario reale: ${inviteEmail}\n\n---\n\n${textCore}` : textCore;
   const htmlBody = buildStaffInviteHtml({ greeting, inviteUrl, inviteEmail, fromName, testMode: forceTestRecipients });
 
@@ -2478,6 +2478,85 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
   };
 }
 
+// Eliminazione COMPLETA di un utente staff: rimuove sia l'autorizzazione (profilo staff)
+// sia l'account di accesso Supabase Auth (email+password), così se la persona viene
+// riaggiunta in futuro potrà registrarsi da zero scegliendo una nuova password.
+// Richiede manage_users (verificato a monte). Non si può eliminare il proprietario né se stessi.
+async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMap, userToken: string, supabaseUrl: string, anonKey: string) {
+  const email = clean(params.email).toLocaleLowerCase('it-IT');
+  if (!isValidEmail(email)) throw new Error('INVALID_EMAIL');
+  if (email === 'padelvillage.club@gmail.com') throw new Error('CANNOT_DELETE_OWNER');
+  if (email === clean(actor.email).toLocaleLowerCase('it-IT')) throw new Error('CANNOT_DELETE_SELF');
+
+  // 1) Elimina l'autorizzazione staff tramite la RPC security-definer: gira coi privilegi
+  //    del proprietario della tabella (il ruolo service_role non ha GRANT diretti su
+  //    pmo_staff_profiles). La RPC verifica manage_users e blocca il proprietario.
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${userToken}` } },
+    auth: { persistSession: false },
+  });
+  const { data: rpcData, error: rpcErr } = await authClient.rpc('pmo_delete_staff_user_admin', { p_email: email });
+  if (rpcErr) throw new Error(rpcErr.message || 'PROFILE_DELETE_FAILED');
+  const rpcResult = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  let profileExisted = true;
+  if (rpcResult && rpcResult.ok !== true) {
+    const errCode = clean(rpcResult.error || '');
+    // USER_NOT_FOUND = profilo già assente: proseguo a cancellare l'eventuale account Auth.
+    if (errCode === 'USER_NOT_FOUND') { profileExisted = false; }
+    else { throw new Error(errCode || 'PROFILE_DELETE_FAILED'); }
+  }
+
+  // 2) Elimina l'account Supabase Auth (service-role), cercandolo per email scorrendo gli
+  //    utenti (lo staff è poco numeroso). Un fallimento qui NON annulla la rimozione
+  //    dell'autorizzazione: lo segnalo nella risposta.
+  let authUserId = '';
+  let authDeleted = false;
+  let authError = '';
+  try {
+    let page = 1;
+    const perPage = 1000;
+    for (;;) {
+      const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage });
+      if (listErr) { authError = listErr.message || String(listErr); break; }
+      const users = (list && list.users) || [];
+      const found = users.find((u: any) => clean(u.email).toLocaleLowerCase('it-IT') === email);
+      if (found) { authUserId = found.id; break; }
+      if (users.length < perPage) break;
+      page += 1;
+      if (page > 20) break; // guardia anti-loop
+    }
+    if (authUserId) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(authUserId);
+      if (delErr) authError = delErr.message || String(delErr);
+      else authDeleted = true;
+    }
+  } catch (e) {
+    authError = errorText(e);
+  }
+
+  try {
+    await logAudit(admin, actor, 'staff_user_delete_full', {
+      email,
+      profileExisted,
+      authUserId: authUserId || null,
+      authDeleted,
+      authError: authError || null,
+    });
+  } catch (logErr) {
+    console.error('STAFF_DELETE_FULL_LOG_FAILED', errorText(logErr));
+  }
+
+  return {
+    action: 'staff_delete_full',
+    email,
+    profileDeleted: true,
+    profileExisted,
+    authUserExisted: !!authUserId,
+    authDeleted,
+    authError: authError || null,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Usa POST per inviare email autovalutazione.');
@@ -2498,14 +2577,20 @@ Deno.serve(async (req) => {
     const action = clean(body.action || 'send');
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
 
-    // L'invito staff richiede manage_users; tutte le altre azioni richiedono cloud_sync.
-    const requiredPermission = action === 'staff_invite' ? 'manage_users' : 'cloud_sync';
+    // Invito ed eliminazione utente staff richiedono manage_users; le altre azioni cloud_sync.
+    const requiredPermission = (action === 'staff_invite' || action === 'staff_delete_full') ? 'manage_users' : 'cloud_sync';
     if (!hasPermission(actor, requiredPermission)) {
       return errorResponse(403, 'PERMISSION_DENIED', `Il profilo staff non ha il permesso ${requiredPermission}.`);
     }
 
     if (action === 'staff_invite') {
       const result = await sendStaffInviteEmail(admin, actor, body);
+      return okResponse(result);
+    }
+
+    if (action === 'staff_delete_full') {
+      const userToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+      const result = await deleteStaffUserFull(admin, actor, body, userToken, supabaseUrl, anonKey);
       return okResponse(result);
     }
 
