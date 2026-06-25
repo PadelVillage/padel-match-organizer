@@ -8628,7 +8628,6 @@ Grazie.`
     }
     async function pmoHandleStaffSignup() {
       const button = document.getElementById('pmoSignupButton');
-      const message = document.getElementById('pmoLoginMessage');
       const email = cleanCell(document.getElementById('pmoStaffEmail')?.value || '');
       const password = document.getElementById('pmoStaffAuthPassword')?.value || '';
       try {
@@ -8636,44 +8635,33 @@ Grazie.`
         if (button) button.disabled = true;
         if (!email || !password) throw new Error('Inserisci email e password personale da creare.');
         if (password.length < 8) throw new Error('Scegli una password di almeno 8 caratteri.');
-        const authorization = await pmoCanRegisterStaff(email);
         pmoRememberPendingStaffEmail(email);
-        if (authorization?.registered) {
+        // Creazione accesso LATO SERVER: l'edge crea l'utente Supabase Auth gia confermato
+        // (email_confirm) → nessuna email di conferma, un solo passaggio. Poi login + entra.
+        pmoSetLoginMessage('Creo il tuo accesso...', 'success');
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const response = await fetch(`${supabaseUrl}/functions/v1/staff-create-access`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'apikey':supabaseKey, 'Authorization':`Bearer ${supabaseKey}` },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (data?.alreadyRegistered) {
           pmoSetLoginMode('login', { keepMessage: true });
           pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
           return;
         }
-        const data = await pmoSupabaseAuthFetch('signup', { email, password }, { redirectTo: pmoStaffAuthRedirectUrl() });
-        if (pmoIsAlreadyRegisteredSignupResponse(data)) {
-          pmoSetLoginMode('login', { keepMessage: true });
-          pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
-          return;
+        if (!response.ok || data?.ok !== true) {
+          const code = cleanCell(data?.error || '');
+          if (code === 'EMAIL_NOT_AUTHORIZED') throw new Error('Email non autorizzata. Chiedi a un amministratore di abilitarla prima della registrazione.');
+          if (code === 'WEAK_PASSWORD') throw new Error('Scegli una password di almeno 8 caratteri.');
+          if (code === 'INVALID_EMAIL') throw new Error('Inserisci una email valida.');
+          throw new Error(pmoFriendlyCloudError(data?.message || data?.error || `HTTP ${response.status}`, 'creare l’accesso'));
         }
-        if (data?.access_token) {
-          pmoStoreSupabaseStaffSession(data);
-          const profile = await pmoLoadMyStaffProfile();
-          if (pmoIsStaffProfileActive(profile)) {
-            // Conferma email disattivata su Supabase: il signup restituisce gia una
-            // sessione attiva -> entra DIRETTAMENTE nell'app (niente 2a email ne 2o login).
-            // Stesso percorso del login riuscito (pmoHandleStaffEmailLogin).
-            rememberStaffSession('supabase_auth', { email: profile.email, role: profile.role });
-            const emailInput = document.getElementById('pmoStaffEmail');
-            const passwordInput = document.getElementById('pmoStaffAuthPassword');
-            if (emailInput) emailInput.value = '';
-            if (passwordInput) passwordInput.value = '';
-            setStaffAuthState(true);
-            renderPmoAdministration();
-            return;
-          }
-        }
-        pmoSetLoginMessage('Ti ho inviato una email di conferma. Apri il link, poi torna qui e inserisci la password scelta.', 'success');
+        // Accesso creato e gia confermato → login immediato (password grant) ed entra nell'app.
+        await pmoHandleStaffEmailLogin(email, password);
       } catch (err) {
-        if (pmoIsAlreadyRegisteredSignupError(err)) {
-          pmoSetLoginMode('login', { keepMessage: true });
-          pmoSetLoginMessage('Accesso gia creato. Usa Entra oppure Recupera password.');
-        } else {
-          pmoSetLoginMessage(err.message || 'Creazione accesso non riuscita.');
-        }
+        pmoSetLoginMessage(err.message || 'Creazione accesso non riuscita.');
       } finally {
         if (button) button.disabled = false;
       }
