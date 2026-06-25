@@ -55,11 +55,13 @@ Deno.serve(async (req) => {
     if (canErr) return json({ ok: false, error: 'AUTHZ_CHECK_FAILED', message: canErr.message }, 500);
     const can = Array.isArray(canData) ? canData[0] : canData;
     if (!can || can.ok !== true) return json({ ok: false, error: 'EMAIL_NOT_AUTHORIZED' }, 403);
-    // registered = il profilo ha gia un auth_user_id collegato (ha gia effettuato l'accesso):
-    // in tal caso non si crea nulla e non si tocca la password → usare login/recupero.
-    if (can.registered === true) return json({ ok: true, alreadyRegistered: true });
+    // NB: NON ci si fida di can.registered (= il profilo ha un auth_user_id collegato): se quel
+    // collegamento e' "fantasma" (account Auth cancellato ma profilo rimasto), credere a registered
+    // bloccherebbe la persona sia dal login sia dalla registrazione. La fonte di verita' e' l'effettiva
+    // ESISTENZA dell'account Auth, verificata sotto: l'eventuale link stantio sul profilo non blocca il
+    // login (pmo_current_staff_profile riconcilia per email).
 
-    // 2) Esiste gia un account Auth per questa email? (tentativo precedente mai completato)
+    // 2) Esiste DAVVERO un account Auth per questa email?
     let authUserId = '';
     let alreadyConfirmed = false;
     let page = 1;
