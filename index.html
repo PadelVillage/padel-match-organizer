@@ -7215,6 +7215,22 @@ body.assessment-public-mode .assessment-public-only-card {
           <p class="ai-admin-hint" style="margin:2px 0 6px">Qui sotto l'elenco: ✅ <strong>Attivi</strong>, 🟠 <strong>Proposti</strong> da rivedere, 🚫 Rifiutati. Quando vuoi, premi <strong>🔎 Analizza ora</strong>: l'assistente guarda le frasi che le regole non hanno capito e ti <strong>propone</strong> qui i termini nuovi (🟠). Non cambia niente da solo: <strong>Approva</strong>, ✏️ <strong>Correggi</strong> o <strong>Rifiuta</strong> tu.</p>
           <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
         </section>
+
+        <section class="ai-admin-card">
+          <h3>🎓 Modalità apprendimento</h3>
+          <p class="ai-admin-hint">Quando è <strong>attiva</strong>, sui comandi che le regole non capiscono interviene il <strong>ragionatore</strong> (Gemini): fa domande, propone il comando giusto e suggerisce nuove voci per il Vocabolario. È un'impostazione <strong>del circolo</strong> (vale per tutti): solo <strong>owner/admin</strong> può cambiarla.</p>
+          <label style="display:flex;align-items:center;gap:10px;margin:8px 0;font-weight:700;cursor:pointer">
+            <input type="checkbox" id="aiLearnToggle" style="width:20px;height:20px;cursor:pointer" onchange="try{PMOAi.setLearningModeGlobal(this.checked)}catch(e){}">
+            <span id="aiLearnLabel">Apprendimento attivo</span>
+          </label>
+          <div id="aiLearnState" class="ai-admin-hint">Caricamento…</div>
+        </section>
+
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>💰 Consumo Gemini <button type="button" id="aiUsageRefresh" class="btn-primary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadAiUsage()}catch(e){}">↻ Aggiorna</button></h3>
+          <p class="ai-admin-hint">Quanto sta usando l'assistente il modello <strong>Gemini 2.5 Flash</strong>: richieste, token e <strong>costo stimato</strong> ($0,30/1M in · $2,50/1M out). La barra free-tier indica quanto sei vicino ai limiti gratuiti (~250 richieste/giorno, ~10/minuto).</p>
+          <div id="aiUsageBox" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
+        </section>
       </div>
     </div>
 
@@ -7674,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.975';
+    const APP_VERSION = '5.976';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9900,7 +9916,11 @@ Grazie.`
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
             if (tabName === 'matchHistory') renderMatchHistoryDashboard();
-            if (tabName === 'assistanteAI' && typeof PMOAi !== 'undefined' && PMOAi.loadLessico) { try { PMOAi.loadLessico(); } catch (e) {} }
+            if (tabName === 'assistanteAI' && typeof PMOAi !== 'undefined' && PMOAi.loadLessico) {
+              try { PMOAi.loadLessico(); } catch (e) {}
+              try { if (PMOAi.refreshLearningToggle) PMOAi.refreshLearningToggle(); } catch (e) {}
+              try { if (PMOAi.loadAiUsage) PMOAi.loadAiUsage(); } catch (e) {}
+            }
           }, 0);
         });
       }
@@ -41057,6 +41077,9 @@ Per confermare scrivi ELIMINA.`);
 
     // Carica all'avvio + refresh orario (gating TEST dentro _lessicoLoad).
     try { _lessicoLoad(); setInterval(_lessicoLoad, 60 * 60 * 1000); } catch (e) {}
+    // Allinea il flag locale "modalità apprendimento" all'impostazione GLOBALE del circolo
+    // (pmo_ai_settings). Se non loggato/non disponibile, resta il default ON in memoria.
+    try { _loadLearningModeSetting(); } catch (e) {}
 
     // ── Validatore "parse-gate" (doppio cancello, lato harness) ─────────────────
     // Prima di attivare un sinonimo/pattern, verifica che NON cambi come l'assistente
@@ -41132,7 +41155,7 @@ Per confermare scrivi ELIMINA.`);
       let token = cfg.supabaseKey;
       try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
       const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
-      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source,meta';
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source,kind,examples,meta';
       const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
@@ -41185,18 +41208,30 @@ Per confermare scrivi ELIMINA.`);
       const nProposed = rows.filter(function (r) { return r.status === 'proposed'; }).length;
       const header = nProposed ? '<div class="ai-turn-sub">🟠 ' + nProposed + ' proposta/e da rivedere — approva quelle giuste, rifiuta le altre.</div>' : '';
       el.innerHTML = header + rows.map(function (r) {
-        const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">🟠 Proposto</span>');
+        const isConv = r.source === 'conversazione';
+        const isPattern = r.kind === 'pattern';
+        const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">' + (isConv ? '🟢 Dal discorso' : '🟠 Proposto') + '</span>');
         const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
         const cnt = (r.status === 'proposed' && r.meta && r.meta.count) ? (' · visto ' + r.meta.count + '×') : '';
-        const origin = (r.status === 'proposed' && r.source === 'gemini-distill') ? ' · ✨ proposto dall\'assistente' : ((r.status === 'proposed' && r.source === 'auto') ? ' · dal diario' : '');
-        const fromTxt = (r.status === 'proposed' && r.meta && r.meta.from) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(r.meta.from) + '»</div>' : '';
+        const origin = (r.status === 'proposed')
+          ? (isConv ? ' · 💬 confermato nel discorso' : (r.source === 'gemini-distill' ? ' · ✨ proposto dall\'assistente' : (r.source === 'auto' ? ' · dal diario' : '')))
+          : '';
+        // Traccia: da dove nasce la proposta (frase d'origine del dialogo o del diario) + intesa.
+        const traceFrom = (r.meta && (r.meta.frase_origine || r.meta.from)) || '';
+        const fromTxt = (r.status === 'proposed' && traceFrom) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(traceFrom) + '»</div>' : '';
+        const intesaTxt = (r.status === 'proposed' && r.meta && r.meta.intesa) ? '<div class="ai-admin-hint" style="margin:2px 0 0">📖 ' + _escapeHtml(r.meta.intesa) + '</div>' : '';
+        // Validatore parse-gate: solo per i sinonimi proposti (mostra se l'attivazione è sicura).
+        const safety = _lexValidatorBadge(r);
+        const titleHtml = isPattern
+          ? ('🧩 ' + _escapeHtml(r.surface || (r.meta && r.meta.intesa) || 'pattern d\'intenzione'))
+          : (_escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical));
         let actions = '';
         if (r.status !== 'approved') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'approved\')}catch(e){}">Approva</button> ';
-        if (r.status === 'proposed') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
+        if (r.status === 'proposed' && !isPattern) actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
         if (r.status !== 'rejected') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'rejected\')}catch(e){}">Rifiuta</button>';
-        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface) + '" data-canonical="' + _escapeHtml(r.canonical) + '">'
-          + '<span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + fromTxt + '</span>'
-          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + '</span>'
+        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface || '') + '" data-canonical="' + _escapeHtml(r.canonical || '') + '">'
+          + '<span class="ai-turn-utt">' + titleHtml + fromTxt + intesaTxt + '</span>'
+          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + safety + '</span>'
           + '<span class="ai-turn-next">' + actions + '</span></div>';
       }).join('');
     }
@@ -41327,6 +41362,114 @@ Per confermare scrivi ELIMINA.`);
       } finally {
         if (btn) btn.disabled = false;
       }
+    }
+
+    // ── Step 4: badge "sicuro/attenzione" sul validatore parse-gate ─────────────
+    // Per un sinonimo PROPOSTO, applica il candidato col meccanismo reale e verifica che non
+    // cambi l'interpretazione delle frasi-base (regressioni). Read-only (ripristina). I pattern
+    // non hanno (ancora) un validatore d'overlay → nessun badge.
+    function _lexValidatorBadge(r) {
+      try {
+        if (!r || r.status !== 'proposed' || r.kind === 'pattern' || !r.surface || !r.canonical) return '';
+        const v = _validateDelta({ surface: r.surface, canonical: r.canonical }, Array.isArray(r.examples) ? r.examples : []);
+        if (v.ok) return ' <span class="ai-rep-badge done">🛡️ sicuro</span>';
+        return ' <span class="ai-rep-badge">⚠️ ' + v.regressioni.length + ' regress.</span>';
+      } catch (e) { return ''; }
+    }
+
+    // ── Step 4: interruttore "modalità apprendimento" (impostazione GLOBALE del circolo) ──
+    // Persistito in pmo_ai_settings (env,key='learning_mode'). Lettura: chiunque (RLS select).
+    // Scrittura: SOLO owner/admin via edge ai-settings (controllo server-side). Il flag locale
+    // _aiLearningMode (che gate il ragionatore) viene allineato al valore globale al boot e a ogni
+    // apertura della scheda Assistente AI.
+    function _aiCurStaffRole() { try { return (typeof pmoStaffProfile !== 'undefined' && pmoStaffProfile && pmoStaffProfile.role) ? String(pmoStaffProfile.role) : ''; } catch (e) { return ''; } }
+    function _aiCanEditSettings() { const r = _aiCurStaffRole(); return r === 'owner' || r === 'admin'; }
+    function _renderLearningToggle() {
+      const cb = document.getElementById('aiLearnToggle'), lbl = document.getElementById('aiLearnLabel'), st = document.getElementById('aiLearnState');
+      const canEdit = _aiCanEditSettings();
+      if (cb) { cb.checked = !!_aiLearningMode; cb.disabled = !canEdit; }
+      if (lbl) lbl.textContent = _aiLearningMode ? 'Apprendimento attivo' : 'Apprendimento in pausa';
+      if (st) st.textContent = canEdit
+        ? (_aiLearningMode ? '🟢 Attivo: il ragionatore aiuta e propone nuove voci.' : '⏸️ In pausa: l’assistente usa solo le regole, niente proposte.')
+        : 'Solo owner/admin può cambiare questa impostazione.';
+    }
+    async function _loadLearningModeSetting() {
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_ai_settings?env=eq.' + encodeURIComponent(env) + '&key=eq.learning_mode&select=value&limit=1';
+        const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        if (res.ok) { const rows = await res.json(); if (Array.isArray(rows) && rows.length) _aiLearningMode = (rows[0].value === true || rows[0].value === 'true'); }
+      } catch (e) { /* lascia il default in memoria (ON) */ }
+      _renderLearningToggle();
+    }
+    async function setLearningModeGlobal(on) {
+      const st = document.getElementById('aiLearnState'), cb = document.getElementById('aiLearnToggle');
+      if (!_aiCanEditSettings()) { if (cb) cb.checked = !!_aiLearningMode; if (st) st.textContent = 'Solo owner/admin può cambiare questa impostazione.'; return; }
+      if (st) st.textContent = '⏳ Salvo…'; if (cb) cb.disabled = true;
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/functions/v1/ai-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ key: 'learning_mode', value: !!on })
+        });
+        const data = await res.json().catch(function () { return null; });
+        if (!res.ok || !data || !data.ok) throw new Error((data && (data.message || data.error)) || ('HTTP ' + res.status));
+        _aiLearningMode = !!on;
+        _renderLearningToggle();
+      } catch (e) {
+        if (cb) { cb.checked = !!_aiLearningMode; cb.disabled = !_aiCanEditSettings(); }
+        if (st) st.textContent = 'Non salvato (' + (e && e.message ? e.message : e) + ').';
+      }
+    }
+
+    // ── Step 4: dashboard consumo Gemini (legge pmo_ai_usage, aggrega lato client) ──────
+    function _aiUsd(n) { n = +n || 0; return '$' + (n < 0.01 ? n.toFixed(4) : n.toFixed(2)); }
+    function _renderAiUsage(rows) {
+      if (!Array.isArray(rows) || !rows.length) return '<div class="ai-admin-hint">Nessuna chiamata a Gemini registrata questo mese. 👍</div>';
+      const todayStr = _fmtLocal(new Date());
+      const agg = function (list) {
+        let req = 0, tin = 0, tout = 0, cost = 0;
+        list.forEach(function (r) { req++; tin += (+r.prompt_tokens || 0); tout += (+r.output_tokens || 0) + (+r.thinking_tokens || 0); cost += (+r.est_cost_usd || 0); });
+        return { req: req, tok: tin + tout, cost: cost };
+      };
+      let today = [];
+      try { today = rows.filter(function (r) { return _fmtLocal(new Date(r.created_at)) === todayStr; }); } catch (e) { today = []; }
+      const aT = agg(today), aM = agg(rows);
+      const byFn = {};
+      rows.forEach(function (r) { const k = r.function_name || '?'; (byFn[k] = byFn[k] || []).push(r); });
+      const fnRows = Object.keys(byFn).sort().map(function (k) { const a = agg(byFn[k]); return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(k) + '</span><span class="ai-turn-meta">' + a.req + ' chiam. · ' + a.tok + ' tok · ' + _aiUsd(a.cost) + '</span></div>'; }).join('');
+      const pct = Math.min(100, Math.round(aT.req / 250 * 100));
+      const barColor = pct >= 90 ? '#d92d20' : (pct >= 60 ? '#f79009' : '#12b76a');
+      let lastMin = 0;
+      try { const nowMs = Date.now(); lastMin = rows.filter(function (r) { return (nowMs - new Date(r.created_at).getTime()) <= 60000; }).length; } catch (e) {}
+      const rateWarn = lastMin >= 8 ? ' <span style="color:#d92d20;font-weight:700">⚠️ ' + lastMin + '/min (limite ~10/min)</span>' : '';
+      return ''
+        + '<div class="ai-turn-sub">Oggi: <strong>' + aT.req + '</strong> richieste · ' + aT.tok + ' token · <strong>' + _aiUsd(aT.cost) + '</strong>' + rateWarn + '</div>'
+        + '<div style="margin:6px 0 2px;font-size:12px;color:#667085">Free tier giornaliero (~250 richieste)</div>'
+        + '<div style="background:#eef2f6;border-radius:6px;height:10px;overflow:hidden"><div style="height:10px;width:' + pct + '%;background:' + barColor + '"></div></div>'
+        + '<div class="ai-admin-hint" style="margin:2px 0 12px">' + aT.req + ' / 250 oggi (' + pct + '%)</div>'
+        + '<div class="ai-turn-sub">Questo mese: <strong>' + aM.req + '</strong> richieste · ' + aM.tok + ' token · <strong>' + _aiUsd(aM.cost) + '</strong></div>'
+        + '<div style="margin-top:6px">' + fnRows + '</div>'
+        + '<div class="ai-admin-hint" style="margin-top:8px">Stima a tariffe Flash ($0,30/1M in · $2,50/1M out); i token “thinking” contano come output.</div>';
+    }
+    async function loadAiUsage() {
+      const box = document.getElementById('aiUsageBox'); if (!box) return;
+      box.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_ai_usage?env=eq.' + encodeURIComponent(env) + '&created_at=gte.' + encodeURIComponent(monthStart) + '&order=created_at.desc&limit=5000&select=created_at,function_name,prompt_tokens,output_tokens,thinking_tokens,total_tokens,est_cost_usd';
+        const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = await res.json();
+        box.innerHTML = _renderAiUsage(rows);
+      } catch (e) { box.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere il consumo (sessione scaduta?): esci e rientra. [' + _escapeHtml(e && e.message ? e.message : String(e)) + ']</div>'; }
     }
 
     // ── Verifica del Vocabolario PRIMA di salvare: esempi "cosa capirei" ─────────
@@ -46256,7 +46399,8 @@ Per confermare scrivi ELIMINA.`);
     }
 
     return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
-      setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; }, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+      setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; },
+      setLearningModeGlobal: setLearningModeGlobal, refreshLearningToggle: _loadLearningModeSetting, loadAiUsage: loadAiUsage, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
