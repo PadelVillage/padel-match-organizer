@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+import { logAiUsage } from '../_shared/aiUsage.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ai-reason — Step 3 dell'apprendimento conversazionale (layer "ragionatore").
@@ -327,6 +328,8 @@ Deno.serve(async (req: Request) => {
   let confidence = Number(out.confidence);
   if (!Number.isFinite(confidence)) confidence = 0;
   confidence = Math.max(0, Math.min(1, confidence));
+
+  await logAiUsage('ai-reason', result.usage as Record<string, unknown> | null, actor.email);
 
   return ok({
     interpretazione,
