@@ -2415,11 +2415,11 @@ function buildStaffInviteHtml(params: { greeting: string; inviteUrl: string; inv
     <p style="margin:0 0 14px;">Hai ricevuto questa email perche lo staff di ${escapeHtml(params.fromName)} ti ha aggiunto come collaboratore al gestionale interno.</p>
     <p style="margin:0 0 8px;">Per attivare il tuo accesso personale:</p>
     <ol style="margin:0 0 14px;padding-left:20px;line-height:1.6;">
-      <li>Apri questo link:<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1a56b0;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></li>
-      <li>Clicca "Crea accesso".</li>
-      <li>Inserisci la tua email (${escapeHtml(params.inviteEmail)}) e scegli una password.</li>
-      <li>Conferma l'email di verifica che riceverai.</li>
+      <li>Apri questo link (la tua email risultera gia compilata):<br><a href="${escapeHtml(params.inviteUrl)}" style="color:#1a56b0;word-break:break-all;">${escapeHtml(params.inviteUrl)}</a></li>
+      <li>Scegli una password (almeno 8 caratteri).</li>
+      <li>Clicca "Crea accesso": entrerai subito nel gestionale.</li>
     </ol>
+    <p style="margin:0 0 14px;color:#475569;font-size:14px;">La tua email di accesso e': ${escapeHtml(params.inviteEmail)}</p>
     <p style="margin:0 0 14px;color:#666666;font-size:14px;">Se non ti aspettavi questo messaggio puoi ignorarlo.</p>
     <p style="margin:0;">A presto,<br>${escapeHtml(params.fromName)}</p>
   </div></body></html>`;
@@ -2445,7 +2445,7 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
   const greeting = fullName ? `Ciao ${fullName},` : 'Ciao,';
   const subjectBase = 'Attiva il tuo accesso staff - Padel Village';
   const subject = forceTestRecipients ? `[TEST] ${subjectBase}` : subjectBase;
-  const textCore = `${greeting}\n\nHai ricevuto questa email perche lo staff di ${fromName} ti ha aggiunto come collaboratore al gestionale interno.\n\nPer attivare il tuo accesso personale:\n1) Apri questo link: ${inviteUrl}\n2) Clicca "Crea accesso"\n3) Inserisci la tua email (${inviteEmail}) e scegli una password\n4) Conferma l'email di verifica che riceverai\n\nSe non ti aspettavi questo messaggio puoi ignorarlo.\n\nA presto,\n${fromName}`;
+  const textCore = `${greeting}\n\nHai ricevuto questa email perche lo staff di ${fromName} ti ha aggiunto come collaboratore al gestionale interno.\n\nPer attivare il tuo accesso personale:\n1) Apri questo link (la tua email risultera gia compilata): ${inviteUrl}\n2) Scegli una password (almeno 8 caratteri)\n3) Clicca "Crea accesso": entrerai subito nel gestionale\n\nLa tua email di accesso e': ${inviteEmail}\n\nSe non ti aspettavi questo messaggio puoi ignorarlo.\n\nA presto,\n${fromName}`;
   const textBody = forceTestRecipients ? `[TEST INTERNO PMO]\nInvito staff in modalita prova. Destinatario reale: ${inviteEmail}\n\n---\n\n${textCore}` : textCore;
   const htmlBody = buildStaffInviteHtml({ greeting, inviteUrl, inviteEmail, fromName, testMode: forceTestRecipients });
 
