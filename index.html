@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.966';
+    const APP_VERSION = '5.967';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42203,6 +42203,16 @@ Per confermare scrivi ELIMINA.`);
         // il ramo dopo la "e" porta il verbo "aggiungi/inserisci/metti" davanti al nome → va
         // tolto, altrimenti finirebbe nel nome ("aggiungi marco"). ("come/giocatore" già scartati.)
         p = p.replace(/\b(aggiung\w*|inserisc\w*|mett\w*)\b/g, ' ');
+        // "N ospiti" → N × Ospite: allinea il PREVIEW di parse() al flusso reale (_resolvePlayers),
+        // così "due/tre/quattro ospiti" non compare come un unico nome "due ospiti". Tetto 6.
+        const _pn = ' ' + _norm(p) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_pn)) {
+          let _q = 1;
+          const _qm = _pn.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) names.push('Ospite');
+          return;
+        }
         const toks = p.split(/\s+/).map(function (w) { return w.trim(); }).filter(_pmoNameOk);
         if (toks.length) names.push(toks.join(' '));
       });
