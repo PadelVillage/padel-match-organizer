@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.946';
+    const APP_VERSION = '5.947';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -26127,9 +26127,17 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoCollectAdminPermissions() {
 	      const permissions = {};
+	      // Raccoglie le 'Sezioni visibili' (view_*) dall'albero spuntato.
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        permissions[input.dataset.adminPermission] = !!input.checked;
 	      });
+	      // I 3 permessi forti non si scelgono più a mano: derivano dal RUOLO
+	      // (Proprietario/Admin = tutti attivi; Staff e Solo lettura = spenti).
+	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
+	      const ownerLike = role === 'owner' || role === 'admin';
+	      permissions.manage_users = ownerLike;
+	      permissions.cloud_sync = ownerLike;
+	      permissions.routines = ownerLike;
 	      return permissions;
 	    }
 	    function pmoStaffUserIsOwner(user={}) {
@@ -26174,15 +26182,10 @@ Per confermare scrivi ELIMINA.`);
 	          <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" value="${escapeHtml(email)}" ${editing ? 'disabled' : ''} /></div>
 	        </div>
 	        <details class="staff-permissions-details staff-advanced-options"${editing ? ' open' : ''}>
-	          <summary>Opzioni avanzate (ruolo, stato e permessi)</summary>
+	          <summary>Opzioni avanzate (ruolo, stato e sezioni visibili)</summary>
 	          <div class="admin-form-grid staff-invite-grid" style="margin-top:10px;">
 	            <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()">${pmoStaffUserRoleOptions(role)}</select></div>
 	            <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus">${pmoStaffUserStatusOptions(status)}</select></div>
-	          </div>
-	          <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
-	          <div class="staff-permissions-copy"><strong>Permessi personalizzabili</strong></div>
-	          <div class="admin-permission-grid">
-	            ${pmoStaffPermissionCheckboxesHtml(permissions)}
 	          </div>
 	          <div class="staff-permissions-copy"><strong>Sezioni visibili</strong></div>
 	          ${pmoSectionTreeHtml(permissions)}
