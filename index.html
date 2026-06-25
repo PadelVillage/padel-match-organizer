@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.954';
+    const APP_VERSION = '5.956';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -40867,6 +40867,14 @@ Per confermare scrivi ELIMINA.`);
     // Gating TEST (come il diario). L'approva resta UMANA: nessuna auto-applicazione.
     let _lessico = [];                           // [{surface, canonical, re}]
     const _LESSICO_ENABLED = _AI_TURNS_ENABLED;
+    // Regex-surface di un sinonimo con confini "parola" UNICODE-AWARE. Il \b di JS è ASCII e
+    // NON aggancia dopo lettere accentate (es. "butta giù" → \b dopo "ù" fallisce) → il sinonimo
+    // non si applicava. Usiamo lookaround con una classe che include À-ÿ. Helper unico (no drift).
+    function _lessicoRe(surface, flags) {
+      const esc = String(surface || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!esc) return null;
+      try { return new RegExp('(?<![A-Za-zÀ-ÿ0-9])' + esc + '(?![A-Za-zÀ-ÿ0-9])', flags || 'gi'); } catch (e) { return null; }
+    }
     async function _lessicoLoad() {
       if (!_LESSICO_ENABLED) return;
       try {
@@ -40884,7 +40892,7 @@ Per confermare scrivi ELIMINA.`);
           // Guardie base: surface ≥2 lettere (ammessi «ok», «sì», termini stranieri corti),
           // solo lettere/spazio/apostrofo (mai parola di 1 char).
           if (s.length < 2 || !c || !/^[a-zà-ÿ' -]+$/.test(s)) return null;
-          let re; try { re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'); } catch (e) { return null; }
+          const re = _lessicoRe(s); if (!re) return null;
           return { surface: s, canonical: c, re: re };
         }).filter(Boolean);
       } catch (e) { /* offline/anon → resta vuoto, no-op */ }
@@ -40898,6 +40906,74 @@ Per confermare scrivi ELIMINA.`);
     }
     // Carica all'avvio + refresh orario (gating TEST dentro _lessicoLoad).
     try { _lessicoLoad(); setInterval(_lessicoLoad, 60 * 60 * 1000); } catch (e) {}
+
+    // ── Validatore "parse-gate" (doppio cancello, lato harness) ─────────────────
+    // Prima di attivare un sinonimo/pattern, verifica che NON cambi come l'assistente
+    // interpreta le frasi-base già capite (REGRESSIONE) e, se forniti, che gli esempi del
+    // candidato producano l'interpretazione attesa (PROMOZIONE). Applica il candidato col
+    // MECCANISMO REALE (sinonimo → _lessico, come a runtime), confronta parse() PRIMA/DOPO,
+    // poi RIPRISTINA. Read-only: non tocca prenotazioni/cloud/worker.
+    // NB: set RAPPRESENTATIVO (copre le categorie); il gate completo resta test/parser-test.html.
+    const _VALIDATOR_REGRESSION = [
+      'prenota campo 2 domani alle 18', 'lezione con Santiago campo 1 domani 18-19',
+      'metti una lezione maestro Santiago campo 2 sabato alle 15', 'annulla la partita di domani campo 2 alle 18',
+      'disdici la lezione di sabato con Santiago', 'sposta la partita del campo 2 di domani alle 19',
+      'allunga la partita di domani alle 18 fino alle 20', 'aggiungi Luca alla partita di domani campo 2 alle 18',
+      'togli Giovanni dalla partita di sabato', 'sostituisci Mario con Luca nella partita di domani',
+      'campi liberi domani pomeriggio', 'chi gioca oggi alle 18 sul campo 1', 'che prenotazioni ci sono sabato',
+      'aggiungi socio Mario Rossi livello 3', 'aggiorna il livello di Mario Rossi a 4',
+      'cambia il telefono di Anna Verdi in 347 9988776', 'prenota campo 2 oggi alle 14',
+      'metti una partita domani alle 18', 'lezione domani alle 18', 'blocca campo 3 lunedi 17 manutenzione'
+    ];
+    function _validatorSig(text) {
+      let r = null; try { r = parse(text); } catch (e) { return 'ERR'; }
+      if (!r) return 'ERR';
+      return [
+        r.azione || r.intent || '', r.campo || '', r.oraInizio || '', r.oraFine || '', r.data || '',
+        r.tipoEvento || '', (r.giocatori && r.giocatori.length) || 0,
+        r.ospite ? 'O' : '', r.needsType ? 'T' : '', r.needsSurname ? 'S' : '', r.needsInstructor ? 'I' : '', r.ko ? 'KO' : ''
+      ].join('|');
+    }
+    // Applica un candidato col meccanismo reale; ritorna la funzione di RIPRISTINO.
+    function _validatorApply(cand) {
+      if (cand && (cand.surface && cand.canonical)) {
+        const s = String(cand.surface).trim().toLowerCase();
+        const cw = String(cand.canonical).trim();
+        if (s.length < 2 || !cw) return function () {};
+        const re = _lessicoRe(s); if (!re) return function () {};
+        const entry = { surface: s, canonical: cw, re: re };
+        _lessico.push(entry);
+        return function () { const i = _lessico.indexOf(entry); if (i >= 0) _lessico.splice(i, 1); };
+      }
+      // tipo:'pattern' (frasi_intento) → overlay: arriva con lo Stage 2.
+      return function () {};
+    }
+    // candidate = { surface, canonical, ... }; examples = [{frase, azioneAttesa?}] (opzionali).
+    function _validateDelta(candidate, examples) {
+      const baseSig = _VALIDATOR_REGRESSION.map(_validatorSig);
+      const restore = _validatorApply(candidate);
+      const regressioni = [], promossi = [];
+      try {
+        _VALIDATOR_REGRESSION.forEach(function (p, i) {
+          const sig = _validatorSig(p);
+          if (sig !== baseSig[i]) regressioni.push({ frase: p, prima: baseSig[i], dopo: sig });
+        });
+        (examples || []).forEach(function (ex) {
+          const frase = (typeof ex === 'string') ? ex : (ex && ex.frase);
+          if (!frase) return;
+          let r = null; try { r = parse(frase); } catch (e) {}
+          const az = r ? (r.azione || (r.intent ? String(r.intent).toLowerCase() : null)) : null;
+          const atteso = (ex && typeof ex === 'object' && ex.azioneAttesa) ? ex.azioneAttesa : null;
+          promossi.push({ frase: frase, azione: az, ok: atteso ? (az === atteso) : !!az });
+        });
+      } finally { try { restore(); } catch (e) {} }
+      return {
+        ok: regressioni.length === 0 && promossi.every(function (p) { return p.ok; }),
+        totali: _VALIDATOR_REGRESSION.length,
+        invariati: _VALIDATOR_REGRESSION.length - regressioni.length,
+        regressioni: regressioni, promossi: promossi
+      };
+    }
 
     // ── Gestione lessico (UI pannello Assistente AI, solo TEST) ─────────────────
     async function _lessicoFetchAll() {
@@ -41160,7 +41236,7 @@ Per confermare scrivi ELIMINA.`);
     // Spiega una frase intera scritta dall'utente: riscrive surface→canonical e interpreta.
     function _lexExplainPhrase(phrase, surface, canonical) {
       try {
-        const re = new RegExp('\\b' + surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+        const re = _lessicoRe(surface); if (!re) return null;
         return _lexShortExplain(String(phrase || '').replace(re, canonical));
       } catch (e) { return null; }
     }
@@ -41213,7 +41289,9 @@ Per confermare scrivi ELIMINA.`);
       if (!box) return;
       const ck = _lexConfirmKind(canonical);
       const token = ++_lexProvaToken;
-      _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: ck ? 'confirm' : 'command', confirmKind: ck || null, examples: [], loading: true, src: null };
+      // Controllo di sicurezza (parse-gate): questo sinonimo cambia frasi-base già capite?
+      let safety = null; try { safety = _validateDelta({ surface: surface, canonical: canonical }, []); } catch (e) {}
+      _lexProva = { surface: surface, canonical: canonical, domain: domain, kind: ck ? 'confirm' : 'command', confirmKind: ck || null, examples: [], loading: true, src: null, safety: safety };
       _lexRenderProva();
       // Gemini scrive gli esempi (così vedi se "ha capito"); fallback locale se non disponibile.
       let gem = null;
@@ -41246,6 +41324,15 @@ Per confermare scrivi ELIMINA.`);
         html += '<div class="ai-admin-hint">⚠️ Con «' + esc(P.canonical) + '» non riconosco un comando chiaro. Forse la parola «che già capisce» va scritta come un termine che l\'assistente conosce (un verbo, es. <strong>prenota, sposta, annulla, modifica, accorcia, allunga</strong>…). Correggila e ripremi 🔎 Prova, oppure aggiungi sotto una tua frase.</div>';
       } else {
         html += '<div class="ai-turn-sub">Prova: leggerò «' + esc(P.surface) + '» come «' + esc(P.canonical) + '». Frasi d\'esempio (togli quelle sbagliate, aggiungi le tue):</div>';
+      }
+      // Controllo di sicurezza (parse-gate): avvisa se il sinonimo rompe frasi già capite.
+      if (P.safety && !P.safety.ok && P.safety.regressioni && P.safety.regressioni.length) {
+        html += '<div class="ai-admin-hint" style="color:#b91c1c;border:1px solid #fecaca;background:#fef2f2;border-radius:6px;padding:6px 8px;margin:4px 0">'
+          + '⚠️ <strong>Attenzione:</strong> «' + esc(P.surface) + '» cambia ' + P.safety.regressioni.length
+          + ' frase/i già capita/e → rischia di rompere comandi esistenti (es. «' + esc(P.safety.regressioni[0].frase)
+          + '»). Conviene una parola/frase più specifica.</div>';
+      } else if (P.safety && P.safety.ok) {
+        html += '<div class="ai-admin-hint" style="color:#065f46;margin:2px 0">🛡️ Sicuro: non cambia le frasi già capite (' + P.safety.invariati + '/' + P.safety.totali + ').</div>';
       }
       if (P.loading) {
         html += '<div class="ai-admin-hint">⏳ L\'assistente sta scrivendo alcuni esempi con «' + esc(P.surface) + '»…</div>';
@@ -41298,7 +41385,7 @@ Per confermare scrivi ELIMINA.`);
       const phrase = ((inp && inp.value) || '').trim();
       if (st) st.textContent = '';
       if (phrase.length < 3) { if (st) st.textContent = 'Scrivi una frase un po\' più lunga.'; return; }
-      const has = new RegExp('\\b' + _lexProva.surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(phrase);
+      const _hr = _lessicoRe(_lexProva.surface, 'i'); const has = _hr ? _hr.test(phrase) : false;
       if (!has) { if (st) st.textContent = 'La frase deve contenere «' + _lexProva.surface + '».'; return; }
       const expl = (_lexProva.kind === 'confirm') ? 'conferma/rifiuto in conversazione'
         : (_lexExplainPhrase(phrase, _lexProva.surface, _lexProva.canonical) || '— (non riconosciuto: controlla)');
@@ -45746,7 +45833,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
