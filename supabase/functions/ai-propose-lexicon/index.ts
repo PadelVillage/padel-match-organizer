@@ -15,15 +15,29 @@ import { createClient } from '@supabase/supabase-js';
 
 type JsonMap = Record<string, unknown>;
 
+type StaffActor = {
+  userId: string;
+  email: string;
+  role: string;
+  permissions: JsonMap;
+};
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-routine-secret',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const GEMINI_TIMEOUT_MS = 12000;
-const LOOKBACK_MINUTES = 70;     // sovrapposizione con la cadenza oraria → niente buchi
-const MAX_UTTERANCES = 15;       // tetto per giro (di solito 0-2 candidati)
+const LOOKBACK_MINUTES = 70;       // routine oraria: sovrapposizione con la cadenza → niente buchi
+const MAX_UTTERANCES = 15;         // routine: tetto per giro (di solito 0-2 candidati)
+const MANUAL_MAX_UTTERANCES = 50;  // "Analizza ora" manuale: guarda TUTTO il non-rivisto
 const MAX_PROPOSALS = 10;
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body, null, 2), { status, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(body, null, 2), { status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
 }
 function ok(body: JsonMap) { return json({ ok: true, ...body }); }
 function err(status: number, code: string, message: string, extra: JsonMap = {}) { return json({ ok: false, error: code, message, ...extra }, status); }
@@ -36,6 +50,34 @@ async function verifyRoutineSecret(admin: ReturnType<typeof createClient>, secre
   const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
   if (error) return false;
   return data === true;
+}
+
+// Staff loggato (bottone "Analizza ora"): stesso schema di ai-lex-examples / ai-parse.
+function hasPermission(actor: StaffActor, perm: string) {
+  if (['owner', 'admin'].includes(actor.role)) return true;
+  return actor.permissions?.[perm] === true;
+}
+async function getActor(req: Request): Promise<StaffActor | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const token = clean(req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token || !supabaseUrl || !anonKey) return null;
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  const { data: userData, error } = await authClient.auth.getUser(token);
+  if (error || !userData?.user) return null;
+  const { data: profileData, error: profileError } = await authClient.rpc('pmo_get_my_staff_profile');
+  if (profileError || !profileData) return null;
+  const profile = Array.isArray(profileData) ? profileData[0] : profileData;
+  if (!profile || profile.status !== 'active') return null;
+  return {
+    userId: userData.user.id,
+    email: clean(userData.user.email),
+    role: clean(profile.role),
+    permissions: (profile.permissions && typeof profile.permissions === 'object') ? profile.permissions : {},
+  };
 }
 
 const SYSTEM_PROMPT = `Sei l'assistente in italiano di un circolo di PADEL, al servizio dello STAFF.
@@ -121,7 +163,7 @@ async function callGemini(apiKey: string, userMessage: string): Promise<JsonMap>
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -129,30 +171,45 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceKey) return err(500, 'CONFIG_MISSING', 'SUPABASE_URL / SERVICE_ROLE non configurati.');
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  if (!(await verifyRoutineSecret(admin, req.headers.get('x-pmo-routine-secret') || ''))) {
-    return err(401, 'UNAUTHORIZED', 'Routine secret non valido.');
+  // Due vie d'accesso: la routine schedulata (secret) oppure lo staff loggato che preme
+  // "Analizza ora" nel pannello Vocabolario (token + permesso view_assistante_ai). La modalità
+  // MANUALE guarda TUTTO il non-rivisto (nessun limite di tempo); la routine solo l'ultima finestra.
+  const routineOk = await verifyRoutineSecret(admin, req.headers.get('x-pmo-routine-secret') || '');
+  let manual = false;
+  if (!routineOk) {
+    const actor = await getActor(req);
+    if (!actor || !hasPermission(actor, 'view_assistante_ai')) {
+      return err(401, 'UNAUTHORIZED', 'Serve la routine secret oppure una sessione staff con permesso Assistente AI.');
+    }
+    manual = true;
   }
 
   const apiKey = clean(Deno.env.get('GEMINI_API_KEY'));
   if (!apiKey) return err(500, 'GEMINI_NOT_CONFIGURED', 'GEMINI_API_KEY non configurata.');
 
   const env = supabaseUrl.includes('qqbfphyslczzkxoncgex') ? 'prod' : 'test';
-  const since = new Date(Date.now() - LOOKBACK_MINUTES * 60 * 1000).toISOString();
 
-  // 1) Frasi recenti che le REGOLE non hanno capito (Gemini è intervenuto) o riformulate.
-  const { data: turns, error: turnsErr } = await admin
+  // 1) Frasi che le REGOLE non hanno capito (Gemini è intervenuto) o riformulate.
+  //    Routine: solo l'ultima finestra. Manuale: tutto (il dedup vs pmo_lessico evita di riproporre
+  //    ciò che è già stato deciso → di fatto "tutto il non-rivisto").
+  let filter = admin
     .from('pmo_ai_turns')
     .select('utterance,next_utterance,source,domain,outcome,created_at')
     .eq('env', env)
-    .gte('created_at', since)
     .not('utterance', 'is', null)
-    .or('source.eq.gemini,next_utterance.not.is.null')
+    .or('source.eq.gemini,next_utterance.not.is.null');
+  if (!manual) {
+    const since = new Date(Date.now() - LOOKBACK_MINUTES * 60 * 1000).toISOString();
+    filter = filter.gte('created_at', since);
+  }
+  const { data: turns, error: turnsErr } = await filter
     .order('created_at', { ascending: false })
-    .limit(MAX_UTTERANCES);
+    .limit(manual ? MANUAL_MAX_UTTERANCES : MAX_UTTERANCES);
   if (turnsErr) return err(500, 'DIARY_READ_ERROR', turnsErr.message);
 
+  const mode = manual ? 'manual' : 'routine';
   const list = (turns || []).filter((t) => clean(t.utterance));
-  if (!list.length) return ok({ env, scanned: 0, proposed: 0, note: 'Nessuna frase nuova da analizzare.' });
+  if (!list.length) return ok({ env, mode, scanned: 0, proposed: 0, note: 'Nessuna frase nuova da analizzare.' });
 
   // 2) Lessico esistente → dedup (qualunque stato: non riproporre ciò che è già stato deciso).
   const { data: lex } = await admin.from('pmo_lessico').select('surface,domain').eq('env', env);
@@ -195,12 +252,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!rows.length) return ok({ env, scanned: list.length, proposed: 0, note: 'Nessun nuovo termine da proporre.' });
+  if (!rows.length) return ok({ env, mode, scanned: list.length, proposed: 0, note: 'Nessun nuovo termine da proporre.' });
 
   const { error: insErr } = await admin
     .from('pmo_lessico')
     .upsert(rows, { onConflict: 'env,domain,surface', ignoreDuplicates: true });
   if (insErr) return err(500, 'INSERT_ERROR', insErr.message);
 
-  return ok({ env, scanned: list.length, proposed: rows.length, surfaces: rows.map((r) => r.surface) });
+  return ok({ env, mode, scanned: list.length, proposed: rows.length, surfaces: rows.map((r) => r.surface) });
 });

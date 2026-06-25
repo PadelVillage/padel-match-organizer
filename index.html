@@ -7191,7 +7191,8 @@ body.assessment-public-mode .assessment-public-only-card {
     <!-- Assistente AI tab — pannello di gestione del motore conversazionale.
          La conversazione vera avviene nella chat in sidebar (#svcChatPanel); qui c'è il
          VOCABOLARIO (lessico): insegnare modi di dire (con verifica a esempi di Gemini) e
-         rivedere le proposte automatiche (routine oraria ai-propose-lexicon).
+         rivedere le proposte generate a comando dal bottone «Analizza ora» (edge ai-propose-lexicon,
+         stesso cervello Gemini della ex routine oraria, ora spenta → uso manuale).
          Attivo in TEST e PROD da v5.838, gated dal permesso view_assistante_ai. Da v5.936
          rimossi i riquadri Banco di prova / Ultime interazioni / Segnalazioni / Diario turni
          (codice JS dormiente, non più in UI). -->
@@ -7210,8 +7211,8 @@ body.assessment-public-mode .assessment-public-only-card {
             <span id="aiLexAddState" class="ai-admin-hint"></span>
           </div>
           <div id="aiLexPreview" class="ai-lex-preview" style="display:none;margin-top:10px"></div>
-          <div class="ai-turn-sub" style="margin-top:14px">📋 Termini del vocabolario <button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna l'elenco</button></div>
-          <p class="ai-admin-hint" style="margin:2px 0 6px">Qui sotto l'elenco: ✅ <strong>Attivi</strong>, 🟠 <strong>Proposti</strong> da rivedere, 🚫 Rifiutati. <strong>Ogni ora</strong> l'assistente guarda da solo le frasi che le regole non hanno capito e ti <strong>propone</strong> qui i termini nuovi (🟠). Non cambia niente da solo: <strong>Approva</strong>, ✏️ <strong>Correggi</strong> o <strong>Rifiuta</strong> tu.</p>
+          <div class="ai-turn-sub" style="margin-top:14px">📋 Termini del vocabolario <button type="button" id="aiLexMineBtn" class="btn-primary small-btn" style="margin-left:6px" onclick="try{PMOAi.mineLexicon()}catch(e){}">🔎 Analizza ora</button><button type="button" class="btn-secondary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadLessico()}catch(e){}">↻ Aggiorna l'elenco</button> <span id="aiLexMineState" class="ai-admin-hint"></span></div>
+          <p class="ai-admin-hint" style="margin:2px 0 6px">Qui sotto l'elenco: ✅ <strong>Attivi</strong>, 🟠 <strong>Proposti</strong> da rivedere, 🚫 Rifiutati. Quando vuoi, premi <strong>🔎 Analizza ora</strong>: l'assistente guarda le frasi che le regole non hanno capito e ti <strong>propone</strong> qui i termini nuovi (🟠). Non cambia niente da solo: <strong>Approva</strong>, ✏️ <strong>Correggi</strong> o <strong>Rifiuta</strong> tu.</p>
           <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
         </section>
       </div>
@@ -7673,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.952';
+    const APP_VERSION = '5.953';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41097,16 +41098,37 @@ Per confermare scrivi ELIMINA.`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return { found: rows.length, inserted: rows.length };
     }
+    // "Analizza ora": chiama l'edge ai-propose-lexicon (Gemini) a comando dello staff loggato.
+    // È lo STESSO cervello della vecchia routine oraria (ora spenta → uso manuale); in manuale
+    // guarda TUTTO il non-rivisto. Le proposte 🟠 arrivano nell'elenco, l'approvazione resta umana.
+    // _lessicoMineFromDiary resta come minatore locale di riserva (non usato dal bottone).
     async function mineLexicon() {
       const st = document.getElementById('aiLexMineState');
-      if (st) st.textContent = 'Analizzo il diario…';
+      const btn = document.getElementById('aiLexMineBtn');
+      if (st) st.textContent = '⏳ Analizzo il diario con l’assistente… (può richiedere qualche secondo)';
+      if (btn) btn.disabled = true;
       try {
-        const r = await _lessicoMineFromDiary();
-        if (st) st.textContent = !r.found ? 'Nessuna parola nuova da proporre (per ora). 👍'
-          : ('🟠 ' + r.inserted + ' nuova/e proposta/e qui sotto — controlla e approva.');
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/functions/v1/ai-propose-lexicon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ source: 'manual-button' })
+        });
+        const data = await res.json().catch(function () { return null; });
+        if (!res.ok || !data || !data.ok) {
+          const msg = (data && (data.message || data.error)) || ('HTTP ' + res.status);
+          throw new Error(msg);
+        }
+        const n = Number(data.proposed || 0);
+        if (st) st.textContent = !n ? 'Nessuna parola nuova da proporre (per ora). 👍'
+          : ('🟠 ' + n + ' nuova/e proposta/e qui sotto — controlla e approva.');
         await loadLessico();
       } catch (e) {
-        if (st) st.textContent = 'Non riuscito (' + e.message + '). Se la sessione è scaduta, esci e rientra.';
+        if (st) st.textContent = 'Non riuscito (' + (e && e.message ? e.message : e) + '). Se la sessione è scaduta, esci e rientra.';
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 
