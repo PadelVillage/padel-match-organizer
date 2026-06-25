@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.972';
+    const APP_VERSION = '5.973';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42200,7 +42200,12 @@ Per confermare scrivi ELIMINA.`);
 
     // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
     const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|zio|come|istruttore|istruttrice|maestro|maestra|prossim\w*)$/;
-    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
+    // Riempitivi del discorso e verbi d'intenzione ("perfetto allora voglio…", "fammi", "adesso"):
+    // NON sono mai nomi di giocatore. Senza questo filtro, una frase naturale come «perfetto allora
+    // voglio Santiago come maestro e metti un ospite come giocatore» estraeva "perfetto allora voglio"
+    // come nome. I token qui sono già normalizzati (minuscolo, accenti rimossi), come _PMO_NOISE.
+    const _PMO_FILLER = /^(perfetto|allora|ecco|dunque|quindi|insomma|comunque|magari|praticamente|diciamo|senti|guarda|scusa|scusami|prego|grazie|ok|okay|okey|bene|benissimo|certo|esatto|giusto|vabbe|beh|voglio|vorrei|volevo|vuoi|devo|dovrei|fammi|facciamo|adesso|subito|anche|pure|poi)$/;
+    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w) && !_PMO_FILLER.test(w); }
 
     // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
     function _subjectName(tx) {
