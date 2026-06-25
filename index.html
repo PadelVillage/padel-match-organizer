@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.969';
+    const APP_VERSION = '5.970';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41554,6 +41554,10 @@ Per confermare scrivi ELIMINA.`);
       });
     }
     function _say(html, cls) { try { return svcAddMessage('system', html, cls); } catch (e) { return null; } }
+    // Voce dell'assistente: tono AMICHEVOLE CON PERSONALITÀ (deciso con l'utente). Per non suonare
+    // ripetitivo, molte domande/risposte hanno più varianti: _pick ne sceglie una a caso. È solo
+    // PRESENTAZIONE — gli harness verificano comportamento/slot, non il testo. (Math.random ok in app.)
+    function _pick(arr) { try { return arr[Math.floor(Math.random() * arr.length)]; } catch (e) { return arr && arr[0]; } }
 
     // ── Gating: la CHAT assistente è uno strumento del CALENDARIO (prenotazioni) ──────────
     // È disponibile a chi vede il Calendario (view_dashboard), NON richiede il permesso della
@@ -43620,12 +43624,12 @@ Per confermare scrivi ELIMINA.`);
     function _askNext() {
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
-      if (k === 'type') { const div = _say('🎾 È una <strong>partita</strong> o una <strong>lezione</strong>?'); _appendTypeButtons(div, aiFlowState.draft); return div; }
-      if (k === 'maestro') { const div = _say('👨‍🏫 Con quale <strong>maestro</strong>? Tocca un pulsante o dimmi il nome.'); _appendMaestroButtons(div, aiFlowState.draft); return div; }
-      if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
-      if (k === 'court') { const div = _say('🎾 Su quale <strong>campo</strong>? Tocca un pulsante o dimmi il numero.'); _appendCourtButtons(div, aiFlowState.draft); return div; }
-      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata predefinita: lezione 60′, partita 90′).');
-      if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
+      if (k === 'type') { const div = _say(_pick(['🎾 Dimmi: è una <strong>partita</strong> o una <strong>lezione</strong>?', '🎾 Facciamo una <strong>partita</strong> o una <strong>lezione</strong>?'])); _appendTypeButtons(div, aiFlowState.draft); return div; }
+      if (k === 'maestro') { const div = _say(_pick(['👨‍🏫 Con quale <strong>maestro</strong>? Dimmi pure il nome.', '👨‍🏫 Chi tiene la lezione? Dimmi il <strong>maestro</strong>.', '👨‍🏫 E il <strong>maestro</strong> chi è?'])); _appendMaestroButtons(div, aiFlowState.draft); return div; }
+      if (k === 'date') return _say(_pick(['📅 Per quale <strong>giorno</strong>? Dimmi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).', '📅 Quando la mettiamo? <em>Oggi</em>, <em>domani</em>, <em>lunedì</em>… o una data tipo <em>20/06</em>.']));
+      if (k === 'court') { const div = _say(_pick(['🎾 Su quale <strong>campo</strong>? Dimmi pure il numero.', '🎾 Quale <strong>campo</strong> usiamo? Basta il numero (1–4).'])); _appendCourtButtons(div, aiFlowState.draft); return div; }
+      if (k === 'time') return _say(_pick(['🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (la durata la metto io: lezione 60′, partita 90′).', '🕐 Per che <strong>ora</strong>? Dimmi <em>18</em> o un intervallo come <em>18-19:30</em>.']));
+      if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say(isLez ? _pick(['👥 <strong>Chi è l’allievo?</strong> Dimmi il nome — o di’ <em>ospite</em> se preferisci.', '👥 E l’<strong>allievo</strong> chi è? Dimmi il nome, o <em>ospite</em>.']) : _pick(['👥 <strong>Chi gioca?</strong> Dimmi i nomi — o di’ <em>ospite</em> per uno o più posti liberi.', '👥 Con chi giochiamo? Dimmi i nomi, oppure <em>ospite</em> (anche “due ospiti”).'])); }
     }
     // Pulsanti "Partita / Lezione" per la domanda sul tipo (fallback testuale in _continuePrenota).
     function _appendTypeButtons(div, draft) {
@@ -43690,8 +43694,9 @@ Per confermare scrivi ELIMINA.`);
       draft.__ospiteAsked = true;
       aiFlowState = { kind: 'prenota', stage: 'ospite', draft: draft };
       const isLez = (draft.tipo || 'partita') === 'lezione';
-      const who = isLez ? 'allievo' : 'giocatore';
-      const div = _say('👥 Serve un <strong>' + who + '</strong> per prenotare: scrivi il <strong>nome</strong>. Se è davvero un ospite, tocca <strong>Ospite</strong>.');
+      const div = _say(isLez
+        ? _pick(['👥 Ci manca solo l’<strong>allievo</strong>: dimmi il nome — o di’ <em>ospite</em> se non c’è un tesserato.', '👥 Per chi è la lezione? Dimmi il nome dell’<strong>allievo</strong>, oppure <em>ospite</em>.'])
+        : _pick(['👥 Con chi gioca? Dimmi i <strong>nomi</strong> — o di’ <em>ospite</em> (anche “due ospiti”) per i posti liberi.', '👥 Ci manca chi gioca: dimmi i <strong>nomi</strong>, oppure <em>ospite</em> per uno o più posti.']));
       _appendOspiteButtons(div, draft);
     }
     function _appendOspiteButtons(div, draft) {
@@ -43761,26 +43766,26 @@ Per confermare scrivi ELIMINA.`);
         const nn = ' ' + _norm(text) + ' ';
         if (/( lezion\w*| individual\w*| di gruppo| maestr\w*| insegnant\w*)/.test(nn)) draft.tipo = 'lezione';
         else if (/( partit\w*| match | gioc\w*)/.test(nn)) draft.tipo = 'partita';
-        else return _say('Scrivi <strong>partita</strong> o <strong>lezione</strong> (oppure “annulla”).');
+        else return _say('Scusa, non ho afferrato 🙂 — è una <strong>partita</strong> o una <strong>lezione</strong>?');
         draft.typePresent = true; draft.__typeAsked = true;
         aiFlowState = null;
         return _advancePrenota(draft);
       }
       if (k === 'maestro') {
         const m = _detectIstruttore(text, _norm(text));
-        if (!m) return _say('Non ho riconosciuto il maestro. Scrivi uno tra: <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong> (oppure “annulla”).');
+        if (!m) return _say('Mmm, quel maestro non mi torna 🤔 — dimmene uno tra <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong>.');
         draft.istruttore = m;
       } else if (k === 'date') {
         const iso = _extractDate(_norm(text), _calSelectedIso());
-        if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
+        if (!iso) return _say('Per quando, scusa? Dimmi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) 📅');
         draft.data = iso;
       } else if (k === 'court') {
         const c = _extractCampoLoose(text);
-        if (!c) return _say('Non ho capito il campo. Scrivi <strong>1</strong>, <strong>2</strong>, <strong>3</strong> o <strong>4</strong> (oppure “annulla”).');
+        if (!c) return _say('Quale campo, scusa? Dimmi un numero da <strong>1</strong> a <strong>4</strong> 🎾');
         draft.campoNum = c;
       } else if (k === 'time') {
         const tr = _parseTimeRange(text);
-        if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
+        if (!tr) return _say('Non ho colto l’orario 🙂 — dimmi tipo <em>18</em> o un intervallo come <em>18-19:30</em>.');
         draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = !!tr.durDefault;
       } else if (k === 'player') {
         const nn = ' ' + _norm(text) + ' ';
@@ -43793,7 +43798,7 @@ Per confermare scrivi ELIMINA.`);
             .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
             .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
           const r = _resolvePlayers(_stripCourtRefs(_cand));
-          if (!r.giocatori || !r.giocatori.length) return _say('Non ho capito il nome. Scrivi il nome del giocatore, oppure <em>ospite</em> (o “annulla”).');
+          if (!r.giocatori || !r.giocatori.length) return _say('Non ho colto il nome 🙂 — dimmi chi gioca, oppure di’ <em>ospite</em>.');
           draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
         }
       }
@@ -43841,9 +43846,9 @@ Per confermare scrivi ELIMINA.`);
       // _executePrenota a ri-chiederlo; l'Ospite si crea solo se chiesto ESPRESSAMENTE.
       draft.nome = (draft.giocatori && draft.giocatori.length) ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite');
       aiFlowState = { kind: 'prenota', stage: 'confirm', draft: draft };
-      let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
+      let html = _pick(['📋 <strong>Ecco com’è</strong>, controlla:', '📋 <strong>Ci siamo</strong>, ti riepilogo:', '📋 <strong>Perfetto</strong>, ecco il riepilogo:']) + '<br>' + _summaryHtml(draft);
       if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
-      html += '<br><span style="color:#98a2b3;font-size:12px">Confermi? Verrà scritta <strong>davvero</strong> su Matchpoint.</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">' + _pick(['Va bene così? Dimmi <strong>conferma</strong> e la scrivo su Matchpoint.', 'Confermi? Al tuo “<strong>ok</strong>” la metto su Matchpoint.', 'Procedo? Dimmi <strong>sì</strong> e la prenoto su Matchpoint.']) + '</span>';
       const div = _say(html);
       _appendConfirmButtons(div, draft);
     }
@@ -44153,12 +44158,12 @@ Per confermare scrivi ELIMINA.`);
       // arriva solo la parola singola: i comandi pieni "prenota campo 2…" sono già stati intercettati
       // a monte da _looksLikeNewCommand, che abbandona il flusso).
       if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) {
-        aiFlowState = null; return _say('❌ Prenotazione annullata.');
+        aiFlowState = null; return _say(_pick(['👍 Va bene, lascio perdere — niente prenotazione.', '👍 Ok, non prenoto nulla.', '👍 Tranquillo, l’ho annullata.']));
       }
       if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | salva | prenot\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executePrenota(d);
       }
-      _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+      _say(_pick(['Dimmi pure <strong>sì</strong> per prenotare, o <strong>no</strong> se lasciamo stare.', 'Quando vuoi: <strong>conferma</strong> e la prenoto, oppure <strong>annulla</strong>.']));
     }
 
     // Scrittura reale su Matchpoint (mirror di svcConfirmBooking).
@@ -44224,10 +44229,11 @@ Per confermare scrivi ELIMINA.`);
       const dl = _dayLabel(parsed.data);
       const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto scrivendo su Matchpoint…</span>';
       let _msgEl = null;
+      const _done = _pick(['✅ <strong>Fatto!</strong> ', '✅ <strong>Ci siamo</strong> — ', '✅ <strong>Perfetto!</strong> ']);
       if (parsed.tipo === 'lezione') {
-        _msgEl = _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
+        _msgEl = _say(_done + 'Lezione · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
       } else {
-        _msgEl = _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
+        _msgEl = _say(_done + 'Partita · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
       }
       // Aggiorna la nota "↻ scrivo…" quando Matchpoint conferma (o fallisce).
       const _setSyncNote = function (html, color) {
