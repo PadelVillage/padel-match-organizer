@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.948';
+    const APP_VERSION = '5.949';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -43172,7 +43172,7 @@ Per confermare scrivi ELIMINA.`);
       if (k === 'maestro') { const div = _say('👨‍🏫 Con quale <strong>maestro</strong>? Tocca un pulsante o dimmi il nome.'); _appendMaestroButtons(div, aiFlowState.draft); return div; }
       if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
       if (k === 'court') { const div = _say('🎾 Su quale <strong>campo</strong>? Tocca un pulsante o dimmi il numero.'); _appendCourtButtons(div, aiFlowState.draft); return div; }
-      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata 90′).');
+      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata predefinita: lezione 60′, partita 90′).');
       if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
     }
     // Pulsanti "Partita / Lezione" per la domanda sul tipo (fallback testuale in _continuePrenota).
