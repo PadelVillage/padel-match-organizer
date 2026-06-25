@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.971';
+    const APP_VERSION = '5.972';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41558,6 +41558,11 @@ Per confermare scrivi ELIMINA.`);
     // ripetitivo, molte domande/risposte hanno più varianti: _pick ne sceglie una a caso. È solo
     // PRESENTAZIONE — gli harness verificano comportamento/slot, non il testo. (Math.random ok in app.)
     function _pick(arr) { try { return arr[Math.floor(Math.random() * arr.length)]; } catch (e) { return arr && arr[0]; } }
+    // Anti-"muro di pulsanti": una disambiguazione non deve mai diventare un elenco lunghissimo
+    // da scorrere (es. tutte le prenotazioni di un giorno pieno). _choiceButtons mostra al più
+    // _CHOICE_CAP pulsanti e invita a restringere a voce; i gestori testuali (_continueCancella…)
+    // accettano comunque numeri/criteri oltre il cap, quindi non si perde nessun candidato.
+    const _CHOICE_CAP = 6;
 
     // ── Gating: la CHAT assistente è uno strumento del CALENDARIO (prenotazioni) ──────────
     // È disponibile a chi vede il Calendario (view_dashboard), NON richiede il permesso della
@@ -44304,15 +44309,30 @@ Per confermare scrivi ELIMINA.`);
     // dei pulsanti numerati per scegliere fra opzioni note; onPick riceve l'INDICE (robusto anche
     // con etichette duplicate, es. due "Ospite"). La risposta vocale/testuale resta gestita dal
     // flow (aiFlowState pick) in parallelo. Vedi [[assistente-disambiguazione-bottoni]].
-    function _choiceButtons(msgEl, baseLabels, onPick, onCancel) {
+    function _choiceButtons(msgEl, baseLabels, onPick, onCancel, opts) {
       if (!msgEl || !msgEl.appendChild || typeof svcMakeStepButtons !== 'function') return;
-      const labels = (baseLabels || []).map(function (s, i) { return (i + 1) + '. ' + s; });
+      const all = baseLabels || [];
+      // Cap discreto: troppi pulsanti = messaggio chilometrico da scorrere. Mostro solo i primi
+      // _CHOICE_CAP; gli indici restano 1:1 coi candidati (pulsante j → candidato j) e chi ha un
+      // flusso 'pick' (annullo/modifica) accetta comunque numeri/criteri oltre il cap a voce.
+      const cap = (opts && opts.cap) || _CHOICE_CAP;
+      const shown = all.slice(0, cap);
+      const labels = shown.map(function (s, i) { return (i + 1) + '. ' + s; });
       const b = svcMakeStepButtons(labels, function (label) {
         try { svcFreezeMsg(msgEl); } catch (e) {}
         const i = parseInt(label, 10) - 1;
         if (i >= 0) onPick(i);
       }, function () { try { svcFreezeMsg(msgEl); } catch (e) {} if (typeof onCancel === 'function') onCancel(); });
       msgEl.appendChild(b);
+      // Avviso discreto quando ce ne sono altre: invita a restringere invece di vomitare tutto.
+      if (all.length > cap) {
+        try {
+          const more = document.createElement('div');
+          more.style.cssText = 'color:#98a2b3;font-size:12px;margin-top:6px';
+          more.textContent = '…e altre ' + (all.length - cap) + '. Restringi pure (per es. campo e ora) e te la trovo.';
+          msgEl.appendChild(more);
+        } catch (e) {}
+      }
     }
     // Toglie SUBITO il giocatore scelto (tap esplicito su un pulsante) e salva: niente ulteriore
     // conferma (la rimozione è reversibile, l'azione è già esplicita). Mirror del ramo "sì" di
