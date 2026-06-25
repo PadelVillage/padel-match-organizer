@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.956';
+    const APP_VERSION = '5.958';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -10067,6 +10067,9 @@ Grazie.`
           if (row) row.classList.toggle('is-off', off);
         });
       });
+      // I permessi forti derivano dalle sezioni spuntate: aggiorna i chip di riepilogo
+      // perché rispecchino in tempo reale cloud_sync/manage_users/routines.
+      if (typeof pmoRenderStaffRoleSummary === 'function') pmoRenderStaffRoleSummary();
     }
     function getMatchpointCell(row, possibleNames) {
       const keys = Object.keys(row || {});
@@ -26140,13 +26143,28 @@ Per confermare scrivi ELIMINA.`);
 	      document.querySelectorAll('[data-admin-permission]').forEach(input => {
 	        permissions[input.dataset.adminPermission] = !!input.checked;
 	      });
-	      // I 3 permessi forti non si scelgono più a mano: derivano dal RUOLO
-	      // (Proprietario/Admin = tutti attivi; Staff e Solo lettura = spenti).
+	      // I 3 permessi forti DERIVANO dalle sezioni spuntate ("vedere una sezione = poter
+	      // operare su quella sezione"). Proprietario/Admin restano con tutto attivo; per
+	      // Staff/Solo lettura si accendono in base a cosa è visibile:
+	      //   • cloud_sync   → se è visibile ALMENO una sezione (cancello verso il cloud:
+	      //                    serve a leggere/scrivere qualsiasi dato, incl. le prenotazioni
+	      //                    del calendario). Senza, il calendario resta vuoto.
+	      //   • manage_users → se è visibile "Utenti Staff" (sotto Amministrazione).
+	      //   • routines     → se è visibile "Dati Matchpoint" (sotto Amministrazione).
+	      // I sotto-permessi contano solo se anche il loro gruppo padre è spuntato.
 	      const role = document.getElementById('pmoStaffUserRole')?.value || 'staff';
 	      const ownerLike = role === 'owner' || role === 'admin';
-	      permissions.manage_users = ownerLike;
-	      permissions.cloud_sync = ownerLike;
-	      permissions.routines = ownerLike;
+	      if (ownerLike) {
+	        permissions.manage_users = true;
+	        permissions.cloud_sync = true;
+	        permissions.routines = true;
+	      } else {
+	        const anyView = PMO_SECTION_TREE.some(node => permissions[node.key] === true);
+	        const adminOn = permissions.view_administration === true;
+	        permissions.cloud_sync = anyView;
+	        permissions.manage_users = adminOn && permissions.view_admin_utenti === true;
+	        permissions.routines = adminOn && permissions.view_admin_matchpoint === true;
+	      }
 	      return permissions;
 	    }
 	    function pmoStaffUserIsOwner(user={}) {
