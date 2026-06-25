@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.968';
+    const APP_VERSION = '5.969';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42814,9 +42814,22 @@ Per confermare scrivi ELIMINA.`);
             // nuovo (che deragliava il flusso → ragionatore). Sono glue grammaticale che non distingue
             // mai conferma da comando: campo/ora/nomi sopravvivono e quindi un vero comando NON matcha.
             const _tConfStrip = _tConf.replace(/\b(con|la|il|lo|le|i|gli|un|uno|una|di|del|dello|della|dei|degli|delle|al|allo|alla|alle|ai|agli|ed|mi|ti|ci|poi|allora|quindi|dai)\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+            const _hmap = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer };
             if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip))) {
-              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer }[_kc];
+              const _h = _hmap[_kc];
               if (_h) return _h(_tConf);
+            }
+            // Conferma DISCORSIVA: una risposta cordiale/lunga ("bravo, hai fatto bene, conferma pure
+            // la prenotazione") non passa il test ancorato (ha parole extra) e "prenotazione" la
+            // farebbe scambiare per un comando nuovo → deragliava nel ragionatore. Se contiene una
+            // parola di conferma FORTE e NESSUN segnale di cambio/annullo né NUOVE coordinate
+            // (campo/numero/giorno → indicherebbero un altro comando), confermiamo il flusso in corso.
+            const _strongYes = /\b(conferm\w*|confermo|procedi|va\s+bene|vabene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tConf);
+            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lascia\w*|divers\w*|nessun\w*|niente)\b/i.test(_tConf);
+            const _newCoords = /\bcamp[oi]\b|\b\d{1,2}([:.]\d{2})?\b|\b(oggi|domani|dopodomani|luned|marted|mercoled|gioved|venerd|sabato|domenica)\b/i.test(_tConf);
+            if (_strongYes && !_negChange && !_newCoords) {
+              const _h2 = _hmap[_kc];
+              if (_h2) return _h2(_tConf);
             }
           }
         }
