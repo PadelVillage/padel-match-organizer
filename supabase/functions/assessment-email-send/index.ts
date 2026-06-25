@@ -2482,56 +2482,53 @@ async function sendStaffInviteEmail(admin: any, actor: StaffActor, params: JsonM
 // sia l'account di accesso Supabase Auth (email+password), così se la persona viene
 // riaggiunta in futuro potrà registrarsi da zero scegliendo una nuova password.
 // Richiede manage_users (verificato a monte). Non si può eliminare il proprietario né se stessi.
-async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMap) {
+async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMap, userToken: string, supabaseUrl: string, anonKey: string) {
   const email = clean(params.email).toLocaleLowerCase('it-IT');
   if (!isValidEmail(email)) throw new Error('INVALID_EMAIL');
   if (email === 'padelvillage.club@gmail.com') throw new Error('CANNOT_DELETE_OWNER');
   if (email === clean(actor.email).toLocaleLowerCase('it-IT')) throw new Error('CANNOT_DELETE_SELF');
 
-  // Profilo staff (per bloccare il proprietario e recuperare l'eventuale auth_user_id)
-  const { data: profile, error: profErr } = await admin
-    .from('pmo_staff_profiles')
-    .select('email, role, status, auth_user_id')
-    .eq('email', email)
-    .maybeSingle();
-  if (profErr) throw new Error(profErr.message || 'PROFILE_LOOKUP_FAILED');
-  if (profile && clean(profile.role) === 'owner') throw new Error('CANNOT_DELETE_OWNER');
+  // 1) Elimina l'autorizzazione staff tramite la RPC security-definer: gira coi privilegi
+  //    del proprietario della tabella (il ruolo service_role non ha GRANT diretti su
+  //    pmo_staff_profiles). La RPC verifica manage_users e blocca il proprietario.
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${userToken}` } },
+    auth: { persistSession: false },
+  });
+  const { data: rpcData, error: rpcErr } = await authClient.rpc('pmo_delete_staff_user_admin', { p_email: email });
+  if (rpcErr) throw new Error(rpcErr.message || 'PROFILE_DELETE_FAILED');
+  const rpcResult = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  let profileExisted = true;
+  if (rpcResult && rpcResult.ok !== true) {
+    const errCode = clean(rpcResult.error || '');
+    // USER_NOT_FOUND = profilo già assente: proseguo a cancellare l'eventuale account Auth.
+    if (errCode === 'USER_NOT_FOUND') { profileExisted = false; }
+    else { throw new Error(errCode || 'PROFILE_DELETE_FAILED'); }
+  }
 
-  // 1) Elimina l'autorizzazione staff (se presente)
-  const { error: delProfErr } = await admin
-    .from('pmo_staff_profiles')
-    .delete()
-    .eq('email', email);
-  if (delProfErr) throw new Error(delProfErr.message || 'PROFILE_DELETE_FAILED');
-
-  // 2) Elimina l'account Supabase Auth. Se non ho l'id sul profilo, lo cerco per email
-  //    scorrendo gli utenti (lo staff è poco numeroso). Un fallimento qui NON annulla
-  //    la rimozione dell'autorizzazione: lo segnalo nella risposta.
-  let authUserId = clean(profile?.auth_user_id || '');
+  // 2) Elimina l'account Supabase Auth (service-role), cercandolo per email scorrendo gli
+  //    utenti (lo staff è poco numeroso). Un fallimento qui NON annulla la rimozione
+  //    dell'autorizzazione: lo segnalo nella risposta.
+  let authUserId = '';
   let authDeleted = false;
   let authError = '';
   try {
-    if (!authUserId) {
-      let page = 1;
-      const perPage = 1000;
-      for (;;) {
-        const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage });
-        if (listErr) { authError = listErr.message || String(listErr); break; }
-        const users = (list && list.users) || [];
-        const found = users.find((u: any) => clean(u.email).toLocaleLowerCase('it-IT') === email);
-        if (found) { authUserId = found.id; break; }
-        if (users.length < perPage) break;
-        page += 1;
-        if (page > 20) break; // guardia anti-loop
-      }
+    let page = 1;
+    const perPage = 1000;
+    for (;;) {
+      const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage });
+      if (listErr) { authError = listErr.message || String(listErr); break; }
+      const users = (list && list.users) || [];
+      const found = users.find((u: any) => clean(u.email).toLocaleLowerCase('it-IT') === email);
+      if (found) { authUserId = found.id; break; }
+      if (users.length < perPage) break;
+      page += 1;
+      if (page > 20) break; // guardia anti-loop
     }
     if (authUserId) {
       const { error: delErr } = await admin.auth.admin.deleteUser(authUserId);
       if (delErr) authError = delErr.message || String(delErr);
       else authDeleted = true;
-    } else if (!authError) {
-      // Nessun account Auth associato (persona invitata mai registrata): nulla da cancellare.
-      authDeleted = false;
     }
   } catch (e) {
     authError = errorText(e);
@@ -2540,7 +2537,7 @@ async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMa
   try {
     await logAudit(admin, actor, 'staff_user_delete_full', {
       email,
-      profileExisted: !!profile,
+      profileExisted,
       authUserId: authUserId || null,
       authDeleted,
       authError: authError || null,
@@ -2553,6 +2550,7 @@ async function deleteStaffUserFull(admin: any, actor: StaffActor, params: JsonMa
     action: 'staff_delete_full',
     email,
     profileDeleted: true,
+    profileExisted,
     authUserExisted: !!authUserId,
     authDeleted,
     authError: authError || null,
@@ -2591,7 +2589,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'staff_delete_full') {
-      const result = await deleteStaffUserFull(admin, actor, body);
+      const userToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+      const result = await deleteStaffUserFull(admin, actor, body, userToken, supabaseUrl, anonKey);
       return okResponse(result);
     }
 
