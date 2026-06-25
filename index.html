@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.945';
+    const APP_VERSION = '5.946';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -12973,6 +12973,7 @@ Grazie.`
     }
 
     function addMember(options={}) {
+      if (pmoBlockWriteIfReadonly('creare un socio')) return null;
       const normalizedManualName = normalizeImportedPlayerNameParts(document.getElementById('firstName').value, document.getElementById('surname').value);
       const firstName = normalizedManualName.firstName;
       const surname = normalizedManualName.surname;
@@ -13815,6 +13816,7 @@ Grazie.`
       if (typeof flashAnchor === 'function') flashAnchor(overlay);
     }
     function saveMemberCard(memberId) {
+      if (pmoBlockWriteIfReadonly('modificare un socio')) return;
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
       if (idx < 0) return;
       const current = giocatori[idx];
@@ -24764,6 +24766,21 @@ Per confermare scrivi ELIMINA.`);
 	      if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
 	      return !!profile.permissions?.[permission];
 	    }
+	    // ── SOLO LETTURA: il ruolo 'readonly' può vedere ma NON modificare nulla.
+	    //    Helper globale (scope condiviso tra gli <script>): guardia all'inizio di ogni
+	    //    azione di scrittura, sia manuale sia via assistente.
+	    function pmoIsReadonlyStaff() {
+	      const p = pmoStaffProfile;
+	      return !!p && String(p.role || '').toLowerCase() === 'readonly';
+	    }
+	    // Ritorna true se l'azione è BLOCCATA (sola lettura): il chiamante deve fare `return`.
+	    function pmoBlockWriteIfReadonly(actionLabel) {
+	      if (!pmoIsReadonlyStaff()) return false;
+	      const msg = '🔒 Sei in modalità Solo lettura: non puoi ' + (actionLabel || 'modificare i dati') + '.';
+	      try { if (typeof svcAddMessage === 'function') svcAddMessage('system', msg, 'error'); } catch (e) {}
+	      try { if (typeof showAlert === 'function') showAlert(msg, 'warning'); } catch (e) {}
+	      return true;
+	    }
 	    function pmoFriendlyCloudError(value, actionLabel='questa operazione') {
 	      const raw = cleanCell(value?.message || value?.error || value?.msg || value || '');
 	      if (raw.includes('AUTH_REQUIRED')) return `Accedi con email personale Supabase per ${actionLabel}.`;
@@ -27341,6 +27358,7 @@ Per confermare scrivi ELIMINA.`);
       if (applyAfterSave) applyAssessmentLevel(memberId);
     }
     async function saveMemberAssessmentValidationFromCard(memberId, applyAfterSave) {
+      if (pmoBlockWriteIfReadonly('modificare un socio')) return;
       const member = giocatori.find(g => String(g.id) === String(memberId));
       const rec = getAssessmentTokenRecord(memberId);
       const response = rec ? getAssessmentResponseByToken(rec.token) : null;
@@ -37770,6 +37788,7 @@ Per confermare scrivi ELIMINA.`);
     opts = opts || {};
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
+    if (pmoBlockWriteIfReadonly('modificare una prenotazione')) return;
 
     const moveChanged = _staffCalEditorMoveChanged(st);
     const durMin = Math.max(0, _staffCalToMin(st.mOraFin) - _staffCalToMin(st.mOraIni));
@@ -39355,6 +39374,7 @@ Per confermare scrivi ELIMINA.`);
   // sull'app"); la cancellazione su Matchpoint prosegue in background con conferma esplicita;
   // su rifiuto reale ripristina la prenotazione e avvisa.
   async function staffCalDoCancel(isoDate, campo, ora, nome) {
+    if (pmoBlockWriteIfReadonly('annullare una prenotazione')) return;
     const dataIt = isoDate.split('-').reverse().join('/');
     const _wantCampo = Number(String(campo).replace(/\D/g, ''));
     const _wantOra = String(ora).trim();
@@ -40230,6 +40250,7 @@ Per confermare scrivi ELIMINA.`);
 
   // Step 5 — conferma reale (Partita e Lezione)
   async function svcConfirmBooking() {
+    if (pmoBlockWriteIfReadonly('creare una prenotazione')) return;
     const { campo, dateISO, ora, durata, players, tipoEngine, istruttore } = svcFlowState;
     const giocatori = _dedupPlayersByIdentity((players || []).map(function(p) { return { nome: (p && typeof p === 'object') ? p.nome : String(p || ''), codice: (p && p.codice) || '', codiceCliente: (p && p.codiceCliente) || '' }; }));
     const nomeStr = giocatori.map(function(g) { return g.nome; }).join(', ');
@@ -43672,6 +43693,7 @@ Per confermare scrivi ELIMINA.`);
 
     // Scrittura reale su Matchpoint (mirror di svcConfirmBooking).
     async function _executePrenota(draft) {
+      if (pmoBlockWriteIfReadonly('creare una prenotazione')) return;
       if (!draft || draft.__started) return;
       draft.__started = true;
       // ⛔ BLOCCO al collo di bottiglia della create (copre TUTTI i rami, anche la conferma testuale
@@ -44745,6 +44767,7 @@ Per confermare scrivi ELIMINA.`);
       _anaAppendConfirmButtons(_say(html));
     }
     function _anaExecuteDeactivate(member) {
+      if (pmoBlockWriteIfReadonly('disattivare un socio')) return;
       try {
         if (!member) return _say('❌ Socio non trovato.');
         const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
@@ -44804,6 +44827,7 @@ Per confermare scrivi ELIMINA.`);
       _anaAppendConfirmButtons(_say(html));
     }
     function _anaExecuteReactivate(member) {
+      if (pmoBlockWriteIfReadonly('riattivare un socio')) return;
       try {
         if (!member) return _say('❌ Socio non trovato.');
         const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
@@ -45105,6 +45129,7 @@ Per confermare scrivi ELIMINA.`);
       return snap.op === 'update' ? _anaExecuteUpdate(snap.target, snap.changes) : _anaExecuteCreate(snap.draft);
     }
     function _anaExecuteCreate(draft) {
+      if (pmoBlockWriteIfReadonly('creare un socio')) return;
       try {
         const norm = (typeof normalizeImportedPlayerNameParts === 'function') ? normalizeImportedPlayerNameParts(draft.firstName, draft.surname) : { firstName: draft.firstName, surname: draft.surname };
         const firstName = norm.firstName, surname = norm.surname;
@@ -45148,6 +45173,7 @@ Per confermare scrivi ELIMINA.`);
       }
     }
     function _anaExecuteUpdate(member, changes) {
+      if (pmoBlockWriteIfReadonly('modificare un socio')) return;
       try {
         const idx = giocatori.findIndex(function (g) { return String(g.id) === String(member.id); });
         if (idx < 0) return _say('❌ Socio non più presente in anagrafica.');
