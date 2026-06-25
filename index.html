@@ -8241,7 +8241,7 @@ Grazie.`
       if (passwordLabel) passwordLabel.textContent = nextMode === 'signup' ? 'Password da scegliere' : 'Password personale';
       if (footnote) {
         footnote.textContent = nextMode === 'signup'
-          ? 'Dopo la conferma email tornerai alla login con email precompilata.'
+          ? 'Scegli la password e accedi direttamente, senza altri passaggi.'
           : "La registrazione e' disponibile solo per email autorizzate in Amministrazione.";
       }
       if (passwordInput) passwordInput.setAttribute('autocomplete', nextMode === 'signup' ? 'new-password' : 'current-password');
