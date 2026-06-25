@@ -7674,7 +7674,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.961';
+    const APP_VERSION = '5.964';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -41612,6 +41612,124 @@ Per confermare scrivi ELIMINA.`);
       return ruleRes;
     }
 
+    // ── Step 3: layer conversazionale (edge ai-reason / Gemini "ragionatore") ────
+    // Quando le regole NON capiscono (intento sconosciuto) e la "modalità apprendimento" è ON,
+    // invece di una domanda generica chiamiamo il ragionatore col FILO del discorso: può fare UNA
+    // domanda mirata (con pulsanti), proporre un comando equivalente da eseguire, e — se riconosce
+    // un modo di dire ricorrente — proporre una regola (sinonimo/pattern) da APPROVARE a mano.
+    // Tetto domande = 2 (poi si ricade sul chiarimento classico). Timeout/giù → regole (mai rotto).
+    let _aiLearningMode = true;                  // interruttore (Step 4: globale owner/admin). Default ON.
+    let _convHist = [];                          // ultime battute del turno [{role,text}] (memoria locale)
+    let _reasonAsked = 0;                         // domande di chiarimento poste in questo filo (tetto 2)
+    const _REASON_MAX_ASK = 2;
+    function _convPush(role, text) {
+      const t = String(text || '').trim(); if (!t) return;
+      _convHist.push({ role: role, text: t });
+      if (_convHist.length > 12) _convHist = _convHist.slice(-12);
+    }
+    async function _callAiReason(history) {
+      const accessToken = (typeof pmoGetSupabaseStaffAccessToken === 'function') ? await pmoGetSupabaseStaffAccessToken() : null;
+      if (!accessToken) return null;
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ai-reason`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ history: history, context: { today: _todayIso() } })
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      if (!resp.ok || !data || data.ok === false) return null;
+      return data; // { interpretazione, comando, domanda, proposta, confidence }
+    }
+    // Registra come CANDIDATO (status 'proposed') la regola nata dal dialogo: comparirà nel
+    // Vocabolario per l'approvazione UMANA (Step 4 UI). Non auto-applica nulla.
+    async function _reasonRegisterProposal(proposta, fraseOrigine) {
+      try {
+        if (!proposta || !proposta.tipo) return;
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const tk = await pmoGetSupabaseStaffAccessToken(); if (tk) token = tk; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const esempi = Array.isArray(proposta.esempi_test) ? proposta.esempi_test : [];
+        let row = null;
+        if (proposta.tipo === 'sinonimo' && proposta.surface && proposta.canonical) {
+          row = {
+            env: env, domain: null, surface: String(proposta.surface).toLowerCase(), canonical: String(proposta.canonical),
+            kind: 'sinonimo', status: 'proposed', source: 'conversazione', examples: esempi,
+            meta: { intesa: proposta.intesa || '', frase_origine: fraseOrigine || '', origine: 'conversazione', confidence: 'confermato_utente' }
+          };
+        } else if (proposta.tipo === 'pattern' && proposta.frase_intento) {
+          const fi = proposta.frase_intento;
+          row = {
+            env: env, domain: null, surface: (fi.esempi && fi.esempi[0]) || fraseOrigine || '', canonical: null,
+            kind: 'pattern', status: 'proposed', source: 'conversazione', examples: esempi,
+            meta: {
+              frase_intento: {
+                id: 'conv_' + (fi.azione || 'x') + '_' + (fi.operazione || ''),
+                trigger: { regex: fi.trigger_regex || '', esempi: fi.esempi || [] },
+                azione: fi.azione || null, operazione: fi.operazione || null,
+                slot_preimpostati: fi.slot_preimpostati || {}, confidence: 0.9
+              },
+              intesa: proposta.intesa || '', esempi_test: esempi, frase_origine: fraseOrigine || '',
+              origine: 'conversazione', validazione: null, confidence: 'confermato_utente'
+            }
+          };
+        }
+        if (!row) return;
+        await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+          body: JSON.stringify(row)
+        });
+      } catch (e) { /* la proposta è un di-più: non bloccare il flusso se fallisce */ }
+    }
+    // Mostra la proposta-regola nata dal dialogo (solo avviso discorsivo: l'approvazione è nel Vocabolario).
+    function _reasonAnnounceProposal(proposta) {
+      if (!proposta || !proposta.tipo || proposta.tipo === 'nessuna') return;
+      const intesa = proposta.intesa ? (' — ' + _escapeHtml(proposta.intesa)) : '';
+      _say('💡 Ho aggiunto una proposta al <strong>Vocabolario</strong> (da approvare)' + intesa + '.');
+    }
+    // Entry-point del ragionatore. Ritorna truthy se ha gestito (domanda o proposta-comando), null se
+    // non ha potuto (→ il chiamante usa il chiarimento classico). Mai un vicolo cieco.
+    async function _reasonClarify(t) {
+      if (!_aiLearningMode) return null;
+      if (_reasonAsked >= _REASON_MAX_ASK) return null;   // tetto domande → chiarimento classico
+      let thinkingEl = null;
+      let r = null;
+      try {
+        thinkingEl = _say('💭 Sto ragionando…', 'svc-thinking');
+        r = await _callAiReason(_convHist.slice());
+      } catch (e) { r = null; }
+      if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+      if (!r) return null;
+      // (A) Domanda di chiarimento mirata, con pulsanti → la scelta rientra come nuovo messaggio.
+      if (r.domanda && r.domanda.testo && Array.isArray(r.domanda.opzioni) && r.domanda.opzioni.length) {
+        _reasonAsked++;
+        const _m = _say('🤔 ' + _escapeHtml(r.domanda.testo));
+        _convPush('assistant', r.domanda.testo);
+        _choiceButtons(_m, r.domanda.opzioni, function (i) { handle(r.domanda.opzioni[i]); }, function () { _say('👍 Ok.'); });
+        return true;
+      }
+      // (B) Comando equivalente compreso → proponi di eseguirlo (conferma a pulsante) + impara.
+      if (r.comando) {
+        const interp = r.interpretazione ? _escapeHtml(r.interpretazione) : 'Ho capito cosa intendi';
+        const _m = _say('🧭 ' + interp + '. Procedo con «<strong>' + _escapeHtml(r.comando) + '</strong>»?');
+        _choiceButtons(_m, ['✅ Sì, procedi', '✏️ No, lascia'], function (i) {
+          if (i === 0) {
+            if (r.proposta) { _reasonRegisterProposal(r.proposta, _convHist.length ? _convHist[_convHist.length - 1].text : '').then(function () { _reasonAnnounceProposal(r.proposta); }); }
+            handle(r.comando);
+          } else { _say('👍 Ok, lascio perdere.'); }
+        }, function () { _say('👍 Ok.'); });
+        return true;
+      }
+      // (C) Solo un'interpretazione, senza azione/domanda → mostrala come spunto (non vicolo cieco).
+      if (r.interpretazione) {
+        _say('🧭 ' + _escapeHtml(r.interpretazione) + ' Puoi confermarmi cosa vuoi fare?');
+        return true;
+      }
+      return null;
+    }
+
     // ── Date/ora ─────────────────────────────────────────────────────────────
     function _todayIso() {
       return (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : new Date().toISOString().slice(0, 10);
@@ -42599,6 +42717,7 @@ Per confermare scrivi ELIMINA.`);
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      _convPush('user', t);   // memoria del filo per il ragionatore (Step 3)
       // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
       // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.
       const _now = (Date.now ? Date.now() : new Date().getTime());
@@ -42861,7 +42980,13 @@ Per confermare scrivi ELIMINA.`);
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
       // gestori: si fa una domanda proattiva che restringe. Vedi _needsClarification/_clarify.
       const _clar = _needsClarification(res, t);
-      if (_clar) return _clarify(t, res, _clar);
+      if (_clar) {
+        // "Non capito" (intento sconosciuto) → prima il ragionatore (Gemini fa domande / propone un
+        // comando e impara). Se non può, si ricade sul chiarimento classico (mai vicolo cieco).
+        if (_clar.reason === 'unknown') { const _r = await _reasonClarify(t); if (_r) return _r; }
+        return _clarify(t, res, _clar);
+      }
+      _reasonAsked = 0;   // richiesta azionabile → il filo "non capito" si chiude (azzera il tetto domande)
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
@@ -46014,7 +46139,8 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
+      setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; }, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
