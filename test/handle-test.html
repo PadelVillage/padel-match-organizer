@@ -699,6 +699,37 @@ const CASES = [
       checks.push({ label: 'payload create tipo=partita', ok: !!wp && wp.body.tipo === 'partita' });
       return checks;
     }
+  },
+  {
+    id: 25, flow: 'Giocatore/Pattern', name: 'handle: "togli un ospite" (scheda aperta) → toglie UN Ospite senza chiedere "quale", Mario resta',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Booking con 2 ospiti FUNGIBILI + Mario. "togli un ospite" deve togliere UNO solo, senza
+      // domanda di disambiguazione (pattern d'intenzione: operazione=rimuovi, ruolo=ospite, qta=1).
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Mario Rossi' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      await openCard(H, iso, 2, '18:00', 90, 'partita');
+      const checks = [];
+      // 1) parse riconosce il pattern (operazione/ruolo/quantità preimpostati)
+      const r = win.PMOAi.parse('togli un ospite');
+      checks.push({ label: 'parse: operazione=rimuovi', ok: r && r.operazione === 'rimuovi' });
+      checks.push({ label: 'parse: slotPreimpostati ruolo=ospite, qta=1', ok: r && r.slotPreimpostati && r.slotPreimpostati.ruolo === 'ospite' && Number(r.slotPreimpostati.quantita) === 1 });
+      // 2) handle esegue: niente flusso di conferma "quale?", toglie subito un Ospite
+      await handleSeq(win, ['togli un ospite']);
+      const noPick = !win.PMOAi || true; // (lo stato aiFlowState non è esposto; verifichiamo l'effetto sotto)
+      const wp = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      const pushed = editSavePushes()[0];
+      checks.push({ label: 'worker edit inviato (rimozione eseguita senza chiedere)', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.some(n => /ospite/i.test(n)) });
+      // 3) roster ottimistico: resta Mario + UN solo Ospite (2→1)
+      const ok2 = await waitFor(() => {
+        const nm = namesOf(H.getBookings(), iso, 2, '18:00');
+        const ospiti = (nm.match(/Ospite/gi) || []).length;
+        return /Mario/.test(nm) && ospiti === 1;
+      }, 3000);
+      checks.push({ label: 'roster locale: Mario + 1 Ospite (tolto UN solo ospite)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
