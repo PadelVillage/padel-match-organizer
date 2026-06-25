@@ -7673,7 +7673,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.943';
+    const APP_VERSION = '5.944';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -26141,28 +26141,40 @@ Per confermare scrivi ELIMINA.`);
 	      const role = cleanCell(user?.role || (editing ? 'staff' : 'staff'));
 	      const status = cleanCell(user?.status || (editing ? 'invited' : 'invited'));
 	      const permissions = user?.permissions || pmoDefaultPermissionsForRole(role);
+	      // Nome e cognome sono campi distinti nella UI, ma sul profilo restano un solo full_name:
+	      // in modifica lo ri-spezzo sul primo spazio (Nome = prima parola, Cognome = resto).
+	      const fullName = cleanCell(user?.full_name || '');
+	      const firstSpace = fullName.indexOf(' ');
+	      const firstName = firstSpace === -1 ? fullName : fullName.slice(0, firstSpace);
+	      const lastName = firstSpace === -1 ? '' : fullName.slice(firstSpace + 1).trim();
 	      const title = editing ? 'Scheda utente' : 'Nuovo utente';
 	      const help = editing
 	        ? 'Email non modificabile: usa Salva modifiche per ruolo, stato e permessi.'
-	        : "Compila i dati e autorizza l'email staff.";
+	        : "Inserisci nome, cognome ed email: con un click autorizzi la persona e le invii subito l'email d'invito. Lei poi si registra dalla schermata di accesso scegliendo la propria password.";
 	      return `<div class="admin-inline-card">
 	        <div class="admin-inline-title">${escapeHtml(title)}</div>
 	        <div class="admin-form-grid staff-invite-grid">
-	          <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" autocomplete="name" placeholder="Nome staff" value="${escapeHtml(user?.full_name || '')}" /></div>
+	          <div><label for="pmoStaffUserName">Nome</label><input id="pmoStaffUserName" autocomplete="given-name" placeholder="Nome" value="${escapeHtml(firstName)}" /></div>
+	          <div><label for="pmoStaffUserSurname">Cognome</label><input id="pmoStaffUserSurname" autocomplete="family-name" placeholder="Cognome" value="${escapeHtml(lastName)}" /></div>
 	          <div><label for="pmoStaffUserEmail">Email</label><input id="pmoStaffUserEmail" type="email" autocomplete="email" placeholder="nome@padelvillage.it" value="${escapeHtml(email)}" ${editing ? 'disabled' : ''} /></div>
-	          <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()">${pmoStaffUserRoleOptions(role)}</select></div>
-	          <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus">${pmoStaffUserStatusOptions(status)}</select></div>
 	        </div>
-	        <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
-	        <div class="staff-permissions-copy"><strong>Permessi personalizzabili</strong></div>
-	        <div class="admin-permission-grid">
-	          ${pmoStaffPermissionCheckboxesHtml(permissions)}
-	        </div>
-	        <div class="staff-permissions-copy"><strong>Sezioni visibili</strong></div>
-	        ${pmoSectionTreeHtml(permissions)}
+	        <details class="staff-permissions-details staff-advanced-options"${editing ? ' open' : ''}>
+	          <summary>Opzioni avanzate (ruolo, stato e permessi)</summary>
+	          <div class="admin-form-grid staff-invite-grid" style="margin-top:10px;">
+	            <div><label for="pmoStaffUserRole">Ruolo</label><select id="pmoStaffUserRole" onchange="pmoApplyRolePermissions()">${pmoStaffUserRoleOptions(role)}</select></div>
+	            <div><label for="pmoStaffUserStatus">Stato</label><select id="pmoStaffUserStatus">${pmoStaffUserStatusOptions(status)}</select></div>
+	          </div>
+	          <div class="staff-role-summary" id="pmoStaffRoleSummary"></div>
+	          <div class="staff-permissions-copy"><strong>Permessi personalizzabili</strong></div>
+	          <div class="admin-permission-grid">
+	            ${pmoStaffPermissionCheckboxesHtml(permissions)}
+	          </div>
+	          <div class="staff-permissions-copy"><strong>Sezioni visibili</strong></div>
+	          ${pmoSectionTreeHtml(permissions)}
+	        </details>
 	        <div class="admin-user-form-note">${escapeHtml(help)}</div>
 	        <div class="admin-inline-actions">
-	          <button id="pmoStaffFormSaveButton" class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">${editing ? 'Salva modifiche' : 'Autorizza email'}</button>
+	          <button id="pmoStaffFormSaveButton" class="btn-success small-btn" onclick="setActionAnchor(this); pmoSaveStaffUser()">${editing ? 'Salva modifiche' : 'Autorizza e invia invito'}</button>
 	          <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoCancelStaffUserInline()">Annulla</button>
 	        </div>
 	      </div>`;
@@ -26266,7 +26278,9 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoSaveStaffUser() {
 	      try {
 	        const email = cleanCell(document.getElementById('pmoStaffUserEmail')?.value || '').toLowerCase();
-	        const fullName = compactSpaces(document.getElementById('pmoStaffUserName')?.value || '');
+	        const firstName = compactSpaces(document.getElementById('pmoStaffUserName')?.value || '');
+	        const lastName = compactSpaces(document.getElementById('pmoStaffUserSurname')?.value || '');
+	        const fullName = compactSpaces([firstName, lastName].filter(Boolean).join(' '));
 	        const role = cleanCell(document.getElementById('pmoStaffUserRole')?.value || 'staff');
 	        const status = cleanCell(document.getElementById('pmoStaffUserStatus')?.value || 'invited');
 	        const editingEmail = cleanCell(document.getElementById('pmoStaffAccessPanel')?.dataset.editingEmail || '').toLowerCase();
@@ -26284,8 +26298,16 @@ Per confermare scrivi ELIMINA.`);
 	          throw new Error(pmoFriendlyCloudError(result?.error || 'Salvataggio non riuscito.', 'salvare un utente staff'));
 	        }
 	        pmoSetStaffFormMode('none');
+	        // Ricarico la lista PRIMA dell'invito: pmoSendStaffInvite cerca l'utente appena creato
+	        // (nome/ruolo) in pmoAdminState.staffUsers per comporre l'email.
 	        await pmoLoadStaffUsers({ silentLoading:true, silentSuccess:true });
-	        pmoSetAdminStatus(editing ? `✅ Modifiche salvate: ${email}.` : `✅ Email autorizzata: ${email}. Ora la persona puo usare "Crea accesso" dalla login.`, 'success');
+	        if (editing) {
+	          pmoSetAdminStatus(`✅ Modifiche salvate: ${email}.`, 'success');
+	        } else {
+	          // Nuovo utente: invio subito l'email d'invito (un solo click per autorizza + invita).
+	          // pmoSendStaffInvite imposta da solo lo stato finale (successo o errore Gmail).
+	          await pmoSendStaffInvite(email);
+	        }
 	      } catch (err) {
 	        pmoSetAdminStatus('❌ Salvataggio utente non riuscito: ' + (err.message || err), 'danger');
 	      }
