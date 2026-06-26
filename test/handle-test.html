@@ -826,6 +826,23 @@ const CASES = [
       checks.push({ label: 'roster locale: solo Mario (tutti gli ospiti tolti)', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 30, flow: 'Giocatore/Pattern', name: 'handle: "aggiungi due ospiti …" → aggiunge DUE Ospite (fungibili, niente dedup che ne collassava 2→1)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);  // Mario + Luca
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['aggiungi due ospiti alla partita di campo 2 di domani alle 18', 'sì']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker edit inviato', ok: !!pushed });
+      const addOsp = (pushed && pushed.body.players && Array.isArray(pushed.body.players.add)) ? pushed.body.players.add.filter(p => /ospite/i.test(p.nome)).length : 0;
+      checks.push({ label: 'payload players.add con DUE Ospite (no dedup)', ok: addOsp === 2 });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Ospite/gi) || []).length === 2, 3000);
+      checks.push({ label: 'roster locale: Mario + Luca + 2 Ospite', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
