@@ -106,10 +106,6 @@ const CASES = [
  {id:17, cat:'Modifica contatti', frase:"togli l'email a Luca Bianchi",                              esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'rimuove email (facoltativa)'},
  {id:18, cat:'Modifica contatti', frase:"il nuovo numero di Giulia Neri e' 333 0001112",            esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'frase indiretta = modifica telefono'},
 
- {id:19, cat:'Modifica stato', frase:"Mario Rossi adesso e' moroso",        esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> moroso'},
- {id:20, cat:'Modifica stato', frase:'togli moroso a Mario Rossi',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> regolare'},
- {id:21, cat:'Modifica stato', frase:'segna Anna Verdi come moroso',        esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> moroso'},
- {id:22, cat:'Modifica stato', frase:"Anna Verdi non e' piu' moroso",       esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato -> regolare'},
  {id:23, cat:'Modifica stato', frase:'cambia il genere di Giulia Neri in uomo', esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'genere -> M'},
  {id:24, cat:'Modifica stato', frase:'imposta la posizione di Luca Bianchi a sinistra', esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'posizione -> Sinistra'},
 
@@ -120,9 +116,7 @@ const CASES = [
  {id:28, cat:'Cerca/Interroga', frase:'mostrami la scheda di Anna Verdi',      esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'scheda Anna Verdi'},
  {id:29, cat:'Cerca/Interroga', frase:'che livello ha Luca Bianchi?',          esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'livello Luca Bianchi'},
  {id:30, cat:'Cerca/Interroga', frase:"qual e' il telefono di Giulia Neri?",   esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'telefono Giulia Neri'},
- {id:31, cat:'Cerca/Interroga', frase:"Mario Rossi e' moroso?",               esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'stato moroso Mario Rossi'},
  {id:32, cat:'Cerca/Interroga', frase:'quanti soci abbiamo a livello 3?',      esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'query aggregata conteggio'},
- {id:33, cat:'Cerca/Interroga', frase:'elenco soci morosi',                    esito:'OK', exp:{az:'anagrafica', esito:'OK'}, note:'query lista morosi'},
  {id:34, cat:'Cerca/Interroga', frase:'trova il numero di telefono di Mario',  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO', surname:true}, note:'manca cognome (regola A)'},
 
  {id:35, cat:'Elimina/Disattiva', frase:'elimina il socio Mario Rossi',        esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'elimina NON permesso -> proporre disattivazione'},
@@ -139,12 +133,11 @@ const CASES = [
  {id:45, cat:'Ambigua/Validazione', frase:'aggiorna il livello di Pippo Inesistente a 3', esito:'KO', exp:{az:'anagrafica', esito:'KO', ko:true}, note:'socio non in rubrica (regola G) — richiede roster'},
  {id:46, cat:'Ambigua/Validazione', frase:'modifica Mario Rossi',              esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'non dice quale campo (regola H)'},
  {id:47, cat:'Ambigua/Validazione', frase:'aggiungi socio',                    esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'manca tutto: chiede almeno nome+cognome'},
- {id:48, cat:'Ambigua/Validazione', frase:'cancella tutti i soci morosi',      esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'cancellazione massiva NON permessa (regola F)'},
+ {id:48, cat:'Ambigua/Validazione', frase:'cancella tutti i soci',            esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'cancellazione massiva NON permessa (regola F)'},
  {id:49, cat:'Ambigua/Validazione', frase:'aggiungi socio Mario Rossi uomo livello tre e mezzo', esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'liv "tre e mezzo"=3.5; manca telefono'},
 
  {id:50, cat:'Dialetto/telegrafico', frase:'agg socio mario rossi m liv 3.5 tel 3331234567', esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'agg=aggiungi, m=uomo, liv=livello; email facoltativa assente'},
  {id:51, cat:'Dialetto/telegrafico', frase:'nuovo socio anna verdi f liv2',                  esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'f=donna, liv2; manca telefono'},
- {id:52, cat:'Dialetto/telegrafico', frase:'mario rossi moroso',                             esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'modifica stato -> moroso'},
  {id:53, cat:'Dialetto/telegrafico', frase:'liv di luca bianchi a 4',                        esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'liv=livello -> 4'},
  {id:54, cat:'Dialetto/telegrafico', frase:'tel anna verdi 3479988776',                      esito:'OK',     exp:{az:'anagrafica', esito:'OK'}, note:'tel=telefono'},
  {id:55, cat:'Dialetto/telegrafico', frase:'canc socio mario rossi',                         esito:'DUBBIO', exp:{az:'anagrafica', esito:'DUBBIO'}, note:'canc=cancella NON permesso -> disattivazione'},
