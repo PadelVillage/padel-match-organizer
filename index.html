@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.978';
+    const APP_VERSION = '5.979';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -43011,6 +43011,10 @@ Per confermare scrivi ELIMINA.`);
             return _continuePrenota(t);
           }
         }
+        // Flusso di RISOLUZIONE GIOCATORE (chiede il cognome, o «aggiungi socio / ospite»): la
+        // risposta è il nome/la scelta, NON un comando nuovo (può contenere "aggiungi") → gestiscila
+        // qui PRIMA di _looksLikeNewCommand, così non abbandona il flusso.
+        if (aiFlowState.kind === 'playerresolve') return _continuePlayerResolve(t);
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
         // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
@@ -43911,14 +43915,9 @@ Per confermare scrivi ELIMINA.`);
         .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
         .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
       cand = _stripCourtRefs(cand).trim();
-      // Se dopo aver tolto i riempitivi non resta nulla (es. "no", "inserisco il nome"), NON
-      // forzare la risoluzione sul testo grezzo: cadi sotto e chiedi esplicitamente il nome.
-      const r = cand ? _resolvePlayers(cand) : { giocatori: [], notes: [] };
-      if (r.giocatori && r.giocatori.length) {
-        draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
-        aiFlowState = null;
-        return _showSummary(draft);
-      }
+      // C'è un nome → applica le regole giocatore (cognome obbligatorio / socio-o-ospite) via il
+      // flusso playerresolve; al termine consegna i giocatori alla bozza e mostra il riepilogo.
+      if (cand) return _startPlayerResolve(cand, { mode: 'create', draft: draft });
       // Voleva inserire un nome ma non l'ha (ancora) scritto → chiedilo esplicitamente.
       if (/( no | nome | inserisc\w* | scriv\w* )/.test(n)) {
         aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
@@ -43967,9 +43966,12 @@ Per confermare scrivi ELIMINA.`);
           let _cand = String(text || '')
             .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
             .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
-          const r = _resolvePlayers(_stripCourtRefs(_cand));
-          if (!r.giocatori || !r.giocatori.length) return _say('Non ho colto il nome 🙂 — dimmi chi gioca, oppure di’ <em>ospite</em>.');
-          draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
+          _cand = _stripCourtRefs(_cand).trim();
+          if (!_cand) return _say('Non ho colto il nome 🙂 — dimmi chi gioca, oppure di’ <em>ospite</em>.');
+          // Player è l'ultimo slot tecnico: applico le regole giocatore via playerresolve (che a fine
+          // mostra il riepilogo). Chiudo qui il flusso prenota "await" e passo il testimone.
+          aiFlowState = null;
+          return _startPlayerResolve(_cand, { mode: 'create', draft: draft });
         }
       }
       aiFlowState.need.shift();
@@ -44134,15 +44136,12 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b(come\s+(?:giocatore|allievo|allieva)|(?:a|ad|in|su|nel|nell['’]|nella|nelle|alla|alle|dalla|dalle)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw))).trim();
       if (!raw && res && res.giocatori && res.giocatori.length) raw = res.giocatori.join(' ');
-      const r = raw ? _resolvePlayers(raw) : { giocatori: [], notes: [] };
-      if (!r.giocatori || !r.giocatori.length) {
-        return _say('Chi devo aggiungere alla prenotazione aperta? Scrivi il <strong>nome</strong> del giocatore.');
+      if (!raw) {
+        return _say('Chi devo aggiungere alla prenotazione aperta? Dimmi il <strong>nome e cognome</strong> del giocatore.');
       }
-      // CONFERMA prima di scrivere (decisione utente 2026-06-19): rimando indietro il NOME
-      // capito e salvo su Matchpoint solo dopo un "sì". Così una dettatura sbagliata (nome
-      // errato, o non in anagrafica → Ospite) si intercetta PRIMA di toccare il gestionale.
-      // Nessuno stato a metà: se non confermi, non viene scritto né in app né su Matchpoint.
-      return _askAddConfirm(st, r.giocatori, r.notes);
+      // Regole giocatore (26/06): nome singolo → chiedi cognome; nome+cognome non in anagrafica →
+      // chiedi «aggiungi socio» o «ospite». Risolto/i → conferma prima di scrivere su Matchpoint.
+      return _startPlayerResolve(raw, { mode: 'add' });
     }
     // Chiede conferma dell'aggiunta (echo del nome capito) e apre il flusso 'addconfirm'.
     function _askAddConfirm(st, players, notes) {
@@ -44173,7 +44172,7 @@ Per confermare scrivi ELIMINA.`);
       // («sì un ospite poi Maurizio Aprea e Lidia Gomes»): ri-risolvo il roster COMPLETO dal
       // messaggio (togliendo "sì"/verbo iniziale). Accetto solo se trova un socio reale o un
       // "ospite" esplicito → così una conferma discorsiva («sì va bene così») NON diventa Ospiti.
-      let _corr = null;
+      let _corr = null, _corrRaw = null;
       if (st && !st.busy) {
         let raw = String(text || '')
           .replace(/^\s*\W*(s[iì]|no)\b[,.\s]*/ig, ' ')
@@ -44183,13 +44182,14 @@ Per confermare scrivi ELIMINA.`);
           const rr = _resolvePlayers(raw);
           const _hasReal = rr.giocatori && rr.giocatori.some(function (g) { return g.nome && g.nome !== 'Ospite'; });
           const _saidOspite = /\bospit[ei]\b/.test(n);
-          if (rr.giocatori && rr.giocatori.length && (_hasReal || _saidOspite)) _corr = rr;
+          if (rr.giocatori && rr.giocatori.length && (_hasReal || _saidOspite)) { _corr = rr; _corrRaw = raw; }
         }
       }
-      // Ri-chiedo conferma col roster corretto SOLO se aggiunge informazione (un socio reale, o più
-      // di un giocatore): un "sì un ospite" che ri-dà lo stesso singolo Ospite non deve ciclare.
+      // Correzione vera (un socio reale, o più di un giocatore): ri-applico le regole giocatore via
+      // playerresolve (cognome obbligatorio / socio-o-ospite). Il filtro _corr sopra evita che una
+      // conferma discorsiva («sì va bene così») entri qui e diventi una decisione su parole a caso.
       if (_corr && (!_isYes || _corr.giocatori.length > 1 || _corr.giocatori.some(function (g) { return g.nome !== 'Ospite'; }))) {
-        return _askAddConfirm(st, _corr.giocatori, _corr.notes);
+        return _startPlayerResolve(_corrRaw, { mode: 'add' });
       }
       // Conferma SECCA → aggiungo i giocatori già capiti e salvo.
       if (_isYes) {
@@ -44206,6 +44206,124 @@ Per confermare scrivi ELIMINA.`);
         return true;
       }
       return _say('Dimmi <strong>sì</strong> e lo aggiungo, <strong>no</strong> se lasciamo stare — o il <strong>nome</strong> giusto se ho capito male.');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // RICONOSCIMENTO GIOCATORE — regole di prodotto (decisione utente 26/06):
+    //  (1) un SOLO nome (senza cognome) → chiedi SEMPRE nome e cognome prima di procedere;
+    //  (2) nome+cognome NON in anagrafica → chiedi: «aggiungi come socio» (creazione COMPLETA) o «ospite».
+    // _resolvePlayersStrict classifica ogni nome in: risolto (socio noto / Ospite esplicito) oppure
+    // IN SOSPESO ({surname}=manca il cognome, {decision}=non in anagrafica). Il flusso 'playerresolve'
+    // processa i sospesi UNO ALLA VOLTA, poi consegna i giocatori al chiamante (add a scheda / create).
+    // ════════════════════════════════════════════════════════════════════════════
+    let _afterAnaCreate = null;   // continuazione: aggiungere alla prenotazione il socio appena creato
+    function _memberToPlayer(best) {
+      const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || '';
+      const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';
+      const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
+      return { nome: nomeSocio, codice: codice, codiceCliente: codiceCliente };
+    }
+    function _resolvePlayersStrict(rawStr) {
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      const resolved = [], pending = [];
+      for (let i = 0; i < names.length; i++) {
+        const nm = names[i];
+        const _onm = ' ' + _norm(nm) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_onm)) {
+          let _q = 1; const _qm = _onm.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) resolved.push(_ospitePlayer());
+          continue;
+        }
+        const words = nm.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= 1) { pending.push({ raw: nm.trim(), kind: 'surname' }); continue; }  // regola (1)
+        const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nm, 5) || []) : [];
+        if (matches.length) resolved.push(_memberToPlayer(matches[0].member));
+        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2)
+      }
+      return { resolved: resolved, pending: pending };
+    }
+    // cont = { mode:'add' } (scheda aperta) | { mode:'create', draft }
+    function _startPlayerResolve(rawStr, cont) {
+      const cls = _resolvePlayersStrict(rawStr);
+      aiFlowState = { kind: 'playerresolve', stage: 'queue', cont: cont, resolved: cls.resolved, queue: cls.pending };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _playerResolveStep();
+    }
+    function _playerResolveStep() {
+      const fs = aiFlowState; if (!fs || fs.kind !== 'playerresolve') return;
+      if (!fs.queue.length) return _playerResolveDone();
+      const cur = fs.queue[0];
+      if (cur.kind === 'surname') {
+        fs.stage = 'surname';
+        return _say('Di «<strong>' + _escapeHtml(cur.raw) + '</strong>» mi serve anche il cognome 🙂 — dimmi il <strong>nome e cognome</strong> completo.');
+      }
+      // decision: non in anagrafica → aggiungi come socio (creazione completa) o ospite
+      fs.stage = 'decision';
+      const _m = _say('«<strong>' + _escapeHtml(cur.raw) + '</strong>» non è in anagrafica. Vuoi <strong>aggiungerlo come socio</strong> oppure metterlo come <strong>ospite</strong>?');
+      const _b = svcMakeStepButtons(['👤 Aggiungi come socio', '🎾 Metti come ospite'], function (label) {
+        try { svcFreezeMsg(_m); } catch (e) {}
+        if (/socio/i.test(label)) _playerResolveAddMember(cur.raw);
+        else { fs.resolved.push(_ospitePlayer()); fs.queue.shift(); _playerResolveStep(); }
+      }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
+      if (_m && _m.appendChild) _m.appendChild(_b);
+      return true;
+    }
+    function _continuePlayerResolve(text) {
+      const fs = aiFlowState; if (!fs || fs.kind !== 'playerresolve') { aiFlowState = null; return _say('Dimmi pure il nome del giocatore.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      // Stadio 'decision': risposta a voce «ospite» o «aggiungilo come socio» (oltre ai pulsanti).
+      if (fs.stage === 'decision' && fs.queue.length) {
+        if (/\bospit\w*|\bjolly\b/.test(n)) { fs.resolved.push(_ospitePlayer()); fs.queue.shift(); return _playerResolveStep(); }
+        if (/(aggiung\w*|socio|tesserat\w*|anagrafic|iscriv\w*|nuovo)/.test(n)) { return _playerResolveAddMember(fs.queue[0].raw); }
+        // altrimenti: forse ha (ri)detto un nome → prosegui sotto e prova a risolverlo
+      }
+      // Interpreta la risposta come NOME e COGNOME (sia per 'surname' sia per un nome ridetto).
+      let cand = String(text || '')
+        .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
+        .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
+      cand = _stripCourtRefs(cand).trim();
+      const words = cand.split(/\s+/).filter(Boolean);
+      if (words.length < 2) return _say('Mi servono <strong>nome e cognome</strong> 🙂 — scrivili entrambi (es. «Mario Rossi»).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(cand, 5) || []) : [];
+      fs.queue.shift();
+      if (matches.length) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
+      // Nome completo ma non in anagrafica → diventa una decisione (aggiungi socio / ospite).
+      fs.queue.unshift({ raw: cand, kind: 'decision' });
+      return _playerResolveStep();
+    }
+    // «Aggiungi come socio»: avvia la creazione anagrafica COMPLETA pre-riempita col nome; al termine
+    // _afterAnaCreate aggiunge il socio appena creato ai risolti e riprende il flusso giocatori.
+    function _playerResolveAddMember(rawName) {
+      const fs = aiFlowState;
+      const savedCont = fs.cont, savedResolved = fs.resolved.slice(), savedQueue = fs.queue.slice(1);
+      _afterAnaCreate = function (member) {
+        _afterAnaCreate = null;
+        aiFlowState = { kind: 'playerresolve', stage: 'queue', cont: savedCont, resolved: savedResolved.concat([_memberToPlayer(member)]), queue: savedQueue };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        _playerResolveStep();
+      };
+      _say('👤 Bene, iscriviamo <strong>' + _escapeHtml(rawName) + '</strong>: completiamo i dati e poi lo aggiungo alla prenotazione.');
+      (async function () {
+        try { const r2 = await _parseWithAi('iscrivi ' + rawName); _startAnagrafica(r2, 'iscrivi ' + rawName); }
+        catch (e) { try { _startAnaCreate('iscrivi ' + rawName); } catch (e2) { _afterAnaCreate = null; _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e2 && e2.message) ? e2.message : String(e2))); } }
+      })();
+      return true;
+    }
+    function _playerResolveDone() {
+      const fs = aiFlowState; const cont = fs ? fs.cont : null; const players = fs ? fs.resolved : [];
+      aiFlowState = null;
+      if (!cont) return;
+      if (!players.length) return _say('Non ho capito chi aggiungere. Dimmi il <strong>nome e cognome</strong>, oppure «ospite».');
+      if (cont.mode === 'add') {
+        const st = staffCalPlayersState;
+        if (!st || st.busy) return _say('La scheda non è più aperta: riapri la prenotazione e riprova.');
+        return _askAddConfirm(st, players, []);
+      }
+      // create: consegna i giocatori alla bozza e mostra il riepilogo.
+      const draft = cont.draft; draft.giocatori = players;
+      return _showSummary(draft);
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
     // richiesto ai giocatori presenti (roster); se non c'è → lo dice; se più simili → fa scegliere.
@@ -44754,9 +44872,9 @@ Per confermare scrivi ELIMINA.`);
       const st = staffCalPlayersState;
       if (!st || !pending) return;
       if (pending.type === 'add') {
-        const r = pending.rawName ? _resolvePlayers(pending.rawName) : { giocatori: [], notes: [] };
-        if (!r.giocatori || !r.giocatori.length) return _say('Chi devo aggiungere alla prenotazione? Dimmi il <strong>nome</strong>.');
-        return _askAddConfirm(st, r.giocatori, r.notes);
+        if (!pending.rawName) return _say('Chi devo aggiungere alla prenotazione? Dimmi il <strong>nome e cognome</strong>.');
+        // Regole giocatore (26/06): nome singolo → chiedi cognome; non in anagrafica → socio/ospite.
+        return _startPlayerResolve(pending.rawName, { mode: 'add' });
       }
       if (pending.type === 'remove') return _askRemoveConfirm(st, pending.rawName);
     }
@@ -45845,11 +45963,16 @@ Per confermare scrivi ELIMINA.`);
         try { updateStats(); } catch (e) {}
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
+        // Continuazione "torna alla prenotazione": se la creazione è stata avviata DENTRO un flusso
+        // di aggiunta giocatore (_playerResolveAddMember), il socio è ora in anagrafica → lo aggiungo
+        // alla prenotazione. Fire-and-forget dopo il messaggio di esito (la sync MP prosegue in bg).
+        const _fireAna = function () { if (typeof _afterAnaCreate === 'function') { const _cb = _afterAnaCreate; _afterAnaCreate = null; try { _cb(newMember); } catch (e) {} } };
         // Ospite/guest: non si crea su Matchpoint (la scheda 000001 esiste già lì).
-        if (guest) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>');
+        if (guest) { _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>'); _fireAna(); return; }
         const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
-        if (_isTestEnv) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.');
+        if (_isTestEnv) { _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.'); _fireAna(); return; }
         _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
+        _fireAna();
         if (typeof pmoCreateMemberInMatchpoint === 'function') {
           Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function (res) {
             if (res && res.status === 'test_env') return _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.');

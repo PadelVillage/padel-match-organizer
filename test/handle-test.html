@@ -182,9 +182,9 @@ function namesOf(bookings, iso, campo, ora) {
 // Trascrizione chat (per diagnosticare cosa risponde l'assistente quando un caso routing fallisce).
 function chatTranscript(W) {
   try {
-    const log = W.document.getElementById('svcChatLog') || W.document.getElementById('staffCalLog') || W.document.querySelector('.svc-chat-log');
+    const log = W.document.getElementById('svcChatMessages') || W.document.getElementById('svcChatLog') || W.document.getElementById('staffCalLog') || W.document.querySelector('.svc-chat-log');
     if (!log) return '(log non trovato)';
-    return (log.innerText || '').replace(/\s+\n/g, '\n').trim().slice(-600);
+    return (log.innerText || log.textContent || '').replace(/\s+\n/g, '\n').trim().slice(-1200);
   } catch (e) { return '(err ' + e.message + ')'; }
 }
 // Imposta il giorno mostrato nel calendario (alcune azioni senza data usano #staffCalDate).
@@ -526,19 +526,29 @@ const CASES = [
     }
   },
   {
-    id: 17, flow: 'Routing/Giocatori', name: 'handle: "aggiungi Anna alla partita di campo 2 di domani alle 18" + sì (guasto #4)',
+    id: 17, flow: 'Routing/Giocatori', name: 'handle: "aggiungi Anna…" → chiede cognome → non in anagrafica → ospite → sì (regole giocatore 26/06)',
     run: async (win, H, ctx) => {
       const iso = ctx.iso;
       H.setBookings([bookingFixture(iso)]);
       setCalDay(win, iso);
       WORKER_NEXT = { ok: true };
-      await handleSeq(win, ['aggiungi Anna alla partita di campo 2 di domani alle 18', 'sì']);
+      // Nuova regola: nome singolo "Anna" → chiede nome e cognome; "Anna Verdi" non in anagrafica
+      // (harness senza soci) → scelta socio/ospite; "ospite" → Ospite; "sì" conferma e salva.
+      // Catturo la trascrizione PROGRESSIVAMENTE (la chat può auto-pulirsi a fine operazione).
       const checks = [];
+      await win.PMOAi.handle('aggiungi Anna alla partita di campo 2 di domani alle 18'); await sleep(150);
+      const askedSurname = /nome e cognome/i.test(chatTranscript(win));
+      await win.PMOAi.handle('Anna Verdi'); await sleep(150);
+      const askedChoice = /non è in anagrafica/i.test(chatTranscript(win));
+      await win.PMOAi.handle('ospite'); await sleep(150);
+      await win.PMOAi.handle('sì'); await sleep(150);
       const pushed = await waitFor(() => editSavePushes().some(w => w.body.players && w.body.players.add && w.body.players.add.length), 5000);
       const grew = await waitFor(() => { const n = namesOf(H.getBookings(), iso, 2, '18:00'); return n !== '__NO_BOOKING__' && n.split('|').filter(Boolean).length >= 3; }, 2000);
+      checks.push({ label: 'ha chiesto nome e cognome (nome singolo)', ok: askedSurname });
+      checks.push({ label: 'ha chiesto socio-o-ospite (non in anagrafica)', ok: askedChoice });
       checks.push({ label: 'worker players.add inviato', ok: pushed });
       checks.push({ label: 'roster locale cresciuto (+1 giocatore)', ok: grew });
-      if (!pushed || !grew) ctx.diag['17'] = chatTranscript(win);
+      if (!pushed || !grew || !askedSurname || !askedChoice) ctx.diag['17'] = chatTranscript(win);
       return checks;
     }
   },
