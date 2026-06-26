@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.983';
+    const APP_VERSION = '5.984';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42648,6 +42648,17 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/g, ' ');
       const tmx = _timeX(timeText);
 
+      // "Nota in linea" in coda a un comando ("… metti in nota X"): se il RESTO (tolta la nota)
+      // descrive già una nuova prenotazione completa (campo + ora, niente verbo di edit), la nota è
+      // SECONDARIA e NON deve dirottare l'intento su modifica/giocatori. Bug live: comando di
+      // creazione SENZA verbo esplicito ("lezione campo 2 alle 18 … metti in nota recupero") → CORREGGI.
+      const _inlineNote = (function () { try { return _extractInlineNote(text); } catch (e) { return { note: '', rest: text }; } })();
+      const _restNorm = _inlineNote.note ? _norm(_inlineNote.rest || '') : '';
+      const _restHasCampo = /\bcamp[oi]\s*(?:n\w*\.?\s*)?(?:\d|uno|una|due|tre|quattro)\b/.test(_restNorm);
+      const _restHasTime = /\b(?:alle|dalle|delle|le|ore|h)\s*\d{1,2}(?:[:.]\d{2})?\b/.test(_restNorm) || /\b\d{1,2}[:.]\d{2}\b/.test(_restNorm);
+      const _restIsNewBooking = !!_inlineNote.note && _restHasCampo && _restHasTime
+        && !/\b(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|sostituisc\w*|scambia|apri|riapr\w*|gestisc\w*|spost\w*|allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|modific\w*|corregg\w*)\b/.test(_restNorm);
+
       const isQuestion = _isQuestion(tx, text);
       // Interpretazione anagrafica (isolata): se è un comando-socio, ha priorità su tutto.
       const ana = _anaInterpret(tx, text);
@@ -42716,7 +42727,7 @@ Per confermare scrivi ELIMINA.`);
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
-      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
+      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && !_restIsNewBooking && (hasPerson || editToExisting) && !anaCreateContact;
 
       // "apri/riapri/gestisci/mostra/visualizza LA prenotazione di campo X [alle Y]" = aprire la
       // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
@@ -42761,7 +42772,7 @@ Per confermare scrivi ELIMINA.`);
         // creazione, così "prenota campo 2 durata 90" resta una NUOVA prenotazione.
         else if ((modifyVerb
             || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)
-            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase))
+            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase && !_restIsNewBooking))
           && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
