@@ -78,7 +78,10 @@ function seedStorage() {
   try {
     // chiave con prefisso ambiente TEST (vedi PMO_ENV_STORAGE_PREFIX = 'test:').
     localStorage.setItem('test:giocatori', JSON.stringify([
-      { memberId: '9001', firstName: 'Maurizio', surname: 'Aprea', active: true, level: 3, gender: 'M' }
+      { memberId: '9001', firstName: 'Maurizio', surname: 'Aprea', active: true, level: 3, gender: 'M' },
+      // Due OMONIMI per i casi di disambiguazione rimozione (stesso nome, ID e TELEFONO diversi).
+      { memberId: '7001', firstName: 'Mario', surname: 'Rossi', phone: '333 1110000', active: true, level: 3, gender: 'M' },
+      { memberId: '7002', firstName: 'Mario', surname: 'Rossi', phone: '444 2220000', active: true, level: 3, gender: 'M' }
     ]));
   } catch (e) {}
   // Config locale (offline): evita di caricare config-test.js da rete remota.
@@ -892,6 +895,44 @@ const CASES = [
         return /Maurizio/i.test(nm) && (nm.match(/Ospite/gi) || []).length === 2;
       }, 3000);
       checks.push({ label: 'roster locale: 2 Ospite + Maurizio Aprea', ok: ok2 });
+      return checks;
+    }
+  },
+  {
+    id: 33, flow: 'Giocatore/Pattern', name: 'handle: "togli Mario Rossi" con DUE identici (stessa persona, niente ID) → ne toglie UNO senza chiedere (fungibili)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Mario Rossi' }, { nome: 'Mario Rossi' }, { nome: 'Luca Bianchi' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // Due "Mario Rossi" senza codice cliente = indistinguibili → niente domanda inutile, ne tolgo uno.
+      await handleSeq(win, ['togli Mario Rossi dalla partita di campo 2 di domani alle 18']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato (nessuna disambiguazione)', ok: !!pushed });
+      checks.push({ label: 'players.remove = UN Mario Rossi', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /mario rossi/i.test(n)).length === 1 });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Mario Rossi/gi) || []).length === 1, 3000);
+      checks.push({ label: 'roster locale: 2 → 1 Mario Rossi (Luca resta)', ok: ok2 && /Luca/.test(namesOf(H.getBookings(), iso, 2, '18:00')) });
+      return checks;
+    }
+  },
+  {
+    id: 34, flow: 'Giocatore/Pattern', name: 'handle: "togli Mario Rossi" con due OMONIMI (ID e telefono diversi) → CHIEDE quale (non cancella al buio)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Roster con due Mario Rossi distinti (codici 7001/7002 → telefoni diversi nell'anagrafica seed).
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Mario Rossi', codiceCliente: '7001' }, { nome: 'Mario Rossi', codiceCliente: '7002' }, { nome: 'Luca Bianchi' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['togli Mario Rossi dalla partita di campo 2 di domani alle 18']);
+      await sleep(400);
+      checks.push({ label: 'NON ha salvato (ha chiesto quale)', ok: editSavePushes().length === 0 });
+      checks.push({ label: 'chat: disambiguazione "persone diverse"', ok: /persone diverse/i.test(chatTranscript(win)) });
+      // Scelgo il primo e confermo → ora toglie UNO e salva.
+      await handleSeq(win, ['1', 'sì']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'dopo la scelta: worker EDIT con UN Mario Rossi', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /mario rossi/i.test(n)).length === 1 });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Mario Rossi/gi) || []).length === 1, 3000);
+      checks.push({ label: 'roster locale: 2 → 1 Mario Rossi', ok: ok2 });
       return checks;
     }
   }
