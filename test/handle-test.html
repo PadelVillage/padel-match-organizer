@@ -741,6 +741,29 @@ const CASES = [
       checks.push({ label: 'roster locale: Mario + 1 Ospite (tolto UN solo ospite)', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 26, flow: 'Giocatore/Pattern', name: 'handle: "togli un ospite dalla partita di campo 2 …" SENZA scheda aperta → individua, apre e toglie UN Ospite senza chiedere "quale"',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Stesso fixture del caso 25 (Mario + 2 Ospiti) ma NON apro la scheda: il comando completo
+      // deve individuare la prenotazione (campo 2, domani, 18:00), aprirla e togliere UN solo Ospite,
+      // senza la domanda di disambiguazione con due "Ospite" identici.
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Mario Rossi' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['togli un ospite dalla partita di campo 2 di domani alle 18']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker edit inviato (rimozione eseguita senza chiedere "quale")', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.some(n => /ospite/i.test(n)) });
+      const ok2 = await waitFor(() => {
+        const nm = namesOf(H.getBookings(), iso, 2, '18:00');
+        const ospiti = (nm.match(/Ospite/gi) || []).length;
+        return /Mario/.test(nm) && ospiti === 1;
+      }, 3000);
+      checks.push({ label: 'roster locale: Mario + 1 Ospite (tolto UN solo ospite)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 

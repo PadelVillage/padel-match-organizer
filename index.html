@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.985';
+    const APP_VERSION = '5.986';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -44462,6 +44462,13 @@ Per confermare scrivi ELIMINA.`);
         const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Dimmi pure il nome.');
         _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
+      }
+      // "togli un ospite" (query = solo "ospite"/"jolly", nessun nome reale): gli ospiti sono
+      // FUNGIBILI → ne tolgo UNO subito, senza elencare doppioni identici "Ospite" (parità con la
+      // scheda aperta, Step 2). Vale anche SENZA scheda: _startModifica ha già individuato e aperto
+      // la prenotazione, poi è arrivato qui via _runPendingEditAction.
+      if (qtok.every(function (w) { return /^(ospit\w*|jolly)$/.test(w); })) {
+        return _removeOneGuestNow(st);
       }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
       // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
