@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.987';
+    const APP_VERSION = '5.988';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -44474,7 +44474,7 @@ Per confermare scrivi ELIMINA.`);
         .reduce(function (acc, p) { _norm(p.nome).split(/\s+/).forEach(function (tk) { if (tk.length >= 3) acc.push(tk); }); return acc; }, []);
       const _namesReal = qtok.some(function (w) { return _realTokens.indexOf(w) >= 0; });
       if (_qHasOspite && !_namesReal) {
-        return _removeOneGuestNow(st);
+        return _removeGuestsNow(st, _ospiteQty(rawName));
       }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
       // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
@@ -44751,10 +44751,20 @@ Per confermare scrivi ELIMINA.`);
       try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
       return true;
     }
-    // Pattern d'intenzione "togli un ospite" (Step 2): toglie UN giocatore-ospite dalla scheda
-    // aperta senza chiedere "quale" (gli ospiti sono fungibili). 0 ospiti → spiega; ≥1 → ne toglie
-    // uno via _removePlayerNow. Legge il roster dal calendario se la scheda non l'ha ancora.
-    function _removeOneGuestNow(st) {
+    // Quantità di ospiti da togliere da una frase: "due/tre/quattro/… ospiti" → N; "tutti gli
+    // ospiti" → 99 (poi limitato a quanti presenti); default 1 ("un ospite").
+    function _ospiteQty(s) {
+      const _n = ' ' + _norm(s) + ' ';
+      if (/\btutt\w*\b/.test(_n) && /ospit/.test(_n)) return 99;
+      const m = _n.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+ospit/);
+      if (m) { const map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; return map[m[1]] || parseInt(m[1], 10) || 1; }
+      return 1;
+    }
+    // Pattern d'intenzione "togli un/N ospiti" (Step 2): toglie N giocatori-ospite dalla scheda
+    // aperta senza chiedere "quale" (gli ospiti sono fungibili). 0 ospiti → spiega; altrimenti ne
+    // toglie min(N, presenti) marcandoli tutti e salvando UNA volta. Legge il roster dal calendario
+    // se la scheda non l'ha ancora.
+    function _removeGuestsNow(st, n) {
       if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
       if (!Array.isArray(st.roster) || !st.roster.length) {
         const cal = _rosterFromCalendar(st);
@@ -44763,11 +44773,25 @@ Per confermare scrivi ELIMINA.`);
       const roster = (st && Array.isArray(st.roster)) ? st.roster.filter(function (p) { return p && p.nome; }) : [];
       const guests = roster.filter(function (p) { return /^ospite\b/.test(_norm(p.nome)); });
       if (!guests.length) {
+        aiFlowState = null;
         const present = roster.length ? (' Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '.') : '';
         return _say('In questa prenotazione non ci sono ospiti da togliere.' + present);
       }
-      return _removePlayerNow(guests[0]);
+      const want = Math.max(1, Number(n) || 1);
+      const k = Math.min(want, guests.length);
+      aiFlowState = null;
+      st.remove = st.remove || {};
+      for (let i = 0; i < k; i++) { if (guests[i].idx != null) st.remove[guests[i].idx] = true; }
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      const _msg = (k === 1)
+        ? '➖ Tolgo <strong>un ospite</strong> e salvo su Matchpoint…'
+        : ('➖ Tolgo <strong>' + k + ' ospiti</strong>' + (want !== 99 && want > guests.length ? ' (ce n’erano solo ' + guests.length + ')' : '') + ' e salvo su Matchpoint…');
+      _say(_msg);
+      try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      return true;
     }
+    // Compat: "togli un ospite" = togline UNO.
+    function _removeOneGuestNow(st) { return _removeGuestsNow(st, 1); }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
       const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];

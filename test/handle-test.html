@@ -787,6 +787,45 @@ const CASES = [
       checks.push({ label: 'roster locale: 3 → 2 Ospiti (tolto UN solo ospite)', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 28, flow: 'Giocatore/Pattern', name: 'handle: "togli due ospiti …" (4 Ospiti) → ne toglie DUE in un colpo, niente disambiguazione',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['togli due ospiti dalla partita di campo 2 di domani alle 18']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker edit inviato', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene DUE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 2 });
+      const ok2 = await waitFor(() => {
+        const ospiti = (namesOf(H.getBookings(), iso, 2, '18:00').match(/Ospite/gi) || []).length;
+        return ospiti === 2;
+      }, 3000);
+      checks.push({ label: 'roster locale: 4 → 2 Ospiti (tolti DUE)', ok: ok2 });
+      return checks;
+    }
+  },
+  {
+    id: 29, flow: 'Giocatore/Pattern', name: 'handle: "togli tutti gli ospiti …" (Mario + 3 Ospiti) → toglie TUTTI gli ospiti, Mario resta',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Mario Rossi' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['togli tutti gli ospiti dalla partita di campo 2 di domani alle 18']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker edit inviato', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene TRE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 3 });
+      const ok2 = await waitFor(() => {
+        const nm = namesOf(H.getBookings(), iso, 2, '18:00');
+        const ospiti = (nm.match(/Ospite/gi) || []).length;
+        return /Mario/.test(nm) && ospiti === 0;
+      }, 3000);
+      checks.push({ label: 'roster locale: solo Mario (tutti gli ospiti tolti)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
