@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.985';
+    const APP_VERSION = '5.991';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -37834,6 +37834,9 @@ Per confermare scrivi ELIMINA.`);
       const cc = (p && p.codiceCliente) ? String(p.codiceCliente).replace(/\D/g, '').replace(/^0+/, '') : '';
       const cd = (p && p.codice) ? String(p.codice).replace(/\D/g, '').replace(/^0+/, '') : '';
       const nm = ((p && typeof p === 'object') ? (p.nome || '') : String(p || '')).toLowerCase().trim();
+      // OSPITE è un jolly FUNGIBILE (socio 000001): più "Ospite" nella stessa prenotazione NON sono
+      // doppioni → mai deduplicarli (altrimenti "aggiungi due ospiti" ne aggiungeva uno solo).
+      if ((p && p.ospite) || cc === '1' || /^ospite\b/.test(nm)) { out.push(p); return; }
       const key = cc ? 'c:' + cc : (cd ? 'd:' + cd : 'n:' + nm);
       if (seen[key]) return;
       seen[key] = true;
@@ -42178,8 +42181,76 @@ Per confermare scrivi ELIMINA.`);
     function _pmoIsStop(w) { return !w || _PMO_EDIT_STOP.has(w) || /^\d+$/.test(w); }
 
     // Rule H — dialetto/abbreviazioni → forma estesa (lowercase, senza accenti).
+    // ── Dizionario EN→IT (traduzione "simultanea", deterministica, zero costo Gemini) ──────────
+    // Permette i comandi in inglese ("book a court tomorrow at 6", "remove two guests", "yes").
+    // Mappa SOLO token inequivocabilmente inglesi: nessuna collisione con parole/nomi italiani
+    // comuni (niente "a", "no", "ok", "come", "all" → resterebbero italiani validi), così l'input
+    // ITALIANO passa invariato. Preserva maiuscole/accenti delle parole non tradotte (i nomi
+    // restano com'erano). Applicata all'ingresso di handle() e dentro _ppDialect (idempotente).
+    const _EN_PHRASES = [
+      [/\bnever\s*mind\b/gi, ' lascia stare '],
+      [/\bgo\s+ahead\b/gi, ' procedi '],
+      [/\ball\s+(?:the\s+)?guests?\b/gi, ' tutti gli ospiti '],
+      [/\b(?:can|could|would)\s+you\b/gi, ' puoi '],
+      [/\bi\s+(?:want|need|would\s+like|wanna)\s+to\b/gi, ' '],
+      [/\b(?:thank\s+you|thanks|please)\b/gi, ' ']
+    ];
+    const _EN_WORDS = {
+      yes: 'sì', yeah: 'sì', yep: 'sì', yup: 'sì', sure: 'sì', confirm: 'conferma', confirmed: 'conferma',
+      book: 'prenota', booked: 'prenota', reserve: 'prenota', schedule: 'prenota',
+      add: 'aggiungi', insert: 'aggiungi', put: 'aggiungi',
+      remove: 'togli', delete: 'elimina', cancel: 'annulla',
+      move: 'sposta', shift: 'sposta',
+      change: 'modifica', edit: 'modifica', modify: 'modifica',
+      extend: 'allunga', lengthen: 'allunga', shorten: 'accorcia', reduce: 'accorcia',
+      show: 'mostra', list: 'mostra', display: 'mostra', find: 'trova', open: 'apri',
+      court: 'campo', courts: 'campi', field: 'campo', fields: 'campi', match: 'partita', matches: 'partite',
+      game: 'partita', games: 'partite', lesson: 'lezione', lessons: 'lezioni', class: 'lezione', classes: 'lezioni',
+      guest: 'ospite', guests: 'ospiti', player: 'giocatore', players: 'giocatori',
+      coach: 'maestro', coaches: 'maestri', instructor: 'maestro', teacher: 'maestro',
+      booking: 'prenotazione', bookings: 'prenotazioni', reservation: 'prenotazione', reservations: 'prenotazioni',
+      member: 'socio', members: 'soci', client: 'socio', clients: 'soci',
+      today: 'oggi', tomorrow: 'domani', yesterday: 'ieri',
+      at: 'alle', hour: 'ora', hours: 'ore',
+      morning: 'mattina', afternoon: 'pomeriggio', evening: 'sera', night: 'notte',
+      monday: 'lunedi', tuesday: 'martedi', wednesday: 'mercoledi', thursday: 'giovedi', friday: 'venerdi', saturday: 'sabato', sunday: 'domenica',
+      one: 'uno', two: 'due', three: 'tre', four: 'quattro', five: 'cinque', six: 'sei',
+      free: 'liberi', available: 'liberi', who: 'chi', plays: 'gioca', play: 'gioca',
+      and: 'e', with: 'con', for: 'per', the: '', an: ''
+    };
+    function _translateEN(text) {
+      let s = ' ' + String(text || '') + ' ';
+      // Orario am/pm → 24h ("5 pm"→"alle 17", "12 am"→"alle 0", "9:30 am"→"alle 9:30").
+      s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*p\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n < 12) n += 12; return ' alle ' + n + (mm || '') + ' '; });
+      s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*a\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n === 12) n = 0; return ' alle ' + n + (mm || '') + ' '; });
+      _EN_PHRASES.forEach(function (pair) { s = s.replace(pair[0], pair[1]); });
+      s = s.replace(/\b[A-Za-z]+\b/g, function (w) {
+        const k = w.toLowerCase();
+        return Object.prototype.hasOwnProperty.call(_EN_WORDS, k) ? _EN_WORDS[k] : w;
+      });
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
+    // Tollera gli ERRORI DI DETTATURA nelle parole di conferma/annullo: normalizza ogni token
+    // entro distanza 1 da una forma canonica ("procede"→"procedi", "confrema"→"conferma",
+    // "lasica"→"lascia"). Solo parole ≥4 lettere (le brevi sì/no/ok restano esatte per non creare
+    // falsi positivi). Usato dalla guardia conferma in handle().
+    const _CONF_CANON = ['conferma', 'confermo', 'procedi', 'perfetto', 'certo', 'salva', 'giusto', 'esatto', 'sicuro', 'assolutamente', 'vabene', 'ottimo', 'annulla', 'lasciamo', 'lascia', 'niente', 'nessuno', 'chiudi', 'esci', 'basta'];
+    function _fuzzyConfirmNorm(s) {
+      return String(s || '').split(/\s+/).map(function (w) {
+        const lw = _norm(w);
+        if (lw.length < 4) return w;
+        // parole lunghe (≥6): tollera 2 edit (refusi doppi/trasposizioni: "confrema"→"conferma",
+        // "procde"→"procedi"); parole corte (4-5): solo 1 edit, per non creare falsi positivi.
+        const tol = lw.length >= 6 ? 2 : 1;
+        for (let i = 0; i < _CONF_CANON.length; i++) {
+          const c = _CONF_CANON[i];
+          if (Math.abs(c.length - lw.length) <= tol && _lev(lw, c) <= tol) return c;
+        }
+        return w;
+      }).join(' ');
+    }
     function _ppDialect(text) {
-      let s = ' ' + _norm(text) + ' ';
+      let s = ' ' + _norm(_translateEN(text)) + ' ';
       s = s.replace(/\bbuta\s+dentro\b/g, ' aggiungi ');
       s = s.replace(/\bde\s+sera\b/g, ' di sera ');
       s = s.replace(/\bcmp\s*([1-4])\b/g, ' campo $1 ').replace(/\bcmp\b/g, ' campo ');
@@ -42950,9 +43021,12 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Handler conversazionale ────────────────────────────────────────────────
     async function handle(text) {
-      const t = String(text || '').trim();
+      let t = String(text || '').trim();
       if (!t) return;
-      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}   // mostra l'ORIGINALE (anche in inglese)
+      // Traduzione EN→IT simultanea (dizionario deterministico): da qui in poi tutto il flusso —
+      // comandi, slot E le conferme ("yes"→"sì") — lavora su testo italiano. No-op sull'italiano.
+      t = _translateEN(t);
       _convPush('user', t);   // memoria del filo per il ragionatore (Step 3)
       // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
       // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.
@@ -42985,8 +43059,11 @@ Per confermare scrivi ELIMINA.`);
             modifica: 'modific\\w*'
           }[_kc];
           if (_verbs !== undefined) {
-            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
+            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabb?ene|proced\\w*|cert\\w*|perfett\\w*|sicur\\w*|pure|adesso|subito|va[i]?|salv\\w*|giust\\w*|esatt\\w*|no|lasc\\w*|stop|niente|nessun\\w*|chiud\\w*|esci|basta';
             const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
+            // Parola di USCITA (no/annulla) vs conferma, per dispacciare un canonico sì/no.
+            const _exitRe = /\b(no|annull\w*|lasc\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)\b/i;
+            const _yesRe = /\b(s[iì]|conferm\w*|proced\w*|va[i]?|va\s+bene|vabb?ene|cert\w*|perfett\w*|esatt\w*|giust\w*|salv\w*|ok|okay|pure|sicur\w*)\b/i;
             // Vocabolario anche nelle CONFERME: una voce «okk → sì» / «daje → sì» / «manco → no»
             // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
             // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
@@ -42996,22 +43073,29 @@ Per confermare scrivi ELIMINA.`);
             // nuovo (che deragliava il flusso → ragionatore). Sono glue grammaticale che non distingue
             // mai conferma da comando: campo/ora/nomi sopravvivono e quindi un vero comando NON matcha.
             const _tConfStrip = _tConf.replace(/\b(con|la|il|lo|le|i|gli|un|uno|una|di|del|dello|della|dei|degli|delle|al|allo|alla|alle|ai|agli|ed|mi|ti|ci|poi|allora|quindi|dai)\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+            // Tollera i TYPO di dettatura nelle parole di conferma ("si procede"→"si procedi"):
+            // normalizza entro distanza 1, così la guardia ancorata riconosce comunque la conferma.
+            const _tConfFuzzy = _fuzzyConfirmNorm(_tConfStrip);
             const _hmap = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer };
-            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip))) {
+            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip)) || (_tConfFuzzy && _re.test(_tConfFuzzy))) {
               const _h = _hmap[_kc];
-              if (_h) return _h(_tConf);
+              // È una conferma PURA (ancorata): dispaccio un canonico "sì"/"no" così l'handler non
+              // ri-legge una parola di conferma (o un suo typo) come NOME giocatore (bug "si procede").
+              const _canon = (_exitRe.test(_tConfFuzzy) && !_yesRe.test(_tConfFuzzy)) ? 'no' : 'sì';
+              if (_h) return _h(_canon);
             }
             // Conferma DISCORSIVA: una risposta cordiale/lunga ("bravo, hai fatto bene, conferma pure
             // la prenotazione") non passa il test ancorato (ha parole extra) e "prenotazione" la
             // farebbe scambiare per un comando nuovo → deragliava nel ragionatore. Se contiene una
             // parola di conferma FORTE e NESSUN segnale di cambio/annullo né NUOVE coordinate
             // (campo/numero/giorno → indicherebbero un altro comando), confermiamo il flusso in corso.
-            const _strongYes = /\b(conferm\w*|confermo|procedi|va\s+bene|vabene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tConf);
-            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lascia\w*|divers\w*|nessun\w*|niente)\b/i.test(_tConf);
+            const _tcf = _fuzzyConfirmNorm(_tConf);
+            const _strongYes = /\b(conferm\w*|confermo|proced\w*|va\s+bene|vabb?ene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tcf);
+            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lasc\w*|divers\w*|nessun\w*|niente)\b/i.test(_tcf);
             const _newCoords = /\bcamp[oi]\b|\b\d{1,2}([:.]\d{2})?\b|\b(oggi|domani|dopodomani|luned|marted|mercoled|gioved|venerd|sabato|domenica)\b/i.test(_tConf);
             if (_strongYes && !_negChange && !_newCoords) {
               const _h2 = _hmap[_kc];
-              if (_h2) return _h2(_tConf);
+              if (_h2) return _h2('sì');   // conferma discorsiva → canonico "sì"
             }
           }
         }
@@ -44463,6 +44547,19 @@ Per confermare scrivi ELIMINA.`);
         _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
+      // "togli un ospite" (gli ospiti sono FUNGIBILI): se la query nomina un OSPITE e NON nomina
+      // nessun giocatore REALE del roster (diverso da Ospite), ne tolgo UNO subito — senza elencare
+      // doppioni identici "Ospite" (parità con la scheda aperta, Step 2). Robusto al fraseggio
+      // ("togli un ospite", "mi togli un ospite", "puoi togliere un ospite per favore"): non dipende
+      // dal ripulire verbi/riempitivi, ma dal fatto che NON è stato nominato un tesserato. Vale anche
+      // SENZA scheda: _startModifica ha già individuato+aperto la prenotazione.
+      const _qHasOspite = /\b(ospit\w*|jolly)\b/.test(q);
+      const _realTokens = roster.filter(function (p) { return !/^ospite\b/.test(_norm(p.nome)); })
+        .reduce(function (acc, p) { _norm(p.nome).split(/\s+/).forEach(function (tk) { if (tk.length >= 3) acc.push(tk); }); return acc; }, []);
+      const _namesReal = qtok.some(function (w) { return _realTokens.indexOf(w) >= 0; });
+      if (_qHasOspite && !_namesReal) {
+        return _removeGuestsNow(st, _ospiteQty(rawName));
+      }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su
       // q vuoto. "Maurizio Aprea" (anche con rumore intorno) → solo Maurizio, non tutto il roster.
       const hits = roster.filter(function (p) {
@@ -44738,10 +44835,20 @@ Per confermare scrivi ELIMINA.`);
       try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
       return true;
     }
-    // Pattern d'intenzione "togli un ospite" (Step 2): toglie UN giocatore-ospite dalla scheda
-    // aperta senza chiedere "quale" (gli ospiti sono fungibili). 0 ospiti → spiega; ≥1 → ne toglie
-    // uno via _removePlayerNow. Legge il roster dal calendario se la scheda non l'ha ancora.
-    function _removeOneGuestNow(st) {
+    // Quantità di ospiti da togliere da una frase: "due/tre/quattro/… ospiti" → N; "tutti gli
+    // ospiti" → 99 (poi limitato a quanti presenti); default 1 ("un ospite").
+    function _ospiteQty(s) {
+      const _n = ' ' + _norm(s) + ' ';
+      if (/\btutt\w*\b/.test(_n) && /ospit/.test(_n)) return 99;
+      const m = _n.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+ospit/);
+      if (m) { const map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; return map[m[1]] || parseInt(m[1], 10) || 1; }
+      return 1;
+    }
+    // Pattern d'intenzione "togli un/N ospiti" (Step 2): toglie N giocatori-ospite dalla scheda
+    // aperta senza chiedere "quale" (gli ospiti sono fungibili). 0 ospiti → spiega; altrimenti ne
+    // toglie min(N, presenti) marcandoli tutti e salvando UNA volta. Legge il roster dal calendario
+    // se la scheda non l'ha ancora.
+    function _removeGuestsNow(st, n) {
       if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
       if (!Array.isArray(st.roster) || !st.roster.length) {
         const cal = _rosterFromCalendar(st);
@@ -44750,11 +44857,25 @@ Per confermare scrivi ELIMINA.`);
       const roster = (st && Array.isArray(st.roster)) ? st.roster.filter(function (p) { return p && p.nome; }) : [];
       const guests = roster.filter(function (p) { return /^ospite\b/.test(_norm(p.nome)); });
       if (!guests.length) {
+        aiFlowState = null;
         const present = roster.length ? (' Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '.') : '';
         return _say('In questa prenotazione non ci sono ospiti da togliere.' + present);
       }
-      return _removePlayerNow(guests[0]);
+      const want = Math.max(1, Number(n) || 1);
+      const k = Math.min(want, guests.length);
+      aiFlowState = null;
+      st.remove = st.remove || {};
+      for (let i = 0; i < k; i++) { if (guests[i].idx != null) st.remove[guests[i].idx] = true; }
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      const _msg = (k === 1)
+        ? '➖ Tolgo <strong>un ospite</strong> e salvo su Matchpoint…'
+        : ('➖ Tolgo <strong>' + k + ' ospiti</strong>' + (want !== 99 && want > guests.length ? ' (ce n’erano solo ' + guests.length + ')' : '') + ' e salvo su Matchpoint…');
+      _say(_msg);
+      try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      return true;
     }
+    // Compat: "togli un ospite" = togline UNO.
+    function _removeOneGuestNow(st) { return _removeGuestsNow(st, 1); }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
       const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
