@@ -7215,6 +7215,22 @@ body.assessment-public-mode .assessment-public-only-card {
           <p class="ai-admin-hint" style="margin:2px 0 6px">Qui sotto l'elenco: ✅ <strong>Attivi</strong>, 🟠 <strong>Proposti</strong> da rivedere, 🚫 Rifiutati. Quando vuoi, premi <strong>🔎 Analizza ora</strong>: l'assistente guarda le frasi che le regole non hanno capito e ti <strong>propone</strong> qui i termini nuovi (🟠). Non cambia niente da solo: <strong>Approva</strong>, ✏️ <strong>Correggi</strong> o <strong>Rifiuta</strong> tu.</p>
           <div id="aiLexList" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
         </section>
+
+        <section class="ai-admin-card">
+          <h3>🎓 Modalità apprendimento</h3>
+          <p class="ai-admin-hint">Quando è <strong>attiva</strong>, sui comandi che le regole non capiscono interviene il <strong>ragionatore</strong> (Gemini): fa domande, propone il comando giusto e suggerisce nuove voci per il Vocabolario. È un'impostazione <strong>del circolo</strong> (vale per tutti): solo <strong>owner/admin</strong> può cambiarla.</p>
+          <label style="display:flex;align-items:center;gap:10px;margin:8px 0;font-weight:700;cursor:pointer">
+            <input type="checkbox" id="aiLearnToggle" style="width:20px;height:20px;cursor:pointer" onchange="try{PMOAi.setLearningModeGlobal(this.checked)}catch(e){}">
+            <span id="aiLearnLabel">Apprendimento attivo</span>
+          </label>
+          <div id="aiLearnState" class="ai-admin-hint">Caricamento…</div>
+        </section>
+
+        <section class="ai-admin-card ai-admin-card-wide">
+          <h3>💰 Consumo Gemini <button type="button" id="aiUsageRefresh" class="btn-primary small-btn" style="margin-left:6px" onclick="try{PMOAi.loadAiUsage()}catch(e){}">↻ Aggiorna</button></h3>
+          <p class="ai-admin-hint">Quanto sta usando l'assistente il modello <strong>Gemini 2.5 Flash</strong>: richieste, token e <strong>costo stimato</strong> ($0,30/1M in · $2,50/1M out). La barra free-tier indica quanto sei vicino ai limiti gratuiti (~250 richieste/giorno, ~10/minuto).</p>
+          <div id="aiUsageBox" class="ai-turn-list"><div class="ai-admin-hint">Caricamento…</div></div>
+        </section>
       </div>
     </div>
 
@@ -7674,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.961';
+    const APP_VERSION = '5.981';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9900,7 +9916,11 @@ Grazie.`
             if (tabName === 'administration') renderPmoAdministration();
             if (tabName === 'inviteResponses') renderInviteResponsesDashboard();
             if (tabName === 'matchHistory') renderMatchHistoryDashboard();
-            if (tabName === 'assistanteAI' && typeof PMOAi !== 'undefined' && PMOAi.loadLessico) { try { PMOAi.loadLessico(); } catch (e) {} }
+            if (tabName === 'assistanteAI' && typeof PMOAi !== 'undefined' && PMOAi.loadLessico) {
+              try { PMOAi.loadLessico(); } catch (e) {}
+              try { if (PMOAi.refreshLearningToggle) PMOAi.refreshLearningToggle(); } catch (e) {}
+              try { if (PMOAi.loadAiUsage) PMOAi.loadAiUsage(); } catch (e) {}
+            }
           }, 0);
         });
       }
@@ -38094,8 +38114,16 @@ Per confermare scrivi ELIMINA.`);
           String(b.ora).trim() === wantOra) {
         let g = Array.isArray(b.giocatori) ? b.giocatori.slice() : [];
         if (Array.isArray(removeArr) && removeArr.length) {
-          const rm = new Set(removeArr.map(function (s) { return String(s).trim().toLowerCase(); }));
-          g = g.filter(function (x) { return !rm.has(String((x && x.nome) || '').trim().toLowerCase()); });
+          // Rimozione per CONTEGGIO, non per set di nomi: "Ospite" (jolly) può comparire più volte
+          // nello stesso slot → togliere UN ospite deve toglierne UNO solo, non tutti gli omonimi
+          // (il payload worker elenca un nome per ogni istanza da togliere; qui ci allineiamo).
+          const counts = {};
+          removeArr.forEach(function (s) { const k = String(s || '').trim().toLowerCase(); if (k) counts[k] = (counts[k] || 0) + 1; });
+          g = g.filter(function (x) {
+            const k = String((x && x.nome) || '').trim().toLowerCase();
+            if (counts[k] > 0) { counts[k]--; return false; } // consuma UNA istanza richiesta
+            return true;
+          });
         }
         if (Array.isArray(addArr) && addArr.length) {
           addArr.forEach(function (a) {
@@ -39702,9 +39730,28 @@ Per confermare scrivi ELIMINA.`);
     try { svcChatToggleAction(); } catch (e) {}
   }
 
+  // Auto-scroll ROBUSTO: i pulsanti vengono aggiunti DOPO il messaggio da funzioni diverse
+  // (svcMakeStepButtons, _appendOspiteButtons/_appendCourtButtons/_appendMaestroButtons/…), quindi
+  // un singolo scroll nel punto-messaggio non basta. Un MutationObserver sul contenitore riporta la
+  // chat in fondo a OGNI aggiunta (messaggi e pulsanti, qualunque sia il percorso), ma solo se
+  // l'utente è già vicino al fondo → non lo strappa via mentre scorre la cronologia. Installato 1 volta.
+  function _svcEnsureAutoScroll(container) {
+    if (!container || container.__pmoAutoScroll) return;
+    container.__pmoAutoScroll = true;
+    try {
+      const obs = new MutationObserver(function () {
+        if (container.scrollHeight - container.scrollTop - container.clientHeight < 260) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+      obs.observe(container, { childList: true, subtree: true });
+    } catch (e) { /* niente observer → resta lo scroll puntuale di svcAddMessage */ }
+  }
+
   function svcAddMessage(role, html, extraClass) {
     const container = document.getElementById('svcChatMessages');
     if (!container) { const d = document.createElement('div'); return d; }
+    _svcEnsureAutoScroll(container);
     const div = document.createElement('div');
     div.className = 'svc-msg ' + role + (extraClass ? ' ' + extraClass : '');
     const lbl = document.createElement('div');
@@ -39750,6 +39797,10 @@ Per confermare scrivi ELIMINA.`);
     cancelBtn.textContent = '✕ Annulla';
     cancelBtn.addEventListener('click', onCancel);
     wrap.appendChild(cancelBtn);
+    // I pulsanti vengono inseriti DOPO il messaggio: senza ri-scroll resterebbero sotto il bordo
+    // visibile (l'autoscroll di svcAddMessage è già scattato sul solo testo). Dopo che il chiamante
+    // li ha appesi al DOM (rAF), riporta la chat in fondo così la domanda e le scelte si vedono.
+    try { requestAnimationFrame(function () { const c = document.getElementById('svcChatMessages'); if (c) c.scrollTop = c.scrollHeight; }); } catch (e) {}
     return wrap;
   }
 
@@ -40642,6 +40693,36 @@ Per confermare scrivi ELIMINA.`);
   /* Banner "Sincronizzazione automatica in corso" rimosso (v5.627): nessun polling, nessun banner. */
   // svcStartQueuePolling();
 
+  // ── Hook test-only per l'harness di esecuzione (test/handle-test.html) ──────
+  // Esposto SOLO in TEST (PMO_IS_TEST_ENV) → zero impatto su PROD. Dà all'harness
+  // di regressione i ganci che le closure dell'IIFE non espongono su window:
+  // aprire la scheda, seedare/leggere staffBookings con l'encoding interno,
+  // leggere lo stato scheda, iniettare eventi realtime e forzare il refresh cloud.
+  // Serve a esercitare l'ESECUZIONE dei 6 flussi (cancel/move/giocatori/durata/
+  // cross-device), non solo PMOAi.parse(). Vedi piano "rete di regressione".
+  if (PMO_IS_TEST_ENV) {
+    try {
+      window.__PMOStaffCalTest = {
+        openCard: function () { return staffCalEditPlayers.apply(null, arguments); },
+        getPlayersState: function () { return staffCalPlayersState; },
+        setBookings: function (arr) { return save('staffBookings', Array.isArray(arr) ? arr : []); },
+        getBookings: function () { return safeLoad('staffBookings', []); },
+        setOccupancy: function (arr) { prenotazioniOccupazione = Array.isArray(arr) ? arr : []; try { save('prenotazioniOccupazione', prenotazioniOccupazione); } catch (e) {} },
+        getOccupancy: function () { return (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) ? prenotazioniOccupazione : []; },
+        lookupIdReserva: function () { return _staffCalLookupIdReserva.apply(null, arguments); },
+        doCancel: function () { return staffCalDoCancel.apply(null, arguments); },
+        doMove: function () { return staffCalDoMove.apply(null, arguments); },
+        setMoveState: function (s) { staffCalMoveState = s || null; },
+        getMoveState: function () { return staffCalMoveState; },
+        playersSave: function () { return staffCalPlayersSave.apply(null, arguments); },
+        onRemoteChange: function () { return staffCalRtOnRemoteChange(); },
+        onRemotePending: function (p) { return staffCalRtOnRemotePending(p); },
+        onRemoteResolved: function (p) { return staffCalRtOnRemoteResolved(p); },
+        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); }
+      };
+    } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // PMOAi — Assistente AI conversazionale a regole (Fase 1 — solo TEST)
   // Router di intent costruito SOPRA PARSER_RULES (intents PRENOTA/CANCELLA/TROVA/
@@ -40906,11 +40987,13 @@ Per confermare scrivi ELIMINA.`);
         let token = cfg.supabaseKey;
         try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
         const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
-        const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?status=eq.approved&env=eq.' + encodeURIComponent(env) + '&select=surface,canonical,domain';
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?status=eq.approved&env=eq.' + encodeURIComponent(env) + '&select=surface,canonical,domain,kind,meta';
         const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
         if (!res.ok) return;
         const rows = await res.json().catch(function () { return []; });
-        _lessico = (Array.isArray(rows) ? rows : []).map(function (r) {
+        const list = Array.isArray(rows) ? rows : [];
+        // SINONIMI (kind 'sinonimo' o nullo, retrocompatibile): riscrittura surface→canonical.
+        _lessico = list.filter(function (r) { return r && r.kind !== 'pattern'; }).map(function (r) {
           const s = String(r.surface || '').trim().toLowerCase();
           const c = String(r.canonical || '').trim();
           // Guardie base: surface ≥2 lettere (ammessi «ok», «sì», termini stranieri corti),
@@ -40919,6 +41002,12 @@ Per confermare scrivi ELIMINA.`);
           const re = _lessicoRe(s); if (!re) return null;
           return { surface: s, canonical: c, re: re };
         }).filter(Boolean);
+        // PATTERN d'intenzione (kind 'pattern', Step 2): overlay runtime di `frasi_intento`,
+        // letto da _matchFrasiIntento insieme alla base in codice. Il pattern vive in
+        // meta.frase_intento ({trigger:{regex,esempi}, azione, operazione, slot_preimpostati,…}).
+        _frasiIntentoOverlay = list.filter(function (r) { return r && r.kind === 'pattern'; })
+          .map(function (r) { return _normFraseIntento(r.meta && r.meta.frase_intento); })
+          .filter(Boolean);
       } catch (e) { /* offline/anon → resta vuoto, no-op */ }
     }
     // Riscrive il testo sostituendo i sinonimi approvati con la forma canonica. No-op se vuoto.
@@ -40928,8 +41017,69 @@ Per confermare scrivi ELIMINA.`);
       for (let i = 0; i < _lessico.length; i++) out = out.replace(_lessico[i].re, _lessico[i].canonical);
       return out;
     }
+    // ── Pattern d'intenzione (frasi_intento) — Step 2 ─────────────────────────
+    // Una frase intera → azione + operazione + slot preimpostati (ruolo/quantità), per le
+    // micro-azioni parametriche che oggi vivono in handle() (es. "togli un ospite") e che
+    // altrimenti chiederebbero "quale?". Tre sorgenti, in ordine: BASE in codice (sempre
+    // disponibile, deterministica per gli harness), `PARSER_RULES.frasi_intento` (consolidata da
+    // git, opzionale) e l'OVERLAY runtime approvato da `pmo_lessico` (kind='pattern'). Il match
+    // espone solo metadati (azione/operazione/slot): l'ESECUZIONE resta in handle(), riusando la
+    // macchina di rimozione ottimistica esistente. Nessuna logica distruttiva nuova.
+    const _FRASI_INTENTO_BASE = [
+      {
+        id: 'rimuovi_ospite_1',
+        trigger: { regex: '\\b(togli|togliere|leva|levare|rimuovi|rimuovere|elimina|eliminare|cancella|cancellare)\\b[^.]*?\\bun(?:o|a)?\\b[^.]*?\\bospit[ei]\\b',
+                   esempi: ['togli un ospite', 'leva un ospite', 'rimuovi un ospite'] },
+        azione: 'giocatori', operazione: 'rimuovi',
+        slot_preimpostati: { ruolo: 'ospite', quantita: 1 },
+        richiede_contesto: 'prenotazione_in_corso', confidence: 0.9
+      }
+    ];
+    let _frasiIntentoOverlay = [];               // pattern approvati a runtime (pmo_lessico kind='pattern')
+    // Normalizza/valida un oggetto-pattern (da base, parser_rules.json o overlay). Ritorna null se
+    // malformato (trigger.regex mancante o non compilabile) → un pattern guasto non rompe il parse.
+    function _normFraseIntento(p) {
+      if (!p || typeof p !== 'object') return null;
+      const rx = p.trigger && p.trigger.regex;
+      if (!rx || typeof rx !== 'string') return null;
+      let re; try { re = new RegExp(rx, 'i'); } catch (e) { return null; }
+      const slot = p.slot_preimpostati || p.slotPreimpostati || {};
+      return {
+        id: String(p.id || ''), re: re,
+        azione: p.azione || null, operazione: p.operazione || null,
+        slotPreimpostati: { ruolo: slot.ruolo || null, quantita: Number(slot.quantita || 1) || 1 },
+        richiedeContesto: p.richiede_contesto || p.richiedeContesto || null,
+        confidence: (typeof p.confidence === 'number') ? p.confidence : 0.9
+      };
+    }
+    // Raccoglie le regole frasi_intento dalle tre sorgenti (base + git + overlay), normalizzate.
+    function _frasiIntentoRules() {
+      const base = _FRASI_INTENTO_BASE.map(_normFraseIntento).filter(Boolean);
+      let git = [];
+      try { if (typeof PARSER_RULES !== 'undefined' && Array.isArray(PARSER_RULES.frasi_intento)) git = PARSER_RULES.frasi_intento.map(_normFraseIntento).filter(Boolean); } catch (e) {}
+      return base.concat(git, _frasiIntentoOverlay);
+    }
+    // Cerca il PRIMO pattern che matcha il testo (già _norm/_ppDialect-izzato da chi chiama).
+    // Ritorna {azione, operazione, slotPreimpostati, id, confidence} o null. Read-only.
+    function _matchFrasiIntento(tx) {
+      const s = String(tx || '');
+      if (!s) return null;
+      const rules = _frasiIntentoRules();
+      for (let i = 0; i < rules.length; i++) {
+        const r = rules[i];
+        try { r.re.lastIndex = 0; } catch (e) {}
+        if (r.re.test(s)) {
+          return { azione: r.azione, operazione: r.operazione, slotPreimpostati: r.slotPreimpostati, id: r.id, confidence: r.confidence };
+        }
+      }
+      return null;
+    }
+
     // Carica all'avvio + refresh orario (gating TEST dentro _lessicoLoad).
     try { _lessicoLoad(); setInterval(_lessicoLoad, 60 * 60 * 1000); } catch (e) {}
+    // Allinea il flag locale "modalità apprendimento" all'impostazione GLOBALE del circolo
+    // (pmo_ai_settings). Se non loggato/non disponibile, resta il default ON in memoria.
+    try { _loadLearningModeSetting(); } catch (e) {}
 
     // ── Validatore "parse-gate" (doppio cancello, lato harness) ─────────────────
     // Prima di attivare un sinonimo/pattern, verifica che NON cambi come l'assistente
@@ -41005,7 +41155,7 @@ Per confermare scrivi ELIMINA.`);
       let token = cfg.supabaseKey;
       try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
       const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
-      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source,meta';
+      const url = cfg.supabaseUrl + '/rest/v1/pmo_lessico?env=eq.' + encodeURIComponent(env) + '&order=created_at.desc&limit=100&select=id,surface,canonical,domain,status,source,kind,examples,meta';
       const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
@@ -41058,18 +41208,30 @@ Per confermare scrivi ELIMINA.`);
       const nProposed = rows.filter(function (r) { return r.status === 'proposed'; }).length;
       const header = nProposed ? '<div class="ai-turn-sub">🟠 ' + nProposed + ' proposta/e da rivedere — approva quelle giuste, rifiuta le altre.</div>' : '';
       el.innerHTML = header + rows.map(function (r) {
-        const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">🟠 Proposto</span>');
+        const isConv = r.source === 'conversazione';
+        const isPattern = r.kind === 'pattern';
+        const badge = r.status === 'approved' ? '<span class="ai-rep-badge done">✅ Attivo</span>' : (r.status === 'rejected' ? '<span class="ai-rep-badge">🚫 Rifiutato</span>' : '<span class="ai-rep-badge open">' + (isConv ? '🟢 Dal discorso' : '🟠 Proposto') + '</span>');
         const dom = r.domain ? (' · ' + _escapeHtml(r.domain)) : '';
         const cnt = (r.status === 'proposed' && r.meta && r.meta.count) ? (' · visto ' + r.meta.count + '×') : '';
-        const origin = (r.status === 'proposed' && r.source === 'gemini-distill') ? ' · ✨ proposto dall\'assistente' : ((r.status === 'proposed' && r.source === 'auto') ? ' · dal diario' : '');
-        const fromTxt = (r.status === 'proposed' && r.meta && r.meta.from) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(r.meta.from) + '»</div>' : '';
+        const origin = (r.status === 'proposed')
+          ? (isConv ? ' · 💬 confermato nel discorso' : (r.source === 'gemini-distill' ? ' · ✨ proposto dall\'assistente' : (r.source === 'auto' ? ' · dal diario' : '')))
+          : '';
+        // Traccia: da dove nasce la proposta (frase d'origine del dialogo o del diario) + intesa.
+        const traceFrom = (r.meta && (r.meta.frase_origine || r.meta.from)) || '';
+        const fromTxt = (r.status === 'proposed' && traceFrom) ? '<div class="ai-admin-hint" style="margin:2px 0 0">da: «' + _escapeHtml(traceFrom) + '»</div>' : '';
+        const intesaTxt = (r.status === 'proposed' && r.meta && r.meta.intesa) ? '<div class="ai-admin-hint" style="margin:2px 0 0">📖 ' + _escapeHtml(r.meta.intesa) + '</div>' : '';
+        // Validatore parse-gate: solo per i sinonimi proposti (mostra se l'attivazione è sicura).
+        const safety = _lexValidatorBadge(r);
+        const titleHtml = isPattern
+          ? ('🧩 ' + _escapeHtml(r.surface || (r.meta && r.meta.intesa) || 'pattern d\'intenzione'))
+          : (_escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical));
         let actions = '';
         if (r.status !== 'approved') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'approved\')}catch(e){}">Approva</button> ';
-        if (r.status === 'proposed') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
+        if (r.status === 'proposed' && !isPattern) actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.lexEditProposal(\'' + r.id + '\')}catch(e){}">✏️ Correggi</button> ';
         if (r.status !== 'rejected') actions += '<button class="btn-secondary small-btn" onclick="try{PMOAi.setLessicoStatus(\'' + r.id + '\',\'rejected\')}catch(e){}">Rifiuta</button>';
-        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface) + '" data-canonical="' + _escapeHtml(r.canonical) + '">'
-          + '<span class="ai-turn-utt">' + _escapeHtml(r.surface) + ' → ' + _escapeHtml(r.canonical) + fromTxt + '</span>'
-          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + '</span>'
+        return '<div class="ai-turn-row" id="lexrow-' + r.id + '" data-surface="' + _escapeHtml(r.surface || '') + '" data-canonical="' + _escapeHtml(r.canonical || '') + '">'
+          + '<span class="ai-turn-utt">' + titleHtml + fromTxt + intesaTxt + '</span>'
+          + '<span class="ai-turn-meta">' + badge + dom + cnt + origin + safety + '</span>'
           + '<span class="ai-turn-next">' + actions + '</span></div>';
       }).join('');
     }
@@ -41200,6 +41362,114 @@ Per confermare scrivi ELIMINA.`);
       } finally {
         if (btn) btn.disabled = false;
       }
+    }
+
+    // ── Step 4: badge "sicuro/attenzione" sul validatore parse-gate ─────────────
+    // Per un sinonimo PROPOSTO, applica il candidato col meccanismo reale e verifica che non
+    // cambi l'interpretazione delle frasi-base (regressioni). Read-only (ripristina). I pattern
+    // non hanno (ancora) un validatore d'overlay → nessun badge.
+    function _lexValidatorBadge(r) {
+      try {
+        if (!r || r.status !== 'proposed' || r.kind === 'pattern' || !r.surface || !r.canonical) return '';
+        const v = _validateDelta({ surface: r.surface, canonical: r.canonical }, Array.isArray(r.examples) ? r.examples : []);
+        if (v.ok) return ' <span class="ai-rep-badge done">🛡️ sicuro</span>';
+        return ' <span class="ai-rep-badge">⚠️ ' + v.regressioni.length + ' regress.</span>';
+      } catch (e) { return ''; }
+    }
+
+    // ── Step 4: interruttore "modalità apprendimento" (impostazione GLOBALE del circolo) ──
+    // Persistito in pmo_ai_settings (env,key='learning_mode'). Lettura: chiunque (RLS select).
+    // Scrittura: SOLO owner/admin via edge ai-settings (controllo server-side). Il flag locale
+    // _aiLearningMode (che gate il ragionatore) viene allineato al valore globale al boot e a ogni
+    // apertura della scheda Assistente AI.
+    function _aiCurStaffRole() { try { return (typeof pmoStaffProfile !== 'undefined' && pmoStaffProfile && pmoStaffProfile.role) ? String(pmoStaffProfile.role) : ''; } catch (e) { return ''; } }
+    function _aiCanEditSettings() { const r = _aiCurStaffRole(); return r === 'owner' || r === 'admin'; }
+    function _renderLearningToggle() {
+      const cb = document.getElementById('aiLearnToggle'), lbl = document.getElementById('aiLearnLabel'), st = document.getElementById('aiLearnState');
+      const canEdit = _aiCanEditSettings();
+      if (cb) { cb.checked = !!_aiLearningMode; cb.disabled = !canEdit; }
+      if (lbl) lbl.textContent = _aiLearningMode ? 'Apprendimento attivo' : 'Apprendimento in pausa';
+      if (st) st.textContent = canEdit
+        ? (_aiLearningMode ? '🟢 Attivo: il ragionatore aiuta e propone nuove voci.' : '⏸️ In pausa: l’assistente usa solo le regole, niente proposte.')
+        : 'Solo owner/admin può cambiare questa impostazione.';
+    }
+    async function _loadLearningModeSetting() {
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_ai_settings?env=eq.' + encodeURIComponent(env) + '&key=eq.learning_mode&select=value&limit=1';
+        const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        if (res.ok) { const rows = await res.json(); if (Array.isArray(rows) && rows.length) _aiLearningMode = (rows[0].value === true || rows[0].value === 'true'); }
+      } catch (e) { /* lascia il default in memoria (ON) */ }
+      _renderLearningToggle();
+    }
+    async function setLearningModeGlobal(on) {
+      const st = document.getElementById('aiLearnState'), cb = document.getElementById('aiLearnToggle');
+      if (!_aiCanEditSettings()) { if (cb) cb.checked = !!_aiLearningMode; if (st) st.textContent = 'Solo owner/admin può cambiare questa impostazione.'; return; }
+      if (st) st.textContent = '⏳ Salvo…'; if (cb) cb.disabled = true;
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const res = await fetch(cfg.supabaseUrl + '/functions/v1/ai-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ key: 'learning_mode', value: !!on })
+        });
+        const data = await res.json().catch(function () { return null; });
+        if (!res.ok || !data || !data.ok) throw new Error((data && (data.message || data.error)) || ('HTTP ' + res.status));
+        _aiLearningMode = !!on;
+        _renderLearningToggle();
+      } catch (e) {
+        if (cb) { cb.checked = !!_aiLearningMode; cb.disabled = !_aiCanEditSettings(); }
+        if (st) st.textContent = 'Non salvato (' + (e && e.message ? e.message : e) + ').';
+      }
+    }
+
+    // ── Step 4: dashboard consumo Gemini (legge pmo_ai_usage, aggrega lato client) ──────
+    function _aiUsd(n) { n = +n || 0; return '$' + (n < 0.01 ? n.toFixed(4) : n.toFixed(2)); }
+    function _renderAiUsage(rows) {
+      if (!Array.isArray(rows) || !rows.length) return '<div class="ai-admin-hint">Nessuna chiamata a Gemini registrata questo mese. 👍</div>';
+      const todayStr = _fmtLocal(new Date());
+      const agg = function (list) {
+        let req = 0, tin = 0, tout = 0, cost = 0;
+        list.forEach(function (r) { req++; tin += (+r.prompt_tokens || 0); tout += (+r.output_tokens || 0) + (+r.thinking_tokens || 0); cost += (+r.est_cost_usd || 0); });
+        return { req: req, tok: tin + tout, cost: cost };
+      };
+      let today = [];
+      try { today = rows.filter(function (r) { return _fmtLocal(new Date(r.created_at)) === todayStr; }); } catch (e) { today = []; }
+      const aT = agg(today), aM = agg(rows);
+      const byFn = {};
+      rows.forEach(function (r) { const k = r.function_name || '?'; (byFn[k] = byFn[k] || []).push(r); });
+      const fnRows = Object.keys(byFn).sort().map(function (k) { const a = agg(byFn[k]); return '<div class="ai-turn-row"><span class="ai-turn-utt">' + _escapeHtml(k) + '</span><span class="ai-turn-meta">' + a.req + ' chiam. · ' + a.tok + ' tok · ' + _aiUsd(a.cost) + '</span></div>'; }).join('');
+      const pct = Math.min(100, Math.round(aT.req / 250 * 100));
+      const barColor = pct >= 90 ? '#d92d20' : (pct >= 60 ? '#f79009' : '#12b76a');
+      let lastMin = 0;
+      try { const nowMs = Date.now(); lastMin = rows.filter(function (r) { return (nowMs - new Date(r.created_at).getTime()) <= 60000; }).length; } catch (e) {}
+      const rateWarn = lastMin >= 8 ? ' <span style="color:#d92d20;font-weight:700">⚠️ ' + lastMin + '/min (limite ~10/min)</span>' : '';
+      return ''
+        + '<div class="ai-turn-sub">Oggi: <strong>' + aT.req + '</strong> richieste · ' + aT.tok + ' token · <strong>' + _aiUsd(aT.cost) + '</strong>' + rateWarn + '</div>'
+        + '<div style="margin:6px 0 2px;font-size:12px;color:#667085">Free tier giornaliero (~250 richieste)</div>'
+        + '<div style="background:#eef2f6;border-radius:6px;height:10px;overflow:hidden"><div style="height:10px;width:' + pct + '%;background:' + barColor + '"></div></div>'
+        + '<div class="ai-admin-hint" style="margin:2px 0 12px">' + aT.req + ' / 250 oggi (' + pct + '%)</div>'
+        + '<div class="ai-turn-sub">Questo mese: <strong>' + aM.req + '</strong> richieste · ' + aM.tok + ' token · <strong>' + _aiUsd(aM.cost) + '</strong></div>'
+        + '<div style="margin-top:6px">' + fnRows + '</div>'
+        + '<div class="ai-admin-hint" style="margin-top:8px">Stima a tariffe Flash ($0,30/1M in · $2,50/1M out); i token “thinking” contano come output.</div>';
+    }
+    async function loadAiUsage() {
+      const box = document.getElementById('aiUsageBox'); if (!box) return;
+      box.innerHTML = '<div class="ai-admin-hint">Caricamento…</div>';
+      try {
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey; try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const t = await pmoGetSupabaseStaffAccessToken(); if (t) token = t; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const url = cfg.supabaseUrl + '/rest/v1/pmo_ai_usage?env=eq.' + encodeURIComponent(env) + '&created_at=gte.' + encodeURIComponent(monthStart) + '&order=created_at.desc&limit=5000&select=created_at,function_name,prompt_tokens,output_tokens,thinking_tokens,total_tokens,est_cost_usd';
+        const res = await fetch(url, { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = await res.json();
+        box.innerHTML = _renderAiUsage(rows);
+      } catch (e) { box.innerHTML = '<div class="ai-admin-hint">Non riesco a leggere il consumo (sessione scaduta?): esci e rientra. [' + _escapeHtml(e && e.message ? e.message : String(e)) + ']</div>'; }
     }
 
     // ── Verifica del Vocabolario PRIMA di salvare: esempi "cosa capirei" ─────────
@@ -41427,6 +41697,15 @@ Per confermare scrivi ELIMINA.`);
       });
     }
     function _say(html, cls) { try { return svcAddMessage('system', html, cls); } catch (e) { return null; } }
+    // Voce dell'assistente: tono AMICHEVOLE CON PERSONALITÀ (deciso con l'utente). Per non suonare
+    // ripetitivo, molte domande/risposte hanno più varianti: _pick ne sceglie una a caso. È solo
+    // PRESENTAZIONE — gli harness verificano comportamento/slot, non il testo. (Math.random ok in app.)
+    function _pick(arr) { try { return arr[Math.floor(Math.random() * arr.length)]; } catch (e) { return arr && arr[0]; } }
+    // Anti-"muro di pulsanti": una disambiguazione non deve mai diventare un elenco lunghissimo
+    // da scorrere (es. tutte le prenotazioni di un giorno pieno). _choiceButtons mostra al più
+    // _CHOICE_CAP pulsanti e invita a restringere a voce; i gestori testuali (_continueCancella…)
+    // accettano comunque numeri/criteri oltre il cap, quindi non si perde nessun candidato.
+    const _CHOICE_CAP = 6;
 
     // ── Gating: la CHAT assistente è uno strumento del CALENDARIO (prenotazioni) ──────────
     // È disponibile a chi vede il Calendario (view_dashboard), NON richiede il permesso della
@@ -41506,6 +41785,145 @@ Per confermare scrivi ELIMINA.`);
         if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
       }
       return ruleRes;
+    }
+
+    // ── Step 3: layer conversazionale (edge ai-reason / Gemini "ragionatore") ────
+    // Quando le regole NON capiscono (intento sconosciuto) e la "modalità apprendimento" è ON,
+    // invece di una domanda generica chiamiamo il ragionatore col FILO del discorso: può fare UNA
+    // domanda mirata (con pulsanti), proporre un comando equivalente da eseguire, e — se riconosce
+    // un modo di dire ricorrente — proporre una regola (sinonimo/pattern) da APPROVARE a mano.
+    // Tetto domande = 2 (poi si ricade sul chiarimento classico). Timeout/giù → regole (mai rotto).
+    let _aiLearningMode = true;                  // interruttore (Step 4: globale owner/admin). Default ON.
+    let _convHist = [];                          // ultime battute del turno [{role,text}] (memoria locale)
+    let _reasonAsked = 0;                         // domande di chiarimento poste in questo filo (tetto 2)
+    const _REASON_MAX_ASK = 2;
+    function _convPush(role, text) {
+      const t = String(text || '').trim(); if (!t) return;
+      _convHist.push({ role: role, text: t });
+      if (_convHist.length > 12) _convHist = _convHist.slice(-12);
+    }
+    async function _callAiReason(history) {
+      const accessToken = (typeof pmoGetSupabaseStaffAccessToken === 'function') ? await pmoGetSupabaseStaffAccessToken() : null;
+      if (!accessToken) return null;
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ai-reason`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ history: history, context: { today: _todayIso() } })
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      if (!resp.ok || !data || data.ok === false) return null;
+      return data; // { interpretazione, comando, domanda, proposta, confidence }
+    }
+    // Registra come CANDIDATO (status 'proposed') la regola nata dal dialogo: comparirà nel
+    // Vocabolario per l'approvazione UMANA (Step 4 UI). Non auto-applica nulla.
+    async function _reasonRegisterProposal(proposta, fraseOrigine) {
+      try {
+        if (!proposta || !proposta.tipo) return;
+        const cfg = await loadAssessmentSupabaseConfig();
+        let token = cfg.supabaseKey;
+        try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') { const tk = await pmoGetSupabaseStaffAccessToken(); if (tk) token = tk; } } catch (e) {}
+        const env = (typeof PMO_RUNTIME_ENV !== 'undefined') ? PMO_RUNTIME_ENV : 'test';
+        const esempi = Array.isArray(proposta.esempi_test) ? proposta.esempi_test : [];
+        let row = null;
+        if (proposta.tipo === 'sinonimo' && proposta.surface && proposta.canonical) {
+          row = {
+            env: env, domain: null, surface: String(proposta.surface).toLowerCase(), canonical: String(proposta.canonical),
+            kind: 'sinonimo', status: 'proposed', source: 'conversazione', examples: esempi,
+            meta: { intesa: proposta.intesa || '', frase_origine: fraseOrigine || '', origine: 'conversazione', confidence: 'confermato_utente' }
+          };
+        } else if (proposta.tipo === 'pattern' && proposta.frase_intento) {
+          const fi = proposta.frase_intento;
+          row = {
+            env: env, domain: null, surface: (fi.esempi && fi.esempi[0]) || fraseOrigine || '', canonical: null,
+            kind: 'pattern', status: 'proposed', source: 'conversazione', examples: esempi,
+            meta: {
+              frase_intento: {
+                id: 'conv_' + (fi.azione || 'x') + '_' + (fi.operazione || ''),
+                trigger: { regex: fi.trigger_regex || '', esempi: fi.esempi || [] },
+                azione: fi.azione || null, operazione: fi.operazione || null,
+                slot_preimpostati: fi.slot_preimpostati || {}, confidence: 0.9
+              },
+              intesa: proposta.intesa || '', esempi_test: esempi, frase_origine: fraseOrigine || '',
+              origine: 'conversazione', validazione: null, confidence: 'confermato_utente'
+            }
+          };
+        }
+        if (!row) return;
+        await fetch(cfg.supabaseUrl + '/rest/v1/pmo_lessico', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: 'Bearer ' + token, Prefer: 'return=minimal' },
+          body: JSON.stringify(row)
+        });
+      } catch (e) { /* la proposta è un di-più: non bloccare il flusso se fallisce */ }
+    }
+    // Mostra la proposta-regola nata dal dialogo (solo avviso discorsivo: l'approvazione è nel Vocabolario).
+    function _reasonAnnounceProposal(proposta) {
+      if (!proposta || !proposta.tipo || proposta.tipo === 'nessuna') return;
+      const intesa = proposta.intesa ? (' — ' + _escapeHtml(proposta.intesa)) : '';
+      _say('💡 Ho aggiunto una proposta al <strong>Vocabolario</strong> (da approvare)' + intesa + '.');
+    }
+    // Entry-point del ragionatore. Ritorna truthy se ha gestito (domanda o proposta-comando), null se
+    // non ha potuto (→ il chiamante usa il chiarimento classico). Mai un vicolo cieco.
+    async function _reasonClarify(t) {
+      if (!_aiLearningMode) return null;
+      if (_reasonAsked >= _REASON_MAX_ASK) return null;   // tetto domande → chiarimento classico
+      let thinkingEl = null;
+      let r = null;
+      try {
+        thinkingEl = _say(_pick(['💭 Fammi pensare un attimo…', '💭 Ci ragiono su…', '💭 Aspetta, ci sto…']), 'svc-thinking');
+        r = await _callAiReason(_convHist.slice());
+      } catch (e) { r = null; }
+      if (thinkingEl && thinkingEl.remove) thinkingEl.remove();
+      if (!r) return null;
+      // (A) Domanda di chiarimento mirata, con pulsanti → la scelta rientra come nuovo messaggio.
+      if (r.domanda && r.domanda.testo && Array.isArray(r.domanda.opzioni) && r.domanda.opzioni.length) {
+        _reasonAsked++;
+        const _m = _say('🤔 ' + _escapeHtml(r.domanda.testo));
+        _convPush('assistant', r.domanda.testo);
+        _choiceButtons(_m, r.domanda.opzioni, function (i) { handle(r.domanda.opzioni[i]); }, function () { _say('👍 Ok.'); });
+        return true;
+      }
+      // (B) Comando equivalente compreso → proponi di eseguirlo (conferma a pulsante) + impara.
+      // Imposta un flusso 'reasonconfirm' così una conferma DIGITATA ("sì", "sì procedi") esegue il
+      // comando invece di ri-entrare come nuovo "non capito" (che faceva ripetere la domanda).
+      if (r.comando) {
+        const interp = r.interpretazione ? _escapeHtml(r.interpretazione) : 'Mi sa che ho capito';
+        aiFlowState = { kind: 'reasonconfirm', stage: 'confirm', comando: r.comando, proposta: r.proposta || null };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        const _m = _say('🧭 ' + interp + '. ' + _pick(['Procedo con «<strong>' + _escapeHtml(r.comando) + '</strong>»?', 'Faccio «<strong>' + _escapeHtml(r.comando) + '</strong>», ti va?']));
+        _choiceButtons(_m, ['✅ Sì, procedi', '✏️ No, lascia'], function (i) {
+          if (i === 0) { _reasonExecuteComando(); } else { aiFlowState = null; _say('👍 Ok, lascio perdere.'); }
+        }, function () { aiFlowState = null; _say('👍 Ok.'); });
+        return true;
+      }
+      // (C) Solo un'interpretazione, senza azione/domanda → mostrala come spunto (non vicolo cieco).
+      if (r.interpretazione) {
+        _say('🧭 ' + _escapeHtml(r.interpretazione) + ' ' + _pick(['Mi confermi cosa vuoi fare?', 'Dimmi pure come procedo.']));
+        return true;
+      }
+      return null;
+    }
+    // Esegue il comando proposto dal ragionatore (conferma 'reasonconfirm') e registra la proposta.
+    function _reasonExecuteComando() {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'reasonconfirm') return;
+      const comando = fs.comando, proposta = fs.proposta;
+      aiFlowState = null;
+      if (proposta) { _reasonRegisterProposal(proposta, comando).then(function () { _reasonAnnounceProposal(proposta); }); }
+      return handle(comando);
+    }
+    // Risposta alla conferma del comando proposto dal ragionatore: no/stop → scarta; altrimenti esegui.
+    function _confirmReasonAnswer(t) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'reasonconfirm') { aiFlowState = null; return _say('Dimmi pure cosa vuoi fare.'); }
+      const n = ' ' + _norm(t) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) {
+        aiFlowState = null;
+        return _say('👍 Ok, lascio perdere.');
+      }
+      return _reasonExecuteComando();
     }
 
     // ── Date/ora ─────────────────────────────────────────────────────────────
@@ -41645,6 +42063,7 @@ Per confermare scrivi ELIMINA.`);
       const anaCreateContactCtx = /(^| )(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa])( |$)/.test(n)
         && (/(?:\+?\d[\s.\-]?){6,}/.test(text) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(text))
         && !/(^| )(partit\w*|prenotazion\w*|camp[oi]|match|lezion\w*|tornei?|slot)( |$)/.test(n);
+      // L'anagrafica vale solo se NON è una domanda sul roster e NON parla di partite/tornei.
       // L'anagrafica NON vale se la frase è una PRENOTAZIONE: oltre a partita/tornei, escludi
       // anche lezione/prenotazione/slot e il verbo "prenota". Senza questo, "mi prenoti una
       // lezione … e metti un giocatore come ospite" attivava anaCtx via la sola parola
@@ -41924,7 +42343,12 @@ Per confermare scrivi ELIMINA.`);
 
     // Parole NON-nome (date/orari/filler/dialetto) da scartare nell'estrazione giocatori.
     const _PMO_NOISE = /^(tra|fra|un|un'ora|unora|ora|ore|mezza|mezzo|mezzogiorno|mezzanotte|quarto|quarti|sera|mattina|mattino|pomeriggio|notte|stasera|stanotte|stamattina|oggi|domani|dopodomani|ieri|del|dello|della|dei|degli|delle|al|allo|alla|alle|dal|dallo|dalla|dalle|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|manutenzione|privata|privato|blocca|fissa|segna|metti|fai|prenota|gruppo|individuale|allievo|allieva|allievi|allieve|santiago|lozio|spinazze|zio|come|istruttore|istruttrice|maestro|maestra|prossim\w*)$/;
-    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w); }
+    // Riempitivi del discorso e verbi d'intenzione ("perfetto allora voglio…", "fammi", "adesso"):
+    // NON sono mai nomi di giocatore. Senza questo filtro, una frase naturale come «perfetto allora
+    // voglio Santiago come maestro e metti un ospite come giocatore» estraeva "perfetto allora voglio"
+    // come nome. I token qui sono già normalizzati (minuscolo, accenti rimossi), come _PMO_NOISE.
+    const _PMO_FILLER = /^(perfetto|allora|ecco|dunque|quindi|insomma|comunque|magari|praticamente|diciamo|senti|guarda|scusa|scusami|prego|grazie|ok|okay|okey|bene|benissimo|certo|esatto|giusto|vabbe|beh|voglio|vorrei|volevo|vuoi|devo|dovrei|fammi|facciamo|adesso|subito|anche|pure|poi)$/;
+    function _pmoNameOk(w) { return w && w.length >= 2 && !/\d/.test(w) && !_pmoIsStop(w) && !_PMO_NOISE.test(w) && !_PMO_FILLER.test(w); }
 
     // Soggetto di annulla/modifica ("la partita di Mario" → "mario"), per il controllo cognome.
     function _subjectName(tx) {
@@ -41937,6 +42361,9 @@ Per confermare scrivi ELIMINA.`);
 
     // Nomi giocatori in una prenotazione (dopo "per"/"con"/l'orario).
     function _bookingNames(tx) {
+      // Allinea il preview di parse() al flusso reale: tolgo la clausola "nota in linea" dalla
+      // coda ("… metti in note prima lezione") così il corpo della nota non finisce tra i giocatori.
+      try { const _in = _extractInlineNote(tx); if (_in.note) tx = _in.rest || tx; } catch (e) {}
       const s = ' ' + tx + ' ';
       let after = '';
       let m = s.match(/\b(?:per|con)\s+(.+)$/);
@@ -41948,13 +42375,23 @@ Per confermare scrivi ELIMINA.`);
         if (m) after = m[1];
       }
       if (!after) return [];
-      const parts = after.split(/[,;&+]|\be\b|\bed\b/);
+      const parts = after.split(/[,;&+]|\be\b|\bed\b|\bpi[uù]\b|\bpoi\b/);
       const names = [];
       parts.forEach(function (p) {
         // Comando di creazione COMPOSTO ("crea una partita … e aggiungi X come giocatore"):
         // il ramo dopo la "e" porta il verbo "aggiungi/inserisci/metti" davanti al nome → va
         // tolto, altrimenti finirebbe nel nome ("aggiungi marco"). ("come/giocatore" già scartati.)
         p = p.replace(/\b(aggiung\w*|inserisc\w*|mett\w*)\b/g, ' ');
+        // "N ospiti" → N × Ospite: allinea il PREVIEW di parse() al flusso reale (_resolvePlayers),
+        // così "due/tre/quattro ospiti" non compare come un unico nome "due ospiti". Tetto 6.
+        const _pn = ' ' + _norm(p) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_pn)) {
+          let _q = 1;
+          const _qm = _pn.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) names.push('Ospite');
+          return;
+        }
         const toks = p.split(/\s+/).map(function (w) { return w.trim(); }).filter(_pmoNameOk);
         if (toks.length) names.push(toks.join(' '));
       });
@@ -42193,6 +42630,10 @@ Per confermare scrivi ELIMINA.`);
     // Cuore dell'interpretazione: decide azione, tipo, giocatori e gli stati delle regole.
     function _enrichInterpret(text, baseIso, c) {
       const tx = _ppDialect(text);
+      // Pattern d'intenzione (Step 2): una frase intera → azione+operazione+slot preimpostati.
+      // Read-only; espone metadati che handle() usa per instradare micro-azioni parametriche
+      // (es. "togli un ospite") senza chiedere "quale?". L'azione vera resta decisa dalla cascata.
+      const fraseIntento = _matchFrasiIntento(tx);
       const cx = _campoX(tx);
       const dx = _dateX(tx, baseIso);
       const istruttore = _maestroDetect(tx);
@@ -42282,9 +42723,14 @@ Per confermare scrivi ELIMINA.`);
       // CAMPO specifico (così "mostra le prenotazioni di oggi" resta interroga) e nessun verbo di
       // crea/annulla/aggiungi/togli (gestiti altrove). Priorità su 'crea' e su 'interroga'.
       const openVerbStrong = /\b(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|gestisc\w*)\b/.test(tx);
-      const openVerbSoft = /\b(mostr\w*|visualizz\w*|vedi|fammi\s+veder\w*)\b/.test(tx);
+      // "vedere" in TUTTE le sue forme di cortesia: fammi/mi fai/mi fa/fai/farmi/faresti/puoi farmi
+      // vedere… (prima solo "fammi vedere", quindi «mi fai vedere la scheda» cadeva su 'crea').
+      const openVerbSoft = /\b(mostr\w*|visualizz\w*|vedi)\b/.test(tx) || /(?:^|\s)(?:mi\s+)?fa(?:i|mmi|r\w*)?\s+veder\w*/.test(tx);
+      // "scheda" è di per sé un segnale d'apertura inequivocabile (la scheda esiste solo per una
+      // prenotazione GIÀ presente) → apre la card anche senza la parola "partita/prenotazione".
+      const schedaWord = /\bsched\w*\b/.test(tx);
       const openEditCtx2 = !!cx.campo && !rosterQ && !lessonsQ && !modifyVerb && !cancelVerb && !addV && !remV
-        && (openVerbStrong || (openVerbSoft && eventRef));
+        && (openVerbStrong || schedaWord || (openVerbSoft && eventRef));
 
       // ── azione ──
       let azione = null;
@@ -42320,6 +42766,18 @@ Per confermare scrivi ELIMINA.`);
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
       if (!azione) azione = ({ PRENOTA: 'crea', TROVA: 'interroga', CANCELLA: 'annulla', CORREGGI: 'modifica', ANAGRAFICA: 'anagrafica' })[c.intent] || null;
+      // Pattern d'intenzione: se ha matchato e l'azione è coerente (o non decisa), porta avanti
+      // operazione + slot preimpostati. NON forza l'azione su un percorso anagrafica/annulla già
+      // deciso (priorità alla cascata): aggancia solo quando l'azione coincide o manca.
+      let operazione, slotPreimpostati, fraseIntentoId;
+      if (fraseIntento) {
+        if (!azione) azione = fraseIntento.azione;
+        if (azione === fraseIntento.azione) {
+          operazione = fraseIntento.operazione || undefined;
+          slotPreimpostati = fraseIntento.slotPreimpostati || undefined;
+          fraseIntentoId = fraseIntento.id || undefined;
+        }
+      }
 
       // ── giocatori (regola A/B) ──
       let giocatori = [];
@@ -42389,6 +42847,8 @@ Per confermare scrivi ELIMINA.`);
         needsType: needsType, needsSurname: needsSurname, needsInstructor: needsInstructor,
         needsLocate: needsLocate, needsMoreData: needsMoreData, addAmbiguous: addAmbiguous,
         ko: ko, koReason: koReason, confirmMassive: confirmMassive, clarify: clarify, isQuestion: isQuestion,
+        // ── pattern d'intenzione (Step 2): metadati per l'instradamento in handle() ──
+        operazione: operazione, slotPreimpostati: slotPreimpostati, fraseIntentoId: fraseIntentoId,
         // ── anagrafica (per i gestori e la UI manuale) ──
         anaSub: ana.isAna ? ana.sub : undefined, anaField: ana.isAna ? ana.field : undefined,
         anaSubject: ana.isAna ? ana.subject : undefined,
@@ -42445,6 +42905,8 @@ Per confermare scrivi ELIMINA.`);
         needsType: E.needsType, needsSurname: E.needsSurname, needsInstructor: E.needsInstructor,
         needsLocate: E.needsLocate, needsMoreData: E.needsMoreData, addAmbiguous: E.addAmbiguous,
         ko: E.ko, koReason: E.koReason, confirmMassive: E.confirmMassive, clarify: E.clarify,
+        // ── pattern d'intenzione (Step 2) ──
+        operazione: E.operazione, slotPreimpostati: E.slotPreimpostati, fraseIntentoId: E.fraseIntentoId,
         // ── anagrafica (per i gestori e la UI manuale) ──
         anaSub: E.anaSub, anaField: E.anaField, anaSubject: E.anaSubject,
         anaProposeDisable: E.anaProposeDisable, anaDuplicate: E.anaDuplicate,
@@ -42474,6 +42936,7 @@ Per confermare scrivi ELIMINA.`);
       const t = String(text || '').trim();
       if (!t) return;
       try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      _convPush('user', t);   // memoria del filo per il ragionatore (Step 3)
       // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
       // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.
       const _now = (Date.now ? Date.now() : new Date().getTime());
@@ -42501,6 +42964,7 @@ Per confermare scrivi ELIMINA.`);
             durataconfirm: 'allung\\w*|accorci\\w*|prolung\\w*|estend\\w*|riduc\\w*|abbrevi\\w*',
             notaconfirm: 'annot\\w*|nota',
             anagrafica: '',
+            reasonconfirm: '',
             modifica: 'modific\\w*'
           }[_kc];
           if (_verbs !== undefined) {
@@ -42510,9 +42974,27 @@ Per confermare scrivi ELIMINA.`);
             // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
             // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
             const _tConf = _applyLessico(t);
-            if (_re.test(_tConf)) {
-              const _h = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica }[_kc];
+            // Tollera le parole di RIEMPIMENTO ("ok procedi pure CON LA prenotazione"): le togliamo
+            // prima del test ancorato, così una conferma naturale non viene scambiata per un comando
+            // nuovo (che deragliava il flusso → ragionatore). Sono glue grammaticale che non distingue
+            // mai conferma da comando: campo/ora/nomi sopravvivono e quindi un vero comando NON matcha.
+            const _tConfStrip = _tConf.replace(/\b(con|la|il|lo|le|i|gli|un|uno|una|di|del|dello|della|dei|degli|delle|al|allo|alla|alle|ai|agli|ed|mi|ti|ci|poi|allora|quindi|dai)\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+            const _hmap = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer };
+            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip))) {
+              const _h = _hmap[_kc];
               if (_h) return _h(_tConf);
+            }
+            // Conferma DISCORSIVA: una risposta cordiale/lunga ("bravo, hai fatto bene, conferma pure
+            // la prenotazione") non passa il test ancorato (ha parole extra) e "prenotazione" la
+            // farebbe scambiare per un comando nuovo → deragliava nel ragionatore. Se contiene una
+            // parola di conferma FORTE e NESSUN segnale di cambio/annullo né NUOVE coordinate
+            // (campo/numero/giorno → indicherebbero un altro comando), confermiamo il flusso in corso.
+            const _strongYes = /\b(conferm\w*|confermo|procedi|va\s+bene|vabene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tConf);
+            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lascia\w*|divers\w*|nessun\w*|niente)\b/i.test(_tConf);
+            const _newCoords = /\bcamp[oi]\b|\b\d{1,2}([:.]\d{2})?\b|\b(oggi|domani|dopodomani|luned|marted|mercoled|gioved|venerd|sabato|domenica)\b/i.test(_tConf);
+            if (_strongYes && !_negChange && !_newCoords) {
+              const _h2 = _hmap[_kc];
+              if (_h2) return _h2(_tConf);
             }
           }
         }
@@ -42532,6 +43014,10 @@ Per confermare scrivi ELIMINA.`);
             return _continuePrenota(t);
           }
         }
+        // Flusso di RISOLUZIONE GIOCATORE (chiede il cognome, o «aggiungi socio / ospite»): la
+        // risposta è il nome/la scelta, NON un comando nuovo (può contenere "aggiungi") → gestiscila
+        // qui PRIMA di _looksLikeNewCommand, così non abbandona il flusso.
+        if (aiFlowState.kind === 'playerresolve') return _continuePlayerResolve(t);
         // Un comando chiaramente NUOVO (verbo d'azione) in QUALSIASI stage abbandona il flusso
         // in sospeso, così non viene scambiato per una risposta/conferma. Sicuro: _looksLikeNewCommand
         // non matcha mai sì/no/conferma/annulla/cambia, quindi le risposte legittime passano sotto.
@@ -42550,6 +43036,7 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'movedest') return _continueMoveDest(t);
           if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
           if (_k === 'notaconfirm') return _confirmNotaAnswer(t);
+          if (_k === 'reasonconfirm') return _confirmReasonAnswer(t);
           if (_k === 'anagrafica') {
             if (aiFlowState.stage === 'confirm') return _confirmAnagraficaAnswer(t);
             if (aiFlowState.stage === 'pick') return _continueAnaPick(t);
@@ -42616,6 +43103,15 @@ Per confermare scrivi ELIMINA.`);
           .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b\s*/i, ' ')
           .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
         _rawName = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(_rawName))).trim();
+        // Pattern d'intenzione "togli un ospite" (Step 2): operazione=rimuovi, ruolo=ospite,
+        // quantità=1. Gli ospiti sono FUNGIBILI (stesso nominativo "Ospite") → toglierne UNO è
+        // univoco: lo facciamo SENZA chiedere "quale", invece di _askRemoveConfirm (che con 2
+        // ospiti elencherebbe doppioni identici). Riusa _removePlayerNow (rimozione ottimistica).
+        if (_rmVerb && !_wholeBooking && !_timeQty && !_noteCmd
+          && res.operazione === 'rimuovi' && res.slotPreimpostati
+          && res.slotPreimpostati.ruolo === 'ospite' && Number(res.slotPreimpostati.quantita || 1) === 1) {
+          return _removeOneGuestNow(staffCalPlayersState);
+        }
         // SOLO se c'è un NOME dopo il verbo è una rimozione-giocatore. "cancella"/"elimina" da
         // SOLI (nome vuoto) NON sono rimozione: cadono su CANCELLA → annulla la prenotazione aperta.
         if (_rmVerb && _rawName && !_wholeBooking && !_timeQty && !_noteCmd) {
@@ -42634,6 +43130,12 @@ Per confermare scrivi ELIMINA.`);
         const _timeQ = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_cn);
         const _noteC = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_cn);
         const _otherTarget = !!(res.slots && (res.slots.court || res.slots.time || res.slots.date));
+        // L'utente ha nominato ESPLICITAMENTE l'oggetto intero ("annulla LA PRENOTAZIONE / la
+        // partita / la lezione") e nessun giocatore → NON è ambiguo: va annullato tutto, niente
+        // domanda "togli vs annulla". (Senza questo, "annulla la prenotazione" → _resName vuoto →
+        // veniva trattato come "annulla" nudo → ri-chiedeva la disambiguazione all'infinito.)
+        const _explicitWhole = /(^|\s)(partit\w*|lezion\w*|prenotazion\w*|match|slot)\b/.test(_cn)
+          && !/(giocator\w*|allie\w*)/.test(_cn);
         let _resName = String(t || '')
           .replace(/^\s*\W*(cancell\w*|annull\w*|elimin\w*|disd\w*|scart\w*)\b\s*/i, ' ')
           .replace(/\b((?:il|la|lo|l['’]|un|una|questa|questo)\s+)?(partit\w*|lezion\w*|prenotazion\w*|match|slot)\b/ig, ' ');
@@ -42645,7 +43147,9 @@ Per confermare scrivi ELIMINA.`);
           // Con una prenotazione che HA giocatori, "cancella/annulla" da solo è ambiguo (togliere
           // un giocatore o annullare l'intera prenotazione?): NON agire alla cieca, CHIEDI con i
           // pulsanti (postulato: mai vicolo cieco). Senza giocatori (es. manutenzione) → annullo diretto.
-          if (st.hasPlayers) {
+          // Se però l'utente ha già detto "la prenotazione/partita/lezione", l'intento è chiaro → salta
+          // la domanda e annulla direttamente (cade sul _showCancelSummary qui sotto).
+          if (st.hasPlayers && !_explicitWhole) {
             let _roster = (Array.isArray(st.roster) && st.roster.length) ? st.roster : _rosterFromCalendar(st);
             _roster = (_roster || []).filter(function (p) { return p && p.nome; });
             const _doCancelBooking = function () { _showCancelSummary(st.origIso, oSlot); };
@@ -42661,7 +43165,7 @@ Per confermare scrivi ELIMINA.`);
               return true;
             }
             if (_roster.length > 1) {
-              const _m = _say('🤔 <strong>Quale giocatore vuoi togliere?</strong> Oppure vuoi <strong>annullare l\'intera prenotazione</strong>? Tocca un pulsante o rispondi a voce.');
+              const _m = _say(_pick(['🤔 <strong>Chi vuoi togliere?</strong> Oppure preferisci <strong>annullare tutta la prenotazione</strong>? Dimmi pure.', '🤔 Dimmi: tolgo <strong>un giocatore</strong> (e quale) o <strong>annullo tutta la prenotazione</strong>?']));
               _choiceButtons(_m, _roster.map(function (p) { return '👤 ' + p.nome; }).concat([_CANCEL_LABEL]),
                 function (i) { if (i >= _roster.length) _doCancelBooking(); else _removePlayerNow(_roster[i]); },
                 function () { });
@@ -42711,7 +43215,7 @@ Per confermare scrivi ELIMINA.`);
           return _askWhichBookingForPlayer(res, t, _nmEsc);
         }
         const _label = _nm ? ('<strong>' + _nmEsc + '</strong>') : 'questa persona';
-        const _m = _say('🤔 Vuoi aggiungere ' + _label + ' a una <strong>prenotazione</strong> (come giocatore) oppure <strong>iscriverlo come nuovo socio</strong>? Tocca un pulsante o dimmelo a voce.');
+        const _m = _say('🤔 Una cosa al volo: ' + _label + ' lo metto in una <strong>prenotazione</strong> (come giocatore) o lo <strong>iscrivo come nuovo socio</strong>? Dimmi pure.');
         _choiceButtons(_m, ['👥 Giocatore in una prenotazione', '👤 Iscrivilo come nuovo socio'], function (i) {
           if (i === 1) {
             // Nuovo socio: avvia l'anagrafica di creazione (senza eco di un finto messaggio utente).
@@ -42727,7 +43231,13 @@ Per confermare scrivi ELIMINA.`);
       // intento sconosciuto, oppure annulla/modifica senza bersaglio — non si entra nei
       // gestori: si fa una domanda proattiva che restringe. Vedi _needsClarification/_clarify.
       const _clar = _needsClarification(res, t);
-      if (_clar) return _clarify(t, res, _clar);
+      if (_clar) {
+        // "Non capito" (intento sconosciuto) → prima il ragionatore (Gemini fa domande / propone un
+        // comando e impara). Se non può, si ricade sul chiarimento classico (mai vicolo cieco).
+        if (_clar.reason === 'unknown') { const _r = await _reasonClarify(t); if (_r) return _r; }
+        return _clarify(t, res, _clar);
+      }
+      _reasonAsked = 0;   // richiesta azionabile → il filo "non capito" si chiude (azzera il tetto domande)
       switch (res.intent) {
         case 'TROVA': return _handleTrova(t, res.slots);
         case 'PRENOTA': return _startPrenota(res, t);
@@ -42797,7 +43307,7 @@ Per confermare scrivi ELIMINA.`);
         const _iso = date || _calSelectedIso();
         const _cands = (typeof _cancelCandidates === 'function') ? _cancelCandidates(_iso, court || 0, time || '', '') : [];
         if (_cands.length) {
-          const _m = _say(ic + ' <strong>Quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Tocca un pulsante, oppure dimmi giorno/campo/ora.');
+          const _m = _say(ic + ' Volentieri — <strong>quale prenotazione</strong> vuoi ' + verbo + '? (' + _dayLabel(_iso) + ') Dimmi pure quale, o giorno, campo e ora.');
           _choiceButtons(_m, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
             function (i) { if (info.intent === 'CANCELLA') _showCancelSummary(_iso, _cands[i]); else _openEditor(_iso, _cands[i], null); },
             function () { _say('👍 Ok.'); });
@@ -43016,7 +43526,10 @@ Per confermare scrivi ELIMINA.`);
         const fuzzy = (_rules().campi_opzionali && _rules().campi_opzionali.istruttore && _rules().campi_opzionali.istruttore.fuzzy_match) || {};
         for (const k in fuzzy) { if (_wordHit(n, _norm(k))) return fuzzy[k]; }
       } catch (e) {}
-      const m = String(text || '').match(/\b(?:con|maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
+      // SOLO "maestro/insegnante <Nome>": il "con <X>" generico introduce di norma l'ALLIEVO
+      // ("lezione con Mario") o un complemento ("con due ospiti" → catturava "due" come maestro!),
+      // non il maestro. I maestri NOMINATI ("con Santiago") sono già presi dalla lista/fuzzy sopra.
+      const m = String(text || '').match(/\b(?:maestr[oa]|insegnante)\s+([A-Za-zÀ-ÿ]{2,})/i);
       if (m) return m[1];
       return '';
     }
@@ -43037,6 +43550,8 @@ Per confermare scrivi ELIMINA.`);
         const hh = parseInt(m[1], 10);
         if (hh >= 6 && hh <= 23) {
           const ora = String(hh).padStart(2, '0') + ':' + String(m[2] || '00').padStart(2, '0');
+          // Solo ora d'inizio (nessun range nel testo): durata 90 è un DEFAULT, non esplicita →
+          // chi consuma deve poterla rimpiazzare col default per tipo (Lezione 60'/Partita 90').
           return { ora: ora, oraFine: _endTime(ora, 90), durata: 90, durDefault: true };
         }
       }
@@ -43059,7 +43574,11 @@ Per confermare scrivi ELIMINA.`);
     function _afterTime(text) {
       const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
-      if (!m) m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      // "alle/dalle/delle/le/ore/h 17(:00)" — include "le" (dettatura "per le 17") e, in coda,
+      // un orario "nudo" (HH:MM o HH) come fallback: senza questi, "per le 17:00 …" non agganciava
+      // il testo-giocatori della LEZIONE one-shot e l'allievo veniva ri-chiesto.
+      if (!m) m = t.match(/\b(?:alle|dalle|delle|le|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (!m) m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
       if (!m) return '';
       const pos = t.indexOf(m[0]);
       return t.slice(pos + m[0].length).replace(/^[\s\-–]+/, '').replace(/\bogni\s+\S+/ig, '').trim();
@@ -43160,7 +43679,11 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) { return null; }
     }
     function _resolvePlayers(rawStr) {
-      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      // Connettori tra giocatori: virgola/;/& / "e"/"ed" / a-capo, "più" e "+" e anche "poi"
+      // (dettatura: "un ospite più Lidia", "Marco + Anna", "un ospite poi Maurizio e Lidia").
+      // Senza questi connettori il chunk restava unito → il ramo ospite-con-quantità faceva
+      // continue e i nomi dopo sparivano.
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
@@ -43194,6 +43717,25 @@ Per confermare scrivi ELIMINA.`);
       return { giocatori: giocatori, notes: notes };
     }
 
+    // Nota in linea dentro un comando di creazione: «… metti in nota campo bagnato»,
+    // «… con nota: prima lezione», «… e segna in note allievo nuovo». La estraggo PRIMA dei
+    // giocatori e tolgo la clausola dal testo, così il corpo della nota non diventa un finto
+    // giocatore (bug live: «giocatore ospite e mette in note prima lezione» → "note prima"
+    // finiva tra i giocatori). Ritorna { note, rest } con `rest` ripulito dalla clausola.
+    function _extractInlineNote(text) {
+      const s = String(text || '');
+      // A) introdotta da un verbo: (e) metti/scrivi/segna/inserisci/annota … (in/con/come) not[ae] <corpo>
+      let m = s.match(/\s*\b(?:e\s+|ed\s+)?(?:mett\w*|aggiung\w*|scriv\w*|segn\w*|inserisc\w*|annot\w*)\s+(?:(?:una?|la|il|in|nell[ae’']?|come|con|alla|alle)\s+)*not[ae]\b\s*:?\s*(.+)$/i);
+      // B) introdotta da preposizione: (in/con/nella) (una) not[ae] <corpo>
+      if (!m) m = s.match(/\s*\b(?:e\s+|ed\s+)?(?:con|in|nell[ae’']?)\s+(?:una?\s+)?not[ae]\b\s*:?\s*(.+)$/i);
+      if (m && m[1] && m[1].trim()) {
+        return { note: m[1].trim(), rest: s.slice(0, m.index).trim() };
+      }
+      // C) sola forma con due-punti finale (orari esclusi da _extractNoteText).
+      const cn = _extractNoteText(s);
+      if (cn) { const idx = s.lastIndexOf(cn); return { note: cn, rest: (idx > 0 ? s.slice(0, idx).replace(/[:\s]+$/, '') : s).trim() }; }
+      return { note: '', rest: s };
+    }
     // Costruisce la bozza dal parse + slot (risoluzione nomi giocatori inclusa), SENZA eseguire.
     // Usata sia da _startPrenota sia dal banco di prova (diagnose), così la logica è unica.
     function _buildPrenotaDraft(res, text) {
@@ -43231,8 +43773,13 @@ Per confermare scrivi ELIMINA.`);
         if (tr && tr.ora === draft.ora && tr.oraFine && !tr.durDefault) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = false; }
         else { draft.durata = draft.durDefault ? _defDur(draft.tipo) : (draft.durata || _defDur(draft.tipo)); draft.oraFine = _endTime(draft.ora, draft.durata); }
       }
+      // Nota in linea ("… metti in note prima lezione"): la tolgo dal testo PRIMA di estrarre i
+      // giocatori, così il corpo della nota non diventa un finto allievo, e la imposto sulla bozza.
+      const _in = _extractInlineNote(text);
+      if (_in.note) draft.note = _in.note;
+      const _playerSrc = _in.rest || text;
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
-      const after = _afterTime(text);
+      const after = _afterTime(_playerSrc);
       let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
       playerText = _stripDateRefs(_stripCourtRefs(playerText));
       if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
@@ -43282,12 +43829,12 @@ Per confermare scrivi ELIMINA.`);
     function _askNext() {
       if (!aiFlowState || aiFlowState.stage !== 'await') return;
       const k = aiFlowState.need[0];
-      if (k === 'type') { const div = _say('🎾 È una <strong>partita</strong> o una <strong>lezione</strong>?'); _appendTypeButtons(div, aiFlowState.draft); return div; }
-      if (k === 'maestro') { const div = _say('👨‍🏫 Con quale <strong>maestro</strong>? Tocca un pulsante o dimmi il nome.'); _appendMaestroButtons(div, aiFlowState.draft); return div; }
-      if (k === 'date') return _say('📅 Per quale <strong>giorno</strong>? Scrivi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).');
-      if (k === 'court') { const div = _say('🎾 Su quale <strong>campo</strong>? Tocca un pulsante o dimmi il numero.'); _appendCourtButtons(div, aiFlowState.draft); return div; }
-      if (k === 'time') return _say('🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (durata predefinita: lezione 60′, partita 90′).');
-      if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say('👥 <strong>' + (isLez ? 'Chi è l’allievo?' : 'Chi gioca?') + '</strong> Scrivi il nome (o scrivi <em>ospite</em> per prenotare senza nominativo).'); }
+      if (k === 'type') { const div = _say(_pick(['🎾 Dimmi: è una <strong>partita</strong> o una <strong>lezione</strong>?', '🎾 Facciamo una <strong>partita</strong> o una <strong>lezione</strong>?'])); _appendTypeButtons(div, aiFlowState.draft); return div; }
+      if (k === 'maestro') { const div = _say(_pick(['👨‍🏫 Con quale <strong>maestro</strong>? Dimmi pure il nome.', '👨‍🏫 Chi tiene la lezione? Dimmi il <strong>maestro</strong>.', '👨‍🏫 E il <strong>maestro</strong> chi è?'])); _appendMaestroButtons(div, aiFlowState.draft); return div; }
+      if (k === 'date') return _say(_pick(['📅 Per quale <strong>giorno</strong>? Dimmi <em>oggi</em>, <em>domani</em>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>).', '📅 Quando la mettiamo? <em>Oggi</em>, <em>domani</em>, <em>lunedì</em>… o una data tipo <em>20/06</em>.']));
+      if (k === 'court') { const div = _say(_pick(['🎾 Su quale <strong>campo</strong>? Dimmi pure il numero.', '🎾 Quale <strong>campo</strong> usiamo? Basta il numero (1–4).'])); _appendCourtButtons(div, aiFlowState.draft); return div; }
+      if (k === 'time') return _say(_pick(['🕐 A che <strong>ora</strong>? Es: <em>18-19:30</em>, oppure solo <em>18</em> (la durata la metto io: lezione 60′, partita 90′).', '🕐 Per che <strong>ora</strong>? Dimmi <em>18</em> o un intervallo come <em>18-19:30</em>.']));
+      if (k === 'player') { const isLez = aiFlowState && aiFlowState.draft && (aiFlowState.draft.tipo || 'partita') === 'lezione'; return _say(isLez ? _pick(['👥 <strong>Chi è l’allievo?</strong> Dimmi il nome — o di’ <em>ospite</em> se preferisci.', '👥 E l’<strong>allievo</strong> chi è? Dimmi il nome, o <em>ospite</em>.']) : _pick(['👥 <strong>Chi gioca?</strong> Dimmi i nomi — o di’ <em>ospite</em> per uno o più posti liberi.', '👥 Con chi giochiamo? Dimmi i nomi, oppure <em>ospite</em> (anche “due ospiti”).'])); }
     }
     // Pulsanti "Partita / Lezione" per la domanda sul tipo (fallback testuale in _continuePrenota).
     function _appendTypeButtons(div, draft) {
@@ -43352,8 +43899,9 @@ Per confermare scrivi ELIMINA.`);
       draft.__ospiteAsked = true;
       aiFlowState = { kind: 'prenota', stage: 'ospite', draft: draft };
       const isLez = (draft.tipo || 'partita') === 'lezione';
-      const who = isLez ? 'allievo' : 'giocatore';
-      const div = _say('👥 Serve un <strong>' + who + '</strong> per prenotare: scrivi il <strong>nome</strong>. Se è davvero un ospite, tocca <strong>Ospite</strong>.');
+      const div = _say(isLez
+        ? _pick(['👥 Ci manca solo l’<strong>allievo</strong>: dimmi il nome — o di’ <em>ospite</em> se non c’è un tesserato.', '👥 Per chi è la lezione? Dimmi il nome dell’<strong>allievo</strong>, oppure <em>ospite</em>.'])
+        : _pick(['👥 Con chi gioca? Dimmi i <strong>nomi</strong> — o di’ <em>ospite</em> (anche “due ospiti”) per i posti liberi.', '👥 Ci manca chi gioca: dimmi i <strong>nomi</strong>, oppure <em>ospite</em> per uno o più posti.']));
       _appendOspiteButtons(div, draft);
     }
     function _appendOspiteButtons(div, draft) {
@@ -43398,14 +43946,9 @@ Per confermare scrivi ELIMINA.`);
         .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
         .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
       cand = _stripCourtRefs(cand).trim();
-      // Se dopo aver tolto i riempitivi non resta nulla (es. "no", "inserisco il nome"), NON
-      // forzare la risoluzione sul testo grezzo: cadi sotto e chiedi esplicitamente il nome.
-      const r = cand ? _resolvePlayers(cand) : { giocatori: [], notes: [] };
-      if (r.giocatori && r.giocatori.length) {
-        draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
-        aiFlowState = null;
-        return _showSummary(draft);
-      }
+      // C'è un nome → applica le regole giocatore (cognome obbligatorio / socio-o-ospite) via il
+      // flusso playerresolve; al termine consegna i giocatori alla bozza e mostra il riepilogo.
+      if (cand) return _startPlayerResolve(cand, { mode: 'create', draft: draft });
       // Voleva inserire un nome ma non l'ha (ancora) scritto → chiedilo esplicitamente.
       if (/( no | nome | inserisc\w* | scriv\w* )/.test(n)) {
         aiFlowState = { kind: 'prenota', stage: 'await', draft: draft, need: ['player'] };
@@ -43423,26 +43966,26 @@ Per confermare scrivi ELIMINA.`);
         const nn = ' ' + _norm(text) + ' ';
         if (/( lezion\w*| individual\w*| di gruppo| maestr\w*| insegnant\w*)/.test(nn)) draft.tipo = 'lezione';
         else if (/( partit\w*| match | gioc\w*)/.test(nn)) draft.tipo = 'partita';
-        else return _say('Scrivi <strong>partita</strong> o <strong>lezione</strong> (oppure “annulla”).');
+        else return _say('Scusa, non ho afferrato 🙂 — è una <strong>partita</strong> o una <strong>lezione</strong>?');
         draft.typePresent = true; draft.__typeAsked = true;
         aiFlowState = null;
         return _advancePrenota(draft);
       }
       if (k === 'maestro') {
         const m = _detectIstruttore(text, _norm(text));
-        if (!m) return _say('Non ho riconosciuto il maestro. Scrivi uno tra: <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong> (oppure “annulla”).');
+        if (!m) return _say('Mmm, quel maestro non mi torna 🤔 — dimmene uno tra <strong>' + _escapeHtml(_maestri().join(', ')) + '</strong>.');
         draft.istruttore = m;
       } else if (k === 'date') {
         const iso = _extractDate(_norm(text), _calSelectedIso());
-        if (!iso) return _say('Non ho capito il giorno. Scrivi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) — oppure “annulla”.');
+        if (!iso) return _say('Per quando, scusa? Dimmi <strong>oggi</strong>, <strong>domani</strong>, un giorno (<em>lunedì</em>) o una data (<em>20/06</em>) 📅');
         draft.data = iso;
       } else if (k === 'court') {
         const c = _extractCampoLoose(text);
-        if (!c) return _say('Non ho capito il campo. Scrivi <strong>1</strong>, <strong>2</strong>, <strong>3</strong> o <strong>4</strong> (oppure “annulla”).');
+        if (!c) return _say('Quale campo, scusa? Dimmi un numero da <strong>1</strong> a <strong>4</strong> 🎾');
         draft.campoNum = c;
       } else if (k === 'time') {
         const tr = _parseTimeRange(text);
-        if (!tr) return _say('Non ho capito l’orario. Es: <em>18-19:30</em> oppure <em>18</em> (oppure “annulla”).');
+        if (!tr) return _say('Non ho colto l’orario 🙂 — dimmi tipo <em>18</em> o un intervallo come <em>18-19:30</em>.');
         draft.ora = tr.ora; draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = !!tr.durDefault;
       } else if (k === 'player') {
         const nn = ' ' + _norm(text) + ' ';
@@ -43454,9 +43997,12 @@ Per confermare scrivi ELIMINA.`);
           let _cand = String(text || '')
             .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
             .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
-          const r = _resolvePlayers(_stripCourtRefs(_cand));
-          if (!r.giocatori || !r.giocatori.length) return _say('Non ho capito il nome. Scrivi il nome del giocatore, oppure <em>ospite</em> (o “annulla”).');
-          draft.giocatori = r.giocatori; draft.notes = (draft.notes || []).concat(r.notes || []);
+          _cand = _stripCourtRefs(_cand).trim();
+          if (!_cand) return _say('Non ho colto il nome 🙂 — dimmi chi gioca, oppure di’ <em>ospite</em>.');
+          // Player è l'ultimo slot tecnico: applico le regole giocatore via playerresolve (che a fine
+          // mostra il riepilogo). Chiudo qui il flusso prenota "await" e passo il testimone.
+          aiFlowState = null;
+          return _startPlayerResolve(_cand, { mode: 'create', draft: draft });
         }
       }
       aiFlowState.need.shift();
@@ -43486,6 +44032,7 @@ Per confermare scrivi ELIMINA.`);
       if (draft.tipo === 'lezione') lines.push('👨‍🏫 Maestro: ' + _escapeHtml(draft.istruttore || '—'));
       const chi = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? '—' : 'Ospite');
       lines.push('👥 ' + _escapeHtml(chi));
+      if (draft.note) lines.push('📝 ' + _escapeHtml(draft.note));
       return lines.join('<br>');
     }
     function _showSummary(draft) {
@@ -43503,9 +44050,9 @@ Per confermare scrivi ELIMINA.`);
       // _executePrenota a ri-chiederlo; l'Ospite si crea solo se chiesto ESPRESSAMENTE.
       draft.nome = (draft.giocatori && draft.giocatori.length) ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? (draft.istruttore || 'Lezione') : 'Ospite');
       aiFlowState = { kind: 'prenota', stage: 'confirm', draft: draft };
-      let html = '📋 <strong>Riepilogo prenotazione</strong><br>' + _summaryHtml(draft);
+      let html = _pick(['📋 <strong>Ecco com’è</strong>, controlla:', '📋 <strong>Ci siamo</strong>, ti riepilogo:', '📋 <strong>Perfetto</strong>, ecco il riepilogo:']) + '<br>' + _summaryHtml(draft);
       if (draft.notes && draft.notes.length) html += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + draft.notes.map(_escapeHtml).join('<br>⚠️ ') + '</span>';
-      html += '<br><span style="color:#98a2b3;font-size:12px">Confermi? Verrà scritta <strong>davvero</strong> su Matchpoint.</span>';
+      html += '<br><span style="color:#98a2b3;font-size:12px">' + _pick(['Va bene così? Dimmi <strong>conferma</strong> e la scrivo su Matchpoint.', 'Confermi? Al tuo “<strong>ok</strong>” la metto su Matchpoint.', 'Procedo? Dimmi <strong>sì</strong> e la prenoto su Matchpoint.']) + '</span>';
       const div = _say(html);
       _appendConfirmButtons(div, draft);
     }
@@ -43601,7 +44148,7 @@ Per confermare scrivi ELIMINA.`);
       if (!_cands.length) {
         return _say('Non trovo prenotazioni ' + _dayLabel(_iso) + ' a cui aggiungerlo. Dimmi quale, es. «<em>aggiungi ' + (nmEsc || '[nome]') + ' alla partita di domani campo 2 alle 18</em>».');
       }
-      const _m2 = _say('A quale prenotazione aggiungo <strong>' + (nmEsc || 'il giocatore') + '</strong>? Tocca un pulsante o dimmi campo e ora.');
+      const _m2 = _say('A quale prenotazione aggiungo <strong>' + (nmEsc || 'il giocatore') + '</strong>? Dimmi pure campo e ora.');
       _choiceButtons(_m2, _cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }), function (j) {
         const _c = _cands[j];
         (async function () { try { await staffCalEditPlayers(_iso, _c.campo, _c.ora, '', _c.durata, _c.tipoReale || _c.tipo); } catch (e) {} if (staffCalPlayersState && !staffCalPlayersState.busy) _addPlayerToOpenBooking(res, t); })();
@@ -43621,15 +44168,12 @@ Per confermare scrivi ELIMINA.`);
         .replace(/\b(come\s+(?:giocatore|allievo|allieva)|(?:a|ad|in|su|nel|nell['’]|nella|nelle|alla|alle|dalla|dalle)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match)|a\s+quest[ao]\s+(?:prenotazion\w*|partit\w*|lezion\w*))\b/ig, ' ');
       raw = _stripTimeRefs(_stripDateRefs(_stripCourtRefs(raw))).trim();
       if (!raw && res && res.giocatori && res.giocatori.length) raw = res.giocatori.join(' ');
-      const r = raw ? _resolvePlayers(raw) : { giocatori: [], notes: [] };
-      if (!r.giocatori || !r.giocatori.length) {
-        return _say('Chi devo aggiungere alla prenotazione aperta? Scrivi il <strong>nome</strong> del giocatore.');
+      if (!raw) {
+        return _say('Chi devo aggiungere alla prenotazione aperta? Dimmi il <strong>nome e cognome</strong> del giocatore.');
       }
-      // CONFERMA prima di scrivere (decisione utente 2026-06-19): rimando indietro il NOME
-      // capito e salvo su Matchpoint solo dopo un "sì". Così una dettatura sbagliata (nome
-      // errato, o non in anagrafica → Ospite) si intercetta PRIMA di toccare il gestionale.
-      // Nessuno stato a metà: se non confermi, non viene scritto né in app né su Matchpoint.
-      return _askAddConfirm(st, r.giocatori, r.notes);
+      // Regole giocatore (26/06): nome singolo → chiedi cognome; nome+cognome non in anagrafica →
+      // chiedi «aggiungi socio» o «ospite». Risolto/i → conferma prima di scrivere su Matchpoint.
+      return _startPlayerResolve(raw, { mode: 'add' });
     }
     // Chiede conferma dell'aggiunta (echo del nome capito) e apre il flusso 'addconfirm'.
     function _askAddConfirm(st, players, notes) {
@@ -43637,10 +44181,10 @@ Per confermare scrivi ELIMINA.`);
       const anyOspite = players.some(function (g) { return g.ospite; });
       aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      let msg = '🤔 Ho capito: aggiungere <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.';
+      let msg = _pick(['🤔 Ci sono: aggiungo <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.', '🤔 Allora: metto <strong>' + _escapeHtml(nomi) + '</strong> sul Campo ' + st.campo + ' · ' + st.ora + '.']);
       if (notes && notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + notes.join('<br>⚠️ ') + '</span>';
-      msg += '<br>Confermo e salvo su Matchpoint? Scrivi <strong>sì</strong>' +
-        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' o <strong>no</strong> (oppure dimmi il nome giusto).');
+      msg += '<br>Dimmi <strong>sì</strong> e salvo su Matchpoint' +
+        (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' — o <strong>no</strong>, oppure il <strong>nome giusto</strong> se ho sbagliato.');
       return _say(msg);
     }
     // Risposta alla conferma: sì → mette in scheda + salva; no/chiudi → scarta; altro testo →
@@ -43654,14 +44198,38 @@ Per confermare scrivi ELIMINA.`);
         aiFlowState = null;
         return _say('👍 Ok, non ho aggiunto nessuno. Se vuoi riprovare, dimmi il nome giusto.');
       }
-      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
-        const st = staffCalPlayersState;
+      const _isYes = /( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n);
+      const st = staffCalPlayersState;
+      // CORREZIONE/ESPANSIONE: il messaggio può contenere altri NOMI oltre alla conferma
+      // («sì un ospite poi Maurizio Aprea e Lidia Gomes»): ri-risolvo il roster COMPLETO dal
+      // messaggio (togliendo "sì"/verbo iniziale). Accetto solo se trova un socio reale o un
+      // "ospite" esplicito → così una conferma discorsiva («sì va bene così») NON diventa Ospiti.
+      let _corr = null, _corrRaw = null;
+      if (st && !st.busy) {
+        let raw = String(text || '')
+          .replace(/^\s*\W*(s[iì]|no)\b[,.\s]*/ig, ' ')
+          .replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
+        raw = _stripCourtRefs(raw).trim();
+        if (raw) {
+          const rr = _resolvePlayers(raw);
+          const _hasReal = rr.giocatori && rr.giocatori.some(function (g) { return g.nome && g.nome !== 'Ospite'; });
+          const _saidOspite = /\bospit[ei]\b/.test(n);
+          if (rr.giocatori && rr.giocatori.length && (_hasReal || _saidOspite)) { _corr = rr; _corrRaw = raw; }
+        }
+      }
+      // Correzione vera (un socio reale, o più di un giocatore): ri-applico le regole giocatore via
+      // playerresolve (cognome obbligatorio / socio-o-ospite). Il filtro _corr sopra evita che una
+      // conferma discorsiva («sì va bene così») entri qui e diventi una decisione su parole a caso.
+      if (_corr && (!_isYes || _corr.giocatori.length > 1 || _corr.giocatori.some(function (g) { return g.nome !== 'Ospite'; }))) {
+        return _startPlayerResolve(_corrRaw, { mode: 'add' });
+      }
+      // Conferma SECCA → aggiungo i giocatori già capiti e salvo.
+      if (_isYes) {
         if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
         aiFlowState = null;
         st.add = st.add || [];
         fs.players.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
         st.add = _dedupPlayersByIdentity(st.add); // niente doppioni dello stesso socio
-
         try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
         const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
         _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');
@@ -43669,17 +44237,127 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      // Non è sì/no → probabilmente è il nome corretto: ri-risolvi e ri-chiedi conferma.
-      const st = staffCalPlayersState;
-      if (st && !st.busy) {
-        let raw = String(text || '').replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
-        raw = _stripCourtRefs(raw).trim();
-        if (raw) {
-          const rr = _resolvePlayers(raw);
-          if (rr.giocatori && rr.giocatori.length) return _askAddConfirm(st, rr.giocatori, rr.notes);
+      return _say('Dimmi <strong>sì</strong> e lo aggiungo, <strong>no</strong> se lasciamo stare — o il <strong>nome</strong> giusto se ho capito male.');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // RICONOSCIMENTO GIOCATORE — regole di prodotto (decisione utente 26/06):
+    //  (1) un SOLO nome (senza cognome) → chiedi SEMPRE nome e cognome prima di procedere;
+    //  (2) nome+cognome NON in anagrafica → chiedi: «aggiungi come socio» (creazione COMPLETA) o «ospite».
+    // _resolvePlayersStrict classifica ogni nome in: risolto (socio noto / Ospite esplicito) oppure
+    // IN SOSPESO ({surname}=manca il cognome, {decision}=non in anagrafica). Il flusso 'playerresolve'
+    // processa i sospesi UNO ALLA VOLTA, poi consegna i giocatori al chiamante (add a scheda / create).
+    // ════════════════════════════════════════════════════════════════════════════
+    let _afterAnaCreate = null;   // continuazione: aggiungere alla prenotazione il socio appena creato
+    function _memberToPlayer(best) {
+      const nomeSocio = (typeof playerFullName === 'function' ? playerFullName(best) : '') || best.name || '';
+      const codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(best) : '';
+      const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
+      return { nome: nomeSocio, codice: codice, codiceCliente: codiceCliente };
+    }
+    function _resolvePlayersStrict(rawStr) {
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      const resolved = [], pending = [];
+      for (let i = 0; i < names.length; i++) {
+        const nm = names[i];
+        const _onm = ' ' + _norm(nm) + ' ';
+        if (/\b(ospit[ei]|jolly)\b/.test(_onm)) {
+          let _q = 1; const _qm = _onm.match(/\b(due|tre|quattro|cinque|sei|[2-9])\s+(?:ospit[ei]|jolly)\b/);
+          if (_qm) { const _map = { due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 }; _q = _map[_qm[1]] || parseInt(_qm[1], 10) || 1; }
+          for (let _k = 0; _k < Math.min(_q, 6); _k++) resolved.push(_ospitePlayer());
+          continue;
         }
+        const words = nm.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= 1) { pending.push({ raw: nm.trim(), kind: 'surname' }); continue; }  // regola (1)
+        const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nm, 5) || []) : [];
+        if (matches.length) resolved.push(_memberToPlayer(matches[0].member));
+        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2)
       }
-      return _say('Rispondi <strong>sì</strong> per aggiungere, <strong>no</strong> per lasciar perdere, oppure scrivi il <strong>nome</strong> giusto.');
+      return { resolved: resolved, pending: pending };
+    }
+    // cont = { mode:'add' } (scheda aperta) | { mode:'create', draft }
+    function _startPlayerResolve(rawStr, cont) {
+      const cls = _resolvePlayersStrict(rawStr);
+      aiFlowState = { kind: 'playerresolve', stage: 'queue', cont: cont, resolved: cls.resolved, queue: cls.pending };
+      _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+      return _playerResolveStep();
+    }
+    function _playerResolveStep() {
+      const fs = aiFlowState; if (!fs || fs.kind !== 'playerresolve') return;
+      if (!fs.queue.length) return _playerResolveDone();
+      const cur = fs.queue[0];
+      if (cur.kind === 'surname') {
+        fs.stage = 'surname';
+        return _say('Di «<strong>' + _escapeHtml(cur.raw) + '</strong>» mi serve anche il cognome 🙂 — dimmi il <strong>nome e cognome</strong> completo.');
+      }
+      // decision: non in anagrafica → aggiungi come socio (creazione completa) o ospite
+      fs.stage = 'decision';
+      const _m = _say('«<strong>' + _escapeHtml(cur.raw) + '</strong>» non è in anagrafica. Vuoi <strong>aggiungerlo come socio</strong> oppure metterlo come <strong>ospite</strong>?');
+      const _b = svcMakeStepButtons(['👤 Aggiungi come socio', '🎾 Metti come ospite'], function (label) {
+        try { svcFreezeMsg(_m); } catch (e) {}
+        if (/socio/i.test(label)) _playerResolveAddMember(cur.raw);
+        else { fs.resolved.push(_ospitePlayer()); fs.queue.shift(); _playerResolveStep(); }
+      }, function () { try { svcFreezeMsg(_m); } catch (e) {} });
+      if (_m && _m.appendChild) _m.appendChild(_b);
+      return true;
+    }
+    function _continuePlayerResolve(text) {
+      const fs = aiFlowState; if (!fs || fs.kind !== 'playerresolve') { aiFlowState = null; return _say('Dimmi pure il nome del giocatore.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente | nessun\w* | chiud\w* | esci )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      // Stadio 'decision': risposta a voce «ospite» o «aggiungilo come socio» (oltre ai pulsanti).
+      if (fs.stage === 'decision' && fs.queue.length) {
+        if (/\bospit\w*|\bjolly\b/.test(n)) { fs.resolved.push(_ospitePlayer()); fs.queue.shift(); return _playerResolveStep(); }
+        if (/(aggiung\w*|socio|tesserat\w*|anagrafic|iscriv\w*|nuovo)/.test(n)) { return _playerResolveAddMember(fs.queue[0].raw); }
+        // altrimenti: forse ha (ri)detto un nome → prosegui sotto e prova a risolverlo
+      }
+      // Interpreta la risposta come NOME e COGNOME (sia per 'surname' sia per un nome ridetto).
+      let cand = String(text || '')
+        .replace(/^\s*(?:no|s[iì])\b[,.\s]*/i, ' ')
+        .replace(/\b(inserisc\w*|insert\w*|mett\w*|aggiung\w*|scriv\w*|usa|il\s+nome\s+(?:è|e)|il\s+nome|come\s+(?:allievo|allieva|giocator\w*))\b/ig, ' ');
+      cand = _stripCourtRefs(cand).trim();
+      const words = cand.split(/\s+/).filter(Boolean);
+      if (words.length < 2) return _say('Mi servono <strong>nome e cognome</strong> 🙂 — scrivili entrambi (es. «Mario Rossi»).');
+      const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(cand, 5) || []) : [];
+      fs.queue.shift();
+      if (matches.length) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
+      // Nome completo ma non in anagrafica → diventa una decisione (aggiungi socio / ospite).
+      fs.queue.unshift({ raw: cand, kind: 'decision' });
+      return _playerResolveStep();
+    }
+    // «Aggiungi come socio»: avvia la creazione anagrafica COMPLETA pre-riempita col nome; al termine
+    // _afterAnaCreate aggiunge il socio appena creato ai risolti e riprende il flusso giocatori.
+    function _playerResolveAddMember(rawName) {
+      const fs = aiFlowState;
+      const savedCont = fs.cont, savedResolved = fs.resolved.slice(), savedQueue = fs.queue.slice(1);
+      _afterAnaCreate = function (member) {
+        _afterAnaCreate = null;
+        aiFlowState = { kind: 'playerresolve', stage: 'queue', cont: savedCont, resolved: savedResolved.concat([_memberToPlayer(member)]), queue: savedQueue };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        _playerResolveStep();
+      };
+      _say('👤 Bene, iscriviamo <strong>' + _escapeHtml(rawName) + '</strong>: completiamo i dati (telefono, sesso, livello, email facoltativa) e poi lo aggiungo alla prenotazione.');
+      // Bozza pre-riempita col nome+cognome già detti (niente giro via parse, che ci lascerebbe
+      // dentro "iscrivi"); _anaAdvanceCreate chiede i campi mancanti come la creazione socio manuale.
+      const _parts = String(rawName || '').trim().split(/\s+/).filter(Boolean);
+      const _draft = { firstName: _parts[0] || '', surname: _parts.slice(1).join(' '), phone: '', email: '', level: '', gender: '' };
+      try { _anaAdvanceCreate(_draft); }
+      catch (e) { _afterAnaCreate = null; _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
+      return true;
+    }
+    function _playerResolveDone() {
+      const fs = aiFlowState; const cont = fs ? fs.cont : null; const players = fs ? fs.resolved : [];
+      aiFlowState = null;
+      if (!cont) return;
+      if (!players.length) return _say('Non ho capito chi aggiungere. Dimmi il <strong>nome e cognome</strong>, oppure «ospite».');
+      if (cont.mode === 'add') {
+        const st = staffCalPlayersState;
+        if (!st || st.busy) return _say('La scheda non è più aperta: riapri la prenotazione e riprova.');
+        return _askAddConfirm(st, players, []);
+      }
+      // create: consegna i giocatori alla bozza e mostra il riepilogo.
+      const draft = cont.draft; draft.giocatori = players;
+      return _showSummary(draft);
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
     // richiesto ai giocatori presenti (roster); se non c'è → lo dice; se più simili → fa scegliere.
@@ -43721,7 +44399,7 @@ Per confermare scrivi ELIMINA.`);
       if (!q || !qtok.length) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: roster, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Tocca un nome o rispondi a voce.');
+        const _mr = _say('Chi tolgo dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Dimmi pure il nome.');
         _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
@@ -43740,13 +44418,13 @@ Per confermare scrivi ELIMINA.`);
       if (hits.length > 1) {
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _mh = _say('Ci sono più giocatori simili. Quale tolgo? Tocca un nome o rispondi a voce.');
+        const _mh = _say('Ci sono più nomi simili 🙂 — quale tolgo? Dimmi pure quale.');
         _choiceButtons(_mh, hits.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
       aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Tolgo <strong>' + _escapeHtml(hits[0].nome) + '</strong> dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Tolgo <strong>' + _escapeHtml(hits[0].nome) + '</strong> dalla prenotazione (Campo ' + st.campo + ' · ' + st.ora + ')? Dimmi <strong>sì</strong> o <strong>no</strong>.');
     }
     // Risposta alla conferma di rimozione: pick (scelta tra omonimi) → confirm; sì → segna remove
     // e salva; no/chiudi → scarta. Restituisce truthy: ha gestito la risposta.
@@ -43762,9 +44440,9 @@ Per confermare scrivi ELIMINA.`);
         const m = String(text || '').match(/\b(\d{1,2})\b/);
         let target = null;
         if (m) { const i = parseInt(m[1], 10) - 1; if (i >= 0 && i < fs.candidates.length) target = fs.candidates[i]; }
-        if (!target) return _say('Rispondi col <strong>numero</strong> del giocatore da togliere (o “no”).');
+        if (!target) return _say('Dimmi il <strong>numero</strong> del giocatore da togliere (o “no”).');
         fs.target = target; fs.stage = 'confirm';
-        return _say('🤔 Tolgo <strong>' + _escapeHtml(target.nome) + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🤔 Tolgo <strong>' + _escapeHtml(target.nome) + '</strong>? Dimmi <strong>sì</strong> o <strong>no</strong>.');
       }
       if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | togli\w* | rimuov\w* | giusto | esatto )/.test(n)) {
         const st = staffCalPlayersState;
@@ -43778,7 +44456,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per togliere, <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e lo tolgo, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> per toglierlo, <strong>no</strong> per lasciarlo.']));
     }
     // Comandi vocali/testuali sulla SCHEDA prenotazione aperta: "salva/conferma/ok" → salva su
     // Matchpoint (come il pulsante Salva), "chiudi" → chiude senza salvare. Così l'aggiunta di un
@@ -43815,12 +44493,12 @@ Per confermare scrivi ELIMINA.`);
       // arriva solo la parola singola: i comandi pieni "prenota campo 2…" sono già stati intercettati
       // a monte da _looksLikeNewCommand, che abbandona il flusso).
       if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) {
-        aiFlowState = null; return _say('❌ Prenotazione annullata.');
+        aiFlowState = null; return _say(_pick(['👍 Va bene, lascio perdere — niente prenotazione.', '👍 Ok, non prenoto nulla.', '👍 Tranquillo, l’ho annullata.']));
       }
       if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | salva | prenot\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executePrenota(d);
       }
-      _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+      _say(_pick(['Dimmi pure <strong>sì</strong> per prenotare, o <strong>no</strong> se lasciamo stare.', 'Quando vuoi: <strong>conferma</strong> e la prenoto, oppure <strong>annulla</strong>.']));
     }
 
     // Scrittura reale su Matchpoint (mirror di svcConfirmBooking).
@@ -43886,10 +44564,11 @@ Per confermare scrivi ELIMINA.`);
       const dl = _dayLabel(parsed.data);
       const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto scrivendo su Matchpoint…</span>';
       let _msgEl = null;
+      const _done = _pick(['✅ <strong>Fatto!</strong> ', '✅ <strong>Ci siamo</strong> — ', '✅ <strong>Perfetto!</strong> ']);
       if (parsed.tipo === 'lezione') {
-        _msgEl = _say('✅ <strong>Lezione prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
+        _msgEl = _say(_done + 'Lezione · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote, 'ok');
       } else {
-        _msgEl = _say('✅ <strong>Partita prenotata</strong>: Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
+        _msgEl = _say(_done + 'Partita · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
       }
       // Aggiorna la nota "↻ scrivo…" quando Matchpoint conferma (o fallisce).
       const _setSyncNote = function (html, color) {
@@ -43960,15 +44639,30 @@ Per confermare scrivi ELIMINA.`);
     // dei pulsanti numerati per scegliere fra opzioni note; onPick riceve l'INDICE (robusto anche
     // con etichette duplicate, es. due "Ospite"). La risposta vocale/testuale resta gestita dal
     // flow (aiFlowState pick) in parallelo. Vedi [[assistente-disambiguazione-bottoni]].
-    function _choiceButtons(msgEl, baseLabels, onPick, onCancel) {
+    function _choiceButtons(msgEl, baseLabels, onPick, onCancel, opts) {
       if (!msgEl || !msgEl.appendChild || typeof svcMakeStepButtons !== 'function') return;
-      const labels = (baseLabels || []).map(function (s, i) { return (i + 1) + '. ' + s; });
+      const all = baseLabels || [];
+      // Cap discreto: troppi pulsanti = messaggio chilometrico da scorrere. Mostro solo i primi
+      // _CHOICE_CAP; gli indici restano 1:1 coi candidati (pulsante j → candidato j) e chi ha un
+      // flusso 'pick' (annullo/modifica) accetta comunque numeri/criteri oltre il cap a voce.
+      const cap = (opts && opts.cap) || _CHOICE_CAP;
+      const shown = all.slice(0, cap);
+      const labels = shown.map(function (s, i) { return (i + 1) + '. ' + s; });
       const b = svcMakeStepButtons(labels, function (label) {
         try { svcFreezeMsg(msgEl); } catch (e) {}
         const i = parseInt(label, 10) - 1;
         if (i >= 0) onPick(i);
       }, function () { try { svcFreezeMsg(msgEl); } catch (e) {} if (typeof onCancel === 'function') onCancel(); });
       msgEl.appendChild(b);
+      // Avviso discreto quando ce ne sono altre: invita a restringere invece di vomitare tutto.
+      if (all.length > cap) {
+        try {
+          const more = document.createElement('div');
+          more.style.cssText = 'color:#98a2b3;font-size:12px;margin-top:6px';
+          more.textContent = '…e altre ' + (all.length - cap) + '. Restringi pure (per es. campo e ora) e te la trovo.';
+          msgEl.appendChild(more);
+        } catch (e) {}
+      }
     }
     // Toglie SUBITO il giocatore scelto (tap esplicito su un pulsante) e salva: niente ulteriore
     // conferma (la rimozione è reversibile, l'azione è già esplicita). Mirror del ramo "sì" di
@@ -43983,6 +44677,23 @@ Per confermare scrivi ELIMINA.`);
       _say('➖ Tolgo <strong>' + _escapeHtml(target.nome) + '</strong> e salvo su Matchpoint…');
       try { staffCalPlayersSave({ skipConfirm: true }); } catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
       return true;
+    }
+    // Pattern d'intenzione "togli un ospite" (Step 2): toglie UN giocatore-ospite dalla scheda
+    // aperta senza chiedere "quale" (gli ospiti sono fungibili). 0 ospiti → spiega; ≥1 → ne toglie
+    // uno via _removePlayerNow. Legge il roster dal calendario se la scheda non l'ha ancora.
+    function _removeOneGuestNow(st) {
+      if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+      if (!Array.isArray(st.roster) || !st.roster.length) {
+        const cal = _rosterFromCalendar(st);
+        if (cal.length) st.roster = cal;
+      }
+      const roster = (st && Array.isArray(st.roster)) ? st.roster.filter(function (p) { return p && p.nome; }) : [];
+      const guests = roster.filter(function (p) { return /^ospite\b/.test(_norm(p.nome)); });
+      if (!guests.length) {
+        const present = roster.length ? (' Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '.') : '';
+        return _say('In questa prenotazione non ci sono ospiti da togliere.' + present);
+      }
+      return _removePlayerNow(guests[0]);
     }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
@@ -44077,7 +44788,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (cands.length === 1) return _showCancelSummary(iso, cands[0]);
       aiFlowState = { kind: 'cancella', stage: 'pick', iso: iso, list: cands };
-      const _m = _say('❓ Ho trovato <strong>' + cands.length + '</strong> prenotazioni ' + dl + '. <strong>Quale vuoi annullare?</strong> Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      const _m = _say('Ne ho trovate <strong>' + cands.length + '</strong> ' + dl + '. <strong>Quale annullo?</strong> Dimmi il numero, oppure campo e ora.');
       _choiceButtons(_m,
         cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
         function (i) { aiFlowState = null; _showCancelSummary(iso, cands[i]); },
@@ -44091,13 +44802,13 @@ Per confermare scrivi ELIMINA.`);
       const draft = { iso: iso, campo: slot.campo, ora: slot.ora, durata: durata, nome: nome, istruttore: slot.istruttore || '', tipoLabel: _cancelTipoLabel(slot) };
       aiFlowState = { kind: 'cancella', stage: 'confirm', draft: draft };
       const lines = [
-        '🗑️ <strong>Annullare questa prenotazione?</strong>',
+        _pick(['🗑️ <strong>Allora, annullo questa?</strong>', '🗑️ <strong>Ci siamo — annullo questa?</strong>', '🗑️ <strong>Questa qui, la annullo?</strong>']),
         '📍 Campo ' + slot.campo,
         '📅 ' + _dayLabel(iso),
         '🕐 ' + slot.ora + '–' + oraFine + ' (' + durata + '′)',
         '👥 ' + (_escapeHtml(nome) || '<em>—</em>') + ' · ' + draft.tipoLabel
       ];
-      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">Verrà annullata <strong>davvero</strong> su Matchpoint. L’operazione è irreversibile.</span>';
+      const html = lines.join('<br>') + '<br><span style="color:#98a2b3;font-size:12px">' + _pick(['La tolgo <strong>davvero</strong> da Matchpoint e non si torna indietro.', 'Sparisce <strong>davvero</strong> da Matchpoint: l’operazione non è reversibile.']) + '</span>';
       const div = _say(html);
       _appendCancelButtons(div, draft);
     }
@@ -44141,7 +44852,7 @@ Per confermare scrivi ELIMINA.`);
         if (tm) f = f.filter(function (r) { return r.ora === tm; });
         if (f.length === 1) pick = f[0];
       }
-      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      if (!pick) return _say('Mmm, non ho colto quale 🙂 — dimmi il <strong>numero</strong> (1–' + list.length + ') o campo e ora.');
       aiFlowState = null;
       return _showCancelSummary(iso, pick);
     }
@@ -44153,7 +44864,7 @@ Per confermare scrivi ELIMINA.`);
       if (/( si | sì | conferm\w* | confermo | ok | va bene | vabene | procedi | certo | vai | cancell\w* | annull\w* | elimin\w* | disd\w* | togl\w* )/.test(n)) {
         const d = aiFlowState.draft; aiFlowState = null; return _executeCancella(d);
       }
-      _say('Per annullare la prenotazione rispondi <strong>Sì</strong> o <strong>No</strong> (o usa i pulsanti qui sopra).');
+      _say(_pick(['Dimmi <strong>sì</strong> e la annullo, oppure <strong>no</strong> e la lascio com’è.', 'Allora: <strong>sì</strong> per annullarla, <strong>no</strong> per tenerla.']));
     }
     // Annullamento reale su Matchpoint (riusa staffCalDoCancel: rete + cleanup locale/cloud).
     async function _executeCancella(draft) {
@@ -44195,9 +44906,9 @@ Per confermare scrivi ELIMINA.`);
       const st = staffCalPlayersState;
       if (!st || !pending) return;
       if (pending.type === 'add') {
-        const r = pending.rawName ? _resolvePlayers(pending.rawName) : { giocatori: [], notes: [] };
-        if (!r.giocatori || !r.giocatori.length) return _say('Chi devo aggiungere alla prenotazione? Dimmi il <strong>nome</strong>.');
-        return _askAddConfirm(st, r.giocatori, r.notes);
+        if (!pending.rawName) return _say('Chi devo aggiungere alla prenotazione? Dimmi il <strong>nome e cognome</strong>.');
+        // Regole giocatore (26/06): nome singolo → chiedi cognome; non in anagrafica → socio/ospite.
+        return _startPlayerResolve(pending.rawName, { mode: 'add' });
       }
       if (pending.type === 'remove') return _askRemoveConfirm(st, pending.rawName);
     }
@@ -44265,7 +44976,7 @@ Per confermare scrivi ELIMINA.`);
       if (cands.length === 1) return _openEditor(iso, cands[0], pending);
       aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
       const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
-      const _m = _say('❓ Quale prenotazione vuoi ' + azLbl + '? Tocca un pulsante o rispondi a voce (numero, o campo e ora).');
+      const _m = _say('Quale prenotazione vuoi ' + azLbl + '? Dimmi il numero, oppure campo e ora.');
       _choiceButtons(_m,
         cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
         function (i) { const _p = aiFlowState && aiFlowState.pending; aiFlowState = null; _openEditor(iso, cands[i], _p || pending); },
@@ -44288,7 +44999,7 @@ Per confermare scrivi ELIMINA.`);
         if (tm) f = f.filter(function (r) { return r.ora === tm; });
         if (f.length === 1) pick = f[0];
       }
-      if (!pick) return _say('Non ho capito quale. Rispondi con il <strong>numero</strong> (1–' + list.length + ') o specifica campo e ora (oppure “annulla”).');
+      if (!pick) return _say('Mmm, non ho colto quale 🙂 — dimmi il <strong>numero</strong> (1–' + list.length + ') o campo e ora.');
       const pending = aiFlowState.pending || null;
       return _openEditor(iso, pick, pending);
     }
@@ -44381,7 +45092,7 @@ Per confermare scrivi ELIMINA.`);
       }
       aiFlowState = { kind: 'moveconfirm', stage: 'confirm', src: src, dest: dest };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Sposto la prenotazione da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 La sposto da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Dimmi <strong>sì</strong> e ci penso io.');
     }
     function _confirmMoveAnswer(text) {
       const fs = aiFlowState;
@@ -44400,7 +45111,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare lo spostamento: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per spostare o <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e la sposto, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> per spostarla, <strong>no</strong> per lasciarla dov’è.']));
     }
     // Risposta a "dove la sposto?" → interpreta campo/orario/giorno come DESTINAZIONE e conferma.
     function _continueMoveDest(text) {
@@ -44417,7 +45128,7 @@ Per confermare scrivi ELIMINA.`);
       if (dt && dt !== src.iso) destIso = dt;
       if (destIso == null) { const sh = _relDayShift(text); if (sh != null) destIso = _addDaysIso(src.iso, sh); }
       if (destCampo == null && destOra == null && destIso == null) {
-        return _say('Non ho capito la destinazione. Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”), oppure “annulla”.');
+        return _say('Dove la porto? Dimmi un <strong>campo</strong> (“campo 2”), un <strong>orario</strong> (“alle 16”) o un <strong>giorno</strong> (“domani”, “tra 3 giorni”) 🙂');
       }
       aiFlowState = null;
       const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
@@ -44508,10 +45219,10 @@ Per confermare scrivi ELIMINA.`);
       if (newDur > curDur) {
         const faux = { origIso: src.iso, origCampo: src.campo, origOra: src.ora, origDurMin: curDur };
         if (_staffCalDestOccupied(src.iso, src.campo, src.ora, newDur, faux)) {
-          return _say('⚠️ Attenzione: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. Allungo <strong>comunque</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+          return _say('⚠️ Occhio: lo slot dopo le ' + _staffCalEndTime(src.ora, curDur) + ' (' + dove + ') sembra occupato. La allungo <strong>lo stesso</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Dimmi <strong>sì</strong> o <strong>no</strong>.');
         }
       }
-      return _say('🤔 Porto la durata della prenotazione di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Porto la durata di ' + dove + ' da <strong>' + curDur + '′</strong> a <strong>' + newDur + '′</strong> (fine ' + oraFin + ')? Dimmi <strong>sì</strong> e la sistemo.');
     }
     function _durSrcFromCalendar(res, text, iso, court, time) {
       const slots = res.slots || {};
@@ -44542,7 +45253,7 @@ Per confermare scrivi ELIMINA.`);
         // Quantità non detta: apro un flusso in ATTESA così la risposta successiva viene catturata.
         aiFlowState = { kind: 'durataconfirm', stage: 'await', src: src, isShorten: isShorten };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('Di quanto cambio la durata della prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>» (o “annulla”).');
+        return _say('Di quanto la cambio, la durata di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi i minuti o le ore — es. «<em>di 30 minuti</em>», «<em>a un\'ora e mezza</em>» o «<em>fino alle 11:30</em>».');
       }
       return _finalizeDurata(src, r.newDur);
     }
@@ -44555,7 +45266,7 @@ Per confermare scrivi ELIMINA.`);
       if (fs.stage === 'await') {
         if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
         const r = _computeNewDur(fs.src, fs.isShorten, text);
-        if (r.ask) return _say('Non ho capito la durata. Dimmi i minuti o le ore — es. «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>» (o “annulla”).');
+        if (r.ask) return _say('Non ho colto la durata 🙂 — dimmi i minuti o le ore: «<strong>di 30 minuti</strong>», «<strong>a 90</strong>» o «<strong>fino alle 11:30</strong>».');
         return _finalizeDurata(fs.src, r.newDur);
       }
       if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la durata invariata.'); }
@@ -44572,7 +45283,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> per cambiare la durata o <strong>no</strong> per lasciar perdere.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e cambio la durata, o <strong>no</strong> se lasciamo com’è.', 'Allora: <strong>sì</strong> per cambiarla, <strong>no</strong> per tenerla così.']));
     }
 
     // ── NOTA / OSSERVAZIONI (postulato: leggi prima il calendario) ───────────────
@@ -44621,19 +45332,19 @@ Per confermare scrivi ELIMINA.`);
       if (isRemoveNote) {
         aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, remove: true };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🗑️ Tolgo la nota dalla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Dimmi <strong>sì</strong> o <strong>no</strong>.');
       }
       let noteText = _extractNoteText(text);
       if (!noteText) {
         // Nessun testo nel comando: lo chiedo (così non resta a metà).
         aiFlowState = { kind: 'notaconfirm', stage: 'await', src: src };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        return _say('📝 Qual è il testo della nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Scrivi il testo (o “annulla”).');
+        return _say('📝 Cosa scrivo nella nota per la prenotazione di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>? Dimmi pure il testo.');
       }
       if (noteText.length > 300) noteText = noteText.slice(0, 300);
       aiFlowState = { kind: 'notaconfirm', stage: 'confirm', src: src, noteText: noteText, remove: false };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+      return _say('🤔 Metto la nota «<strong>' + _escapeHtml(noteText) + '</strong>» sulla prenotazione di <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong>? Dimmi <strong>sì</strong> e la salvo.');
     }
     function _confirmNotaAnswer(text) {
       const fs = aiFlowState;
@@ -44644,10 +45355,10 @@ Per confermare scrivi ELIMINA.`);
       if (fs.stage === 'await') {
         if (isExit) { aiFlowState = null; return _say('👍 Ok, nessuna nota.'); }
         let body = String(text || '').trim();
-        if (!body) return _say('Scrivi il <strong>testo</strong> della nota (o “annulla”).');
+        if (!body) return _say('Dimmi il <strong>testo</strong> della nota 🙂');
         if (body.length > 300) body = body.slice(0, 300);
         fs.noteText = body; fs.remove = false; fs.stage = 'confirm';
-        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Scrivi <strong>sì</strong> o <strong>no</strong>.');
+        return _say('🤔 Metto la nota «<strong>' + _escapeHtml(body) + '</strong>» sulla prenotazione di <strong>Campo ' + fs.src.campo + ' · ' + fs.src.ora + '</strong>? Dimmi <strong>sì</strong> e la salvo.');
       }
       if (isExit) { aiFlowState = null; return _say('👍 Ok, ho lasciato la nota invariata.'); }
       if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
@@ -44666,7 +45377,7 @@ Per confermare scrivi ELIMINA.`);
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
       }
-      return _say('Rispondi <strong>sì</strong> o <strong>no</strong>.');
+      return _say(_pick(['Dimmi <strong>sì</strong> e procedo, o <strong>no</strong> se lasciamo stare.', 'Allora: <strong>sì</strong> o <strong>no</strong>?']));
     }
 
     // ── ANAGRAFICA (Step 4): crea/aggiorna un socio da chat ─────────────────────
@@ -44841,7 +45552,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaAnswerMember(matches[0].member, fields);
       aiFlowState = { kind: 'anagrafica', op: 'read', stage: 'pick', matches: matches, fields: fields };
-      const _m = _say('❓ <strong>Di quale socio?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Di quale socio?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'read', fields, null);
       return true;
     }
@@ -44880,7 +45591,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaDeactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'deactivate', stage: 'pick', matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi disattivare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'deactivate', null, null);
       return true;
     }
@@ -44941,7 +45652,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaReactivateWithTarget(matches[0].member);
       aiFlowState = { kind: 'anagrafica', op: 'reactivate', stage: 'pick', matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi riattivare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'reactivate', null, null);
       return true;
     }
@@ -45034,15 +45745,15 @@ Per confermare scrivi ELIMINA.`);
       const draft = aiFlowState.draft, k = aiFlowState.need[0], ans = String(text || '').trim();
       if (k === 'name') {
         const p = _anaParseNameAnswer(ans).split(/\s+/).filter(Boolean);
-        if (!p.length) return _say('Non ho capito il nome. Scrivi <strong>nome e cognome</strong> (oppure “annulla”).');
+        if (!p.length) return _say('Non ho colto il nome 🙂 — dimmi <strong>nome e cognome</strong>.');
         draft.firstName = p[0]; draft.surname = p.slice(1).join(' ');
       } else if (k === 'phone') {
         const ph = _anaExtractPhone(ans) || ((typeof normalizePhone === 'function') ? normalizePhone(ans) : ans.replace(/[^\d+]/g, ''));
-        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Telefono non valido. Scrivi un numero (es. 333 1234567).');
+        if (!ph || String(ph).replace(/\D/g, '').length < 6) return _say('Quel numero non mi torna 🤔 — dimmi un telefono valido (es. 333 1234567).');
         draft.phone = ph;
       } else if (k === 'gender') {
         const g = _anaExtractGender(ans) || (/^f/i.test(ans) ? 'F' : /^m/i.test(ans) ? 'M' : '');
-        if (!g) return _say('Rispondi <strong>uomo</strong> o <strong>donna</strong>.');
+        if (!g) return _say('Dimmi solo se è <strong>uomo</strong> o <strong>donna</strong> 🙂');
         draft.gender = g;
       } else if (k === 'level') {
         // Scala app 0–7 (parità con pmoAnaFieldError/form manuale min=0 max=7). Accetta cifra
@@ -45166,7 +45877,7 @@ Per confermare scrivi ELIMINA.`);
       const exactTop = matches[0] && matches[0].distance === 0 && (!matches[1] || matches[1].distance > 0);
       if (matches.length === 1 || exactTop) return _anaUpdateWithTarget(matches[0].member, changes);
       aiFlowState = { kind: 'anagrafica', op: 'update', stage: 'pick', changes: changes, matches: matches };
-      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Tocca un pulsante o dimmi il cognome.');
+      const _m = _say('❓ <strong>Quale socio vuoi aggiornare?</strong> Dimmi pure il cognome.');
       _anaPickButtons(_m, matches, 'update', null, changes);
       return true;
     }
@@ -45220,7 +45931,7 @@ Per confermare scrivi ELIMINA.`);
       if (/( annull\w*| lascia\w*| stop| niente)( |$)/.test(n)) { aiFlowState = null; return _say('👍 Ok, niente modifiche.'); }
       const target = aiFlowState.target;
       const changes = _anaExtractChanges(text);
-      if (!Object.keys(changes).length) return _say('Non ho capito cosa cambiare. Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “cognome Bianchi”, “uomo/donna”.');
+      if (!Object.keys(changes).length) return _say('Cosa cambio, di preciso? Es. “telefono 333 1234567”, “livello 4.5”, “email nome@dominio.it”, “cognome Bianchi”, “uomo/donna”.');
       aiFlowState = null;
       return _showAnaUpdateSummary(target, changes);
     }
@@ -45245,14 +45956,14 @@ Per confermare scrivi ELIMINA.`);
       const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '✅ Conferma e salva';
       const no = document.createElement('button'); no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ Annulla';
       yes.addEventListener('click', function () { if (yes.disabled) return; yes.disabled = true; no.disabled = true; yes.classList.add('selected'); aiFlowState = null; _anaExecute(snap); });
-      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say('❌ Operazione annullata.'); });
+      no.addEventListener('click', function () { if (no.disabled) return; yes.disabled = true; no.disabled = true; aiFlowState = null; _say(_pick(['👍 Va bene, lascio perdere.', '👍 Ok, non faccio nulla.'])); });
       wrap.appendChild(yes); wrap.appendChild(no); div.appendChild(wrap);
     }
     function _confirmAnagraficaAnswer(text) {
       const n = ' ' + _norm(text) + ' ';
-      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say('❌ Operazione annullata.'); }
+      if (/( no | annull\w*| lascia\w*| stop | niente )/.test(n)) { aiFlowState = null; return _say(_pick(['👍 Va bene, lascio perdere.', '👍 Ok, non faccio nulla.'])); }
       if (/( si | sì | conferm\w*| confermo| ok | va bene | vabene | procedi | certo | salva )/.test(n)) { const snap = aiFlowState; aiFlowState = null; return _anaExecute(snap); }
-      return _say('Per procedere rispondi <strong>Conferma</strong> o <strong>Annulla</strong> (o usa i pulsanti qui sopra).');
+      return _say(_pick(['Dimmi <strong>sì</strong> e salvo, oppure <strong>no</strong> se lasciamo stare.', 'Allora: <strong>conferma</strong> e procedo, o <strong>annulla</strong> e non tocco nulla.']));
     }
     function _anaExecute(snap) {
       if (!snap) return;
@@ -45267,9 +45978,19 @@ Per confermare scrivi ELIMINA.`);
         const firstName = norm.firstName, surname = norm.surname;
         const fullName = compactSpaces((firstName + ' ' + surname).trim());
         const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
-        if (!firstName || (!surname && !guest)) return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.');
+        if (!firstName || (!surname && !guest)) { _afterAnaCreate = null; return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.'); }
         const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: draft.email || '' };
-        if (typeof findMatchingMemberIndex === 'function' && findMatchingMemberIndex(candidate) >= 0) return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        const _dupIdx = (typeof findMatchingMemberIndex === 'function') ? findMatchingMemberIndex(candidate) : -1;
+        if (_dupIdx >= 0) {
+          // Già in anagrafica (per nome/telefono/email): non ricreare. Se eravamo dentro un'aggiunta
+          // alla prenotazione, USA il socio esistente; altrimenti avvisa soltanto.
+          if (typeof _afterAnaCreate === 'function') {
+            _say('ℹ️ <strong>' + _escapeHtml(fullName) + '</strong> è già in anagrafica: lo aggiungo alla prenotazione senza ricrearlo.');
+            const _cb = _afterAnaCreate; _afterAnaCreate = null; try { _cb(giocatori[_dupIdx]); } catch (e) {}
+            return;
+          }
+          return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        }
         const now = new Date().toISOString();
         const newMember = ensureMemberId({
           id: makeId(), memberId: '', firstName: firstName, surname: surname, name: fullName,
@@ -45286,19 +46007,26 @@ Per confermare scrivi ELIMINA.`);
         try { updateStats(); } catch (e) {}
         try { displayAssessment(); } catch (e) {}
         try { pmoQueueImmediateMemberCloudSync(newMember, 'salvare il nuovo socio (assistente AI) su Supabase'); } catch (e) {}
+        // Continuazione "torna alla prenotazione": se la creazione è stata avviata DENTRO un flusso
+        // di aggiunta giocatore (_playerResolveAddMember), il socio è ora in anagrafica → lo aggiungo
+        // alla prenotazione. Fire-and-forget dopo il messaggio di esito (la sync MP prosegue in bg).
+        const _fireAna = function () { if (typeof _afterAnaCreate === 'function') { const _cb = _afterAnaCreate; _afterAnaCreate = null; try { _cb(newMember); } catch (e) {} } };
         // Ospite/guest: non si crea su Matchpoint (la scheda 000001 esiste già lì).
-        if (guest) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>');
+        if (guest) { _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> aggiunto in anagrafica e su Supabase. <span style="color:#98a2b3;font-size:12px">(ospite: non inviato a Matchpoint)</span>'); _fireAna(); return; }
         const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
-        if (_isTestEnv) return _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.');
+        if (_isTestEnv) { _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.'); _fireAna(); return; }
         _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
+        // _fireAna (ritorno alla prenotazione) DOPO la creazione su Matchpoint, così il socio
+        // aggiunto alla prenotazione porta GIÀ il codice cliente (memberId) importato da Matchpoint.
         if (typeof pmoCreateMemberInMatchpoint === 'function') {
           Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function (res) {
-            if (res && res.status === 'test_env') return _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.');
+            if (res && res.status === 'test_env') { _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.'); _fireAna(); return; }
             const code = String(newMember.memberId || '').trim();
             if (/^\d{4,6}$/.test(code)) _say('✅ Creato anche su <strong>Matchpoint</strong> · codice <strong>' + _escapeHtml(code) + '</strong>.');
             else _say('⚠️ Creazione su Matchpoint non riuscita: il socio resta in app + Supabase. Riprova più tardi o crealo dal gestionale.');
-          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); });
-        }
+            _fireAna();
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); _fireAna(); });
+        } else { _fireAna(); }
         return;
       } catch (err) {
         return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));
@@ -45397,7 +46125,8 @@ Per confermare scrivi ELIMINA.`);
             tipo: d.tipo, campo: d.campoNum || null, data: d.data || null,
             ora: d.ora || null, oraFine: d.oraFine || null, istruttore: d.istruttore || null,
             giocatori: (d.giocatori || []).map(function (g) { return g.nome; }),
-            note: d.notes || []
+            note: d.notes || [],
+            notaInLinea: d.note || ''
           };
         } catch (e) { out.prenotaError = e.message || String(e); }
       }
@@ -45861,7 +46590,9 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
+    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
+      setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; },
+      setLearningModeGlobal: setLearningModeGlobal, refreshLearningToggle: _loadLearningModeSetting, loadAiUsage: loadAiUsage, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
 
   // Auto-crescita della textarea della chat (stile WhatsApp): cresce con il testo fino a
