@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.991';
+    const APP_VERSION = '5.992';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42090,8 +42090,16 @@ Per confermare scrivi ELIMINA.`);
       // lezione/prenotazione/campo. "cancella LA prenotazione / annulla LA partita di campo X"
       // (con "la/il/di", senza "dalla") resta CANCELLA. In italiano cancella/elimina valgono
       // anche per "leva un giocatore", quindi qui pesano come rimozione SOLO con "dalla …".
-      const removeFromMatchCtx = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n)
-        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      const _remVerb = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n);
+      const _fromMatchPrep = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      // Preposizione di STATO ("alla/sulla/nella partita", "sul campo"): in dettatura naturale
+      // «levi tre ospiti ALLA partita delle 13 SUL campo 4» è una RIMOZIONE, non un annullo né una
+      // nuova prenotazione. La accettiamo come rimozione SOLO se il comando nomina ESPLICITAMENTE
+      // ospite/giocatore/allievo (così «leva la partita» resta annullo e «prenota … sul campo 4»
+      // resta PRENOTA: quelli non hanno la parola ospite/giocatore).
+      const _atMatchPrep = /\b(?:ospit[ei]|giocator\w*|alliev\w*)\b/.test(n)
+        && /\b(?:a|al|allo|alla|ai|agli|alle|all['’]|su|sul|sullo|sulla|sui|sugli|sulle|in|nel|nello|nella|nei|negli|nelle)\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      const removeFromMatchCtx = _remVerb && (_fromMatchPrep || _atMatchPrep);
       // "apri/mostra/visualizza/gestisci LA PRENOTAZIONE/PARTITA/LEZIONE di campo X [alle Y]" =
       // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
       // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
@@ -42137,7 +42145,7 @@ Per confermare scrivi ELIMINA.`);
         // Rimozione di un giocatore "dalla partita/lezione" → CORREGGI (apre l'editor), mai
         // CANCELLA (che annullerebbe l'intera prenotazione). Vince anche su cancella/elimina.
         if (name === 'CORREGGI' && removeFromMatchCtx) s += 4;
-        if ((name === 'CANCELLA' || name === 'ANAGRAFICA') && removeFromMatchCtx) s = 0;
+        if ((name === 'CANCELLA' || name === 'ANAGRAFICA' || name === 'PRENOTA' || name === 'TROVA') && removeFromMatchCtx) s = 0;
         // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
         if (name === 'CORREGGI' && openEditCtx) s += 4;
         if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
@@ -42740,7 +42748,7 @@ Per confermare scrivi ELIMINA.`);
       // Interpretazione anagrafica (isolata): se è un comando-socio, ha priorità su tutto.
       const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
-      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levi|levare|caccia)\b/.test(tx);
       // In italiano "cancella/elimina/scarta <nome> DALLA partita/lezione/prenotazione/campo" =
       // togliere un GIOCATORE (non annullare la prenotazione). Vale SOLO con "da(lla) …": senza,
       // "cancella la prenotazione / elimina la partita di Mario" resta annullamento (cancelVerb).

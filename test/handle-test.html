@@ -843,6 +843,24 @@ const CASES = [
       checks.push({ label: 'roster locale: Mario + Luca + 2 Ospite', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 31, flow: 'Giocatore/Pattern', name: 'handle: "mi levi tre ospiti ALLA partita … SUL campo" (no scheda, no "dalla") → CORREGGI rimozione, NON nuova prenotazione',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // Verbo "levi" + preposizione di STATO ("alla partita", "sul campo"): in dettatura naturale
+      // è una rimozione. Prima veniva instradata su PRENOTA (slot occupato → "vuoi spostarti?").
+      await handleSeq(win, ['mi levi tre ospiti alla partita di domani alle 18 sul campo 2']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato (non un create)', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene TRE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 3 });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Ospite/gi) || []).length === 2, 3000);
+      checks.push({ label: 'roster locale: 5 → 2 Ospiti (tolti TRE)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
