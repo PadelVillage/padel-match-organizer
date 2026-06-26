@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.981';
+    const APP_VERSION = '5.985';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42634,13 +42634,30 @@ Per confermare scrivi ELIMINA.`);
       // Read-only; espone metadati che handle() usa per instradare micro-azioni parametriche
       // (es. "togli un ospite") senza chiedere "quale?". L'azione vera resta decisa dalla cascata.
       const fraseIntento = _matchFrasiIntento(tx);
-      const cx = _campoX(tx);
-      const dx = _dateX(tx, baseIso);
-      const istruttore = _maestroDetect(tx);
-      const ty = _typeX(tx, istruttore);
+      // "Nota in linea" (… metti in nota X): calcolata SUBITO, due usi.
+      //  • _slotTx: se il comando, TOLTA la nota, ha un segnale di CREAZIONE (verbo prenota/crea o
+      //    la parola "partita/lezione/…"), il corpo della nota è SECONDARIO → rilevo gli slot
+      //    (tipo/campo/ora/maestro) sul testo SENZA la nota, così "…nota lezione tattica" non
+      //    trasforma in lezione una PARTITA (bug live 26/06). Per la nota-su-esistente _slotTx=tx
+      //    (rest vuoto), e comunque _startNota ri-estrae campo/ora dal testo grezzo.
+      //  • _restIsNewBooking: gate anti mis-routing (vedi playerEdit e ramo nota→modifica).
+      const _inlineNote = (function () { try { return _extractInlineNote(text); } catch (e) { return { note: '', rest: text }; } })();
+      const _restNorm = _inlineNote.note ? _norm(_inlineNote.rest || '') : '';
+      const _restHasCampo = /\bcamp[oi]\s*(?:n\w*\.?\s*)?(?:\d|uno|una|due|tre|quattro)\b/.test(_restNorm);
+      const _restHasTime = /\b(?:alle|dalle|delle|le|ore|h)\s*\d{1,2}(?:[:.]\d{2})?\b/.test(_restNorm) || /\b\d{1,2}[:.]\d{2}\b/.test(_restNorm);
+      const _restIsNewBooking = !!_inlineNote.note && _restHasCampo && _restHasTime
+        && !/\b(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|sostituisc\w*|scambia|apri|riapr\w*|gestisc\w*|spost\w*|allung\w*|accorci\w*|prolung\w*|estend\w*|riduc\w*|modific\w*|corregg\w*)\b/.test(_restNorm);
+      const _restIsCreation = !!_inlineNote.note && (_BOOK_VERB.test(' ' + _restNorm + ' ')
+        || /\b(fissa\w*|blocc\w*|segna|cre[ai]\w*)\b/.test(_restNorm)
+        || /\b(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(_restNorm));
+      const _slotTx = _restIsCreation ? _ppDialect(_inlineNote.rest || text) : tx;
+      const cx = _campoX(_slotTx);
+      const dx = _dateX(_slotTx, baseIso);
+      const istruttore = _maestroDetect(_slotTx);
+      const ty = _typeX(_slotTx, istruttore);
       // testo per l'orario: tolgo campo e date così il bare-hour non prende quei numeri.
       // Le date le rimuovo SOLO se con "/" (le date con "." si confondono con gli orari "18.00").
-      let timeText = tx
+      let timeText = _slotTx
         .replace(/\bcampo\s*\d+\b/g, ' ').replace(/\bcampo\s+(uno|una|due|tre|quattro)\b/g, ' ')
         .replace(/\b(?:sul|sullo|sulla|sui|su)\s+\d+\b/g, ' ').replace(/\bil\s+\d{1,2}\b/g, ' ')
         .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ' ')
@@ -42716,7 +42733,7 @@ Per confermare scrivi ELIMINA.`);
       // Rinomina/aggiorna nome o cognome di un socio (fuori dal contesto evento) → anagrafica.
       const anaRename = (renameV || (updateV && nameFieldWord)) && noEventCtx;
       const anaUpdateField = updateV && noEventCtx && (personFieldStrong || personFieldWeak || nameFieldWord);
-      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && (hasPerson || editToExisting) && !anaCreateContact;
+      const playerEdit = (addV || remV || replV || removeFromBooking) && !createPhrase && !_restIsNewBooking && (hasPerson || editToExisting) && !anaCreateContact;
 
       // "apri/riapri/gestisci/mostra/visualizza LA prenotazione di campo X [alle Y]" = aprire la
       // SCHEDA di una prenotazione esistente (modifica → editor), non crearne/cercarne una. Serve un
@@ -42761,7 +42778,7 @@ Per confermare scrivi ELIMINA.`);
         // creazione, così "prenota campo 2 durata 90" resta una NUOVA prenotazione.
         else if ((modifyVerb
             || ((/\bdurat\w*\b/.test(tx) || /\bdurar\w*\b/.test(tx)) && !createPhrase)
-            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase))
+            || (/(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(tx) && !createPhrase && !_restIsNewBooking))
           && (eventRef || cx.campo || tmx.ora)) azione = 'modifica';
         else if (createPhrase || (cx.campo && tmx.ora) || (ty.typePresent && (cx.campo || tmx.ora))) azione = 'crea';
       }
@@ -43742,11 +43759,18 @@ Per confermare scrivi ELIMINA.`);
       const n = _norm(text);
       const p = res.parsed || {};
       const slots = res.slots || {};
-      const tipo = _detectTipo(n);
-      const istruttore = tipo === 'lezione' ? (_detectIstruttore(text, n) || p.istruttore || '') : '';
+      // Nota in linea ("… metti in nota lezione tattica"): la estraggo SUBITO e per la rilevazione
+      // di TIPO/maestro/typePresent uso il testo SENZA la nota, così il corpo della nota non
+      // trasforma una PARTITA in lezione (bug live 26/06). _buildPrenotaDraft gira solo in
+      // creazione, quindi togliere la nota dagli slot è sempre sicuro.
+      const _inNote = (function () { try { return _extractInlineNote(text); } catch (e) { return { note: '', rest: text }; } })();
+      const _slotText = _inNote.note ? (_inNote.rest || text) : text;
+      const _slotN = _norm(_slotText);
+      const tipo = _detectTipo(_slotN);
+      const istruttore = tipo === 'lezione' ? (_detectIstruttore(_slotText, _slotN) || p.istruttore || '') : '';
       // typePresent = il tipo è stato scritto esplicitamente (parola "partita/lezione/…") o
       // estratto come slot (regole o Gemini). Se no, va CHIESTO per primo (vedi _advancePrenota).
-      const typePresent = (function () { try { return _typeX(n, '').typePresent || !!(slots && slots.type); } catch (e) { return !!(slots && slots.type); } })();
+      const typePresent = (function () { try { return _typeX(_slotN, '').typePresent || !!(slots && slots.type); } catch (e) { return !!(slots && slots.type); } })();
       const draft = {
         tipo: tipo,
         typePresent: typePresent,
@@ -43775,14 +43799,17 @@ Per confermare scrivi ELIMINA.`);
       }
       // Nota in linea ("… metti in note prima lezione"): la tolgo dal testo PRIMA di estrarre i
       // giocatori, così il corpo della nota non diventa un finto allievo, e la imposto sulla bozza.
-      const _in = _extractInlineNote(text);
+      const _in = _inNote;
       if (_in.note) draft.note = _in.note;
       const _playerSrc = _in.rest || text;
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
       const after = _afterTime(_playerSrc);
       let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
       playerText = _stripDateRefs(_stripCourtRefs(playerText));
-      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
+      // playerRaw = testo-giocatori GREZZO del comando one-shot: lo conservo per applicare le
+      // REGOLE GIOCATORE (cognome obbligatorio / socio-o-ospite) in _advancePrenota via playerresolve.
+      // _resolvePlayers qui dà già una bozza (Ospite silenzioso); playerresolve la raffina se serve.
+      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; draft.playerRaw = playerText; }
       return draft;
     }
     // Esegue: costruisce la bozza e avanza (slot mancanti → domande, altrimenti riepilogo).
@@ -43822,6 +43849,19 @@ Per confermare scrivi ELIMINA.`);
       // (decisione utente 2026-06-19), oltre al maestro già obbligatorio.
       if ((!draft.giocatori || !draft.giocatori.length) && !draft.__ospiteAsked) {
         return _askOspite(draft);
+      }
+      // Regole giocatore anche nella creazione ONE-SHOT (parità coi punti interattivi): se il
+      // testo-giocatori del comando aveva nomi "in sospeso" (nome singolo → serve cognome; nome
+      // completo non in anagrafica → socio o ospite), le applico via playerresolve invece di tenere
+      // gli Ospite risolti silenziosamente da _resolvePlayers. Una volta sola (__strictResolved);
+      // nomi già risolti e "ospite" esplicito non danno alcuna friction.
+      if (draft.playerRaw && !draft.__strictResolved) {
+        draft.__strictResolved = true;
+        const _cls = _resolvePlayersStrict(draft.playerRaw);
+        if (_cls.pending && _cls.pending.length) {
+          aiFlowState = null;
+          return _startPlayerResolve(draft.playerRaw, { mode: 'create', draft: draft });
+        }
       }
       aiFlowState = null;
       _showSummary(draft);
@@ -44255,6 +44295,24 @@ Per confermare scrivi ELIMINA.`);
       const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
       return { nome: nomeSocio, codice: codice, codiceCliente: codiceCliente };
     }
+    // Anti-FALSO-MATCH: findMemberNameSuggestions aggancia anche per SOLO NOME (es. "Marco Aprea"
+    // → socio "Marco Antoniazzi", distanza 1 sul nome). Per le regole giocatore un nome COMPLETO va
+    // accettato solo se anche il COGNOME combacia (esatto o fuzzy stretto, es. "Comes"≈"Gomes"),
+    // altrimenti è un'altra persona → decisione socio/ospite. (Bug live 26/06: "Marco Aprea"→"Marco
+    // Antoniazzi".)
+    function _surnameConfirmed(cand, member) {
+      const ctoks = _norm(cand).split(/\s+/).filter(Boolean);
+      if (ctoks.length < 2) return false;
+      const candSurTokens = ctoks.slice(1);   // tutto dopo il primo nome (cognome anche composto)
+      const mname = _norm((typeof playerFullName === 'function' ? playerFullName(member) : '') || (member && member.name) || '');
+      const mtoks = mname.split(/\s+/).filter(Boolean);
+      return candSurTokens.some(function (w) {
+        return mtoks.some(function (mt) {
+          if (mt === w) return true;
+          return mt.length >= 4 && w.length >= 4 && _lev(mt, w) <= 1;  // refusi: Comes/Gomes
+        });
+      });
+    }
     function _resolvePlayersStrict(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const resolved = [], pending = [];
@@ -44270,8 +44328,8 @@ Per confermare scrivi ELIMINA.`);
         const words = nm.trim().split(/\s+/).filter(Boolean);
         if (words.length <= 1) { pending.push({ raw: nm.trim(), kind: 'surname' }); continue; }  // regola (1)
         const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nm, 5) || []) : [];
-        if (matches.length) resolved.push(_memberToPlayer(matches[0].member));
-        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2)
+        if (matches.length && _surnameConfirmed(nm, matches[0].member)) resolved.push(_memberToPlayer(matches[0].member));
+        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2): non in anagrafica (o solo nome combacia)
       }
       return { resolved: resolved, pending: pending };
     }
@@ -44320,8 +44378,8 @@ Per confermare scrivi ELIMINA.`);
       if (words.length < 2) return _say('Mi servono <strong>nome e cognome</strong> 🙂 — scrivili entrambi (es. «Mario Rossi»).');
       const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(cand, 5) || []) : [];
       fs.queue.shift();
-      if (matches.length) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
-      // Nome completo ma non in anagrafica → diventa una decisione (aggiungi socio / ospite).
+      if (matches.length && _surnameConfirmed(cand, matches[0].member)) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
+      // Nome completo ma non in anagrafica (o combacia solo il nome) → decisione (aggiungi socio / ospite).
       fs.queue.unshift({ raw: cand, kind: 'decision' });
       return _playerResolveStep();
     }
@@ -44355,8 +44413,10 @@ Per confermare scrivi ELIMINA.`);
         if (!st || st.busy) return _say('La scheda non è più aperta: riapri la prenotazione e riprova.');
         return _askAddConfirm(st, players, []);
       }
-      // create: consegna i giocatori alla bozza e mostra il riepilogo.
-      const draft = cont.draft; draft.giocatori = players;
+      // create: consegna i giocatori alla bozza e mostra il riepilogo. Le note di _resolvePlayers
+      // ("X non è in anagrafica → Ospite") sono SUPERATE dalle scelte fatte qui (cognome/socio/ospite):
+      // le azzero così il riepilogo non mostra un avviso fuorviante.
+      const draft = cont.draft; draft.giocatori = players; draft.notes = [];
       return _showSummary(draft);
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
