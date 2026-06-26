@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+import { logAiUsage } from '../_shared/aiUsage.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ai-propose-lexicon — Fase 3b autoapprendimento PMOAi (routine in background).
@@ -176,12 +177,14 @@ Deno.serve(async (req: Request) => {
   // MANUALE guarda TUTTO il non-rivisto (nessun limite di tempo); la routine solo l'ultima finestra.
   const routineOk = await verifyRoutineSecret(admin, req.headers.get('x-pmo-routine-secret') || '');
   let manual = false;
+  let actorEmail = '';
   if (!routineOk) {
     const actor = await getActor(req);
     if (!actor || !hasPermission(actor, 'view_assistante_ai')) {
       return err(401, 'UNAUTHORIZED', 'Serve la routine secret oppure una sessione staff con permesso Assistente AI.');
     }
     manual = true;
+    actorEmail = actor.email;
   }
 
   const apiKey = clean(Deno.env.get('GEMINI_API_KEY'));
@@ -221,7 +224,11 @@ Deno.serve(async (req: Request) => {
     .join('\n');
 
   let parsed: JsonMap;
-  try { const r = await callGemini(apiKey, userMessage); parsed = r.parsed as JsonMap; }
+  try {
+    const r = await callGemini(apiKey, userMessage);
+    parsed = r.parsed as JsonMap;
+    await logAiUsage('ai-propose-lexicon', r.usage as Record<string, unknown> | null, actorEmail);
+  }
   catch (e) { return err(502, 'GEMINI_ERROR', e instanceof Error ? e.message : String(e)); }
 
   const items = Array.isArray(parsed.items) ? parsed.items as JsonMap[] : [];

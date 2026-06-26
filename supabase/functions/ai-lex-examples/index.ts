@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+import { logAiUsage } from '../_shared/aiUsage.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ai-lex-examples — Verifica del Vocabolario (lessico) PMOAi.
@@ -234,6 +235,8 @@ Deno.serve(async (req: Request) => {
   // Preferisci le frasi che contengono il termine; se il modello non l'ha messo letteralmente
   // in nessuna (raro), mostra comunque le sue frasi invece di non dare nulla.
   const examples = (withTerm.length ? withTerm : cleaned).slice(0, 5);
+
+  await logAiUsage('ai-lex-examples', result.usage as Record<string, unknown> | null, actor.email);
 
   return ok({
     examples,
