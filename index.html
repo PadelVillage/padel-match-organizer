@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.986';
+    const APP_VERSION = '5.987';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -44463,11 +44463,17 @@ Per confermare scrivi ELIMINA.`);
         _choiceButtons(_mr, roster.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(roster[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
-      // "togli un ospite" (query = solo "ospite"/"jolly", nessun nome reale): gli ospiti sono
-      // FUNGIBILI → ne tolgo UNO subito, senza elencare doppioni identici "Ospite" (parità con la
-      // scheda aperta, Step 2). Vale anche SENZA scheda: _startModifica ha già individuato e aperto
-      // la prenotazione, poi è arrivato qui via _runPendingEditAction.
-      if (qtok.every(function (w) { return /^(ospit\w*|jolly)$/.test(w); })) {
+      // "togli un ospite" (gli ospiti sono FUNGIBILI): se la query nomina un OSPITE e NON nomina
+      // nessun giocatore REALE del roster (diverso da Ospite), ne tolgo UNO subito — senza elencare
+      // doppioni identici "Ospite" (parità con la scheda aperta, Step 2). Robusto al fraseggio
+      // ("togli un ospite", "mi togli un ospite", "puoi togliere un ospite per favore"): non dipende
+      // dal ripulire verbi/riempitivi, ma dal fatto che NON è stato nominato un tesserato. Vale anche
+      // SENZA scheda: _startModifica ha già individuato+aperto la prenotazione.
+      const _qHasOspite = /\b(ospit\w*|jolly)\b/.test(q);
+      const _realTokens = roster.filter(function (p) { return !/^ospite\b/.test(_norm(p.nome)); })
+        .reduce(function (acc, p) { _norm(p.nome).split(/\s+/).forEach(function (tk) { if (tk.length >= 3) acc.push(tk); }); return acc; }, []);
+      const _namesReal = qtok.some(function (w) { return _realTokens.indexOf(w) >= 0; });
+      if (_qHasOspite && !_namesReal) {
         return _removeOneGuestNow(st);
       }
       // Nome detto → abbina per TOKEN significativo in comune (o nome esatto). Niente substring su

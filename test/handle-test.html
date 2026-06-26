@@ -764,6 +764,29 @@ const CASES = [
       checks.push({ label: 'roster locale: Mario + 1 Ospite (tolto UN solo ospite)', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 27, flow: 'Giocatore/Pattern', name: 'handle: "mi togli un ospite …" (fraseggio con verbo/riempitivi, 3 Ospiti, no scheda) → toglie UN Ospite senza chiedere "quale"',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // 3 Ospiti FUNGIBILI, nessun tesserato. Fraseggio "mi togli un ospite" (il verbo/riempitivo NON
+      // viene ripulito dalla query) → la guardia non deve dipendere dallo strip dei verbi ma dal fatto
+      // che NON è stato nominato un giocatore reale → toglie 1 Ospite, niente disambiguazione 3×Ospite.
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['mi togli un ospite dalla partita di campo 2 di domani alle 18']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker edit inviato (rimozione eseguita senza chiedere "quale")', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.some(n => /ospite/i.test(n)) });
+      const ok2 = await waitFor(() => {
+        const nm = namesOf(H.getBookings(), iso, 2, '18:00');
+        const ospiti = (nm.match(/Ospite/gi) || []).length;
+        return ospiti === 2;
+      }, 3000);
+      checks.push({ label: 'roster locale: 3 → 2 Ospiti (tolto UN solo ospite)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
