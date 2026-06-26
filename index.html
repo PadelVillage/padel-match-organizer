@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.993';
+    const APP_VERSION = '5.994';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42600,10 +42600,9 @@ Per confermare scrivi ELIMINA.`);
       const levelField = /\b(livell\w*|liv)\b/.test(tx);
       const sexField   = /\b(sesso|genere|maschi\w*|femmin\w*|uomo|donna)\b/.test(tx) || /(^|\s)[mf](\s|$)/.test(tx);
       const posField   = /\b(posizion\w*|destra|sinistra)\b/.test(tx);
-      const statField  = /\b(moros\w*|stato)\b/.test(tx);
       const nameField  = /\b(nome|cognome|nominativ\w*)\b/.test(tx);
       const schedaField = /\b(scheda|anagrafic\w*|contatt\w*)\b/.test(tx);
-      const fieldWord = phoneField || emailField || levelField || sexField || posField || statField || nameField || schedaField;
+      const fieldWord = phoneField || emailField || levelField || sexField || posField || nameField || schedaField;
 
       // "iscrivi X" = prima iscrizione → crea. Match solo a inizio parola (NON "re-iscrivi"/
       // "reiscrivi", che sono riattivazioni gestite da reactV): "(^|\s)iscriv" evita il trattino.
@@ -42633,7 +42632,7 @@ Per confermare scrivi ELIMINA.`);
 
       // Presenza di un valore esplicito (per distinguere modifica da semplice lettura).
       const hasValue = /\b(in|a|:|=)\b/.test(tx) || /\d/.test(tx) || removalEmail
-        || /\b(uomo|donna|maschi\w*|femmin\w*|destra|sinistra|moros\w*|regolar\w*)\b/.test(tx);
+        || /\b(uomo|donna|maschi\w*|femmin\w*|destra|sinistra)\b/.test(tx);
 
       let sub;
       if (createV) sub = 'crea';
@@ -42649,7 +42648,6 @@ Per confermare scrivi ELIMINA.`);
       else if (phoneField) field = 'telefono';
       else if (emailField) field = 'email';
       else if (posField) field = 'posizione';
-      else if (statField) field = 'stato';
       else if (sexField) field = 'sesso';
       else if (nameField) field = 'nome';
 
@@ -42781,7 +42779,7 @@ Per confermare scrivi ELIMINA.`);
       // (apre l'editor), anche senza un nome esplicito ("aggiungi un giocatore alla partita delle
       // 18", "…alle prenotazioni di oggi sul campo 4 alle 12:30"). Include plurali e "sul campo".
       const editToExisting = /\b(alla|alle|ai|agli|nella|nelle|nei|negli|dalla|dalle|dai|dagli|all'|nell'|dall'|sul|sulla|sui|sugli|su|in)\s*(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(tx);
-      const anaStatus = /\bmoros\w*\b/.test(tx); // "X adesso è moroso" → scheda socio
+      const anaStatus = false; // campo "stato/moroso" rimosso (non gestito: niente storage/form)
       // Domande su stato posti/roster e su lezioni multi-giorno (compat. assistente): sono
       // INTERROGAZIONI anche senza punto di domanda, e devono battere il fallback "crea".
       const rosterQ = /\bmancano?\b/.test(tx) || /\btutti\s+e\s+(quattro|4)\b/.test(tx) || /\bquant[ei]\s+giocator/.test(tx) || (/\bpost[oi]\b/.test(tx) && /\b(liber\w*|disponib\w*|partit\w*)\b/.test(tx));
