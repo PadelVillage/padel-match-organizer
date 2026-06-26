@@ -73,6 +73,14 @@ function seedStorage() {
   const profile = { status: 'active', role: 'admin', email: 'test@local', permissions: { cloud_sync: true } };
   localStorage.setItem(SESSION_KEY, JSON.stringify(fresh));
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  // Anagrafica minima: un socio noto così l'aggiunta di un nome reale si risolve senza
+  // la domanda socio/ospite (usata dal caso "comando composto").
+  try {
+    // chiave con prefisso ambiente TEST (vedi PMO_ENV_STORAGE_PREFIX = 'test:').
+    localStorage.setItem('test:giocatori', JSON.stringify([
+      { memberId: '9001', firstName: 'Maurizio', surname: 'Aprea', active: true, level: 3, gender: 'M' }
+    ]));
+  } catch (e) {}
   // Config locale (offline): evita di caricare config-test.js da rete remota.
   try {
     localStorage.setItem(ASSESS_KEY, JSON.stringify({ configUrl: 'test/config-test.js' }));
@@ -841,6 +849,49 @@ const CASES = [
       checks.push({ label: 'payload players.add con DUE Ospite (no dedup)', ok: addOsp === 2 });
       const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Ospite/gi) || []).length === 2, 3000);
       checks.push({ label: 'roster locale: Mario + Luca + 2 Ospite', ok: ok2 });
+      return checks;
+    }
+  },
+  {
+    id: 31, flow: 'Giocatore/Pattern', name: 'handle: "mi levi tre ospiti ALLA partita … SUL campo" (no scheda, no "dalla") → CORREGGI rimozione, NON nuova prenotazione',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // Verbo "levi" + preposizione di STATO ("alla partita", "sul campo"): in dettatura naturale
+      // è una rimozione. Prima veniva instradata su PRENOTA (slot occupato → "vuoi spostarti?").
+      await handleSeq(win, ['mi levi tre ospiti alla partita di domani alle 18 sul campo 2']);
+      const pushed = await waitFor(() => editSavePushes()[0], 4000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato (non un create)', ok: !!pushed });
+      checks.push({ label: 'payload players.remove contiene TRE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 3 });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 2, '18:00').match(/Ospite/gi) || []).length === 2, 3000);
+      checks.push({ label: 'roster locale: 5 → 2 Ospiti (tolti TRE)', ok: ok2 });
+      return checks;
+    }
+  },
+  {
+    id: 32, flow: 'Giocatore/Pattern', name: 'handle: COMANDO COMPOSTO "togli tre ospiti E aggiungi Maurizio Aprea" → un solo save che toglie 3 ospiti e aggiunge Maurizio',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // Comando con DUE operazioni nello stesso messaggio (no scheda aperta): prima veniva
+      // interpretato come sola aggiunta (aggiungeva anche i 3 ospiti). Maurizio Aprea è in
+      // anagrafica (seed) → si risolve senza domanda socio/ospite → resta solo la conferma.
+      await handleSeq(win, ['togli tre ospiti e aggiungi Maurizio Aprea alla partita di campo 2 di domani alle 18', 'sì']);
+      const pushed = await waitFor(() => editSavePushes()[0], 5000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'un solo worker EDIT inviato', ok: editSavePushes().length === 1 && !!pushed });
+      const rem = (pushed && pushed.body.players && Array.isArray(pushed.body.players.remove)) ? pushed.body.players.remove : [];
+      const add = (pushed && pushed.body.players && Array.isArray(pushed.body.players.add)) ? pushed.body.players.add : [];
+      checks.push({ label: 'players.remove = TRE Ospite', ok: rem.filter(n => /ospite/i.test(n)).length === 3 });
+      checks.push({ label: 'players.add = Maurizio Aprea (NON un ospite)', ok: add.length === 1 && /maurizio/i.test(add[0].nome) && !/ospite/i.test(add[0].nome) });
+      const ok2 = await waitFor(() => {
+        const nm = namesOf(H.getBookings(), iso, 2, '18:00');
+        return /Maurizio/i.test(nm) && (nm.match(/Ospite/gi) || []).length === 2;
+      }, 3000);
+      checks.push({ label: 'roster locale: 2 Ospite + Maurizio Aprea', ok: ok2 });
       return checks;
     }
   }

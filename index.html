@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.991';
+    const APP_VERSION = '5.993';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42090,8 +42090,16 @@ Per confermare scrivi ELIMINA.`);
       // lezione/prenotazione/campo. "cancella LA prenotazione / annulla LA partita di campo X"
       // (con "la/il/di", senza "dalla") resta CANCELLA. In italiano cancella/elimina valgono
       // anche per "leva un giocatore", quindi qui pesano come rimozione SOLO con "dalla …".
-      const removeFromMatchCtx = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n)
-        && /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      const _remVerb = /(^| )(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)( |$)/.test(n);
+      const _fromMatchPrep = /\b(?:da|dal|dallo|dalla|dai|dagli|dalle|dall['’])\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      // Preposizione di STATO ("alla/sulla/nella partita", "sul campo"): in dettatura naturale
+      // «levi tre ospiti ALLA partita delle 13 SUL campo 4» è una RIMOZIONE, non un annullo né una
+      // nuova prenotazione. La accettiamo come rimozione SOLO se il comando nomina ESPLICITAMENTE
+      // ospite/giocatore/allievo (così «leva la partita» resta annullo e «prenota … sul campo 4»
+      // resta PRENOTA: quelli non hanno la parola ospite/giocatore).
+      const _atMatchPrep = /\b(?:ospit[ei]|giocator\w*|alliev\w*)\b/.test(n)
+        && /\b(?:a|al|allo|alla|ai|agli|alle|all['’]|su|sul|sullo|sulla|sui|sugli|sulle|in|nel|nello|nella|nei|negli|nelle)\s+(partit\w*|lezion\w*|prenotazion\w*|match|camp[oi])\b/.test(n);
+      const removeFromMatchCtx = _remVerb && (_fromMatchPrep || _atMatchPrep);
       // "apri/mostra/visualizza/gestisci LA PRENOTAZIONE/PARTITA/LEZIONE di campo X [alle Y]" =
       // aprire la SCHEDA di una prenotazione esistente (CORREGGI → editor), non crearne una nuova.
       // Richiede un riferimento a un CAMPO specifico (così "mostra le prenotazioni di oggi" resta
@@ -42137,7 +42145,7 @@ Per confermare scrivi ELIMINA.`);
         // Rimozione di un giocatore "dalla partita/lezione" → CORREGGI (apre l'editor), mai
         // CANCELLA (che annullerebbe l'intera prenotazione). Vince anche su cancella/elimina.
         if (name === 'CORREGGI' && removeFromMatchCtx) s += 4;
-        if ((name === 'CANCELLA' || name === 'ANAGRAFICA') && removeFromMatchCtx) s = 0;
+        if ((name === 'CANCELLA' || name === 'ANAGRAFICA' || name === 'PRENOTA' || name === 'TROVA') && removeFromMatchCtx) s = 0;
         // Aprire la scheda di una prenotazione esistente → CORREGGI (apre l'editor), mai PRENOTA/TROVA.
         if (name === 'CORREGGI' && openEditCtx) s += 4;
         if ((name === 'PRENOTA' || name === 'TROVA' || name === 'ANAGRAFICA') && openEditCtx) s = 0;
@@ -42740,7 +42748,7 @@ Per confermare scrivi ELIMINA.`);
       // Interpretazione anagrafica (isolata): se è un comando-socio, ha priorità su tutto.
       const ana = _anaInterpret(tx, text);
       const addV = /\b(aggiungi|aggiungere|inserisci|metti)\b/.test(tx);
-      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levare|caccia)\b/.test(tx);
+      const remV = /\b(togli|togliere|rimuovi|rimuovere|leva|levi|levare|caccia)\b/.test(tx);
       // In italiano "cancella/elimina/scarta <nome> DALLA partita/lezione/prenotazione/campo" =
       // togliere un GIOCATORE (non annullare la prenotazione). Vale SOLO con "da(lla) …": senza,
       // "cancella la prenotazione / elimina la partita di Mario" resta annullamento (cancelVerb).
@@ -43176,6 +43184,16 @@ Per confermare scrivi ELIMINA.`);
         const _sameCourt = !_c || Number(_c) === Number(staffCalPlayersState.campo);
         const _sameTime = !_tm || String(_tm) === String(staffCalPlayersState.ora);
         const _hasContact = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
+        // COMANDO COMPOSTO «togli … E aggiungi …» a scheda aperta: una rimozione + un'aggiunta
+        // in un colpo. Intercetta PRIMA del solo-aggiungi (che altrimenti aggiungerebbe anche i
+        // nomi da togliere). Solo sulla scheda aperta (stesso campo/ora) e fuori nota/durata.
+        const _remVerbOpen = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(_norm(t));
+        const _isNoteOpen = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
+        const _isDurOpen = (typeof _durToMin === 'function') && _durToMin(t) != null;
+        if (_addVerb && _remVerbOpen && !_isNoteOpen && !_isDurOpen && _sameCourt && _sameTime && !_hasContact) {
+          const _cl = _splitEditClauses(t);
+          if (_cl) return _runCompoundEdit(staffCalPlayersState, _cl.addRaw, _cl.removeRaw);
+        }
         // "aggiungi/metti una NOTA …" non è un giocatore: lascialo a _startNota (la parola "nota"
         // qualifica l'oggetto). Senza questa guardia "metti una nota" diventerebbe un Ospite.
         const _isNoteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
@@ -44300,12 +44318,16 @@ Per confermare scrivi ELIMINA.`);
       return _startPlayerResolve(raw, { mode: 'add' });
     }
     // Chiede conferma dell'aggiunta (echo del nome capito) e apre il flusso 'addconfirm'.
-    function _askAddConfirm(st, players, notes) {
+    function _askAddConfirm(st, players, notes, removalLabel) {
       const nomi = players.map(function (g) { return g.nome; }).join(', ');
       const anyOspite = players.some(function (g) { return g.ospite; });
-      aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora };
+      aiFlowState = { kind: 'addconfirm', stage: 'confirm', players: players, notes: notes || [], campo: st.campo, ora: st.ora, removalLabel: removalLabel || '' };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      let msg = _pick(['🤔 Ci sono: aggiungo <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.', '🤔 Allora: metto <strong>' + _escapeHtml(nomi) + '</strong> sul Campo ' + st.campo + ' · ' + st.ora + '.']);
+      // Comando composto: nello stesso riepilogo annuncio anche la rimozione (st.remove è già
+      // marcato; il salvataggio al "sì" applica tolgo+aggiungo in un colpo).
+      let msg = removalLabel
+        ? ('🤔 Ci sono: tolgo <strong>' + _escapeHtml(removalLabel) + '</strong> e aggiungo <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.')
+        : _pick(['🤔 Ci sono: aggiungo <strong>' + _escapeHtml(nomi) + '</strong> al Campo ' + st.campo + ' · ' + st.ora + '.', '🤔 Allora: metto <strong>' + _escapeHtml(nomi) + '</strong> sul Campo ' + st.campo + ' · ' + st.ora + '.']);
       if (notes && notes.length) msg += '<br><span style="color:#98a2b3;font-size:12px">⚠️ ' + notes.join('<br>⚠️ ') + '</span>';
       msg += '<br>Dimmi <strong>sì</strong> e salvo su Matchpoint' +
         (anyOspite ? ', oppure dimmi il <strong>nome giusto</strong>.' : ' — o <strong>no</strong>, oppure il <strong>nome giusto</strong> se ho sbagliato.');
@@ -44356,7 +44378,7 @@ Per confermare scrivi ELIMINA.`);
         st.add = _dedupPlayersByIdentity(st.add); // niente doppioni dello stesso socio
         try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
         const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
-        _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');
+        _say((fs.removalLabel ? ('➖ Tolgo <strong>' + _escapeHtml(fs.removalLabel) + '</strong> e a') : '➕ A') + 'ggiungo <strong>' + _escapeHtml(nomi) + '</strong>, salvo su Matchpoint…');
         try { staffCalPlayersSave({ skipConfirm: true }); }
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
@@ -44495,7 +44517,7 @@ Per confermare scrivi ELIMINA.`);
       if (cont.mode === 'add') {
         const st = staffCalPlayersState;
         if (!st || st.busy) return _say('La scheda non è più aperta: riapri la prenotazione e riprova.');
-        return _askAddConfirm(st, players, []);
+        return _askAddConfirm(st, players, [], cont.removalLabel);
       }
       // create: consegna i giocatori alla bozza e mostra il riepilogo. Le note di _resolvePlayers
       // ("X non è in anagrafica → Ospite") sono SUPERATE dalle scelte fatte qui (cognome/socio/ospite):
@@ -44876,6 +44898,66 @@ Per confermare scrivi ELIMINA.`);
     }
     // Compat: "togli un ospite" = togline UNO.
     function _removeOneGuestNow(st) { return _removeGuestsNow(st, 1); }
+    // ── Comando COMPOSTO: «togli/levi … E aggiungi …» in un colpo ──────────────────
+    // Spezza un comando con DUE operazioni (rimozione + aggiunta) in due "clausole",
+    // una per verbo. Ogni clausola viene ripulita con _extractEditPlayerName (toglie
+    // verbo + "dalla/alla partita" + campo/ora/data). Ritorna null se non c'è almeno
+    // un verbo di aggiunta E uno di rimozione (così i comandi singoli non cambiano).
+    function _splitEditClauses(text) {
+      const src = String(text || '');
+      const re = /\b(aggiung\w*|inserisc\w*|metti|togli\w*|tolg\w*|rimuov\w*|lev[ai]\w*)\b/gi;
+      const marks = []; let m;
+      while ((m = re.exec(src))) {
+        const v = _norm(m[1]);
+        marks.push({ i: m.index, type: /^(aggiung|inserisc|metti)/.test(v) ? 'add' : 'remove' });
+      }
+      if (!(marks.some(function (x) { return x.type === 'add'; }) && marks.some(function (x) { return x.type === 'remove'; }))) return null;
+      const add = [], rem = [];
+      for (let k = 0; k < marks.length; k++) {
+        const clause = src.slice(marks[k].i, (k + 1 < marks.length) ? marks[k + 1].i : src.length);
+        (marks[k].type === 'add' ? add : rem).push(clause);
+      }
+      const addRaw = add.map(_extractEditPlayerName).filter(Boolean).join(' e ');
+      const removeRaw = rem.map(_extractEditPlayerName).filter(Boolean).join(' e ');
+      if (!addRaw || !removeRaw) return null;
+      return { addRaw: addRaw, removeRaw: removeRaw };
+    }
+    // Marca le rimozioni sullo stato editor SENZA salvare (il salvataggio avverrà UNA
+    // volta sola, insieme all'aggiunta). Ospiti = fungibili (per quantità); nominati =
+    // per token. Ritorna { count, label } per il riepilogo di conferma.
+    function _markRemovalsDeferred(st, removeRaw) {
+      if (!st) return { count: 0, label: '' };
+      if (!Array.isArray(st.roster) || !st.roster.length) {
+        const cal = _rosterFromCalendar(st); if (cal.length) st.roster = cal;
+      }
+      const roster = (st.roster || []).filter(function (p) { return p && p.nome; });
+      st.remove = st.remove || {};
+      const q = _norm(removeRaw || '');
+      const realTokens = roster.filter(function (p) { return !/^ospite\b/.test(_norm(p.nome)); })
+        .reduce(function (acc, p) { _norm(p.nome).split(/\s+/).forEach(function (tk) { if (tk.length >= 3) acc.push(tk); }); return acc; }, []);
+      const qtok = q.split(/\s+/).filter(function (w) { return w.length >= 3; });
+      const namesReal = qtok.some(function (w) { return realTokens.indexOf(w) >= 0; });
+      // Solo ospiti (nessun tesserato nominato) → togli per quantità (fungibili).
+      if (/\b(ospit\w*|jolly)\b/.test(q) && !namesReal) {
+        const guests = roster.filter(function (p) { return /^ospite\b/.test(_norm(p.nome)); });
+        const k = Math.min(Math.max(1, _ospiteQty(removeRaw)), guests.length);
+        for (let i = 0; i < k; i++) if (guests[i].idx != null) st.remove[guests[i].idx] = true;
+        return { count: k, label: k === 1 ? 'un ospite' : (k + ' ospiti') };
+      }
+      // Nominati: marca i giocatori che combaciano per token significativo.
+      const hits = roster.filter(function (p) { const nt = _norm(p.nome).split(/\s+/); return qtok.some(function (w) { return nt.indexOf(w) >= 0; }); });
+      hits.forEach(function (p) { if (p.idx != null) st.remove[p.idx] = true; });
+      return { count: hits.length, label: hits.map(function (p) { return p.nome; }).join(', ') };
+    }
+    // Esegue un comando composto sull'editor aperto: marca le rimozioni (deferred) e
+    // avvia la risoluzione dell'aggiunta; la conferma+salvataggio finale (un solo save)
+    // applica entrambe (st.remove + st.add) — vedi _askAddConfirm/_confirmAddAnswer.
+    function _runCompoundEdit(st, addRaw, removeRaw) {
+      if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
+      const rem = _markRemovalsDeferred(st, removeRaw);
+      try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
+      return _startPlayerResolve(addRaw, { mode: 'add', removalLabel: rem.label });
+    }
     // Candidati all'annullo: prenotazioni del giorno filtrate per campo/ora/nome.
     function _cancelCandidates(iso, court, time, who) {
       const rows = (typeof staffCalGetSlots === 'function') ? (staffCalGetSlots(iso) || []) : [];
@@ -45092,6 +45174,7 @@ Per confermare scrivi ELIMINA.`);
         return _startPlayerResolve(pending.rawName, { mode: 'add' });
       }
       if (pending.type === 'remove') return _askRemoveConfirm(st, pending.rawName);
+      if (pending.type === 'addremove') return _runCompoundEdit(st, pending.addRaw, pending.removeRaw);
     }
     function _startModifica(res, text) {
       const p = res.parsed || {};
@@ -45119,6 +45202,11 @@ Per confermare scrivi ELIMINA.`);
       // (altrimenti "cancella la prenotazione" = annullo, gestito da CANCELLA a monte).
       const isRemove = !isAdd && !durQtyLev && (/(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow)
         || (removeFromPat && /(^|\s)(cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(nlow)));
+      // COMANDO COMPOSTO «togli … E aggiungi …»: c'è SIA un verbo di aggiunta SIA uno di
+      // rimozione → due operazioni in un colpo (rimozione + aggiunta), entrambe sulla stessa
+      // prenotazione. Senza questo, isAdd vinceva e aggiungeva TUTTO (anche i nomi da togliere).
+      const _hasRemVerbX = !durQtyLev && /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(nlow);
+      const _compound = (isAdd && _hasRemVerbX) ? _splitEditClauses(text) : null;
       // SPOSTAMENTO: postulato → leggi il calendario per capire sorgente e destinazione.
       // Include lo spostamento di solo ORARIO: "anticipa/posticipa la partita alle …".
       const isMove = !isAdd && !isRemove && /(^|\s)(spost\w*|anticip\w*|posticip\w*)/.test(nlow);
@@ -45141,7 +45229,7 @@ Per confermare scrivi ELIMINA.`);
       if (who && /^(apri(?:r\w*|am\w*|t[ei]\w*|la|lo|li|ti|mi|ci)?|apr[aeo]|riapr\w*|mostr\w*|visualizz\w*|gestisc\w*|vedi|mi|ti|un|uno|una|il|lo|la|giocator\w*|alliev\w*)$/.test(_norm(who))) who = '';
       // Per l'AGGIUNTA il nome è il giocatore DA INSERIRE (non ancora nella prenotazione): non va
       // usato come filtro per trovarla, altrimenti non la trova mai. Per la rimozione invece aiuta.
-      const findWho = isAdd ? '' : who;
+      const findWho = (isAdd || _compound) ? '' : who;
       const dl = _dayLabel(iso);
       let cands = _cancelCandidates(iso, court, time, findWho);
       if (!cands.length && findWho) {
@@ -45152,11 +45240,14 @@ Per confermare scrivi ELIMINA.`);
         const filtri = (court ? ' · Campo ' + court : '') + (time ? ' · ' + time : '') + (findWho ? ' · ' + _escapeHtml(findWho) : '');
         return _say('🔍 Non trovo prenotazioni da modificare ' + dl + filtri + '. Controlla data/campo/orario, o chiedimi prima “<em>prenotazioni di ' + (iso === _todayIso() ? 'oggi' : dl) + '</em>”.');
       }
-      const pending = (isAdd && actionName) ? { type: 'add', rawName: actionName }
+      const pending = _compound ? { type: 'addremove', addRaw: _compound.addRaw, removeRaw: _compound.removeRaw }
+        : (isAdd && actionName) ? { type: 'add', rawName: actionName }
         : (isRemove && actionName) ? { type: 'remove', rawName: actionName } : null;
       if (cands.length === 1) return _openEditor(iso, cands[0], pending);
       aiFlowState = { kind: 'modifica', stage: 'pick', iso: iso, list: cands, pending: pending };
-      const azLbl = pending ? (pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a' : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
+      const azLbl = pending ? (pending.type === 'addremove' ? ('togliere e aggiungere giocatori a')
+        : pending.type === 'add' ? 'aggiungere <strong>' + _escapeHtml(pending.rawName) + '</strong> a'
+        : 'togliere <strong>' + _escapeHtml(pending.rawName) + '</strong> da') : 'modificare';
       const _m = _say('Quale prenotazione vuoi ' + azLbl + '? Dimmi il numero, oppure campo e ora.');
       _choiceButtons(_m,
         cands.map(function (r) { return r.ora + ' · Campo ' + r.campo + ' — ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
