@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.990';
+    const APP_VERSION = '5.991';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42230,6 +42230,25 @@ Per confermare scrivi ELIMINA.`);
       });
       return s.replace(/\s{2,}/g, ' ').trim();
     }
+    // Tollera gli ERRORI DI DETTATURA nelle parole di conferma/annullo: normalizza ogni token
+    // entro distanza 1 da una forma canonica ("procede"→"procedi", "confrema"→"conferma",
+    // "lasica"→"lascia"). Solo parole ≥4 lettere (le brevi sì/no/ok restano esatte per non creare
+    // falsi positivi). Usato dalla guardia conferma in handle().
+    const _CONF_CANON = ['conferma', 'confermo', 'procedi', 'perfetto', 'certo', 'salva', 'giusto', 'esatto', 'sicuro', 'assolutamente', 'vabene', 'ottimo', 'annulla', 'lasciamo', 'lascia', 'niente', 'nessuno', 'chiudi', 'esci', 'basta'];
+    function _fuzzyConfirmNorm(s) {
+      return String(s || '').split(/\s+/).map(function (w) {
+        const lw = _norm(w);
+        if (lw.length < 4) return w;
+        // parole lunghe (≥6): tollera 2 edit (refusi doppi/trasposizioni: "confrema"→"conferma",
+        // "procde"→"procedi"); parole corte (4-5): solo 1 edit, per non creare falsi positivi.
+        const tol = lw.length >= 6 ? 2 : 1;
+        for (let i = 0; i < _CONF_CANON.length; i++) {
+          const c = _CONF_CANON[i];
+          if (Math.abs(c.length - lw.length) <= tol && _lev(lw, c) <= tol) return c;
+        }
+        return w;
+      }).join(' ');
+    }
     function _ppDialect(text) {
       let s = ' ' + _norm(_translateEN(text)) + ' ';
       s = s.replace(/\bbuta\s+dentro\b/g, ' aggiungi ');
@@ -43040,8 +43059,11 @@ Per confermare scrivi ELIMINA.`);
             modifica: 'modific\\w*'
           }[_kc];
           if (_verbs !== undefined) {
-            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabene|procedi|certo|pure|adesso|subito|vai|salva|giusto|esatto|no|lascia\\w*|stop|niente|nessun\\w*|chiud\\w*|esci';
+            const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabb?ene|proced\\w*|cert\\w*|perfett\\w*|sicur\\w*|pure|adesso|subito|va[i]?|salv\\w*|giust\\w*|esatt\\w*|no|lasc\\w*|stop|niente|nessun\\w*|chiud\\w*|esci|basta';
             const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
+            // Parola di USCITA (no/annulla) vs conferma, per dispacciare un canonico sì/no.
+            const _exitRe = /\b(no|annull\w*|lasc\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)\b/i;
+            const _yesRe = /\b(s[iì]|conferm\w*|proced\w*|va[i]?|va\s+bene|vabb?ene|cert\w*|perfett\w*|esatt\w*|giust\w*|salv\w*|ok|okay|pure|sicur\w*)\b/i;
             // Vocabolario anche nelle CONFERME: una voce «okk → sì» / «daje → sì» / «manco → no»
             // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
             // Mirato: la riscrittura serve solo qui, dove il messaggio è già SOLO conferma (anchored).
@@ -43051,22 +43073,29 @@ Per confermare scrivi ELIMINA.`);
             // nuovo (che deragliava il flusso → ragionatore). Sono glue grammaticale che non distingue
             // mai conferma da comando: campo/ora/nomi sopravvivono e quindi un vero comando NON matcha.
             const _tConfStrip = _tConf.replace(/\b(con|la|il|lo|le|i|gli|un|uno|una|di|del|dello|della|dei|degli|delle|al|allo|alla|alle|ai|agli|ed|mi|ti|ci|poi|allora|quindi|dai)\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+            // Tollera i TYPO di dettatura nelle parole di conferma ("si procede"→"si procedi"):
+            // normalizza entro distanza 1, così la guardia ancorata riconosce comunque la conferma.
+            const _tConfFuzzy = _fuzzyConfirmNorm(_tConfStrip);
             const _hmap = { prenota: _confirmAnswer, cancella: _confirmCancellaAnswer, addconfirm: _confirmAddAnswer, removeconfirm: _confirmRemoveAnswer, moveconfirm: _confirmMoveAnswer, durataconfirm: _confirmDurataAnswer, notaconfirm: _confirmNotaAnswer, anagrafica: _confirmAnagraficaAnswer, modifica: _continueModifica, reasonconfirm: _confirmReasonAnswer };
-            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip))) {
+            if (_re.test(_tConf) || (_tConfStrip && _re.test(_tConfStrip)) || (_tConfFuzzy && _re.test(_tConfFuzzy))) {
               const _h = _hmap[_kc];
-              if (_h) return _h(_tConf);
+              // È una conferma PURA (ancorata): dispaccio un canonico "sì"/"no" così l'handler non
+              // ri-legge una parola di conferma (o un suo typo) come NOME giocatore (bug "si procede").
+              const _canon = (_exitRe.test(_tConfFuzzy) && !_yesRe.test(_tConfFuzzy)) ? 'no' : 'sì';
+              if (_h) return _h(_canon);
             }
             // Conferma DISCORSIVA: una risposta cordiale/lunga ("bravo, hai fatto bene, conferma pure
             // la prenotazione") non passa il test ancorato (ha parole extra) e "prenotazione" la
             // farebbe scambiare per un comando nuovo → deragliava nel ragionatore. Se contiene una
             // parola di conferma FORTE e NESSUN segnale di cambio/annullo né NUOVE coordinate
             // (campo/numero/giorno → indicherebbero un altro comando), confermiamo il flusso in corso.
-            const _strongYes = /\b(conferm\w*|confermo|procedi|va\s+bene|vabene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tConf);
-            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lascia\w*|divers\w*|nessun\w*|niente)\b/i.test(_tConf);
+            const _tcf = _fuzzyConfirmNorm(_tConf);
+            const _strongYes = /\b(conferm\w*|confermo|proced\w*|va\s+bene|vabb?ene|d['’\s]?accord\w*|vai\s+(?:avanti|pure)|perfett\w*|ottim\w*|esatt\w*|giust\w*)\b/i.test(_tcf);
+            const _negChange = /\b(no|annull\w*|cambi\w*|spost\w*|anticip\w*|posticip\w*|modific\w*|invece|aspett\w*|ferma|stop|lasc\w*|divers\w*|nessun\w*|niente)\b/i.test(_tcf);
             const _newCoords = /\bcamp[oi]\b|\b\d{1,2}([:.]\d{2})?\b|\b(oggi|domani|dopodomani|luned|marted|mercoled|gioved|venerd|sabato|domenica)\b/i.test(_tConf);
             if (_strongYes && !_negChange && !_newCoords) {
               const _h2 = _hmap[_kc];
-              if (_h2) return _h2(_tConf);
+              if (_h2) return _h2('sì');   // conferma discorsiva → canonico "sì"
             }
           }
         }
