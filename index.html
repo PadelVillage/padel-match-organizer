@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.976';
+    const APP_VERSION = '5.977';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -43123,6 +43123,12 @@ Per confermare scrivi ELIMINA.`);
         const _timeQ = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_cn);
         const _noteC = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_cn);
         const _otherTarget = !!(res.slots && (res.slots.court || res.slots.time || res.slots.date));
+        // L'utente ha nominato ESPLICITAMENTE l'oggetto intero ("annulla LA PRENOTAZIONE / la
+        // partita / la lezione") e nessun giocatore → NON è ambiguo: va annullato tutto, niente
+        // domanda "togli vs annulla". (Senza questo, "annulla la prenotazione" → _resName vuoto →
+        // veniva trattato come "annulla" nudo → ri-chiedeva la disambiguazione all'infinito.)
+        const _explicitWhole = /(^|\s)(partit\w*|lezion\w*|prenotazion\w*|match|slot)\b/.test(_cn)
+          && !/(giocator\w*|allie\w*)/.test(_cn);
         let _resName = String(t || '')
           .replace(/^\s*\W*(cancell\w*|annull\w*|elimin\w*|disd\w*|scart\w*)\b\s*/i, ' ')
           .replace(/\b((?:il|la|lo|l['’]|un|una|questa|questo)\s+)?(partit\w*|lezion\w*|prenotazion\w*|match|slot)\b/ig, ' ');
@@ -43134,7 +43140,9 @@ Per confermare scrivi ELIMINA.`);
           // Con una prenotazione che HA giocatori, "cancella/annulla" da solo è ambiguo (togliere
           // un giocatore o annullare l'intera prenotazione?): NON agire alla cieca, CHIEDI con i
           // pulsanti (postulato: mai vicolo cieco). Senza giocatori (es. manutenzione) → annullo diretto.
-          if (st.hasPlayers) {
+          // Se però l'utente ha già detto "la prenotazione/partita/lezione", l'intento è chiaro → salta
+          // la domanda e annulla direttamente (cade sul _showCancelSummary qui sotto).
+          if (st.hasPlayers && !_explicitWhole) {
             let _roster = (Array.isArray(st.roster) && st.roster.length) ? st.roster : _rosterFromCalendar(st);
             _roster = (_roster || []).filter(function (p) { return p && p.nome; });
             const _doCancelBooking = function () { _showCancelSummary(st.origIso, oSlot); };
