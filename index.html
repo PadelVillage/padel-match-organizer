@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.982';
+    const APP_VERSION = '5.983';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -44271,6 +44271,24 @@ Per confermare scrivi ELIMINA.`);
       const codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(best) : (String(best.memberId || '').trim());
       return { nome: nomeSocio, codice: codice, codiceCliente: codiceCliente };
     }
+    // Anti-FALSO-MATCH: findMemberNameSuggestions aggancia anche per SOLO NOME (es. "Marco Aprea"
+    // → socio "Marco Antoniazzi", distanza 1 sul nome). Per le regole giocatore un nome COMPLETO va
+    // accettato solo se anche il COGNOME combacia (esatto o fuzzy stretto, es. "Comes"≈"Gomes"),
+    // altrimenti è un'altra persona → decisione socio/ospite. (Bug live 26/06: "Marco Aprea"→"Marco
+    // Antoniazzi".)
+    function _surnameConfirmed(cand, member) {
+      const ctoks = _norm(cand).split(/\s+/).filter(Boolean);
+      if (ctoks.length < 2) return false;
+      const candSurTokens = ctoks.slice(1);   // tutto dopo il primo nome (cognome anche composto)
+      const mname = _norm((typeof playerFullName === 'function' ? playerFullName(member) : '') || (member && member.name) || '');
+      const mtoks = mname.split(/\s+/).filter(Boolean);
+      return candSurTokens.some(function (w) {
+        return mtoks.some(function (mt) {
+          if (mt === w) return true;
+          return mt.length >= 4 && w.length >= 4 && _lev(mt, w) <= 1;  // refusi: Comes/Gomes
+        });
+      });
+    }
     function _resolvePlayersStrict(rawStr) {
       const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const resolved = [], pending = [];
@@ -44286,8 +44304,8 @@ Per confermare scrivi ELIMINA.`);
         const words = nm.trim().split(/\s+/).filter(Boolean);
         if (words.length <= 1) { pending.push({ raw: nm.trim(), kind: 'surname' }); continue; }  // regola (1)
         const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(nm, 5) || []) : [];
-        if (matches.length) resolved.push(_memberToPlayer(matches[0].member));
-        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2)
+        if (matches.length && _surnameConfirmed(nm, matches[0].member)) resolved.push(_memberToPlayer(matches[0].member));
+        else pending.push({ raw: nm.trim(), kind: 'decision' });   // regola (2): non in anagrafica (o solo nome combacia)
       }
       return { resolved: resolved, pending: pending };
     }
@@ -44336,8 +44354,8 @@ Per confermare scrivi ELIMINA.`);
       if (words.length < 2) return _say('Mi servono <strong>nome e cognome</strong> 🙂 — scrivili entrambi (es. «Mario Rossi»).');
       const matches = (typeof findMemberNameSuggestions === 'function') ? (findMemberNameSuggestions(cand, 5) || []) : [];
       fs.queue.shift();
-      if (matches.length) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
-      // Nome completo ma non in anagrafica → diventa una decisione (aggiungi socio / ospite).
+      if (matches.length && _surnameConfirmed(cand, matches[0].member)) { fs.resolved.push(_memberToPlayer(matches[0].member)); return _playerResolveStep(); }
+      // Nome completo ma non in anagrafica (o combacia solo il nome) → decisione (aggiungi socio / ospite).
       fs.queue.unshift({ raw: cand, kind: 'decision' });
       return _playerResolveStep();
     }
