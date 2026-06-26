@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.981';
+    const APP_VERSION = '5.982';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -43782,7 +43782,10 @@ Per confermare scrivi ELIMINA.`);
       const after = _afterTime(_playerSrc);
       let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
       playerText = _stripDateRefs(_stripCourtRefs(playerText));
-      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
+      // playerRaw = testo-giocatori GREZZO del comando one-shot: lo conservo per applicare le
+      // REGOLE GIOCATORE (cognome obbligatorio / socio-o-ospite) in _advancePrenota via playerresolve.
+      // _resolvePlayers qui dà già una bozza (Ospite silenzioso); playerresolve la raffina se serve.
+      if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; draft.playerRaw = playerText; }
       return draft;
     }
     // Esegue: costruisce la bozza e avanza (slot mancanti → domande, altrimenti riepilogo).
@@ -43822,6 +43825,19 @@ Per confermare scrivi ELIMINA.`);
       // (decisione utente 2026-06-19), oltre al maestro già obbligatorio.
       if ((!draft.giocatori || !draft.giocatori.length) && !draft.__ospiteAsked) {
         return _askOspite(draft);
+      }
+      // Regole giocatore anche nella creazione ONE-SHOT (parità coi punti interattivi): se il
+      // testo-giocatori del comando aveva nomi "in sospeso" (nome singolo → serve cognome; nome
+      // completo non in anagrafica → socio o ospite), le applico via playerresolve invece di tenere
+      // gli Ospite risolti silenziosamente da _resolvePlayers. Una volta sola (__strictResolved);
+      // nomi già risolti e "ospite" esplicito non danno alcuna friction.
+      if (draft.playerRaw && !draft.__strictResolved) {
+        draft.__strictResolved = true;
+        const _cls = _resolvePlayersStrict(draft.playerRaw);
+        if (_cls.pending && _cls.pending.length) {
+          aiFlowState = null;
+          return _startPlayerResolve(draft.playerRaw, { mode: 'create', draft: draft });
+        }
       }
       aiFlowState = null;
       _showSummary(draft);
@@ -44355,8 +44371,10 @@ Per confermare scrivi ELIMINA.`);
         if (!st || st.busy) return _say('La scheda non è più aperta: riapri la prenotazione e riprova.');
         return _askAddConfirm(st, players, []);
       }
-      // create: consegna i giocatori alla bozza e mostra il riepilogo.
-      const draft = cont.draft; draft.giocatori = players;
+      // create: consegna i giocatori alla bozza e mostra il riepilogo. Le note di _resolvePlayers
+      // ("X non è in anagrafica → Ospite") sono SUPERATE dalle scelte fatte qui (cognome/socio/ospite):
+      // le azzero così il riepilogo non mostra un avviso fuorviante.
+      const draft = cont.draft; draft.giocatori = players; draft.notes = [];
       return _showSummary(draft);
     }
     // Chiede conferma della RIMOZIONE di un giocatore dalla scheda aperta. Abbina il nome
