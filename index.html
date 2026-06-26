@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.977';
+    const APP_VERSION = '5.978';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42372,7 +42372,7 @@ Per confermare scrivi ELIMINA.`);
         if (m) after = m[1];
       }
       if (!after) return [];
-      const parts = after.split(/[,;&+]|\be\b|\bed\b|\bpi[uù]\b/);
+      const parts = after.split(/[,;&+]|\be\b|\bed\b|\bpi[uù]\b|\bpoi\b/);
       const names = [];
       parts.forEach(function (p) {
         // Comando di creazione COMPOSTO ("crea una partita … e aggiungi X come giocatore"):
@@ -43668,10 +43668,11 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) { return null; }
     }
     function _resolvePlayers(rawStr) {
-      // Connettori tra giocatori: virgola/;/& / "e"/"ed" / a-capo, MA ANCHE "più" e "+"
-      // ("tre ospiti più Lidia Comes", "Marco + Anna"). Senza "più", il chunk "tre ospiti più
-      // Lidia Comes" restava unito → il ramo ospite-con-quantità faceva continue e Lidia spariva.
-      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
+      // Connettori tra giocatori: virgola/;/& / "e"/"ed" / a-capo, "più" e "+" e anche "poi"
+      // (dettatura: "un ospite più Lidia", "Marco + Anna", "un ospite poi Maurizio e Lidia").
+      // Senza questi connettori il chunk restava unito → il ramo ospite-con-quantità faceva
+      // continue e i nomi dopo sparivano.
+      const names = String(rawStr || '').split(/\s*,\s*|\s*;\s*|\s*&\s*|\s*\+\s*|\s+ed?\s+|\s+pi[uù]\s+|\s+poi\s+|\n+/i).map(_stripPlayerStopwords).filter(Boolean);
       const giocatori = [], notes = [];
       for (let i = 0; i < names.length; i++) {
         const nm = names[i];
@@ -44166,30 +44167,43 @@ Per confermare scrivi ELIMINA.`);
         aiFlowState = null;
         return _say('👍 Ok, non ho aggiunto nessuno. Se vuoi riprovare, dimmi il nome giusto.');
       }
-      if (/( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n)) {
-        const st = staffCalPlayersState;
+      const _isYes = /( si | sì | conferm\w* | confermo | ok | okay | va bene | vabene | procedi | vai | certo | salva | giusto | esatto )/.test(n);
+      const st = staffCalPlayersState;
+      // CORREZIONE/ESPANSIONE: il messaggio può contenere altri NOMI oltre alla conferma
+      // («sì un ospite poi Maurizio Aprea e Lidia Gomes»): ri-risolvo il roster COMPLETO dal
+      // messaggio (togliendo "sì"/verbo iniziale). Accetto solo se trova un socio reale o un
+      // "ospite" esplicito → così una conferma discorsiva («sì va bene così») NON diventa Ospiti.
+      let _corr = null;
+      if (st && !st.busy) {
+        let raw = String(text || '')
+          .replace(/^\s*\W*(s[iì]|no)\b[,.\s]*/ig, ' ')
+          .replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
+        raw = _stripCourtRefs(raw).trim();
+        if (raw) {
+          const rr = _resolvePlayers(raw);
+          const _hasReal = rr.giocatori && rr.giocatori.some(function (g) { return g.nome && g.nome !== 'Ospite'; });
+          const _saidOspite = /\bospit[ei]\b/.test(n);
+          if (rr.giocatori && rr.giocatori.length && (_hasReal || _saidOspite)) _corr = rr;
+        }
+      }
+      // Ri-chiedo conferma col roster corretto SOLO se aggiunge informazione (un socio reale, o più
+      // di un giocatore): un "sì un ospite" che ri-dà lo stesso singolo Ospite non deve ciclare.
+      if (_corr && (!_isYes || _corr.giocatori.length > 1 || _corr.giocatori.some(function (g) { return g.nome !== 'Ospite'; }))) {
+        return _askAddConfirm(st, _corr.giocatori, _corr.notes);
+      }
+      // Conferma SECCA → aggiungo i giocatori già capiti e salvo.
+      if (_isYes) {
         if (!st || st.busy) { aiFlowState = null; return _say('La scheda non è più aperta: riapri la prenotazione e riprova.'); }
         aiFlowState = null;
         st.add = st.add || [];
         fs.players.forEach(function (g) { st.add.push({ nome: g.nome, codice: g.codice || '', codiceCliente: g.codiceCliente || '' }); });
         st.add = _dedupPlayersByIdentity(st.add); // niente doppioni dello stesso socio
-
         try { staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); } catch (e) {}
         const nomi = fs.players.map(function (g) { return g.nome; }).join(', ');
         _say('➕ Aggiungo <strong>' + _escapeHtml(nomi) + '</strong> e salvo su Matchpoint…');
         try { staffCalPlayersSave({ skipConfirm: true }); }
         catch (e) { return _say('❌ Non riesco a salvare: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
         return true;
-      }
-      // Non è sì/no → probabilmente è il nome corretto: ri-risolvi e ri-chiedi conferma.
-      const st = staffCalPlayersState;
-      if (st && !st.busy) {
-        let raw = String(text || '').replace(/^\s*\W*(aggiung\w*|aggiungimi|metti|inserisc\w*|add)\s+/i, ' ');
-        raw = _stripCourtRefs(raw).trim();
-        if (raw) {
-          const rr = _resolvePlayers(raw);
-          if (rr.giocatori && rr.giocatori.length) return _askAddConfirm(st, rr.giocatori, rr.notes);
-        }
       }
       return _say('Dimmi <strong>sì</strong> e lo aggiungo, <strong>no</strong> se lasciamo stare — o il <strong>nome</strong> giusto se ho capito male.');
     }
