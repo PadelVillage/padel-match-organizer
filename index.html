@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.988';
+    const APP_VERSION = '5.989';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42178,8 +42178,57 @@ Per confermare scrivi ELIMINA.`);
     function _pmoIsStop(w) { return !w || _PMO_EDIT_STOP.has(w) || /^\d+$/.test(w); }
 
     // Rule H — dialetto/abbreviazioni → forma estesa (lowercase, senza accenti).
+    // ── Dizionario EN→IT (traduzione "simultanea", deterministica, zero costo Gemini) ──────────
+    // Permette i comandi in inglese ("book a court tomorrow at 6", "remove two guests", "yes").
+    // Mappa SOLO token inequivocabilmente inglesi: nessuna collisione con parole/nomi italiani
+    // comuni (niente "a", "no", "ok", "come", "all" → resterebbero italiani validi), così l'input
+    // ITALIANO passa invariato. Preserva maiuscole/accenti delle parole non tradotte (i nomi
+    // restano com'erano). Applicata all'ingresso di handle() e dentro _ppDialect (idempotente).
+    const _EN_PHRASES = [
+      [/\bnever\s*mind\b/gi, ' lascia stare '],
+      [/\bgo\s+ahead\b/gi, ' procedi '],
+      [/\ball\s+(?:the\s+)?guests?\b/gi, ' tutti gli ospiti '],
+      [/\b(?:can|could|would)\s+you\b/gi, ' puoi '],
+      [/\bi\s+(?:want|need|would\s+like|wanna)\s+to\b/gi, ' '],
+      [/\b(?:thank\s+you|thanks|please)\b/gi, ' ']
+    ];
+    const _EN_WORDS = {
+      yes: 'sì', yeah: 'sì', yep: 'sì', yup: 'sì', sure: 'sì', confirm: 'conferma', confirmed: 'conferma',
+      book: 'prenota', booked: 'prenota', reserve: 'prenota', schedule: 'prenota',
+      add: 'aggiungi', insert: 'aggiungi', put: 'aggiungi',
+      remove: 'togli', delete: 'elimina', cancel: 'annulla',
+      move: 'sposta', shift: 'sposta',
+      change: 'modifica', edit: 'modifica', modify: 'modifica',
+      extend: 'allunga', lengthen: 'allunga', shorten: 'accorcia', reduce: 'accorcia',
+      show: 'mostra', list: 'mostra', display: 'mostra', find: 'trova', open: 'apri',
+      court: 'campo', courts: 'campi', field: 'campo', fields: 'campi', match: 'partita', matches: 'partite',
+      game: 'partita', games: 'partite', lesson: 'lezione', lessons: 'lezioni', class: 'lezione', classes: 'lezioni',
+      guest: 'ospite', guests: 'ospiti', player: 'giocatore', players: 'giocatori',
+      coach: 'maestro', coaches: 'maestri', instructor: 'maestro', teacher: 'maestro',
+      booking: 'prenotazione', bookings: 'prenotazioni', reservation: 'prenotazione', reservations: 'prenotazioni',
+      member: 'socio', members: 'soci', client: 'socio', clients: 'soci',
+      today: 'oggi', tomorrow: 'domani', yesterday: 'ieri',
+      at: 'alle', hour: 'ora', hours: 'ore',
+      morning: 'mattina', afternoon: 'pomeriggio', evening: 'sera', night: 'notte',
+      monday: 'lunedi', tuesday: 'martedi', wednesday: 'mercoledi', thursday: 'giovedi', friday: 'venerdi', saturday: 'sabato', sunday: 'domenica',
+      one: 'uno', two: 'due', three: 'tre', four: 'quattro', five: 'cinque', six: 'sei',
+      free: 'liberi', available: 'liberi', who: 'chi', plays: 'gioca', play: 'gioca',
+      and: 'e', with: 'con', for: 'per', the: '', an: ''
+    };
+    function _translateEN(text) {
+      let s = ' ' + String(text || '') + ' ';
+      // Orario am/pm → 24h ("5 pm"→"alle 17", "12 am"→"alle 0", "9:30 am"→"alle 9:30").
+      s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*p\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n < 12) n += 12; return ' alle ' + n + (mm || '') + ' '; });
+      s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*a\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n === 12) n = 0; return ' alle ' + n + (mm || '') + ' '; });
+      _EN_PHRASES.forEach(function (pair) { s = s.replace(pair[0], pair[1]); });
+      s = s.replace(/\b[A-Za-z]+\b/g, function (w) {
+        const k = w.toLowerCase();
+        return Object.prototype.hasOwnProperty.call(_EN_WORDS, k) ? _EN_WORDS[k] : w;
+      });
+      return s.replace(/\s{2,}/g, ' ').trim();
+    }
     function _ppDialect(text) {
-      let s = ' ' + _norm(text) + ' ';
+      let s = ' ' + _norm(_translateEN(text)) + ' ';
       s = s.replace(/\bbuta\s+dentro\b/g, ' aggiungi ');
       s = s.replace(/\bde\s+sera\b/g, ' di sera ');
       s = s.replace(/\bcmp\s*([1-4])\b/g, ' campo $1 ').replace(/\bcmp\b/g, ' campo ');
@@ -42950,9 +42999,12 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Handler conversazionale ────────────────────────────────────────────────
     async function handle(text) {
-      const t = String(text || '').trim();
+      let t = String(text || '').trim();
       if (!t) return;
-      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}
+      try { svcAddMessage('staff', _escapeHtml(t)); } catch (e) {}   // mostra l'ORIGINALE (anche in inglese)
+      // Traduzione EN→IT simultanea (dizionario deterministico): da qui in poi tutto il flusso —
+      // comandi, slot E le conferme ("yes"→"sì") — lavora su testo italiano. No-op sull'italiano.
+      t = _translateEN(t);
       _convPush('user', t);   // memoria del filo per il ragionatore (Step 3)
       // Uso "stile WhatsApp": un flusso lasciato a metà e ripreso troppo tardi (oltre TTL)
       // scade da solo → si riparte puliti, senza che un vecchio dialogo catturi il nuovo messaggio.

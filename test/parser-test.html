@@ -150,7 +150,12 @@ const CASES = [
  {id:70, cat:'Ora/Data', frase:'prenota campo 1 domani dalle 18.00 alle 19.00', esito:'DUBBIO', exp:{az:'crea', campo:1, data:'domani', ora:'18:00', oraFine:'19:00', players:'ospite', type:true}},
  {id:71, cat:'Ora/Data', frase:'campo 2 venerdi h21', esito:'DUBBIO', exp:{az:'crea', campo:2, data:'wd:5', ora:'21:00', players:'ospite', type:true}},
  // ── Imperativo con pronome enclitico (2026-06-21): "aggiungimi Luca" = "aggiungi Luca" ──
- {id:72, cat:'Giocatori', frase:'aggiungimi Luca alla partita di domani campo 2 alle 18', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', players:'names', surname:true}}
+ {id:72, cat:'Giocatori', frase:'aggiungimi Luca alla partita di domani campo 2 alle 18', esito:'DUBBIO', exp:{az:['giocatori','modifica'], campo:2, data:'domani', ora:'18:00', players:'names', surname:true}},
+ // ── Comandi in INGLESE (dizionario EN→IT, 2026-06-26): devono dare lo stesso esito dell'italiano ──
+ {id:75, cat:'Inglese', frase:'book a match on court 1 saturday at 10 with Luca and Giovanni', esito:'DUBBIO', exp:{az:'crea', tipo:'partita', campo:1, data:'wd:6', ora:'10:00', players:'names', surname:true}},
+ {id:76, cat:'Inglese', frase:'cancel court 2 tomorrow at 6 pm', esito:'DUBBIO', exp:{az:'annulla', campo:2, data:'domani', ora:'18:00', type:true}},
+ {id:77, cat:'Inglese', frase:'free courts tomorrow afternoon', esito:'OK', exp:{az:'interroga', data:'domani'}},
+ {id:78, cat:'Inglese', frase:'book a lesson today at 5 pm with coach Santiago', esito:'DUBBIO', exp:{az:'crea', tipo:'lezione', data:'oggi', ora:'17:00'}}
 ];
 
 const INTENT2AZ = {PRENOTA:'crea', TROVA:'interroga', CANCELLA:'annulla', CORREGGI:'modifica', ANAGRAFICA:'anagrafica', SUGGERISCI:'suggerisci'};
