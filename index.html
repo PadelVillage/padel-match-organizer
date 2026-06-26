@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.980';
+    const APP_VERSION = '5.981';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42361,6 +42361,9 @@ Per confermare scrivi ELIMINA.`);
 
     // Nomi giocatori in una prenotazione (dopo "per"/"con"/l'orario).
     function _bookingNames(tx) {
+      // Allinea il preview di parse() al flusso reale: tolgo la clausola "nota in linea" dalla
+      // coda ("… metti in note prima lezione") così il corpo della nota non finisce tra i giocatori.
+      try { const _in = _extractInlineNote(tx); if (_in.note) tx = _in.rest || tx; } catch (e) {}
       const s = ' ' + tx + ' ';
       let after = '';
       let m = s.match(/\b(?:per|con)\s+(.+)$/);
@@ -43571,7 +43574,11 @@ Per confermare scrivi ELIMINA.`);
     function _afterTime(text) {
       const t = _digitizeTimeWords(text);
       let m = t.match(/\b(\d{1,2})[:.]?(\d{2})?\s*[-–]\s*(\d{1,2})[:.]?(\d{2})?\b/);
-      if (!m) m = t.match(/\b(?:alle|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      // "alle/dalle/delle/le/ore/h 17(:00)" — include "le" (dettatura "per le 17") e, in coda,
+      // un orario "nudo" (HH:MM o HH) come fallback: senza questi, "per le 17:00 …" non agganciava
+      // il testo-giocatori della LEZIONE one-shot e l'allievo veniva ri-chiesto.
+      if (!m) m = t.match(/\b(?:alle|dalle|delle|le|ore|h)\s*(\d{1,2})(?:[:.](\d{2}))?\b/i);
+      if (!m) m = t.match(/\b(\d{1,2})[:.](\d{2})\b/);
       if (!m) return '';
       const pos = t.indexOf(m[0]);
       return t.slice(pos + m[0].length).replace(/^[\s\-–]+/, '').replace(/\bogni\s+\S+/ig, '').trim();
@@ -43710,6 +43717,25 @@ Per confermare scrivi ELIMINA.`);
       return { giocatori: giocatori, notes: notes };
     }
 
+    // Nota in linea dentro un comando di creazione: «… metti in nota campo bagnato»,
+    // «… con nota: prima lezione», «… e segna in note allievo nuovo». La estraggo PRIMA dei
+    // giocatori e tolgo la clausola dal testo, così il corpo della nota non diventa un finto
+    // giocatore (bug live: «giocatore ospite e mette in note prima lezione» → "note prima"
+    // finiva tra i giocatori). Ritorna { note, rest } con `rest` ripulito dalla clausola.
+    function _extractInlineNote(text) {
+      const s = String(text || '');
+      // A) introdotta da un verbo: (e) metti/scrivi/segna/inserisci/annota … (in/con/come) not[ae] <corpo>
+      let m = s.match(/\s*\b(?:e\s+|ed\s+)?(?:mett\w*|aggiung\w*|scriv\w*|segn\w*|inserisc\w*|annot\w*)\s+(?:(?:una?|la|il|in|nell[ae’']?|come|con|alla|alle)\s+)*not[ae]\b\s*:?\s*(.+)$/i);
+      // B) introdotta da preposizione: (in/con/nella) (una) not[ae] <corpo>
+      if (!m) m = s.match(/\s*\b(?:e\s+|ed\s+)?(?:con|in|nell[ae’']?)\s+(?:una?\s+)?not[ae]\b\s*:?\s*(.+)$/i);
+      if (m && m[1] && m[1].trim()) {
+        return { note: m[1].trim(), rest: s.slice(0, m.index).trim() };
+      }
+      // C) sola forma con due-punti finale (orari esclusi da _extractNoteText).
+      const cn = _extractNoteText(s);
+      if (cn) { const idx = s.lastIndexOf(cn); return { note: cn, rest: (idx > 0 ? s.slice(0, idx).replace(/[:\s]+$/, '') : s).trim() }; }
+      return { note: '', rest: s };
+    }
     // Costruisce la bozza dal parse + slot (risoluzione nomi giocatori inclusa), SENZA eseguire.
     // Usata sia da _startPrenota sia dal banco di prova (diagnose), così la logica è unica.
     function _buildPrenotaDraft(res, text) {
@@ -43747,8 +43773,13 @@ Per confermare scrivi ELIMINA.`);
         if (tr && tr.ora === draft.ora && tr.oraFine && !tr.durDefault) { draft.oraFine = tr.oraFine; draft.durata = tr.durata; draft.durDefault = false; }
         else { draft.durata = draft.durDefault ? _defDur(draft.tipo) : (draft.durata || _defDur(draft.tipo)); draft.oraFine = _endTime(draft.ora, draft.durata); }
       }
+      // Nota in linea ("… metti in note prima lezione"): la tolgo dal testo PRIMA di estrarre i
+      // giocatori, così il corpo della nota non diventa un finto allievo, e la imposto sulla bozza.
+      const _in = _extractInlineNote(text);
+      if (_in.note) draft.note = _in.note;
+      const _playerSrc = _in.rest || text;
       // Giocatori (testo dopo l'orario): solo se ho già un orario nel testo.
-      const after = _afterTime(text);
+      const after = _afterTime(_playerSrc);
       let playerText = tipo === 'lezione' ? _lezionePlayerText(after, istruttore) : _stripConnectors(after);
       playerText = _stripDateRefs(_stripCourtRefs(playerText));
       if (playerText) { const r = _resolvePlayers(playerText); draft.giocatori = r.giocatori; draft.notes = r.notes; }
@@ -44001,6 +44032,7 @@ Per confermare scrivi ELIMINA.`);
       if (draft.tipo === 'lezione') lines.push('👨‍🏫 Maestro: ' + _escapeHtml(draft.istruttore || '—'));
       const chi = draft.giocatori.length ? draft.giocatori.map(function (g) { return g.nome; }).join(', ') : (draft.tipo === 'lezione' ? '—' : 'Ospite');
       lines.push('👥 ' + _escapeHtml(chi));
+      if (draft.note) lines.push('📝 ' + _escapeHtml(draft.note));
       return lines.join('<br>');
     }
     function _showSummary(draft) {
@@ -46093,7 +46125,8 @@ Per confermare scrivi ELIMINA.`);
             tipo: d.tipo, campo: d.campoNum || null, data: d.data || null,
             ora: d.ora || null, oraFine: d.oraFine || null, istruttore: d.istruttore || null,
             giocatori: (d.giocatori || []).map(function (g) { return g.nome; }),
-            note: d.notes || []
+            note: d.notes || [],
+            notaInLinea: d.note || ''
           };
         } catch (e) { out.prenotaError = e.message || String(e); }
       }
