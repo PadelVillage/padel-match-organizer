@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.994';
+    const APP_VERSION = '5.995';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -42228,6 +42228,19 @@ Per confermare scrivi ELIMINA.`);
     };
     function _translateEN(text) {
       let s = ' ' + String(text || '') + ' ';
+      // Range orario inglese "from A to B" (anche con am/pm su uno o entrambi gli estremi) →
+      // "dalle A alle B". Va PRIMA della conversione am/pm singola così cattura entrambi gli
+      // estremi insieme; "from"/"to" FUORI da un range restano intatti (non sono in _EN_WORDS,
+      // così "to Mario" o "from court 3" non si rompono). Connettori: to/till/until/through/thru.
+      s = s.replace(/\bfrom\s+(\d{1,2})([:.]\d{2})?\s*(a\.?m\.?|p\.?m\.?)?\s+(?:to|till|until|untill|through|thru)\s+(\d{1,2})([:.]\d{2})?\s*(a\.?m\.?|p\.?m\.?)?\b/gi,
+        function (_m, h1, m1, ap1, h2, m2, ap2) {
+          // "from 6 to 8 pm" / "from 6pm to 8" → il meridiano dichiarato su UN estremo vale per
+          // entrambi (in inglese il range è nella stessa metà di giornata). Se nessuno dei due ha
+          // am/pm, resta letterale (come l'italiano "dalle 6 alle 8").
+          if (ap2 && !ap1) ap1 = ap2; else if (ap1 && !ap2) ap2 = ap1;
+          function c(h, mm, ap) { let n = parseInt(h, 10); if (ap) { ap = ap.toLowerCase(); if (ap[0] === 'p' && n < 12) n += 12; if (ap[0] === 'a' && n === 12) n = 0; } return n + (mm || ''); }
+          return ' dalle ' + c(h1, m1, ap1) + ' alle ' + c(h2, m2, ap2) + ' ';
+        });
       // Orario am/pm → 24h ("5 pm"→"alle 17", "12 am"→"alle 0", "9:30 am"→"alle 9:30").
       s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*p\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n < 12) n += 12; return ' alle ' + n + (mm || '') + ' '; });
       s = s.replace(/\b(\d{1,2})([:.]\d{2})?\s*a\.?m\.?\b/gi, function (_m, h, mm) { let n = parseInt(h, 10); if (n === 12) n = 0; return ' alle ' + n + (mm || '') + ' '; });
@@ -44593,10 +44606,44 @@ Per confermare scrivi ELIMINA.`);
         return _say('🔍 In questa prenotazione non trovo “<strong>' + _escapeHtml(rawName) + '</strong>”. Giocatori presenti: ' + roster.map(function (p) { return _escapeHtml(p.nome); }).join(', ') + '. Dimmi quale togliere (o “chiudi”).');
       }
       if (hits.length > 1) {
+        // OMONIMI (stesso nome): capiamo se sono la STESSA persona o persone DIVERSE prima di
+        // togliere, così non cancelliamo al buio. Guardia primaria = codice cliente (ID); il
+        // TELEFONO è la controprova per il doppione in anagrafica (stessa persona, due schede con
+        // ID diversi ma stesso numero). Regola:
+        //  • stesso ID → stessa persona → ne tolgo uno (nessuna domanda);
+        //  • ID diversi MA stesso telefono → doppione anagrafica → ne tolgo uno + avviso;
+        //  • ID diversi E telefono diverso/mancante → persone diverse → chiedo quale (ID + tel).
+        const _sameName = hits.every(function (p) { return _norm(p.nome) === _norm(hits[0].nome); });
+        function _hitCode(p) { return String(p.codiceCliente || p.codice || '').trim(); }
+        function _hitMember(p) { const c = _hitCode(p); return c ? (Array.isArray(giocatori) ? giocatori : []).find(function (g) { return g && String(g.memberId || '').trim() === c; }) : null; }
+        function _hitTel(p) { const m = _hitMember(p); return m ? String(m.phone || m.telefono || '').replace(/\D/g, '') : ''; }
+        function _samePerson(a, b) {
+          const ta = _hitTel(a), tb = _hitTel(b);
+          if (ta && tb) return ta === tb;            // entrambi col telefono → stessa persona sse stesso numero (vale anche con ID diversi = doppione)
+          const ca = _hitCode(a), cb = _hitCode(b);
+          if (ca && cb) return ca === cb;            // entrambi con ID (telefono non confrontabile) → uguali sse stesso ID
+          if (!ca && !cb) return true;               // nessun ID né telefono → indistinguibili → fungibili (ne tolgo uno)
+          return false;                              // uno con ID e l'altro no → prudente: chiedi (le opzioni sono distinguibili)
+        }
+        // Persone distinte tra gli hit (raggruppando ID-uguali e telefono-uguali).
+        const _persons = [];
+        hits.forEach(function (p) { if (!_persons.some(function (q) { return _samePerson(p, q); })) _persons.push(p); });
+        if (_sameName && _persons.length <= 1) {
+          const _idsDiffer = hits.some(function (p) { return _hitCode(p) !== _hitCode(hits[0]); });
+          if (_idsDiffer) _say('⚠️ Sembra un <strong>doppione in anagrafica</strong> (stesso telefono, ID diversi). Intanto ne tolgo uno — controlla la scheda socio.');
+          else if (hits.length > 2) _say('Ce n’erano <strong>' + hits.length + '</strong> uguali (<strong>' + _escapeHtml(hits[0].nome) + '</strong>): ne tolgo uno.');
+          return _removePlayerNow(hits[0]);
+        }
+        // Persone diverse (omonimi veri, o nomi simili) → disambigua mostrando ID + telefono.
+        function _hitLabel(p) {
+          const code = _hitCode(p), m = _hitMember(p), tel = m ? String(m.phone || m.telefono || '').trim() : '';
+          const extra = []; if (code) extra.push('#' + code); if (tel) extra.push('☎ ' + tel);
+          return p.nome + (extra.length ? ' (' + extra.join(' · ') + ')' : '');
+        }
         aiFlowState = { kind: 'removeconfirm', stage: 'pick', candidates: hits, campo: st.campo, ora: st.ora };
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-        const _mh = _say('Ci sono più nomi simili 🙂 — quale tolgo? Dimmi pure quale.');
-        _choiceButtons(_mh, hits.map(function (p) { return p.nome; }), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
+        const _mh = _say('Ci sono più ' + _escapeHtml(hits[0].nome) + ' (persone diverse) 🙂 — quale tolgo? Te li elenco con ID e telefono.');
+        _choiceButtons(_mh, hits.map(_hitLabel), function (i) { _removePlayerNow(hits[i]); }, function () { aiFlowState = null; _say('👍 Ok, non ho tolto nessuno.'); });
         return true;
       }
       aiFlowState = { kind: 'removeconfirm', stage: 'confirm', target: hits[0], campo: st.campo, ora: st.ora };
