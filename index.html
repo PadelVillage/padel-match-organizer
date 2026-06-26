@@ -7690,7 +7690,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.979';
+    const APP_VERSION = '5.980';
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -44304,11 +44304,13 @@ Per confermare scrivi ELIMINA.`);
         _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
         _playerResolveStep();
       };
-      _say('👤 Bene, iscriviamo <strong>' + _escapeHtml(rawName) + '</strong>: completiamo i dati e poi lo aggiungo alla prenotazione.');
-      (async function () {
-        try { const r2 = await _parseWithAi('iscrivi ' + rawName); _startAnagrafica(r2, 'iscrivi ' + rawName); }
-        catch (e) { try { _startAnaCreate('iscrivi ' + rawName); } catch (e2) { _afterAnaCreate = null; _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e2 && e2.message) ? e2.message : String(e2))); } }
-      })();
+      _say('👤 Bene, iscriviamo <strong>' + _escapeHtml(rawName) + '</strong>: completiamo i dati (telefono, sesso, livello, email facoltativa) e poi lo aggiungo alla prenotazione.');
+      // Bozza pre-riempita col nome+cognome già detti (niente giro via parse, che ci lascerebbe
+      // dentro "iscrivi"); _anaAdvanceCreate chiede i campi mancanti come la creazione socio manuale.
+      const _parts = String(rawName || '').trim().split(/\s+/).filter(Boolean);
+      const _draft = { firstName: _parts[0] || '', surname: _parts.slice(1).join(' '), phone: '', email: '', level: '', gender: '' };
+      try { _anaAdvanceCreate(_draft); }
+      catch (e) { _afterAnaCreate = null; _say('❌ Non riesco ad avviare l\'iscrizione: ' + _escapeHtml((e && e.message) ? e.message : String(e))); }
       return true;
     }
     function _playerResolveDone() {
@@ -45944,9 +45946,19 @@ Per confermare scrivi ELIMINA.`);
         const firstName = norm.firstName, surname = norm.surname;
         const fullName = compactSpaces((firstName + ' ' + surname).trim());
         const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
-        if (!firstName || (!surname && !guest)) return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.');
+        if (!firstName || (!surname && !guest)) { _afterAnaCreate = null; return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.'); }
         const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: draft.email || '' };
-        if (typeof findMatchingMemberIndex === 'function' && findMatchingMemberIndex(candidate) >= 0) return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        const _dupIdx = (typeof findMatchingMemberIndex === 'function') ? findMatchingMemberIndex(candidate) : -1;
+        if (_dupIdx >= 0) {
+          // Già in anagrafica (per nome/telefono/email): non ricreare. Se eravamo dentro un'aggiunta
+          // alla prenotazione, USA il socio esistente; altrimenti avvisa soltanto.
+          if (typeof _afterAnaCreate === 'function') {
+            _say('ℹ️ <strong>' + _escapeHtml(fullName) + '</strong> è già in anagrafica: lo aggiungo alla prenotazione senza ricrearlo.');
+            const _cb = _afterAnaCreate; _afterAnaCreate = null; try { _cb(giocatori[_dupIdx]); } catch (e) {}
+            return;
+          }
+          return _say('❌ Esiste già un socio con questo nome, telefono o email. Non ho creato nulla.');
+        }
         const now = new Date().toISOString();
         const newMember = ensureMemberId({
           id: makeId(), memberId: '', firstName: firstName, surname: surname, name: fullName,
@@ -45972,15 +45984,17 @@ Per confermare scrivi ELIMINA.`);
         const _isTestEnv = (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV);
         if (_isTestEnv) { _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. 🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato, non lo creo nel gestionale.'); _fireAna(); return; }
         _say('✅ Socio <strong>' + _escapeHtml(fullName) + '</strong> salvato in anagrafica e su Supabase. ⏳ Lo creo anche su <strong>Matchpoint</strong>… <span style="color:#98a2b3;font-size:12px">(può richiedere ~30s, ti avviso a fine operazione)</span>');
-        _fireAna();
+        // _fireAna (ritorno alla prenotazione) DOPO la creazione su Matchpoint, così il socio
+        // aggiunto alla prenotazione porta GIÀ il codice cliente (memberId) importato da Matchpoint.
         if (typeof pmoCreateMemberInMatchpoint === 'function') {
           Promise.resolve(pmoCreateMemberInMatchpoint(newMember, { notify: false })).then(function (res) {
-            if (res && res.status === 'test_env') return _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.');
+            if (res && res.status === 'test_env') { _say('🧪 Ambiente <strong>TEST</strong>: collegamento con Matchpoint scollegato. Il socio resta in app + Supabase.'); _fireAna(); return; }
             const code = String(newMember.memberId || '').trim();
             if (/^\d{4,6}$/.test(code)) _say('✅ Creato anche su <strong>Matchpoint</strong> · codice <strong>' + _escapeHtml(code) + '</strong>.');
             else _say('⚠️ Creazione su Matchpoint non riuscita: il socio resta in app + Supabase. Riprova più tardi o crealo dal gestionale.');
-          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); });
-        }
+            _fireAna();
+          }).catch(function (e) { _say('⚠️ Errore Matchpoint: ' + _escapeHtml((e && e.message) || String(e)) + '. Il socio resta in app + Supabase.'); _fireAna(); });
+        } else { _fireAna(); }
         return;
       } catch (err) {
         return _say('❌ Errore nel salvataggio: ' + _escapeHtml((err && err.message) || String(err)));

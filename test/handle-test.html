@@ -532,13 +532,14 @@ const CASES = [
       H.setBookings([bookingFixture(iso)]);
       setCalDay(win, iso);
       WORKER_NEXT = { ok: true };
-      // Nuova regola: nome singolo "Anna" → chiede nome e cognome; "Anna Verdi" non in anagrafica
-      // (harness senza soci) → scelta socio/ospite; "ospite" → Ospite; "sì" conferma e salva.
+      // Nuova regola: nome singolo "Zenobio" → chiede nome e cognome; "Zenobio Qwertson" (nome
+      // inventato, mai in anagrafica) → scelta socio/ospite; "ospite" → Ospite; "sì" conferma e salva.
+      // Nome volutamente improbabile per non dipendere dallo stato dell'anagrafica locale.
       // Catturo la trascrizione PROGRESSIVAMENTE (la chat può auto-pulirsi a fine operazione).
       const checks = [];
-      await win.PMOAi.handle('aggiungi Anna alla partita di campo 2 di domani alle 18'); await sleep(150);
+      await win.PMOAi.handle('aggiungi Zenobio alla partita di campo 2 di domani alle 18'); await sleep(150);
       const askedSurname = /nome e cognome/i.test(chatTranscript(win));
-      await win.PMOAi.handle('Anna Verdi'); await sleep(150);
+      await win.PMOAi.handle('Zenobio Qwertson'); await sleep(150);
       const askedChoice = /non è in anagrafica/i.test(chatTranscript(win));
       await win.PMOAi.handle('ospite'); await sleep(150);
       await win.PMOAi.handle('sì'); await sleep(150);
