@@ -7701,7 +7701,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.997';
+    const APP_VERSION = '5.998';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21495,7 +21495,7 @@ Grazie!`
     // settimana / mese, split contanti vs carta. Fonte = pmo_get_records_admin
     // (nessuna RPC nuova). Denaro SEMPRE in interi `amount_cents`.
     // ════════════════════════════════════════════════════════════════════════
-    const _incassiState = { date: null, gran: 'giorno', loading: false, rows: null, loadedAt: 0 };
+    const _incassiState = { date: null, from: null, to: null, gran: 'giorno', loading: false, rows: null, loadedAt: 0 };
     function _incassiToday() {
       try { return (typeof formatLocalDate === 'function') ? formatLocalDate(new Date()) : new Date().toISOString().slice(0,10); }
       catch (e) { return new Date().toISOString().slice(0,10); }
@@ -21559,23 +21559,50 @@ Grazie!`
       const root = document.getElementById('incassiRoot');
       if (!root) return;
       if (!_incassiState.date) _incassiState.date = _incassiToday();
+      if (_incassiState.gran === 'personalizzato' && (!_incassiState.from || !_incassiState.to)) {
+        const base = _incassiState.date || _incassiToday();
+        _incassiState.from = _incassiState.from || (base.slice(0, 8) + '01');
+        _incassiState.to = _incassiState.to || base;
+      }
       const st = _incassiState;
+      const isCustom = st.gran === 'personalizzato';
       const granBtn = (id, lbl) => `<button type="button" class="${st.gran === id ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetGran('${id}')" style="margin-right:6px;">${lbl}</button>`;
+      const lblCss = 'display:block;font-size:12px;font-weight:700;margin-bottom:4px;';
+      const dateControls = isCustom
+        ? `<div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
+           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>`
+        : `<div><label style="${lblCss}">Data</label><input type="date" id="incassiDate" value="${st.date}" onchange="_incassiSetDate(this.value)"></div>`;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
-          <div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">Data</label>
-            <input type="date" id="incassiDate" value="${st.date}" onchange="_incassiSetDate(this.value)"></div>
-          <div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">Periodo</label>
-            <div>${granBtn('giorno','Giorno')}${granBtn('settimana','Settimana')}${granBtn('mese','Mese')}</div></div>
+          ${dateControls}
+          <div><label style="${lblCss}">Periodo</label>
+            <div>${granBtn('giorno','Giorno')}${granBtn('settimana','Settimana')}${granBtn('mese','Mese')}${granBtn('personalizzato','Personalizzato')}</div></div>
           <div style="margin-left:auto;"><button type="button" class="btn-secondary small-btn" onclick="_incassiReload()">↻ Aggiorna</button></div>
         </div>`;
 
       if (st.loading) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">Carico gli incassi…</div>`; return; }
       if (st.rows == null) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">—</div>`; _incassiReload(); return; }
 
-      const byPeriod = _incassiAggregate(st.rows, st);
-      const selKey = _incassiSelectedPeriod(st);
-      const sel = byPeriod.get(selKey) || { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      let byPeriod, selKey, sel;
+      if (isCustom) {
+        // intervallo libero: bucket per giorno dentro [from,to], riepilogo = somma totale
+        byPeriod = new Map();
+        sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+        for (const p of st.rows) {
+          if (p.voided || p.status === 'void') continue;
+          const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
+          if (!data || data < st.from || data > st.to) continue;
+          const bucket = _incassiMethodBucket(p.method); const cents = Number(p.amount_cents) || 0;
+          if (!byPeriod.has(data)) byPeriod.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
+          const a = byPeriod.get(data); a[bucket] += cents; a.totale += cents; a.n += 1;
+          sel[bucket] += cents; sel.totale += cents; sel.n += 1;
+        }
+        selKey = `${st.from} → ${st.to}`;
+      } else {
+        byPeriod = _incassiAggregate(st.rows, st);
+        selKey = _incassiSelectedPeriod(st);
+        sel = byPeriod.get(selKey) || { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      }
 
       // riepilogo del periodo selezionato
       const summary = `
@@ -21619,8 +21646,18 @@ Grazie!`
 
       root.innerHTML = controls + summary + table;
     }
-    function _incassiSetGran(g) { _incassiState.gran = g; renderIncassi(); }
+    function _incassiSetGran(g) {
+      _incassiState.gran = g;
+      if (g === 'personalizzato' && (!_incassiState.from || !_incassiState.to)) {
+        const base = _incassiState.date || _incassiToday();
+        _incassiState.from = base.slice(0, 8) + '01'; // primo del mese
+        _incassiState.to = base;
+      }
+      renderIncassi();
+    }
     function _incassiSetDate(d) { _incassiState.date = d || _incassiToday(); renderIncassi(); }
+    function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
+    function _incassiSetTo(d) { _incassiState.to = d || _incassiState.to; if (_incassiState.from && _incassiState.to < _incassiState.from) _incassiState.from = _incassiState.to; renderIncassi(); }
     async function _incassiReload() {
       _incassiState.loading = true; renderIncassi();
       _incassiState.rows = await _incassiFetch();
