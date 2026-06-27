@@ -6490,7 +6490,15 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
-                  <thead><tr><th>Giocatore</th><th>Sesso</th><th>Livello</th><th>Telefono</th><th>Stato</th><th>Azioni</th><th>Borsellino</th></tr></thead>
+                  <thead><tr>
+                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('name')" title="Ordina per nome">Giocatore<span class="msort-ind" id="msort-name"></span></th>
+                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('gender')" title="Ordina per sesso">Sesso<span class="msort-ind" id="msort-gender"></span></th>
+                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('level')" title="Ordina per livello">Livello<span class="msort-ind" id="msort-level"></span></th>
+                    <th>Telefono</th>
+                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('status')" title="Ordina per stato">Stato<span class="msort-ind" id="msort-status"></span></th>
+                    <th>Azioni</th>
+                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('wallet')" title="Ordina per borsellino">Borsellino<span class="msort-ind" id="msort-wallet"></span></th>
+                  </tr></thead>
                   <tbody id="memberTableBody"></tbody>
                 </table>
               </div>
@@ -7706,7 +7714,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.007';
+    const APP_VERSION = '6.008';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13206,6 +13214,40 @@ Grazie.`
     }
     let membersCurrentPage = 1;
     const MEMBERS_PAGE_SIZE = 10;
+    // Ordinamento tabella soci: chiave colonna + direzione. Default = nome A→Z (storico).
+    let membersSort = { key: 'name', dir: 'asc' };
+    function setMembersSort(key) {
+      if (membersSort.key === key) {
+        membersSort.dir = membersSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        membersSort.key = key;
+        // Livello e borsellino: prima il valore più alto (di solito quello che interessa).
+        membersSort.dir = (key === 'wallet' || key === 'level') ? 'desc' : 'asc';
+      }
+      membersCurrentPage = 1;
+      displayMembers();
+    }
+    // Valore comparabile per la colonna scelta. Sesso: M<F<NA; livello: numerico (ignoti in coda
+    // crescente); stato: Attivo<Inattivo; borsellino: saldo in centesimi (ignoto = -1).
+    function _memberSortValue(g, key) {
+      switch (key) {
+        case 'gender': { const o = { M: 0, F: 1 }; return (g.gender in o) ? o[g.gender] : 2; }
+        case 'level': { const v = parseFloat(String(g.level ?? '').replace(',', '.')); return Number.isNaN(v) ? -1 : v; }
+        case 'status': return g.active !== false ? 0 : 1;
+        case 'wallet': { const w = (typeof _walletResolve === 'function') ? _walletResolve(g) : null; return (w && typeof w.balance_cents === 'number') ? w.balance_cents : -1; }
+        default: return 0;
+      }
+    }
+    function membersCompare(a, b) {
+      const { key, dir } = membersSort;
+      const mul = dir === 'desc' ? -1 : 1;
+      if (key === 'name') return playerFullName(a).localeCompare(playerFullName(b), 'it') * mul;
+      const va = _memberSortValue(a, key), vb = _memberSortValue(b, key);
+      const cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+      if (cmp !== 0) return cmp * mul;
+      // Spareggio stabile: nome A→Z (non invertito con la direzione).
+      return playerFullName(a).localeCompare(playerFullName(b), 'it');
+    }
     let memberInlineOpenId = '';
 
     function memberNeedsAttention(g, type) {
@@ -13548,7 +13590,7 @@ Grazie.`
         const okGender = !gender || (g.gender || 'NA') === gender;
         const okAttention = memberNeedsAttention(g, attention);
         return okSearch && okStatus && okLevel && okGender && okAttention;
-      }).sort((a,b) => playerFullName(a).localeCompare(playerFullName(b), 'it'));
+      }).sort(membersCompare);
     }
     function setText(id, value) {
       const el = document.getElementById(id);
@@ -13581,6 +13623,11 @@ Grazie.`
       migrateMemberIds();
       const tbody = document.getElementById('memberTableBody');
       if (!tbody) return;
+      // Indicatore di ordinamento sulle intestazioni cliccabili.
+      ['name','gender','level','status','wallet'].forEach(k => {
+        const el = document.getElementById('msort-' + k);
+        if (el) el.textContent = (membersSort.key === k) ? (membersSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      });
       const filtered = applyFilters();
       updateMemberCounts(filtered);
       renderMemberContactsExportPanel();
