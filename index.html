@@ -1151,6 +1151,9 @@
         box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
       }
     }
+    @keyframes pmo-spin { to { transform: rotate(360deg); } }
+    .pmo-spin { display:inline-block; animation: pmo-spin .8s linear infinite; }
+    button.pmo-btn-loading { background:#f59e0b !important; border-color:#f59e0b !important; color:#fff !important; cursor:progress; }
     .assessment-process-filter-badge-lotto {
       font-size: 9.5px;
       font-weight: 900;
@@ -7701,7 +7704,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.001';
+    const APP_VERSION = '6.002';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13797,7 +13800,7 @@ Grazie.`
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
               </div>
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}')">↻ Aggiorna saldo</button>
+                <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Aggiorna saldo</button>
                 <button class="btn-primary small-btn" disabled>＋ Ricarica</button>
               </div>
               <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
@@ -21620,17 +21623,17 @@ Grazie!`
     function _walletBalanceLabel(g) { const w = _walletCacheGet(g); return (w && typeof w.balance_cents === 'number') ? _incassiEuro(w.balance_cents) : '—'; }
     function _walletUpdatedLabel(g) { const w = _walletCacheGet(g); if (!w || !w.synced_at) return '—'; try { return new Date(w.synced_at).toLocaleString('it-IT'); } catch (e) { return '—'; } }
     // Legge il saldo reale dal borsellino Matchpoint (via edge → worker /read-wallet).
-    async function pmoWalletRefresh(memberId) {
+    async function pmoWalletRefresh(memberId, btn) {
       const g = giocatori.find(p => String(p.id) === String(memberId));
       if (!g) return;
       const idInterno = String(_walletClientId(g) || '').trim();
-      const balEl = document.getElementById('cardWalletBalance');
       if (!/^\d{1,8}$/.test(idInterno)) {
-        if (balEl) balEl.textContent = 'id MP assente';
         alert('Questo socio non ha un id Matchpoint collegato: impossibile leggere il borsellino. Sincronizza l’anagrafica da Matchpoint.');
         return;
       }
-      if (balEl) balEl.textContent = '…';
+      // Feedback visivo SOLO sul bottone: gira + diventa arancione (niente testo sul saldo).
+      const origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.classList.add('pmo-btn-loading'); btn.innerHTML = '<span class="pmo-spin">↻</span> Aggiorno…'; }
       try {
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere il borsellino su Matchpoint');
@@ -21644,10 +21647,10 @@ Grazie!`
           throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
         }
         window.__pmoWalletCache.set(idInterno, { balance_cents: data.balanceCents, synced_at: new Date().toISOString() });
-        renderOpenMemberCard(); // ridisegna la scheda col saldo aggiornato
+        renderOpenMemberCard(); // ridisegna la scheda col saldo aggiornato (bottone ricreato pulito)
       } catch (e) {
         console.warn('pmoWalletRefresh:', e);
-        if (balEl) balEl.textContent = 'errore';
+        if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = origHtml; }
         alert('Lettura borsellino non riuscita: ' + ((e && e.message) || e));
       }
     }
