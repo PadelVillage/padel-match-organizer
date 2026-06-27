@@ -6408,6 +6408,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <p>Schede e contatti.</p>
           </div>
           <div class="players-head-actions">
+            <button class="btn-secondary" onclick="setActionAnchor(this); pmoWalletSyncAll(this)" title="Legge da Matchpoint i saldi borsellino di tutti i soci (report 'Clienti con credito residuo')">↻ Aggiorna saldi borsellino</button>
             <button class="btn-success" onclick="setActionAnchor(this); openMemberContactsExportPanel()">Esporta rubrica soci</button>
             <button class="btn-primary" onclick="setActionAnchor(this); showAddMember()">+ Nuovo socio</button>
           </div>
@@ -7705,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.005';
+    const APP_VERSION = '6.006';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21714,6 +21715,35 @@ Grazie!`
         console.warn('pmoWalletRefresh:', e);
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = origHtml; }
         alert('Lettura borsellino non riuscita: ' + ((e && e.message) || e));
+      }
+    }
+    // Sincronizza i saldi borsellino di TUTTI i soci in un colpo (edge matchpoint-wallet-sync →
+    // worker /export-wallet-report → report "Clienti con credito residuo"). Popola wallet_balance
+    // in cloud; la colonna Borsellino si ridisegna dai dati cloud. SOLA LETTURA su Matchpoint.
+    async function pmoWalletSyncAll(btn) {
+      const orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.classList.add('pmo-btn-loading'); btn.innerHTML = '<span class="pmo-spin">↻</span> Aggiorno saldi…'; }
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare i saldi borsellino da Matchpoint');
+        const resp = await fetch(`${supabaseUrl}/functions/v1/matchpoint-wallet-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify({}),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || data.ok === false) {
+          throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+        }
+        await pmoLoadWalletBalances(true);
+        alert('Saldi borsellino aggiornati: ' + (data.matched || 0) + ' soci con credito'
+          + (data.zeroed ? (', ' + data.zeroed + ' azzerati') : '')
+          + (data.unmatched ? (' · ' + data.unmatched + ' non abbinati') : '') + '.');
+      } catch (e) {
+        console.warn('pmoWalletSyncAll:', e);
+        alert('Sincronizzazione saldi non riuscita: ' + ((e && e.message) || e));
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = orig; }
       }
     }
 
