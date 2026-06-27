@@ -7705,7 +7705,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.004';
+    const APP_VERSION = '6.005';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13592,6 +13592,7 @@ Grazie.`
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">Nessun socio trovato</td></tr>';
         return;
       }
+      try { pmoLoadWalletBalances(); } catch (e) {} // saldi cloud (lazy, cache 2 min) → ridisegna quando pronti
       tbody.innerHTML = pageItems.map(g => {
         const isOpen = String(memberInlineOpenId) === String(g.id);
         // Borsellino: saldo Monedero on-demand (window.__pmoWalletCache). Se già letto mostra
@@ -13599,7 +13600,7 @@ Grazie.`
         // Matchpoint (una lettura per riga: il worker apre la Ficha del socio, ~10-15s).
         const _wid = String(_walletClientId(g) || '').trim();
         const _canWallet = /^\d{1,8}$/.test(_wid);
-        const _w = _walletCacheGet(g);
+        const _w = _walletResolve(g);
         let walletCell;
         if (_w && typeof _w.balance_cents === 'number') {
           const _wc = _w.balance_cents;
@@ -21635,8 +21636,50 @@ Grazie!`
       try { const id = _walletClientId(g); if (!id || !window.__pmoWalletCache) return null; return window.__pmoWalletCache.get(String(id)) || null; }
       catch (e) { return null; }
     }
-    function _walletBalanceLabel(g) { const w = _walletCacheGet(g); return (w && typeof w.balance_cents === 'number') ? _incassiEuro(w.balance_cents) : '—'; }
-    function _walletUpdatedLabel(g) { const w = _walletCacheGet(g); if (!w || !w.synced_at) return '—'; try { return new Date(w.synced_at).toLocaleString('it-IT'); } catch (e) { return '—'; } }
+    function _walletBalanceLabel(g) { const w = _walletResolve(g); return (w && typeof w.balance_cents === 'number') ? _incassiEuro(w.balance_cents) : '—'; }
+    function _walletUpdatedLabel(g) { const w = _walletResolve(g); if (!w || !w.synced_at) return '—'; try { return new Date(w.synced_at).toLocaleString('it-IT'); } catch (e) { return '—'; } }
+    // ── Saldi da CLOUD (record `wallet_balance`, popolati dalla sync periodica matchpoint-wallet-sync)
+    // Chiave = member_local_id (= giocatore.id). Persistono al refresh e si auto-popolano all'apertura.
+    window.__pmoWalletCloud = window.__pmoWalletCloud || new Map();
+    let __pmoWalletCloudLoadedAt = 0, __pmoWalletCloudInflight = null;
+    function _walletCloudGet(g) {
+      try { if (!g || !window.__pmoWalletCloud) return null; return window.__pmoWalletCloud.get(String(g.id)) || null; }
+      catch (e) { return null; }
+    }
+    // Saldo "migliore" per il socio: tra cloud (sync) e on-demand (↻) vince il più RECENTE.
+    function _walletResolve(g) {
+      const cloud = _walletCloudGet(g);
+      const live = _walletCacheGet(g);
+      if (cloud && live) {
+        const tc = Date.parse(cloud.synced_at || '') || 0, tl = Date.parse(live.synced_at || '') || 0;
+        return tl >= tc ? live : cloud;
+      }
+      return live || cloud || null;
+    }
+    // Carica i saldi cloud (wallet_balance) e ridisegna la lista. Lazy + cache 2 min.
+    async function pmoLoadWalletBalances(force) {
+      if (typeof pmoStaffRpcPaged !== 'function') return;
+      if (__pmoWalletCloudInflight) return __pmoWalletCloudInflight;
+      if (!force && __pmoWalletCloudLoadedAt && (Date.now() - __pmoWalletCloudLoadedAt) < 120000) return;
+      __pmoWalletCloudInflight = (async function () {
+        try {
+          const rows = await pmoStaffRpcPaged('pmo_get_records_admin',
+            { p_record_types: ['wallet_balance'], p_since: null }, 'cloud_sync', 'leggere i saldi borsellino');
+          const next = new Map();
+          (rows || []).forEach(function (r) {
+            if (!r || r.record_type !== 'wallet_balance' || r.deleted || !r.payload) return;
+            const id = String(r.payload.member_local_id || String(r.local_key || '').replace(/^wbal\|/, ''));
+            if (!id) return;
+            next.set(id, { balance_cents: Number(r.payload.balance_cents) || 0, synced_at: r.payload.synced_at || r.synced_at || '' });
+          });
+          window.__pmoWalletCloud = next;
+          __pmoWalletCloudLoadedAt = Date.now();
+          if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers();
+        } catch (e) { console.warn('pmoLoadWalletBalances:', e); }
+        finally { __pmoWalletCloudInflight = null; }
+      })();
+      return __pmoWalletCloudInflight;
+    }
     // Legge il saldo reale dal borsellino Matchpoint (via edge → worker /read-wallet).
     async function pmoWalletRefresh(memberId, btn) {
       const g = giocatori.find(p => String(p.id) === String(memberId));
