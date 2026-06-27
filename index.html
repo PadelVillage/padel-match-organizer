@@ -6486,7 +6486,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
                 <div><label>Livello giocatore</label><select id="levelFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
                 <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">Sesso da completare</option></select></div>
-                <div><label>Attenzione dati</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutte le attenzioni</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option></select></div>
+                <div><label>Filtra per</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti</option><option value="hasWallet">Con borsellino</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option></select></div>
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
@@ -7706,7 +7706,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.006';
+    const APP_VERSION = '6.007';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13219,6 +13219,7 @@ Grazie.`
       if (type === 'level05') return String(g.level ?? '') === '0.5';
       if (type === 'noId') return !g.memberId;
       if (type === 'level05AfterAssessment') return level05AfterAssessment;
+      if (type === 'hasWallet') { const w = _walletResolve(g); return !!(w && typeof w.balance_cents === 'number' && w.balance_cents > 0); }
       return true;
     }
     function normalizeMemberContactsExportState(raw) {
