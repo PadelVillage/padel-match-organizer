@@ -5298,8 +5298,12 @@ async function findWalletResultsContext(page, diagnostic, timeout = 45000) {
     for (const entry of pageContentContexts(page)) {
       const compactText = (await readContextBody(entry.target)).replace(/\s+/g, ' ').trim();
       const candidates = await exportCandidates(entry.target);
-      const exportFound = /Esportare\s+in\s+excel|Excel|Exportar/i.test(compactText) || candidates.length > 0;
-      const resultsTableFound = /Saldo/i.test(compactText) && /(Cod\.?|Cliente)/i.test(compactText) && /Totale/i.test(compactText);
+      const exportFound = /Esportare\s+in\s+excel|Exportar/i.test(compactText) || candidates.length > 0;
+      // Il report "Clienti con saldo" (ListadoClientesConSaldo.aspx) è un LISTING diretto:
+      // mostra subito i record ("Registri: N") con colonna Saldo e "Esportare in excel" — NON
+      // c'è uno step "Generare una relazione". Riconosco la pagina dei risultati così.
+      const resultsTableFound = /Saldo/i.test(compactText)
+        && /(Registri\s*:|Codice\s+Nome|Cod\.?\s+Socio|credito\s+residuo|Totale)/i.test(compactText);
       const sample = { kind: entry.kind, index: entry.index, url: entry.url, exportFound, resultsTableFound, exportCandidates: candidates.slice(0, 6), bodySample: compactText.slice(0, 900) };
       samples.push(sample);
       if (resultsTableFound && exportFound) {
@@ -5369,61 +5373,35 @@ async function exportWalletReportWithBrowser(options = {}) {
     await mpDoLogin(page, baseUrl, username, password, diagnostic);
     await maybeClickCashEnter(page, diagnostic);
 
-    // 1) Apri il menu "Inf. e statistiche".
-    diagnostic.steps.push('stats_menu_open');
-    if (!await clickMenuEntryEverywhere(page, 'Inf. e statistiche', 'open_inf_statistiche_menu', diagnostic)) {
-      throw fail('MATCHPOINT_STATS_MENU_NOT_FOUND', 'Menu Inf. e statistiche non trovato.', { url: page.url(), contextSamples: await contextSamples(page) });
-    }
-    await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    // 1) Naviga DIRETTAMENTE al report listing "Clienti con saldo/credito residuo"
+    // (ListadoClientesConSaldo.aspx): mostra subito tutti i clienti con credito + "Esportare in
+    // excel", senza step "Generare una relazione". Più robusto del giro nei menu (come read-wallet).
+    diagnostic.steps.push('goto_report_direct');
+    const reportUrl = absoluteUrl(baseUrl, '/Clientes/ListadoClientesConSaldo.aspx');
+    await page.goto(reportUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    diagnostic.directReportUrl = page.url();
+    let resultsContext = await findWalletResultsContext(page, diagnostic, 15000);
 
-    // 2) Apri la voce report saldi. Etichetta menu = "Clienti con saldo" (il report interno si
-    // intitola "Clienti con credito residuo"). Enumero i link e clicco l'ancora nel suo contesto.
-    diagnostic.steps.push('wallet_report_click');
-    const reportLabelRe = /clienti\s+con\s+saldo|credito\s+residuo/i;
-    let clicked = await openEstadisticasReportByLabel(page, reportLabelRe, diagnostic);
-    if (!clicked) {
-      // Fallback: i vecchi click per-locator.
-      for (const label of ['Clienti con saldo', 'credito residuo', 'Clienti con credito residuo']) {
-        clicked = await clickMenuEntryEverywhere(page, label, 'click_wallet_report', diagnostic);
-        if (clicked) { diagnostic.walletReportLabel = label; break; }
+    // 2) Fallback: passa dal menu "Inf. e statistiche" → "Clienti con saldo".
+    if (!resultsContext) {
+      diagnostic.steps.push('menu_fallback');
+      if (await clickMenuEntryEverywhere(page, 'Inf. e statistiche', 'open_inf_statistiche_menu', diagnostic)) {
+        await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+        const reportLabelRe = /clienti\s+con\s+saldo|credito\s+residuo/i;
+        const clicked = (await openEstadisticasReportByLabel(page, reportLabelRe, diagnostic))
+          || (await clickMenuEntryEverywhere(page, 'Clienti con saldo', 'click_wallet_report', diagnostic));
+        if (clicked) {
+          await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+          await page.waitForTimeout(2000);
+          resultsContext = await findWalletResultsContext(page, diagnostic, 30000);
+        }
       }
     }
-    if (!clicked) {
-      throw fail('MATCHPOINT_WALLET_REPORT_LINK_NOT_FOUND', 'Voce report saldi non trovata nel menu statistiche.', { url: page.url(), estadisticasLinksSample: diagnostic.estadisticasLinksSample || [], contextSamples: await contextSamples(page) });
-    }
-    await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-
-    // 3) Trova il contesto del report (form con "Generare una relazione").
-    const reportContext = await findWalletReportContext(page, diagnostic);
-    if (!reportContext) {
-      throw fail('MATCHPOINT_WALLET_REPORT_PAGE_NOT_READY', 'Pagina report saldi non pronta.', { url: page.url(), walletReportContextSamples: diagnostic.walletReportContextSamples || [] });
-    }
-
-    // 4) Nome filtro VUOTO (tutti i clienti con credito) → "Generare una relazione".
-    diagnostic.steps.push('wallet_generate_click');
-    let generated = false;
-    const generateLocators = [
-      reportContext.locator('button:has-text("Generare una relazione"), a:has-text("Generare una relazione"), input[value*="Generare una relazione"]'),
-      reportContext.locator('button:has-text("Generare"), a:has-text("Generare"), input[value*="Generare"]'),
-      reportContext.locator('input[type="submit"], button[type="submit"]'),
-    ];
-    for (const locator of generateLocators) {
-      generated = await clickFirstVisibleLocator(locator, 'click_generare_relazione', diagnostic, 15000);
-      if (generated) break;
-    }
-    if (!generated) generated = await clickMenuEntry(reportContext, 'Generare una relazione', 'click_generare_relazione', diagnostic);
-    if (!generated) {
-      throw fail('MATCHPOINT_WALLET_GENERATE_BUTTON_NOT_FOUND', 'Pulsante Generare una relazione non trovato.', { url: page.url(), contextSamples: await contextSamples(page) });
-    }
-    await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
-    await page.waitForTimeout(2500);
-
-    // 5) Contesto risultati (tabella con Saldo + export).
-    const resultsContext = await findWalletResultsContext(page, diagnostic);
     if (!resultsContext) {
-      throw fail('MATCHPOINT_WALLET_RESULTS_NOT_READY', 'Relazione saldi generata ma export Excel non trovato.', { url: page.url(), walletResultsContextSamples: diagnostic.walletResultsContextSamples || [] });
+      throw fail('MATCHPOINT_WALLET_RESULTS_NOT_READY', 'Report saldi non pronto o export Excel non trovato.', { url: page.url(), walletResultsContextSamples: diagnostic.walletResultsContextSamples || [], estadisticasLinksSample: diagnostic.estadisticasLinksSample || [] });
     }
 
     // 6) Esporta in Excel.
