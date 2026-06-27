@@ -6109,6 +6109,11 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
+        <button class="tab-button side-nav-main-item" data-section-key="incassi" onclick="switchTab('incassi', this)">
+          <span class="nav-order">3</span>
+          <span class="nav-copy"><span class="nav-main">Incassi</span><span class="nav-sub">Cassa e rendicontazione</span></span>
+        </button>
+
         <button class="tab-button side-nav-main-item" data-section-key="contact" onclick="switchTab('contact', this)">
           <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
@@ -6163,6 +6168,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
       </div>
       <button type="button" class="pmo-chapter-item" data-section-key="members" onclick="switchTab('members', this)">Anagrafica soci</button>
+      <button type="button" class="pmo-chapter-item" data-section-key="incassi" onclick="switchTab('incassi', this)">Incassi</button>
       <button type="button" class="pmo-chapter-item" data-section-key="contact" onclick="switchTab('contact', this)">Messaggi WhatsApp</button>
       <div class="pmo-chapter-group" data-section-key="administration">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="administration" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Amministrazione <span class="pmo-chapter-caret">▾</span></button>
@@ -7045,6 +7051,11 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
+    <div id="incassi" class="tab-content">
+      <div class="pmo-section-head"><div><h2>💰 Incassi</h2><p>Cassa e rendicontazione amministrativa dei pagamenti dei giocatori.</p></div></div>
+      <div id="incassiRoot"></div>
+    </div>
+
     <div id="contact" class="tab-content">
       <div class="pmo-section-head"><div><h2>Messaggi WhatsApp</h2><p>Libreria testi e template.</p></div></div>
 
@@ -7690,7 +7701,10 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.996';
+    const APP_VERSION = '5.997';
+    // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
+    // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
+    const PMO_PAYMENTS_UI_ENABLED = true;
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -9394,6 +9408,7 @@ Grazie.`
       inviteResponses: '🎾 Chiudi Partite',
       matchHistory: '📚 Storico partite',
       assistanteAI: '✨ Assistente AI',
+      incassi: '💰 Incassi',
     };
 
     const SIDEBAR_GROUP_BY_TAB = {
@@ -9902,6 +9917,7 @@ Grazie.`
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
             if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
             if (tabName === 'members') displayMembers();
+            if (tabName === 'incassi') renderIncassi();
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
               displayAssessment();
@@ -9957,6 +9973,7 @@ Grazie.`
         { key:'view_assessment_excel', label:'Import livelli Excel' },
       ]},
       { key:'view_members', tab:'members', label:'Anagrafica soci' },
+      { key:'view_incassi', tab:'incassi', label:'Incassi' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
         { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
@@ -9965,8 +9982,8 @@ Grazie.`
         { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
       ]},
     ];
-    const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', contact:'view_contact', administration:'view_administration' };
-    const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'contact', 'administration'];
+    const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', incassi:'view_incassi', contact:'view_contact', administration:'view_administration' };
+    const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'incassi', 'contact', 'administration'];
     const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
     // Assistente AI: registriamo il permesso `view_assistante_ai` nell'albero ruoli in
     // TUTTI gli ambienti (TEST e PROD), così è gestibile dalla UI Gestione ruoli ovunque.
@@ -13769,6 +13786,22 @@ Grazie.`
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>
             </section>
+            ${PMO_PAYMENTS_UI_ENABLED ? `
+            <section class="member-panel" data-feature="payments-shell">
+              <div class="member-panel-head">
+                <h4>👛 Borsellino</h4>
+                <span class="member-panel-hint">Saldo Matchpoint (Portafoglio)</span>
+              </div>
+              <div class="member-status-grid">
+                <div class="member-status-stat"><span>Saldo attuale</span><strong id="cardWalletBalance">${escapeHtml(_walletBalanceLabel(g))}</strong></div>
+                <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn-secondary small-btn" disabled title="Disponibile dalla Fase 2">↻ Aggiorna saldo</button>
+                <button class="btn-primary small-btn" disabled title="Disponibile dalla Fase 2">＋ Ricarica</button>
+              </div>
+              <div style="margin-top:6px;font-size:11px;color:#999;">Sincronizzazione col Monedero Matchpoint in arrivo (Fase 2).</div>
+            </section>` : ''}
             <section class="member-panel">
               <div class="member-panel-head">
                 <h4>Preferenze operative</h4>
@@ -21455,6 +21488,155 @@ Grazie!`
     function dashboardCurrency(value) {
       return `${Math.round(Number(value || 0)).toLocaleString('it-IT')} €`;
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // SEZIONE INCASSI / CASSA — rendicontazione pagamenti giocatori (Fase 1).
+    // Scaffold di sola lettura: aggrega i record cloud `payment` per giorno /
+    // settimana / mese, split contanti vs carta. Fonte = pmo_get_records_admin
+    // (nessuna RPC nuova). Denaro SEMPRE in interi `amount_cents`.
+    // ════════════════════════════════════════════════════════════════════════
+    const _incassiState = { date: null, gran: 'giorno', loading: false, rows: null, loadedAt: 0 };
+    function _incassiToday() {
+      try { return (typeof formatLocalDate === 'function') ? formatLocalDate(new Date()) : new Date().toISOString().slice(0,10); }
+      catch (e) { return new Date().toISOString().slice(0,10); }
+    }
+    function _incassiEuro(cents) {
+      const v = (Number(cents) || 0) / 100;
+      return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+    // ISO week key (anno-Www) da una data YYYY-MM-DD
+    function _incassiIsoWeek(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = (d.getDay() + 6) % 7; // lun=0
+      d.setDate(d.getDate() - day + 3); // giovedì della settimana
+      const firstThu = new Date(d.getFullYear(), 0, 4);
+      const week = 1 + Math.round(((d - firstThu) / 86400000 - 3 + ((firstThu.getDay() + 6) % 7)) / 7);
+      return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+    }
+    function _incassiPeriodKey(dateStr, gran) {
+      if (!dateStr) return '';
+      if (gran === 'mese') return dateStr.slice(0, 7);        // YYYY-MM
+      if (gran === 'settimana') return _incassiIsoWeek(dateStr);
+      return dateStr;                                         // YYYY-MM-DD (giorno)
+    }
+    // La data selezionata appartiene a quale periodo?
+    function _incassiSelectedPeriod(state) {
+      const d = state.date || _incassiToday();
+      return _incassiPeriodKey(d, state.gran);
+    }
+    function _incassiMethodBucket(method) {
+      const m = (method || '').toString().toLowerCase();
+      if (m.includes('contant') || m.includes('cash') || m.includes('efectivo') || m.includes('metalic')) return 'contanti';
+      if (m.includes('cart') || m.includes('tarjeta') || m.includes('card') || m.includes('pos') || m.includes('datafono')) return 'carta';
+      if (m.includes('borsell') || m.includes('saldo') || m.includes('monedero') || m.includes('prepag')) return 'borsellino';
+      return 'altro';
+    }
+    async function _incassiFetch() {
+      if (typeof pmoStaffRpcPaged !== 'function') return [];
+      try {
+        const rows = await pmoStaffRpcPaged('pmo_get_records_admin',
+          { p_record_types: ['payment'], p_since: null }, 'cloud_sync', 'leggere gli incassi');
+        return (rows || []).filter(r => r && r.record_type === 'payment' && !r.deleted && r.payload).map(r => r.payload);
+      } catch (e) { console.warn('incassi fetch:', e); return []; }
+    }
+    function _incassiAggregate(payments, state) {
+      // Mappa periodKey -> { contanti, carta, borsellino, altro, totale, n }
+      const byPeriod = new Map();
+      for (const p of payments) {
+        if (p.voided || p.status === 'void') continue;
+        const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
+        if (!data) continue;
+        const key = _incassiPeriodKey(data, state.gran);
+        const bucket = _incassiMethodBucket(p.method);
+        const cents = Number(p.amount_cents) || 0;
+        if (!byPeriod.has(key)) byPeriod.set(key, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
+        const agg = byPeriod.get(key);
+        agg[bucket] += cents; agg.totale += cents; agg.n += 1;
+      }
+      return byPeriod;
+    }
+    function renderIncassi() {
+      const root = document.getElementById('incassiRoot');
+      if (!root) return;
+      if (!_incassiState.date) _incassiState.date = _incassiToday();
+      const st = _incassiState;
+      const granBtn = (id, lbl) => `<button type="button" class="${st.gran === id ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetGran('${id}')" style="margin-right:6px;">${lbl}</button>`;
+      const controls = `
+        <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
+          <div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">Data</label>
+            <input type="date" id="incassiDate" value="${st.date}" onchange="_incassiSetDate(this.value)"></div>
+          <div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">Periodo</label>
+            <div>${granBtn('giorno','Giorno')}${granBtn('settimana','Settimana')}${granBtn('mese','Mese')}</div></div>
+          <div style="margin-left:auto;"><button type="button" class="btn-secondary small-btn" onclick="_incassiReload()">↻ Aggiorna</button></div>
+        </div>`;
+
+      if (st.loading) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">Carico gli incassi…</div>`; return; }
+      if (st.rows == null) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">—</div>`; _incassiReload(); return; }
+
+      const byPeriod = _incassiAggregate(st.rows, st);
+      const selKey = _incassiSelectedPeriod(st);
+      const sel = byPeriod.get(selKey) || { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+
+      // riepilogo del periodo selezionato
+      const summary = `
+        <div class="section" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div style="flex:1;min-width:130px;background:#f0f7ff;border:1px solid #cfe3fb;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#5a7;font-weight:700;">TOTALE</div>
+            <div style="font-size:22px;font-weight:900;color:#0b5;">${_incassiEuro(sel.totale)}</div>
+            <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'} · ${selKey}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">💵 Contanti</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">💳 Carta</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">👛 Borsellino</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div></div>
+        </div>`;
+
+      // tabella di tutti i periodi (più recenti in alto)
+      const keys = Array.from(byPeriod.keys()).sort().reverse();
+      let table;
+      if (!keys.length) {
+        table = `<div class="section" style="text-align:center;padding:36px;color:#999;border:1px dashed #ddd;border-radius:10px;">
+          Nessun incasso registrato.<br><span style="font-size:12px;">I pagamenti compariranno qui dopo l'integrazione con Matchpoint (Fase 2).</span></div>`;
+      } else {
+        const rowsHtml = keys.map(k => {
+          const a = byPeriod.get(k);
+          const isSel = k === selKey;
+          return `<tr style="${isSel ? 'background:#fff7e0;font-weight:700;' : ''}">
+            <td>${k}</td><td style="text-align:right;">${_incassiEuro(a.contanti)}</td>
+            <td style="text-align:right;">${_incassiEuro(a.carta)}</td><td style="text-align:right;">${_incassiEuro(a.borsellino)}</td>
+            <td style="text-align:right;font-weight:800;">${_incassiEuro(a.totale)}</td><td style="text-align:center;">${a.n}</td></tr>`;
+        }).join('');
+        table = `<div class="section" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="border-bottom:2px solid #ddd;text-align:left;">
+            <th>Periodo</th><th style="text-align:right;">Contanti</th><th style="text-align:right;">Carta</th>
+            <th style="text-align:right;">Borsellino</th><th style="text-align:right;">Totale</th><th style="text-align:center;">N°</th></tr></thead>
+          <tbody>${rowsHtml}</tbody></table></div>`;
+      }
+
+      root.innerHTML = controls + summary + table;
+    }
+    function _incassiSetGran(g) { _incassiState.gran = g; renderIncassi(); }
+    function _incassiSetDate(d) { _incassiState.date = d || _incassiToday(); renderIncassi(); }
+    async function _incassiReload() {
+      _incassiState.loading = true; renderIncassi();
+      _incassiState.rows = await _incassiFetch();
+      _incassiState.loadedAt = Date.now(); _incassiState.loading = false;
+      renderIncassi();
+    }
+    // ── Borsellino (shell Fase 1): saldo Monedero cache per socio ───────────────
+    // La cache window.__pmoWalletCache (id_cliente → {balance_cents, synced_at})
+    // verrà popolata in Fase 2 dalla sync MP. Oggi è vuota → "—".
+    function _walletClientId(g) { return (g && (g.matchpointId || g.mpClientId || g.idCliente || g.id_cliente)) || null; }
+    function _walletCacheGet(g) {
+      try { const id = _walletClientId(g); if (!id || !window.__pmoWalletCache) return null; return window.__pmoWalletCache.get(String(id)) || null; }
+      catch (e) { return null; }
+    }
+    function _walletBalanceLabel(g) { const w = _walletCacheGet(g); return (w && typeof w.balance_cents === 'number') ? _incassiEuro(w.balance_cents) : '—'; }
+    function _walletUpdatedLabel(g) { const w = _walletCacheGet(g); if (!w || !w.synced_at) return '—'; try { return new Date(w.synced_at).toLocaleString('it-IT'); } catch (e) { return '—'; } }
 
     function isDashboardMatchBooking(booking) {
       const tipo = normalizeText(booking?.tipo || booking?.descrizione || '');
@@ -37626,6 +37808,34 @@ Per confermare scrivi ELIMINA.`);
         });
         box.appendChild(addChips);
       }
+    }
+
+    // PAGAMENTI per giocatore — shell Fase 1 (sola lettura, dietro flag). In Fase 2
+    // mostrerà stato/importo reali (da record `payment`) e abiliterà Contanti/Carta.
+    if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && Array.isArray(st.roster) && st.roster.length) {
+      const payWrap = document.createElement('div');
+      payWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
+      payWrap.setAttribute('data-feature', 'payments-shell');
+      const payLbl = document.createElement('div');
+      payLbl.className = 'svc-note-edit-lbl';
+      payLbl.style.marginBottom = '5px';
+      payLbl.textContent = '💰 Pagamenti per giocatore';
+      payWrap.appendChild(payLbl);
+      st.roster.forEach(function (p) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;margin:3px 0;';
+        const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.flex = '1'; nm.style.minWidth = '120px';
+        const status = document.createElement('span'); status.textContent = 'non pagato'; status.style.cssText = 'color:#b45309;font-weight:700;';
+        const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'btn-secondary small-btn'; cBtn.textContent = '💵 Contanti'; cBtn.disabled = true; cBtn.title = 'Disponibile dalla Fase 2';
+        const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'btn-secondary small-btn'; kBtn.textContent = '💳 Carta'; kBtn.disabled = true; kBtn.title = 'Disponibile dalla Fase 2';
+        row.appendChild(nm); row.appendChild(status); row.appendChild(cBtn); row.appendChild(kBtn);
+        payWrap.appendChild(row);
+      });
+      const payHint = document.createElement('div');
+      payHint.style.cssText = 'font-size:11px;color:#999;margin-top:4px;';
+      payHint.textContent = 'Incasso e metodo verranno collegati a Matchpoint nella Fase 2.';
+      payWrap.appendChild(payHint);
+      box.appendChild(payWrap);
     }
 
     // MANUTENZIONE — campo DESCRIZIONE (TextBox2 di Matchpoint = il testo visibile sul tabellone).
