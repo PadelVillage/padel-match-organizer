@@ -935,6 +935,32 @@ const CASES = [
       checks.push({ label: 'roster locale: 2 → 1 Mario Rossi', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 35, flow: 'Creazione/Verbo', name: 'handle: lezione one-shot "… metti come maestro Santiago e come allievo Maurizio Aprea" → il verbo "metti" NON è letto come giocatore (no richiesta cognome)',
+    run: async (win, H, ctx) => {
+      // Bug live 26/06: «mi crei una lezione … metti come maestro lo zio e come allievo Maurizio
+      // Aprea» → l'assistente rispondeva «Di «metti» mi serve anche il cognome» (il verbo di
+      // assegnazione ruolo restava nel testo-giocatori del flusso one-shot e veniva preso per nome).
+      // Uso Santiago (maestro noto nell'harness) per disaccoppiare dal riconoscimento di "lo zio".
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await handleSeq(win, ['mi crei una lezione domani campo 3 alle 12 metti come maestro Santiago e come allievo Maurizio Aprea']);
+      await sleep(300);
+      const t1 = chatTranscript(win);
+      checks.push({ label: 'NON chiede il cognome di "metti"', ok: !/«?metti»?\s*mi serve/i.test(t1) && !/Di\s+«metti»/i.test(t1) });
+      checks.push({ label: 'nessun verbo/Ospite spurio: niente cognome chiesto', ok: !/mi serve anche il cognome/i.test(t1) });
+      // Conferma → crea: tipo lezione + istruttore Santiago + allievo Maurizio Aprea (non "metti", non Ospite).
+      await handleSeq(win, ['conferma']);
+      const created = await waitFor(() => workerPushes('create').some(w => w.body && w.body.tipo), 4000);
+      const wp = workerPushes('create').find(w => w.body && w.body.tipo);
+      checks.push({ label: 'create inviato (no vicolo cieco)', ok: created });
+      checks.push({ label: 'payload create tipo=lezione + istruttore=Santiago', ok: !!wp && wp.body.tipo === 'lezione' && wp.body.istruttore === 'Santiago' });
+      checks.push({ label: 'giocatore = Maurizio Aprea, mai "metti" né Ospite', ok: !!wp && /maurizio/i.test(JSON.stringify(wp.body.giocatori || [])) && !/metti/i.test(JSON.stringify(wp.body.giocatori || [])) && !/ospite/i.test(JSON.stringify(wp.body.giocatori || [])) });
+      return checks;
+    }
   }
 ];
 
