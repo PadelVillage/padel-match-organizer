@@ -7701,7 +7701,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.998';
+    const APP_VERSION = '5.999';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21491,11 +21491,11 @@ Grazie!`
 
     // ════════════════════════════════════════════════════════════════════════
     // SEZIONE INCASSI / CASSA — rendicontazione pagamenti giocatori (Fase 1).
-    // Scaffold di sola lettura: aggrega i record cloud `payment` per giorno /
-    // settimana / mese, split contanti vs carta. Fonte = pmo_get_records_admin
-    // (nessuna RPC nuova). Denaro SEMPRE in interi `amount_cents`.
+    // Scaffold di sola lettura: somma i record cloud `payment` in un intervallo
+    // [from,to] (un solo giorno = from==to; "Oggi" = entrambi a oggi), split
+    // contanti vs carta. Fonte = pmo_get_records_admin. Denaro in interi cents.
     // ════════════════════════════════════════════════════════════════════════
-    const _incassiState = { date: null, from: null, to: null, gran: 'giorno', loading: false, rows: null, loadedAt: 0 };
+    const _incassiState = { from: null, to: null, loading: false, rows: null, loadedAt: 0 };
     function _incassiToday() {
       try { return (typeof formatLocalDate === 'function') ? formatLocalDate(new Date()) : new Date().toISOString().slice(0,10); }
       catch (e) { return new Date().toISOString().slice(0,10); }
@@ -21503,26 +21503,6 @@ Grazie!`
     function _incassiEuro(cents) {
       const v = (Number(cents) || 0) / 100;
       return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-    }
-    // ISO week key (anno-Www) da una data YYYY-MM-DD
-    function _incassiIsoWeek(dateStr) {
-      const d = new Date(dateStr + 'T00:00:00');
-      const day = (d.getDay() + 6) % 7; // lun=0
-      d.setDate(d.getDate() - day + 3); // giovedì della settimana
-      const firstThu = new Date(d.getFullYear(), 0, 4);
-      const week = 1 + Math.round(((d - firstThu) / 86400000 - 3 + ((firstThu.getDay() + 6) % 7)) / 7);
-      return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
-    }
-    function _incassiPeriodKey(dateStr, gran) {
-      if (!dateStr) return '';
-      if (gran === 'mese') return dateStr.slice(0, 7);        // YYYY-MM
-      if (gran === 'settimana') return _incassiIsoWeek(dateStr);
-      return dateStr;                                         // YYYY-MM-DD (giorno)
-    }
-    // La data selezionata appartiene a quale periodo?
-    function _incassiSelectedPeriod(state) {
-      const d = state.date || _incassiToday();
-      return _incassiPeriodKey(d, state.gran);
     }
     function _incassiMethodBucket(method) {
       const m = (method || '').toString().toLowerCase();
@@ -21539,70 +21519,40 @@ Grazie!`
         return (rows || []).filter(r => r && r.record_type === 'payment' && !r.deleted && r.payload).map(r => r.payload);
       } catch (e) { console.warn('incassi fetch:', e); return []; }
     }
-    function _incassiAggregate(payments, state) {
-      // Mappa periodKey -> { contanti, carta, borsellino, altro, totale, n }
-      const byPeriod = new Map();
-      for (const p of payments) {
-        if (p.voided || p.status === 'void') continue;
-        const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
-        if (!data) continue;
-        const key = _incassiPeriodKey(data, state.gran);
-        const bucket = _incassiMethodBucket(p.method);
-        const cents = Number(p.amount_cents) || 0;
-        if (!byPeriod.has(key)) byPeriod.set(key, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
-        const agg = byPeriod.get(key);
-        agg[bucket] += cents; agg.totale += cents; agg.n += 1;
-      }
-      return byPeriod;
-    }
     function renderIncassi() {
       const root = document.getElementById('incassiRoot');
       if (!root) return;
-      if (!_incassiState.date) _incassiState.date = _incassiToday();
-      if (_incassiState.gran === 'personalizzato' && (!_incassiState.from || !_incassiState.to)) {
-        const base = _incassiState.date || _incassiToday();
-        _incassiState.from = _incassiState.from || (base.slice(0, 8) + '01');
-        _incassiState.to = _incassiState.to || base;
-      }
+      const today = _incassiToday();
+      if (!_incassiState.from) _incassiState.from = today;
+      if (!_incassiState.to) _incassiState.to = today;
       const st = _incassiState;
-      const isCustom = st.gran === 'personalizzato';
-      const granBtn = (id, lbl) => `<button type="button" class="${st.gran === id ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetGran('${id}')" style="margin-right:6px;">${lbl}</button>`;
       const lblCss = 'display:block;font-size:12px;font-weight:700;margin-bottom:4px;';
-      const dateControls = isCustom
-        ? `<div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
-           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>`
-        : `<div><label style="${lblCss}">Data</label><input type="date" id="incassiDate" value="${st.date}" onchange="_incassiSetDate(this.value)"></div>`;
+      const isToday = st.from === today && st.to === today;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
-          ${dateControls}
-          <div><label style="${lblCss}">Periodo</label>
-            <div>${granBtn('giorno','Giorno')}${granBtn('settimana','Settimana')}${granBtn('mese','Mese')}${granBtn('personalizzato','Personalizzato')}</div></div>
+          <div><label style="${lblCss}">&nbsp;</label>
+            <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
+          <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
+          <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
           <div style="margin-left:auto;"><button type="button" class="btn-secondary small-btn" onclick="_incassiReload()">↻ Aggiorna</button></div>
         </div>`;
 
       if (st.loading) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">Carico gli incassi…</div>`; return; }
       if (st.rows == null) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">—</div>`; _incassiReload(); return; }
 
-      let byPeriod, selKey, sel;
-      if (isCustom) {
-        // intervallo libero: bucket per giorno dentro [from,to], riepilogo = somma totale
-        byPeriod = new Map();
-        sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
-        for (const p of st.rows) {
-          if (p.voided || p.status === 'void') continue;
-          const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
-          if (!data || data < st.from || data > st.to) continue;
-          const bucket = _incassiMethodBucket(p.method); const cents = Number(p.amount_cents) || 0;
-          if (!byPeriod.has(data)) byPeriod.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
-          const a = byPeriod.get(data); a[bucket] += cents; a.totale += cents; a.n += 1;
-          sel[bucket] += cents; sel.totale += cents; sel.n += 1;
-        }
-        selKey = `${st.from} → ${st.to}`;
-      } else {
-        byPeriod = _incassiAggregate(st.rows, st);
-        selKey = _incassiSelectedPeriod(st);
-        sel = byPeriod.get(selKey) || { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      // somma i pagamenti nell'intervallo [from,to]; bucket per giorno per la tabella
+      const byPeriod = new Map();
+      const sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      for (const p of st.rows) {
+        if (p.voided || p.status === 'void') continue;
+        const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
+        if (!data || data < st.from || data > st.to) continue;
+        const bucket = _incassiMethodBucket(p.method); const cents = Number(p.amount_cents) || 0;
+        if (!byPeriod.has(data)) byPeriod.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
+        const a = byPeriod.get(data); a[bucket] += cents; a.totale += cents; a.n += 1;
+        sel[bucket] += cents; sel.totale += cents; sel.n += 1;
       }
+      const selKey = isToday ? `Oggi · ${st.from}` : `${st.from} → ${st.to}`;
 
       // riepilogo del periodo selezionato
       const summary = `
@@ -21631,7 +21581,7 @@ Grazie!`
       } else {
         const rowsHtml = keys.map(k => {
           const a = byPeriod.get(k);
-          const isSel = k === selKey;
+          const isSel = k === today;
           return `<tr style="${isSel ? 'background:#fff7e0;font-weight:700;' : ''}">
             <td>${k}</td><td style="text-align:right;">${_incassiEuro(a.contanti)}</td>
             <td style="text-align:right;">${_incassiEuro(a.carta)}</td><td style="text-align:right;">${_incassiEuro(a.borsellino)}</td>
@@ -21639,23 +21589,14 @@ Grazie!`
         }).join('');
         table = `<div class="section" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="border-bottom:2px solid #ddd;text-align:left;">
-            <th>Periodo</th><th style="text-align:right;">Contanti</th><th style="text-align:right;">Carta</th>
+            <th>Giorno</th><th style="text-align:right;">Contanti</th><th style="text-align:right;">Carta</th>
             <th style="text-align:right;">Borsellino</th><th style="text-align:right;">Totale</th><th style="text-align:center;">N°</th></tr></thead>
           <tbody>${rowsHtml}</tbody></table></div>`;
       }
 
       root.innerHTML = controls + summary + table;
     }
-    function _incassiSetGran(g) {
-      _incassiState.gran = g;
-      if (g === 'personalizzato' && (!_incassiState.from || !_incassiState.to)) {
-        const base = _incassiState.date || _incassiToday();
-        _incassiState.from = base.slice(0, 8) + '01'; // primo del mese
-        _incassiState.to = base;
-      }
-      renderIncassi();
-    }
-    function _incassiSetDate(d) { _incassiState.date = d || _incassiToday(); renderIncassi(); }
+    function _incassiSetToday() { const t = _incassiToday(); _incassiState.from = t; _incassiState.to = t; renderIncassi(); }
     function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
     function _incassiSetTo(d) { _incassiState.to = d || _incassiState.to; if (_incassiState.from && _incassiState.to < _incassiState.from) _incassiState.from = _incassiState.to; renderIncassi(); }
     async function _incassiReload() {
