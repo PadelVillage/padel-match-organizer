@@ -5314,6 +5314,43 @@ async function findWalletResultsContext(page, diagnostic, timeout = 45000) {
   return null;
 }
 
+// Apre una voce del menu report "Inf. e statistiche" (frame Estadisticas/Menu.aspx) cercandola
+// per TESTO tra gli <a>, e cliccando l'ancora NEL SUO contesto (fa partire navlframe di MP). Più
+// robusto del click per-locator: enumera i link, abbina per regex e clicca l'elemento esatto.
+// Registra in diagnostic il link abbinato e un campione dei testi (per affinare dal vivo).
+async function openEstadisticasReportByLabel(page, labelRe, diagnostic, timeout = 30000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    for (const entry of pageContentContexts(page)) {
+      let links = [];
+      try {
+        links = await entry.target.evaluate(() => Array.from(document.querySelectorAll('a')).map((a) => ({
+          text: (a.textContent || '').replace(/\s+/g, ' ').trim(),
+          href: a.getAttribute('href') || '',
+          onclick: a.getAttribute('onclick') || '',
+        })).filter((l) => l.text));
+      } catch { links = []; }
+      if (!links.length) continue;
+      const match = links.find((l) => labelRe.test(l.text));
+      if (match) {
+        diagnostic.estadisticasMatch = { text: match.text, href: match.href, onclick: match.onclick, ctx: `${entry.kind}:${entry.index}`, ctxUrl: entry.url };
+        const did = await entry.target.evaluate((wanted) => {
+          const a = Array.from(document.querySelectorAll('a')).find((x) => (x.textContent || '').replace(/\s+/g, ' ').trim() === wanted);
+          if (!a) return false;
+          a.click();
+          return true;
+        }, match.text).catch(() => false);
+        if (did) return true;
+      } else {
+        diagnostic.estadisticasLinksSample = links.slice(0, 80).map((l) => l.text);
+        diagnostic.estadisticasLinksContext = { kind: entry.kind, index: entry.index, url: entry.url, count: links.length };
+      }
+    }
+    await page.waitForTimeout(500);
+  }
+  return false;
+}
+
 async function exportWalletReportWithBrowser(options = {}) {
   const username = clean(options.username) || env('MATCHPOINT_USERNAME');
   const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
@@ -5340,15 +5377,20 @@ async function exportWalletReportWithBrowser(options = {}) {
     await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2000);
 
-    // 2) Clicca la voce del report saldi (etichette candidate; si affina in smoke test live).
+    // 2) Apri la voce report saldi. Etichetta menu = "Clienti con saldo" (il report interno si
+    // intitola "Clienti con credito residuo"). Enumero i link e clicco l'ancora nel suo contesto.
     diagnostic.steps.push('wallet_report_click');
-    let clicked = false;
-    for (const label of ['Clienti con credito residuo', 'Clienti con saldo', 'credito residuo']) {
-      clicked = await clickMenuEntryEverywhere(page, label, 'click_wallet_report', diagnostic);
-      if (clicked) { diagnostic.walletReportLabel = label; break; }
+    const reportLabelRe = /clienti\s+con\s+saldo|credito\s+residuo/i;
+    let clicked = await openEstadisticasReportByLabel(page, reportLabelRe, diagnostic);
+    if (!clicked) {
+      // Fallback: i vecchi click per-locator.
+      for (const label of ['Clienti con saldo', 'credito residuo', 'Clienti con credito residuo']) {
+        clicked = await clickMenuEntryEverywhere(page, label, 'click_wallet_report', diagnostic);
+        if (clicked) { diagnostic.walletReportLabel = label; break; }
+      }
     }
     if (!clicked) {
-      throw fail('MATCHPOINT_WALLET_REPORT_LINK_NOT_FOUND', 'Voce report "Clienti con credito residuo" non trovata.', { url: page.url(), contextSamples: await contextSamples(page) });
+      throw fail('MATCHPOINT_WALLET_REPORT_LINK_NOT_FOUND', 'Voce report saldi non trovata nel menu statistiche.', { url: page.url(), estadisticasLinksSample: diagnostic.estadisticasLinksSample || [], contextSamples: await contextSamples(page) });
     }
     await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(1500);
