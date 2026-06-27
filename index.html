@@ -7703,7 +7703,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.997';
+    const APP_VERSION = '5.998';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13858,6 +13858,7 @@ Grazie.`
                 <div class="member-status-stat"><span>Saldo attuale</span><strong id="cardWalletBalance">${escapeHtml(_walletBalanceLabel(g))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
               </div>
+              ${/^\d{1,8}$/.test(String(_walletClientId(g) || '').trim()) ? `
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Aggiorna saldo</button>
                 <button class="btn-primary small-btn" disabled>＋ Ricarica</button>
@@ -13865,7 +13866,11 @@ Grazie.`
               <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
                 <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
-              </div>
+              </div>` : `
+              <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
+                <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
+                <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
+              </div>`}
             </section>` : ''}
             <section class="member-panel">
               <div class="member-panel-head">
