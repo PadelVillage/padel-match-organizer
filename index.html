@@ -7701,7 +7701,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.999';
+    const APP_VERSION = '6.000';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13797,8 +13797,8 @@ Grazie.`
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
               </div>
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn-secondary small-btn" disabled title="Disponibile dalla Fase 2">↻ Aggiorna saldo</button>
-                <button class="btn-primary small-btn" disabled title="Disponibile dalla Fase 2">＋ Ricarica</button>
+                <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}')" title="Legge il saldo reale da Matchpoint">↻ Aggiorna saldo</button>
+                <button class="btn-primary small-btn" disabled title="Disponibile dalla Fase 2 (scrittura)">＋ Ricarica</button>
               </div>
               <div style="margin-top:6px;font-size:11px;color:#999;">Sincronizzazione col Monedero Matchpoint in arrivo (Fase 2).</div>
             </section>` : ''}
@@ -21605,16 +21605,49 @@ Grazie!`
       _incassiState.loadedAt = Date.now(); _incassiState.loading = false;
       renderIncassi();
     }
-    // ── Borsellino (shell Fase 1): saldo Monedero cache per socio ───────────────
-    // La cache window.__pmoWalletCache (id_cliente → {balance_cents, synced_at})
-    // verrà popolata in Fase 2 dalla sync MP. Oggi è vuota → "—".
-    function _walletClientId(g) { return (g && (g.matchpointId || g.mpClientId || g.idCliente || g.id_cliente)) || null; }
+    // ── Borsellino: saldo Monedero (Portafoglio) per socio ──────────────────────
+    // Cache in-memory window.__pmoWalletCache (idInterno MP → {balance_cents, synced_at}),
+    // popolata on-demand dal bottone "Aggiorna saldo" → edge matchpoint-wallet-read.
+    window.__pmoWalletCache = window.__pmoWalletCache || new Map();
+    function _walletClientId(g) { return (g && (g.matchpointIdInterno || g.matchpointId || g.mpClientId || g.idCliente || g.id_cliente)) || null; }
     function _walletCacheGet(g) {
       try { const id = _walletClientId(g); if (!id || !window.__pmoWalletCache) return null; return window.__pmoWalletCache.get(String(id)) || null; }
       catch (e) { return null; }
     }
     function _walletBalanceLabel(g) { const w = _walletCacheGet(g); return (w && typeof w.balance_cents === 'number') ? _incassiEuro(w.balance_cents) : '—'; }
     function _walletUpdatedLabel(g) { const w = _walletCacheGet(g); if (!w || !w.synced_at) return '—'; try { return new Date(w.synced_at).toLocaleString('it-IT'); } catch (e) { return '—'; } }
+    // Legge il saldo reale dal borsellino Matchpoint (via edge → worker /read-wallet).
+    async function pmoWalletRefresh(memberId) {
+      const g = giocatori.find(p => String(p.id) === String(memberId));
+      if (!g) return;
+      const idInterno = String(_walletClientId(g) || '').trim();
+      const balEl = document.getElementById('cardWalletBalance');
+      if (!/^\d{1,8}$/.test(idInterno)) {
+        if (balEl) balEl.textContent = 'id MP assente';
+        alert('Questo socio non ha un id Matchpoint collegato: impossibile leggere il borsellino. Sincronizza l’anagrafica da Matchpoint.');
+        return;
+      }
+      if (balEl) balEl.textContent = '…';
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'leggere il borsellino su Matchpoint');
+        const resp = await fetch(`${supabaseUrl}/functions/v1/matchpoint-wallet-read`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify({ idInterno }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || data.ok === false || typeof data.balanceCents !== 'number') {
+          throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+        }
+        window.__pmoWalletCache.set(idInterno, { balance_cents: data.balanceCents, synced_at: new Date().toISOString() });
+        renderOpenMemberCard(); // ridisegna la scheda col saldo aggiornato
+      } catch (e) {
+        console.warn('pmoWalletRefresh:', e);
+        if (balEl) balEl.textContent = 'errore';
+        alert('Lettura borsellino non riuscita: ' + ((e && e.message) || e));
+      }
+    }
 
     function isDashboardMatchBooking(booking) {
       const tipo = normalizeText(booking?.tipo || booking?.descrizione || '');
