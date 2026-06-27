@@ -23,7 +23,7 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-routine-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -112,6 +112,16 @@ async function getActor(req: Request): Promise<StaffActor | null> {
     role: String(profile.role ?? 'staff'),
     permissions: (profile.permissions as JsonMap) ?? {},
   };
+}
+
+// Routine schedulata (cron pg_cron): valida l'header x-pmo-routine-secret contro il vault
+// (stesso meccanismo di ai-propose-lexicon). Permette al cron di girare senza JWT staff.
+async function verifyRoutineSecret(admin: ReturnType<typeof createClient>, secret: string) {
+  const value = clean(secret);
+  if (!value) return false;
+  const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
+  if (error) return false;
+  return data === true;
 }
 
 // Chiama il worker browser per generare ed esportare il report saldi. Ritorna i bytes Excel (base64).
@@ -265,20 +275,26 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
-  const actor = await getActor(req).catch(() => null);
-  if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
-  if (!hasPermission(actor, 'cloud_sync')) {
-    return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per sincronizzare i saldi borsellino.');
-  }
-
-  let body: JsonMap = {};
-  try { body = await req.json(); } catch { /* body opzionale */ }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   if (!supabaseUrl || !serviceRoleKey) return err(500, 'SUPABASE_NOT_CONFIGURED', 'Configurazione Supabase mancante.');
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+
+  // Due vie d'accesso: la routine schedulata (x-pmo-routine-secret, cron ~30 min) oppure lo staff
+  // loggato con permesso cloud_sync che preme "↻ Aggiorna saldi borsellino".
+  const routineOk = await verifyRoutineSecret(admin, req.headers.get('x-pmo-routine-secret') || '');
+  let actor: StaffActor | null = null;
+  if (!routineOk) {
+    actor = await getActor(req).catch(() => null);
+    if (!actor) return err(401, 'UNAUTHORIZED', 'Serve la routine secret oppure una sessione staff con permesso cloud_sync.');
+    if (!hasPermission(actor, 'cloud_sync')) {
+      return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per sincronizzare i saldi borsellino.');
+    }
+  }
+
+  let body: JsonMap = {};
+  try { body = await req.json(); } catch { /* body opzionale */ }
 
   // 1) Bytes Excel: manuale (xlsxBase64) o dal worker.
   let bytes: Uint8Array;
