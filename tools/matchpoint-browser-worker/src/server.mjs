@@ -13,6 +13,47 @@ const DEFAULT_HISTORY_DAYS = 30;
 const RECURSO_BY_CAMPO = { 1: 13, 2: 14, 3: 15, 4: 16 }; // padel: Campo N → id_recurso Matchpoint
 const MAX_BODY_BYTES = 64 * 1024;
 
+// ─── Selettori pagamenti/borsellino Matchpoint (mappati in Fase 0, 27/06/2026) ──
+// UNICO punto con la conoscenza del DOM di pagamento. Gli handler referenziano
+// solo queste costanti. Tutto verificato dal vivo sulla Matchpoint reale.
+//
+// SCHEDA PARTITA  /Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id={idReserva}
+//   repeater per partecipante: RepeaterParticipantes_{RP}_Listado_{idx}_<suffisso>_{idx}
+//   (RP = WUCUsuarioPartida per partita/lezione). I suffissi già usati dal worker
+//   (TextBoxNombreValor / HiddenFieldIdCliente / TextBoxCargoReserva) restano dove
+//   sono; qui aggiungiamo SOLO i campi economici di sola lettura.
+// SCHEDA CLIENTE  /Clientes/FichaCliente.aspx?id={idInterno}
+//   borsellino ("Portafoglio") nell'header.
+const MP_PAYMENT_SELECTORS = {
+  // -- scheda partita, per partecipante (idx) — sola lettura --
+  // stato pagamento: "In sospeso" (>0) / "Riscosso" (=0) si deduce dall'importo pendente
+  partImportePendiente: (idx) => `[id*="RepeaterParticipantes"][id*="Listado_${idx}_LabelImportePendienteValor_${idx}"]`,
+  partImporteTotale:    (idx) => `[id*="RepeaterParticipantes"][id*="Listado_${idx}_LabelImporteTotalValor_${idx}"]`,
+  partSaldoAttuale:     (idx) => `[id*="RepeaterParticipantes"][id*="Listado_${idx}_LabelSaldoActual_${idx}"]`,
+  partHiddenImporte:    (idx) => `input[id*="RepeaterParticipantes"][id*="Listado_${idx}_HiddenFieldImporteReserva_${idx}"]`,
+  partHiddenPendiente:  (idx) => `input[id*="RepeaterParticipantes"][id*="Listado_${idx}_HiddenFieldSaldoPendiente_${idx}"]`,
+  // azione incasso (apre il dialog forma-pago: Contanti/Carta/…) — usata SOLO in scrittura (Fase 2 write)
+  partIncassaBtn:       (idx) => `a[id*="RepeaterParticipantes"][id*="Listado_${idx}_LinkButtonCobrar_${idx}"]`,
+  // dialog "Incassare": metodo a PULSANTI, click per testo visibile
+  cobroMethodLabels: { contanti: 'Contanti', carta: 'Carta', borsellino: 'Saldo disponibile' },
+
+  // -- scheda cliente: borsellino / Portafoglio --
+  walletSaldoLabel: '#CC_Cabecera_LabelSaldo_Actual', // testo "Portafoglio: X,XX €"
+  walletBillingTab: 'Fatturazione e pagamenti',       // tab (testo) che apre la sezione pagamenti
+  walletRicaricaBtn: '#CC_Datos_FormViewFicha_LinkButton11', // "Ricaricare" → dialog "Effettuare ricarica"
+};
+
+// Estrae i centesimi interi da una stringa importo IT/MP ("Portafoglio: 1.234,50 €", "8,00").
+function mpMoneyToCents(text) {
+  const s = String(text == null ? '' : text);
+  const m = s.match(/-?\d[\d.\s]*,\d{1,2}|-?\d[\d.\s]*/);
+  if (!m) return null;
+  let num = m[0].replace(/\s/g, '');
+  if (num.includes(',')) num = num.replace(/\./g, '').replace(',', '.'); // formato IT: . migliaia, , decimali
+  const val = Number(num);
+  return Number.isFinite(val) ? Math.round(val * 100) : null;
+}
+
 function clean(value) {
   return String(value ?? '').trim();
 }
@@ -5176,6 +5217,50 @@ async function handleReactivateClient(req, res) {
   json(res, 200, result);
 }
 
+// ── readWalletWithBrowser: legge il saldo BORSELLINO/Portafoglio di un cliente ──
+// SOLA LETTURA (nessuna scrittura, nessun denaro mosso). idInterno = id URL della
+// FichaCliente = stesso HiddenFieldIdCliente dei partecipanti partita (vedi Fase 0).
+async function readWalletWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+  const idInterno = clean(options.idInterno || options.idCliente || options.id || '');
+  if (!/^\d{1,8}$/.test(idInterno)) {
+    throw fail('INVALID_CLIENT_ID', 'idCliente (id interno Matchpoint) richiesto per leggere il borsellino.', { idInterno });
+  }
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const diagnostic = { mode: 'read_wallet', idInterno, baseUrl, startedAt: new Date().toISOString(), steps: [] };
+
+  const browser = await chromium.launch(mpLaunchOptions());
+  try {
+    const { page } = await mpNewContextPage(browser);
+    page.setDefaultTimeout(12000);
+    page.setDefaultNavigationTimeout(20000);
+    await mpDoLogin(page, baseUrl, username, password, diagnostic);
+    diagnostic.steps.push('open_ficha');
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(1200);
+    const txt = await page.locator(MP_PAYMENT_SELECTORS.walletSaldoLabel).first().innerText({ timeout: 6000 }).catch(() => '');
+    diagnostic.walletText = txt;
+    const balanceCents = mpMoneyToCents(txt);
+    if (balanceCents == null) {
+      throw fail('WALLET_BALANCE_NOT_FOUND', 'Saldo Portafoglio non leggibile sulla scheda cliente.', diagnostic);
+    }
+    return { ok: true, idCliente: idInterno, balanceCents, balanceText: clean(txt), diagnostic };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleReadWallet(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('read-wallet', body), () => mpReadRetry('read-wallet', () => readWalletWithBrowser(body)));
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -6499,7 +6584,16 @@ async function editBookingWithBrowser(input = {}) {
           `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`,
         );
         const costo = (await costoInput.first().inputValue().catch(() => '')).trim();
-        partecipantiLettura.push({ idx: String(ridx), nome, idCliente, costo });
+        // Stato economico (sola lettura): importo totale, pendente, saldo borsellino del giocatore.
+        // Stato = "riscosso" se pendente=0, "in_sospeso" se pendente>0 (vedi Fase 0).
+        const pendTxt = await page.locator(MP_PAYMENT_SELECTORS.partImportePendiente(ridx)).first().innerText({ timeout: 1500 }).catch(() => '');
+        const totTxt = await page.locator(MP_PAYMENT_SELECTORS.partImporteTotale(ridx)).first().innerText({ timeout: 1500 }).catch(() => '');
+        const saldoTxt = await page.locator(MP_PAYMENT_SELECTORS.partSaldoAttuale(ridx)).first().innerText({ timeout: 1500 }).catch(() => '');
+        const pendenteCents = mpMoneyToCents(pendTxt);
+        const importoCents = mpMoneyToCents(totTxt);
+        const saldoCents = mpMoneyToCents(saldoTxt);
+        const stato = pendenteCents == null ? null : (pendenteCents === 0 ? 'riscosso' : 'in_sospeso');
+        partecipantiLettura.push({ idx: String(ridx), nome, idCliente, costo, importoCents, pendenteCents, saldoCents, stato });
         ridx++;
       }
       diagnostic.partecipantiFinali = partecipantiLettura;
@@ -7342,7 +7436,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -7394,6 +7488,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/reactivate-client') {
       return await handleReactivateClient(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/read-wallet') {
+      return await handleReadWallet(req, res);
     }
     if (req.method === 'POST' && req.url === '/debug-find-client') {
       return await handleDebugFindClient(req, res);
