@@ -7704,7 +7704,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.002';
+    const APP_VERSION = '6.003';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37827,8 +37827,10 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
-    // PAGAMENTI per giocatore — shell Fase 1 (sola lettura, dietro flag). In Fase 2
-    // mostrerà stato/importo reali (da record `payment`) e abiliterà Contanti/Carta.
+    // PAGAMENTI per giocatore — Fase 2 LETTURA (sola lettura, dietro flag). Lo stato reale
+    // (riscosso/in sospeso + importo) arriva dalla lettura worker `/edit-booking` (campi
+    // importoCents/pendenteCents/stato su ogni voce del roster, preservati da _normRoster).
+    // L'incasso effettivo (Contanti/Carta) resta disattivato fino alla Fase 2b (scrittura su MP).
     if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && Array.isArray(st.roster) && st.roster.length) {
       const payWrap = document.createElement('div');
       payWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
@@ -37838,19 +37840,46 @@ Per confermare scrivi ELIMINA.`);
       payLbl.style.marginBottom = '5px';
       payLbl.textContent = '💰 Pagamenti per giocatore';
       payWrap.appendChild(payLbl);
+      let _anyUnknown = false;
       st.roster.forEach(function (p) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;margin:3px 0;';
         const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.flex = '1'; nm.style.minWidth = '120px';
-        const status = document.createElement('span'); status.textContent = 'non pagato'; status.style.cssText = 'color:#b45309;font-weight:700;';
-        const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'btn-secondary small-btn'; cBtn.textContent = '💵 Contanti'; cBtn.disabled = true; cBtn.title = 'Disponibile dalla Fase 2';
-        const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'btn-secondary small-btn'; kBtn.textContent = '💳 Carta'; kBtn.disabled = true; kBtn.title = 'Disponibile dalla Fase 2';
-        row.appendChild(nm); row.appendChild(status); row.appendChild(cBtn); row.appendChild(kBtn);
+        const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
+        const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
+        const stato = p.stato; // 'riscosso' | 'in_sospeso' | null (non ancora letto)
+        const status = document.createElement('span');
+        let showButtons = true;
+        if (stato === 'riscosso') {
+          status.textContent = '✓ Pagato' + (importoCents != null && importoCents > 0 ? ' · ' + _incassiEuro(importoCents) : '');
+          status.style.cssText = 'color:#0b5;font-weight:700;';
+          showButtons = false; // già riscosso → nessun incasso da fare
+        } else if (stato === 'in_sospeso') {
+          if (importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
+            status.textContent = 'Parziale · resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
+          } else {
+            const dovuto = (pendenteCents != null) ? pendenteCents : importoCents;
+            status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' · ' + _incassiEuro(dovuto) : '');
+          }
+          status.style.cssText = 'color:#b45309;font-weight:700;';
+        } else {
+          status.textContent = '— saldo da leggere';
+          status.style.cssText = 'color:#999;';
+          _anyUnknown = true;
+        }
+        row.appendChild(nm); row.appendChild(status);
+        if (showButtons) {
+          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'btn-secondary small-btn'; cBtn.textContent = '💵 Contanti'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'btn-secondary small-btn'; kBtn.textContent = '💳 Carta'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+          row.appendChild(cBtn); row.appendChild(kBtn);
+        }
         payWrap.appendChild(row);
       });
       const payHint = document.createElement('div');
       payHint.style.cssText = 'font-size:11px;color:#999;margin-top:4px;';
-      payHint.textContent = 'Incasso e metodo verranno collegati a Matchpoint nella Fase 2.';
+      payHint.textContent = _anyUnknown
+        ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
+        : 'Stato letto da Matchpoint. L’incasso (Contanti/Carta) sarà collegato nella Fase 2b.';
       payWrap.appendChild(payHint);
       box.appendChild(payWrap);
     }
