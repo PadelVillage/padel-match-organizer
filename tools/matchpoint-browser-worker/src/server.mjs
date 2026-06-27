@@ -5261,6 +5261,160 @@ async function handleReadWallet(req, res) {
   json(res, 200, result);
 }
 
+// ── Report SALDI BORSELLINO di massa (Inf. e statistiche → "Clienti con credito residuo") ──
+// SOLA LETTURA: genera il report (nome filtro vuoto = tutti i clienti con credito>0) e scarica
+// l'Excel (Cod./Cliente/E-mail/Telefono/Saldo). Modellato sul flusso storico (menu → genera →
+// esporta). NB: l'etichetta esatta della voce di menu si conferma solo dal vivo → si provano più
+// varianti e si lascia diagnostica ricca (contextSamples) per affinare in smoke test.
+async function findWalletReportContext(page, diagnostic, timeout = 45000) {
+  const deadline = Date.now() + timeout;
+  let samples = [];
+  while (Date.now() < deadline) {
+    samples = [];
+    for (const entry of pageContentContexts(page)) {
+      const compactText = (await readContextBody(entry.target)).replace(/\s+/g, ' ').trim();
+      const reportPageFound = /credito\s+residuo|clienti\s+con\s+saldo/i.test(compactText);
+      const filterFound = /Nome\s+e\s+cognom/i.test(compactText);
+      const generateButtonFound = /Generare\s+una\s+relazione|Genera(?:re)?\s+relazione/i.test(compactText);
+      const sample = { kind: entry.kind, index: entry.index, url: entry.url, reportPageFound, filterFound, generateButtonFound, bodySample: compactText.slice(0, 500) };
+      samples.push(sample);
+      if ((reportPageFound || filterFound) && generateButtonFound) {
+        diagnostic.walletReportContext = sample;
+        diagnostic.walletReportUrl = entry.url;
+        return entry.target;
+      }
+    }
+    await page.waitForTimeout(600);
+  }
+  diagnostic.walletReportContextSamples = samples;
+  return null;
+}
+
+async function findWalletResultsContext(page, diagnostic, timeout = 45000) {
+  const deadline = Date.now() + timeout;
+  let samples = [];
+  while (Date.now() < deadline) {
+    samples = [];
+    for (const entry of pageContentContexts(page)) {
+      const compactText = (await readContextBody(entry.target)).replace(/\s+/g, ' ').trim();
+      const candidates = await exportCandidates(entry.target);
+      const exportFound = /Esportare\s+in\s+excel|Excel|Exportar/i.test(compactText) || candidates.length > 0;
+      const resultsTableFound = /Saldo/i.test(compactText) && /(Cod\.?|Cliente)/i.test(compactText) && /Totale/i.test(compactText);
+      const sample = { kind: entry.kind, index: entry.index, url: entry.url, exportFound, resultsTableFound, exportCandidates: candidates.slice(0, 6), bodySample: compactText.slice(0, 900) };
+      samples.push(sample);
+      if (resultsTableFound && exportFound) {
+        diagnostic.walletResultsContext = sample;
+        diagnostic.walletResultsUrl = entry.url;
+        return entry.target;
+      }
+    }
+    await page.waitForTimeout(600);
+  }
+  diagnostic.walletResultsContextSamples = samples;
+  return null;
+}
+
+async function exportWalletReportWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  }
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const exportTarget = clean(options.exportTarget) || env('MATCHPOINT_EXPORT_TARGET', DEFAULT_EXPORT_TARGET);
+  const diagnostic = { mode: 'export_wallet_report', flow: 'wallet_balance', baseUrl, startedAt: new Date().toISOString(), steps: [] };
+
+  const browser = await chromium.launch(mpLaunchOptions());
+  try {
+    const { page } = await mpNewContextPage(browser);
+    page.setDefaultTimeout(15000);
+    page.setDefaultNavigationTimeout(45000);
+    await mpDoLogin(page, baseUrl, username, password, diagnostic);
+    await maybeClickCashEnter(page, diagnostic);
+
+    // 1) Apri il menu "Inf. e statistiche".
+    diagnostic.steps.push('stats_menu_open');
+    if (!await clickMenuEntryEverywhere(page, 'Inf. e statistiche', 'open_inf_statistiche_menu', diagnostic)) {
+      throw fail('MATCHPOINT_STATS_MENU_NOT_FOUND', 'Menu Inf. e statistiche non trovato.', { url: page.url(), contextSamples: await contextSamples(page) });
+    }
+    await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+
+    // 2) Clicca la voce del report saldi (etichette candidate; si affina in smoke test live).
+    diagnostic.steps.push('wallet_report_click');
+    let clicked = false;
+    for (const label of ['Clienti con credito residuo', 'Clienti con saldo', 'credito residuo']) {
+      clicked = await clickMenuEntryEverywhere(page, label, 'click_wallet_report', diagnostic);
+      if (clicked) { diagnostic.walletReportLabel = label; break; }
+    }
+    if (!clicked) {
+      throw fail('MATCHPOINT_WALLET_REPORT_LINK_NOT_FOUND', 'Voce report "Clienti con credito residuo" non trovata.', { url: page.url(), contextSamples: await contextSamples(page) });
+    }
+    await page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+
+    // 3) Trova il contesto del report (form con "Generare una relazione").
+    const reportContext = await findWalletReportContext(page, diagnostic);
+    if (!reportContext) {
+      throw fail('MATCHPOINT_WALLET_REPORT_PAGE_NOT_READY', 'Pagina report saldi non pronta.', { url: page.url(), walletReportContextSamples: diagnostic.walletReportContextSamples || [] });
+    }
+
+    // 4) Nome filtro VUOTO (tutti i clienti con credito) → "Generare una relazione".
+    diagnostic.steps.push('wallet_generate_click');
+    let generated = false;
+    const generateLocators = [
+      reportContext.locator('button:has-text("Generare una relazione"), a:has-text("Generare una relazione"), input[value*="Generare una relazione"]'),
+      reportContext.locator('button:has-text("Generare"), a:has-text("Generare"), input[value*="Generare"]'),
+      reportContext.locator('input[type="submit"], button[type="submit"]'),
+    ];
+    for (const locator of generateLocators) {
+      generated = await clickFirstVisibleLocator(locator, 'click_generare_relazione', diagnostic, 15000);
+      if (generated) break;
+    }
+    if (!generated) generated = await clickMenuEntry(reportContext, 'Generare una relazione', 'click_generare_relazione', diagnostic);
+    if (!generated) {
+      throw fail('MATCHPOINT_WALLET_GENERATE_BUTTON_NOT_FOUND', 'Pulsante Generare una relazione non trovato.', { url: page.url(), contextSamples: await contextSamples(page) });
+    }
+    await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+
+    // 5) Contesto risultati (tabella con Saldo + export).
+    const resultsContext = await findWalletResultsContext(page, diagnostic);
+    if (!resultsContext) {
+      throw fail('MATCHPOINT_WALLET_RESULTS_NOT_READY', 'Relazione saldi generata ma export Excel non trovato.', { url: page.url(), walletResultsContextSamples: diagnostic.walletResultsContextSamples || [] });
+    }
+
+    // 6) Esporta in Excel.
+    diagnostic.steps.push('wallet_export_click');
+    const download = await triggerExportDownload(page, resultsContext, exportTarget, diagnostic, 'export saldi');
+    const filename = download.suggestedFilename() || `matchpoint-saldi-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
+    const bytes = await bufferFromDownload(download);
+    diagnostic.downloadedAt = new Date().toISOString();
+    diagnostic.filename = filename;
+    diagnostic.byteLength = bytes.byteLength;
+    if (!bytes.byteLength) {
+      throw fail('MATCHPOINT_BROWSER_EMPTY_DOWNLOAD', 'Download saldi Matchpoint vuoto.', diagnostic);
+    }
+
+    return {
+      ok: true,
+      filename,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      base64: bytes.toString('base64'),
+      diagnostic,
+    };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleExportWalletReport(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('export-wallet-report', body), () => mpReadRetry('export-wallet-report', () => exportWalletReportWithBrowser(body)));
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -7436,7 +7590,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -7491,6 +7645,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/read-wallet') {
       return await handleReadWallet(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/export-wallet-report') {
+      return await handleExportWalletReport(req, res);
     }
     if (req.method === 'POST' && req.url === '/debug-find-client') {
       return await handleDebugFindClient(req, res);
