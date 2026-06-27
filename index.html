@@ -5035,7 +5035,8 @@ body.assessment-public-mode .assessment-public-only-card {
       }
       /* Telefono nella stessa riga dei badge */
       .players-table tbody tr td:nth-child(4)::before { content:'📞 '; }
-      /* Nascondi colonne non necessarie su mobile: Preferenze e Azioni */
+      /* Nascondi colonne non necessarie su mobile: Azioni (il tap sulla riga apre la scheda)
+         e Borsellino (lettura on-demand, feature da tabella desktop) */
       .players-table tbody tr td:nth-child(6),
       .players-table tbody tr td:nth-child(7) { display:none; }
       /* Eta (non è una colonna separata nella tabella, ma mostrala nei players-meta se presente) */
@@ -6488,7 +6489,7 @@ body.assessment-public-mode .assessment-public-only-card {
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
-                  <thead><tr><th>Giocatore</th><th>Sesso</th><th>Livello</th><th>Telefono</th><th>Stato</th><th>Preferenze</th><th>Azioni</th></tr></thead>
+                  <thead><tr><th>Giocatore</th><th>Sesso</th><th>Livello</th><th>Telefono</th><th>Stato</th><th>Azioni</th><th>Borsellino</th></tr></thead>
                   <tbody id="memberTableBody"></tbody>
                 </table>
               </div>
@@ -7704,7 +7705,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.003';
+    const APP_VERSION = '6.004';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13592,16 +13593,30 @@ Grazie.`
         return;
       }
       tbody.innerHTML = pageItems.map(g => {
-        const pref = [Array.isArray(g.prefDays) ? g.prefDays.join(', ') : '', Array.isArray(g.prefHours) ? g.prefHours.join(', ') : ''].filter(Boolean).join(' · ') || '-';
         const isOpen = String(memberInlineOpenId) === String(g.id);
+        // Borsellino: saldo Monedero on-demand (window.__pmoWalletCache). Se già letto mostra
+        // l'importo (verde se >0, grigio se 0,00 €); altrimenti un bottone ↻ per leggerlo da
+        // Matchpoint (una lettura per riga: il worker apre la Ficha del socio, ~10-15s).
+        const _wid = String(_walletClientId(g) || '').trim();
+        const _canWallet = /^\d{1,8}$/.test(_wid);
+        const _w = _walletCacheGet(g);
+        let walletCell;
+        if (_w && typeof _w.balance_cents === 'number') {
+          const _wc = _w.balance_cents;
+          walletCell = `<span style="font-weight:700;color:${_wc > 0 ? 'var(--green)' : '#9aa3ad'};" title="Saldo borsellino · agg. ${escapeHtml(_walletUpdatedLabel(g))}">${escapeHtml(_incassiEuro(_wc))}</span>`;
+        } else if (_canWallet) {
+          walletCell = `<button class="btn-secondary small-btn" title="Leggi il saldo del borsellino da Matchpoint" onclick="event.stopPropagation(); pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Saldo</button>`;
+        } else {
+          walletCell = '<span style="color:#bbb;" title="Socio senza id Matchpoint collegato">—</span>';
+        }
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
           <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div></td>
           <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
           <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
           <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span></td>
-          <td>${escapeHtml(pref)}</td>
           <td><div class="players-actions"><button class="btn-secondary small-btn" onclick="event.stopPropagation(); openMemberCard('${escapeHtml(String(g.id))}')">Scheda</button></div></td>
+          <td>${walletCell}</td>
         </tr>`;
       }).join('');
       renderOpenMemberCard();
@@ -21647,7 +21662,11 @@ Grazie!`
           throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
         }
         window.__pmoWalletCache.set(idInterno, { balance_cents: data.balanceCents, synced_at: new Date().toISOString() });
-        renderOpenMemberCard(); // ridisegna la scheda col saldo aggiornato (bottone ricreato pulito)
+        // Ridisegna la lista soci (colonna Borsellino) se presente — copre anche il caso del
+        // bottone ↻ in riga; displayMembers ridisegna anche la scheda aperta (renderOpenMemberCard
+        // in coda). Fuori dalla lista (es. solo scheda) ricade su renderOpenMemberCard.
+        if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers();
+        else renderOpenMemberCard();
       } catch (e) {
         console.warn('pmoWalletRefresh:', e);
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = origHtml; }
