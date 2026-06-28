@@ -2830,9 +2830,11 @@
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
     .svc-edit-section { background:#fff; border:1px solid rgba(17,24,39,.28); border-radius:10px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 3px rgba(16,24,40,.10); }
-    /* Scheda modifica SENZA cornice esterna: la bolla del messaggio è invisibile, restano solo le schede sezione */
-    #svcChatMessages > .svc-msg:has(.svc-edit-box),
-    #svcChatMessages > .svc-msg:has(.svc-edit-box):last-child { background:transparent; border:none; box-shadow:none; padding:0; max-width:100%; }
+    /* Scheda modifica SENZA cornice esterna: la bolla del messaggio è invisibile, restano solo le schede sezione.
+       Si aggancia alla classe .svc-edit-host (messa alla creazione) così è frameless dal primo frame: niente flash
+       della vecchia bolla grigia/azzurra prima che la card interna venga riempita. */
+    #svcChatMessages > .svc-msg.svc-edit-host,
+    #svcChatMessages > .svc-msg.svc-edit-host:last-child { background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; max-width:100%; }
     .svc-edit-section-head { display:flex; align-items:center; gap:6px; font-size:.72rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; }
     .svc-edit-section-head i { font-size:14px; }
     .svc-edit-title { display:flex; align-items:flex-start; gap:8px; margin-bottom:10px; }
@@ -7733,7 +7735,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.015';
+    const APP_VERSION = '6.016';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37704,6 +37706,7 @@ Per confermare scrivi ELIMINA.`);
         idReserva: _initIdReserva || null,
       };
       const editor = svcAddMessage('system', '', 'flow');
+      editor.classList.add('svc-edit-host'); // stile "senza cornice" applicato SUBITO (niente flash della bolla vecchia)
       const box = document.createElement('div');
       box.className = 'svc-edit-box';
       editor.appendChild(box);
