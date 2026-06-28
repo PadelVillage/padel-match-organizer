@@ -2829,7 +2829,7 @@
     .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
-    .svc-edit-section { border:1px solid var(--border); border-radius:var(--radius); padding:10px; margin-bottom:10px; }
+    .svc-edit-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(15,23,42,.05); }
     .svc-edit-section-head { display:flex; align-items:center; gap:6px; font-size:.72rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; }
     .svc-edit-section-head i { font-size:14px; }
     .svc-edit-title { display:flex; align-items:flex-start; gap:8px; margin-bottom:10px; }
@@ -7730,7 +7730,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.011';
+    const APP_VERSION = '6.012';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
