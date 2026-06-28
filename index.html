@@ -2829,7 +2829,7 @@
     .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
-    .svc-edit-section { background:#fff; border:none; border-radius:10px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 0 0 1px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08); }
+    .svc-edit-section { background:#fff; border:1px solid rgba(17,24,39,.28); border-radius:10px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 3px rgba(16,24,40,.10); }
     /* Scheda modifica SENZA cornice esterna: la bolla del messaggio è invisibile, restano solo le schede sezione */
     #svcChatMessages > .svc-msg:has(.svc-edit-box),
     #svcChatMessages > .svc-msg:has(.svc-edit-box):last-child { background:transparent; border:none; box-shadow:none; padding:0; max-width:100%; }
@@ -7733,7 +7733,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.014';
+    const APP_VERSION = '6.015';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
