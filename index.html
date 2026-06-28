@@ -2828,6 +2828,22 @@
     .svc-note-edit:disabled { opacity:.55; cursor:not-allowed; background:#f1f5f9; }
     .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
+    /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
+    .svc-edit-section { border:1px solid var(--border); border-radius:var(--radius); padding:10px; margin-bottom:10px; }
+    .svc-edit-section-head { display:flex; align-items:center; gap:6px; font-size:.72rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; }
+    .svc-edit-section-head i { font-size:14px; }
+    .svc-edit-title { display:flex; align-items:flex-start; gap:8px; margin-bottom:10px; }
+    .svc-edit-title i { font-size:20px; color:var(--accent); }
+    .svc-edit-title-main { font-size:15px; font-weight:600; color:var(--text); }
+    .svc-edit-title-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .svc-pay-item + .svc-pay-item { border-top:1px solid var(--border); margin-top:6px; padding-top:6px; }
+    .svc-pay-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .svc-pay-status { display:inline-flex; align-items:center; gap:4px; font-size:.74rem; font-weight:600; white-space:nowrap; }
+    .svc-pay-status.is-paid { color:var(--green); }
+    .svc-pay-status.is-due { color:#b45309; }
+    .svc-pay-actions { display:flex; gap:6px; margin-top:5px; }
+    .svc-pay-actions .svc-btn-step { flex:1; justify-content:center; display:inline-flex; align-items:center; gap:4px; }
+    .svc-edit-actions-bar { border-top:1px solid var(--border); padding-top:10px; margin-top:10px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
       .svc-grid-col { overflow:auto; }
@@ -7714,7 +7730,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.010';
+    const APP_VERSION = '6.011';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37854,11 +37870,18 @@ Per confermare scrivi ELIMINA.`);
     box.innerHTML = '';
 
     const title = document.createElement('div');
-    title.innerHTML = '📝 <strong>Modifica prenotazione</strong><br>📍 Campo ' + st.origCampo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.origOra + (st.hasPlayers ? '' : ' \xb7 ' + _staffCalTipoLabel(st.tipoReale));
-    title.style.marginBottom = '8px';
+    title.className = 'svc-edit-title';
+    title.innerHTML = '<i class="ti ti-calendar-event" aria-hidden="true"></i><div><div class="svc-edit-title-main">Modifica prenotazione</div><div class="svc-edit-title-sub">Campo ' + st.origCampo + ' \xb7 ' + st.dataIt + ' \xb7 ' + st.origOra + (st.hasPlayers ? '' : ' \xb7 ' + _staffCalTipoLabel(st.tipoReale)) + '</div></div>';
     box.appendChild(title);
 
     const mkLabel = function (t) { const s = document.createElement('span'); s.textContent = t; s.className = 'svc-edit-label'; return s; };
+    const mkSection = function (icon, label) {
+      const sec = document.createElement('div'); sec.className = 'svc-edit-section';
+      const h = document.createElement('div'); h.className = 'svc-edit-section-head';
+      h.innerHTML = '<i class="ti ' + icon + '" aria-hidden="true"></i>' + label;
+      sec.appendChild(h); return sec;
+    };
+    const slotSec = mkSection('ti-clock', 'Slot');
 
     const mvWrap = document.createElement('div');
     mvWrap.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;';
@@ -37878,10 +37901,10 @@ Per confermare scrivi ELIMINA.`);
     dataInp.type = 'date'; dataInp.value = st.mIso; dataInp.className = 'svc-edit-field'; dataInp.style.width = '100%'; dataInp.style.boxSizing = 'border-box'; dataInp.disabled = st.busy;
     dataInp.addEventListener('change', function () { if (dataInp.value) st.mIso = dataInp.value; staffCalRenderPlayersEditor(); });
     dataWrap.appendChild(dataInp); mvWrap.appendChild(dataWrap);
-    box.appendChild(mvWrap);
+    slotSec.appendChild(mvWrap);
 
     const orarioWrap = document.createElement('div');
-    orarioWrap.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin-bottom:8px;';
+    orarioWrap.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;';
     const iniWrap = _mkField('Dalle');
     const iniSel = document.createElement('select');
     iniSel.className = 'svc-edit-field'; iniSel.style.width = '100%'; iniSel.disabled = st.busy;
@@ -37905,29 +37928,28 @@ Per confermare scrivi ELIMINA.`);
     durHint.textContent = durMin + ' min'; durHint.className = 'svc-edit-label';
     durHint.style.paddingBottom = '6px'; durHint.style.whiteSpace = 'nowrap';
     orarioWrap.appendChild(durHint);
-    box.appendChild(orarioWrap);
+    slotSec.appendChild(orarioWrap);
 
     if (_staffCalEditorMoveChanged(st) && _staffCalDestOccupied(st.mIso, st.mCampo, st.mOraIni, durMin, st)) {
       const warn = document.createElement('div');
-      warn.innerHTML = '⚠️ La destinazione (Campo ' + st.mCampo + ' \xb7 ' + st.mOraIni + '–' + st.mOraFin + ') sembra già occupata. Controlla prima di salvare.';
-      warn.style.cssText = 'font-size:.74rem;color:#b45309;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:4px 8px;margin:2px 0 6px;';
-      box.appendChild(warn);
+      warn.innerHTML = '<i class="ti ti-alert-triangle" style="vertical-align:-2px;margin-right:4px;" aria-hidden="true"></i>La destinazione (Campo ' + st.mCampo + ' \xb7 ' + st.mOraIni + '–' + st.mOraFin + ') sembra già occupata. Controlla prima di salvare.';
+      warn.style.cssText = 'font-size:.74rem;color:#b45309;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:6px 8px;margin:8px 0 0;';
+      slotSec.appendChild(warn);
     }
+    box.appendChild(slotSec);
 
     if (st.hasPlayers) {
-      const curLbl = document.createElement('div');
-      curLbl.textContent = 'Giocatori attuali:';
-      curLbl.className = 'svc-edit-label';
-      curLbl.style.cssText = 'margin:6px 0 2px;';
-      box.appendChild(curLbl);
+      const playersSec = mkSection('ti-users', 'Giocatori');
+      const chipsWrap = document.createElement('div');
+      chipsWrap.className = 'svc-player-chips';
+      chipsWrap.style.marginTop = '0';
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
         none.className = 'svc-players-empty';
-        box.appendChild(none);
+        none.style.marginTop = '0';
+        playersSec.appendChild(none);
       } else {
-        const chipsWrap = document.createElement('div');
-        chipsWrap.className = 'svc-player-chips';
         st.roster.forEach(function (p) {
           const marked = !!st.remove[p.idx];
           const chip = document.createElement('span');
@@ -37937,7 +37959,7 @@ Per confermare scrivi ELIMINA.`);
           const x = document.createElement('button');
           x.type = 'button';
           x.className = 'svc-chip-x';
-          x.textContent = '✕';
+          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
           x.title = marked ? 'Ripristina' : 'Rimuovi';
           x.disabled = st.busy;
           x.addEventListener('click', function () {
@@ -37948,16 +37970,25 @@ Per confermare scrivi ELIMINA.`);
           chip.appendChild(x);
           chipsWrap.appendChild(chip);
         });
-        box.appendChild(chipsWrap);
       }
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:3px;" aria-hidden="true"></i>Aggiungi';
+      addBtn.className = 'svc-btn-step';
+      addBtn.style.cssText = 'border-radius:14px;padding:4px 10px;font-size:13px;';
+      addBtn.disabled = st.busy;
+      addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
+      chipsWrap.appendChild(addBtn);
+      playersSec.appendChild(chipsWrap);
       if (st.add.length) {
         const addLbl = document.createElement('div');
         addLbl.textContent = 'Da aggiungere:';
         addLbl.className = 'svc-edit-label';
         addLbl.style.cssText = 'margin:8px 0 2px;';
-        box.appendChild(addLbl);
+        playersSec.appendChild(addLbl);
         const addChips = document.createElement('div');
         addChips.className = 'svc-player-chips';
+        addChips.style.marginTop = '0';
         st.add.forEach(function (p, i) {
           const _idLbl = _staffCalPlayerIdLabel(p);
           const chip = document.createElement('span');
@@ -37969,15 +38000,16 @@ Per confermare scrivi ELIMINA.`);
           const x = document.createElement('button');
           x.type = 'button';
           x.className = 'svc-chip-x';
-          x.textContent = '✕';
+          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
           x.title = 'Togli dalla lista';
           x.disabled = st.busy;
           x.addEventListener('click', function () { if (st.busy) return; st.add.splice(i, 1); staffCalRenderPlayersEditor(); });
           chip.appendChild(x);
           addChips.appendChild(chip);
         });
-        box.appendChild(addChips);
+        playersSec.appendChild(addChips);
       }
+      box.appendChild(playersSec);
     }
 
     // PAGAMENTI per giocatore — Fase 2 LETTURA (sola lettura, dietro flag). Lo stato reale
@@ -37985,125 +38017,106 @@ Per confermare scrivi ELIMINA.`);
     // importoCents/pendenteCents/stato su ogni voce del roster, preservati da _normRoster).
     // L'incasso effettivo (Contanti/Carta) resta disattivato fino alla Fase 2b (scrittura su MP).
     if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && Array.isArray(st.roster) && st.roster.length) {
-      const payWrap = document.createElement('div');
-      payWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
-      payWrap.setAttribute('data-feature', 'payments-shell');
-      const payLbl = document.createElement('div');
-      payLbl.className = 'svc-note-edit-lbl';
-      payLbl.style.marginBottom = '5px';
-      payLbl.textContent = '💰 Pagamenti per giocatore';
-      payWrap.appendChild(payLbl);
+      const paySec = mkSection('ti-cash', 'Pagamenti');
+      paySec.setAttribute('data-feature', 'payments-shell');
       let _anyUnknown = false;
       st.roster.forEach(function (p) {
+        const item = document.createElement('div');
+        item.className = 'svc-pay-item';
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;margin:3px 0;';
-        const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.flex = '1'; nm.style.minWidth = '120px';
+        row.className = 'svc-pay-row';
+        const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.flex = '1'; nm.style.minWidth = '110px'; nm.style.fontSize = '.82rem';
         const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
         const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
         const stato = p.stato; // 'riscosso' | 'in_sospeso' | null (non ancora letto)
         const status = document.createElement('span');
+        status.className = 'svc-pay-status';
         let showButtons = true;
         if (stato === 'riscosso') {
-          status.textContent = '✓ Pagato' + (importoCents != null && importoCents > 0 ? ' · ' + _incassiEuro(importoCents) : '');
-          status.style.cssText = 'color:#0b5;font-weight:700;';
+          status.classList.add('is-paid');
+          status.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>Pagato' + (importoCents != null && importoCents > 0 ? ' \xb7 ' + _incassiEuro(importoCents) : '');
           showButtons = false; // già riscosso → nessun incasso da fare
         } else if (stato === 'in_sospeso') {
+          status.classList.add('is-due');
           if (importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
-            status.textContent = 'Parziale · resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
+            status.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
           } else {
             const dovuto = (pendenteCents != null) ? pendenteCents : importoCents;
-            status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' · ' + _incassiEuro(dovuto) : '');
+            status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' \xb7 ' + _incassiEuro(dovuto) : '');
           }
-          status.style.cssText = 'color:#b45309;font-weight:700;';
         } else {
+          status.style.color = 'var(--text-muted)';
           status.textContent = '— saldo da leggere';
-          status.style.cssText = 'color:#999;';
           _anyUnknown = true;
         }
         row.appendChild(nm); row.appendChild(status);
+        item.appendChild(row);
         if (showButtons) {
-          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'btn-secondary small-btn'; cBtn.textContent = '💵 Contanti'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
-          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'btn-secondary small-btn'; kBtn.textContent = '💳 Carta'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
-          row.appendChild(cBtn); row.appendChild(kBtn);
+          const acts = document.createElement('div');
+          acts.className = 'svc-pay-actions';
+          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Contanti'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Carta'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+          acts.appendChild(cBtn); acts.appendChild(kBtn);
+          item.appendChild(acts);
         }
-        payWrap.appendChild(row);
+        paySec.appendChild(item);
       });
       const payHint = document.createElement('div');
-      payHint.style.cssText = 'font-size:11px;color:#999;margin-top:4px;';
+      payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
       payHint.textContent = _anyUnknown
         ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
         : 'Stato letto da Matchpoint. L’incasso (Contanti/Carta) sarà collegato nella Fase 2b.';
-      payWrap.appendChild(payHint);
-      box.appendChild(payWrap);
+      paySec.appendChild(payHint);
+      box.appendChild(paySec);
     }
 
     // MANUTENZIONE — campo DESCRIZIONE (TextBox2 di Matchpoint = il testo visibile sul tabellone).
     // Sta SOPRA le osservazioni; modificandolo cambi ciò che si legge sulla card e su Matchpoint.
     if (st.isManut) {
-      const editDescrWrap = document.createElement('div');
-      editDescrWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
-      const editDescrLbl = document.createElement('div');
-      editDescrLbl.className = 'svc-note-edit-lbl';
-      editDescrLbl.style.marginBottom = '5px';
-      editDescrLbl.textContent = '🔧 Descrizione (testo del blocco · es. "STAGE SANTIAGO")';
+      const descrSec = mkSection('ti-tool', 'Descrizione');
       const editDescrTA = document.createElement('textarea');
       editDescrTA.rows = 2; editDescrTA.maxLength = 300;
       editDescrTA.placeholder = 'Descrizione della manutenzione…';
       editDescrTA.className = 'svc-note-edit';
       editDescrTA.value = st.descrizione || '';
       editDescrTA.addEventListener('input', function () { st.descrizione = editDescrTA.value; });
-      editDescrWrap.appendChild(editDescrLbl);
-      editDescrWrap.appendChild(editDescrTA);
-      box.appendChild(editDescrWrap);
+      const descrHint = document.createElement('div');
+      descrHint.className = 'svc-edit-label'; descrHint.style.marginTop = '4px';
+      descrHint.textContent = 'Testo del blocco sul tabellone · es. "STAGE SANTIAGO"';
+      descrSec.appendChild(editDescrTA);
+      descrSec.appendChild(descrHint);
+      box.appendChild(descrSec);
     }
 
     // Campo Note/Osservazioni — scheda modifica (Tappa 36)
-    const editNoteWrap = document.createElement('div');
-    editNoteWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:8px;margin-top:6px;';
-    const editNoteLbl = document.createElement('div');
-    editNoteLbl.className = 'svc-note-edit-lbl';
-    editNoteLbl.style.marginBottom = '5px';
-    editNoteLbl.textContent = st.isManut ? '📝 Osservazioni (facoltativo · max 300 caratteri)' : '📝 Note (facoltativo · max 300 caratteri)';
+    const noteSec = mkSection('ti-note', st.isManut ? 'Osservazioni' : 'Note');
     const editNoteTA = document.createElement('textarea');
     editNoteTA.rows = 3; editNoteTA.maxLength = 300;
     editNoteTA.placeholder = st.isManut ? 'Osservazioni aggiuntive (campo separato dalla descrizione)…' : 'Scrivi qui le osservazioni… (verranno salvate su Matchpoint)';
     editNoteTA.className = 'svc-note-edit';
     editNoteTA.value = st.note || '';
     editNoteTA.addEventListener('input', function () { st.note = editNoteTA.value.trim(); });
-    editNoteWrap.appendChild(editNoteLbl);
-    editNoteWrap.appendChild(editNoteTA);
-    box.appendChild(editNoteWrap);
+    const noteHint = document.createElement('div');
+    noteHint.className = 'svc-edit-label'; noteHint.style.marginTop = '4px';
+    noteHint.textContent = 'Facoltativo · max 300 caratteri';
+    noteSec.appendChild(editNoteTA);
+    noteSec.appendChild(noteHint);
+    box.appendChild(noteSec);
 
     const actions = document.createElement('div');
-    actions.className = 'svc-step-buttons';
-    if (st.hasPlayers) {
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:3px;" aria-hidden="true"></i>Aggiungi';
-      addBtn.className = 'svc-btn-step';
-      addBtn.style.cssText = 'border-radius:14px;padding:4px 10px;font-size:13px;';
-      addBtn.disabled = st.busy;
-      addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
-      const _existingChips = box.querySelector('.svc-player-chips');
-      if (_existingChips) {
-        _existingChips.appendChild(addBtn);
-      } else {
-        const _newChipsWrap = document.createElement('div');
-        _newChipsWrap.className = 'svc-player-chips';
-        _newChipsWrap.appendChild(addBtn);
-        box.insertBefore(_newChipsWrap, editNoteWrap);
-      }
-    }
+    actions.className = 'svc-step-buttons svc-edit-actions-bar';
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
-    saveBtn.textContent = '✓ Salva';
+    saveBtn.innerHTML = '<i class="ti ti-check" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Salva';
     saveBtn.className = 'svc-btn-confirm svc-btn-yes';
+    saveBtn.style.flex = '1';
     saveBtn.disabled = st.busy;
     saveBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersSave(); });
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.textContent = '✗ Chiudi';
+    closeBtn.innerHTML = '<i class="ti ti-x" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Chiudi';
     closeBtn.className = 'svc-btn-step-cancel';
+    closeBtn.style.flex = '1';
     closeBtn.disabled = st.busy;
     closeBtn.addEventListener('click', function () {
       if (st.busy) return;
@@ -38114,7 +38127,7 @@ Per confermare scrivi ELIMINA.`);
     actions.appendChild(closeBtn);
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
-    delBtn.textContent = '🗑 Annulla prenotazione';
+    delBtn.innerHTML = '<i class="ti ti-trash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Annulla prenotazione';
     delBtn.className = 'svc-btn-confirm svc-btn-no';
     delBtn.style.width = '100%';
     delBtn.disabled = st.busy;
