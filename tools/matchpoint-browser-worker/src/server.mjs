@@ -5435,6 +5435,160 @@ async function handleExportWalletReport(req, res) {
   json(res, 200, result);
 }
 
+// ── Report PAGAMENTI prenotazioni (Inf. e statistiche → 11.13 "Pagamenti effettuati") ──
+// SOLA LETTURA: genera il report dei cobros sulle prenotazioni dei campi tra due date e scarica
+// l'Excel (Data Pagamento / D. Pagamento=metodo / Importo / Cod. / Nome / N° prenotazione /
+// Giorno / Ora / Spazio). Stesso meccanismo di exportWalletReportWithBrowser
+// (login → URL diretto del report → riempi date → "Generare una relazione" → "Esportare in Excel").
+const DEFAULT_PAYMENTS_REPORT_PATH = '/Estadisticas/Reservas/ListadoPagosRealizados.aspx';
+
+function fmtDateIt(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+// Accetta 'yyyy-mm-dd' o 'dd/MM/yyyy'; altrimenti il fallback.
+function parseDateInput(value, fallback) {
+  const t = clean(value);
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return fallback;
+}
+
+// Riempie i campi data desde/hasta nel contesto giusto (la pagina report aperta in diretto è a
+// livello page, ma iteriamo i contesti per robustezza). Formato IT dd/MM/yyyy.
+async function fillReportDateRange(page, fromStr, toStr, diagnostic) {
+  const result = { desde: false, hasta: false };
+  const fillIn = async (target, sel, val) => {
+    const loc = target.locator(sel).first();
+    if (!(await loc.count().catch(() => 0))) return false;
+    await loc.fill('', { timeout: 4000 }).catch(() => {});
+    await loc.fill(val, { timeout: 4000 }).catch(() => {});
+    return true;
+  };
+  for (const entry of pageContentContexts(page)) {
+    if (!result.desde) result.desde = await fillIn(entry.target, 'input[id*="TextBoxFechaDesde"], input[id*="TextBoxFechaCobroDesde"], input[id*="FechaDesde"]', fromStr).catch(() => false);
+    if (!result.hasta) result.hasta = await fillIn(entry.target, 'input[id*="TextBoxFechaHasta"], input[id*="TextBoxFechaCobroHasta"], input[id*="FechaHasta"]', toStr).catch(() => false);
+    if (result.desde && result.hasta) break;
+  }
+  diagnostic.datesFilled = result;
+  return result;
+}
+
+// Clicca "Generare una relazione" nel contesto in cui appare (fa partire il postback del report).
+async function clickGenerateReport(page, diagnostic, timeout = 20000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    for (const entry of pageContentContexts(page)) {
+      const did = await entry.target.evaluate(() => {
+        const re = /Generare\s+una\s+relazione|Genera(?:re)?\s+relazione|Generare/i;
+        const el = Array.from(document.querySelectorAll('a,input,button')).find((e) => re.test((e.value || e.textContent || '').trim()));
+        if (!el) return false;
+        el.click();
+        return true;
+      }).catch(() => false);
+      if (did) { diagnostic.generateClickedIn = `${entry.kind}:${entry.index}`; return true; }
+    }
+    await page.waitForTimeout(500);
+  }
+  return false;
+}
+
+// Trova il contesto coi risultati del report + il pulsante export (tabella con colonne pagamenti).
+async function findExportableResultsContext(page, diagnostic, timeout = 30000) {
+  const deadline = Date.now() + timeout;
+  let samples = [];
+  while (Date.now() < deadline) {
+    samples = [];
+    for (const entry of pageContentContexts(page)) {
+      const compactText = (await readContextBody(entry.target)).replace(/\s+/g, ' ').trim();
+      const candidates = await exportCandidates(entry.target);
+      const exportFound = /Esportare\s+in\s+excel|Esportare|Exportar/i.test(compactText) || candidates.length > 0;
+      const resultsTableFound = /(Importo\s+Totale|Data\s+Pagamento|D\.\s*Pagamento|Numero\s+di\s+prenotazione|Registri\s*:|Totale)/i.test(compactText);
+      const sample = { kind: entry.kind, index: entry.index, url: entry.url, exportFound, resultsTableFound, exportCandidates: candidates.slice(0, 6), bodySample: compactText.slice(0, 600) };
+      samples.push(sample);
+      if (resultsTableFound && exportFound) { diagnostic.paymentsResultsContext = sample; return entry.target; }
+    }
+    await page.waitForTimeout(600);
+  }
+  diagnostic.paymentsResultsContextSamples = samples;
+  return null;
+}
+
+async function exportPaymentsReportWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const exportTarget = clean(options.exportTarget) || env('MATCHPOINT_EXPORT_TARGET', DEFAULT_EXPORT_TARGET);
+  const reportPath = clean(options.reportPath) || DEFAULT_PAYMENTS_REPORT_PATH;
+  const now = new Date();
+  const days = Number(options.days) > 0 ? Number(options.days) : 31;
+  const dFrom = parseDateInput(options.dateFrom, new Date(now.getTime() - days * 86400000));
+  const dTo = parseDateInput(options.dateTo, now);
+  const diagnostic = { mode: 'export_payments_report', flow: 'payments', baseUrl, reportPath, dateFrom: fmtDateIt(dFrom), dateTo: fmtDateIt(dTo), startedAt: new Date().toISOString(), steps: [] };
+
+  const browser = await chromium.launch(mpLaunchOptions());
+  try {
+    const { page } = await mpNewContextPage(browser);
+    page.setDefaultTimeout(15000);
+    page.setDefaultNavigationTimeout(45000);
+    await mpDoLogin(page, baseUrl, username, password, diagnostic);
+    await maybeClickCashEnter(page, diagnostic);
+
+    diagnostic.steps.push('goto_report');
+    await page.goto(absoluteUrl(baseUrl, reportPath), { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    diagnostic.reportUrl = page.url();
+
+    diagnostic.steps.push('fill_dates');
+    await fillReportDateRange(page, fmtDateIt(dFrom), fmtDateIt(dTo), diagnostic);
+
+    diagnostic.steps.push('generate');
+    await Promise.all([
+      page.waitForLoadState('networkidle', { timeout: 45000 }).catch(() => {}),
+      clickGenerateReport(page, diagnostic),
+    ]);
+    await page.waitForTimeout(2000);
+
+    const resultsContext = await findExportableResultsContext(page, diagnostic, 25000);
+    if (!resultsContext) {
+      throw fail('MATCHPOINT_PAYMENTS_RESULTS_NOT_READY', 'Report pagamenti non pronto o export Excel non trovato.', { url: page.url(), paymentsResultsContextSamples: diagnostic.paymentsResultsContextSamples || [] });
+    }
+
+    diagnostic.steps.push('payments_export_click');
+    const download = await triggerExportDownload(page, resultsContext, exportTarget, diagnostic, 'export pagamenti');
+    const filename = download.suggestedFilename() || `matchpoint-pagamenti-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
+    const bytes = await bufferFromDownload(download);
+    diagnostic.downloadedAt = new Date().toISOString();
+    diagnostic.filename = filename;
+    diagnostic.byteLength = bytes.byteLength;
+    if (!bytes.byteLength) throw fail('MATCHPOINT_BROWSER_EMPTY_DOWNLOAD', 'Download pagamenti Matchpoint vuoto.', diagnostic);
+
+    return {
+      ok: true,
+      filename,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      base64: bytes.toString('base64'),
+      dateFrom: fmtDateIt(dFrom),
+      dateTo: fmtDateIt(dTo),
+      diagnostic,
+    };
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function handleExportPaymentsReport(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  const result = await mpQueueRun(mpJobMeta('export-payments-report', body), () => mpReadRetry('export-payments-report', () => exportPaymentsReportWithBrowser(body)));
+  json(res, 200, result);
+}
+
 // ── Helper: attende il form di prenotazione in qualunque contesto ─────────────
 // Cerca il titolo "Nuova lezione" o "Nuova partita" in tutti i frame/pagina.
 async function waitForBookingForm(page, tipo, diagnostic, timeoutMs = 15000) {
@@ -7632,7 +7786,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -7690,6 +7844,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/export-wallet-report') {
       return await handleExportWalletReport(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/export-payments-report') {
+      return await handleExportPaymentsReport(req, res);
     }
     if (req.method === 'POST' && req.url === '/debug-find-client') {
       return await handleDebugFindClient(req, res);
