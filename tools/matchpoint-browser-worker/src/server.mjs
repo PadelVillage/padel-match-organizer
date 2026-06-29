@@ -7829,10 +7829,11 @@ async function correctWalletWithBrowser(input = {}) {
       const candidates = await _collectCorrezioneCandidates(page);
       throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { correzioneCandidates: candidates }));
     }
-    // Attendi che il modale/postback renda i campi (LinkButton ASP.NET → postback async).
-    await page.waitForTimeout(2000);
+    // Il dialog MP è tipicamente un IFRAME fancybox → attendi che compaia un iframe nuovo.
+    await page.waitForSelector('iframe.fancybox-iframe, .fancybox-iframe, iframe[src*="aldo" i], iframe[src*="orrec" i]', { timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1500);
 
-    // DIALOG aperto ma NON mappato → restituisci i candidati (modale, campi, pulsanti, HTML)
+    // DIALOG aperto ma NON mappato → fotografa modale DOM + tutti gli IFRAME (url+campi+pulsanti)
     // senza inviare. Dopo la mappatura live, qui andrà: fill importo (subtractCents/targetCents),
     // _confirmDialogYes, ri-lettura saldo == targetCents. NIENTE movimento alla cieca.
     const dlg = await _collectDialogFieldCandidates(page);
@@ -7842,6 +7843,22 @@ async function correctWalletWithBrowser(input = {}) {
     diagnostic.dialogModalHtml = dlg.modalHtml;
     diagnostic.dialogFields = dlg.fields;
     diagnostic.dialogButtons = dlg.buttons;
+    // Ispeziona gli IFRAME (il form di correzione MP è quasi sempre un iframe fancybox).
+    diagnostic.frames = [];
+    for (const fr of page.frames()) {
+      if (fr === page.mainFrame()) continue;
+      const info = { url: (fr.url() || '').slice(0, 160), name: (fr.name() || '').slice(0, 40) };
+      try {
+        info.fields = await fr.evaluate(() => [...document.querySelectorAll('input,select,textarea')]
+          .filter((el) => !['hidden', 'image', 'file'].includes(String(el.type || '').toLowerCase()))
+          .map((el) => ({ tag: el.tagName.toLowerCase(), type: String(el.type || '').slice(0, 16), id: String(el.id || '').slice(0, 90), name: String(el.name || '').slice(0, 90), ph: String(el.placeholder || '').slice(0, 40), val: String(el.value || '').slice(0, 30), label: ((el.closest('div,td,tr,label,.form-group') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60) }))
+          .slice(0, 30)).catch(() => null);
+        info.buttons = await fr.evaluate(() => [...document.querySelectorAll('button,input[type="submit"],input[type="button"],a')]
+          .map((b) => ({ btn: (b.innerText || b.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), id: String(b.id || '').slice(0, 90) })).filter((b) => b.btn).slice(0, 30)).catch(() => null);
+        info.bodyText = await fr.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300)).catch(() => '');
+      } catch (e) { info.err = String((e && e.message) || e).slice(0, 60); }
+      diagnostic.frames.push(info);
+    }
     throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Dialog "Correzione del saldo" aperto ma non ancora mappato: nessun importo inviato. Mappare campi dal vivo.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
   } catch (_e) {
     _opFailed = true;
