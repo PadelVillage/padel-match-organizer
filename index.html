@@ -6142,6 +6142,11 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
+        <button class="tab-button side-nav-main-item" data-section-key="incassi" onclick="switchTab('incassi', this)">
+          <span class="nav-order">3</span>
+          <span class="nav-copy"><span class="nav-main">Incassi</span><span class="nav-sub">Cassa e rendicontazione</span></span>
+        </button>
+
         <button class="tab-button side-nav-main-item" data-section-key="contact" onclick="switchTab('contact', this)">
           <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
@@ -6196,6 +6201,7 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
       </div>
       <button type="button" class="pmo-chapter-item" data-section-key="members" onclick="switchTab('members', this)">Anagrafica soci</button>
+      <button type="button" class="pmo-chapter-item" data-section-key="incassi" onclick="switchTab('incassi', this)">Incassi</button>
       <button type="button" class="pmo-chapter-item" data-section-key="contact" onclick="switchTab('contact', this)">Messaggi WhatsApp</button>
       <div class="pmo-chapter-group" data-section-key="administration">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="administration" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Amministrazione <span class="pmo-chapter-caret">▾</span></button>
@@ -7087,6 +7093,11 @@ body.assessment-public-mode .assessment-public-only-card {
       </div>
     </div>
 
+    <div id="incassi" class="tab-content">
+      <div class="pmo-section-head"><div><h2>💰 Incassi</h2><p>Cassa e rendicontazione amministrativa dei pagamenti dei giocatori.</p></div></div>
+      <div id="incassiRoot"></div>
+    </div>
+
     <div id="contact" class="tab-content">
       <div class="pmo-section-head"><div><h2>Messaggi WhatsApp</h2><p>Libreria testi e template.</p></div></div>
 
@@ -7732,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.002';
+    const APP_VERSION = '6.024';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -9439,6 +9450,7 @@ Grazie.`
       inviteResponses: '🎾 Chiudi Partite',
       matchHistory: '📚 Storico partite',
       assistanteAI: '✨ Assistente AI',
+      incassi: '💰 Incassi',
     };
 
     const SIDEBAR_GROUP_BY_TAB = {
@@ -9947,6 +9959,7 @@ Grazie.`
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
             if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
             if (tabName === 'members') displayMembers();
+            if (tabName === 'incassi') renderIncassi();
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
               displayAssessment();
@@ -10002,6 +10015,7 @@ Grazie.`
         { key:'view_assessment_excel', label:'Import livelli Excel' },
       ]},
       { key:'view_members', tab:'members', label:'Anagrafica soci' },
+      { key:'view_incassi', tab:'incassi', label:'Incassi' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
         { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
@@ -10010,8 +10024,8 @@ Grazie.`
         { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
       ]},
     ];
-    const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', contact:'view_contact', administration:'view_administration' };
-    const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'contact', 'administration'];
+    const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', incassi:'view_incassi', contact:'view_contact', administration:'view_administration' };
+    const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'incassi', 'contact', 'administration'];
     const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
     // Assistente AI: registriamo il permesso `view_assistante_ai` nell'albero ruoli in
     // TUTTI gli ambienti (TEST e PROD), così è gestibile dalla UI Gestione ruoli ovunque.
@@ -21588,9 +21602,124 @@ Grazie!`
       return `${Math.round(Number(value || 0)).toLocaleString('it-IT')} €`;
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // SEZIONE INCASSI / CASSA — rendicontazione pagamenti giocatori (Fase 1).
+    // Scaffold di sola lettura: somma i record cloud `payment` in un intervallo
+    // [from,to] (un solo giorno = from==to; "Oggi" = entrambi a oggi), split
+    // contanti vs carta. Fonte = pmo_get_records_admin. Denaro in interi cents.
+    // ════════════════════════════════════════════════════════════════════════
+    const _incassiState = { from: null, to: null, loading: false, rows: null, loadedAt: 0 };
+    function _incassiToday() {
+      try { return (typeof formatLocalDate === 'function') ? formatLocalDate(new Date()) : new Date().toISOString().slice(0,10); }
+      catch (e) { return new Date().toISOString().slice(0,10); }
+    }
     function _incassiEuro(cents) {
       const v = (Number(cents) || 0) / 100;
       return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+    function _incassiMethodBucket(method) {
+      const m = (method || '').toString().toLowerCase();
+      if (m.includes('contant') || m.includes('cash') || m.includes('efectivo') || m.includes('metalic')) return 'contanti';
+      if (m.includes('cart') || m.includes('tarjeta') || m.includes('card') || m.includes('pos') || m.includes('datafono') || m.includes('online') || m.includes('pasarela') || m.includes('gateway') || m.includes('tpv')) return 'carta';
+      if (m.includes('borsell') || m.includes('saldo') || m.includes('monedero') || m.includes('prepag') || m.includes('wallet')) return 'borsellino';
+      return 'altro';
+    }
+    async function _incassiFetch() {
+      if (typeof pmoStaffRpcPaged !== 'function') return [];
+      try {
+        const rows = await pmoStaffRpcPaged('pmo_get_records_admin',
+          { p_record_types: ['payment'], p_since: null }, 'cloud_sync', 'leggere gli incassi');
+        return (rows || []).filter(r => r && r.record_type === 'payment' && !r.deleted && r.payload).map(r => r.payload);
+      } catch (e) { console.warn('incassi fetch:', e); return []; }
+    }
+    function renderIncassi() {
+      const root = document.getElementById('incassiRoot');
+      if (!root) return;
+      const today = _incassiToday();
+      if (!_incassiState.from) _incassiState.from = today;
+      if (!_incassiState.to) _incassiState.to = today;
+      const st = _incassiState;
+      const lblCss = 'display:block;font-size:12px;font-weight:700;margin-bottom:4px;';
+      const isToday = st.from === today && st.to === today;
+      const controls = `
+        <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
+          <div><label style="${lblCss}">&nbsp;</label>
+            <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
+          <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
+          <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
+            <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
+          </div>
+        </div>`;
+
+      if (st.loading) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">Carico gli incassi…</div>`; return; }
+      if (st.rows == null) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">—</div>`; _incassiReload(); return; }
+
+      // somma i pagamenti nell'intervallo [from,to]; bucket per giorno per la tabella
+      const byPeriod = new Map();
+      const sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      for (const p of st.rows) {
+        if (p.voided || p.status === 'void') continue;
+        const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
+        if (!data || data < st.from || data > st.to) continue;
+        const bucket = _incassiMethodBucket(p.method); const cents = Number(p.amount_cents) || 0;
+        if (!byPeriod.has(data)) byPeriod.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
+        const a = byPeriod.get(data); a[bucket] += cents; a.totale += cents; a.n += 1;
+        sel[bucket] += cents; sel.totale += cents; sel.n += 1;
+      }
+      const selKey = isToday ? `Oggi · ${st.from}` : `${st.from} → ${st.to}`;
+
+      // riepilogo del periodo selezionato
+      const summary = `
+        <div class="section" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div style="flex:1;min-width:130px;background:#f0f7ff;border:1px solid #cfe3fb;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#5a7;font-weight:700;">TOTALE</div>
+            <div style="font-size:22px;font-weight:900;color:#0b5;">${_incassiEuro(sel.totale)}</div>
+            <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'} · ${selKey}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">💵 Cash</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">💳 Card</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div></div>
+          <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
+            <div style="font-size:12px;color:#666;font-weight:700;">👛 Wallet</div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div></div>
+        </div>`;
+
+      // tabella di tutti i periodi (più recenti in alto)
+      const keys = Array.from(byPeriod.keys()).sort().reverse();
+      let table;
+      if (!keys.length) {
+        table = `<div class="section" style="text-align:center;padding:36px;color:#999;border:1px dashed #ddd;border-radius:10px;">
+          Nessun incasso nell'intervallo selezionato.<br><span style="font-size:12px;">Premi «⟳ Sincronizza da Matchpoint» per leggere i pagamenti delle prenotazioni dal report 11.13.</span></div>`;
+      } else {
+        const rowsHtml = keys.map(k => {
+          const a = byPeriod.get(k);
+          const isSel = k === today;
+          return `<tr style="${isSel ? 'background:#fff7e0;font-weight:700;' : ''}">
+            <td>${k}</td><td style="text-align:right;">${_incassiEuro(a.contanti)}</td>
+            <td style="text-align:right;">${_incassiEuro(a.carta)}</td><td style="text-align:right;">${_incassiEuro(a.borsellino)}</td>
+            <td style="text-align:right;font-weight:800;">${_incassiEuro(a.totale)}</td><td style="text-align:center;">${a.n}</td></tr>`;
+        }).join('');
+        table = `<div class="section" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="border-bottom:2px solid #ddd;text-align:left;">
+            <th>Giorno</th><th style="text-align:right;">Cash</th><th style="text-align:right;">Card</th>
+            <th style="text-align:right;">Wallet</th><th style="text-align:right;">Totale</th><th style="text-align:center;">N°</th></tr></thead>
+          <tbody>${rowsHtml}</tbody></table></div>`;
+      }
+
+      root.innerHTML = controls + summary + table;
+    }
+    function _incassiSetToday() { const t = _incassiToday(); _incassiState.from = t; _incassiState.to = t; renderIncassi(); }
+    function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
+    function _incassiSetTo(d) { _incassiState.to = d || _incassiState.to; if (_incassiState.from && _incassiState.to < _incassiState.from) _incassiState.from = _incassiState.to; renderIncassi(); }
+    async function _incassiReload() {
+      _incassiState.loading = true; renderIncassi();
+      _incassiState.rows = await _incassiFetch();
+      _incassiState.loadedAt = Date.now(); _incassiState.loading = false;
+      renderIncassi();
     }
     // ── Borsellino: saldo Monedero (Portafoglio) per socio ──────────────────────
     // Cache in-memory window.__pmoWalletCache (idInterno MP → {balance_cents, synced_at}),
@@ -21706,6 +21835,39 @@ Grazie!`
       } catch (e) {
         console.warn('pmoWalletSyncAll:', e);
         alert('Sincronizzazione saldi non riuscita: ' + ((e && e.message) || e));
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = orig; }
+      }
+    }
+
+    // Sincronizza gli INCASSI delle prenotazioni da Matchpoint per l'intervallo selezionato
+    // (edge matchpoint-payments-sync → worker /export-payments-report → report 11.13 "Pagamenti
+    // effettuati"). Popola i record `payment` in cloud; la sezione Incassi si ricarica dal cloud.
+    // SOLA LETTURA su Matchpoint (scarica un report, nessun denaro mosso).
+    async function pmoPaymentsSyncAll(btn) {
+      const orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.classList.add('pmo-btn-loading'); btn.innerHTML = '<span class="pmo-spin">↻</span> Sincronizzo…'; }
+      try {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare gli incassi da Matchpoint');
+        const resp = await fetch(`${supabaseUrl}/functions/v1/matchpoint-payments-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          body: JSON.stringify({ dateFrom: _incassiState.from, dateTo: _incassiState.to }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || data.ok === false) {
+          throw new Error((data && (data.message || data.error)) || `HTTP ${resp.status}`);
+        }
+        await _incassiReload();
+        const m = data.byMethod || {};
+        alert('Incassi sincronizzati (' + _incassiState.from + ' → ' + _incassiState.to + '): ' + (data.written || 0) + ' pagamenti.\n'
+          + 'Cash ' + _incassiEuro(m.cash || 0) + ' · Card ' + _incassiEuro(m.card || 0) + ' · Wallet ' + _incassiEuro(m.wallet || 0)
+          + ((m.other) ? (' · Other ' + _incassiEuro(m.other)) : '')
+          + ((data.unmatched) ? ('\n' + data.unmatched + ' non abbinati a un socio (contano comunque nel totale).') : ''));
+      } catch (e) {
+        console.warn('pmoPaymentsSyncAll:', e);
+        alert('Sincronizzazione incassi non riuscita: ' + ((e && e.message) || e));
       } finally {
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = orig; }
       }
@@ -36198,6 +36360,7 @@ Per confermare scrivi ELIMINA.`);
       // Rete di sicurezza cross-device per le schede socio già presenti in locale: se il broadcast
       // realtime 'member-changed' è andato perso, qui la modifica si auto-guarisce (throttle interno ~30s).
       try { await staffCalReconcileMembersFromCloud(); } catch (e) { console.warn('staffCalRefreshFromCloud reconcile members:', e); }
+      // Show subtle non-blocking status in calendar header
       // Etichetta "aggiorno…": mostrata solo sui refresh "veri" (push realtime di un cambiamento
       // cross-device, refresh manuale, rientro sulla scheda, post-import). Il poll automatico di
       // rete-di-sicurezza ogni ~8s passa { silent:true } per non far lampeggiare l'etichetta quando
@@ -37970,6 +38133,65 @@ Per confermare scrivi ELIMINA.`);
         playersSec.appendChild(addChips);
       }
       box.appendChild(playersSec);
+    }
+
+    // PAGAMENTI per giocatore — Fase 2 LETTURA (sola lettura, dietro flag). Lo stato reale
+    // (riscosso/in sospeso + importo) arriva dalla lettura worker `/edit-booking` (campi
+    // importoCents/pendenteCents/stato su ogni voce del roster, preservati da _normRoster).
+    // L'incasso effettivo (Contanti/Carta) resta disattivato fino alla Fase 2b (scrittura su MP).
+    if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && !_loadingRoster && Array.isArray(st.roster) && st.roster.length) {
+      const paySec = mkSection('ti-cash', 'Pagamenti');
+      paySec.setAttribute('data-feature', 'payments-shell');
+      let _anyUnknown = false;
+      st.roster.forEach(function (p) {
+        const item = document.createElement('div');
+        item.className = 'svc-pay-item';
+        const row = document.createElement('div');
+        row.className = 'svc-pay-row';
+        const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem;';
+        const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
+        const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
+        const stato = p.stato; // 'riscosso' | 'in_sospeso' | null (non ancora letto)
+        const status = document.createElement('span');
+        status.className = 'svc-pay-status';
+        let showButtons = true;
+        if (stato === 'riscosso') {
+          status.classList.add('is-paid');
+          status.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>Pagato' + (importoCents != null && importoCents > 0 ? ' \xb7 ' + _incassiEuro(importoCents) : '');
+          showButtons = false; // già riscosso → nessun incasso da fare
+        } else if (stato === 'in_sospeso') {
+          status.classList.add('is-due');
+          if (importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
+            status.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
+          } else {
+            const dovuto = (pendenteCents != null) ? pendenteCents : importoCents;
+            status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' \xb7 ' + _incassiEuro(dovuto) : '');
+          }
+        } else {
+          status.style.color = 'var(--text-muted)';
+          status.textContent = '— saldo da leggere';
+          _anyUnknown = true;
+        }
+        row.appendChild(nm); row.appendChild(status);
+        item.appendChild(row);
+        if (showButtons) {
+          const acts = document.createElement('div');
+          acts.className = 'svc-pay-actions';
+          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet'; wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b';
+          acts.appendChild(cBtn); acts.appendChild(kBtn); acts.appendChild(wBtn);
+          item.appendChild(acts);
+        }
+        paySec.appendChild(item);
+      });
+      const payHint = document.createElement('div');
+      payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
+      payHint.textContent = _anyUnknown
+        ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
+        : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) sarà collegato nella Fase 2b.';
+      paySec.appendChild(payHint);
+      box.appendChild(paySec);
     }
 
     // MANUTENZIONE — campo DESCRIZIONE (TextBox2 di Matchpoint = il testo visibile sul tabellone).
