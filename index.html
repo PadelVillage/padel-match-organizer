@@ -7094,7 +7094,7 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <div id="incassi" class="tab-content">
-      <div class="pmo-section-head"><div><h2>💰 Incassi</h2><p>Cassa e rendicontazione amministrativa dei pagamenti dei giocatori.</p></div></div>
+      <!-- titolo + sottotitolo ora resi dentro renderIncassi (riga controlli), per unirli alla riga dei filtri -->
       <div id="incassiRoot"></div>
     </div>
 
@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.026';
+    const APP_VERSION = '6.029';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21663,16 +21663,17 @@ Grazie!`
       const isToday = st.from === today && st.to === today;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
+          <div style="margin-right:8px;">
+            <h2 style="margin:0;font-size:20px;line-height:1.15;">💰 Incassi</h2>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Ultima sinc.: <strong>${_incassiSyncLabel()}</strong></div>
+          </div>
           <div><label style="${lblCss}">&nbsp;</label>
             <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
           <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
-          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            <div style="display:flex;gap:8px;">
-              <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
-              <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
-            </div>
-            <div style="font-size:11px;color:#888;">Ultima sincronizzazione: <strong>${_incassiSyncLabel()}</strong> · automatica ~ogni 5 min in orario di apertura</div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
+            <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
+            <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
           </div>
         </div>`;
 
@@ -21698,6 +21699,11 @@ Grazie!`
       }
       const selKey = isToday ? `Oggi · ${st.from}` : `${st.from} → ${st.to}`;
 
+      // % di incidenza sul totale del periodo (— se totale 0)
+      const _incassiPct = (cents) => sel.totale > 0
+        ? (cents / sel.totale * 100).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + '%'
+        : '—';
+      const _pctLine = (cents) => `<div style="font-size:11px;color:#888;margin-top:2px;">${_incassiPct(cents)} del totale</div>`;
       // riepilogo del periodo selezionato
       const summary = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
@@ -21707,13 +21713,13 @@ Grazie!`
             <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'} · ${selKey}</div></div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">💵 Cash</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div>${_pctLine(sel.contanti)}</div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">💳 Card</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div>${_pctLine(sel.carta)}</div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">👛 Wallet</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div>${_pctLine(sel.borsellino)}</div>
         </div>`;
 
       // tabella: per ogni giorno (più recenti in alto) una riga-intestazione coi totali del giorno,
@@ -21753,7 +21759,10 @@ Grazie!`
           <tbody>${bodyRows}</tbody></table></div>`;
       }
 
-      root.innerHTML = controls + summary + table;
+      // Titolo + riepilogo totali PINNATI in alto durante lo scroll (sticky); la tabella
+      // (intestazione colonne + righe giocatori) scorre sotto. Sfondo opaco = pagina (#f8f9fb)
+      // così le righe non traspaiono sotto la parte fissa.
+      root.innerHTML = `<div style="position:sticky;top:0;z-index:5;background:#f8f9fb;box-shadow:0 6px 10px -8px rgba(0,0,0,.18);">${controls}${summary}</div>${table}`;
     }
     function _incassiSetToday() { const t = _incassiToday(); _incassiState.from = t; _incassiState.to = t; renderIncassi(); }
     function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
