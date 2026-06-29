@@ -7829,37 +7829,54 @@ async function correctWalletWithBrowser(input = {}) {
       const candidates = await _collectCorrezioneCandidates(page);
       throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { correzioneCandidates: candidates }));
     }
-    // Il dialog MP è tipicamente un IFRAME fancybox → attendi che compaia un iframe nuovo.
-    await page.waitForSelector('iframe.fancybox-iframe, .fancybox-iframe, iframe[src*="aldo" i], iframe[src*="orrec" i]', { timeout: 6000 }).catch(() => {});
+    // Il dialog è un IFRAME fancybox: FichaCorreccionSaldo.aspx (mappato dal vivo, 29/06).
+    // Campi: #CC_Datos_TextBoxImporte (importo, SEGNO = direzione: negativo = riduzione),
+    // #CC_Datos_TextBoxDescripcion, #CC_Datos_ButtonAceptar / #CC_Datos_ButtonCancelar.
+    await page.waitForSelector('iframe.fancybox-iframe, iframe[src*="FichaCorreccionSaldo" i]', { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const corrFrame = page.frames().find((f) => /FichaCorreccionSaldo\.aspx/i.test(f.url() || ''));
+    if (!corrFrame) {
+      // Fallback diagnostico: il form di correzione non è comparso → restituisci i candidati.
+      diagnostic.frames = [];
+      for (const fr of page.frames()) {
+        if (fr === page.mainFrame()) continue;
+        const info = { url: (fr.url() || '').slice(0, 160), name: (fr.name() || '').slice(0, 40) };
+        try {
+          info.bodyText = await fr.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 200)).catch(() => '');
+        } catch (e) { info.err = String((e && e.message) || e).slice(0, 60); }
+        diagnostic.frames.push(info);
+      }
+      throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Form "Correzione del saldo" (iframe) non trovato dopo il click.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
+    }
+    diagnostic.steps.push('corr_iframe');
+
+    // Importo NEGATIVO = riduzione (non c'è selettore di segno: la direzione è il segno).
+    const itNeg = '-' + (subtractCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    await corrFrame.locator('#CC_Datos_TextBoxImporte').fill(itNeg, { timeout: 8000 });
+    await corrFrame.locator('#CC_Datos_TextBoxDescripcion').fill('Storno credito (app PMO)', { timeout: 4000 }).catch(() => {});
+    diagnostic.steps.push('corr_fill:' + itNeg);
+    await corrFrame.locator('#CC_Datos_ButtonAceptar').click({ timeout: 8000 });
+    diagnostic.steps.push('corr_accept');
+    await _confirmDialogYes(page, diagnostic, 'corr'); // eventuale conferma swal/confirm
     await page.waitForTimeout(1500);
 
-    // DIALOG aperto ma NON mappato → fotografa modale DOM + tutti gli IFRAME (url+campi+pulsanti)
-    // senza inviare. Dopo la mappatura live, qui andrà: fill importo (subtractCents/targetCents),
-    // _confirmDialogYes, ri-lettura saldo == targetCents. NIENTE movimento alla cieca.
-    const dlg = await _collectDialogFieldCandidates(page);
-    diagnostic.dialogModalFound = dlg.modalFound;
-    diagnostic.dialogModalId = dlg.modalId;
-    diagnostic.dialogModalText = dlg.modalText;
-    diagnostic.dialogModalHtml = dlg.modalHtml;
-    diagnostic.dialogFields = dlg.fields;
-    diagnostic.dialogButtons = dlg.buttons;
-    // Ispeziona gli IFRAME (il form di correzione MP è quasi sempre un iframe fancybox).
-    diagnostic.frames = [];
-    for (const fr of page.frames()) {
-      if (fr === page.mainFrame()) continue;
-      const info = { url: (fr.url() || '').slice(0, 160), name: (fr.name() || '').slice(0, 40) };
-      try {
-        info.fields = await fr.evaluate(() => [...document.querySelectorAll('input,select,textarea')]
-          .filter((el) => !['hidden', 'image', 'file'].includes(String(el.type || '').toLowerCase()))
-          .map((el) => ({ tag: el.tagName.toLowerCase(), type: String(el.type || '').slice(0, 16), id: String(el.id || '').slice(0, 90), name: String(el.name || '').slice(0, 90), ph: String(el.placeholder || '').slice(0, 40), val: String(el.value || '').slice(0, 30), label: ((el.closest('div,td,tr,label,.form-group') || {}).innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60) }))
-          .slice(0, 30)).catch(() => null);
-        info.buttons = await fr.evaluate(() => [...document.querySelectorAll('button,input[type="submit"],input[type="button"],a')]
-          .map((b) => ({ btn: (b.innerText || b.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), id: String(b.id || '').slice(0, 90) })).filter((b) => b.btn).slice(0, 30)).catch(() => null);
-        info.bodyText = await fr.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300)).catch(() => '');
-      } catch (e) { info.err = String((e && e.message) || e).slice(0, 60); }
-      diagnostic.frames.push(info);
+    // VERIFICA: ricarica la Ficha e rileggi il saldo → deve == targetCents (current - subtract).
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(1000);
+    const postTxt = await page.locator(MP_PAYMENT_SELECTORS.walletSaldoLabel).first().innerText({ timeout: 6000 }).catch(() => '');
+    const balanceCentsPost = mpMoneyToCents(postTxt);
+    diagnostic.walletTextPost = postTxt;
+    diagnostic.steps.push('saldo_post:' + balanceCentsPost);
+    if (balanceCentsPost == null) {
+      return { ok: true, idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost: null, warning: 'POST_BALANCE_UNREADABLE', diagnostic };
     }
-    throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Dialog "Correzione del saldo" aperto ma non ancora mappato: nessun importo inviato. Mappare campi dal vivo.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
+    if (balanceCentsPost !== targetCents) {
+      // Il saldo non è quello atteso (segno sbagliato? validazione? importo non applicato):
+      // NON dichiarare successo. L'operatore verifica su Matchpoint.
+      return { ok: false, code: 'CORRECTION_RESULT_MISMATCH', idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost, message: `Saldo dopo correzione ${balanceCentsPost}c ≠ atteso ${targetCents}c. Verificare su Matchpoint.`, diagnostic };
+    }
+    diagnostic.steps.push('done');
+    return { ok: true, idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
