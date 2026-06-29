@@ -2812,6 +2812,9 @@
     .svc-btn-step-cancel { padding:5px 10px; border-radius:var(--radius-sm); font-size:.75rem; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); transition:all .15s; white-space:nowrap; }
     .svc-btn-step-cancel:hover:not(:disabled) { border-color:var(--red); color:var(--red); }
     .svc-btn-step-cancel:disabled { opacity:.3; cursor:not-allowed; }
+    .svc-btn-add { display:inline-flex; align-items:center; gap:4px; border-radius:14px; padding:4px 12px; font-size:.76rem; font-weight:600; cursor:pointer; border:1.5px dashed var(--text-muted); background:var(--surface2); color:var(--text-muted); transition:all .15s; white-space:nowrap; user-select:none; }
+    .svc-btn-add:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:var(--accent-light); border-style:solid; }
+    .svc-btn-add:disabled { opacity:.4; cursor:not-allowed; }
     .svc-player-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
     .svc-players-empty { margin-top:8px; font-size:.72rem; color:var(--text-muted); font-style:italic; }
     .svc-player-chip { display:inline-flex; align-items:center; gap:5px; background:var(--surface); border:1px solid var(--accent); color:var(--accent); border-radius:14px; padding:3px 6px 3px 10px; font-size:.76rem; font-weight:600; }
@@ -2897,6 +2900,7 @@
       .svc-btn-confirm,
       .svc-btn-step-cancel { font-size:18px; }
       .svc-player-chip { font-size:17px; }
+      .svc-btn-add { font-size:17px; }
       .svc-players-empty { font-size:15px; }
       .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
       .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
@@ -7724,7 +7728,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '5.999';
+    const APP_VERSION = '6.000';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37923,9 +37927,8 @@ Per confermare scrivi ELIMINA.`);
       }
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
-      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:3px;" aria-hidden="true"></i>Aggiungi';
-      addBtn.className = 'svc-btn-step';
-      addBtn.style.cssText = 'border-radius:14px;padding:4px 10px;font-size:13px;';
+      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;" aria-hidden="true"></i>Aggiungi';
+      addBtn.className = 'svc-btn-add';
       addBtn.disabled = st.busy;
       addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
       chipsWrap.appendChild(addBtn);
