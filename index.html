@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.025';
+    const APP_VERSION = '6.026';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21672,7 +21672,7 @@ Grazie!`
               <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
               <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
             </div>
-            <div style="font-size:11px;color:#888;">Ultima sincronizzazione: <strong>${_incassiSyncLabel()}</strong> · automatica ogni 30 min</div>
+            <div style="font-size:11px;color:#888;">Ultima sincronizzazione: <strong>${_incassiSyncLabel()}</strong> · automatica ~ogni 5 min in orario di apertura</div>
           </div>
         </div>`;
 
