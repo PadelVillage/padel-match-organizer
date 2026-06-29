@@ -3657,6 +3657,14 @@ async function handleCreateClient(req, res) {
   json(res, 200, result);
 }
 
+async function handleCollectPayment(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  // SCRITTURA NON-IDEMPOTENTE (denaro reale): nessun retry, a differenza delle letture.
+  const result = await mpQueueRun(mpJobMeta('collect-payment', body), () => collectPaymentWithBrowser(body));
+  json(res, 200, result);
+}
+
 async function handleUpdateClient(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
@@ -7306,6 +7314,183 @@ async function editBookingWithBrowser(input = {}) {
   }
 }
 
+// ── INCASSO pagamento partita (Fase 2b — SCRITTURA, DENARO REALE) ─────────────
+// Helper: trova la riga partecipante per idCliente (HiddenFieldIdCliente = id URL,
+// quello passato dall'app), fallback per nome. Ritorna ridx o null.
+async function _findParticipantRow(page, RP, idClienteWanted, playerName) {
+  const _digits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
+  const _norm = (s) => String(s || '').toLowerCase().trim();
+  const wantId = _digits(idClienteWanted);
+  const righeViste = [];
+  let ridx = 0;
+  while (true) {
+    const nomeInput = page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxNombreValor_${ridx}"]`);
+    if (!(await nomeInput.count().catch(() => 0))) break;
+    const nome = (await nomeInput.first().inputValue().catch(() => '')).trim();
+    const idCli = (await page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_HiddenFieldIdCliente_${ridx}"]`).first().inputValue().catch(() => '')).trim();
+    righeViste.push(`${ridx}:${nome}#${idCli}`);
+    const byId = !!wantId && _digits(idCli) === wantId;
+    const byName = !byId && !!playerName && !!_norm(nome) && (_norm(nome).includes(_norm(playerName)) || _norm(playerName).includes(_norm(nome)));
+    if (byId || byName) return { ridx, idCliente: idCli, matchBy: byId ? 'id' : 'name', righeViste };
+    ridx++;
+  }
+  return { ridx: null, idCliente: null, matchBy: null, righeViste };
+}
+
+async function _readPendenteCents(page, ridx) {
+  const txt = await page.locator(MP_PAYMENT_SELECTORS.partImportePendiente(ridx)).first().innerText({ timeout: 1500 }).catch(() => '');
+  return mpMoneyToCents(txt);
+}
+
+// Dialog "Incassare" = forma-de-pago a PULSANTI (testo visibile). Click per testo.
+// Le etichette (Contanti/Carta/Saldo disponibile) sono uniche tra i pulsanti del
+// dialog → has-text (substring) è robusto. ⚠️ Il DOM esatto del dialog si conferma
+// solo dal vivo: lascio diagnostica ricca e più selettori di ripiego.
+async function _clickCobroMethod(page, methodLabel, diagnostic) {
+  await page.waitForTimeout(400); // lascia aprire il dialog dopo il postback di Cobrar
+  const tries = [
+    `button:visible:has-text("${methodLabel}")`,
+    `a:visible:has-text("${methodLabel}")`,
+    `[onclick]:visible:has-text("${methodLabel}")`,
+    `:is(button,a,div,span,label):visible:has-text("${methodLabel}")`,
+  ];
+  for (const sel of tries) {
+    const loc = page.locator(sel);
+    const n = await loc.count().catch(() => 0);
+    if (n) {
+      try {
+        await loc.first().click({ timeout: 6000 });
+        diagnostic.steps.push('cobro_method:' + methodLabel);
+        await page.waitForTimeout(300);
+        return;
+      } catch (e) {
+        diagnostic.steps.push('cobro_method_retry:' + String((e && e.message) || e).slice(0, 40));
+      }
+    }
+  }
+  throw fail('FORMA_PAGO_NON_TROVATA', `Pulsante metodo "${methodLabel}" non trovato nel dialog incasso.`, diagnostic);
+}
+
+// Apre la scheda partita/lezione, trova il partecipante, (opz.) corregge l'importo
+// a carico (TextBoxCargoReserva → Actualizar), poi "Incassare" (LinkButtonCobrar) →
+// metodo per testo nel dialog → salva con Actualizar. NON-IDEMPOTENTE: NIENTE retry.
+// Kill-switch env MATCHPOINT_PAYMENT_WRITE_ENABLED (default OFF) = backstop
+// server-side: con OFF l'endpoint rifiuta senza mai cobrare.
+async function collectPaymentWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const idReserva = input.idReserva ? String(input.idReserva) : null;
+  const idClienteWanted = clean(input.idCliente);
+  const playerName = clean(input.playerName);
+  const method = clean(input.method).toLowerCase(); // cash | card | wallet
+  const amountCents = (input.amountCents != null && Number.isFinite(Number(input.amountCents))) ? Math.round(Number(input.amountCents)) : null;
+  const methodLabel = {
+    cash: MP_PAYMENT_SELECTORS.cobroMethodLabels.contanti,
+    card: MP_PAYMENT_SELECTORS.cobroMethodLabels.carta,
+    wallet: MP_PAYMENT_SELECTORS.cobroMethodLabels.borsellino,
+  }[method];
+
+  const diagnostic = { mode: 'collect_payment', steps: [], input: { idReserva, idCliente: idClienteWanted, method, amountCents } };
+  instrumentStepTiming(diagnostic);
+
+  // Validazioni DURE prima di toccare il browser (mai un cobro a vuoto).
+  if (!idReserva) throw fail('PARAMS_MANCANTI', 'idReserva richiesto per incassare.', diagnostic);
+  if (!idClienteWanted && !playerName) throw fail('PARAMS_MANCANTI', 'idCliente o playerName richiesto per identificare il giocatore.', diagnostic);
+  if (!methodLabel) throw fail('METODO_NON_VALIDO', `Metodo "${method}" non valido (atteso cash|card|wallet).`, diagnostic);
+  if (amountCents == null || amountCents <= 0) throw fail('IMPORTO_NON_VALIDO', 'amountCents deve essere un intero > 0.', diagnostic);
+
+  // KILL-SWITCH server-side: con OFF (default) NON si incassa MAI.
+  if (!boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false)) {
+    throw fail('PAYMENT_WRITE_DISABLED', 'Scrittura pagamenti disattivata sul worker (kill-switch MATCHPOINT_PAYMENT_WRITE_ENABLED=OFF).', diagnostic);
+  }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    // Apri la scheda (partita o lezione) — auto-detect come edit-booking.
+    diagnostic.steps.push('goto_ficha');
+    const fichaCandidates = [
+      `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+    ];
+    let fichaUrl = null;
+    for (const cand of fichaCandidates) {
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
+      const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
+      if (hasExtender) { fichaUrl = cand; break; }
+    }
+    if (!fichaUrl) throw fail('FICHA_NON_TROVATA', `Scheda partita/lezione non trovata per id ${idReserva}.`, diagnostic);
+    const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
+    diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
+
+    // Trova la riga del partecipante (preferisci idCliente, fallback nome).
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    if (found.ridx == null) {
+      throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
+    }
+    let ridx = found.ridx;
+    let idClienteReale = found.idCliente || idClienteWanted;
+    diagnostic.steps.push(`row:${ridx}:matchBy=${found.matchBy}`);
+
+    // GUARDIA ANTI-DOPPIO: già riscosso (pendente=0) → non incassare di nuovo.
+    let pend = await _readPendenteCents(page, ridx);
+    diagnostic.steps.push('pendente_pre:' + pend);
+    if (pend === 0) {
+      return { ok: false, code: 'ALREADY_PAID', idReserva, idCliente: idClienteReale, message: 'Giocatore già riscosso su Matchpoint: nessun incasso effettuato.', diagnostic };
+    }
+
+    // (opz.) Correggi importo a carico → salva → ri-scansiona (il postback ridisegna le righe).
+    const cargoSel0 = `input[id*="RepeaterParticipantes_${RP}_Listado_${ridx}_TextBoxCargoReserva_${ridx}"]`;
+    const curTxt = (await page.locator(cargoSel0).first().inputValue().catch(() => '')).trim();
+    const curCents = mpMoneyToCents(curTxt);
+    if (curCents !== amountCents) {
+      const itAmount = (amountCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      await page.locator(cargoSel0).first().fill(itAmount, { timeout: 6000 });
+      diagnostic.steps.push(`cargo_set:${curCents}->${amountCents}`);
+      await clickSaveActualizar(page, diagnostic, 'set_cargo');
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
+      const re = await _findParticipantRow(page, RP, idClienteReale, playerName);
+      if (re.ridx == null) throw fail('GIOCATORE_NON_TROVATO', 'Partecipante non più trovato dopo l\'aggiornamento importo.', diagnostic);
+      ridx = re.ridx; idClienteReale = re.idCliente || idClienteReale;
+      pend = await _readPendenteCents(page, ridx);
+      diagnostic.steps.push(`row_after_cargo:${ridx}:pendente=${pend}`);
+      if (pend === 0) {
+        return { ok: false, code: 'ALREADY_PAID', idReserva, idCliente: idClienteReale, message: 'Giocatore risulta già riscosso dopo l\'aggiornamento importo.', diagnostic };
+      }
+    }
+
+    // INCASSA: click "Incassare" → dialog forma-de-pago → click metodo per testo.
+    diagnostic.steps.push('cobrar_click');
+    await dismissSwalOk(page, diagnostic, 'cobro_pre');
+    await page.locator(MP_PAYMENT_SELECTORS.partIncassaBtn(ridx)).first().click({ timeout: 12000 });
+    await _clickCobroMethod(page, methodLabel, diagnostic);
+
+    // Salva il cobro con Actualizar (clic robusto anti-swal2).
+    await clickSaveActualizar(page, diagnostic, 'salva_cobro');
+
+    // Verifica esito: ri-leggi pendente per la riga (riscosso = 0).
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+    await page.waitForTimeout(300);
+    const reAfter = await _findParticipantRow(page, RP, idClienteReale, playerName);
+    const pendAfter = reAfter.ridx != null ? await _readPendenteCents(page, reAfter.ridx) : null;
+    const statoPost = pendAfter == null ? null : (pendAfter === 0 ? 'riscosso' : 'in_sospeso');
+    diagnostic.steps.push('pendente_post:' + pendAfter);
+    diagnostic.steps.push('done');
+    return { ok: true, idReserva, idCliente: idClienteReale, method, methodLabel, amountCents, statoPost, pendentePostCents: pendAfter, diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+}
+
 async function cancelBookingWithBrowser(input = {}) {
   const username = clean(input.username) || env('MATCHPOINT_USERNAME');
   const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
@@ -7794,7 +7979,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -7834,6 +8019,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/edit-booking') {
       return await handleEditBooking(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/collect-payment') {
+      return await handleCollectPayment(req, res);
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
