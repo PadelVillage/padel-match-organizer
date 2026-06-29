@@ -7735,7 +7735,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.016';
+    const APP_VERSION = '6.017';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37704,6 +37704,10 @@ Per confermare scrivi ELIMINA.`);
         descrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
         origDescrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
         idReserva: _initIdReserva || null,
+        // Per partita/lezione il roster locale può essere INCOMPLETO/stantio: mostriamo le sezioni
+        // Giocatori/Pagamenti in stato "caricamento" finché la lettura autorevole del worker non
+        // risponde (evita il "lampo" del roster sbagliato). Slot e Note restano subito editabili.
+        rosterLoading: hasPlayers,
       };
       const editor = svcAddMessage('system', '', 'flow');
       editor.classList.add('svc-edit-host'); // stile "senza cornice" applicato SUBITO (niente flash della bolla vecchia)
@@ -37850,17 +37854,24 @@ Per confermare scrivi ELIMINA.`);
               staffCalRenderPlayersEditor();
             }
           }
+          // Lettura conclusa (in qualunque esito): esci dallo stato "caricamento" così le sezioni
+          // Giocatori/Pagamenti mostrano il dato disponibile (worker se valido, altrimenti il locale).
+          if (stillOpen) st.rosterLoading = false;
           if (ok && roster && untouched) {
             st.roster = roster;
-            staffCalRenderPlayersEditor();
+            if (stillOpen) staffCalRenderPlayersEditor();
             _setNote('Lista giocatori aggiornata da Matchpoint.');
           } else if (ok) {
+            if (stillOpen) staffCalRenderPlayersEditor();
             _setNote(stillOpen ? 'Lista locale mantenuta (stavi già modificando).' : 'Lista aggiornata non applicata (scheda chiusa).');
           } else {
+            if (stillOpen) staffCalRenderPlayersEditor();
             _setNote('Lettura da Matchpoint non riuscita: uso i giocatori salvati in locale.');
           }
         } catch (err) {
           clearInterval(_timer);
+          // Errore/timeout: esci dal "caricamento" e mostra i giocatori salvati in locale (fallback).
+          try { const _st = staffCalPlayersState; if (_st && _st === _stOpen && _st.rosterLoading) { _st.rosterLoading = false; staffCalRenderPlayersEditor(); } } catch (e) {}
           _setNote((err && err.name === 'AbortError')
             ? 'Matchpoint lento: uso i giocatori salvati in locale (la scheda è già usabile).'
             : 'Uso i giocatori salvati in locale.');
@@ -37874,6 +37885,13 @@ Per confermare scrivi ELIMINA.`);
     if (!st || !st.box) return;
     const box = st.box;
     box.innerHTML = '';
+
+    // Roster ancora in attesa della lettura autorevole del worker: nascondi Giocatori/Pagamenti
+    // (mostra un "caricamento") finché non arriva il dato vero. Se l'utente ha già iniziato a
+    // modificare (aggiunte/rimozioni — es. via assistente), esci dal caricamento e mostra il roster.
+    const _loadingRoster = !!st.rosterLoading
+      && !(st.add && st.add.length)
+      && !(st.remove && Object.keys(st.remove).length);
 
     const title = document.createElement('div');
     title.className = 'svc-edit-title';
@@ -37944,7 +37962,15 @@ Per confermare scrivi ELIMINA.`);
     }
     box.appendChild(slotSec);
 
-    if (st.hasPlayers) {
+    if (st.hasPlayers && _loadingRoster) {
+      const playersSec = mkSection('ti-users', 'Giocatori');
+      const load = document.createElement('div');
+      load.className = 'svc-players-empty';
+      load.style.cssText = 'margin-top:0;display:flex;align-items:center;gap:7px;font-style:normal;';
+      load.innerHTML = '<span class="pmo-spin" style="width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;"></span><span>Leggo i giocatori da Matchpoint…</span>';
+      playersSec.appendChild(load);
+      box.appendChild(playersSec);
+    } else if (st.hasPlayers) {
       const playersSec = mkSection('ti-users', 'Giocatori');
       const chipsWrap = document.createElement('div');
       chipsWrap.className = 'svc-player-chips';
@@ -38022,7 +38048,7 @@ Per confermare scrivi ELIMINA.`);
     // (riscosso/in sospeso + importo) arriva dalla lettura worker `/edit-booking` (campi
     // importoCents/pendenteCents/stato su ogni voce del roster, preservati da _normRoster).
     // L'incasso effettivo (Contanti/Carta) resta disattivato fino alla Fase 2b (scrittura su MP).
-    if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && Array.isArray(st.roster) && st.roster.length) {
+    if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && !_loadingRoster && Array.isArray(st.roster) && st.roster.length) {
       const paySec = mkSection('ti-cash', 'Pagamenti');
       paySec.setAttribute('data-feature', 'payments-shell');
       let _anyUnknown = false;
