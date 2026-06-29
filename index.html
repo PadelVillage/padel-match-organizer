@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.028';
+    const APP_VERSION = '6.029';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21663,9 +21663,9 @@ Grazie!`
       const isToday = st.from === today && st.to === today;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
-          <div style="margin-right:8px;min-width:200px;">
+          <div style="margin-right:8px;">
             <h2 style="margin:0;font-size:20px;line-height:1.15;">💰 Incassi</h2>
-            <div style="font-size:11px;color:#888;margin-top:2px;">Cassa e rendicontazione dei pagamenti dei giocatori. · sincronizzazione automatica ~ogni 5 min in orario di apertura</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Ultima sinc.: <strong>${_incassiSyncLabel()}</strong></div>
           </div>
           <div><label style="${lblCss}">&nbsp;</label>
             <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
