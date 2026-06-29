@@ -99,11 +99,12 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT;
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], payment: [] };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
+  PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
 }
 function jsonResponse(win, obj, status) {
   const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
@@ -124,6 +125,14 @@ function installFetchMock(win) {
       }
       if (WORKER_NEXT && WORKER_NEXT.throw) { throw new Error('network down (simulato)'); }
       return jsonResponse(win, Object.assign({ ok: true }, WORKER_NEXT && WORKER_NEXT.body || {}), 200);
+    }
+    if (/\/functions\/v1\/matchpoint-payment-write/.test(u)) {
+      CAPTURED.payment.push({ url: u, body: body });
+      if (PAYMENT_NEXT && PAYMENT_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (PAYMENT_NEXT && PAYMENT_NEXT.reject) {
+        return jsonResponse(win, PAYMENT_NEXT.body || { ok: false, message: 'COBRO_RIFIUTATO' }, PAYMENT_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, PAYMENT_NEXT && PAYMENT_NEXT.body || {}), 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
@@ -959,6 +968,63 @@ const CASES = [
       checks.push({ label: 'create inviato (no vicolo cieco)', ok: created });
       checks.push({ label: 'payload create tipo=lezione + istruttore=Santiago', ok: !!wp && wp.body.tipo === 'lezione' && wp.body.istruttore === 'Santiago' });
       checks.push({ label: 'giocatore = Maurizio Aprea, mai "metti" né Ospite', ok: !!wp && /maurizio/i.test(JSON.stringify(wp.body.giocatori || [])) && !/metti/i.test(JSON.stringify(wp.body.giocatori || [])) && !/ospite/i.test(JSON.stringify(wp.body.giocatori || [])) });
+      return checks;
+    }
+  },
+  {
+    id: 36, flow: 'Pagamenti', name: 'incasso Cash OK → edge payment-write col payload giusto + giocatore marcato pagato (ottimistico)',
+    run: async (win, H, ctx) => {
+      // Denaro reale in PROD: qui worker/edge MOCKATI. Bypass conferma+gate via __pmoPayHarness.
+      H.setPayHarness(true);
+      PAYMENT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.collectPayment({
+        idReserva: 'R777', idCliente: 'C1', idx: '0', playerName: 'Mario Rossi',
+        method: 'cash', amountCents: 800, campo: 2, data: ctx.iso, ora: '18:00',
+      });
+      checks.push({ label: 'collectPayment risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.payment.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-payment-write chiamata', ok: got });
+      const pp = CAPTURED.payment[0];
+      checks.push({ label: 'payload {idReserva,idCliente,method,amountCents}', ok: !!pp && pp.body && pp.body.idReserva === 'R777' && pp.body.idCliente === 'C1' && pp.body.method === 'cash' && pp.body.amountCents === 800 });
+      checks.push({ label: 'una sola chiamata (no retry su denaro)', ok: CAPTURED.payment.length === 1 });
+      checks.push({ label: 'giocatore ora "pagato" nell\'indice chip (ottimistico)', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === true });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 37, flow: 'Pagamenti', name: 'incasso RIFIUTATO dall\'edge → NON marca pagato + nessun retry',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      PAYMENT_NEXT = { reject: true, body: { ok: false, message: 'COBRO_RIFIUTATO' } };
+      const checks = [];
+      const res = await H.collectPayment({
+        idReserva: 'R888', idCliente: 'C9', idx: '1', playerName: 'Luca Bianchi',
+        method: 'card', amountCents: 1200, campo: 3, data: ctx.iso, ora: '19:00',
+      });
+      checks.push({ label: 'collectPayment risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry cieco)', ok: CAPTURED.payment.length === 1 });
+      checks.push({ label: 'giocatore NON marcato pagato dopo rifiuto', ok: H.isPaid('R888', 'C9', 'Luca Bianchi') === false });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 38, flow: 'Pagamenti', name: 'chip calendario: indice "pagato" costruito dai record payment del cloud (match per idReserva+nome)',
+    run: async (win, H, ctx) => {
+      // Simula i record `payment` in cache cloud (id_cliente = Cod. visibile ≠ id URL):
+      // il match deve riuscire per idReserva + NOME normalizzato.
+      CLOUD_FAKEROWS = [
+        { record_type: 'payment', deleted: false, payload: { id_reserva: 'R555', id_cliente: '000004', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid' } },
+        { record_type: 'payment', deleted: false, payload: { id_reserva: 'R555', id_cliente: '7', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid' } },
+      ];
+      await H.refreshPaidIndex();
+      const checks = [];
+      checks.push({ label: 'pagato per idReserva+nome (Mario Rossi)', ok: H.isPaid('R555', '', 'Mario Rossi') === true });
+      checks.push({ label: 'pagato anche con case/spazi diversi ("  mario   rossi ")', ok: H.isPaid('R555', '', '  mario   rossi ') === true });
+      checks.push({ label: 'NON pagato: nome assente nella stessa prenotazione', ok: H.isPaid('R555', '', 'Carlo Neri') === false });
+      checks.push({ label: 'NON pagato: prenotazione senza incassi', ok: H.isPaid('R000', '', 'Mario Rossi') === false });
       return checks;
     }
   }

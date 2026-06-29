@@ -2855,6 +2855,10 @@
     .svc-pay-status.is-due { color:#b45309; }
     .svc-pay-actions { display:flex; gap:6px; margin-top:5px; }
     .svc-pay-actions .svc-btn-step { flex:1 1 0; min-width:0; box-sizing:border-box; justify-content:center; display:inline-flex; align-items:center; gap:4px; }
+    .svc-pay-amt { display:flex; align-items:center; gap:6px; margin-top:5px; }
+    .svc-pay-amt-lbl { font-size:.72rem; font-weight:600; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pay-amt-input { width:84px; box-sizing:border-box; text-align:right; font-size:.82rem; font-weight:700; padding:4px 7px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--text); }
+    .svc-pay-amt-input:disabled { opacity:.55; border-color:#dfe3e8; }
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -7743,10 +7747,19 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.029';
+    const APP_VERSION = '6.030';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
+    // Fase 2b — SCRITTURA pagamenti (incasso REALE Cash/Card/Wallet → Matchpoint).
+    // ⚠️ DENARO REALE: ogni incasso crea un cobro vero su MP. Resta OFF ovunque (PROD e
+    // /test/, che condivide worker+MP) finché non c'è un test dal vivo supervisionato con
+    // OK esplicito del committente su una prenotazione concordata. Con flag OFF i bottoni
+    // Cash/Card/Wallet restano disabilitati e l'input importo è in sola lettura. Il
+    // collaudo del wiring avviene SOLO via harness mockato (test/handle-test.html), che
+    // chiama _pmoCollectPayment col bypass `window.__pmoPayHarness` (gate solo-TEST).
+    // Backstop server-side: kill-switch env nel worker (l'edge non è nemmeno deployata).
+    const PMO_PAYMENTS_WRITE_ENABLED = false;
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -21616,6 +21629,22 @@ Grazie!`
     function _incassiEuro(cents) {
       const v = (Number(cents) || 0) / 100;
       return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+    // Parse importo digitato dall'operatore ("8,00" / "8.00" / "8" / "8,5") → cents.
+    // Ritorna null se non interpretabile come importo > 0.
+    function _pmoEuroToCents(txt) {
+      if (txt == null) return null;
+      let s = String(txt).trim().replace(/[€\s]/g, '');
+      if (!s) return null;
+      // se ci sono sia '.' che ',', l'ultimo separatore è quello decimale
+      if (s.includes('.') && s.includes(',')) {
+        s = (s.lastIndexOf(',') > s.lastIndexOf('.')) ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+      } else {
+        s = s.replace(',', '.');
+      }
+      const v = Number(s);
+      if (!isFinite(v) || v <= 0) return null;
+      return Math.round(v * 100);
     }
     function _incassiMethodBucket(method) {
       const m = (method || '').toString().toLowerCase();
@@ -36905,8 +36934,166 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalLastScrollIso = null; // ultima giornata renderizzata, per preservare lo scroll orizzontale sui re-render
   let _staffCalResizeTimer = null;
 
+  // ── Pagamenti Fase 2b — indice "pagato" per le chip del calendario ──────────
+  // Mappa idReserva → { ids:Set, names:Set } costruita dai record `payment` in cache
+  // cloud. Il match nelle chip è per idReserva + NOME normalizzato (gli id divergono:
+  // nel report-sync id_cliente = Cod. visibile, nella scheda idCliente = id URL).
+  // Granularità = ultima sync incassi (~5 min): mostriamo SOLO ✓ verde sui pagati,
+  // mai un marcatore "non pagato" (eviterebbe falsi su dato stale).
+  let _staffCalPaidIndex = new Map();
+  let _staffCalPaidIndexAt = 0;
+  function _payNormName(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' '); }
+  function _staffCalPaidIndexAdd(idReserva, idCliente, name) {
+    const k = String(idReserva == null ? '' : idReserva).trim();
+    if (!k) return;
+    let e = _staffCalPaidIndex.get(k);
+    if (!e) { e = { ids: new Set(), names: new Set() }; _staffCalPaidIndex.set(k, e); }
+    if (idCliente) e.ids.add(String(idCliente).trim());
+    if (name) e.names.add(_payNormName(name));
+  }
+  function _staffCalIsPaid(idReserva, idCliente, name) {
+    const e = _staffCalPaidIndex.get(String(idReserva == null ? '' : idReserva).trim());
+    if (!e) return false;
+    if (idCliente && e.ids.has(String(idCliente).trim())) return true;
+    if (name && e.names.has(_payNormName(name))) return true;
+    return false;
+  }
+  async function _staffCalRefreshPaidIndex() {
+    try {
+      if (typeof _incassiFetch !== 'function') return;
+      const res = await _incassiFetch();
+      const payments = (res && Array.isArray(res.payments)) ? res.payments : [];
+      const m = new Map();
+      for (const p of payments) {
+        if (!p || p.voided || p.status === 'void') continue;
+        const k = String(p.id_reserva == null ? '' : p.id_reserva).trim();
+        if (!k) continue;
+        let e = m.get(k);
+        if (!e) { e = { ids: new Set(), names: new Set() }; m.set(k, e); }
+        if (p.id_cliente != null && String(p.id_cliente).trim()) e.ids.add(String(p.id_cliente).trim());
+        if (p.player_name) e.names.add(_payNormName(p.player_name));
+      }
+      // Preserva gli add ottimistici (cobro appena fatto, non ancora nel cloud sync).
+      for (const entry of _staffCalPaidIndex) {
+        const k = entry[0], e = entry[1];
+        const cur = m.get(k);
+        if (!cur) { m.set(k, e); }
+        else { e.ids.forEach(function (x) { cur.ids.add(x); }); e.names.forEach(function (x) { cur.names.add(x); }); }
+      }
+      _staffCalPaidIndex = m;
+      try { renderStaffCalendar(); } catch (e) {}
+    } catch (e) { console.warn('paid index refresh:', e); }
+  }
+  function _staffCalMaybeRefreshPaidIndex() {
+    const now = Date.now();
+    if (now - _staffCalPaidIndexAt < 120000) return; // throttle 2 min (≤ granularità sync)
+    _staffCalPaidIndexAt = now;
+    _staffCalRefreshPaidIndex();
+  }
+
+  // ── Pagamenti Fase 2b — SCRITTURA incasso (denaro reale) ────────────────────
+  // Conferma esplicita a pulsanti (coerente con l'app), poi chiamata SINCRONA alla
+  // edge `matchpoint-payment-write` (NON ottimistico, NIENTE retry: il cobro è
+  // irreversibile). In harness mockato la conferma si auto-accetta.
+  function _pmoConfirmCollect(name, methodLabel, amountCents) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const msg = svcAddMessage('system', '💶 Incassare <strong>' + _incassiEuro(amountCents) + '</strong> da <strong>' + esc(name) + '</strong> in <strong>' + esc(methodLabel) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Operazione reale su Matchpoint: crea un cobro, non annullabile dall’app.</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['✅ Sì, incassa'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoCollectPayment(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    // Gate di sicurezza: con write OFF e fuori harness non si incassa MAI.
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Incasso non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const idReserva = String(opts.idReserva == null ? '' : opts.idReserva).trim();
+    const idCliente = String(opts.idCliente == null ? '' : opts.idCliente).trim();
+    const playerName = opts.playerName || '';
+    const method = opts.method || '';
+    const amountCents = opts.amountCents;
+    const methodLabel = ({ cash: 'Contanti', card: 'Carta', wallet: 'Borsellino' })[method] || method;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (amountCents == null || !(amountCents > 0)) {
+      try { svcAddMessage('system', '⚠️ Importo non valido: controlla il campo “€ a carico”.', 'error'); } catch (e) {}
+      return { ok: false, message: 'INVALID_AMOUNT' };
+    }
+    if (!idReserva) {
+      try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_IDRESERVA' };
+    }
+    const okGo = await _pmoConfirmCollect(playerName, methodLabel, amountCents);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Incasso ' + esc(methodLabel) + ' di ' + _incassiEuro(amountCents) + ' per ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'registrare un incasso su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-payment-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({
+          idReserva: idReserva, idCliente: idCliente, idx: (opts.idx != null ? String(opts.idx) : ''),
+          playerName: playerName, method: method, amountCents: amountCents,
+          campo: opts.campo, data: opts.data, ora: opts.ora,
+        }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — aggiorno lo stato ottimisticamente: giocatore riscosso + indice chip.
+        try {
+          const stOpen = staffCalPlayersState;
+          if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+            const tgt = stOpen.roster.find(function (x) {
+              return String(x.idx) === String(opts.idx)
+                || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+                || x.nome === playerName;
+            });
+            if (tgt) { tgt.stato = 'riscosso'; tgt.pendenteCents = 0; if (tgt.importoCents == null) tgt.importoCents = amountCents; }
+          }
+        } catch (e) {}
+        try { _staffCalPaidIndexAdd(idReserva, idCliente, playerName); } catch (e) {}
+        _setMsg(note, '✅ Incassato ' + esc(methodLabel) + ' ' + _incassiEuro(amountCents) + ' — ' + esc(playerName));
+        try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        return { ok: true };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Incasso NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} }); // ritento manuale (no retry auto)
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        // Timeout: NON riabilito i bottoni (rischio doppio cobro): meglio ricontrollare su MP.
+        _setMsg(note, '⌛ Esito non confermato (timeout). Controlla su Matchpoint prima di ritentare: rischi un doppio incasso.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore incasso: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    try { _staffCalMaybeRefreshPaidIndex(); } catch (e) {}
     // Nome del giorno accanto alla data (desktop): es. "Giovedì".
     const _wd = document.getElementById('staffCalDateWeekday');
     if (_wd) { const _GG = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']; const _dd = new Date(isoDate + 'T12:00:00'); _wd.textContent = isNaN(_dd.getTime()) ? '' : _GG[_dd.getDay()]; }
@@ -37386,7 +37573,7 @@ Per confermare scrivi ELIMINA.`);
     for (const s of staffCalGetSlots(isoDate)) {
       const c = s.campo; if (c < 1 || c > 4) continue;
       const st = h2m(s.ora);
-      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', istruttore: s.istruttore || '', ora: s.ora, durata: s.durata || 90, giocatori: Array.isArray(s.giocatori) ? s.giocatori : [] });
+      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', istruttore: s.istruttore || '', ora: s.ora, durata: s.durata || 90, giocatori: Array.isArray(s.giocatori) ? s.giocatori : [], idReserva: (s.idReserva != null ? String(s.idReserva) : '') });
     }
 
     const frame = document.createElement('div');
@@ -37468,16 +37655,32 @@ Per confermare scrivi ELIMINA.`);
         if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:10px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
         // v5.736 — gestisce giocatori come array di stringhe O di oggetti {nome}, e nome con \n.
         // Ogni giocatore va su una riga separata (div). Font ingrandito.
-        let _gNames = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean) : [];
-        if (!_gNames.length && b.nome && b.nome !== b.istruttore) {
-          _gNames = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        // Fase 2b — tengo anche l'eventuale idCliente per il match "pagato" (✓ verde).
+        let _gList = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) {
+          if (typeof g === 'string') return { nome: g.trim(), idCliente: '' };
+          if (g && g.nome) return { nome: String(g.nome).trim(), idCliente: (g.idCliente != null ? String(g.idCliente) : (g.codice != null ? String(g.codice) : '')) };
+          return null;
+        }).filter(function (x) { return x && x.nome; }) : [];
+        if (!_gList.length && b.nome && b.nome !== b.istruttore) {
+          _gList = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean).map(function (n) { return { nome: n, idCliente: '' }; });
         }
-        if (_gNames.length) {
+        if (_gList.length) {
           const fontPx = isDesktop ? 12 : 13;
-          _gNames.forEach(function (nm) {
+          _gList.forEach(function (g) {
             const t3 = document.createElement('div');
             t3.style.cssText = 'font-size:' + fontPx + 'px;opacity:.95;white-space:normal;line-height:1.3;';
-            t3.textContent = nm;
+            let _paid = false;
+            try { _paid = _staffCalIsPaid(b.idReserva, g.idCliente, g.nome); } catch (e) { _paid = false; }
+            if (_paid) {
+              const ck = document.createElement('span');
+              ck.textContent = '✓ ';
+              ck.style.cssText = 'color:#16a34a;font-weight:800;';
+              ck.title = 'Pagato';
+              t3.appendChild(ck);
+              t3.appendChild(document.createTextNode(g.nome));
+            } else {
+              t3.textContent = g.nome;
+            }
             blk.appendChild(t3);
           });
         }
@@ -38197,6 +38400,10 @@ Per confermare scrivi ELIMINA.`);
       const paySec = mkSection('ti-cash', 'Pagamenti');
       paySec.setAttribute('data-feature', 'payments-shell');
       let _anyUnknown = false;
+      // Incasso ATTIVO solo se il flag write è ON (PROD/test reali: OFF) oppure se siamo
+      // nell'harness mockato (bypass solo-TEST). Altrimenti input/bottoni sono in sola lettura.
+      const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
+        || (PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true);
       st.roster.forEach(function (p) {
         const item = document.createElement('div');
         item.className = 'svc-pay-item';
@@ -38229,11 +38436,60 @@ Per confermare scrivi ELIMINA.`);
         row.appendChild(nm); row.appendChild(status);
         item.appendChild(row);
         if (showButtons) {
+          // Importo "a carico" (€): default = pendente se presente, altrimenti importo letto.
+          // Editandolo si corregge quanto deve il giocatore (worker: set TextBoxCargoReserva →
+          // Actualizar) e POI si incassa l'intero. Niente cobri parziali (decisione 29/06).
+          const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
+            : (importoCents != null ? importoCents : 0);
+          const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
+          const amtWrap = document.createElement('div');
+          amtWrap.className = 'svc-pay-amt';
+          const amtLbl = document.createElement('span'); amtLbl.className = 'svc-pay-amt-lbl'; amtLbl.textContent = '€ a carico';
+          const amt = document.createElement('input');
+          amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pay-amt-input';
+          amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          amt.disabled = !_payWriteActive;
+          amtWrap.appendChild(amtLbl); amtWrap.appendChild(amt);
+          item.appendChild(amtWrap);
+
           const acts = document.createElement('div');
           acts.className = 'svc-pay-actions';
-          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
-          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
-          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet'; wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b';
+          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash';
+          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card';
+          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet';
+          // Wallet abilitato solo se il borsellino copre l'importo digitato (ricalcolato a ogni input).
+          const _syncWallet = function () {
+            if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
+            const a = _pmoEuroToCents(amt.value);
+            const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
+            wBtn.disabled = !okSaldo;
+            wBtn.title = okSaldo
+              ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
+              : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
+          };
+          if (!_payWriteActive) {
+            cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+            kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+            _syncWallet();
+          } else {
+            cBtn.disabled = false; cBtn.title = 'Incassa in contanti';
+            kBtn.disabled = false; kBtn.title = 'Incassa con carta';
+            _syncWallet();
+            amt.addEventListener('input', _syncWallet);
+            const _collect = function (method) {
+              return _pmoCollectPayment({
+                idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+                idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+                idx: (p.idx != null ? String(p.idx) : ''),
+                playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
+                campo: st.campo, data: st.isoDate, ora: st.ora,
+                sourceBtns: [cBtn, kBtn, wBtn],
+              });
+            };
+            cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
+            kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
+            wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
+          }
           acts.appendChild(cBtn); acts.appendChild(kBtn); acts.appendChild(wBtn);
           item.appendChild(acts);
         }
@@ -38243,7 +38499,9 @@ Per confermare scrivi ELIMINA.`);
       payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
       payHint.textContent = _anyUnknown
         ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
-        : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) sarà collegato nella Fase 2b.';
+        : (_payWriteActive
+            ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
+            : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).');
       paySec.appendChild(payHint);
       box.appendChild(paySec);
     }
@@ -41321,7 +41579,13 @@ Per confermare scrivi ELIMINA.`);
         onRemoteChange: function () { return staffCalRtOnRemoteChange(); },
         onRemotePending: function (p) { return staffCalRtOnRemotePending(p); },
         onRemoteResolved: function (p) { return staffCalRtOnRemoteResolved(p); },
-        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); }
+        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); },
+        // Fase 2b — incasso pagamenti (mockato dall'harness; bypass conferma+gate via __pmoPayHarness)
+        setPayHarness: function (on) { try { window.__pmoPayHarness = (on !== false); } catch (e) {} },
+        collectPayment: function (opts) { return _pmoCollectPayment(opts); },
+        isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
+        refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
+        paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
