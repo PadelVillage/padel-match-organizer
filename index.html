@@ -7747,7 +7747,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.033';
+    const APP_VERSION = '6.034';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13920,6 +13920,16 @@ Grazie.`
                 <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Aggiorna saldo</button>
                 <button class="btn-primary small-btn" disabled>＋ Ricarica</button>
               </div>
+              ${(PMO_PAYMENTS_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
+              <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
+                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">↩︎ Storna saldo (Correzione del saldo)</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <input id="pmoWalletVoidAmt" type="text" inputmode="decimal" placeholder="${escapeHtml(_walletBalanceLabel(g))}" style="width:120px;padding:6px 8px;" title="Importo da stornare (lascia vuoto = storno totale)">
+                  <button class="btn-secondary small-btn" onclick="pmoWalletVoidFill('${escapeHtml(String(g.id))}')" title="Riempi con l'intero saldo">Totale</button>
+                  <button class="btn-danger small-btn" onclick="pmoWalletVoidClick('${escapeHtml(String(g.id))}', this)">↩︎ Storna</button>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
+              </div>` : ''}
               <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
                 <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
@@ -21893,6 +21903,26 @@ Grazie!`
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = origHtml; }
         alert('Lettura borsellino non riuscita: ' + ((e && e.message) || e));
       }
+    }
+    // Storno borsellino (Fase 2b write): riempi l'input con l'intero saldo ("Totale").
+    function pmoWalletVoidFill(memberId) {
+      const g = (typeof giocatori !== 'undefined') ? giocatori.find(p => String(p.id) === String(memberId)) : null;
+      const w = g ? _walletResolve(g) : null;
+      const inp = document.getElementById('pmoWalletVoidAmt');
+      if (inp && w && typeof w.balance_cents === 'number') {
+        inp.value = (w.balance_cents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }
+    // Storno borsellino: legge importo (vuoto = totale) e lancia _pmoVoidWallet.
+    function pmoWalletVoidClick(memberId, btn) {
+      const g = (typeof giocatori !== 'undefined') ? giocatori.find(p => String(p.id) === String(memberId)) : null;
+      if (!g) return;
+      const w = _walletResolve(g);
+      const cur = (w && typeof w.balance_cents === 'number') ? w.balance_cents : null;
+      const inp = document.getElementById('pmoWalletVoidAmt');
+      let sub = inp ? _pmoEuroToCents(inp.value) : null;
+      if ((sub == null || sub <= 0) && cur != null) sub = cur; // input vuoto = storno TOTALE
+      return _pmoVoidWallet({ memberId: String(memberId), idInterno: String(_walletClientId(g) || ''), subtractCents: sub, currentCents: cur, sourceBtns: [btn] });
     }
     // Sincronizza i saldi borsellino di TUTTI i soci in un colpo (edge matchpoint-wallet-sync →
     // worker /export-wallet-report → report "Clienti con credito residuo"). Popola wallet_balance
@@ -37190,6 +37220,101 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── STORNO BORSELLINO (Fase 2b — scrittura, denaro reale): sottrae (totale o parziale)
+  // dal saldo Portafoglio via edge matchpoint-wallet-correct → worker /correct-wallet
+  // ("Correzione del saldo"). Conferma esplicita, edge sincrona, NESSUN retry. Gated dal
+  // flag PMO_PAYMENTS_WRITE_ENABLED (bypass solo-harness via __pmoPayHarness).
+  function _pmoConfirmVoidWallet(name, subtractCents, isTotal) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const imp = '<strong>' + _incassiEuro(subtractCents) + '</strong>';
+      const quale = isTotal ? ('l\'intero saldo (' + imp + ')') : (imp);
+      const msg = svcAddMessage('system', '↩︎ Stornare ' + quale + ' dal borsellino di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Sottrae il credito su Matchpoint (operazione reale).</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['↩︎ Sì, storna'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoVoidWallet(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Storno borsellino non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const memberId = String(opts.memberId == null ? '' : opts.memberId).trim();
+    const g = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori.find(function (p) { return String(p.id) === memberId; }) : null;
+    const idInterno = String((opts.idInterno != null ? opts.idInterno : (g ? _walletClientId(g) : '')) || '').trim();
+    const playerName = opts.playerName || (g && g.nome) || '';
+    const currentCents = (typeof opts.currentCents === 'number') ? opts.currentCents : null;
+    const subtractCents = (typeof opts.subtractCents === 'number') ? Math.round(opts.subtractCents) : null;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (!/^\d{1,8}$/.test(idInterno)) {
+      try { svcAddMessage('system', '⚠️ Socio senza id Matchpoint collegato: impossibile stornare il borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_IDINTERNO' };
+    }
+    if (subtractCents == null || subtractCents <= 0) {
+      try { svcAddMessage('system', '⚠️ Importo di storno non valido.', 'error'); } catch (e) {}
+      return { ok: false, message: 'INVALID_AMOUNT' };
+    }
+    if (currentCents != null && subtractCents > currentCents) {
+      try { svcAddMessage('system', '⚠️ L\'importo da stornare supera il saldo del borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'EXCEEDS_BALANCE' };
+    }
+    const isTotal = (currentCents != null && subtractCents === currentCents);
+    const okGo = await _pmoConfirmVoidWallet(playerName, subtractCents, isTotal);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Storno borsellino di ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'stornare il borsellino su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-wallet-correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({ idInterno: idInterno, subtractCents: subtractCents }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — aggiorno la cache saldo (saldo post dal worker, o calcolo locale) e ridisegno.
+        const postCents = (data && typeof data.balanceCentsPost === 'number') ? data.balanceCentsPost
+          : (currentCents != null ? Math.max(0, currentCents - subtractCents) : null);
+        try {
+          if (postCents != null && window.__pmoWalletCache) {
+            window.__pmoWalletCache.set(idInterno, { balance_cents: postCents, synced_at: new Date().toISOString() });
+          }
+        } catch (e) {}
+        _setMsg(note, '✅ Borsellino stornato — ' + esc(playerName) + (postCents != null ? (' · nuovo saldo ' + _incassiEuro(postCents)) : ''));
+        try { if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers(); else if (typeof renderOpenMemberCard === 'function') renderOpenMemberCard(); } catch (e) {}
+        return { ok: true, balanceCentsPost: postCents };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Storno borsellino NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        _setMsg(note, '⌛ Esito storno borsellino non confermato (timeout). Controlla su Matchpoint prima di ritentare.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore storno borsellino: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
     try { _staffCalMaybeRefreshPaidIndex(); } catch (e) {}
@@ -41707,6 +41832,7 @@ Per confermare scrivi ELIMINA.`);
         setPayHarness: function (on) { try { window.__pmoPayHarness = (on !== false); } catch (e) {} },
         collectPayment: function (opts) { return _pmoCollectPayment(opts); },
         voidPayment: function (opts) { return _pmoVoidPayment(opts); },
+        voidWallet: function (opts) { return _pmoVoidWallet(opts); },
         isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
         paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }

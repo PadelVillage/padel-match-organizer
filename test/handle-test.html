@@ -99,13 +99,14 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT;
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [] };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
   PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
   VOID_NEXT = { ok: true };        // risposta edge matchpoint-payment-void programmabile
+  CORRECT_NEXT = { ok: true };     // risposta edge matchpoint-wallet-correct programmabile
 }
 function jsonResponse(win, obj, status) {
   const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
@@ -142,6 +143,14 @@ function installFetchMock(win) {
         return jsonResponse(win, VOID_NEXT.body || { ok: false, message: 'STORNO_RIFIUTATO' }, VOID_NEXT.status || 200);
       }
       return jsonResponse(win, Object.assign({ ok: true }, VOID_NEXT && VOID_NEXT.body || {}), 200);
+    }
+    if (/\/functions\/v1\/matchpoint-wallet-correct/.test(u)) {
+      CAPTURED.correct.push({ url: u, body: body });
+      if (CORRECT_NEXT && CORRECT_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (CORRECT_NEXT && CORRECT_NEXT.reject) {
+        return jsonResponse(win, CORRECT_NEXT.body || { ok: false, message: 'STORNO_BORSELLINO_RIFIUTATO' }, CORRECT_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, CORRECT_NEXT && CORRECT_NEXT.body || {}), 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
@@ -1075,6 +1084,67 @@ const CASES = [
       checks.push({ label: 'voidPayment risolve ok:false', ok: !!(res && res.ok === false) });
       checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.void.length === 1 });
       checks.push({ label: 'giocatore RESTA pagato dopo rifiuto storno', ok: H.isPaid('R888', 'C9', 'Luca Bianchi') === true });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 41, flow: 'Pagamenti', name: 'storno borsellino TOTALE OK → edge wallet-correct {idInterno,subtractCents} + cache a 0',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { balanceCentsPost: 0 } };
+      const checks = [];
+      const res = await H.voidWallet({ memberId: '', idInterno: '137', playerName: 'Maurizia Prea', subtractCents: 300, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.correct.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-wallet-correct chiamata', ok: got });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload {idInterno:137, subtractCents:300}', ok: !!cp && cp.body && cp.body.idInterno === '137' && cp.body.subtractCents === 300 });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('137');
+      checks.push({ label: 'cache saldo aggiornata a 0', ok: !!wc && wc.balance_cents === 0 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 42, flow: 'Pagamenti', name: 'storno borsellino PARZIALE OK → subtractCents parziale + cache = resto worker',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { balanceCentsPost: 200 } };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '141', playerName: 'Maurizia Prea', subtractCents: 100, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload subtractCents=100 (parziale)', ok: !!cp && cp.body && cp.body.subtractCents === 100 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('141');
+      checks.push({ label: 'cache saldo = 200 (resto dal worker)', ok: !!wc && wc.balance_cents === 200 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 43, flow: 'Pagamenti', name: 'storno borsellino RIFIUTATO → ok:false + una sola chiamata (no retry)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { reject: true, status: 409, body: { ok: false, message: 'WALLET_CORRECTION_DIALOG_NON_MAPPATO' } };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '150', playerName: 'Maurizia Prea', subtractCents: 100, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.correct.length === 1 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 44, flow: 'Pagamenti', name: 'storno borsellino > saldo → bloccato in app, edge NON chiamata',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '160', playerName: 'Maurizia Prea', subtractCents: 500, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:false (EXCEEDS_BALANCE)', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge NON chiamata (guardia lato app)', ok: CAPTURED.correct.length === 0 });
       H.setPayHarness(false);
       return checks;
     }
