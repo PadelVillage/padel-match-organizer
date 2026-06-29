@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.023';
+    const APP_VERSION = '6.024';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21620,7 +21620,7 @@ Grazie!`
     function _incassiMethodBucket(method) {
       const m = (method || '').toString().toLowerCase();
       if (m.includes('contant') || m.includes('cash') || m.includes('efectivo') || m.includes('metalic')) return 'contanti';
-      if (m.includes('cart') || m.includes('tarjeta') || m.includes('card') || m.includes('pos') || m.includes('datafono')) return 'carta';
+      if (m.includes('cart') || m.includes('tarjeta') || m.includes('card') || m.includes('pos') || m.includes('datafono') || m.includes('online') || m.includes('pasarela') || m.includes('gateway') || m.includes('tpv')) return 'carta';
       if (m.includes('borsell') || m.includes('saldo') || m.includes('monedero') || m.includes('prepag') || m.includes('wallet')) return 'borsellino';
       return 'altro';
     }

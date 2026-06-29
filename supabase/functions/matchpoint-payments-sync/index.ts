@@ -71,13 +71,15 @@ function mpMoneyToCents(text: unknown): number | null {
   return Number.isFinite(val) ? Math.round(val * 100) : null;
 }
 
-// Metodo canonico a 3 bucket + residuo: Contanti→cash, Carta→card, Saldo/Prepagato→wallet, else→other.
+// Metodo canonico a 3 bucket + residuo: Contanti→cash, Carta/Online→card, Saldo/Prepagato→wallet,
+// else→other. "Online" su MP = pagamento col gateway/pasarela online = carta incassata online →
+// per la nostra app rientra in Card (decisione committente 29/06).
 function normalizeMethod(value: unknown): 'cash' | 'card' | 'wallet' | 'other' {
   const s = clean(value).toLowerCase();
   if (/contant|efectiv|cash/.test(s)) return 'cash';
-  if (/cart|tarjet|\bcard\b|bancomat|pos\b/.test(s)) return 'card';
-  if (/saldo|prepag|monedero|borsell|wallet|credito|cartera/.test(s)) return 'wallet';
-  return 'other'; // Online, Emettere fattura, Regalare, Assegno, Bonifico…
+  if (/cart|tarjet|\bcard\b|bancomat|pos\b|online|pasarela|gateway|\btpv\b/.test(s)) return 'card';
+  if (/saldo|prepag|monedero|borsell|wallet|credito/.test(s)) return 'wallet';
+  return 'other'; // Emettere fattura, Regalare, Assegno, Bonifico…
 }
 
 // "22/06/2026" → "2026-06-22". Accetta anche già-ISO. Vuoto se non parsabile.
