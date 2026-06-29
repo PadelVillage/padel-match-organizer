@@ -5539,6 +5539,34 @@ async function dismissSwalOk(page, diagnostic, where) {
   return dismissed;
 }
 
+// ── Helper: clic robusto su "Salva/Actualizar" della Ficha ───────────────────
+// Dopo più postback consecutivi (es. aggiunta di più giocatori, di cui un Ospite)
+// il bottone "Actualizar" può restare momentaneamente NON cliccabile — o coperto
+// da un avviso swal2 (semaforo) — e un singolo click({timeout:10000}) va in 500
+// isolato (incidente reale 29/06: edit Campo 2 +3 giocatori). Strategia: chiudi
+// eventuali swal, attendi che il postback async sia concluso, poi clicca; se il
+// click non riesce, richiudi swal + riattendi e ritenta una volta con timeout più
+// ampio. Solo dopo 2 tentativi falliti propaga un errore (resta 500 ma con retry).
+async function clickSaveActualizar(page, diagnostic, tag = 'salva') {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await dismissSwalOk(page, diagnostic, tag + '_pre' + attempt);
+    await mpWaitAsyncPostbackIdle(page, attempt === 0 ? 6000 : 12000);
+    try {
+      await Promise.all([
+        page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
+        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: attempt === 0 ? 10000 : 15000 }),
+      ]);
+      diagnostic.steps.push(`${tag}_click_ok:attempt${attempt}`);
+      return;
+    } catch (e) {
+      diagnostic.steps.push(`${tag}_click_retry:attempt${attempt}:${String((e && e.message) || e).slice(0, 60)}`);
+    }
+  }
+  throw fail('SAVE_BUTTON_CLICK_TIMEOUT',
+    'Salvataggio su Matchpoint non riuscito: bottone "Actualizar" non cliccabile dopo 2 tentativi.',
+    diagnostic);
+}
+
 // ── Helper: cerca una riga partecipante già presente (per nome o per id) ──────
 // Scansiona TUTTI gli input "TextBoxNombreValor" (qualunque repeater: partita
 // WUCUsuarioPartida o lezione WUCUsuarioClase_Listado) e ricava l'id cliente
@@ -6992,21 +7020,15 @@ async function editBookingWithBrowser(input = {}) {
       // Osservazioni (← note): riempi PRIMA del salvataggio giocatori → un solo save.
       if (noteProvided) await fillOsservazioni(page, page, note, diagnostic);
 
-      // SALVA giocatori con ButtonActualizar
+      // SALVA giocatori con ButtonActualizar (clic robusto: dismiss-swal + retry)
       diagnostic.steps.push('salva');
-      await Promise.all([
-        page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
-        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
-      ]);
+      await clickSaveActualizar(page, diagnostic, 'salva');
       await page.waitForTimeout(2500);
     } else if (noteProvided) {
       // Solo nota (eventualmente dopo un move): riempi le Osservazioni e salva con ButtonActualizar.
       await fillOsservazioni(page, page, note, diagnostic);
       diagnostic.steps.push('salva_nota');
-      await Promise.all([
-        page.waitForLoadState('networkidle', { timeout: 9000 }).catch(() => {}),
-        page.locator('#CC_Datos_FormViewFicha_ButtonActualizar').first().click({ timeout: 10000 }),
-      ]);
+      await clickSaveActualizar(page, diagnostic, 'salva_nota');
       await page.waitForTimeout(2500);
     }
 
