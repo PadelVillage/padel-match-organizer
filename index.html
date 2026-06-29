@@ -7735,7 +7735,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.018';
+    const APP_VERSION = '6.019';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -36523,6 +36523,38 @@ Per confermare scrivi ELIMINA.`);
       }], 'aggiornare la prenotazione staff sul cloud').catch(function (e) { console.warn('staff edit cloud sync:', e); });
     } catch (e) { console.warn('staff edit cloud sync:', e); }
   }
+  // WRITE-BACK roster autorevole (v6.019): la lettura on-demand del worker (apertura scheda
+  // partita/lezione) restituisce TUTTI i partecipanti reali; la card del calendario invece legge
+  // lo staff_booking, che può essere rimasto congelato al solo intestatario (promozione con roster
+  // incompleto; la sync arricchisce le occupancy, NON gli staff_booking). Qui riscriviamo i nomi
+  // autorevoli nel record staff_booking (locale + cloud) così il calendario si allinea — su tutti i
+  // device — dopo aver aperto la prenotazione una volta. Sicuro: la sync non tocca gli staff_booking.
+  function _staffCalPersistRosterFromWorker(iso, campoNum, ora, roster) {
+    try {
+      if (!Array.isArray(roster)) return;
+      const _names = function (arr) {
+        return (Array.isArray(arr) ? arr : []).map(function (g) {
+          return String((g && typeof g === 'object') ? (g.nome || '') : (g || '')).trim();
+        }).filter(Boolean);
+      };
+      const next = _names(roster);
+      if (!next.length) return; // mai svuotare il roster da una lettura
+      const list = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
+      if (!Array.isArray(list)) return;
+      const b = list.find(function (x) {
+        return x && String(x.data).trim() === String(iso).trim()
+          && Number(String(x.campo).replace(/\D/g, '')) === campoNum
+          && String(x.ora).trim() === String(ora).trim();
+      });
+      if (!b || !b.id) return; // solo staff_booking esistenti (le occupancy le gestisce la sync)
+      const cur = _names(b.giocatori);
+      if (cur.length === next.length && cur.every(function (n, i) { return n === next[i]; })) return; // già allineato
+      b.giocatori = next.map(function (n) { return { nome: n }; });
+      if (typeof save === 'function') save('staffBookings', list);
+      try { if (typeof staffCalCloudSyncEdit === 'function') staffCalCloudSyncEdit(iso, campoNum, ora); } catch (e) {}
+      try { if (typeof renderStaffCalendar === 'function') renderStaffCalendar(); } catch (e) {}
+    } catch (e) { console.warn('persist roster da worker:', e); }
+  }
   // Push al cloud di uno SPOSTAMENTO staff. Modellato come "annulla origine + crea destinazione":
   // alla voce spostata (già al nuovo slot in locale) assegna un id NUOVO, poi spinge il vecchio id
   // come deleted (slot d'origine) + staff_suppress(origine) + il nuovo record attivo. Così su tutti
@@ -37862,6 +37894,13 @@ Per confermare scrivi ELIMINA.`);
           // Lettura conclusa (in qualunque esito): esci dallo stato "caricamento" così le sezioni
           // Giocatori/Pagamenti mostrano il dato disponibile (worker se valido, altrimenti il locale).
           if (stillOpen) st.rosterLoading = false;
+          // WRITE-BACK calendario: allinea lo staff_booking ai partecipanti reali letti dal worker,
+          // a meno che l'utente stia proprio modificando la lista (in quel caso sarà il salvataggio a
+          // persistere). Vale anche a scheda chiusa (la card del calendario va comunque allineata).
+          var _editingNow = !!(stillOpen && st && ((st.add && st.add.length) || (st.remove && Object.keys(st.remove).length)));
+          if (ok && roster && roster.length && !_editingNow) {
+            try { _staffCalPersistRosterFromWorker(isoDate, campoNum, ora, roster); } catch (e) {}
+          }
           if (ok && roster && untouched) {
             st.roster = roster;
             if (stillOpen) staffCalRenderPlayersEditor();
