@@ -35,6 +35,10 @@
   </script>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Tabler Icons webfont: rende i glifi <i class="ti ti-*"> usati nella scheda prenotazione
+       (x rimuovi giocatore, + aggiungi, check, trash, cash…). Senza, i bottoni mostravano solo
+       il cerchietto vuoto. Pinnato a 3.44.0 per riproducibilità. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -7728,7 +7732,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.001';
+    const APP_VERSION = '6.002';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
