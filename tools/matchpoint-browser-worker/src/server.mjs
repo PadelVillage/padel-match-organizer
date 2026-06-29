@@ -7762,19 +7762,123 @@ async function _collectDialogFieldCandidates(page) {
 // il worker lo APRE e restituisce i candidati DOM (campi + pulsanti) SENZA inviare nulla
 // (mai un movimento di denaro alla cieca). Dopo la mappatura live si aggiunge qui il
 // fill importo + conferma + verifica saldo, in 1 iterazione (vedi handoff). NON-IDEMPOTENTE.
+// Risolve l'id interno MP (URL FichaCliente) dal CODICE cliente visibile (memberId), usando
+// la ricerca lista clienti. Il buscador MP NON cerca per codice → cerco per email/telefono/
+// cognome e identifico la riga col CODICE esatto (anti-omonimi). Stessa logica provata di
+// updateClientWithBrowser. Ritorna { idInterno:'' , how } se non risolve (mai lancia).
+async function resolveClientIdInternoByCodice(page, opts, baseUrl, diagnostic) {
+  const codice = clean(opts.codice || opts.memberId || '');
+  const codNorm = String(codice).replace(/^0+/, '');
+  const nome = clean(opts.nome || opts.firstName || '');
+  const cognome = clean(opts.cognome || opts.surname || '');
+  const email = clean(opts.email || '');
+  const telefono = clean(opts.telefono || opts.phone || '');
+  const prev = (opts.prev && typeof opts.prev === 'object') ? opts.prev : {};
+
+  const plan = [
+    { by: 'E-mail', val: email, acceptSingle: true },
+    { by: 'Telefono cellulare', val: telefono, acceptSingle: true },
+    { by: 'E-mail', val: clean(prev.email || ''), acceptSingle: true },
+    { by: 'Telefono cellulare', val: clean(prev.telefono || prev.phone || ''), acceptSingle: true },
+    { by: 'Cliente', val: (nome + ' ' + cognome).trim() || cognome || nome, acceptSingle: false },
+    { by: 'Cliente', val: cognome || nome, acceptSingle: false },
+  ];
+  const seen = new Set();
+  const attempts = [];
+  for (const a of plan) {
+    const v = clean(a.val);
+    if (!v) continue;
+    const key = `${a.by}|${v.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    attempts.push({ by: a.by, val: v, acceptSingle: a.acceptSingle });
+  }
+
+  const trySearch = async (by, val, acceptSingle) => {
+    await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+    if (await optSel.count().catch(() => 0)) await optSel.selectOption({ label: by }, { timeout: 5000 }).catch(() => {});
+    const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+    if (!(await valBox.count().catch(() => 0))) return { id: '', how: 'search_field_not_found' };
+    await valBox.fill(String(val), { timeout: 8000 }).catch(() => {});
+    const btn = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
+    if (await btn.count().catch(() => 0)) {
+      await Promise.all([page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}), btn.click({ timeout: 8000 }).catch(() => {})]);
+    } else {
+      await Promise.all([page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}), valBox.press('Enter', { timeout: 5000 }).catch(() => {})]);
+    }
+    await page.waitForTimeout(1000);
+
+    // Risultato UNICO → MP apre la FichaCliente: verifica che il codice combaci.
+    const bodySample = await page.evaluate(() => (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300)).catch(() => '');
+    const schedaMatch = String(bodySample).match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+    if (/FichaCliente\.aspx/i.test(page.url()) || schedaMatch) {
+      const schedaCod = schedaMatch ? schedaMatch[1].replace(/^0+/, '') : '';
+      if (schedaCod && codNorm && schedaCod !== codNorm) return { id: '', how: `ficha_codice_mismatch(${schedaMatch[1]})` };
+      const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+      if (idm) return { id: idm[1], how: 'direct_ficha' };
+    }
+    const resolved = await page.evaluate((cod) => {
+      const codNorm2 = String(cod).replace(/^0+/, '');
+      const matchId = (str) => {
+        const s2 = decodeURIComponent(String(str || ''));
+        let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+        m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+        return '';
+      };
+      const candidates = [];
+      for (const tr of [...document.querySelectorAll('table tr')]) {
+        const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+        let id = '';
+        for (const a of tr.querySelectorAll('a')) { id = matchId(a.getAttribute('href') || a.getAttribute('onclick') || ''); if (id) break; }
+        if (!id) continue;
+        const codeHit = text.split(' ').some((t) => { const tn = t.replace(/\D/g, ''); return tn && (tn === String(cod) || tn.replace(/^0+/, '') === codNorm2); });
+        candidates.push({ id, codeHit });
+      }
+      const hitIds = [...new Set(candidates.filter((c) => c.codeHit).map((c) => c.id))];
+      if (hitIds.length === 1) return { id: hitIds[0], how: 'code_token' };
+      if (hitIds.length > 1) return { id: '', how: 'ambiguous_code' };
+      const uniqueIds = [...new Set(candidates.map((c) => c.id))];
+      if (uniqueIds.length === 1) return { id: uniqueIds[0], how: 'single_candidate' };
+      return { id: '', how: candidates.length ? 'ambiguous' : 'no_candidate' };
+    }, codice).catch(() => ({ id: '', how: 'eval_error' }));
+    if (resolved.how === 'code_token') return resolved;
+    if (resolved.how === 'single_candidate' && acceptSingle) return resolved;
+    return { id: '', how: resolved.how };
+  };
+
+  diagnostic.resolveAttempts = [];
+  for (const a of attempts) {
+    const r = await trySearch(a.by, a.val, a.acceptSingle);
+    diagnostic.resolveAttempts.push({ by: a.by, how: r.how, id: r.id || '' });
+    if (!r.id) continue;
+    // Verifica finale: apri la Ficha e controlla che il codice combaci (anti-omonimo).
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(r.id)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const fcod = await page.evaluate(() => { const t = (document.body ? document.body.innerText : ''); const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i); return m ? m[1].replace(/^0+/, '') : ''; }).catch(() => '');
+    if (!codNorm || !fcod || fcod === codNorm) { diagnostic.resolve = { id: r.id, how: r.how, by: a.by }; return { idInterno: r.id, how: r.how }; }
+    diagnostic.resolveAttempts[diagnostic.resolveAttempts.length - 1].how += `>ficha_mismatch(${fcod})`;
+  }
+  return { idInterno: '', how: 'unresolved' };
+}
+
 async function correctWalletWithBrowser(input = {}) {
   const username = clean(input.username) || env('MATCHPOINT_USERNAME');
   const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
   if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
 
   const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
-  const idInterno = clean(input.idInterno || input.idCliente || input.id || '');
+  let idInterno = clean(input.idInterno || input.idCliente || input.id || '');
+  const codice = clean(input.codice || input.memberId || '');
   const subtractCents = (input.subtractCents != null && Number.isFinite(Number(input.subtractCents))) ? Math.round(Number(input.subtractCents)) : null;
 
-  const diagnostic = { mode: 'correct_wallet', steps: [], input: { idInterno, subtractCents } };
+  const diagnostic = { mode: 'correct_wallet', steps: [], input: { idInterno, codice, subtractCents } };
   instrumentStepTiming(diagnostic);
 
-  if (!/^\d{1,8}$/.test(idInterno)) throw fail('INVALID_CLIENT_ID', 'idCliente (id interno Matchpoint) richiesto per lo storno borsellino.', diagnostic);
+  const idValid = /^\d{1,8}$/.test(idInterno);
+  if (!idValid && !codice) throw fail('INVALID_CLIENT_ID', 'idInterno o codice cliente richiesto per lo storno borsellino.', diagnostic);
   if (subtractCents == null || subtractCents <= 0) throw fail('IMPORTO_NON_VALIDO', 'subtractCents deve essere un intero > 0.', diagnostic);
 
   // KILL-SWITCH server-side condiviso con cobro/storno partita: con OFF (default) non si storna MAI.
@@ -7786,7 +7890,17 @@ async function correctWalletWithBrowser(input = {}) {
   const page = acq.page;
   let _opFailed = false;
   try {
-    diagnostic.steps.push('open_ficha');
+    // Se non ho un id interno valido, risolvilo dal codice (l'app ha il codice per tutti i soci).
+    if (!idValid) {
+      diagnostic.steps.push('resolve_codice:' + codice);
+      const res = await resolveClientIdInternoByCodice(page, {
+        codice, nome: input.nome, cognome: input.cognome, email: input.email, telefono: input.telefono, prev: input.prev,
+      }, baseUrl, diagnostic);
+      if (!res.idInterno) throw fail('CLIENT_NOT_FOUND', `Cliente non risolto dal codice ${codice} (omonimi o dati insufficienti).`, diagnostic);
+      idInterno = res.idInterno;
+      diagnostic.resolvedIdInterno = idInterno;
+    }
+    diagnostic.steps.push('open_ficha:' + idInterno);
     await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForTimeout(1000);
 
