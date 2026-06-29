@@ -41,6 +41,13 @@ const MP_PAYMENT_SELECTORS = {
   walletSaldoLabel: '#CC_Cabecera_LabelSaldo_Actual', // testo "Portafoglio: X,XX €"
   walletBillingTab: 'Fatturazione e pagamenti',       // tab (testo) che apre la sezione pagamenti
   walletRicaricaBtn: '#CC_Datos_FormViewFicha_LinkButton11', // "Ricaricare" → dialog "Effettuare ricarica"
+  // -- STORNO borsellino (Fase 2b write): sotto-tab "Saldo" della sezione Fatturazione e
+  //    pagamenti = ledger del borsellino, coi pulsanti "Ricarica credito / Correzione del
+  //    saldo / Trasferimento di credito residuo / Ricaricare". La "Correzione del saldo"
+  //    è quella che useremo per sottrarre (storno totale/parziale). ⚠️ DOM dialog NON
+  //    mappato dal vivo → diagnostic-first (vedi _clickCorrezioneSaldo). Testi candidati:
+  walletSaldoSubTabLabels: ['Saldo'],                  // sotto-tab "Saldo" (ledger borsellino)
+  walletCorrezioneLabels: ['Correzione del saldo', 'Correzione saldo', 'Corrección de saldo', 'Corregir saldo'],
 };
 
 // Estrae i centesimi interi da una stringa importo IT/MP ("Portafoglio: 1.234,50 €", "8,00").
@@ -3670,6 +3677,14 @@ async function handleVoidPayment(req, res) {
   const body = await readBody(req);
   // SCRITTURA NON-IDEMPOTENTE (storno, denaro reale): nessun retry.
   const result = await mpQueueRun(mpJobMeta('void-payment', body), () => voidPaymentWithBrowser(body));
+  json(res, 200, result);
+}
+
+async function handleCorrectWallet(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  // SCRITTURA NON-IDEMPOTENTE (storno borsellino, denaro reale): nessun retry.
+  const result = await mpQueueRun(mpJobMeta('correct-wallet', body), () => correctWalletWithBrowser(body));
   json(res, 200, result);
 }
 
@@ -7657,6 +7672,142 @@ async function voidPaymentWithBrowser(input = {}) {
   }
 }
 
+// ── STORNO / Correzione borsellino (Fase 2b — SCRITTURA, denaro reale) ─────────
+// Apre la sezione "Fatturazione e pagamenti" → sotto-tab "Saldo" (ledger borsellino),
+// dove vivono i pulsanti Ricarica credito / Correzione del saldo / ...
+async function _openWalletSaldoLedger(page, diagnostic) {
+  for (const lab of [MP_PAYMENT_SELECTORS.walletBillingTab, 'Facturación y pagos', 'Fatturazione']) {
+    const tab = page.locator(`a:visible:has-text("${lab}")`).first();
+    if (await tab.count().catch(() => 0)) {
+      try { await tab.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_tab:' + lab); break; } catch (e) { /* prova prossima */ }
+    }
+  }
+  for (const lab of MP_PAYMENT_SELECTORS.walletSaldoSubTabLabels) {
+    const sub = page.locator(`a:visible:has-text("${lab}"), li:visible:has-text("${lab}") a:visible`).first();
+    if (await sub.count().catch(() => 0)) {
+      try { await sub.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_subtab:' + lab); return true; } catch (e) { /* prova prossima */ }
+    }
+  }
+  diagnostic.steps.push('wallet_subtab:none');
+  return false;
+}
+
+// Candidati DOM per il pulsante "Correzione del saldo" (e affini) — mappatura dal vivo.
+async function _collectCorrezioneCandidates(page) {
+  return await page.evaluate(() => {
+    const out = [];
+    const els = [...document.querySelectorAll('a,button,input[type="button"],input[type="submit"]')];
+    for (const el of els) {
+      const txt = (el.innerText || el.value || '').replace(/\s+/g, ' ').trim();
+      const id = el.id || '';
+      const onclick = el.getAttribute('onclick') || '';
+      if (/corre[czs]ion|correggi|saldo|ricarica|rimbors|reembols|storn|ajust/i.test(txt + ' ' + id + ' ' + onclick)) {
+        const vis = !!(el.offsetParent || el.getClientRects().length);
+        out.push({ txt: txt.slice(0, 50), id: id.slice(0, 90), vis });
+      }
+    }
+    return out.slice(0, 30);
+  }).catch(() => []);
+}
+
+// Candidati dei CAMPI/pulsanti VISIBILI (verosimilmente del dialog correzione) — mappatura dialog.
+async function _collectDialogFieldCandidates(page) {
+  return await page.evaluate(() => {
+    const visible = (el) => !!(el.offsetParent || el.getClientRects().length);
+    const fields = [...document.querySelectorAll('input,select,textarea')].filter(visible).map((el) => ({
+      tag: el.tagName.toLowerCase(), type: String(el.type || '').slice(0, 16),
+      id: String(el.id || '').slice(0, 90), name: String(el.name || '').slice(0, 90), ph: String(el.placeholder || '').slice(0, 40),
+    }));
+    const buttons = [...document.querySelectorAll('button,input[type="button"],input[type="submit"],a')].filter(visible)
+      .map((el) => ({ btn: (el.innerText || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), id: String(el.id || '').slice(0, 80) }))
+      .filter((b) => b.btn);
+    return { fields: fields.slice(0, 30), buttons: buttons.slice(0, 30) };
+  }).catch(() => ({ fields: [], buttons: [] }));
+}
+
+// Storna (totale o parziale) il saldo del borsellino via "Correzione del saldo".
+// idInterno = id URL FichaCliente; subtractCents = importo da sottrarre (>0).
+// Stesso KILL-SWITCH del cobro/storno partita (MATCHPOINT_PAYMENT_WRITE_ENABLED).
+// ⚠️ DIAGNOSTIC-FIRST: il dialog "Correzione del saldo" non è ancora mappato dal vivo →
+// il worker lo APRE e restituisce i candidati DOM (campi + pulsanti) SENZA inviare nulla
+// (mai un movimento di denaro alla cieca). Dopo la mappatura live si aggiunge qui il
+// fill importo + conferma + verifica saldo, in 1 iterazione (vedi handoff). NON-IDEMPOTENTE.
+async function correctWalletWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const idInterno = clean(input.idInterno || input.idCliente || input.id || '');
+  const subtractCents = (input.subtractCents != null && Number.isFinite(Number(input.subtractCents))) ? Math.round(Number(input.subtractCents)) : null;
+
+  const diagnostic = { mode: 'correct_wallet', steps: [], input: { idInterno, subtractCents } };
+  instrumentStepTiming(diagnostic);
+
+  if (!/^\d{1,8}$/.test(idInterno)) throw fail('INVALID_CLIENT_ID', 'idCliente (id interno Matchpoint) richiesto per lo storno borsellino.', diagnostic);
+  if (subtractCents == null || subtractCents <= 0) throw fail('IMPORTO_NON_VALIDO', 'subtractCents deve essere un intero > 0.', diagnostic);
+
+  // KILL-SWITCH server-side condiviso con cobro/storno partita: con OFF (default) non si storna MAI.
+  if (!boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false)) {
+    throw fail('PAYMENT_WRITE_DISABLED', 'Scrittura pagamenti disattivata sul worker (kill-switch MATCHPOINT_PAYMENT_WRITE_ENABLED=OFF).', diagnostic);
+  }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    diagnostic.steps.push('open_ficha');
+    await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(1000);
+
+    // Saldo borsellino PRE (per guardia + verifica post-mappatura).
+    const preTxt = await page.locator(MP_PAYMENT_SELECTORS.walletSaldoLabel).first().innerText({ timeout: 6000 }).catch(() => '');
+    const currentCents = mpMoneyToCents(preTxt);
+    diagnostic.walletTextPre = preTxt;
+    diagnostic.steps.push('saldo_pre:' + currentCents);
+    if (currentCents == null) throw fail('WALLET_BALANCE_NOT_FOUND', 'Saldo Portafoglio non leggibile sulla scheda cliente.', diagnostic);
+    if (currentCents === 0) {
+      return { ok: false, code: 'NOTHING_TO_VOID', idCliente: idInterno, currentCents, message: 'Borsellino già a 0: niente da stornare.', diagnostic };
+    }
+    if (subtractCents > currentCents) {
+      return { ok: false, code: 'IMPORTO_ECCEDE_SALDO', idCliente: idInterno, currentCents, subtractCents, message: 'Importo di storno superiore al saldo disponibile.', diagnostic };
+    }
+    const targetCents = currentCents - subtractCents;
+    diagnostic.targetCents = targetCents;
+
+    // Apri il ledger "Saldo" del borsellino.
+    await _openWalletSaldoLedger(page, diagnostic);
+
+    // Clicca "Correzione del saldo" (candidati testo). Se non c'è → candidati DOM.
+    await dismissSwalOk(page, diagnostic, 'corr_pre');
+    let opened = false;
+    for (const lab of MP_PAYMENT_SELECTORS.walletCorrezioneLabels) {
+      const loc = page.locator(`a:visible:has-text("${lab}"), button:visible:has-text("${lab}"), input[type="button"][value*="${lab}"]:visible`).first();
+      if (await loc.count().catch(() => 0)) {
+        try { await loc.click({ timeout: 5000 }); diagnostic.steps.push('corr_click:' + lab); await page.waitForTimeout(800); opened = true; break; }
+        catch (e) { diagnostic.steps.push('corr_retry:' + String((e && e.message) || e).slice(0, 40)); }
+      }
+    }
+    if (!opened) {
+      const candidates = await _collectCorrezioneCandidates(page);
+      throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { correzioneCandidates: candidates }));
+    }
+
+    // DIALOG aperto ma NON mappato → restituisci i candidati (campi + pulsanti) senza
+    // inviare. Dopo la mappatura live, qui andrà: fill importo (subtractCents o targetCents),
+    // _confirmDialogYes, ri-lettura saldo == targetCents. NIENTE movimento alla cieca.
+    const dlg = await _collectDialogFieldCandidates(page);
+    diagnostic.dialogFields = dlg.fields;
+    diagnostic.dialogButtons = dlg.buttons;
+    throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Dialog "Correzione del saldo" aperto ma non ancora mappato: nessun importo inviato. Mappare campi dal vivo.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+}
+
 async function cancelBookingWithBrowser(input = {}) {
   const username = clean(input.username) || env('MATCHPOINT_USERNAME');
   const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
@@ -8145,7 +8296,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -8191,6 +8342,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/void-payment') {
       return await handleVoidPayment(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/correct-wallet') {
+      return await handleCorrectWallet(req, res);
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
