@@ -3665,6 +3665,14 @@ async function handleCollectPayment(req, res) {
   json(res, 200, result);
 }
 
+async function handleVoidPayment(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  // SCRITTURA NON-IDEMPOTENTE (storno, denaro reale): nessun retry.
+  const result = await mpQueueRun(mpJobMeta('void-payment', body), () => voidPaymentWithBrowser(body));
+  json(res, 200, result);
+}
+
 async function handleUpdateClient(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
@@ -7491,6 +7499,164 @@ async function collectPaymentWithBrowser(input = {}) {
   }
 }
 
+// ── STORNO pagamento (Fase 2b — SCRITTURA, denaro reale: annulla un cobro) ─────
+// Helper: conferma un dialog "Sei sicuro?" (swal2 o pulsanti Sì/Confermare/Aceptar).
+async function _confirmDialogYes(page, diagnostic, tag) {
+  await page.waitForTimeout(300);
+  // 1) swal2 confirm (il più probabile su MP)
+  const swal = page.locator('.swal2-confirm:visible').first();
+  if (await swal.count().catch(() => 0)) {
+    try { await swal.click({ timeout: 4000 }); diagnostic.steps.push(`${tag}_confirm:swal`); await page.waitForTimeout(300); return true; } catch (e) { /* fallthrough */ }
+  }
+  // 2) pulsanti per testo
+  for (const lab of ['Sì', 'Si', 'Sí', 'Confermare', 'Conferma', 'Accettare', 'Accetta', 'Aceptar', 'OK']) {
+    const loc = page.locator(`button:visible:has-text("${lab}"), a:visible:has-text("${lab}")`).first();
+    if (await loc.count().catch(() => 0)) {
+      try { await loc.click({ timeout: 3000 }); diagnostic.steps.push(`${tag}_confirm:${lab}`); await page.waitForTimeout(300); return true; } catch (e) { /* prova prossima */ }
+    }
+  }
+  diagnostic.steps.push(`${tag}_confirm:none`);
+  return false;
+}
+
+// Raccoglie i possibili "aggancia" per l'annullo pagamento (per diagnostica live: la UI
+// "anular pago" non è ancora mappata dal vivo → al primo storno restituiamo i candidati).
+async function _collectAnularCandidates(page) {
+  return await page.evaluate(() => {
+    const out = [];
+    const els = [...document.querySelectorAll('a,button,input[type="button"],input[type="submit"]')];
+    for (const el of els) {
+      const txt = (el.innerText || el.value || '').replace(/\s+/g, ' ').trim();
+      const id = el.id || '';
+      const onclick = el.getAttribute('onclick') || '';
+      if (/annull|anular|storn|reembols|devol|reintegr/i.test(txt + ' ' + id + ' ' + onclick)) {
+        const vis = !!(el.offsetParent || el.getClientRects().length);
+        out.push({ txt: txt.slice(0, 40), id: id.slice(0, 80), vis });
+      }
+    }
+    return out.slice(0, 25);
+  }).catch(() => []);
+}
+
+// Trova e clicca il controllo "annulla pagamento" del giocatore. La scheda partita ha i
+// campi hidden HiddenFieldIdPagoAnular / HiddenFieldConfirmaAnularPago (Fase 0): il link
+// di annullo è verosimilmente nella tab Pagamenti/Movimenti o accanto alla riga riscossa.
+// ⚠️ DOM non mappato dal vivo → tentativi multipli + (se nulla) diagnostica coi candidati.
+async function _clickAnularPago(page, diagnostic) {
+  // Prova ad aprire la tab Pagamenti / Movimenti (dove sono elencati i cobros) — best effort.
+  for (const tabTxt of ['Pagamenti', 'Movimenti', 'Pagos', 'Movimientos']) {
+    const tab = page.locator(`a:visible:has-text("${tabTxt}"), li:visible:has-text("${tabTxt}") a:visible`).first();
+    if (await tab.count().catch(() => 0)) {
+      try { await tab.click({ timeout: 3000 }); await page.waitForTimeout(500); diagnostic.steps.push('anular_tab:' + tabTxt); break; } catch (e) { /* prova prossima */ }
+    }
+  }
+  await dismissSwalOk(page, diagnostic, 'anular_pre');
+  const tries = [
+    'a[id*="Anular"]:visible',
+    '[id*="LinkButtonAnular"]:visible',
+    '[onclick*="Anular"]:visible',
+    'a:visible:has-text("Annulla pagamento")',
+    'a:visible:has-text("Annulla")',
+    'a:visible:has-text("Anular")',
+    'a:visible:has-text("Storna")',
+    'button:visible:has-text("Annulla")',
+  ];
+  for (const sel of tries) {
+    const loc = page.locator(sel).first();
+    if (await loc.count().catch(() => 0)) {
+      try {
+        await loc.click({ timeout: 5000 });
+        diagnostic.steps.push('anular_click:' + sel.slice(0, 24));
+        await _confirmDialogYes(page, diagnostic, 'anular');
+        return true;
+      } catch (e) {
+        diagnostic.steps.push('anular_retry:' + String((e && e.message) || e).slice(0, 40));
+      }
+    }
+  }
+  const candidates = await _collectAnularCandidates(page);
+  throw fail('ANULAR_UI_NON_TROVATA', 'Controllo "annulla pagamento" non trovato nella scheda (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { anularCandidates: candidates }));
+}
+
+// Annulla (storna) un cobro già effettuato per un giocatore. Riapre la scheda, verifica
+// che sia RISCOSSO, clicca l'annullo, conferma, salva, e verifica che il pendente torni > 0.
+// Stesso KILL-SWITCH del cobro (MATCHPOINT_PAYMENT_WRITE_ENABLED). NON-IDEMPOTENTE: no retry.
+async function voidPaymentWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const idReserva = input.idReserva ? String(input.idReserva) : null;
+  const idClienteWanted = clean(input.idCliente);
+  const playerName = clean(input.playerName);
+
+  const diagnostic = { mode: 'void_payment', steps: [], input: { idReserva, idCliente: idClienteWanted } };
+  instrumentStepTiming(diagnostic);
+
+  if (!idReserva) throw fail('PARAMS_MANCANTI', 'idReserva richiesto per stornare.', diagnostic);
+  if (!idClienteWanted && !playerName) throw fail('PARAMS_MANCANTI', 'idCliente o playerName richiesto per identificare il giocatore.', diagnostic);
+
+  // KILL-SWITCH server-side (condiviso col cobro): con OFF (default) non si storna MAI.
+  if (!boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false)) {
+    throw fail('PAYMENT_WRITE_DISABLED', 'Scrittura pagamenti disattivata sul worker (kill-switch MATCHPOINT_PAYMENT_WRITE_ENABLED=OFF).', diagnostic);
+  }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    diagnostic.steps.push('goto_ficha');
+    const fichaCandidates = [
+      `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+    ];
+    let fichaUrl = null;
+    for (const cand of fichaCandidates) {
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
+      const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
+      if (hasExtender) { fichaUrl = cand; break; }
+    }
+    if (!fichaUrl) throw fail('FICHA_NON_TROVATA', `Scheda partita/lezione non trovata per id ${idReserva}.`, diagnostic);
+    const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
+    diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
+
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    if (found.ridx == null) {
+      throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
+    }
+    const idClienteReale = found.idCliente || idClienteWanted;
+    diagnostic.steps.push(`row:${found.ridx}:matchBy=${found.matchBy}`);
+
+    // Si può stornare SOLO se è stato riscosso (pendente == 0).
+    const pend = await _readPendenteCents(page, found.ridx);
+    diagnostic.steps.push('pendente_pre:' + pend);
+    if (pend !== 0) {
+      return { ok: false, code: 'NOTHING_TO_VOID', idReserva, idCliente: idClienteReale, message: 'Nessun pagamento riscosso da stornare per questo giocatore.', diagnostic };
+    }
+
+    // Annulla il pagamento + conferma + salva.
+    await _clickAnularPago(page, diagnostic);
+    await clickSaveActualizar(page, diagnostic, 'salva_storno');
+
+    // Verifica: dopo lo storno il pendente deve tornare > 0 (stato in_sospeso).
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+    await page.waitForTimeout(300);
+    const reAfter = await _findParticipantRow(page, RP, idClienteReale, playerName);
+    const pendAfter = reAfter.ridx != null ? await _readPendenteCents(page, reAfter.ridx) : null;
+    const statoPost = pendAfter == null ? null : (pendAfter === 0 ? 'riscosso' : 'in_sospeso');
+    diagnostic.steps.push('pendente_post:' + pendAfter);
+    diagnostic.steps.push('done');
+    return { ok: true, idReserva, idCliente: idClienteReale, statoPost, pendentePostCents: pendAfter, diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+}
+
 async function cancelBookingWithBrowser(input = {}) {
   const username = clean(input.username) || env('MATCHPOINT_USERNAME');
   const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
@@ -7979,7 +8145,7 @@ const server = http.createServer(async (req, res) => {
         service: 'pmo-matchpoint-browser-worker',
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
         pollerEnabled: POLLER_ENABLED,
@@ -8022,6 +8188,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/collect-payment') {
       return await handleCollectPayment(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/void-payment') {
+      return await handleVoidPayment(req, res);
     }
     if (req.method === 'POST' && req.url === '/create-client') {
       return await handleCreateClient(req, res);
