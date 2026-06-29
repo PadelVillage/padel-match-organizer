@@ -461,6 +461,23 @@ function workerHealthUrl(rawUrl: string) {
   return `${workerBaseUrl(rawUrl)}/health`;
 }
 
+// ROSTER AUTOREVOLE = la descrizione dell'export Excel Matchpoint (es. "-Santiago Carabajal."
+// o "-Ospite.-Andrea Antoniazzi.-Stefano Borsoi."). È la fonte di verità di CHI è sulla
+// prenotazione: combacia sempre con ciò che l'operatore vede su Matchpoint. L'arricchimento dal
+// tabellone (/read-tabellone) è invece non-deterministico (settle/fullest-wins) e può introdurre
+// nomi fantasma o, in caso di disallineamento cella↔prenotazione, un roster del tutto sbagliato.
+// Qui estraiamo i nomi SOLO quando la descrizione ha il formato lista "-Nome.-Nome." (inizia con
+// '-'); i titoli liberi (es. "Torneo aziendale") non iniziano con '-' → ritorniamo [] e si lascia
+// decidere al tabellone.
+function playersFromDescrizione(descr: string | undefined | null): string[] {
+  const text = String(descr || '').trim();
+  if (!text.startsWith('-')) return [];
+  return text
+    .split('.')
+    .map((s) => s.replace(/^-+/, '').trim())
+    .filter(Boolean);
+}
+
 async function enrichBookingsWithTabellone(
   bookings: ParsedBooking[],
   workerUrl: string,
@@ -505,7 +522,11 @@ async function enrichBookingsWithTabellone(
     return; // non bloccante
   }
 
-  // Arricchisce ogni booking con i giocatori dal tabellone + idReserva (Tappa 43)
+  // Arricchisce ogni booking con i giocatori + idReserva (Tappa 43). Il ROSTER è AUTOREVOLE dalla
+  // descrizione (fonte MP): se presente in formato lista, vince sempre sul tabellone — così i nomi
+  // fantasma o i roster sbagliati introdotti dallo scrape del tabellone non finiscono sulla card.
+  // Il tabellone resta usato per il roster SOLO quando la descrizione non è una lista di nomi
+  // (occupazioni senza descrizione) e SEMPRE per l'idReserva (che l'export Excel non fornisce).
   const matchedKeys = new Set<string>();
   for (const booking of bookings) {
     const dayData = tabelloneData[booking.data] || [];
@@ -513,8 +534,13 @@ async function enrichBookingsWithTabellone(
     const match = dayData.find(
       (ev) => ev.campo === campoNum && ev.ora === booking.ora,
     );
+    const descPlayers = playersFromDescrizione(booking.descrizione);
+    if (descPlayers.length) {
+      booking.giocatori = descPlayers;
+    } else if (match && match.giocatori.length) {
+      booking.giocatori = match.giocatori;
+    }
     if (match) {
-      if (match.giocatori.length) booking.giocatori = match.giocatori;
       if (match.id) booking.idReserva = String(match.id);
       matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
@@ -997,11 +1023,15 @@ Deno.serve(async (req) => {
       // letto è degenere (0/1 nome) ma quello già salvato in cloud per lo stesso slot era completo
       // (>=2), si tiene il completo. Se il nuovo ha >=2 nomi ci si fida (così una vera rimozione
       // 4->2 passa comunque). Idem per idReserva, che l'enrich riempie in modo altrettanto flaky.
+      // ECCEZIONE: se la prenotazione ha una descrizione-lista autorevole (vedi playersFromDescrizione),
+      // il roster è GIÀ la verità MP → lo sticky NON deve mai re-gonfiarlo col vecchio (era la causa
+      // dei nomi fantasma che riapparivano dopo una rimozione su Matchpoint).
       const prevOcc = existingPayloadByTypedKey.get(`booking_occupancy|${occKey}`) as JsonMap | undefined;
       if (prevOcc) {
+        const hasAuthoritativeRoster = playersFromDescrizione((booking as JsonMap).descrizione as string).length > 0;
         const freshG = Array.isArray(booking.giocatori) ? booking.giocatori : [];
         const prevG = Array.isArray(prevOcc.giocatori) ? prevOcc.giocatori : [];
-        if (freshG.length <= 1 && prevG.length >= 2) booking.giocatori = prevG as string[];
+        if (!hasAuthoritativeRoster && freshG.length <= 1 && prevG.length >= 2) booking.giocatori = prevG as string[];
         if (!clean((booking as JsonMap).idReserva) && clean(prevOcc.idReserva)) {
           booking.idReserva = String(prevOcc.idReserva);
         }
