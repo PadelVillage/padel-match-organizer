@@ -7735,7 +7735,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.017';
+    const APP_VERSION = '6.018';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37631,11 +37631,12 @@ Per confermare scrivi ELIMINA.`);
         // Preserva la manutenzione: NON collassarla in 'partita' (altrimenti la scheda crederebbe
         // hasPlayers e il worker mirerebbe alla ficha sbagliata).
         const _tipo = _tipoLow.includes('lez') ? 'lezione' : (_tipoLow.includes('manuten') ? 'manutenzione' : 'partita');
-        // Nota esistente: la portiamo nel record promosso così la scheda pre-popola il campo Note e
-        // NON la sovrascrive a vuoto. Per la manutenzione la nota è anche il "nome" mostrato sulla card.
-        // Per la manutenzione la NOTA (Osservazioni) non è nei dati locali — l'occupancy porta solo la
-        // descrizione (→ nome/card). Parte vuota e la riempie la lettura autorevole. Altri tipi: nota locale.
-        const _noteSrc = (_tipo === 'manutenzione') ? '' : String((src && (src.note || src.descrizione || src.nota)) || '');
+        // NOTA (Osservazioni): è di competenza ESCLUSIVA della lettura autorevole del worker.
+        // La `descrizione` dell'occupancy è il TITOLO Matchpoint della prenotazione (per una partita =
+        // nome giocatore, es. "-Gianluca Spinazzè."): NON è una nota → usarla la faceva finire nel
+        // campo Note. L'occupancy non porta mai una vera Osservazione, quindi la nota promossa parte
+        // SEMPRE vuota e la riempie il worker (vale anche per la manutenzione).
+        const _noteSrc = '';
         const entry = {
           id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sb-' + Date.now()),
           data: wIso, ora: wOra, oraFine: _staffCalEndTime(wOra, _dur), campo: cn,
@@ -37799,7 +37800,11 @@ Per confermare scrivi ELIMINA.`);
       });
       if (_b && Array.isArray(_b.giocatori)) _localRoster = _normRoster(_b.giocatori);
     } catch (e) {}
-    buildState(_localRoster, _localNote);
+    // Partita/lezione: la nota (Osservazioni) è autorevole dal worker e il dato locale può contenere
+    // l'artefatto-descrizione (= nome giocatore, es. "-Gianluca Spinazzè."). NON pre-popoliamo il
+    // campo Note dal locale: parte vuoto e lo riempie la lettura worker. Il salvataggio scrive la
+    // nota solo se l'utente la cambia (noteChanged), quindi nessuna Osservazione viene persa.
+    buildState(_localRoster, '');
 
     // Lettura autorevole dei giocatori dal worker, in SOTTOFONDO (non blocca la scheda).
     (function () {
