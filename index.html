@@ -7747,7 +7747,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.030';
+    const APP_VERSION = '6.031';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -36951,6 +36951,14 @@ Per confermare scrivi ELIMINA.`);
     if (idCliente) e.ids.add(String(idCliente).trim());
     if (name) e.names.add(_payNormName(name));
   }
+  function _staffCalPaidIndexRemove(idReserva, idCliente, name) {
+    const k = String(idReserva == null ? '' : idReserva).trim();
+    const e = _staffCalPaidIndex.get(k);
+    if (!e) return;
+    if (idCliente) e.ids.delete(String(idCliente).trim());
+    if (name) e.names.delete(_payNormName(name));
+    if (!e.ids.size && !e.names.size) _staffCalPaidIndex.delete(k);
+  }
   function _staffCalIsPaid(idReserva, idCliente, name) {
     const e = _staffCalPaidIndex.get(String(idReserva == null ? '' : idReserva).trim());
     if (!e) return false;
@@ -37086,6 +37094,96 @@ Per confermare scrivi ELIMINA.`);
         return { ok: false, message: 'TIMEOUT' };
       }
       _setMsg(note, '⚠️ Errore incasso: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
+  // ── STORNO pagamento (Fase 2b) — annulla un cobro già fatto. Gemello di
+  // _pmoCollectPayment: conferma esplicita + edge sincrona + nessun retry.
+  function _pmoConfirmVoid(name, amountCents) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const imp = (amountCents != null && amountCents > 0) ? (' di <strong>' + _incassiEuro(amountCents) + '</strong>') : '';
+      const msg = svcAddMessage('system', '↩︎ Stornare il pagamento' + imp + ' di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Annulla il cobro su Matchpoint (operazione reale).</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['↩︎ Sì, storna'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoVoidPayment(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Storno non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const idReserva = String(opts.idReserva == null ? '' : opts.idReserva).trim();
+    const idCliente = String(opts.idCliente == null ? '' : opts.idCliente).trim();
+    const playerName = opts.playerName || '';
+    const importoCents = (typeof opts.importoCents === 'number') ? opts.importoCents : null;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (!idReserva) {
+      try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_IDRESERVA' };
+    }
+    const okGo = await _pmoConfirmVoid(playerName, importoCents);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Storno del pagamento di ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'stornare un incasso su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-payment-void', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({
+          idReserva: idReserva, idCliente: idCliente, idx: (opts.idx != null ? String(opts.idx) : ''),
+          playerName: playerName, campo: opts.campo, data: opts.data, ora: opts.ora,
+        }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — il giocatore torna "da pagare": aggiorno stato + tolgo dall'indice chip.
+        try {
+          const stOpen = staffCalPlayersState;
+          if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+            const tgt = stOpen.roster.find(function (x) {
+              return String(x.idx) === String(opts.idx)
+                || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+                || x.nome === playerName;
+            });
+            if (tgt) { tgt.stato = 'in_sospeso'; tgt.pendenteCents = (tgt.importoCents != null ? tgt.importoCents : importoCents); }
+          }
+        } catch (e) {}
+        try { _staffCalPaidIndexRemove(idReserva, idCliente, playerName); } catch (e) {}
+        _setMsg(note, '✅ Pagamento stornato — ' + esc(playerName));
+        try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        return { ok: true };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Storno NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        _setMsg(note, '⌛ Esito storno non confermato (timeout). Controlla su Matchpoint prima di ritentare.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore storno: ' + esc(err && err.message ? err.message : String(err)));
       btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
       return { ok: false, message: (err && err.message) ? err.message : String(err) };
     }
@@ -38435,6 +38533,30 @@ Per confermare scrivi ELIMINA.`);
         }
         row.appendChild(nm); row.appendChild(status);
         item.appendChild(row);
+        // STORNO — giocatore già riscosso: azione per annullare il cobro (denaro reale).
+        // Visibile solo con write attivo; in env reale (flag OFF) resta nascosta.
+        if (stato === 'riscosso' && _payWriteActive) {
+          const undo = document.createElement('div');
+          undo.className = 'svc-pay-actions';
+          const sBtn = document.createElement('button');
+          sBtn.type = 'button'; sBtn.className = 'svc-btn-step';
+          sBtn.style.cssText = 'flex:0 0 auto;color:#b42318;border-color:#f1b5ae;';
+          sBtn.innerHTML = '<i class="ti ti-arrow-back-up" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Storna';
+          sBtn.title = 'Annulla il pagamento di questo giocatore su Matchpoint';
+          sBtn.addEventListener('click', function () {
+            if (sBtn.disabled) return;
+            _pmoVoidPayment({
+              idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+              idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+              idx: (p.idx != null ? String(p.idx) : ''),
+              playerName: p.nome, importoCents: importoCents,
+              campo: st.campo, data: st.isoDate, ora: st.ora,
+              sourceBtns: [sBtn],
+            });
+          });
+          undo.appendChild(sBtn);
+          item.appendChild(undo);
+        }
         if (showButtons) {
           // Importo "a carico" (€): default = pendente se presente, altrimenti importo letto.
           // Editandolo si corregge quanto deve il giocatore (worker: set TextBoxCargoReserva →
@@ -41583,6 +41705,7 @@ Per confermare scrivi ELIMINA.`);
         // Fase 2b — incasso pagamenti (mockato dall'harness; bypass conferma+gate via __pmoPayHarness)
         setPayHarness: function (on) { try { window.__pmoPayHarness = (on !== false); } catch (e) {} },
         collectPayment: function (opts) { return _pmoCollectPayment(opts); },
+        voidPayment: function (opts) { return _pmoVoidPayment(opts); },
         isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
         paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }

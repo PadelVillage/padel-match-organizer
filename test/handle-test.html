@@ -99,12 +99,13 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT;
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [], payment: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [] };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
   PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
+  VOID_NEXT = { ok: true };        // risposta edge matchpoint-payment-void programmabile
 }
 function jsonResponse(win, obj, status) {
   const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
@@ -133,6 +134,14 @@ function installFetchMock(win) {
         return jsonResponse(win, PAYMENT_NEXT.body || { ok: false, message: 'COBRO_RIFIUTATO' }, PAYMENT_NEXT.status || 200);
       }
       return jsonResponse(win, Object.assign({ ok: true }, PAYMENT_NEXT && PAYMENT_NEXT.body || {}), 200);
+    }
+    if (/\/functions\/v1\/matchpoint-payment-void/.test(u)) {
+      CAPTURED.void.push({ url: u, body: body });
+      if (VOID_NEXT && VOID_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (VOID_NEXT && VOID_NEXT.reject) {
+        return jsonResponse(win, VOID_NEXT.body || { ok: false, message: 'STORNO_RIFIUTATO' }, VOID_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, VOID_NEXT && VOID_NEXT.body || {}), 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
@@ -1025,6 +1034,48 @@ const CASES = [
       checks.push({ label: 'pagato anche con case/spazi diversi ("  mario   rossi ")', ok: H.isPaid('R555', '', '  mario   rossi ') === true });
       checks.push({ label: 'NON pagato: nome assente nella stessa prenotazione', ok: H.isPaid('R555', '', 'Carlo Neri') === false });
       checks.push({ label: 'NON pagato: prenotazione senza incassi', ok: H.isPaid('R000', '', 'Mario Rossi') === false });
+      return checks;
+    }
+  },
+  {
+    id: 39, flow: 'Pagamenti', name: 'storno OK → edge payment-void col payload giusto + giocatore tolto da "pagato"',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      // pre-condizione: il giocatore risulta pagato (come dopo un cobro)
+      H.paidIndexAdd('R777', 'C1', 'Mario Rossi');
+      VOID_NEXT = { ok: true };
+      const checks = [];
+      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === true });
+      const res = await H.voidPayment({
+        idReserva: 'R777', idCliente: 'C1', idx: '0', playerName: 'Mario Rossi',
+        importoCents: 800, campo: 2, data: ctx.iso, ora: '18:00',
+      });
+      checks.push({ label: 'voidPayment risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.void.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-payment-void chiamata', ok: got });
+      const vp = CAPTURED.void[0];
+      checks.push({ label: 'payload {idReserva,idCliente,playerName}', ok: !!vp && vp.body && vp.body.idReserva === 'R777' && vp.body.idCliente === 'C1' && vp.body.playerName === 'Mario Rossi' });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.void.length === 1 });
+      checks.push({ label: 'giocatore NON più pagato (storno ottimistico)', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === false });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 40, flow: 'Pagamenti', name: 'storno RIFIUTATO → resta pagato + nessun retry',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      H.paidIndexAdd('R888', 'C9', 'Luca Bianchi');
+      VOID_NEXT = { reject: true, body: { ok: false, message: 'STORNO_RIFIUTATO' } };
+      const checks = [];
+      const res = await H.voidPayment({
+        idReserva: 'R888', idCliente: 'C9', idx: '1', playerName: 'Luca Bianchi',
+        importoCents: 1200, campo: 3, data: ctx.iso, ora: '19:00',
+      });
+      checks.push({ label: 'voidPayment risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.void.length === 1 });
+      checks.push({ label: 'giocatore RESTA pagato dopo rifiuto storno', ok: H.isPaid('R888', 'C9', 'Luca Bianchi') === true });
+      H.setPayHarness(false);
       return checks;
     }
   }
