@@ -7747,7 +7747,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.035';
+    const APP_VERSION = '6.036';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13922,6 +13922,12 @@ Grazie.`
                 <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Aggiorna saldo</button>
                 <button class="btn-primary small-btn" disabled>＋ Ricarica</button>
               </div>
+              <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
+                <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
+              </div>` : `
+              <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
+                <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
+              </div>`}
               ${(PMO_PAYMENTS_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
               <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
                 <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">↩︎ Storna saldo (Correzione del saldo)</div>
@@ -13932,14 +13938,6 @@ Grazie.`
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
               </div>` : ''}
-              <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
-                <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
-                <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
-              </div>` : `
-              <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
-                <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
-                <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
-              </div>`}
             </section>` : ''}
             <section class="member-panel">
               <div class="member-panel-head">
@@ -37253,13 +37251,20 @@ Per confermare scrivi ELIMINA.`);
     const memberId = String(opts.memberId == null ? '' : opts.memberId).trim();
     const g = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori.find(function (p) { return String(p.id) === memberId; }) : null;
     const idInterno = String((opts.idInterno != null ? opts.idInterno : (g ? _walletClientId(g) : '')) || '').trim();
+    // Codice cliente (memberId MP, es "000004") + dati identificativi: il worker risolve
+    // l'id interno dal codice quando non collegato → storno da QUALSIASI scheda socio.
+    const codice = String((opts.codice != null ? opts.codice : (g && (g.memberId || g.codice))) || '').trim();
     const playerName = opts.playerName || (g && g.nome) || '';
+    const idNome = (g && (g.firstName || '')) || '';
+    const idCognome = (g && (g.surname || '')) || '';
+    const idEmail = (g && (g.email || '')) || '';
+    const idTelefono = (g && (g.phone || g.telefono || '')) || '';
     const currentCents = (typeof opts.currentCents === 'number') ? opts.currentCents : null;
     const subtractCents = (typeof opts.subtractCents === 'number') ? Math.round(opts.subtractCents) : null;
     const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
-    if (!/^\d{1,8}$/.test(idInterno)) {
-      try { svcAddMessage('system', '⚠️ Socio senza id Matchpoint collegato: impossibile stornare il borsellino.', 'error'); } catch (e) {}
-      return { ok: false, message: 'NO_IDINTERNO' };
+    if (!/^\d{1,8}$/.test(idInterno) && !codice) {
+      try { svcAddMessage('system', '⚠️ Socio senza id Matchpoint né codice: impossibile stornare il borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_CLIENT_REF' };
     }
     if (subtractCents == null || subtractCents <= 0) {
       try { svcAddMessage('system', '⚠️ Importo di storno non valido.', 'error'); } catch (e) {}
@@ -37283,7 +37288,7 @@ Per confermare scrivi ELIMINA.`);
       const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-wallet-correct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
-        body: JSON.stringify({ idInterno: idInterno, subtractCents: subtractCents }),
+        body: JSON.stringify({ idInterno: idInterno, codice: codice, nome: idNome, cognome: idCognome, email: idEmail, telefono: idTelefono, subtractCents: subtractCents }),
         signal: ctrl.signal,
       });
       const txt = await resp.text();
@@ -37294,8 +37299,13 @@ Per confermare scrivi ELIMINA.`);
         const postCents = (data && typeof data.balanceCentsPost === 'number') ? data.balanceCentsPost
           : (currentCents != null ? Math.max(0, currentCents - subtractCents) : null);
         try {
-          if (postCents != null && window.__pmoWalletCache) {
-            window.__pmoWalletCache.set(idInterno, { balance_cents: postCents, synced_at: new Date().toISOString() });
+          const nowIso = new Date().toISOString();
+          // Risolto dal codice? usa l'id ritornato dall'edge per la cache live.
+          const idForCache = String((data && data.idInterno) || idInterno || '').trim();
+          if (postCents != null) {
+            if (idForCache && window.__pmoWalletCache) window.__pmoWalletCache.set(idForCache, { balance_cents: postCents, synced_at: nowIso });
+            // Il saldo mostrato per i soci senza id interno viene dal cloud (chiave = id socio).
+            if (g && window.__pmoWalletCloud) window.__pmoWalletCloud.set(String(g.id), { balance_cents: postCents, synced_at: nowIso });
           }
         } catch (e) {}
         _setMsg(note, '✅ Borsellino stornato — ' + esc(playerName) + (postCents != null ? (' · nuovo saldo ' + _incassiEuro(postCents)) : ''));
