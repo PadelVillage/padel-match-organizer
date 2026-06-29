@@ -7094,7 +7094,7 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
     <div id="incassi" class="tab-content">
-      <div class="pmo-section-head"><div><h2>💰 Incassi</h2><p>Cassa e rendicontazione amministrativa dei pagamenti dei giocatori.</p></div></div>
+      <!-- titolo + sottotitolo ora resi dentro renderIncassi (riga controlli), per unirli alla riga dei filtri -->
       <div id="incassiRoot"></div>
     </div>
 
@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.026';
+    const APP_VERSION = '6.027';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21663,6 +21663,10 @@ Grazie!`
       const isToday = st.from === today && st.to === today;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
+          <div style="margin-right:8px;">
+            <h2 style="margin:0;font-size:20px;line-height:1.15;">💰 Incassi</h2>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Cassa e rendicontazione dei pagamenti dei giocatori.</div>
+          </div>
           <div><label style="${lblCss}">&nbsp;</label>
             <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
           <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
@@ -21698,6 +21702,11 @@ Grazie!`
       }
       const selKey = isToday ? `Oggi · ${st.from}` : `${st.from} → ${st.to}`;
 
+      // % di incidenza sul totale del periodo (— se totale 0)
+      const _incassiPct = (cents) => sel.totale > 0
+        ? (cents / sel.totale * 100).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + '%'
+        : '—';
+      const _pctLine = (cents) => `<div style="font-size:11px;color:#888;margin-top:2px;">${_incassiPct(cents)} del totale</div>`;
       // riepilogo del periodo selezionato
       const summary = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
@@ -21707,13 +21716,13 @@ Grazie!`
             <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'} · ${selKey}</div></div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">💵 Cash</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div>${_pctLine(sel.contanti)}</div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">💳 Card</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.carta)}</div>${_pctLine(sel.carta)}</div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">👛 Wallet</div>
-            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div></div>
+            <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.borsellino)}</div>${_pctLine(sel.borsellino)}</div>
         </div>`;
 
       // tabella: per ogni giorno (più recenti in alto) una riga-intestazione coi totali del giorno,
