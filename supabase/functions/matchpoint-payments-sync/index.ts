@@ -340,7 +340,7 @@ Deno.serve(async (req: Request) => {
   const importedAt = new Date().toISOString();
   const members = await loadMembers(admin);
   const records: JsonMap[] = [];
-  const seenKeys = new Set<string>();
+  const seqByKey = new Map<string, number>();
   let matched = 0;
   const byMethod: Record<string, number> = { cash: 0, card: 0, wallet: 0, other: 0 };
   let totalCents = 0;
@@ -351,11 +351,15 @@ Deno.serve(async (req: Request) => {
       || (row.name ? members.byName.get(normalizeName(row.name)) : undefined);
     const memberLid = rec ? memberLocalId(rec) : '';
     if (memberLid) matched += 1;
-    // Chiave composta deterministica (Rif. Pagamento è spesso vuoto): coerente col match cross-source
-    // del piano (id_reserva, id_cliente, importo, metodo, giorno-pagamento).
-    const localKey = `pay|${row.idReserva || 'na'}|${row.cod || 'na'}|${row.payDateIso}|${row.amountCents}|${row.method}`;
-    if (seenKeys.has(localKey)) continue; // dedup intra-report (righe identiche)
-    seenKeys.add(localKey);
+    // Rif. Pagamento è spesso vuoto → chiave composta deterministica (id_reserva, id_cliente,
+    // giorno-pagamento, importo, metodo) coerente col match cross-source del piano, + una `seq`
+    // che distingue righe ALTRIMENTI identiche (es. un solo pagatore che copre più giocatori della
+    // stessa prenotazione = più righe stesso cod/importo). La seq è assegnata per ordine nel report,
+    // quindi il re-sync dello stesso report rigenera le stesse chiavi (upsert idempotente).
+    const baseKey = `${row.idReserva || 'na'}|${row.cod || 'na'}|${row.payDateIso}|${row.amountCents}|${row.method}`;
+    const seq = (seqByKey.get(baseKey) || 0) + 1;
+    seqByKey.set(baseKey, seq);
+    const localKey = `pay|${baseKey}|${seq}`;
     byMethod[row.method] += row.amountCents;
     totalCents += row.amountCents;
     records.push({
@@ -372,6 +376,7 @@ Deno.serve(async (req: Request) => {
         ora: row.ora,
         amount_cents: row.amountCents,
         method: row.method,           // cash | card | wallet | other
+        seq,
         source: 'matchpoint',
         mp_payment_ref: row.ref || null,
         status: 'paid',
@@ -382,6 +387,7 @@ Deno.serve(async (req: Request) => {
       synced_at: importedAt,
     });
   }
+  const paymentsWritten = records.length;
 
   // 4) Record riepilogo (diagnostica + sezione Incassi).
   records.push({
@@ -389,7 +395,7 @@ Deno.serve(async (req: Request) => {
     local_key: 'matchpoint_payments_sync_last',
     payload: {
       synced_at: importedAt, source, dateFrom: dateFrom || null, dateTo: dateTo || null,
-      reportRows: parsed.rows.length, written: records.length, matched,
+      reportRows: parsed.rows.length, written: paymentsWritten, matched,
       unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers,
     },
     payload_hash: null,
@@ -415,7 +421,7 @@ Deno.serve(async (req: Request) => {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-      body: JSON.stringify({ messages: [{ topic: `pv-staff-cal-${env}`, event: 'payments-sync-done', payload: { ts: Date.now(), written: records.length - 1, matched } }] }),
+      body: JSON.stringify({ messages: [{ topic: `pv-staff-cal-${env}`, event: 'payments-sync-done', payload: { ts: Date.now(), written: paymentsWritten, matched } }] }),
     });
     broadcast = { sent: res.ok ? 1 : 0, ok: res.ok, status: res.status };
   } catch (e) {
@@ -424,5 +430,5 @@ Deno.serve(async (req: Request) => {
 
   await logAudit(admin, actor, 'matchpoint_payments_sync_success', { source, reportRows: parsed.rows.length, matched, totalCents, byMethod });
 
-  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reportRows: parsed.rows.length, written: records.length - 1, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
+  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reportRows: parsed.rows.length, written: paymentsWritten, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
 });
