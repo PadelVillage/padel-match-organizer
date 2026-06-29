@@ -7728,7 +7728,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.000';
+    const APP_VERSION = '6.001';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -35726,7 +35726,7 @@ Per confermare scrivi ELIMINA.`);
       try {
         if (typeof staffCalRefreshFromCloud !== 'function') return;
         // Scheda in background: rete di sicurezza lenta (debounce interno 60s).
-        if (document.hidden) { staffCalRefreshFromCloud(); return; }
+        if (document.hidden) { staffCalRefreshFromCloud({ silent: true }); return; }
         // In primo piano: risveglia il canale realtime se è "addormentato" (mobile soprattutto), così
         // il broadcast 'staff-changed' torna a essere consegnato entro il secondo e l'aggiornamento
         // cross-device resta ISTANTANEO invece di ricadere sul poll. Idempotente. v5.901.
@@ -35749,7 +35749,7 @@ Per confermare scrivi ELIMINA.`);
         _staffCalPullTick++;
         if (window.innerWidth >= 900 && (_staffCalPullTick % 2) !== 0) return;
         _staffCalFastPullBusy = true;
-        Promise.resolve(staffCalRefreshFromCloud({ force: true }))
+        Promise.resolve(staffCalRefreshFromCloud({ force: true, silent: true }))
           .catch(function () {})
           .finally(function () { _staffCalFastPullBusy = false; });
       } catch (e) {}
@@ -36194,9 +36194,12 @@ Per confermare scrivi ELIMINA.`);
       // Rete di sicurezza cross-device per le schede socio già presenti in locale: se il broadcast
       // realtime 'member-changed' è andato perso, qui la modifica si auto-guarisce (throttle interno ~30s).
       try { await staffCalReconcileMembersFromCloud(); } catch (e) { console.warn('staffCalRefreshFromCloud reconcile members:', e); }
-      // Show subtle non-blocking status in calendar header
+      // Etichetta "aggiorno…": mostrata solo sui refresh "veri" (push realtime di un cambiamento
+      // cross-device, refresh manuale, rientro sulla scheda, post-import). Il poll automatico di
+      // rete-di-sicurezza ogni ~8s passa { silent:true } per non far lampeggiare l'etichetta quando
+      // (quasi sempre) non è cambiato nulla. La sincronizzazione NON cambia, solo la visibilità.
       const statusEl = document.getElementById('staffCalCloudStatus');
-      if (statusEl) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
+      if (statusEl && !(opts && opts.silent)) { statusEl.textContent = 'aggiorno…'; statusEl.style.display = ''; }
       // Backfill id sulle prenotazioni legacy senza id, prima di qualsiasi sync che usa b.id.
       try { _staffCalEnsureStaffBookingIds(); } catch (e) {}
       // Pull-only from cloud (no worker/scrape)
