@@ -5530,12 +5530,17 @@ async function exportPaymentsReportWithBrowser(options = {}) {
   const dTo = parseDateInput(options.dateTo, now);
   const diagnostic = { mode: 'export_payments_report', flow: 'payments', baseUrl, reportPath, dateFrom: fmtDateIt(dFrom), dateTo: fmtDateIt(dTo), startedAt: new Date().toISOString(), steps: [] };
 
-  const browser = await chromium.launch(mpLaunchOptions());
+  // Riusa la sessione calda condivisa (come le altre LETTURE: read-tabellone, get-slots)
+  // invece di lanciare+chiudere un browser proprio ad ogni run. Evita launch+login (~13s)
+  // per ogni export → job molto più corto, così il cron "oggi" può girare fitto (~5 min)
+  // senza tenere occupata la coda e far aspettare le azioni staff. Fallback a login a
+  // freddo gestito da mpAcquirePage; l'export è idempotente (già avvolto in mpReadRetry).
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
   try {
-    const { page } = await mpNewContextPage(browser);
     page.setDefaultTimeout(15000);
     page.setDefaultNavigationTimeout(45000);
-    await mpDoLogin(page, baseUrl, username, password, diagnostic);
     await maybeClickCashEnter(page, diagnostic);
 
     diagnostic.steps.push('goto_report');
@@ -5577,8 +5582,11 @@ async function exportPaymentsReportWithBrowser(options = {}) {
       dateTo: fmtDateIt(dTo),
       diagnostic,
     };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
   } finally {
-    await browser.close().catch(() => {});
+    await acq.release(_opFailed);
   }
 }
 
