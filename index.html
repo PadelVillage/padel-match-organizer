@@ -7743,7 +7743,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.027';
+    const APP_VERSION = '6.028';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21663,20 +21663,17 @@ Grazie!`
       const isToday = st.from === today && st.to === today;
       const controls = `
         <div class="section" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:14px;">
-          <div style="margin-right:8px;">
+          <div style="margin-right:8px;min-width:200px;">
             <h2 style="margin:0;font-size:20px;line-height:1.15;">💰 Incassi</h2>
-            <div style="font-size:11px;color:#888;margin-top:2px;">Cassa e rendicontazione dei pagamenti dei giocatori.</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Cassa e rendicontazione dei pagamenti dei giocatori. · sincronizzazione automatica ~ogni 5 min in orario di apertura</div>
           </div>
           <div><label style="${lblCss}">&nbsp;</label>
             <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
           <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
-          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            <div style="display:flex;gap:8px;">
-              <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
-              <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
-            </div>
-            <div style="font-size:11px;color:#888;">Ultima sincronizzazione: <strong>${_incassiSyncLabel()}</strong> · automatica ~ogni 5 min in orario di apertura</div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
+            <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
+            <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
           </div>
         </div>`;
 
@@ -21762,7 +21759,10 @@ Grazie!`
           <tbody>${bodyRows}</tbody></table></div>`;
       }
 
-      root.innerHTML = controls + summary + table;
+      // Titolo + riepilogo totali PINNATI in alto durante lo scroll (sticky); la tabella
+      // (intestazione colonne + righe giocatori) scorre sotto. Sfondo opaco = pagina (#f8f9fb)
+      // così le righe non traspaiono sotto la parte fissa.
+      root.innerHTML = `<div style="position:sticky;top:0;z-index:5;background:#f8f9fb;box-shadow:0 6px 10px -8px rgba(0,0,0,.18);">${controls}${summary}</div>${table}`;
     }
     function _incassiSetToday() { const t = _incassiToday(); _incassiState.from = t; _incassiState.to = t; renderIncassi(); }
     function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
