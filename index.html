@@ -7747,7 +7747,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.031';
+    const APP_VERSION = '6.032';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -7759,7 +7759,10 @@ body.assessment-public-mode .assessment-public-only-card {
     // collaudo del wiring avviene SOLO via harness mockato (test/handle-test.html), che
     // chiama _pmoCollectPayment col bypass `window.__pmoPayHarness` (gate solo-TEST).
     // Backstop server-side: kill-switch env nel worker (l'edge non è nemmeno deployata).
-    const PMO_PAYMENTS_WRITE_ENABLED = false;
+    // 29/06/2026: ACCESO temporaneamente per il TEST DAL VIVO supervisionato (solo Cash)
+    // su /test/. ⚠️ RIMETTERE A false a fine test (+push) insieme allo spegnimento del
+    // kill-switch worker su Hetzner (MATCHPOINT_PAYMENT_WRITE_ENABLED).
+    const PMO_PAYMENTS_WRITE_ENABLED = true;
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
