@@ -47,6 +47,7 @@ const MP_PAYMENT_SELECTORS = {
   //    è quella che useremo per sottrarre (storno totale/parziale). ⚠️ DOM dialog NON
   //    mappato dal vivo → diagnostic-first (vedi _clickCorrezioneSaldo). Testi candidati:
   walletSaldoSubTabLabels: ['Saldo'],                  // sotto-tab "Saldo" (ledger borsellino)
+  walletCorrezioneBtnId: '#CC_Datos_FormViewFicha_LinkButtonRealizarCorrecionSaldo', // id reale (confermato live)
   walletCorrezioneLabels: ['Correzione del saldo', 'Correzione saldo', 'Corrección de saldo', 'Corregir saldo'],
 };
 
@@ -7710,19 +7711,48 @@ async function _collectCorrezioneCandidates(page) {
   }).catch(() => []);
 }
 
-// Candidati dei CAMPI/pulsanti VISIBILI (verosimilmente del dialog correzione) — mappatura dialog.
+// Candidati dei CAMPI/pulsanti del dialog correzione — mappatura dal vivo. Cerca prima un
+// container modale (Bootstrap/jQuery/swal/popup o id che contiene "correc"); se c'è, fotografa
+// SOLO i suoi input/label/pulsanti + uno snippet HTML. Altrimenti ricade sui campi visibili.
 async function _collectDialogFieldCandidates(page) {
   return await page.evaluate(() => {
-    const visible = (el) => !!(el.offsetParent || el.getClientRects().length);
-    const fields = [...document.querySelectorAll('input,select,textarea')].filter(visible).map((el) => ({
+    const visible = (el) => {
+      const r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      return !!(el.offsetParent || (el.getClientRects && el.getClientRects().length) || (r && r.width > 0 && r.height > 0));
+    };
+    const labelFor = (el) => {
+      let lab = '';
+      if (el.id) { const l = document.querySelector(`label[for="${el.id}"]`); if (l) lab = l.innerText; }
+      if (!lab) { const p = el.closest('div,td,tr,li,.form-group'); if (p) lab = (p.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60); }
+      return lab.slice(0, 60);
+    };
+    const fieldOf = (el) => ({
       tag: el.tagName.toLowerCase(), type: String(el.type || '').slice(0, 16),
-      id: String(el.id || '').slice(0, 90), name: String(el.name || '').slice(0, 90), ph: String(el.placeholder || '').slice(0, 40),
-    }));
-    const buttons = [...document.querySelectorAll('button,input[type="button"],input[type="submit"],a')].filter(visible)
-      .map((el) => ({ btn: (el.innerText || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), id: String(el.id || '').slice(0, 80) }))
-      .filter((b) => b.btn);
-    return { fields: fields.slice(0, 30), buttons: buttons.slice(0, 30) };
-  }).catch(() => ({ fields: [], buttons: [] }));
+      id: String(el.id || '').slice(0, 90), name: String(el.name || '').slice(0, 90),
+      ph: String(el.placeholder || '').slice(0, 40), val: String(el.value || '').slice(0, 30), label: labelFor(el),
+    });
+    const btnOf = (el) => ({ btn: (el.innerText || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 40), id: String(el.id || '').slice(0, 90) });
+
+    // 1) Cerca un container modale visibile.
+    const modalSel = '.modal.in,.modal.show,.modal[style*="display: block"],[role="dialog"],.swal2-popup,.ui-dialog,[class*="popup"],[id*="orrec"],[id*="Correc"]';
+    let modalEl = [...document.querySelectorAll(modalSel)].filter(visible).sort((a, b) => (b.innerText || '').length - (a.innerText || '').length)[0] || null;
+
+    const scope = modalEl || document;
+    const fields = [...scope.querySelectorAll('input,select,textarea')]
+      .filter((el) => visible(el) && !['hidden', 'image', 'file'].includes(String(el.type || '').toLowerCase()))
+      .map(fieldOf);
+    const buttons = [...scope.querySelectorAll('button,input[type="button"],input[type="submit"],a')]
+      .filter(visible).map(btnOf).filter((b) => b.btn);
+
+    return {
+      modalFound: !!modalEl,
+      modalId: modalEl ? String(modalEl.id || modalEl.className || '').slice(0, 80) : '',
+      modalHtml: modalEl ? String(modalEl.innerHTML || '').replace(/\s+/g, ' ').slice(0, 1800) : '',
+      modalText: modalEl ? String(modalEl.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 400) : '',
+      fields: fields.slice(0, 30),
+      buttons: buttons.slice(0, 30),
+    };
+  }).catch(() => ({ modalFound: false, fields: [], buttons: [] }));
 }
 
 // Storna (totale o parziale) il saldo del borsellino via "Correzione del saldo".
@@ -7778,25 +7808,38 @@ async function correctWalletWithBrowser(input = {}) {
     // Apri il ledger "Saldo" del borsellino.
     await _openWalletSaldoLedger(page, diagnostic);
 
-    // Clicca "Correzione del saldo" (candidati testo). Se non c'è → candidati DOM.
+    // Clicca "Correzione del saldo": prima l'id reale (confermato), poi fallback per testo.
     await dismissSwalOk(page, diagnostic, 'corr_pre');
     let opened = false;
-    for (const lab of MP_PAYMENT_SELECTORS.walletCorrezioneLabels) {
-      const loc = page.locator(`a:visible:has-text("${lab}"), button:visible:has-text("${lab}"), input[type="button"][value*="${lab}"]:visible`).first();
-      if (await loc.count().catch(() => 0)) {
-        try { await loc.click({ timeout: 5000 }); diagnostic.steps.push('corr_click:' + lab); await page.waitForTimeout(800); opened = true; break; }
-        catch (e) { diagnostic.steps.push('corr_retry:' + String((e && e.message) || e).slice(0, 40)); }
+    const byId = page.locator(MP_PAYMENT_SELECTORS.walletCorrezioneBtnId).first();
+    if (await byId.count().catch(() => 0)) {
+      try { await byId.click({ timeout: 6000 }); diagnostic.steps.push('corr_click:id'); opened = true; }
+      catch (e) { diagnostic.steps.push('corr_retry_id:' + String((e && e.message) || e).slice(0, 40)); }
+    }
+    if (!opened) {
+      for (const lab of MP_PAYMENT_SELECTORS.walletCorrezioneLabels) {
+        const loc = page.locator(`a:visible:has-text("${lab}"), button:visible:has-text("${lab}"), input[type="button"][value*="${lab}"]:visible`).first();
+        if (await loc.count().catch(() => 0)) {
+          try { await loc.click({ timeout: 5000 }); diagnostic.steps.push('corr_click:' + lab); opened = true; break; }
+          catch (e) { diagnostic.steps.push('corr_retry:' + String((e && e.message) || e).slice(0, 40)); }
+        }
       }
     }
     if (!opened) {
       const candidates = await _collectCorrezioneCandidates(page);
       throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { correzioneCandidates: candidates }));
     }
+    // Attendi che il modale/postback renda i campi (LinkButton ASP.NET → postback async).
+    await page.waitForTimeout(2000);
 
-    // DIALOG aperto ma NON mappato → restituisci i candidati (campi + pulsanti) senza
-    // inviare. Dopo la mappatura live, qui andrà: fill importo (subtractCents o targetCents),
+    // DIALOG aperto ma NON mappato → restituisci i candidati (modale, campi, pulsanti, HTML)
+    // senza inviare. Dopo la mappatura live, qui andrà: fill importo (subtractCents/targetCents),
     // _confirmDialogYes, ri-lettura saldo == targetCents. NIENTE movimento alla cieca.
     const dlg = await _collectDialogFieldCandidates(page);
+    diagnostic.dialogModalFound = dlg.modalFound;
+    diagnostic.dialogModalId = dlg.modalId;
+    diagnostic.dialogModalText = dlg.modalText;
+    diagnostic.dialogModalHtml = dlg.modalHtml;
     diagnostic.dialogFields = dlg.fields;
     diagnostic.dialogButtons = dlg.buttons;
     throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Dialog "Correzione del saldo" aperto ma non ancora mappato: nessun importo inviato. Mappare campi dal vivo.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
