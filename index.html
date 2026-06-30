@@ -7806,7 +7806,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.047';
+    const APP_VERSION = '6.048';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39014,6 +39014,7 @@ Per confermare scrivi ELIMINA.`);
       const paySec = mkSection('ti-cash', 'Pagamenti');
       paySec.setAttribute('data-feature', 'payments-shell');
       let _anyUnknown = false;
+      const _payAmtInputs = []; // riferimenti ai campi "€ a carico" per il totale live
       // Incasso ATTIVO solo se il flag write è ON (PROD/test reali: OFF) oppure se siamo
       // nell'harness mockato (bypass solo-TEST). Altrimenti input/bottoni sono in sola lettura.
       const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
@@ -39053,7 +39054,8 @@ Per confermare scrivi ELIMINA.`);
           }
         } else {
           status.style.color = 'var(--text-muted)';
-          status.textContent = '— saldo da leggere';
+          // In simulazione non aspettiamo MP: etichetta neutra, non scoraggiante.
+          status.textContent = _paySimUi ? 'Da incassare' : '— saldo da leggere';
           _anyUnknown = true;
         }
         row.appendChild(nm); row.appendChild(status);
@@ -39098,6 +39100,7 @@ Per confermare scrivi ELIMINA.`);
           amt.disabled = !_payWriteActive;
           amtWrap.appendChild(amtLbl); amtWrap.appendChild(amt);
           item.appendChild(amtWrap);
+          _payAmtInputs.push(amt);
 
           const acts = document.createElement('div');
           acts.className = 'svc-pay-actions';
@@ -39142,12 +39145,31 @@ Per confermare scrivi ELIMINA.`);
         }
         paySec.appendChild(item);
       });
+      // Totale live = somma dei "€ a carico" digitati (aggiornato a ogni modifica). Mostra che
+      // lo split per-giocatore torna. Solo con incasso attivo (simulazione o scrittura reale).
+      if (_payWriteActive && _payAmtInputs.length) {
+        const totWrap = document.createElement('div');
+        totWrap.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #e3e6ea;font-size:.84rem;font-weight:700;';
+        const totLbl = document.createElement('span'); totLbl.textContent = 'Totale da incassare';
+        const totVal = document.createElement('span'); totVal.style.cssText = 'font-weight:800;';
+        totWrap.appendChild(totLbl); totWrap.appendChild(totVal);
+        const _updatePayTotal = function () {
+          let s = 0;
+          _payAmtInputs.forEach(function (inp) { const c = _pmoEuroToCents(inp.value); if (c != null && c > 0) s += c; });
+          totVal.textContent = _incassiEuro(s);
+        };
+        _payAmtInputs.forEach(function (inp) { inp.addEventListener('input', _updatePayTotal); });
+        _updatePayTotal();
+        paySec.appendChild(totWrap);
+      }
       const payHint = document.createElement('div');
       payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
-      payHint.textContent = _anyUnknown
-        ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
-        : (_paySimUi
-            ? 'Modifica l’importo a carico se serve, poi incassa: in simulazione il pagamento appare solo in Incassi (non tocca Matchpoint).'
+      // In simulazione l'hint per-giocatore vince sul messaggio "in attesa di Matchpoint":
+      // qui il costo si imposta liberamente per ciascuno (il cloud TEST sostituisce MP).
+      payHint.textContent = _paySimUi
+        ? 'Imposta il costo per ogni giocatore, poi incassa: in simulazione il pagamento appare solo in Incassi (non tocca Matchpoint).'
+        : (_anyUnknown
+            ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
             : (_payWriteActive
                 ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
                 : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).'));
