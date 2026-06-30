@@ -2867,11 +2867,11 @@
     .svc-pl-row { display:flex; align-items:center; gap:8px; min-height:34px; }
     .svc-pl-ic-paid { font-size:18px; color:var(--green); flex:0 0 auto; }
     .svc-pl-ic-due { font-size:18px; color:var(--text-muted); flex:0 0 auto; }
-    .svc-pl-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; font-weight:600; }
+    .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.9rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
     .svc-pl-paid { flex:0 0 auto; font-size:.84rem; font-weight:700; color:var(--green); white-space:nowrap; }
     .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:3px; border:1px solid var(--accent); border-radius:8px; padding:0 8px; height:34px; background:var(--surface); }
     .svc-pl-eur-sym { color:var(--text-muted); font-size:.8rem; }
-    .svc-pl-eur-input { width:58px; height:32px; border:none; padding:0; text-align:right; font-size:.86rem; font-weight:700; background:transparent; color:var(--text); }
+    .svc-pl-eur-input { width:64px; height:32px; border:none; padding:0; text-align:right; font-size:.86rem; font-weight:700; background:transparent; color:var(--text); }
     .svc-pl-eur-input:disabled { opacity:.55; }
     .svc-pl-iconbtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; background:transparent; color:var(--text-muted); border-radius:7px; cursor:pointer; font-size:17px; transition:background .12s,color .12s; }
     .svc-pl-iconbtn:hover:not(:disabled) { background:var(--accent-light); color:var(--accent); }
@@ -2935,7 +2935,7 @@
       .svc-players-empty { font-size:15px; }
       .svc-pl-name { font-size:1rem; }
       .svc-pl-paid { font-size:.95rem; }
-      .svc-pl-eur-input { font-size:1rem; }
+      .svc-pl-eur-input { font-size:1rem; width:80px; }
       .svc-pl-method { font-size:.92rem; height:44px; }
       .svc-pl-iconbtn { width:34px; height:34px; font-size:19px; }
       .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.050';
+    const APP_VERSION = '6.051';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
