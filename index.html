@@ -4492,6 +4492,19 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-acc[open] > summary > .member-acc-chev { transform:rotate(180deg); }
     .member-acc[open] > summary { border-bottom:1px solid #edf1f7; }
     .member-acc-body { padding:14px; }
+    /* ── Scheda socio a TAB (opzione A): titoli cliccabili in alto, una sezione alla volta ── */
+    .member-tabs { display:flex; gap:2px; flex-wrap:wrap; border-bottom:2px solid #e3eaf4; margin:16px 0 0; }
+    .member-tab {
+      background:none; border:none; padding:10px 16px; font-size:14px; font-weight:600;
+      color:#667085; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;
+      border-radius:8px 8px 0 0; white-space:nowrap;
+    }
+    .member-tab:hover { color:var(--primary); background:#f3f7fc; }
+    .member-tab.active { color:var(--primary); border-bottom-color:var(--primary); background:#f3f7fc; }
+    .member-tab-panel { padding:16px 2px; }
+    .member-tab-panel[hidden] { display:none; }
+    .member-tab-subhead { color:var(--primary); font-size:14px; font-weight:700; margin:0 0 10px; }
+    .member-tab-subhead.has-divider { margin-top:20px; padding-top:18px; border-top:1px solid #edf1f7; }
     .member-panel {
       border:1px solid #dce5f2;
       border-radius:10px;
@@ -7819,7 +7832,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.044';
+    const APP_VERSION = '6.045';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10100,13 +10113,10 @@ Grazie.`
         { key:'view_assessment_excel', label:'Import livelli Excel' },
       ]},
       { key:'view_members', tab:'members', label:'Anagrafica soci', children:[
-        { key:'view_members_dati', label:'Dati socio' },
+        { key:'view_members_anagrafica', label:'Anagrafica (dati + preferenze)' },
         { key:'view_members_borsellino', label:'Borsellino' },
-        { key:'view_members_preferenze', label:'Preferenze operative' },
         { key:'view_members_autoval', label:'Autovalutazione' },
-        { key:'view_members_stato', label:'Stato rapido' },
-        { key:'view_members_feedback', label:'Feedback post-partita' },
-        { key:'view_members_azioni', label:'Azioni operative' },
+        { key:'view_members_attivita', label:'Attività (stato + feedback + azioni)' },
       ]},
       { key:'view_incassi', tab:'incassi', label:'Incassi' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
@@ -13817,6 +13827,13 @@ Grazie.`
       const key = `${playerId}_${formatLocalDate(getWeekStart(new Date()))}`;
       return weeklyContactLog[key] || 0;
     }
+    // Scheda socio a tab (opzione A): mostra il pannello del tab scelto, evidenzia il titolo.
+    function pmoMemberTab(key, btnEl) {
+      const card = document.getElementById('memberCard');
+      if (!card) return;
+      card.querySelectorAll('.member-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-mtab') === key));
+      card.querySelectorAll('.member-tab-panel').forEach(p => { p.hidden = (p.getAttribute('data-mtab') !== key); });
+    }
     function renderOpenMemberCard() {
       if (!memberInlineOpenId) {
         const overlay = document.getElementById('memberCardOverlay');
@@ -13953,48 +13970,16 @@ Grazie.`
       // Visibilità per-staff delle sotto-sezioni della scheda (Amministrazione → Sezioni visibili →
       // Anagrafica soci). owner/admin e profili senza config = vedono tutto (fail-open).
       const _canMemberSec = (k) => (typeof pmoSubsectionVisibleFor === 'function') ? pmoSubsectionVisibleFor(k, 'members') : true;
-      const showSecDati = _canMemberSec('view_members_dati');
+      const showSecAnagrafica = _canMemberSec('view_members_anagrafica');
       const showSecBorsellino = _canMemberSec('view_members_borsellino');
-      const showSecPref = _canMemberSec('view_members_preferenze');
       const showSecAutoval = _canMemberSec('view_members_autoval');
-      const showSecStato = _canMemberSec('view_members_stato');
-      const showSecFeedback = _canMemberSec('view_members_feedback');
-      const showSecAzioni = _canMemberSec('view_members_azioni');
-      card.style.display = 'block';
-      card.className = 'member-card member-card-optimized';
-      card.innerHTML = `
-        <div class="member-card-head">
-          <div class="member-card-identity">
-            <div class="member-card-avatar">${escapeHtml(initials)}</div>
-            <div>
-              <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
-              <div class="member-card-badges">
-                <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
-                <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
-                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
-                ${cardMatchpointBadge}
-                <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
-              </div>
-            </div>
-          </div>
-          <div class="member-card-actions-top">
-            <button class="btn-secondary small-btn" onclick="closeMemberCard()">Chiudi</button>
-            <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
-          </div>
-        </div>
-        <div class="member-card-body member-card-flow">
-          <div class="member-hero">
-            ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `<div class="member-hero-wallet">
-              <span class="member-hero-wallet-label">Borsellino</span>
-              <strong class="member-hero-wallet-amount">${escapeHtml(_walletBalanceLabel(g))}</strong>
-            </div>` : '<div></div>'}
-            <div class="member-hero-actions">
-              <button class="btn-success small-btn" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')"><i class="ti ti-brand-whatsapp" style="font-size:15px;vertical-align:-2px;" aria-hidden="true"></i> WhatsApp</button>
-            </div>
-          </div>
-          ${showSecDati ? `<details class="member-acc" open>
-            <summary><span class="member-acc-title">Dati socio</span><span class="member-acc-hint">Anagrafica modificabile</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
+      const showSecAttivita = _canMemberSec('view_members_attivita');
+      // ── Scheda a TAB (opzione A): 4 tab cliccabili in alto (Anagrafica · Borsellino ·
+      //    Autovalutazione · Attività), hero Borsellino+WhatsApp fisso sopra. Ogni tab è
+      //    gestito da un'unica chiave permesso (vedi PMO_SECTION_TREE.view_members). ──
+      const tabBorsellino = (PMO_PAYMENTS_UI_ENABLED && showSecBorsellino);
+      const _anagraficaBody = showSecAnagrafica ? `
+              <div class="member-tab-subhead">Dati socio</div>
               <div class="member-form-grid">
                 <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
@@ -14004,12 +13989,17 @@ Grazie.`
                 <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>
-            </div>
-          </details>` : ''}
-          ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `
-          <details class="member-acc" open data-feature="payments-shell">
-            <summary><span class="member-acc-title">Borsellino</span><span class="member-acc-hint">Saldo · ricarica · storno</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
+              <div class="member-tab-subhead has-divider">Preferenze operative</div>
+              <div class="member-form-grid">
+                <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
+                <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
+                <div><label>Disponibilità giorni</label><input id="cardAvailabilityDays" value="${escapeHtml(memberAvailabilityProfile.days || (g.prefDays || []).join(', '))}"></div>
+                <div><label>Disponibilità fascia</label><input id="cardAvailabilityTime" value="${escapeHtml(memberAvailabilityProfile.time || (g.prefHours || []).join(', '))}"></div>
+                <div><label>Frequenza desiderata</label><input id="cardDesiredFrequency" value="${escapeHtml(memberAvailabilityProfile.frequency || g.desiredFrequency || '')}"></div>
+                <div><label>Preavviso minimo</label><input id="cardNotice" value="${escapeHtml(memberAvailabilityProfile.notice || g.notice || '')}"></div>
+                <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
+              </div>` : '';
+      const _borsellinoBody = tabBorsellino ? `
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Saldo attuale</span><strong id="cardWalletBalance">${escapeHtml(_walletBalanceLabel(g))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
@@ -14042,52 +14032,67 @@ Grazie.`
                   <button class="btn-danger small-btn" onclick="pmoWalletVoidClick('${escapeHtml(String(g.id))}', this)">↩︎ Storna</button>
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
-              </div>` : ''}
-            </div>
-          </details>` : ''}
-          ${showSecAutoval ? assessmentMeta : ''}
-          ${showSecPref ? `<details class="member-acc">
-            <summary><span class="member-acc-title">Preferenze operative</span><span class="member-acc-hint">Dato usato per gruppi e partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
-              <div class="member-form-grid">
-                <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
-                <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
-                <div><label>Disponibilità giorni</label><input id="cardAvailabilityDays" value="${escapeHtml(memberAvailabilityProfile.days || (g.prefDays || []).join(', '))}"></div>
-                <div><label>Disponibilità fascia</label><input id="cardAvailabilityTime" value="${escapeHtml(memberAvailabilityProfile.time || (g.prefHours || []).join(', '))}"></div>
-                <div><label>Frequenza desiderata</label><input id="cardDesiredFrequency" value="${escapeHtml(memberAvailabilityProfile.frequency || g.desiredFrequency || '')}"></div>
-                <div><label>Preavviso minimo</label><input id="cardNotice" value="${escapeHtml(memberAvailabilityProfile.notice || g.notice || '')}"></div>
-                <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
-              </div>
-            </div>
-          </details>` : ''}
-          ${showSecStato ? `<details class="member-acc">
-            <summary><span class="member-acc-title">Stato rapido</span><span class="member-acc-hint">Controllo prima di contattare</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
+              </div>` : ''}` : '';
+      const _autovalBody = showSecAutoval ? `${assessmentMeta}${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}` : '';
+      const _attivitaBody = showSecAttivita ? `
+              <div class="member-tab-subhead">Stato rapido</div>
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Messaggi inviati totali</span><strong>${escapeHtml(String(getTotalContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Messaggi inviati questa settimana</span><strong>${escapeHtml(String(getWeeklyContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo messaggio inviato</span><strong>-</strong></div>
               </div>
-            </div>
-          </details>` : ''}
-          ${showSecFeedback ? `<details class="member-acc">
-            <summary><span class="member-acc-title">Feedback post-partita</span><span class="member-acc-hint">Preferenze emerse dalle partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
+              <div class="member-tab-subhead has-divider">Feedback post-partita</div>
               ${renderPostMatchFeedbackMemberSummary(g)}
-            </div>
-          </details>` : ''}
-          ${showSecAutoval ? (assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`) : ''}
-          ${showSecAzioni ? `<details class="member-acc">
-            <summary><span class="member-acc-title">Azioni operative</span><span class="member-acc-hint">WhatsApp, autovalutazione, stato</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
-            <div class="member-acc-body">
+              <div class="member-tab-subhead has-divider">Azioni operative</div>
               <div class="member-card-action-row">
                 <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">WhatsApp</button>
                 <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
+              </div>` : '';
+      const memberTabs = [
+        { key:'anagrafica', label:'Anagrafica', visible:showSecAnagrafica, body:_anagraficaBody },
+        { key:'borsellino', label:'Borsellino', visible:tabBorsellino, body:_borsellinoBody },
+        { key:'autoval', label:'Autovalutazione', visible:showSecAutoval, body:_autovalBody },
+        { key:'attivita', label:'Attività', visible:showSecAttivita, body:_attivitaBody }
+      ].filter(t => t.visible);
+      const _firstTabKey = memberTabs.length ? memberTabs[0].key : '';
+      const _memberTabsBar = memberTabs.map(t => `<button type="button" class="member-tab${t.key === _firstTabKey ? ' active' : ''}" data-mtab="${t.key}" onclick="pmoMemberTab('${t.key}', this)">${escapeHtml(t.label)}</button>`).join('');
+      const _memberTabsPanels = memberTabs.map(t => `<div class="member-tab-panel" data-mtab="${t.key}"${t.key === _firstTabKey ? '' : ' hidden'}>${t.body}</div>`).join('');
+      card.style.display = 'block';
+      card.className = 'member-card member-card-optimized';
+      card.innerHTML = `
+        <div class="member-card-head">
+          <div class="member-card-identity">
+            <div class="member-card-avatar">${escapeHtml(initials)}</div>
+            <div>
+              <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
+              <div class="member-card-badges">
+                <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
+                <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
+                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
+                ${cardMatchpointBadge}
+                <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
               </div>
             </div>
-          </details>` : ''}
+          </div>
+          <div class="member-card-actions-top">
+            <button class="btn-secondary small-btn" onclick="closeMemberCard()">Chiudi</button>
+            <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
+          </div>
+        </div>
+        <div class="member-card-body member-card-flow">
+          <div class="member-hero">
+            ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `<div class="member-hero-wallet">
+              <span class="member-hero-wallet-label">Borsellino</span>
+              <strong class="member-hero-wallet-amount">${escapeHtml(_walletBalanceLabel(g))}</strong>
+            </div>` : '<div></div>'}
+            <div class="member-hero-actions">
+              <button class="btn-success small-btn" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')"><i class="ti ti-brand-whatsapp" style="font-size:15px;vertical-align:-2px;" aria-hidden="true"></i> WhatsApp</button>
+            </div>
+          </div>
+          ${memberTabs.length ? `<div class="member-tabs" role="tablist">${_memberTabsBar}</div>
+          <div class="member-tab-panels">${_memberTabsPanels}</div>` : '<div style="padding:18px 2px;color:#667085;">Nessuna sezione visibile per il tuo profilo.</div>'}
         </div>
         <div class="member-card-footer">
           <span class="member-panel-hint">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
@@ -14100,6 +14105,8 @@ Grazie.`
       overlay.scrollTop = 0;
       if (options.focusAssessment) {
         setTimeout(() => {
+          // L'autovalutazione vive nel tab "Autovalutazione": attivalo prima di scrollare.
+          if (typeof pmoMemberTab === 'function') pmoMemberTab('autoval');
           const target = document.getElementById('memberAssessmentValidationPanel');
           if (!target) return;
           target.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
