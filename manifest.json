@@ -1,6 +1,6 @@
 {
-  "name": "admin",
-  "short_name": "admin",
+  "name": "ADMIN",
+  "short_name": "ADMIN",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
