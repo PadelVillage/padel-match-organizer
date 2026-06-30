@@ -6584,7 +6584,7 @@ body.assessment-public-mode .assessment-public-only-card {
                     <th>Telefono</th>
                     <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('status')" title="Ordina per stato">Stato<span class="msort-ind" id="msort-status"></span></th>
                     <th>Azioni</th>
-                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('wallet')" title="Ordina per borsellino">Borsellino<span class="msort-ind" id="msort-wallet"></span></th>
+                    <th id="memberWalletColHead" style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('wallet')" title="Ordina per borsellino">Borsellino<span class="msort-ind" id="msort-wallet"></span></th>
                   </tr></thead>
                   <tbody id="memberTableBody"></tbody>
                 </table>
@@ -7801,7 +7801,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.041';
+    const APP_VERSION = '6.042';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13749,11 +13749,16 @@ Grazie.`
       const pageItems = filtered.slice(start, start + MEMBERS_PAGE_SIZE);
       setText('membersPageInfo', filtered.length ? `${start + 1}-${Math.min(start + MEMBERS_PAGE_SIZE, filtered.length)} di ${filtered.length}` : '0 risultati');
       setText('membersPageNumber', `${membersCurrentPage}/${maxPage}`);
+      // Colonna Borsellino: visibile solo con permesso view_members_borsellino (owner/admin e
+      // profili senza config = sì). Coerente con il gating della scheda socio.
+      const _showWalletCol = (typeof pmoSubsectionVisibleFor === 'function') ? pmoSubsectionVisibleFor('view_members_borsellino', 'members') : true;
+      const _wColHead = document.getElementById('memberWalletColHead');
+      if (_wColHead) _wColHead.hidden = !_showWalletCol;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">Nessun socio trovato</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${_showWalletCol ? 7 : 6}" style="text-align:center;padding:20px;color:#666;">Nessun socio trovato</td></tr>`;
         return;
       }
-      try { pmoLoadWalletBalances(); } catch (e) {} // saldi cloud (lazy, cache 2 min) → ridisegna quando pronti
+      if (_showWalletCol) { try { pmoLoadWalletBalances(); } catch (e) {} } // saldi cloud (lazy, cache 2 min) → ridisegna quando pronti
       tbody.innerHTML = pageItems.map(g => {
         const isOpen = String(memberInlineOpenId) === String(g.id);
         // Borsellino: saldo Monedero on-demand (window.__pmoWalletCache). Se già letto mostra
@@ -13778,7 +13783,7 @@ Grazie.`
           <td>${escapeHtml(g.phone || '-')}</td>
           <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span></td>
           <td><div class="players-actions"><button class="btn-secondary small-btn" onclick="event.stopPropagation(); openMemberCard('${escapeHtml(String(g.id))}')">Scheda</button></div></td>
-          <td>${walletCell}</td>
+          ${_showWalletCol ? `<td>${walletCell}</td>` : ''}
         </tr>`;
       }).join('');
       renderOpenMemberCard();
