@@ -3684,7 +3684,7 @@ async function handleVoidPayment(req, res) {
 async function handleCorrectWallet(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  // SCRITTURA NON-IDEMPOTENTE (storno borsellino, denaro reale): nessun retry.
+  // SCRITTURA NON-IDEMPOTENTE (correzione borsellino: storno o ricarica, denaro reale): nessun retry.
   const result = await mpQueueRun(mpJobMeta('correct-wallet', body), () => correctWalletWithBrowser(body));
   json(res, 200, result);
 }
@@ -7755,13 +7755,13 @@ async function _collectDialogFieldCandidates(page) {
   }).catch(() => ({ modalFound: false, fields: [], buttons: [] }));
 }
 
-// Storna (totale o parziale) il saldo del borsellino via "Correzione del saldo".
-// idInterno = id URL FichaCliente; subtractCents = importo da sottrarre (>0).
+// Corregge il saldo del borsellino via "Correzione del saldo" (Portafoglio/Monedero), in
+// ENTRAMBE le direzioni: STORNO (subtractCents>0 → importo negativo, validato dal vivo) e
+// RICARICA (addCents>0 → importo positivo). idInterno = id URL FichaCliente (o codice → risolto).
+// La direzione è il SEGNO dell'importo nel dialog (non c'è un selettore di segno).
 // Stesso KILL-SWITCH del cobro/storno partita (MATCHPOINT_PAYMENT_WRITE_ENABLED).
-// ⚠️ DIAGNOSTIC-FIRST: il dialog "Correzione del saldo" non è ancora mappato dal vivo →
-// il worker lo APRE e restituisce i candidati DOM (campi + pulsanti) SENZA inviare nulla
-// (mai un movimento di denaro alla cieca). Dopo la mappatura live si aggiunge qui il
-// fill importo + conferma + verifica saldo, in 1 iterazione (vedi handoff). NON-IDEMPOTENTE.
+// Rete di sicurezza per entrambe: rilegge il saldo e verifica == targetCents (mai falso
+// successo se la direzione/segno non viene applicato). NON-IDEMPOTENTE → nessun retry.
 // Risolve l'id interno MP (URL FichaCliente) dal CODICE cliente visibile (memberId), usando
 // la ricerca lista clienti. Il buscador MP NON cerca per codice → cerco per email/telefono/
 // cognome e identifico la riga col CODICE esatto (anti-omonimi). Stessa logica provata di
@@ -7873,13 +7873,20 @@ async function correctWalletWithBrowser(input = {}) {
   let idInterno = clean(input.idInterno || input.idCliente || input.id || '');
   const codice = clean(input.codice || input.memberId || '');
   const subtractCents = (input.subtractCents != null && Number.isFinite(Number(input.subtractCents))) ? Math.round(Number(input.subtractCents)) : null;
+  const addCents = (input.addCents != null && Number.isFinite(Number(input.addCents))) ? Math.round(Number(input.addCents)) : null;
+  // Stessa "Correzione del saldo", DIREZIONE = segno. RICARICA (addCents>0) aggiunge credito
+  // [importo POSITIVO]; STORNO (subtractCents>0) lo sottrae [importo NEGATIVO]. Esattamente UNA
+  // delle due. La verifica saldo-post (== targetCents) più sotto è la rete di sicurezza per ENTRAMBE.
+  const isRecharge = (addCents != null && addCents > 0);
+  const deltaCents = isRecharge ? addCents : (subtractCents != null ? -subtractCents : null);
 
-  const diagnostic = { mode: 'correct_wallet', steps: [], input: { idInterno, codice, subtractCents } };
+  const diagnostic = { mode: 'correct_wallet', op: isRecharge ? 'recharge' : 'storno', steps: [], input: { idInterno, codice, subtractCents, addCents } };
   instrumentStepTiming(diagnostic);
 
   const idValid = /^\d{1,8}$/.test(idInterno);
-  if (!idValid && !codice) throw fail('INVALID_CLIENT_ID', 'idInterno o codice cliente richiesto per lo storno borsellino.', diagnostic);
-  if (subtractCents == null || subtractCents <= 0) throw fail('IMPORTO_NON_VALIDO', 'subtractCents deve essere un intero > 0.', diagnostic);
+  if (!idValid && !codice) throw fail('INVALID_CLIENT_ID', 'idInterno o codice cliente richiesto per la correzione del borsellino.', diagnostic);
+  if (isRecharge && subtractCents != null && subtractCents > 0) throw fail('IMPORTO_NON_VALIDO', 'Specificare solo addCents (ricarica) OPPURE subtractCents (storno), non entrambi.', diagnostic);
+  if (deltaCents == null || deltaCents === 0) throw fail('IMPORTO_NON_VALIDO', 'addCents (ricarica) o subtractCents (storno) deve essere un intero > 0.', diagnostic);
 
   // KILL-SWITCH server-side condiviso con cobro/storno partita: con OFF (default) non si storna MAI.
   if (!boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false)) {
@@ -7910,13 +7917,16 @@ async function correctWalletWithBrowser(input = {}) {
     diagnostic.walletTextPre = preTxt;
     diagnostic.steps.push('saldo_pre:' + currentCents);
     if (currentCents == null) throw fail('WALLET_BALANCE_NOT_FOUND', 'Saldo Portafoglio non leggibile sulla scheda cliente.', diagnostic);
-    if (currentCents === 0) {
-      return { ok: false, code: 'NOTHING_TO_VOID', idCliente: idInterno, currentCents, message: 'Borsellino già a 0: niente da stornare.', diagnostic };
+    // Guardie di STORNO soltanto: in RICARICA si può aggiungere credito da 0 e non c'è tetto.
+    if (!isRecharge) {
+      if (currentCents === 0) {
+        return { ok: false, code: 'NOTHING_TO_VOID', idCliente: idInterno, currentCents, message: 'Borsellino già a 0: niente da stornare.', diagnostic };
+      }
+      if (subtractCents > currentCents) {
+        return { ok: false, code: 'IMPORTO_ECCEDE_SALDO', idCliente: idInterno, currentCents, subtractCents, message: 'Importo di storno superiore al saldo disponibile.', diagnostic };
+      }
     }
-    if (subtractCents > currentCents) {
-      return { ok: false, code: 'IMPORTO_ECCEDE_SALDO', idCliente: idInterno, currentCents, subtractCents, message: 'Importo di storno superiore al saldo disponibile.', diagnostic };
-    }
-    const targetCents = currentCents - subtractCents;
+    const targetCents = currentCents + deltaCents; // deltaCents = +addCents (ricarica) | -subtractCents (storno)
     diagnostic.targetCents = targetCents;
 
     // Apri il ledger "Saldo" del borsellino.
@@ -7960,21 +7970,23 @@ async function correctWalletWithBrowser(input = {}) {
         } catch (e) { info.err = String((e && e.message) || e).slice(0, 60); }
         diagnostic.frames.push(info);
       }
-      throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Form "Correzione del saldo" (iframe) non trovato dopo il click.', Object.assign({}, diagnostic, { currentCents, subtractCents, targetCents }));
+      throw fail('WALLET_CORRECTION_DIALOG_NON_MAPPATO', 'Form "Correzione del saldo" (iframe) non trovato dopo il click.', Object.assign({}, diagnostic, { currentCents, deltaCents, targetCents }));
     }
     diagnostic.steps.push('corr_iframe');
 
-    // Importo NEGATIVO = riduzione (non c'è selettore di segno: la direzione è il segno).
-    const itNeg = '-' + (subtractCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    await corrFrame.locator('#CC_Datos_TextBoxImporte').fill(itNeg, { timeout: 8000 });
-    await corrFrame.locator('#CC_Datos_TextBoxDescripcion').fill('Storno credito (app PMO)', { timeout: 4000 }).catch(() => {});
-    diagnostic.steps.push('corr_fill:' + itNeg);
+    // Non c'è selettore di segno: la DIREZIONE è il segno dell'importo.
+    // RICARICA → importo POSITIVO (numero nudo); STORNO → importo NEGATIVO ('-…').
+    const euroAbs = (Math.abs(deltaCents) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const itAmount = isRecharge ? euroAbs : ('-' + euroAbs);
+    await corrFrame.locator('#CC_Datos_TextBoxImporte').fill(itAmount, { timeout: 8000 });
+    await corrFrame.locator('#CC_Datos_TextBoxDescripcion').fill(isRecharge ? 'Ricarica credito (app PMO)' : 'Storno credito (app PMO)', { timeout: 4000 }).catch(() => {});
+    diagnostic.steps.push('corr_fill:' + itAmount);
     await corrFrame.locator('#CC_Datos_ButtonAceptar').click({ timeout: 8000 });
     diagnostic.steps.push('corr_accept');
     await _confirmDialogYes(page, diagnostic, 'corr'); // eventuale conferma swal/confirm
     await page.waitForTimeout(1500);
 
-    // VERIFICA: ricarica la Ficha e rileggi il saldo → deve == targetCents (current - subtract).
+    // VERIFICA: ricarica la Ficha e rileggi il saldo → deve == targetCents (current + delta).
     await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(idInterno)}`), { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForTimeout(1000);
     const postTxt = await page.locator(MP_PAYMENT_SELECTORS.walletSaldoLabel).first().innerText({ timeout: 6000 }).catch(() => '');
@@ -7982,15 +7994,15 @@ async function correctWalletWithBrowser(input = {}) {
     diagnostic.walletTextPost = postTxt;
     diagnostic.steps.push('saldo_post:' + balanceCentsPost);
     if (balanceCentsPost == null) {
-      return { ok: true, idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost: null, warning: 'POST_BALANCE_UNREADABLE', diagnostic };
+      return { ok: true, op: diagnostic.op, idCliente: idInterno, currentCents, subtractCents, addCents, deltaCents, targetCents, balanceCentsPost: null, warning: 'POST_BALANCE_UNREADABLE', diagnostic };
     }
     if (balanceCentsPost !== targetCents) {
       // Il saldo non è quello atteso (segno sbagliato? validazione? importo non applicato):
       // NON dichiarare successo. L'operatore verifica su Matchpoint.
-      return { ok: false, code: 'CORRECTION_RESULT_MISMATCH', idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost, message: `Saldo dopo correzione ${balanceCentsPost}c ≠ atteso ${targetCents}c. Verificare su Matchpoint.`, diagnostic };
+      return { ok: false, code: 'CORRECTION_RESULT_MISMATCH', op: diagnostic.op, idCliente: idInterno, currentCents, subtractCents, addCents, deltaCents, targetCents, balanceCentsPost, message: `Saldo dopo correzione ${balanceCentsPost}c ≠ atteso ${targetCents}c. Verificare su Matchpoint.`, diagnostic };
     }
     diagnostic.steps.push('done');
-    return { ok: true, idCliente: idInterno, currentCents, subtractCents, targetCents, balanceCentsPost, diagnostic };
+    return { ok: true, op: diagnostic.op, idCliente: idInterno, currentCents, subtractCents, addCents, deltaCents, targetCents, balanceCentsPost, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
