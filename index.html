@@ -4902,6 +4902,18 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-card-overlay.open { display:block; }
     .member-card-overlay .member-card { margin:0; border:0; border-radius:0; box-shadow:none; }
     .member-card-overlay .member-card-head { position:sticky; top:0; z-index:2; background:#fff; box-shadow:0 1px 0 rgba(15,23,42,.08); }
+    /* Desktop: la scheda socio NON deve coprire la sidebar/chat (larga 304px a sinistra).
+       La ancoro a destra della side-nav e la centro nell'area rimanente. Con sidebar
+       collassata torna centrata su tutta la viewport (regola base sopra). */
+    @media (min-width:900px) {
+      body:not(.sidebar-collapsed) .member-card-overlay {
+        --pmo-card-w: min(1180px, calc(100vw - 304px - 48px));
+        width: var(--pmo-card-w);
+        left: calc(304px + (100vw - 304px - var(--pmo-card-w)) / 2);
+        right: auto;
+        transform: none;
+      }
+    }
     .players-add-form {
       display:none;
       position:fixed;
@@ -7747,7 +7759,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.036';
+    const APP_VERSION = '6.037';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37310,6 +37322,8 @@ Per confermare scrivi ELIMINA.`);
         } catch (e) {}
         _setMsg(note, '✅ Borsellino stornato — ' + esc(playerName) + (postCents != null ? (' · nuovo saldo ' + _incassiEuro(postCents)) : ''));
         try { if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers(); else if (typeof renderOpenMemberCard === 'function') renderOpenMemberCard(); } catch (e) {}
+        // Operazione andata a buon fine → pulizia chat dopo ~4s, come gli altri flussi OK.
+        try { if (typeof svcScheduleAutoClear === 'function') svcScheduleAutoClear(); } catch (e) {}
         return { ok: true, balanceCentsPost: postCents };
       }
       const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
