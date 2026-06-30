@@ -7759,7 +7759,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.038';
+    const APP_VERSION = '6.039';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13929,7 +13929,6 @@ Grazie.`
               ${/^\d{1,8}$/.test(String(_walletClientId(g) || '').trim()) ? `
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn-secondary small-btn" onclick="pmoWalletRefresh('${escapeHtml(String(g.id))}', this)">↻ Aggiorna saldo</button>
-                <button class="btn-primary small-btn" disabled>＋ Ricarica</button>
               </div>
               <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
@@ -13937,6 +13936,15 @@ Grazie.`
               <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
               </div>`}
+              ${(PMO_WALLET_WRITE_ENABLED && (/^\d{1,8}$/.test(String(_walletClientId(g) || '').trim()) || String((g.memberId || g.codice) || '').trim())) ? `
+              <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
+                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">＋ Ricarica saldo (Correzione del saldo)</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <input id="pmoWalletRechargeAmt" type="text" inputmode="decimal" placeholder="Importo €" style="width:120px;padding:6px 8px;" title="Importo da aggiungere al borsellino">
+                  <button class="btn-primary small-btn" onclick="pmoWalletRechargeClick('${escapeHtml(String(g.id))}', this)">＋ Ricarica</button>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:#6b7280;">Aggiunge credito al borsellino su Matchpoint. Operazione reale. Non incide sugli incassi (l'incasso si conta quando il credito viene speso).</div>
+              </div>` : ''}
               ${(PMO_WALLET_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
               <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
                 <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">↩︎ Storna saldo (Correzione del saldo)</div>
@@ -21932,6 +21940,16 @@ Grazie!`
       let sub = inp ? _pmoEuroToCents(inp.value) : null;
       if ((sub == null || sub <= 0) && cur != null) sub = cur; // input vuoto = storno TOTALE
       return _pmoVoidWallet({ memberId: String(memberId), idInterno: String(_walletClientId(g) || ''), subtractCents: sub, currentCents: cur, sourceBtns: [btn] });
+    }
+    // Ricarica borsellino (Fase 2b write): legge l'importo (obbligatorio) e lancia _pmoRechargeWallet.
+    function pmoWalletRechargeClick(memberId, btn) {
+      const g = (typeof giocatori !== 'undefined') ? giocatori.find(p => String(p.id) === String(memberId)) : null;
+      if (!g) return;
+      const w = _walletResolve(g);
+      const cur = (w && typeof w.balance_cents === 'number') ? w.balance_cents : null;
+      const inp = document.getElementById('pmoWalletRechargeAmt');
+      const add = inp ? _pmoEuroToCents(inp.value) : null;
+      return _pmoRechargeWallet({ memberId: String(memberId), idInterno: String(_walletClientId(g) || ''), addCents: add, currentCents: cur, sourceBtns: [btn] });
     }
     // Sincronizza i saldi borsellino di TUTTI i soci in un colpo (edge matchpoint-wallet-sync →
     // worker /export-wallet-report → report "Clienti con credito residuo"). Popola wallet_balance
@@ -37338,6 +37356,108 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── RICARICA BORSELLINO (Fase 2b — scrittura, denaro reale): AGGIUNGE credito al saldo
+  // Portafoglio via edge matchpoint-wallet-correct → worker /correct-wallet ("Correzione del
+  // saldo", importo POSITIVO). NON incide sugli incassi: è un movimento di CREDITO, non un
+  // cobro — l'incasso si riconosce solo quando il credito viene speso su una prenotazione
+  // (pagamento col borsellino). Conferma esplicita, edge sincrona, NESSUN retry. Gated dal
+  // flag PMO_WALLET_WRITE_ENABLED (bypass solo-harness via __pmoPayHarness).
+  function _pmoConfirmRecharge(name, addCents) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const imp = '<strong>' + _incassiEuro(addCents) + '</strong>';
+      const msg = svcAddMessage('system', '＋ Ricaricare ' + imp + ' sul borsellino di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Aggiunge credito su Matchpoint (operazione reale).</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['＋ Sì, ricarica'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoRechargeWallet(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    if (!PMO_WALLET_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Ricarica borsellino non attiva: la scrittura (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const memberId = String(opts.memberId == null ? '' : opts.memberId).trim();
+    const g = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori.find(function (p) { return String(p.id) === memberId; }) : null;
+    const idInterno = String((opts.idInterno != null ? opts.idInterno : (g ? _walletClientId(g) : '')) || '').trim();
+    // Codice cliente (memberId MP) + dati identificativi: il worker risolve l'id interno dal
+    // codice quando non collegato → ricarica da QUALSIASI scheda socio (anche borsellino a 0).
+    const codice = String((opts.codice != null ? opts.codice : (g && (g.memberId || g.codice))) || '').trim();
+    const playerName = opts.playerName || (g && g.nome) || '';
+    const idNome = (g && (g.firstName || '')) || '';
+    const idCognome = (g && (g.surname || '')) || '';
+    const idEmail = (g && (g.email || '')) || '';
+    const idTelefono = (g && (g.phone || g.telefono || '')) || '';
+    const currentCents = (typeof opts.currentCents === 'number') ? opts.currentCents : null;
+    const addCents = (typeof opts.addCents === 'number') ? Math.round(opts.addCents) : null;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (!/^\d{1,8}$/.test(idInterno) && !codice) {
+      try { svcAddMessage('system', '⚠️ Socio senza id Matchpoint né codice: impossibile ricaricare il borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_CLIENT_REF' };
+    }
+    if (addCents == null || addCents <= 0) {
+      try { svcAddMessage('system', '⚠️ Importo di ricarica non valido.', 'error'); } catch (e) {}
+      return { ok: false, message: 'INVALID_AMOUNT' };
+    }
+    const okGo = await _pmoConfirmRecharge(playerName, addCents);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Ricarica borsellino di ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'ricaricare il borsellino su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-wallet-correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({ idInterno: idInterno, codice: codice, nome: idNome, cognome: idCognome, email: idEmail, telefono: idTelefono, addCents: addCents }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — aggiorno la cache saldo (saldo post dal worker, o calcolo locale) e ridisegno.
+        const postCents = (data && typeof data.balanceCentsPost === 'number') ? data.balanceCentsPost
+          : (currentCents != null ? (currentCents + addCents) : null);
+        try {
+          const nowIso = new Date().toISOString();
+          const idForCache = String((data && data.idInterno) || idInterno || '').trim();
+          if (postCents != null) {
+            if (idForCache && window.__pmoWalletCache) window.__pmoWalletCache.set(idForCache, { balance_cents: postCents, synced_at: nowIso });
+            if (g && window.__pmoWalletCloud) window.__pmoWalletCloud.set(String(g.id), { balance_cents: postCents, synced_at: nowIso });
+          }
+        } catch (e) {}
+        _setMsg(note, '✅ Borsellino ricaricato — ' + esc(playerName) + (postCents != null ? (' · nuovo saldo ' + _incassiEuro(postCents)) : ''));
+        try { if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers(); else if (typeof renderOpenMemberCard === 'function') renderOpenMemberCard(); } catch (e) {}
+        try { if (typeof svcScheduleAutoClear === 'function') svcScheduleAutoClear(); } catch (e) {}
+        return { ok: true, balanceCentsPost: postCents };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Ricarica borsellino NON riuscita: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        _setMsg(note, '⌛ Esito ricarica borsellino non confermato (timeout). Controlla su Matchpoint prima di ritentare.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore ricarica borsellino: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
     try { _staffCalMaybeRefreshPaidIndex(); } catch (e) {}
@@ -41856,6 +41976,7 @@ Per confermare scrivi ELIMINA.`);
         collectPayment: function (opts) { return _pmoCollectPayment(opts); },
         voidPayment: function (opts) { return _pmoVoidPayment(opts); },
         voidWallet: function (opts) { return _pmoVoidWallet(opts); },
+        rechargeWallet: function (opts) { return _pmoRechargeWallet(opts); },
         isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
         paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }

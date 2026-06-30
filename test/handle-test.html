@@ -1148,6 +1148,69 @@ const CASES = [
       H.setPayHarness(false);
       return checks;
     }
+  },
+  {
+    id: 45, flow: 'Pagamenti', name: 'ricarica borsellino OK → edge wallet-correct {idInterno,addCents} + cache = saldo post worker',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { op: 'recharge', balanceCentsPost: 1300 } };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '170', playerName: 'Maurizia Prea', addCents: 1000, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.correct.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-wallet-correct chiamata', ok: got });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload {idInterno:170, addCents:1000} e NESSUN subtractCents', ok: !!cp && cp.body && cp.body.idInterno === '170' && cp.body.addCents === 1000 && cp.body.subtractCents == null });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('170');
+      checks.push({ label: 'cache saldo = 1300 (post dal worker)', ok: !!wc && wc.balance_cents === 1300 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 46, flow: 'Pagamenti', name: 'ricarica borsellino da saldo 0 OK → cache = current+add (fallback locale senza saldo post)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { op: 'recharge' } }; // worker non torna balanceCentsPost → calcolo locale
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '171', playerName: 'Maurizia Prea', addCents: 2000, currentCents: 0 });
+      checks.push({ label: 'rechargeWallet risolve ok:true (anche da borsellino vuoto)', ok: !!(res && res.ok === true) });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload addCents=2000', ok: !!cp && cp.body && cp.body.addCents === 2000 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('171');
+      checks.push({ label: 'cache saldo = 2000 (0+2000, fallback locale)', ok: !!wc && wc.balance_cents === 2000 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 47, flow: 'Pagamenti', name: 'ricarica borsellino RIFIUTATA (mismatch) → ok:false + una sola chiamata (no retry)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { reject: true, status: 409, body: { ok: false, code: 'CORRECTION_RESULT_MISMATCH', message: 'Saldo dopo correzione ≠ atteso' } };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '172', playerName: 'Maurizia Prea', addCents: 1000, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('172');
+      checks.push({ label: 'cache saldo NON aggiornata su rifiuto', ok: !wc });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 48, flow: 'Pagamenti', name: 'ricarica importo non valido (≤0) → bloccata in app, edge NON chiamata',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '173', playerName: 'Maurizia Prea', addCents: 0, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:false (INVALID_AMOUNT)', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge NON chiamata (guardia lato app)', ok: CAPTURED.correct.length === 0 });
+      H.setPayHarness(false);
+      return checks;
+    }
   }
 ];
 
