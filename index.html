@@ -7806,7 +7806,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.046';
+    const APP_VERSION = '6.047';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -7854,6 +7854,15 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     const PMO_RUNTIME_ENV = pmoDetectRuntimeEnv();
     const PMO_IS_TEST_ENV = PMO_RUNTIME_ENV === 'test';
+    // Fase 2b — SIMULAZIONE pagamenti (SOLO TEST). Esercita TUTTA la UI incasso
+    // (Cash/Card/Wallet + importo editabile) e il collegamento scheda → Incassi SENZA
+    // toccare Matchpoint: il cobro/storno NON chiama edge/worker, scrive/aggiorna un
+    // record `payment` nel cloud di TEST (che in test fa da SOSTITUTO del libro mastro MP),
+    // così la sezione Incassi lo legge dal percorso genuino. In PROD la verità resta
+    // Matchpoint (vedi memoria "Matchpoint = economia principale unica"). Impossibile in
+    // PROD perché gated PMO_IS_TEST_ENV. Precedenza sull'harness edge (__pmoPayHarness): la
+    // simulazione NON si attiva quando il test pilota il percorso edge reale (mockato).
+    const PMO_PAYMENTS_SIMULATE = PMO_IS_TEST_ENV;
     // Assistente AI: attivo in TUTTI gli ambienti (TEST e PROD). Il gating fine per chi lo
     // vede resta il permesso ruolo `view_assistante_ai` (owner/admin sempre). Storicamente
     // l'assistente era legato a PMO_IS_TEST_ENV; promosso/attivato in PROD da v5.815.
@@ -21818,6 +21827,7 @@ Grazie!`
           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
           <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
             <button type="button" class="btn-secondary small-btn" onclick="_incassiReload()" title="Ricarica dalla cache cloud">↻ Aggiorna</button>
+            ${PMO_PAYMENTS_SIMULATE ? `<button type="button" class="btn-secondary small-btn" onclick="pmoIncassiCleanSim(this)" title="Cancella dal cloud TEST tutti gli incassi simulati (source pmo_simulate)" style="color:#92600a;border-color:#f5d98a;">🧹 Pulisci simulazioni</button>` : ''}
             <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
           </div>
         </div>`;
@@ -22097,6 +22107,25 @@ Grazie!`
       } catch (e) {
         console.warn('pmoPaymentsSyncAll:', e);
         alert('Sincronizzazione incassi non riuscita: ' + ((e && e.message) || e));
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = orig; }
+      }
+    }
+
+    // Pulisce dal cloud TEST tutti gli incassi SIMULATI (source pmo_simulate). Solo TEST.
+    async function pmoIncassiCleanSim(btn) {
+      if (!PMO_PAYMENTS_SIMULATE) return;
+      if (typeof _pmoSimCleanupPayments !== 'function') { alert('Pulizia simulazioni non disponibile.'); return; }
+      if (!confirm('Cancellare tutti gli incassi SIMULATI dal cloud di TEST?\nNon tocca Matchpoint né i pagamenti reali.')) return;
+      const orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.classList.add('pmo-btn-loading'); btn.innerHTML = '<span class="pmo-spin">↻</span> Pulisco…'; }
+      try {
+        const n = await _pmoSimCleanupPayments();
+        await _incassiReload();
+        alert(n > 0 ? ('Rimossi ' + n + ' incassi simulati.') : 'Nessun incasso simulato da rimuovere.');
+      } catch (e) {
+        console.warn('pmoIncassiCleanSim:', e);
+        alert('Pulizia simulazioni non riuscita: ' + ((e && e.message) || e));
       } finally {
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = orig; }
       }
@@ -37145,18 +37174,89 @@ Per confermare scrivi ELIMINA.`);
     _staffCalRefreshPaidIndex();
   }
 
+  // ── Pagamenti SIMULAZIONE (SOLO TEST) — helper cloud ────────────────────────
+  // Il cobro/storno simulato scrive/aggiorna un record `payment` nel cloud di TEST con la
+  // STESSA forma che produce matchpoint-payments-sync (vedi _incassiFetch/renderIncassi:
+  // method/amount_cents/data/id_cliente/player_name/voided), così la sezione Incassi lo
+  // legge dal percorso genuino. Taggato source:'pmo_simulate' (distinguibile e pulibile);
+  // local_key con prefisso dedicato (niente collisione col sync reale). Mai in PROD.
+  const PMO_SIM_PAY_PREFIX = 'pmo_sim_pay|';
+  function _pmoSimPayKey(idReserva, idx, playerName) {
+    const t = (typeof Date !== 'undefined' && Date.now) ? Date.now() : 0;
+    const nm = String(playerName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+    return PMO_SIM_PAY_PREFIX + String(idReserva || '') + '|' + String(idx == null ? '' : idx) + '|' + nm + '|' + t;
+  }
+  async function _pmoSimWritePayment(opts) {
+    const payload = {
+      id_reserva: String(opts.idReserva || ''),
+      id_cliente: String(opts.idCliente || ''),
+      player_name: opts.playerName || '',
+      method: opts.method || '',
+      amount_cents: (typeof opts.amountCents === 'number') ? opts.amountCents : 0,
+      data: opts.data || (typeof _incassiToday === 'function' ? _incassiToday() : ''),
+      recorded_at: new Date().toISOString(),
+      voided: false,
+      source: 'pmo_simulate',
+      simulated: true,
+    };
+    const rec = { record_type: 'payment', local_key: _pmoSimPayKey(opts.idReserva, opts.idx, opts.playerName), payload, deleted: false };
+    await pmoSyncCloudRecordsNow([rec], 'simulare un incasso');
+    try { if (typeof _incassiState !== 'undefined' && _incassiState) _incassiState.rows = null; } catch (e) {}
+    return rec;
+  }
+  // Storno simulato: marca voided i record `payment` simulati che combaciano (prenotazione +
+  // giocatore per id_cliente o nome). L'aggregazione di Incassi salta i voided → spariscono.
+  async function _pmoSimVoidPayments(idReserva, idCliente, playerName) {
+    if (typeof pmoStaffRpcPaged !== 'function') return 0;
+    const rows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['payment'], p_since: null }, 'cloud_sync', 'stornare (simulazione) un incasso');
+    const idR = String(idReserva || ''); const idC = String(idCliente || ''); const nm = String(playerName || '').toLowerCase().trim();
+    const toVoid = [];
+    for (const r of (rows || [])) {
+      if (!r || r.deleted || !r.payload) continue;
+      const p = r.payload;
+      if (p.source !== 'pmo_simulate' || p.voided || p.status === 'void') continue;
+      if (String(p.id_reserva || '') !== idR) continue;
+      const matchCli = !!(idC && p.id_cliente && String(p.id_cliente) === idC);
+      const matchNm = !!(nm && String(p.player_name || '').toLowerCase().trim() === nm);
+      if (!matchCli && !matchNm) continue;
+      const np = Object.assign({}, p, { voided: true, status: 'void', voided_at: new Date().toISOString() });
+      toVoid.push({ record_type: 'payment', local_key: r.local_key, payload: np, deleted: false });
+    }
+    if (toVoid.length) await pmoSyncCloudRecordsNow(toVoid, 'stornare (simulazione) incassi');
+    try { if (typeof _incassiState !== 'undefined' && _incassiState) _incassiState.rows = null; } catch (e) {}
+    return toVoid.length;
+  }
+  // Pulizia: tombstona (deleted) TUTTI i record `payment` simulati. Usato dal bottone
+  // "🧹 Pulisci simulazioni" in Incassi.
+  async function _pmoSimCleanupPayments() {
+    if (typeof pmoStaffRpcPaged !== 'function') return 0;
+    const rows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['payment'], p_since: null }, 'cloud_sync', 'pulire gli incassi simulati');
+    const dead = [];
+    for (const r of (rows || [])) {
+      if (!r || !r.payload || r.payload.source !== 'pmo_simulate') continue;
+      dead.push({ record_type: 'payment', local_key: r.local_key, payload: Object.assign({}, r.payload, { deleted: true }), deleted: true });
+    }
+    if (dead.length) await pmoSyncCloudRecordsNow(dead, 'pulire gli incassi simulati');
+    try { if (typeof _incassiState !== 'undefined' && _incassiState) _incassiState.rows = null; } catch (e) {}
+    return dead.length;
+  }
+
   // ── Pagamenti Fase 2b — SCRITTURA incasso (denaro reale) ────────────────────
   // Conferma esplicita a pulsanti (coerente con l'app), poi chiamata SINCRONA alla
   // edge `matchpoint-payment-write` (NON ottimistico, NIENTE retry: il cobro è
-  // irreversibile). In harness mockato la conferma si auto-accetta.
-  function _pmoConfirmCollect(name, methodLabel, amountCents) {
+  // irreversibile). In harness mockato la conferma si auto-accetta. In SIMULAZIONE
+  // (solo TEST) il cobro non tocca MP: scrive il record `payment` nel cloud TEST.
+  function _pmoConfirmCollect(name, methodLabel, amountCents, simulate) {
     return new Promise(function (resolve) {
       const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
-      if (_harness) { resolve(true); return; }
+      const _simAuto = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPaySimAuto === true;
+      if (_harness || _simAuto) { resolve(true); return; }
       const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
-      const msg = svcAddMessage('system', '💶 Incassare <strong>' + _incassiEuro(amountCents) + '</strong> da <strong>' + esc(name) + '</strong> in <strong>' + esc(methodLabel) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Operazione reale su Matchpoint: crea un cobro, non annullabile dall’app.</span>');
+      const msg = svcAddMessage('system', simulate
+        ? '🧪 <strong>SIMULAZIONE</strong> — Incassare <strong>' + _incassiEuro(amountCents) + '</strong> da <strong>' + esc(name) + '</strong> in <strong>' + esc(methodLabel) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Non tocca Matchpoint: registra il pagamento solo nella sezione Incassi (cloud TEST).</span>'
+        : '💶 Incassare <strong>' + _incassiEuro(amountCents) + '</strong> da <strong>' + esc(name) + '</strong> in <strong>' + esc(methodLabel) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Operazione reale su Matchpoint: crea un cobro, non annullabile dall’app.</span>');
       let _done = false;
-      const btns = svcMakeStepButtons(['✅ Sì, incassa'],
+      const btns = svcMakeStepButtons([simulate ? '🧪 Sì, simula incasso' : '✅ Sì, incassa'],
         function () { if (_done) return; _done = true; resolve(true); },
         function () { if (_done) return; _done = true; resolve(false); });
       try { msg.appendChild(btns); } catch (e) {}
@@ -37165,10 +37265,12 @@ Per confermare scrivi ELIMINA.`);
   async function _pmoCollectPayment(opts) {
     opts = opts || {};
     const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    // SIMULAZIONE (solo TEST): attiva quando NON si sta pilotando il percorso edge reale.
+    const _simulate = PMO_PAYMENTS_SIMULATE && !_harness;
     const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
     const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
-    // Gate di sicurezza: con write OFF e fuori harness non si incassa MAI.
-    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+    // Gate di sicurezza: con write OFF, fuori harness e fuori simulazione non si incassa MAI.
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness && !_simulate) {
       try { svcAddMessage('system', 'ℹ️ Incasso non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
       return { ok: false, message: 'WRITE_DISABLED' };
     }
@@ -37187,10 +37289,37 @@ Per confermare scrivi ELIMINA.`);
       try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
       return { ok: false, message: 'NO_IDRESERVA' };
     }
-    const okGo = await _pmoConfirmCollect(playerName, methodLabel, amountCents);
+    const okGo = await _pmoConfirmCollect(playerName, methodLabel, amountCents, _simulate);
     if (!okGo) return { ok: false, message: 'CANCELLED' };
     btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
-    const note = svcAddMessage('system', '↻ Incasso ' + esc(methodLabel) + ' di ' + _incassiEuro(amountCents) + ' per ' + esc(playerName) + '… (non chiudere)');
+    const note = svcAddMessage('system', (_simulate ? '🧪 Simulazione incasso ' : '↻ Incasso ') + esc(methodLabel) + ' di ' + _incassiEuro(amountCents) + ' per ' + esc(playerName) + '… (non chiudere)');
+    // ── Ramo SIMULAZIONE (solo TEST): niente edge/worker/Matchpoint. Scrive il record
+    // `payment` nel cloud TEST e aggiorna lo stato locale + chip come nel ramo reale.
+    if (_simulate) {
+      try {
+        await _pmoSimWritePayment({ idReserva: idReserva, idCliente: idCliente, idx: opts.idx, playerName: playerName, method: method, amountCents: amountCents, data: opts.data });
+      } catch (e) {
+        _setMsg(note, '⚠️ Simulazione incasso non riuscita: ' + esc(e && e.message ? e.message : String(e)));
+        btns.forEach(function (b) { try { b.disabled = false; } catch (e2) {} });
+        return { ok: false, message: (e && e.message) ? e.message : String(e) };
+      }
+      try {
+        const stOpen = staffCalPlayersState;
+        if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+          const tgt = stOpen.roster.find(function (x) {
+            return String(x.idx) === String(opts.idx)
+              || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+              || x.nome === playerName;
+          });
+          if (tgt) { tgt.stato = 'riscosso'; tgt.pendenteCents = 0; if (tgt.importoCents == null) tgt.importoCents = amountCents; }
+        }
+      } catch (e) {}
+      try { _staffCalPaidIndexAdd(idReserva, idCliente, playerName); } catch (e) {}
+      _setMsg(note, '🧪 Simulato incasso ' + esc(methodLabel) + ' ' + _incassiEuro(amountCents) + ' — ' + esc(playerName) + ' (visibile in Incassi)');
+      try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+      try { renderStaffCalendar(); } catch (e) {}
+      return { ok: true, simulated: true };
+    }
     try {
       const cfg = await loadAssessmentSupabaseConfig();
       const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
@@ -37247,13 +37376,14 @@ Per confermare scrivi ELIMINA.`);
 
   // ── STORNO pagamento (Fase 2b) — annulla un cobro già fatto. Gemello di
   // _pmoCollectPayment: conferma esplicita + edge sincrona + nessun retry.
-  function _pmoConfirmVoid(name, amountCents) {
+  function _pmoConfirmVoid(name, amountCents, simulate) {
     return new Promise(function (resolve) {
       const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
-      if (_harness) { resolve(true); return; }
+      const _simAuto = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPaySimAuto === true;
+      if (_harness || _simAuto) { resolve(true); return; }
       const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
       const imp = (amountCents != null && amountCents > 0) ? (' di <strong>' + _incassiEuro(amountCents) + '</strong>') : '';
-      const msg = svcAddMessage('system', '↩︎ Stornare il pagamento' + imp + ' di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Annulla il cobro su Matchpoint (operazione reale).</span>');
+      const msg = svcAddMessage('system', (simulate ? '🧪 <strong>SIMULAZIONE</strong> — Stornare il pagamento' : '↩︎ Stornare il pagamento') + imp + ' di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">' + (simulate ? 'Non tocca Matchpoint: rimuove il pagamento dalla sezione Incassi (cloud TEST).' : 'Annulla il cobro su Matchpoint (operazione reale).') + '</span>');
       let _done = false;
       const btns = svcMakeStepButtons(['↩︎ Sì, storna'],
         function () { if (_done) return; _done = true; resolve(true); },
@@ -37264,9 +37394,10 @@ Per confermare scrivi ELIMINA.`);
   async function _pmoVoidPayment(opts) {
     opts = opts || {};
     const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const _simulate = PMO_PAYMENTS_SIMULATE && !_harness;
     const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
     const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
-    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness && !_simulate) {
       try { svcAddMessage('system', 'ℹ️ Storno non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
       return { ok: false, message: 'WRITE_DISABLED' };
     }
@@ -37279,10 +37410,38 @@ Per confermare scrivi ELIMINA.`);
       try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
       return { ok: false, message: 'NO_IDRESERVA' };
     }
-    const okGo = await _pmoConfirmVoid(playerName, importoCents);
+    const okGo = await _pmoConfirmVoid(playerName, importoCents, _simulate);
     if (!okGo) return { ok: false, message: 'CANCELLED' };
     btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
-    const note = svcAddMessage('system', '↻ Storno del pagamento di ' + esc(playerName) + '… (non chiudere)');
+    const note = svcAddMessage('system', (_simulate ? '🧪 Simulazione storno ' : '↻ Storno ') + 'del pagamento di ' + esc(playerName) + '… (non chiudere)');
+    // ── Ramo SIMULAZIONE (solo TEST): marca voided i record `payment` simulati → spariscono
+    // da Incassi; il giocatore torna "da pagare". Niente edge/worker/Matchpoint.
+    if (_simulate) {
+      let n = 0;
+      try {
+        n = await _pmoSimVoidPayments(idReserva, idCliente, playerName);
+      } catch (e) {
+        _setMsg(note, '⚠️ Simulazione storno non riuscita: ' + esc(e && e.message ? e.message : String(e)));
+        btns.forEach(function (b) { try { b.disabled = false; } catch (e2) {} });
+        return { ok: false, message: (e && e.message) ? e.message : String(e) };
+      }
+      try {
+        const stOpen = staffCalPlayersState;
+        if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+          const tgt = stOpen.roster.find(function (x) {
+            return String(x.idx) === String(opts.idx)
+              || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+              || x.nome === playerName;
+          });
+          if (tgt) { tgt.stato = 'in_sospeso'; tgt.pendenteCents = (tgt.importoCents != null ? tgt.importoCents : importoCents); }
+        }
+      } catch (e) {}
+      try { _staffCalPaidIndexRemove(idReserva, idCliente, playerName); } catch (e) {}
+      _setMsg(note, n > 0 ? ('🧪 Simulato storno — ' + esc(playerName)) : ('🧪 Nessun incasso simulato da stornare per ' + esc(playerName)));
+      try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+      try { renderStaffCalendar(); } catch (e) {}
+      return { ok: true, simulated: true, voided: n };
+    }
     try {
       const cfg = await loadAssessmentSupabaseConfig();
       const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
@@ -38858,7 +39017,16 @@ Per confermare scrivi ELIMINA.`);
       // Incasso ATTIVO solo se il flag write è ON (PROD/test reali: OFF) oppure se siamo
       // nell'harness mockato (bypass solo-TEST). Altrimenti input/bottoni sono in sola lettura.
       const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
+        || PMO_PAYMENTS_SIMULATE
         || (PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true);
+      // Modalità simulazione attiva ma scrittura reale OFF → banner esplicativo.
+      const _paySimUi = PMO_PAYMENTS_SIMULATE && !PMO_PAYMENTS_WRITE_ENABLED;
+      if (_paySimUi) {
+        const simNote = document.createElement('div');
+        simNote.style.cssText = 'font-size:.74rem;color:#92600a;background:#fff7e6;border:1px solid #f5d98a;border-radius:8px;padding:6px 8px;margin-bottom:8px;';
+        simNote.innerHTML = '🧪 <strong>Simulazione</strong> — gli incassi non toccano Matchpoint: appaiono solo nella sezione Incassi (cloud TEST).';
+        paySec.appendChild(simNote);
+      }
       st.roster.forEach(function (p) {
         const item = document.createElement('div');
         item.className = 'svc-pay-item';
@@ -38978,9 +39146,11 @@ Per confermare scrivi ELIMINA.`);
       payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
       payHint.textContent = _anyUnknown
         ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
-        : (_payWriteActive
-            ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
-            : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).');
+        : (_paySimUi
+            ? 'Modifica l’importo a carico se serve, poi incassa: in simulazione il pagamento appare solo in Incassi (non tocca Matchpoint).'
+            : (_payWriteActive
+                ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
+                : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).'));
       paySec.appendChild(payHint);
       box.appendChild(paySec);
     }
@@ -42061,6 +42231,9 @@ Per confermare scrivi ELIMINA.`);
         refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); },
         // Fase 2b — incasso pagamenti (mockato dall'harness; bypass conferma+gate via __pmoPayHarness)
         setPayHarness: function (on) { try { window.__pmoPayHarness = (on !== false); } catch (e) {} },
+        // Simulazione (solo TEST): auto-conferma + percorso cloud (niente edge/MP)
+        setPaySimAuto: function (on) { try { window.__pmoPaySimAuto = (on !== false); } catch (e) {} },
+        simCleanup: function () { return _pmoSimCleanupPayments(); },
         collectPayment: function (opts) { return _pmoCollectPayment(opts); },
         voidPayment: function (opts) { return _pmoVoidPayment(opts); },
         voidWallet: function (opts) { return _pmoVoidWallet(opts); },
