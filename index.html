@@ -5318,25 +5318,6 @@ body.assessment-public-mode .assessment-public-only-card {
     .pmo-chapter-item[hidden],
     .pmo-chapter-group[hidden],
     .pmo-chapter-dropdown button[hidden] { display: none !important; }
-    .nav-order {
-      flex:0 0 28px;
-      width:28px;
-      height:28px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:8px;
-      background:rgba(255,255,255,.13);
-      color:#fff;
-      font-size:13px;
-      font-weight:800;
-      line-height:1;
-    }
-    .side-nav .side-nav-main-item.active .nav-order,
-    .side-nav-parent.active-parent .nav-order {
-      background:#e7eef8;
-      color:var(--primary);
-    }
     .nav-copy {
       min-width:0;
       flex:1 1 auto;
@@ -5373,7 +5354,6 @@ body.assessment-public-mode .assessment-public-only-card {
       transform:rotate(-90deg);
       transition:transform .16s ease;
     }
-    .side-nav-parent > .nav-order,
     .side-nav-parent > .nav-copy {
       position:static !important;
       right:auto !important;
@@ -6209,7 +6189,6 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="side-nav-content">
         <div class="side-nav-section-label">Capitoli</div>
         <button class="tab-button side-nav-main-item" data-section-key="dashboard" onclick="switchTab('dashboard', this)">
-          <span class="nav-order">0</span>
           <span class="nav-copy"><span class="nav-main">Calendario</span><span class="nav-sub">Campi staff</span></span>
         </button>
 
@@ -6221,7 +6200,6 @@ body.assessment-public-mode .assessment-public-only-card {
              orizzontale (.pmo-chapter-bar). Su mobile restano la navigazione del drawer. -->
         <div class="side-nav-chapters">
         <button class="side-nav-parent side-nav-main-item" data-section-key="assessment" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
-          <span class="nav-order">1</span>
           <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
           <span class="nav-caret">▾</span>
         </button>
@@ -6234,22 +6212,18 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <button class="tab-button side-nav-main-item" data-section-key="members" onclick="switchTab('members', this)">
-          <span class="nav-order">2</span>
           <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
         </button>
 
         <button class="tab-button side-nav-main-item" data-section-key="incassi" onclick="switchTab('incassi', this)">
-          <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Incassi</span><span class="nav-sub">Cassa e rendicontazione</span></span>
         </button>
 
         <button class="tab-button side-nav-main-item" data-section-key="contact" onclick="switchTab('contact', this)">
-          <span class="nav-order">3</span>
           <span class="nav-copy"><span class="nav-main">Messaggi WhatsApp</span><span class="nav-sub">Libreria testi e template</span></span>
         </button>
 
         <button class="side-nav-parent side-nav-main-item" data-section-key="administration" data-submenu-target="subAdministration" aria-expanded="false" onclick="switchSidebarParent('administration','subAdministration')">
-          <span class="nav-order">4</span>
           <span class="nav-copy"><span class="nav-main">Amministrazione</span><span class="nav-sub">Utenti, dati e controlli</span></span>
           <span class="nav-caret">▾</span>
         </button>
@@ -7832,7 +7806,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.045';
+    const APP_VERSION = '6.046';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
