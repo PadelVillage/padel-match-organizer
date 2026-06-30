@@ -2862,26 +2862,26 @@
     /* ── Scheda prenotazione — riga giocatore (redesign v6.050): stato a icona; chi ha pagato
        si ripiega su una riga (icona ✓ + importo + storna); chi deve pagare ha il € inline +
        i metodi in griglia 3 colonne, bottoni alti per il pollice. ── */
-    .svc-pl { padding:9px 0; }
+    .svc-pl { padding:8px 0; }
     .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
-    .svc-pl-row { display:flex; align-items:center; gap:8px; min-height:34px; }
-    .svc-pl-ic-paid { font-size:18px; color:var(--green); flex:0 0 auto; }
-    .svc-pl-ic-due { font-size:18px; color:var(--text-muted); flex:0 0 auto; }
-    .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.9rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
-    .svc-pl-paid { flex:0 0 auto; font-size:.84rem; font-weight:700; color:var(--green); white-space:nowrap; }
-    .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:3px; border:1px solid var(--accent); border-radius:8px; padding:0 8px; height:34px; background:var(--surface); }
-    .svc-pl-eur-sym { color:var(--text-muted); font-size:.8rem; }
-    .svc-pl-eur-input { width:64px; height:32px; border:none; padding:0; text-align:right; font-size:.86rem; font-weight:700; background:transparent; color:var(--text); }
+    .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
+    .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
+    .svc-pl-ic-due { font-size:16px; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.8rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
+    .svc-pl-paid { flex:0 0 auto; font-size:.76rem; font-weight:700; color:var(--green); white-space:nowrap; }
+    .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:2px; border:1px solid var(--accent); border-radius:8px; padding:0 6px; height:30px; background:var(--surface); }
+    .svc-pl-eur-sym { color:var(--text-muted); font-size:.74rem; }
+    .svc-pl-eur-input { width:58px; height:28px; border:none; padding:0; text-align:right; font-size:.8rem; font-weight:700; background:transparent; color:var(--text); }
     .svc-pl-eur-input:disabled { opacity:.55; }
-    .svc-pl-iconbtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; background:transparent; color:var(--text-muted); border-radius:7px; cursor:pointer; font-size:17px; transition:background .12s,color .12s; }
+    .svc-pl-iconbtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:transparent; color:var(--text-muted); border-radius:7px; cursor:pointer; font-size:15px; transition:background .12s,color .12s; }
     .svc-pl-iconbtn:hover:not(:disabled) { background:var(--accent-light); color:var(--accent); }
     .svc-pl-iconbtn:disabled { opacity:.4; cursor:not-allowed; }
-    .svc-pl-note { font-size:.72rem; color:#b45309; margin-top:5px; }
-    .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px; }
-    .svc-pl-method { height:40px; display:inline-flex; align-items:center; justify-content:center; gap:5px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.8rem; font-weight:600; cursor:pointer; box-sizing:border-box; transition:background .15s; }
+    .svc-pl-note { font-size:.7rem; color:#b45309; margin-top:5px; }
+    .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
+    .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
     .svc-pl-method:disabled { opacity:.4; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
-    .svc-pl-method i { font-size:15px; }
+    .svc-pl-method i { font-size:14px; flex:0 0 auto; }
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.051';
+    const APP_VERSION = '6.052';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
