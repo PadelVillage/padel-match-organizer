@@ -7801,7 +7801,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.040';
+    const APP_VERSION = '6.041';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10081,7 +10081,15 @@ Grazie.`
         { key:'view_assessment_strumenti', label:'Strumenti tecnici' },
         { key:'view_assessment_excel', label:'Import livelli Excel' },
       ]},
-      { key:'view_members', tab:'members', label:'Anagrafica soci' },
+      { key:'view_members', tab:'members', label:'Anagrafica soci', children:[
+        { key:'view_members_dati', label:'Dati socio' },
+        { key:'view_members_borsellino', label:'Borsellino' },
+        { key:'view_members_preferenze', label:'Preferenze operative' },
+        { key:'view_members_autoval', label:'Autovalutazione' },
+        { key:'view_members_stato', label:'Stato rapido' },
+        { key:'view_members_feedback', label:'Feedback post-partita' },
+        { key:'view_members_azioni', label:'Azioni operative' },
+      ]},
       { key:'view_incassi', tab:'incassi', label:'Incassi' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
@@ -13919,6 +13927,16 @@ Grazie.`
       const cardMemberIdValue = cleanCell(g.memberId || '');
       const cardInMatchpoint = !!cardMemberIdValue && !/^PMO-/i.test(cardMemberIdValue);
       const cardMatchpointBadge = cardInMatchpoint ? '' : '<span class="badge badge-warning">Non in Matchpoint</span>';
+      // Visibilità per-staff delle sotto-sezioni della scheda (Amministrazione → Sezioni visibili →
+      // Anagrafica soci). owner/admin e profili senza config = vedono tutto (fail-open).
+      const _canMemberSec = (k) => (typeof pmoSubsectionVisibleFor === 'function') ? pmoSubsectionVisibleFor(k, 'members') : true;
+      const showSecDati = _canMemberSec('view_members_dati');
+      const showSecBorsellino = _canMemberSec('view_members_borsellino');
+      const showSecPref = _canMemberSec('view_members_preferenze');
+      const showSecAutoval = _canMemberSec('view_members_autoval');
+      const showSecStato = _canMemberSec('view_members_stato');
+      const showSecFeedback = _canMemberSec('view_members_feedback');
+      const showSecAzioni = _canMemberSec('view_members_azioni');
       card.style.display = 'block';
       card.className = 'member-card member-card-optimized';
       card.innerHTML = `
@@ -13943,7 +13961,7 @@ Grazie.`
         </div>
         <div class="member-card-body member-card-flow">
           <div class="member-hero">
-            ${PMO_PAYMENTS_UI_ENABLED ? `<div class="member-hero-wallet">
+            ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `<div class="member-hero-wallet">
               <span class="member-hero-wallet-label">Borsellino</span>
               <strong class="member-hero-wallet-amount">${escapeHtml(_walletBalanceLabel(g))}</strong>
             </div>` : '<div></div>'}
@@ -13951,7 +13969,7 @@ Grazie.`
               <button class="btn-success small-btn" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')"><i class="ti ti-brand-whatsapp" style="font-size:15px;vertical-align:-2px;" aria-hidden="true"></i> WhatsApp</button>
             </div>
           </div>
-          <details class="member-acc" open>
+          ${showSecDati ? `<details class="member-acc" open>
             <summary><span class="member-acc-title">Dati socio</span><span class="member-acc-hint">Anagrafica modificabile</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
               <div class="member-form-grid">
@@ -13964,8 +13982,8 @@ Grazie.`
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>
             </div>
-          </details>
-          ${PMO_PAYMENTS_UI_ENABLED ? `
+          </details>` : ''}
+          ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `
           <details class="member-acc" open data-feature="payments-shell">
             <summary><span class="member-acc-title">Borsellino</span><span class="member-acc-hint">Saldo · ricarica · storno</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
@@ -14004,8 +14022,8 @@ Grazie.`
               </div>` : ''}
             </div>
           </details>` : ''}
-          ${assessmentMeta}
-          <details class="member-acc">
+          ${showSecAutoval ? assessmentMeta : ''}
+          ${showSecPref ? `<details class="member-acc">
             <summary><span class="member-acc-title">Preferenze operative</span><span class="member-acc-hint">Dato usato per gruppi e partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
               <div class="member-form-grid">
@@ -14018,8 +14036,8 @@ Grazie.`
                 <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
               </div>
             </div>
-          </details>
-          <details class="member-acc">
+          </details>` : ''}
+          ${showSecStato ? `<details class="member-acc">
             <summary><span class="member-acc-title">Stato rapido</span><span class="member-acc-hint">Controllo prima di contattare</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
               <div class="member-status-grid">
@@ -14028,15 +14046,15 @@ Grazie.`
                 <div class="member-status-stat"><span>Ultimo messaggio inviato</span><strong>-</strong></div>
               </div>
             </div>
-          </details>
-          <details class="member-acc">
+          </details>` : ''}
+          ${showSecFeedback ? `<details class="member-acc">
             <summary><span class="member-acc-title">Feedback post-partita</span><span class="member-acc-hint">Preferenze emerse dalle partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
               ${renderPostMatchFeedbackMemberSummary(g)}
             </div>
-          </details>
-          ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
-          <details class="member-acc">
+          </details>` : ''}
+          ${showSecAutoval ? (assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`) : ''}
+          ${showSecAzioni ? `<details class="member-acc">
             <summary><span class="member-acc-title">Azioni operative</span><span class="member-acc-hint">WhatsApp, autovalutazione, stato</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
             <div class="member-acc-body">
               <div class="member-card-action-row">
@@ -14046,7 +14064,7 @@ Grazie.`
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
               </div>
             </div>
-          </details>
+          </details>` : ''}
         </div>
         <div class="member-card-footer">
           <span class="member-panel-hint">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
@@ -14074,40 +14092,59 @@ Grazie.`
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
       if (idx < 0) return;
       const current = giocatori[idx];
-      const normalizedCardName = normalizeImportedPlayerNameParts(document.getElementById('cardFirstName').value, document.getElementById('cardSurname').value);
-      const firstName = normalizedCardName.firstName;
-      const surname = normalizedCardName.surname;
-      const fullName = compactSpaces(`${firstName} ${surname}`);
-      const guestJolly = isGuestJollyName(fullName);
-      if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
-      const cardLevelRaw = cleanCell(document.getElementById('cardLevel').value || '');
+      // Le sotto-sezioni della scheda possono essere nascoste per permesso (Sezioni visibili →
+      // Anagrafica soci): se gli input non sono nel DOM, NON leggere/azzerare → mantieni i valori
+      // esistenti del socio. _cardVal restituisce il fallback quando l'input è assente.
+      const _cardVal = (id, fb) => { const e = document.getElementById(id); return e ? e.value : fb; };
+      const _datiPresent = !!document.getElementById('cardFirstName');
+      const _prefPresent = !!document.getElementById('cardPrefDays');
+      let firstName, surname, fullName, guestJolly;
+      if (_datiPresent) {
+        const normalizedCardName = normalizeImportedPlayerNameParts(_cardVal('cardFirstName',''), _cardVal('cardSurname',''));
+        firstName = normalizedCardName.firstName;
+        surname = normalizedCardName.surname;
+        fullName = compactSpaces(`${firstName} ${surname}`);
+        guestJolly = isGuestJollyName(fullName);
+        if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
+      } else {
+        firstName = cleanCell(current.firstName || '');
+        surname = cleanCell(current.surname || '');
+        fullName = compactSpaces(`${firstName} ${surname}`) || cleanCell(current.name || '');
+        guestJolly = isGuestJollyMember(current);
+      }
+      const cardLevelRaw = _datiPresent ? cleanCell(_cardVal('cardLevel','') || '') : cleanCell(String(current.level ?? ''));
       // Validazioni condivise con l'assistente (parità): livello 0–7, email formato, telefono.
-      const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(document.getElementById('cardEmail').value), document.getElementById('cardPhone').value);
-      if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
+      if (_datiPresent) {
+        const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(_cardVal('cardEmail','')), _cardVal('cardPhone',''));
+        if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
+      }
       const currentGuestJolly = isGuestJollyMember(current);
+      const _curPrefDays = Array.isArray(current.prefDays) ? current.prefDays.join(', ') : (current.prefDays || '');
+      const _curPrefHours = Array.isArray(current.prefHours) ? current.prefHours.join(', ') : (current.prefHours || '');
+      const _curAvail = current.availabilityProfile || {};
       const nextEditable = {
         firstName,
         surname,
-        gender: document.getElementById('cardGender').value,
+        gender: _datiPresent ? _cardVal('cardGender', current.gender || 'NA') : (current.gender || 'NA'),
         level: guestJolly && !cardLevelRaw ? '' : parseLevel(cardLevelRaw, 3),
-        phone: normalizePhone(document.getElementById('cardPhone').value),
-        email: cleanCell(document.getElementById('cardEmail').value),
+        phone: _datiPresent ? normalizePhone(_cardVal('cardPhone','')) : normalizePhone(current.phone || ''),
+        email: _datiPresent ? cleanCell(_cardVal('cardEmail','')) : cleanCell(current.email || ''),
         guestJolly,
-        prefDays: splitList(document.getElementById('cardPrefDays').value),
-        prefHours: splitList(document.getElementById('cardPrefHours').value),
+        prefDays: splitList(_prefPresent ? _cardVal('cardPrefDays','') : _curPrefDays),
+        prefHours: splitList(_prefPresent ? _cardVal('cardPrefHours','') : _curPrefHours),
         availabilityProfile: {
-          time: cleanCell(document.getElementById('cardAvailabilityTime')?.value || document.getElementById('cardPrefHours').value),
-          days: cleanCell(document.getElementById('cardAvailabilityDays')?.value || document.getElementById('cardPrefDays').value),
-          frequency: cleanCell(document.getElementById('cardDesiredFrequency')?.value || ''),
-          notice: cleanCell(document.getElementById('cardNotice')?.value || ''),
-          matchType: cleanCell(document.getElementById('cardPreferredMatchType')?.value || ''),
+          time: cleanCell(_prefPresent ? (_cardVal('cardAvailabilityTime', _cardVal('cardPrefHours',''))) : (_curAvail.time || current.availabilityTime || '')),
+          days: cleanCell(_prefPresent ? (_cardVal('cardAvailabilityDays', _cardVal('cardPrefDays',''))) : (_curAvail.days || current.preferredDays || '')),
+          frequency: cleanCell(_prefPresent ? _cardVal('cardDesiredFrequency','') : (_curAvail.frequency || current.desiredFrequency || '')),
+          notice: cleanCell(_prefPresent ? _cardVal('cardNotice','') : (_curAvail.notice || current.notice || '')),
+          matchType: cleanCell(_prefPresent ? _cardVal('cardPreferredMatchType','') : (_curAvail.matchType || current.preferredMatchType || '')),
           source: 'scheda socio'
         },
-        availabilityTime: cleanCell(document.getElementById('cardAvailabilityTime')?.value || ''),
-        preferredDays: cleanCell(document.getElementById('cardAvailabilityDays')?.value || ''),
-        desiredFrequency: cleanCell(document.getElementById('cardDesiredFrequency')?.value || ''),
-        notice: cleanCell(document.getElementById('cardNotice')?.value || ''),
-        preferredMatchType: cleanCell(document.getElementById('cardPreferredMatchType')?.value || ''),
+        availabilityTime: cleanCell(_prefPresent ? _cardVal('cardAvailabilityTime','') : (current.availabilityTime || '')),
+        preferredDays: cleanCell(_prefPresent ? _cardVal('cardAvailabilityDays','') : (current.preferredDays || '')),
+        desiredFrequency: cleanCell(_prefPresent ? _cardVal('cardDesiredFrequency','') : (current.desiredFrequency || '')),
+        notice: cleanCell(_prefPresent ? _cardVal('cardNotice','') : (current.notice || '')),
+        preferredMatchType: cleanCell(_prefPresent ? _cardVal('cardPreferredMatchType','') : (current.preferredMatchType || '')),
         availabilitySource: 'scheda socio'
       };
       const currentAvailability = current.availabilityProfile || {};
