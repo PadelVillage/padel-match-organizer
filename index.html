@@ -2855,6 +2855,10 @@
     .svc-pay-status.is-due { color:#b45309; }
     .svc-pay-actions { display:flex; gap:6px; margin-top:5px; }
     .svc-pay-actions .svc-btn-step { flex:1 1 0; min-width:0; box-sizing:border-box; justify-content:center; display:inline-flex; align-items:center; gap:4px; }
+    .svc-pay-amt { display:flex; align-items:center; gap:6px; margin-top:5px; }
+    .svc-pay-amt-lbl { font-size:.72rem; font-weight:600; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pay-amt-input { width:84px; box-sizing:border-box; text-align:right; font-size:.82rem; font-weight:700; padding:4px 7px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--text); }
+    .svc-pay-amt-input:disabled { opacity:.55; border-color:#dfe3e8; }
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -4898,6 +4902,18 @@ body.assessment-public-mode .assessment-public-only-card {
     .member-card-overlay.open { display:block; }
     .member-card-overlay .member-card { margin:0; border:0; border-radius:0; box-shadow:none; }
     .member-card-overlay .member-card-head { position:sticky; top:0; z-index:2; background:#fff; box-shadow:0 1px 0 rgba(15,23,42,.08); }
+    /* Desktop: la scheda socio NON deve coprire la sidebar/chat (larga 304px a sinistra).
+       La ancoro a destra della side-nav e la centro nell'area rimanente. Con sidebar
+       collassata torna centrata su tutta la viewport (regola base sopra). */
+    @media (min-width:900px) {
+      body:not(.sidebar-collapsed) .member-card-overlay {
+        --pmo-card-w: min(1180px, calc(100vw - 304px - 48px));
+        width: var(--pmo-card-w);
+        left: calc(304px + (100vw - 304px - var(--pmo-card-w)) / 2);
+        right: auto;
+        transform: none;
+      }
+    }
     .players-add-form {
       display:none;
       position:fixed;
@@ -7743,10 +7759,19 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.029';
+    const APP_VERSION = '6.038';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
+    // Fase 2b — SCRITTURA pagamenti. ⚠️ DENARO REALE. Due flag SEPARATI:
+    //  • PMO_PAYMENTS_WRITE_ENABLED  = incasso (Cash/Card/Wallet) + storno PARTITA (anular).
+    //    Ancora NON validati dal vivo → OFF ovunque finché non c'è un test supervisionato.
+    //  • PMO_WALLET_WRITE_ENABLED    = storno BORSELLINO (Correzione del saldo). VALIDATO dal
+    //    vivo (30/06, Ospite 36€→1€) → ON. Backstop sempre attivo: kill-switch worker
+    //    (env MATCHPOINT_PAYMENT_WRITE_ENABLED) + edge auth cloud_sync. Bypass solo-harness
+    //    via window.__pmoPayHarness (gate solo-TEST).
+    const PMO_PAYMENTS_WRITE_ENABLED = false;
+    const PMO_WALLET_WRITE_ENABLED = true;
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13908,12 +13933,20 @@ Grazie.`
               </div>
               <div style="margin-top:8px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 «Aggiorna saldo» legge il Portafoglio reale da Matchpoint (può richiedere qualche secondo).</div>
-                <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
               </div>` : `
               <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
-                <div style="margin-top:2px;">La ricarica sarà disponibile in una prossima versione (Fase 2).</div>
               </div>`}
+              ${(PMO_WALLET_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
+              <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
+                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">↩︎ Storna saldo (Correzione del saldo)</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <input id="pmoWalletVoidAmt" type="text" inputmode="decimal" placeholder="${escapeHtml(_walletBalanceLabel(g))}" style="width:120px;padding:6px 8px;" title="Importo da stornare (lascia vuoto = storno totale)">
+                  <button class="btn-secondary small-btn" onclick="pmoWalletVoidFill('${escapeHtml(String(g.id))}')" title="Riempi con l'intero saldo">Totale</button>
+                  <button class="btn-danger small-btn" onclick="pmoWalletVoidClick('${escapeHtml(String(g.id))}', this)">↩︎ Storna</button>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
+              </div>` : ''}
             </section>` : ''}
             <section class="member-panel">
               <div class="member-panel-head">
@@ -21617,6 +21650,22 @@ Grazie!`
       const v = (Number(cents) || 0) / 100;
       return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     }
+    // Parse importo digitato dall'operatore ("8,00" / "8.00" / "8" / "8,5") → cents.
+    // Ritorna null se non interpretabile come importo > 0.
+    function _pmoEuroToCents(txt) {
+      if (txt == null) return null;
+      let s = String(txt).trim().replace(/[€\s]/g, '');
+      if (!s) return null;
+      // se ci sono sia '.' che ',', l'ultimo separatore è quello decimale
+      if (s.includes('.') && s.includes(',')) {
+        s = (s.lastIndexOf(',') > s.lastIndexOf('.')) ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+      } else {
+        s = s.replace(',', '.');
+      }
+      const v = Number(s);
+      if (!isFinite(v) || v <= 0) return null;
+      return Math.round(v * 100);
+    }
     function _incassiMethodBucket(method) {
       const m = (method || '').toString().toLowerCase();
       if (m.includes('contant') || m.includes('cash') || m.includes('efectivo') || m.includes('metalic')) return 'contanti';
@@ -21863,6 +21912,26 @@ Grazie!`
         if (btn) { btn.disabled = false; btn.classList.remove('pmo-btn-loading'); btn.innerHTML = origHtml; }
         alert('Lettura borsellino non riuscita: ' + ((e && e.message) || e));
       }
+    }
+    // Storno borsellino (Fase 2b write): riempi l'input con l'intero saldo ("Totale").
+    function pmoWalletVoidFill(memberId) {
+      const g = (typeof giocatori !== 'undefined') ? giocatori.find(p => String(p.id) === String(memberId)) : null;
+      const w = g ? _walletResolve(g) : null;
+      const inp = document.getElementById('pmoWalletVoidAmt');
+      if (inp && w && typeof w.balance_cents === 'number') {
+        inp.value = (w.balance_cents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }
+    // Storno borsellino: legge importo (vuoto = totale) e lancia _pmoVoidWallet.
+    function pmoWalletVoidClick(memberId, btn) {
+      const g = (typeof giocatori !== 'undefined') ? giocatori.find(p => String(p.id) === String(memberId)) : null;
+      if (!g) return;
+      const w = _walletResolve(g);
+      const cur = (w && typeof w.balance_cents === 'number') ? w.balance_cents : null;
+      const inp = document.getElementById('pmoWalletVoidAmt');
+      let sub = inp ? _pmoEuroToCents(inp.value) : null;
+      if ((sub == null || sub <= 0) && cur != null) sub = cur; // input vuoto = storno TOTALE
+      return _pmoVoidWallet({ memberId: String(memberId), idInterno: String(_walletClientId(g) || ''), subtractCents: sub, currentCents: cur, sourceBtns: [btn] });
     }
     // Sincronizza i saldi borsellino di TUTTI i soci in un colpo (edge matchpoint-wallet-sync →
     // worker /export-wallet-report → report "Clienti con credito residuo"). Popola wallet_balance
@@ -36905,8 +36974,373 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalLastScrollIso = null; // ultima giornata renderizzata, per preservare lo scroll orizzontale sui re-render
   let _staffCalResizeTimer = null;
 
+  // ── Pagamenti Fase 2b — indice "pagato" per le chip del calendario ──────────
+  // Mappa idReserva → { ids:Set, names:Set } costruita dai record `payment` in cache
+  // cloud. Il match nelle chip è per idReserva + NOME normalizzato (gli id divergono:
+  // nel report-sync id_cliente = Cod. visibile, nella scheda idCliente = id URL).
+  // Granularità = ultima sync incassi (~5 min): mostriamo SOLO ✓ verde sui pagati,
+  // mai un marcatore "non pagato" (eviterebbe falsi su dato stale).
+  let _staffCalPaidIndex = new Map();
+  let _staffCalPaidIndexAt = 0;
+  function _payNormName(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' '); }
+  function _staffCalPaidIndexAdd(idReserva, idCliente, name) {
+    const k = String(idReserva == null ? '' : idReserva).trim();
+    if (!k) return;
+    let e = _staffCalPaidIndex.get(k);
+    if (!e) { e = { ids: new Set(), names: new Set() }; _staffCalPaidIndex.set(k, e); }
+    if (idCliente) e.ids.add(String(idCliente).trim());
+    if (name) e.names.add(_payNormName(name));
+  }
+  function _staffCalPaidIndexRemove(idReserva, idCliente, name) {
+    const k = String(idReserva == null ? '' : idReserva).trim();
+    const e = _staffCalPaidIndex.get(k);
+    if (!e) return;
+    if (idCliente) e.ids.delete(String(idCliente).trim());
+    if (name) e.names.delete(_payNormName(name));
+    if (!e.ids.size && !e.names.size) _staffCalPaidIndex.delete(k);
+  }
+  function _staffCalIsPaid(idReserva, idCliente, name) {
+    const e = _staffCalPaidIndex.get(String(idReserva == null ? '' : idReserva).trim());
+    if (!e) return false;
+    if (idCliente && e.ids.has(String(idCliente).trim())) return true;
+    if (name && e.names.has(_payNormName(name))) return true;
+    return false;
+  }
+  async function _staffCalRefreshPaidIndex() {
+    try {
+      if (typeof _incassiFetch !== 'function') return;
+      const res = await _incassiFetch();
+      const payments = (res && Array.isArray(res.payments)) ? res.payments : [];
+      const m = new Map();
+      for (const p of payments) {
+        if (!p || p.voided || p.status === 'void') continue;
+        const k = String(p.id_reserva == null ? '' : p.id_reserva).trim();
+        if (!k) continue;
+        let e = m.get(k);
+        if (!e) { e = { ids: new Set(), names: new Set() }; m.set(k, e); }
+        if (p.id_cliente != null && String(p.id_cliente).trim()) e.ids.add(String(p.id_cliente).trim());
+        if (p.player_name) e.names.add(_payNormName(p.player_name));
+      }
+      // Preserva gli add ottimistici (cobro appena fatto, non ancora nel cloud sync).
+      for (const entry of _staffCalPaidIndex) {
+        const k = entry[0], e = entry[1];
+        const cur = m.get(k);
+        if (!cur) { m.set(k, e); }
+        else { e.ids.forEach(function (x) { cur.ids.add(x); }); e.names.forEach(function (x) { cur.names.add(x); }); }
+      }
+      _staffCalPaidIndex = m;
+      try { renderStaffCalendar(); } catch (e) {}
+    } catch (e) { console.warn('paid index refresh:', e); }
+  }
+  function _staffCalMaybeRefreshPaidIndex() {
+    const now = Date.now();
+    if (now - _staffCalPaidIndexAt < 120000) return; // throttle 2 min (≤ granularità sync)
+    _staffCalPaidIndexAt = now;
+    _staffCalRefreshPaidIndex();
+  }
+
+  // ── Pagamenti Fase 2b — SCRITTURA incasso (denaro reale) ────────────────────
+  // Conferma esplicita a pulsanti (coerente con l'app), poi chiamata SINCRONA alla
+  // edge `matchpoint-payment-write` (NON ottimistico, NIENTE retry: il cobro è
+  // irreversibile). In harness mockato la conferma si auto-accetta.
+  function _pmoConfirmCollect(name, methodLabel, amountCents) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const msg = svcAddMessage('system', '💶 Incassare <strong>' + _incassiEuro(amountCents) + '</strong> da <strong>' + esc(name) + '</strong> in <strong>' + esc(methodLabel) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Operazione reale su Matchpoint: crea un cobro, non annullabile dall’app.</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['✅ Sì, incassa'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoCollectPayment(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    // Gate di sicurezza: con write OFF e fuori harness non si incassa MAI.
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Incasso non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const idReserva = String(opts.idReserva == null ? '' : opts.idReserva).trim();
+    const idCliente = String(opts.idCliente == null ? '' : opts.idCliente).trim();
+    const playerName = opts.playerName || '';
+    const method = opts.method || '';
+    const amountCents = opts.amountCents;
+    const methodLabel = ({ cash: 'Contanti', card: 'Carta', wallet: 'Borsellino' })[method] || method;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (amountCents == null || !(amountCents > 0)) {
+      try { svcAddMessage('system', '⚠️ Importo non valido: controlla il campo “€ a carico”.', 'error'); } catch (e) {}
+      return { ok: false, message: 'INVALID_AMOUNT' };
+    }
+    if (!idReserva) {
+      try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_IDRESERVA' };
+    }
+    const okGo = await _pmoConfirmCollect(playerName, methodLabel, amountCents);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Incasso ' + esc(methodLabel) + ' di ' + _incassiEuro(amountCents) + ' per ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'registrare un incasso su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-payment-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({
+          idReserva: idReserva, idCliente: idCliente, idx: (opts.idx != null ? String(opts.idx) : ''),
+          playerName: playerName, method: method, amountCents: amountCents,
+          campo: opts.campo, data: opts.data, ora: opts.ora,
+        }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — aggiorno lo stato ottimisticamente: giocatore riscosso + indice chip.
+        try {
+          const stOpen = staffCalPlayersState;
+          if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+            const tgt = stOpen.roster.find(function (x) {
+              return String(x.idx) === String(opts.idx)
+                || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+                || x.nome === playerName;
+            });
+            if (tgt) { tgt.stato = 'riscosso'; tgt.pendenteCents = 0; if (tgt.importoCents == null) tgt.importoCents = amountCents; }
+          }
+        } catch (e) {}
+        try { _staffCalPaidIndexAdd(idReserva, idCliente, playerName); } catch (e) {}
+        _setMsg(note, '✅ Incassato ' + esc(methodLabel) + ' ' + _incassiEuro(amountCents) + ' — ' + esc(playerName));
+        try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        return { ok: true };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Incasso NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} }); // ritento manuale (no retry auto)
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        // Timeout: NON riabilito i bottoni (rischio doppio cobro): meglio ricontrollare su MP.
+        _setMsg(note, '⌛ Esito non confermato (timeout). Controlla su Matchpoint prima di ritentare: rischi un doppio incasso.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore incasso: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
+  // ── STORNO pagamento (Fase 2b) — annulla un cobro già fatto. Gemello di
+  // _pmoCollectPayment: conferma esplicita + edge sincrona + nessun retry.
+  function _pmoConfirmVoid(name, amountCents) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const imp = (amountCents != null && amountCents > 0) ? (' di <strong>' + _incassiEuro(amountCents) + '</strong>') : '';
+      const msg = svcAddMessage('system', '↩︎ Stornare il pagamento' + imp + ' di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Annulla il cobro su Matchpoint (operazione reale).</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['↩︎ Sì, storna'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoVoidPayment(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Storno non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const idReserva = String(opts.idReserva == null ? '' : opts.idReserva).trim();
+    const idCliente = String(opts.idCliente == null ? '' : opts.idCliente).trim();
+    const playerName = opts.playerName || '';
+    const importoCents = (typeof opts.importoCents === 'number') ? opts.importoCents : null;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (!idReserva) {
+      try { svcAddMessage('system', '⚠️ Prenotazione non identificata su Matchpoint (idReserva mancante). Riapri la scheda e riprova.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_IDRESERVA' };
+    }
+    const okGo = await _pmoConfirmVoid(playerName, importoCents);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Storno del pagamento di ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'stornare un incasso su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-payment-void', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({
+          idReserva: idReserva, idCliente: idCliente, idx: (opts.idx != null ? String(opts.idx) : ''),
+          playerName: playerName, campo: opts.campo, data: opts.data, ora: opts.ora,
+        }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — il giocatore torna "da pagare": aggiorno stato + tolgo dall'indice chip.
+        try {
+          const stOpen = staffCalPlayersState;
+          if (stOpen && String(stOpen.idReserva || '') === idReserva && Array.isArray(stOpen.roster)) {
+            const tgt = stOpen.roster.find(function (x) {
+              return String(x.idx) === String(opts.idx)
+                || (x.idCliente && idCliente && String(x.idCliente) === idCliente)
+                || x.nome === playerName;
+            });
+            if (tgt) { tgt.stato = 'in_sospeso'; tgt.pendenteCents = (tgt.importoCents != null ? tgt.importoCents : importoCents); }
+          }
+        } catch (e) {}
+        try { _staffCalPaidIndexRemove(idReserva, idCliente, playerName); } catch (e) {}
+        _setMsg(note, '✅ Pagamento stornato — ' + esc(playerName));
+        try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        return { ok: true };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Storno NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        _setMsg(note, '⌛ Esito storno non confermato (timeout). Controlla su Matchpoint prima di ritentare.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore storno: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
+  // ── STORNO BORSELLINO (Fase 2b — scrittura, denaro reale): sottrae (totale o parziale)
+  // dal saldo Portafoglio via edge matchpoint-wallet-correct → worker /correct-wallet
+  // ("Correzione del saldo"). Conferma esplicita, edge sincrona, NESSUN retry. Gated dal
+  // flag PMO_WALLET_WRITE_ENABLED (bypass solo-harness via __pmoPayHarness).
+  function _pmoConfirmVoidWallet(name, subtractCents, isTotal) {
+    return new Promise(function (resolve) {
+      const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+      if (_harness) { resolve(true); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+      const imp = '<strong>' + _incassiEuro(subtractCents) + '</strong>';
+      const quale = isTotal ? ('l\'intero saldo (' + imp + ')') : (imp);
+      const msg = svcAddMessage('system', '↩︎ Stornare ' + quale + ' dal borsellino di <strong>' + esc(name) + '</strong>?<br><span style="color:var(--text-muted);font-size:.78rem;">Sottrae il credito su Matchpoint (operazione reale).</span>');
+      let _done = false;
+      const btns = svcMakeStepButtons(['↩︎ Sì, storna'],
+        function () { if (_done) return; _done = true; resolve(true); },
+        function () { if (_done) return; _done = true; resolve(false); });
+      try { msg.appendChild(btns); } catch (e) {}
+    });
+  }
+  async function _pmoVoidWallet(opts) {
+    opts = opts || {};
+    const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
+    const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
+    if (!PMO_WALLET_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Storno borsellino non attivo: la scrittura (Fase 2b) non è abilitata.'); } catch (e) {}
+      return { ok: false, message: 'WRITE_DISABLED' };
+    }
+    const memberId = String(opts.memberId == null ? '' : opts.memberId).trim();
+    const g = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori.find(function (p) { return String(p.id) === memberId; }) : null;
+    const idInterno = String((opts.idInterno != null ? opts.idInterno : (g ? _walletClientId(g) : '')) || '').trim();
+    // Codice cliente (memberId MP, es "000004") + dati identificativi: il worker risolve
+    // l'id interno dal codice quando non collegato → storno da QUALSIASI scheda socio.
+    const codice = String((opts.codice != null ? opts.codice : (g && (g.memberId || g.codice))) || '').trim();
+    const playerName = opts.playerName || (g && g.nome) || '';
+    const idNome = (g && (g.firstName || '')) || '';
+    const idCognome = (g && (g.surname || '')) || '';
+    const idEmail = (g && (g.email || '')) || '';
+    const idTelefono = (g && (g.phone || g.telefono || '')) || '';
+    const currentCents = (typeof opts.currentCents === 'number') ? opts.currentCents : null;
+    const subtractCents = (typeof opts.subtractCents === 'number') ? Math.round(opts.subtractCents) : null;
+    const btns = Array.isArray(opts.sourceBtns) ? opts.sourceBtns : [];
+    if (!/^\d{1,8}$/.test(idInterno) && !codice) {
+      try { svcAddMessage('system', '⚠️ Socio senza id Matchpoint né codice: impossibile stornare il borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'NO_CLIENT_REF' };
+    }
+    if (subtractCents == null || subtractCents <= 0) {
+      try { svcAddMessage('system', '⚠️ Importo di storno non valido.', 'error'); } catch (e) {}
+      return { ok: false, message: 'INVALID_AMOUNT' };
+    }
+    if (currentCents != null && subtractCents > currentCents) {
+      try { svcAddMessage('system', '⚠️ L\'importo da stornare supera il saldo del borsellino.', 'error'); } catch (e) {}
+      return { ok: false, message: 'EXCEEDS_BALANCE' };
+    }
+    const isTotal = (currentCents != null && subtractCents === currentCents);
+    const okGo = await _pmoConfirmVoidWallet(playerName, subtractCents, isTotal);
+    if (!okGo) return { ok: false, message: 'CANCELLED' };
+    btns.forEach(function (b) { try { b.disabled = true; } catch (e) {} });
+    const note = svcAddMessage('system', '↻ Storno borsellino di ' + esc(playerName) + '… (non chiudere)');
+    try {
+      const cfg = await loadAssessmentSupabaseConfig();
+      const supabaseUrl = cfg.supabaseUrl, supabaseKey = cfg.supabaseKey;
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'stornare il borsellino su Matchpoint');
+      const ctrl = new AbortController();
+      const to = setTimeout(function () { ctrl.abort(); }, 200000);
+      const resp = await fetch(supabaseUrl + '/functions/v1/matchpoint-wallet-correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + staff.accessToken },
+        body: JSON.stringify({ idInterno: idInterno, codice: codice, nome: idNome, cognome: idCognome, email: idEmail, telefono: idTelefono, subtractCents: subtractCents }),
+        signal: ctrl.signal,
+      });
+      const txt = await resp.text();
+      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      clearTimeout(to);
+      if (resp.ok && data && data.ok !== false) {
+        // SUCCESS — aggiorno la cache saldo (saldo post dal worker, o calcolo locale) e ridisegno.
+        const postCents = (data && typeof data.balanceCentsPost === 'number') ? data.balanceCentsPost
+          : (currentCents != null ? Math.max(0, currentCents - subtractCents) : null);
+        try {
+          const nowIso = new Date().toISOString();
+          // Risolto dal codice? usa l'id ritornato dall'edge per la cache live.
+          const idForCache = String((data && data.idInterno) || idInterno || '').trim();
+          if (postCents != null) {
+            if (idForCache && window.__pmoWalletCache) window.__pmoWalletCache.set(idForCache, { balance_cents: postCents, synced_at: nowIso });
+            // Il saldo mostrato per i soci senza id interno viene dal cloud (chiave = id socio).
+            if (g && window.__pmoWalletCloud) window.__pmoWalletCloud.set(String(g.id), { balance_cents: postCents, synced_at: nowIso });
+          }
+        } catch (e) {}
+        _setMsg(note, '✅ Borsellino stornato — ' + esc(playerName) + (postCents != null ? (' · nuovo saldo ' + _incassiEuro(postCents)) : ''));
+        try { if (typeof displayMembers === 'function' && document.getElementById('memberTableBody')) displayMembers(); else if (typeof renderOpenMemberCard === 'function') renderOpenMemberCard(); } catch (e) {}
+        // Operazione andata a buon fine → pulizia chat dopo ~4s, come gli altri flussi OK.
+        try { if (typeof svcScheduleAutoClear === 'function') svcScheduleAutoClear(); } catch (e) {}
+        return { ok: true, balanceCentsPost: postCents };
+      }
+      const m = (data && (data.message || data.error)) || ('HTTP ' + resp.status);
+      _setMsg(note, '⚠️ Storno borsellino NON riuscito: ' + esc(String(m)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: String(m) };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        _setMsg(note, '⌛ Esito storno borsellino non confermato (timeout). Controlla su Matchpoint prima di ritentare.');
+        return { ok: false, message: 'TIMEOUT' };
+      }
+      _setMsg(note, '⚠️ Errore storno borsellino: ' + esc(err && err.message ? err.message : String(err)));
+      btns.forEach(function (b) { try { b.disabled = false; } catch (e) {} });
+      return { ok: false, message: (err && err.message) ? err.message : String(err) };
+    }
+  }
+
   function renderStaffCalendar() {
     const isoDate = (document.getElementById('staffCalDate') || {}).value || staffCalTodayIso();
+    try { _staffCalMaybeRefreshPaidIndex(); } catch (e) {}
     // Nome del giorno accanto alla data (desktop): es. "Giovedì".
     const _wd = document.getElementById('staffCalDateWeekday');
     if (_wd) { const _GG = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']; const _dd = new Date(isoDate + 'T12:00:00'); _wd.textContent = isNaN(_dd.getTime()) ? '' : _GG[_dd.getDay()]; }
@@ -37386,7 +37820,7 @@ Per confermare scrivi ELIMINA.`);
     for (const s of staffCalGetSlots(isoDate)) {
       const c = s.campo; if (c < 1 || c > 4) continue;
       const st = h2m(s.ora);
-      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', istruttore: s.istruttore || '', ora: s.ora, durata: s.durata || 90, giocatori: Array.isArray(s.giocatori) ? s.giocatori : [] });
+      fs[c].push({ st: st, en: st + (s.durata || 90), tipo: s.tipo, tipoReale: s.tipoReale, nome: s.nome || '', istruttore: s.istruttore || '', ora: s.ora, durata: s.durata || 90, giocatori: Array.isArray(s.giocatori) ? s.giocatori : [], idReserva: (s.idReserva != null ? String(s.idReserva) : '') });
     }
 
     const frame = document.createElement('div');
@@ -37468,16 +37902,32 @@ Per confermare scrivi ELIMINA.`);
         if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:10px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
         // v5.736 — gestisce giocatori come array di stringhe O di oggetti {nome}, e nome con \n.
         // Ogni giocatore va su una riga separata (div). Font ingrandito.
-        let _gNames = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : ((g && g.nome) ? String(g.nome).trim() : ''); }).filter(Boolean) : [];
-        if (!_gNames.length && b.nome && b.nome !== b.istruttore) {
-          _gNames = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        // Fase 2b — tengo anche l'eventuale idCliente per il match "pagato" (✓ verde).
+        let _gList = Array.isArray(b.giocatori) ? b.giocatori.map(function (g) {
+          if (typeof g === 'string') return { nome: g.trim(), idCliente: '' };
+          if (g && g.nome) return { nome: String(g.nome).trim(), idCliente: (g.idCliente != null ? String(g.idCliente) : (g.codice != null ? String(g.codice) : '')) };
+          return null;
+        }).filter(function (x) { return x && x.nome; }) : [];
+        if (!_gList.length && b.nome && b.nome !== b.istruttore) {
+          _gList = String(b.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean).map(function (n) { return { nome: n, idCliente: '' }; });
         }
-        if (_gNames.length) {
+        if (_gList.length) {
           const fontPx = isDesktop ? 12 : 13;
-          _gNames.forEach(function (nm) {
+          _gList.forEach(function (g) {
             const t3 = document.createElement('div');
             t3.style.cssText = 'font-size:' + fontPx + 'px;opacity:.95;white-space:normal;line-height:1.3;';
-            t3.textContent = nm;
+            let _paid = false;
+            try { _paid = _staffCalIsPaid(b.idReserva, g.idCliente, g.nome); } catch (e) { _paid = false; }
+            if (_paid) {
+              const ck = document.createElement('span');
+              ck.textContent = '✓ ';
+              ck.style.cssText = 'color:#16a34a;font-weight:800;';
+              ck.title = 'Pagato';
+              t3.appendChild(ck);
+              t3.appendChild(document.createTextNode(g.nome));
+            } else {
+              t3.textContent = g.nome;
+            }
             blk.appendChild(t3);
           });
         }
@@ -38197,6 +38647,10 @@ Per confermare scrivi ELIMINA.`);
       const paySec = mkSection('ti-cash', 'Pagamenti');
       paySec.setAttribute('data-feature', 'payments-shell');
       let _anyUnknown = false;
+      // Incasso ATTIVO solo se il flag write è ON (PROD/test reali: OFF) oppure se siamo
+      // nell'harness mockato (bypass solo-TEST). Altrimenti input/bottoni sono in sola lettura.
+      const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
+        || (PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true);
       st.roster.forEach(function (p) {
         const item = document.createElement('div');
         item.className = 'svc-pay-item';
@@ -38228,12 +38682,85 @@ Per confermare scrivi ELIMINA.`);
         }
         row.appendChild(nm); row.appendChild(status);
         item.appendChild(row);
+        // STORNO — giocatore già riscosso: azione per annullare il cobro (denaro reale).
+        // Visibile solo con write attivo; in env reale (flag OFF) resta nascosta.
+        if (stato === 'riscosso' && _payWriteActive) {
+          const undo = document.createElement('div');
+          undo.className = 'svc-pay-actions';
+          const sBtn = document.createElement('button');
+          sBtn.type = 'button'; sBtn.className = 'svc-btn-step';
+          sBtn.style.cssText = 'flex:0 0 auto;color:#b42318;border-color:#f1b5ae;';
+          sBtn.innerHTML = '<i class="ti ti-arrow-back-up" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Storna';
+          sBtn.title = 'Annulla il pagamento di questo giocatore su Matchpoint';
+          sBtn.addEventListener('click', function () {
+            if (sBtn.disabled) return;
+            _pmoVoidPayment({
+              idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+              idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+              idx: (p.idx != null ? String(p.idx) : ''),
+              playerName: p.nome, importoCents: importoCents,
+              campo: st.campo, data: st.isoDate, ora: st.ora,
+              sourceBtns: [sBtn],
+            });
+          });
+          undo.appendChild(sBtn);
+          item.appendChild(undo);
+        }
         if (showButtons) {
+          // Importo "a carico" (€): default = pendente se presente, altrimenti importo letto.
+          // Editandolo si corregge quanto deve il giocatore (worker: set TextBoxCargoReserva →
+          // Actualizar) e POI si incassa l'intero. Niente cobri parziali (decisione 29/06).
+          const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
+            : (importoCents != null ? importoCents : 0);
+          const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
+          const amtWrap = document.createElement('div');
+          amtWrap.className = 'svc-pay-amt';
+          const amtLbl = document.createElement('span'); amtLbl.className = 'svc-pay-amt-lbl'; amtLbl.textContent = '€ a carico';
+          const amt = document.createElement('input');
+          amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pay-amt-input';
+          amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          amt.disabled = !_payWriteActive;
+          amtWrap.appendChild(amtLbl); amtWrap.appendChild(amt);
+          item.appendChild(amtWrap);
+
           const acts = document.createElement('div');
           acts.className = 'svc-pay-actions';
-          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash'; cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
-          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card'; kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
-          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet'; wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b';
+          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash';
+          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card';
+          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet';
+          // Wallet abilitato solo se il borsellino copre l'importo digitato (ricalcolato a ogni input).
+          const _syncWallet = function () {
+            if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
+            const a = _pmoEuroToCents(amt.value);
+            const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
+            wBtn.disabled = !okSaldo;
+            wBtn.title = okSaldo
+              ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
+              : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
+          };
+          if (!_payWriteActive) {
+            cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+            kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+            _syncWallet();
+          } else {
+            cBtn.disabled = false; cBtn.title = 'Incassa in contanti';
+            kBtn.disabled = false; kBtn.title = 'Incassa con carta';
+            _syncWallet();
+            amt.addEventListener('input', _syncWallet);
+            const _collect = function (method) {
+              return _pmoCollectPayment({
+                idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+                idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+                idx: (p.idx != null ? String(p.idx) : ''),
+                playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
+                campo: st.campo, data: st.isoDate, ora: st.ora,
+                sourceBtns: [cBtn, kBtn, wBtn],
+              });
+            };
+            cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
+            kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
+            wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
+          }
           acts.appendChild(cBtn); acts.appendChild(kBtn); acts.appendChild(wBtn);
           item.appendChild(acts);
         }
@@ -38243,7 +38770,9 @@ Per confermare scrivi ELIMINA.`);
       payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
       payHint.textContent = _anyUnknown
         ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
-        : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) sarà collegato nella Fase 2b.';
+        : (_payWriteActive
+            ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
+            : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).');
       paySec.appendChild(payHint);
       box.appendChild(paySec);
     }
@@ -41321,7 +41850,15 @@ Per confermare scrivi ELIMINA.`);
         onRemoteChange: function () { return staffCalRtOnRemoteChange(); },
         onRemotePending: function (p) { return staffCalRtOnRemotePending(p); },
         onRemoteResolved: function (p) { return staffCalRtOnRemoteResolved(p); },
-        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); }
+        refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); },
+        // Fase 2b — incasso pagamenti (mockato dall'harness; bypass conferma+gate via __pmoPayHarness)
+        setPayHarness: function (on) { try { window.__pmoPayHarness = (on !== false); } catch (e) {} },
+        collectPayment: function (opts) { return _pmoCollectPayment(opts); },
+        voidPayment: function (opts) { return _pmoVoidPayment(opts); },
+        voidWallet: function (opts) { return _pmoVoidWallet(opts); },
+        isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
+        refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
+        paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
