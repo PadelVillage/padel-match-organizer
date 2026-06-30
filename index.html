@@ -4432,6 +4432,48 @@ body.assessment-public-mode .assessment-public-only-card {
       align-content:start;
       min-width:0;
     }
+    .member-card-body.member-card-flow {
+      display:flex;
+      flex-direction:column;
+      grid-template-columns:none;
+      gap:12px;
+    }
+    .member-hero {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:#f8fbff;
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      padding:12px 14px;
+    }
+    .member-hero-wallet { display:flex; flex-direction:column; min-width:0; }
+    .member-hero-wallet-label { font-size:12px; color:#667085; font-weight:bold; }
+    .member-hero-wallet-amount { font-size:26px; line-height:1.1; color:var(--primary); overflow-wrap:anywhere; }
+    .member-hero-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .member-acc {
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      background:#fff;
+      min-width:0;
+    }
+    .member-acc > summary {
+      list-style:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:13px 14px;
+    }
+    .member-acc > summary::-webkit-details-marker { display:none; }
+    .member-acc-title { color:var(--primary); font-size:16px; font-weight:600; }
+    .member-acc-hint { color:#667085; font-size:12px; font-weight:normal; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .member-acc-chev { margin-left:auto; color:#9aa6b8; font-size:18px; transition:transform .15s ease; flex:0 0 auto; }
+    .member-acc[open] > summary > .member-acc-chev { transform:rotate(180deg); }
+    .member-acc[open] > summary { border-bottom:1px solid #edf1f7; }
+    .member-acc-body { padding:14px; }
     .member-panel {
       border:1px solid #dce5f2;
       border-radius:10px;
@@ -7759,7 +7801,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.039';
+    const APP_VERSION = '6.040';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13899,13 +13941,19 @@ Grazie.`
             <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
           </div>
         </div>
-        <div class="member-card-body">
-          <div class="member-card-stack">
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Dati socio</h4>
-                <span class="member-panel-hint">Anagrafica modificabile</span>
-              </div>
+        <div class="member-card-body member-card-flow">
+          <div class="member-hero">
+            ${PMO_PAYMENTS_UI_ENABLED ? `<div class="member-hero-wallet">
+              <span class="member-hero-wallet-label">Borsellino</span>
+              <strong class="member-hero-wallet-amount">${escapeHtml(_walletBalanceLabel(g))}</strong>
+            </div>` : '<div></div>'}
+            <div class="member-hero-actions">
+              <button class="btn-success small-btn" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')"><i class="ti ti-brand-whatsapp" style="font-size:15px;vertical-align:-2px;" aria-hidden="true"></i> WhatsApp</button>
+            </div>
+          </div>
+          <details class="member-acc" open>
+            <summary><span class="member-acc-title">Dati socio</span><span class="member-acc-hint">Anagrafica modificabile</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               <div class="member-form-grid">
                 <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
@@ -13915,13 +13963,12 @@ Grazie.`
                 <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>
-            </section>
-            ${PMO_PAYMENTS_UI_ENABLED ? `
-            <section class="member-panel" data-feature="payments-shell">
-              <div class="member-panel-head">
-                <h4>👛 Borsellino</h4>
-                <span class="member-panel-hint">Saldo Matchpoint (Portafoglio)</span>
-              </div>
+            </div>
+          </details>
+          ${PMO_PAYMENTS_UI_ENABLED ? `
+          <details class="member-acc" open data-feature="payments-shell">
+            <summary><span class="member-acc-title">Borsellino</span><span class="member-acc-hint">Saldo · ricarica · storno</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Saldo attuale</span><strong id="cardWalletBalance">${escapeHtml(_walletBalanceLabel(g))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
@@ -13955,12 +14002,12 @@ Grazie.`
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
               </div>` : ''}
-            </section>` : ''}
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Preferenze operative</h4>
-                <span class="member-panel-hint">Dato usato per gruppi e partite</span>
-              </div>
+            </div>
+          </details>` : ''}
+          ${assessmentMeta}
+          <details class="member-acc">
+            <summary><span class="member-acc-title">Preferenze operative</span><span class="member-acc-hint">Dato usato per gruppi e partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               <div class="member-form-grid">
                 <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
                 <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
@@ -13970,36 +14017,36 @@ Grazie.`
                 <div><label>Preavviso minimo</label><input id="cardNotice" value="${escapeHtml(memberAvailabilityProfile.notice || g.notice || '')}"></div>
                 <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
               </div>
-            </section>
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Stato rapido</h4>
-                <span class="member-panel-hint">Controllo prima di contattare</span>
-              </div>
+            </div>
+          </details>
+          <details class="member-acc">
+            <summary><span class="member-acc-title">Stato rapido</span><span class="member-acc-hint">Controllo prima di contattare</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Messaggi inviati totali</span><strong>${escapeHtml(String(getTotalContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Messaggi inviati questa settimana</span><strong>${escapeHtml(String(getWeeklyContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo messaggio inviato</span><strong>-</strong></div>
               </div>
-            </section>
-          </div>
-          <aside class="member-card-stack">
-            ${assessmentMeta}
-            <section class="member-panel">
-              <div class="member-panel-head"><h4>Feedback post-partita</h4><span class="member-panel-hint">Preferenze emerse dalle partite giocate</span></div>
+            </div>
+          </details>
+          <details class="member-acc">
+            <summary><span class="member-acc-title">Feedback post-partita</span><span class="member-acc-hint">Preferenze emerse dalle partite</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               ${renderPostMatchFeedbackMemberSummary(g)}
-            </section>
-            ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
-            <section class="member-panel">
-              <div class="member-panel-head"><h4>Azioni operative</h4></div>
+            </div>
+          </details>
+          ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
+          <details class="member-acc">
+            <summary><span class="member-acc-title">Azioni operative</span><span class="member-acc-hint">WhatsApp, autovalutazione, stato</span><i class="ti ti-chevron-down member-acc-chev" aria-hidden="true"></i></summary>
+            <div class="member-acc-body">
               <div class="member-card-action-row">
                 <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">WhatsApp</button>
                 <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
               </div>
-            </section>
-          </aside>
+            </div>
+          </details>
         </div>
         <div class="member-card-footer">
           <span class="member-panel-hint">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
