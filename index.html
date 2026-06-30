@@ -2836,7 +2836,7 @@
     .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
-    .svc-edit-section { background:#fff; border:1px solid rgba(17,24,39,.28); border-radius:10px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 3px rgba(16,24,40,.10); }
+    .svc-edit-section { background:#fff; border:1px solid #e8eaf0; border-radius:12px; padding:12px 13px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 2px rgba(16,24,40,.05); }
     /* Scheda modifica SENZA cornice esterna: la bolla del messaggio è invisibile, restano solo le schede sezione.
        Si aggancia alla classe .svc-edit-host (messa alla creazione) così è frameless dal primo frame: niente flash
        della vecchia bolla grigia/azzurra prima che la card interna venga riempita. */
@@ -2859,6 +2859,29 @@
     .svc-pay-amt-lbl { font-size:.72rem; font-weight:600; color:var(--text-muted); flex:0 0 auto; }
     .svc-pay-amt-input { width:84px; box-sizing:border-box; text-align:right; font-size:.82rem; font-weight:700; padding:4px 7px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--text); }
     .svc-pay-amt-input:disabled { opacity:.55; border-color:#dfe3e8; }
+    /* ── Scheda prenotazione — riga giocatore (redesign v6.050): stato a icona; chi ha pagato
+       si ripiega su una riga (icona ✓ + importo + storna); chi deve pagare ha il € inline +
+       i metodi in griglia 3 colonne, bottoni alti per il pollice. ── */
+    .svc-pl { padding:9px 0; }
+    .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
+    .svc-pl-row { display:flex; align-items:center; gap:8px; min-height:34px; }
+    .svc-pl-ic-paid { font-size:18px; color:var(--green); flex:0 0 auto; }
+    .svc-pl-ic-due { font-size:18px; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pl-name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; font-weight:600; }
+    .svc-pl-paid { flex:0 0 auto; font-size:.84rem; font-weight:700; color:var(--green); white-space:nowrap; }
+    .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:3px; border:1px solid var(--accent); border-radius:8px; padding:0 8px; height:34px; background:var(--surface); }
+    .svc-pl-eur-sym { color:var(--text-muted); font-size:.8rem; }
+    .svc-pl-eur-input { width:58px; height:32px; border:none; padding:0; text-align:right; font-size:.86rem; font-weight:700; background:transparent; color:var(--text); }
+    .svc-pl-eur-input:disabled { opacity:.55; }
+    .svc-pl-iconbtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; background:transparent; color:var(--text-muted); border-radius:7px; cursor:pointer; font-size:17px; transition:background .12s,color .12s; }
+    .svc-pl-iconbtn:hover:not(:disabled) { background:var(--accent-light); color:var(--accent); }
+    .svc-pl-iconbtn:disabled { opacity:.4; cursor:not-allowed; }
+    .svc-pl-note { font-size:.72rem; color:#b45309; margin-top:5px; }
+    .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px; }
+    .svc-pl-method { height:40px; display:inline-flex; align-items:center; justify-content:center; gap:5px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.8rem; font-weight:600; cursor:pointer; box-sizing:border-box; transition:background .15s; }
+    .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
+    .svc-pl-method:disabled { opacity:.4; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
+    .svc-pl-method i { font-size:15px; }
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -2910,6 +2933,11 @@
       .svc-player-chip { font-size:17px; }
       .svc-btn-add { font-size:17px; }
       .svc-players-empty { font-size:15px; }
+      .svc-pl-name { font-size:1rem; }
+      .svc-pl-paid { font-size:.95rem; }
+      .svc-pl-eur-input { font-size:1rem; }
+      .svc-pl-method { font-size:.92rem; height:44px; }
+      .svc-pl-iconbtn { width:34px; height:34px; font-size:19px; }
       .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
       .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
       .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
@@ -7806,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.049';
+    const APP_VERSION = '6.050';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38962,64 +38990,41 @@ Per confermare scrivi ELIMINA.`);
       } else {
         st.roster.forEach(function (p) {
           const marked = !!st.remove[p.idx];
+          const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
+          const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
+          const stato = p.stato; // 'riscosso' | 'in_sospeso' | null
+          const payRow = _payShow && !marked;        // mostriamo i controlli di pagamento?
+          const isPaid = payRow && stato === 'riscosso';
           const item = document.createElement('div');
-          item.className = 'svc-pay-item';
-          // Riga 1: nome (a sinistra) + ✕ rimuovi giocatore (a destra).
+          item.className = 'svc-pl';
+          // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
           const row = document.createElement('div');
-          row.className = 'svc-pay-row';
+          row.className = 'svc-pl-row';
+          if (payRow) {
+            const ic = document.createElement('i');
+            ic.className = 'ti ' + (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle svc-pl-ic-due');
+            ic.setAttribute('aria-hidden', 'true');
+            row.appendChild(ic);
+          }
           const nm = document.createElement('span');
+          nm.className = 'svc-pl-name';
           nm.textContent = p.nome;
-          nm.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.86rem;font-weight:600;' + (marked ? 'text-decoration:line-through;opacity:.5;' : '');
-          const x = document.createElement('button');
-          x.type = 'button';
-          x.className = 'svc-chip-x';
-          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
-          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
-          x.setAttribute('aria-label', x.title);
-          x.disabled = st.busy;
-          x.addEventListener('click', function () {
-            if (st.busy) return;
-            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
-            staffCalRenderPlayersEditor();
-          });
-          row.appendChild(nm); row.appendChild(x);
-          item.appendChild(row);
-          // Riga/e 2: pagamento per giocatore — solo se attivo e NON in rimozione.
-          if (_payShow && !marked) {
-            const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
-            const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
-            const stato = p.stato; // 'riscosso' | 'in_sospeso' | null
-            const status = document.createElement('div');
-            status.className = 'svc-pay-status';
-            status.style.marginTop = '5px';
-            let showButtons = true;
-            if (stato === 'riscosso') {
-              status.classList.add('is-paid');
-              status.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>Pagato' + (importoCents != null && importoCents > 0 ? ' \xb7 ' + _incassiEuro(importoCents) : '');
-              showButtons = false;
-            } else if (stato === 'in_sospeso') {
-              status.classList.add('is-due');
-              if (importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
-                status.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
-              } else {
-                const dovuto = (pendenteCents != null) ? pendenteCents : importoCents;
-                status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' \xb7 ' + _incassiEuro(dovuto) : '');
-              }
-            } else {
-              status.style.color = 'var(--text-muted)';
-              status.textContent = _paySimUi ? 'Da incassare' : '— saldo da leggere';
-              _anyUnknown = true;
-            }
-            item.appendChild(status);
-            // STORNO se già riscosso (write/simulazione attivi).
-            if (stato === 'riscosso' && _payWriteActive) {
-              const undo = document.createElement('div');
-              undo.className = 'svc-pay-actions';
+          if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
+          row.appendChild(nm);
+          let amt = null;
+          if (payRow && isPaid) {
+            // Pagato → si ripiega: importo verde + icona storna.
+            const paid = document.createElement('span');
+            paid.className = 'svc-pl-paid';
+            paid.textContent = (importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato';
+            row.appendChild(paid);
+            if (_payWriteActive) {
               const sBtn = document.createElement('button');
-              sBtn.type = 'button'; sBtn.className = 'svc-btn-step';
-              sBtn.style.cssText = 'flex:0 0 auto;color:#b42318;border-color:#f1b5ae;';
-              sBtn.innerHTML = '<i class="ti ti-arrow-back-up" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Storna';
-              sBtn.title = 'Annulla il pagamento di questo giocatore';
+              sBtn.type = 'button'; sBtn.className = 'svc-pl-iconbtn';
+              sBtn.innerHTML = '<i class="ti ti-arrow-back-up" aria-hidden="true"></i>';
+              sBtn.title = 'Storna il pagamento';
+              sBtn.setAttribute('aria-label', 'Storna il pagamento di ' + p.nome);
+              sBtn.disabled = st.busy;
               sBtn.addEventListener('click', function () {
                 if (sBtn.disabled) return;
                 _pmoVoidPayment({
@@ -39031,63 +39036,87 @@ Per confermare scrivi ELIMINA.`);
                   sourceBtns: [sBtn],
                 });
               });
-              undo.appendChild(sBtn);
-              item.appendChild(undo);
+              row.appendChild(sBtn);
             }
-            if (showButtons) {
-              const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
-                : (importoCents != null ? importoCents : 0);
-              const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
-              const amtWrap = document.createElement('div');
-              amtWrap.className = 'svc-pay-amt';
-              const amtLbl = document.createElement('span'); amtLbl.className = 'svc-pay-amt-lbl'; amtLbl.textContent = '€ a carico';
-              const amt = document.createElement('input');
-              amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pay-amt-input';
-              amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              amt.disabled = !_payWriteActive;
-              amtWrap.appendChild(amtLbl); amtWrap.appendChild(amt);
-              item.appendChild(amtWrap);
-              _payAmtInputs.push(amt);
-              const acts = document.createElement('div');
-              acts.className = 'svc-pay-actions';
-              const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash';
-              const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card';
-              const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet';
-              const _syncWallet = function () {
-                if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
-                const a = _pmoEuroToCents(amt.value);
-                const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
-                wBtn.disabled = !okSaldo;
-                wBtn.title = okSaldo
-                  ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
-                  : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
+          } else if (payRow) {
+            // Da incassare → campo € inline editabile (default = pendente o importo letto, sennò 0).
+            const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
+              : (importoCents != null ? importoCents : 0);
+            const eur = document.createElement('div');
+            eur.className = 'svc-pl-eur';
+            const sym = document.createElement('span'); sym.className = 'svc-pl-eur-sym'; sym.textContent = '€';
+            amt = document.createElement('input');
+            amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pl-eur-input';
+            amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            amt.disabled = !_payWriteActive;
+            amt.setAttribute('aria-label', 'Importo a carico di ' + p.nome);
+            eur.appendChild(sym); eur.appendChild(amt);
+            row.appendChild(eur);
+            _payAmtInputs.push(amt);
+            if (stato == null) _anyUnknown = true;
+          }
+          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip).
+          const x = document.createElement('button');
+          x.type = 'button'; x.className = 'svc-pl-iconbtn';
+          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
+          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
+          x.setAttribute('aria-label', x.title);
+          x.disabled = st.busy;
+          x.addEventListener('click', function () {
+            if (st.busy) return;
+            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+            staffCalRenderPlayersEditor();
+          });
+          row.appendChild(x);
+          item.appendChild(row);
+          // Metodi di incasso (solo per chi deve ancora pagare).
+          if (payRow && !isPaid) {
+            const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
+            if (stato === 'in_sospeso' && importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
+              const part = document.createElement('div');
+              part.className = 'svc-pl-note';
+              part.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
+              item.appendChild(part);
+            }
+            const methods = document.createElement('div');
+            methods.className = 'svc-pl-methods';
+            const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-pl-method'; cBtn.innerHTML = '<i class="ti ti-cash" aria-hidden="true"></i>Cash';
+            const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-pl-method'; kBtn.innerHTML = '<i class="ti ti-credit-card" aria-hidden="true"></i>Card';
+            const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-pl-method'; wBtn.innerHTML = '<i class="ti ti-wallet" aria-hidden="true"></i>Wallet';
+            const _syncWallet = function () {
+              if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
+              const a = _pmoEuroToCents(amt.value);
+              const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
+              wBtn.disabled = !okSaldo;
+              wBtn.title = okSaldo
+                ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
+                : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
+            };
+            if (!_payWriteActive) {
+              cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+              kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+              _syncWallet();
+            } else {
+              cBtn.title = 'Incassa in contanti';
+              kBtn.title = 'Incassa con carta';
+              _syncWallet();
+              amt.addEventListener('input', _syncWallet);
+              const _collect = function (method) {
+                return _pmoCollectPayment({
+                  idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+                  idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+                  idx: (p.idx != null ? String(p.idx) : ''),
+                  playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
+                  campo: st.campo, data: st.isoDate, ora: st.ora,
+                  sourceBtns: [cBtn, kBtn, wBtn],
+                });
               };
-              if (!_payWriteActive) {
-                cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
-                kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
-                _syncWallet();
-              } else {
-                cBtn.disabled = false; cBtn.title = 'Incassa in contanti';
-                kBtn.disabled = false; kBtn.title = 'Incassa con carta';
-                _syncWallet();
-                amt.addEventListener('input', _syncWallet);
-                const _collect = function (method) {
-                  return _pmoCollectPayment({
-                    idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
-                    idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
-                    idx: (p.idx != null ? String(p.idx) : ''),
-                    playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
-                    campo: st.campo, data: st.isoDate, ora: st.ora,
-                    sourceBtns: [cBtn, kBtn, wBtn],
-                  });
-                };
-                cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
-                kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
-                wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
-              }
-              acts.appendChild(cBtn); acts.appendChild(kBtn); acts.appendChild(wBtn);
-              item.appendChild(acts);
+              cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
+              kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
+              wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
             }
+            methods.appendChild(cBtn); methods.appendChild(kBtn); methods.appendChild(wBtn);
+            item.appendChild(methods);
           }
           playersSec.appendChild(item);
         });
@@ -39204,7 +39233,7 @@ Per confermare scrivi ELIMINA.`);
     saveBtn.type = 'button';
     saveBtn.innerHTML = '<i class="ti ti-check" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Salva';
     saveBtn.className = 'svc-btn-confirm svc-btn-yes';
-    saveBtn.style.flex = '1';
+    saveBtn.style.flex = '2';
     saveBtn.disabled = st.busy;
     saveBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersSave(); });
     const closeBtn = document.createElement('button');
