@@ -7759,22 +7759,19 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.037';
+    const APP_VERSION = '6.038';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
-    // Fase 2b — SCRITTURA pagamenti (incasso REALE Cash/Card/Wallet → Matchpoint).
-    // ⚠️ DENARO REALE: ogni incasso crea un cobro vero su MP. Resta OFF ovunque (PROD e
-    // /test/, che condivide worker+MP) finché non c'è un test dal vivo supervisionato con
-    // OK esplicito del committente su una prenotazione concordata. Con flag OFF i bottoni
-    // Cash/Card/Wallet restano disabilitati e l'input importo è in sola lettura. Il
-    // collaudo del wiring avviene SOLO via harness mockato (test/handle-test.html), che
-    // chiama _pmoCollectPayment col bypass `window.__pmoPayHarness` (gate solo-TEST).
-    // Backstop server-side: kill-switch env nel worker (l'edge non è nemmeno deployata).
-    // Si accende SOLO durante un test dal vivo supervisionato (poi rientra a false).
-    // 29/06/2026 notte: ACCESO per il TEST LIVE storno borsellino (Ospite) + storno partita.
-    // ⚠️ RIMETTERE A false (+push) a fine test, insieme al kill-switch worker su Hetzner.
-    const PMO_PAYMENTS_WRITE_ENABLED = true;
+    // Fase 2b — SCRITTURA pagamenti. ⚠️ DENARO REALE. Due flag SEPARATI:
+    //  • PMO_PAYMENTS_WRITE_ENABLED  = incasso (Cash/Card/Wallet) + storno PARTITA (anular).
+    //    Ancora NON validati dal vivo → OFF ovunque finché non c'è un test supervisionato.
+    //  • PMO_WALLET_WRITE_ENABLED    = storno BORSELLINO (Correzione del saldo). VALIDATO dal
+    //    vivo (30/06, Ospite 36€→1€) → ON. Backstop sempre attivo: kill-switch worker
+    //    (env MATCHPOINT_PAYMENT_WRITE_ENABLED) + edge auth cloud_sync. Bypass solo-harness
+    //    via window.__pmoPayHarness (gate solo-TEST).
+    const PMO_PAYMENTS_WRITE_ENABLED = false;
+    const PMO_WALLET_WRITE_ENABLED = true;
     function pmoShowVersionOverlay() {
       var o = document.getElementById('pmoVersionOverlay');
       if (o) o.classList.add('is-open');
@@ -13940,7 +13937,7 @@ Grazie.`
               <div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.4;">
                 <div>💡 Il saldo si aggiorna dalla <strong>sincronizzazione generale</strong>: usa «↻ Aggiorna saldi borsellino» in cima all'Anagrafica, oppure l'aggiornamento automatico ogni 30 minuti.</div>
               </div>`}
-              ${(PMO_PAYMENTS_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
+              ${(PMO_WALLET_WRITE_ENABLED && (function () { const w = _walletResolve(g); return w && typeof w.balance_cents === 'number' && w.balance_cents > 0; })()) ? `
               <div style="margin-top:10px;border-top:1px solid var(--border,#e5e7eb);padding-top:10px;">
                 <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">↩︎ Storna saldo (Correzione del saldo)</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -37235,7 +37232,7 @@ Per confermare scrivi ELIMINA.`);
   // ── STORNO BORSELLINO (Fase 2b — scrittura, denaro reale): sottrae (totale o parziale)
   // dal saldo Portafoglio via edge matchpoint-wallet-correct → worker /correct-wallet
   // ("Correzione del saldo"). Conferma esplicita, edge sincrona, NESSUN retry. Gated dal
-  // flag PMO_PAYMENTS_WRITE_ENABLED (bypass solo-harness via __pmoPayHarness).
+  // flag PMO_WALLET_WRITE_ENABLED (bypass solo-harness via __pmoPayHarness).
   function _pmoConfirmVoidWallet(name, subtractCents, isTotal) {
     return new Promise(function (resolve) {
       const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
@@ -37256,8 +37253,8 @@ Per confermare scrivi ELIMINA.`);
     const _harness = PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true;
     const esc = (typeof escapeHtml === 'function') ? escapeHtml : function (s) { return String(s == null ? '' : s); };
     const _setMsg = function (n, html) { try { const last = n && n.querySelector(':scope > div:last-child'); if (last) last.innerHTML = html; } catch (e) {} };
-    if (!PMO_PAYMENTS_WRITE_ENABLED && !_harness) {
-      try { svcAddMessage('system', 'ℹ️ Storno borsellino non attivo: la scrittura pagamenti (Fase 2b) non è abilitata.'); } catch (e) {}
+    if (!PMO_WALLET_WRITE_ENABLED && !_harness) {
+      try { svcAddMessage('system', 'ℹ️ Storno borsellino non attivo: la scrittura (Fase 2b) non è abilitata.'); } catch (e) {}
       return { ok: false, message: 'WRITE_DISABLED' };
     }
     const memberId = String(opts.memberId == null ? '' : opts.memberId).trim();
