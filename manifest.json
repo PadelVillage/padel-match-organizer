@@ -1,6 +1,6 @@
 {
-  "name": "Padel Village",
-  "short_name": "Padel Village",
+  "name": "admin",
+  "short_name": "admin",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
