@@ -4450,6 +4450,61 @@ body.assessment-public-mode .assessment-public-only-card {
       align-content:start;
       min-width:0;
     }
+    .member-card-body.member-card-flow {
+      display:flex;
+      flex-direction:column;
+      grid-template-columns:none;
+      gap:12px;
+    }
+    .member-hero {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:#f8fbff;
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      padding:12px 14px;
+    }
+    .member-hero-wallet { display:flex; flex-direction:column; min-width:0; }
+    .member-hero-wallet-label { font-size:12px; color:#667085; font-weight:bold; }
+    .member-hero-wallet-amount { font-size:26px; line-height:1.1; color:var(--primary); overflow-wrap:anywhere; }
+    .member-hero-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .member-acc {
+      border:1px solid #dce5f2;
+      border-radius:10px;
+      background:#fff;
+      min-width:0;
+    }
+    .member-acc > summary {
+      list-style:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:13px 14px;
+    }
+    .member-acc > summary::-webkit-details-marker { display:none; }
+    .member-acc-title { color:var(--primary); font-size:16px; font-weight:600; }
+    .member-acc-hint { color:#667085; font-size:12px; font-weight:normal; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .member-acc-chev { margin-left:auto; color:#9aa6b8; font-size:18px; transition:transform .15s ease; flex:0 0 auto; }
+    .member-acc[open] > summary > .member-acc-chev { transform:rotate(180deg); }
+    .member-acc[open] > summary { border-bottom:1px solid #edf1f7; }
+    .member-acc-body { padding:14px; }
+    /* ── Scheda socio a TAB (opzione A): titoli cliccabili in alto, una sezione alla volta ── */
+    .member-tabs { display:flex; gap:2px; flex-wrap:wrap; border-bottom:2px solid #e3eaf4; margin:16px 0 0; }
+    .member-tab {
+      background:none; border:none; padding:10px 16px; font-size:14px; font-weight:600;
+      color:#667085; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;
+      border-radius:8px 8px 0 0; white-space:nowrap;
+    }
+    .member-tab:hover { color:var(--primary); background:#f3f7fc; }
+    .member-tab.active { color:var(--primary); border-bottom-color:var(--primary); background:#f3f7fc; }
+    .member-tab-panel { padding:16px 2px; }
+    .member-tab-panel[hidden] { display:none; }
+    .member-tab-subhead { color:var(--primary); font-size:14px; font-weight:700; margin:0 0 10px; }
+    .member-tab-subhead.has-divider { margin-top:20px; padding-top:18px; border-top:1px solid #edf1f7; }
     .member-panel {
       border:1px solid #dce5f2;
       border-radius:10px;
@@ -6560,7 +6615,7 @@ body.assessment-public-mode .assessment-public-only-card {
                     <th>Telefono</th>
                     <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('status')" title="Ordina per stato">Stato<span class="msort-ind" id="msort-status"></span></th>
                     <th>Azioni</th>
-                    <th style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('wallet')" title="Ordina per borsellino">Borsellino<span class="msort-ind" id="msort-wallet"></span></th>
+                    <th id="memberWalletColHead" style="cursor:pointer;user-select:none;white-space:nowrap;" onclick="setMembersSort('wallet')" title="Ordina per borsellino">Borsellino<span class="msort-ind" id="msort-wallet"></span></th>
                   </tr></thead>
                   <tbody id="memberTableBody"></tbody>
                 </table>
@@ -7777,7 +7832,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.044';
+    const APP_VERSION = '6.045';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10057,7 +10112,12 @@ Grazie.`
         { key:'view_assessment_strumenti', label:'Strumenti tecnici' },
         { key:'view_assessment_excel', label:'Import livelli Excel' },
       ]},
-      { key:'view_members', tab:'members', label:'Anagrafica soci' },
+      { key:'view_members', tab:'members', label:'Anagrafica soci', children:[
+        { key:'view_members_anagrafica', label:'Anagrafica (dati + preferenze)' },
+        { key:'view_members_borsellino', label:'Borsellino' },
+        { key:'view_members_autoval', label:'Autovalutazione' },
+        { key:'view_members_attivita', label:'Attività (stato + feedback + azioni)' },
+      ]},
       { key:'view_incassi', tab:'incassi', label:'Incassi' },
       { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
@@ -13717,11 +13777,16 @@ Grazie.`
       const pageItems = filtered.slice(start, start + MEMBERS_PAGE_SIZE);
       setText('membersPageInfo', filtered.length ? `${start + 1}-${Math.min(start + MEMBERS_PAGE_SIZE, filtered.length)} di ${filtered.length}` : '0 risultati');
       setText('membersPageNumber', `${membersCurrentPage}/${maxPage}`);
+      // Colonna Borsellino: visibile solo con permesso view_members_borsellino (owner/admin e
+      // profili senza config = sì). Coerente con il gating della scheda socio.
+      const _showWalletCol = (typeof pmoSubsectionVisibleFor === 'function') ? pmoSubsectionVisibleFor('view_members_borsellino', 'members') : true;
+      const _wColHead = document.getElementById('memberWalletColHead');
+      if (_wColHead) _wColHead.hidden = !_showWalletCol;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666;">Nessun socio trovato</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${_showWalletCol ? 7 : 6}" style="text-align:center;padding:20px;color:#666;">Nessun socio trovato</td></tr>`;
         return;
       }
-      try { pmoLoadWalletBalances(); } catch (e) {} // saldi cloud (lazy, cache 2 min) → ridisegna quando pronti
+      if (_showWalletCol) { try { pmoLoadWalletBalances(); } catch (e) {} } // saldi cloud (lazy, cache 2 min) → ridisegna quando pronti
       tbody.innerHTML = pageItems.map(g => {
         const isOpen = String(memberInlineOpenId) === String(g.id);
         // Borsellino: saldo Monedero on-demand (window.__pmoWalletCache). Se già letto mostra
@@ -13746,7 +13811,7 @@ Grazie.`
           <td>${escapeHtml(g.phone || '-')}</td>
           <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span></td>
           <td><div class="players-actions"><button class="btn-secondary small-btn" onclick="event.stopPropagation(); openMemberCard('${escapeHtml(String(g.id))}')">Scheda</button></div></td>
-          <td>${walletCell}</td>
+          ${_showWalletCol ? `<td>${walletCell}</td>` : ''}
         </tr>`;
       }).join('');
       renderOpenMemberCard();
@@ -13761,6 +13826,13 @@ Grazie.`
     function getWeeklyContactCount(playerId) {
       const key = `${playerId}_${formatLocalDate(getWeekStart(new Date()))}`;
       return weeklyContactLog[key] || 0;
+    }
+    // Scheda socio a tab (opzione A): mostra il pannello del tab scelto, evidenzia il titolo.
+    function pmoMemberTab(key, btnEl) {
+      const card = document.getElementById('memberCard');
+      if (!card) return;
+      card.querySelectorAll('.member-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-mtab') === key));
+      card.querySelectorAll('.member-tab-panel').forEach(p => { p.hidden = (p.getAttribute('data-mtab') !== key); });
     }
     function renderOpenMemberCard() {
       if (!memberInlineOpenId) {
@@ -13895,35 +13967,19 @@ Grazie.`
       const cardMemberIdValue = cleanCell(g.memberId || '');
       const cardInMatchpoint = !!cardMemberIdValue && !/^PMO-/i.test(cardMemberIdValue);
       const cardMatchpointBadge = cardInMatchpoint ? '' : '<span class="badge badge-warning">Non in Matchpoint</span>';
-      card.style.display = 'block';
-      card.className = 'member-card member-card-optimized';
-      card.innerHTML = `
-        <div class="member-card-head">
-          <div class="member-card-identity">
-            <div class="member-card-avatar">${escapeHtml(initials)}</div>
-            <div>
-              <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
-              <div class="member-card-badges">
-                <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
-                <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
-                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
-                ${cardMatchpointBadge}
-                <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
-              </div>
-            </div>
-          </div>
-          <div class="member-card-actions-top">
-            <button class="btn-secondary small-btn" onclick="closeMemberCard()">Chiudi</button>
-            <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
-          </div>
-        </div>
-        <div class="member-card-body">
-          <div class="member-card-stack">
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Dati socio</h4>
-                <span class="member-panel-hint">Anagrafica modificabile</span>
-              </div>
+      // Visibilità per-staff delle sotto-sezioni della scheda (Amministrazione → Sezioni visibili →
+      // Anagrafica soci). owner/admin e profili senza config = vedono tutto (fail-open).
+      const _canMemberSec = (k) => (typeof pmoSubsectionVisibleFor === 'function') ? pmoSubsectionVisibleFor(k, 'members') : true;
+      const showSecAnagrafica = _canMemberSec('view_members_anagrafica');
+      const showSecBorsellino = _canMemberSec('view_members_borsellino');
+      const showSecAutoval = _canMemberSec('view_members_autoval');
+      const showSecAttivita = _canMemberSec('view_members_attivita');
+      // ── Scheda a TAB (opzione A): 4 tab cliccabili in alto (Anagrafica · Borsellino ·
+      //    Autovalutazione · Attività), hero Borsellino+WhatsApp fisso sopra. Ogni tab è
+      //    gestito da un'unica chiave permesso (vedi PMO_SECTION_TREE.view_members). ──
+      const tabBorsellino = (PMO_PAYMENTS_UI_ENABLED && showSecBorsellino);
+      const _anagraficaBody = showSecAnagrafica ? `
+              <div class="member-tab-subhead">Dati socio</div>
               <div class="member-form-grid">
                 <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
@@ -13933,13 +13989,17 @@ Grazie.`
                 <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
               </div>
-            </section>
-            ${PMO_PAYMENTS_UI_ENABLED ? `
-            <section class="member-panel" data-feature="payments-shell">
-              <div class="member-panel-head">
-                <h4>👛 Borsellino</h4>
-                <span class="member-panel-hint">Saldo Matchpoint (Portafoglio)</span>
-              </div>
+              <div class="member-tab-subhead has-divider">Preferenze operative</div>
+              <div class="member-form-grid">
+                <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
+                <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
+                <div><label>Disponibilità giorni</label><input id="cardAvailabilityDays" value="${escapeHtml(memberAvailabilityProfile.days || (g.prefDays || []).join(', '))}"></div>
+                <div><label>Disponibilità fascia</label><input id="cardAvailabilityTime" value="${escapeHtml(memberAvailabilityProfile.time || (g.prefHours || []).join(', '))}"></div>
+                <div><label>Frequenza desiderata</label><input id="cardDesiredFrequency" value="${escapeHtml(memberAvailabilityProfile.frequency || g.desiredFrequency || '')}"></div>
+                <div><label>Preavviso minimo</label><input id="cardNotice" value="${escapeHtml(memberAvailabilityProfile.notice || g.notice || '')}"></div>
+                <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
+              </div>` : '';
+      const _borsellinoBody = tabBorsellino ? `
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Saldo attuale</span><strong id="cardWalletBalance">${escapeHtml(_walletBalanceLabel(g))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo aggiornamento</span><strong id="cardWalletUpdated">${escapeHtml(_walletUpdatedLabel(g))}</strong></div>
@@ -13972,52 +14032,67 @@ Grazie.`
                   <button class="btn-danger small-btn" onclick="pmoWalletVoidClick('${escapeHtml(String(g.id))}', this)">↩︎ Storna</button>
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
-              </div>` : ''}
-            </section>` : ''}
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Preferenze operative</h4>
-                <span class="member-panel-hint">Dato usato per gruppi e partite</span>
-              </div>
-              <div class="member-form-grid">
-                <div><label>Giorni preferiti</label><input id="cardPrefDays" value="${escapeHtml((g.prefDays || []).join(', '))}"></div>
-                <div><label>Orari preferiti</label><input id="cardPrefHours" value="${escapeHtml((g.prefHours || []).join(', '))}"></div>
-                <div><label>Disponibilità giorni</label><input id="cardAvailabilityDays" value="${escapeHtml(memberAvailabilityProfile.days || (g.prefDays || []).join(', '))}"></div>
-                <div><label>Disponibilità fascia</label><input id="cardAvailabilityTime" value="${escapeHtml(memberAvailabilityProfile.time || (g.prefHours || []).join(', '))}"></div>
-                <div><label>Frequenza desiderata</label><input id="cardDesiredFrequency" value="${escapeHtml(memberAvailabilityProfile.frequency || g.desiredFrequency || '')}"></div>
-                <div><label>Preavviso minimo</label><input id="cardNotice" value="${escapeHtml(memberAvailabilityProfile.notice || g.notice || '')}"></div>
-                <div class="full"><label>Tipo partita preferita</label><input id="cardPreferredMatchType" value="${escapeHtml(memberAvailabilityProfile.matchType || g.preferredMatchType || '')}"></div>
-              </div>
-            </section>
-            <section class="member-panel">
-              <div class="member-panel-head">
-                <h4>Stato rapido</h4>
-                <span class="member-panel-hint">Controllo prima di contattare</span>
-              </div>
+              </div>` : ''}` : '';
+      const _autovalBody = showSecAutoval ? `${assessmentMeta}${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}` : '';
+      const _attivitaBody = showSecAttivita ? `
+              <div class="member-tab-subhead">Stato rapido</div>
               <div class="member-status-grid">
                 <div class="member-status-stat"><span>Messaggi inviati totali</span><strong>${escapeHtml(String(getTotalContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Messaggi inviati questa settimana</span><strong>${escapeHtml(String(getWeeklyContactCount(g.id)))}</strong></div>
                 <div class="member-status-stat"><span>Ultimo messaggio inviato</span><strong>-</strong></div>
               </div>
-            </section>
-          </div>
-          <aside class="member-card-stack">
-            ${assessmentMeta}
-            <section class="member-panel">
-              <div class="member-panel-head"><h4>Feedback post-partita</h4><span class="member-panel-hint">Preferenze emerse dalle partite giocate</span></div>
+              <div class="member-tab-subhead has-divider">Feedback post-partita</div>
               ${renderPostMatchFeedbackMemberSummary(g)}
-            </section>
-            ${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}
-            <section class="member-panel">
-              <div class="member-panel-head"><h4>Azioni operative</h4></div>
+              <div class="member-tab-subhead has-divider">Azioni operative</div>
               <div class="member-card-action-row">
                 <button class="btn-success" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')">WhatsApp</button>
                 <button class="btn-success" onclick="setActionAnchor(this); restartAssessmentForMember('${escapeHtml(String(g.id))}')">Nuova autovalutazione</button>
                 <button class="btn-warning" onclick="setActionAnchor(this); toggleMemberActive('${escapeHtml(String(g.id))}')">${g.active !== false ? 'Disattiva' : 'Riattiva'}</button>
                 <button class="btn-danger" onclick="setActionAnchor(this); deleteMemberCard('${escapeHtml(String(g.id))}')">Cancella socio</button>
+              </div>` : '';
+      const memberTabs = [
+        { key:'anagrafica', label:'Anagrafica', visible:showSecAnagrafica, body:_anagraficaBody },
+        { key:'borsellino', label:'Borsellino', visible:tabBorsellino, body:_borsellinoBody },
+        { key:'autoval', label:'Autovalutazione', visible:showSecAutoval, body:_autovalBody },
+        { key:'attivita', label:'Attività', visible:showSecAttivita, body:_attivitaBody }
+      ].filter(t => t.visible);
+      const _firstTabKey = memberTabs.length ? memberTabs[0].key : '';
+      const _memberTabsBar = memberTabs.map(t => `<button type="button" class="member-tab${t.key === _firstTabKey ? ' active' : ''}" data-mtab="${t.key}" onclick="pmoMemberTab('${t.key}', this)">${escapeHtml(t.label)}</button>`).join('');
+      const _memberTabsPanels = memberTabs.map(t => `<div class="member-tab-panel" data-mtab="${t.key}"${t.key === _firstTabKey ? '' : ' hidden'}>${t.body}</div>`).join('');
+      card.style.display = 'block';
+      card.className = 'member-card member-card-optimized';
+      card.innerHTML = `
+        <div class="member-card-head">
+          <div class="member-card-identity">
+            <div class="member-card-avatar">${escapeHtml(initials)}</div>
+            <div>
+              <div class="member-card-name">${escapeHtml(playerFullName(g))}</div>
+              <div class="member-card-badges">
+                <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
+                <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
+                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
+                ${cardMatchpointBadge}
+                <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
               </div>
-            </section>
-          </aside>
+            </div>
+          </div>
+          <div class="member-card-actions-top">
+            <button class="btn-secondary small-btn" onclick="closeMemberCard()">Chiudi</button>
+            <button class="btn-primary small-btn" onclick="setActionAnchor(this); saveMemberCard('${escapeHtml(String(g.id))}')">Salva</button>
+          </div>
+        </div>
+        <div class="member-card-body member-card-flow">
+          <div class="member-hero">
+            ${(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino) ? `<div class="member-hero-wallet">
+              <span class="member-hero-wallet-label">Borsellino</span>
+              <strong class="member-hero-wallet-amount">${escapeHtml(_walletBalanceLabel(g))}</strong>
+            </div>` : '<div></div>'}
+            <div class="member-hero-actions">
+              <button class="btn-success small-btn" onclick="setActionAnchor(this); openMemberWhatsApp('${escapeHtml(String(g.id))}')"><i class="ti ti-brand-whatsapp" style="font-size:15px;vertical-align:-2px;" aria-hidden="true"></i> WhatsApp</button>
+            </div>
+          </div>
+          ${memberTabs.length ? `<div class="member-tabs" role="tablist">${_memberTabsBar}</div>
+          <div class="member-tab-panels">${_memberTabsPanels}</div>` : '<div style="padding:18px 2px;color:#667085;">Nessuna sezione visibile per il tuo profilo.</div>'}
         </div>
         <div class="member-card-footer">
           <span class="member-panel-hint">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
@@ -14030,6 +14105,8 @@ Grazie.`
       overlay.scrollTop = 0;
       if (options.focusAssessment) {
         setTimeout(() => {
+          // L'autovalutazione vive nel tab "Autovalutazione": attivalo prima di scrollare.
+          if (typeof pmoMemberTab === 'function') pmoMemberTab('autoval');
           const target = document.getElementById('memberAssessmentValidationPanel');
           if (!target) return;
           target.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
@@ -14045,40 +14122,59 @@ Grazie.`
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));
       if (idx < 0) return;
       const current = giocatori[idx];
-      const normalizedCardName = normalizeImportedPlayerNameParts(document.getElementById('cardFirstName').value, document.getElementById('cardSurname').value);
-      const firstName = normalizedCardName.firstName;
-      const surname = normalizedCardName.surname;
-      const fullName = compactSpaces(`${firstName} ${surname}`);
-      const guestJolly = isGuestJollyName(fullName);
-      if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
-      const cardLevelRaw = cleanCell(document.getElementById('cardLevel').value || '');
+      // Le sotto-sezioni della scheda possono essere nascoste per permesso (Sezioni visibili →
+      // Anagrafica soci): se gli input non sono nel DOM, NON leggere/azzerare → mantieni i valori
+      // esistenti del socio. _cardVal restituisce il fallback quando l'input è assente.
+      const _cardVal = (id, fb) => { const e = document.getElementById(id); return e ? e.value : fb; };
+      const _datiPresent = !!document.getElementById('cardFirstName');
+      const _prefPresent = !!document.getElementById('cardPrefDays');
+      let firstName, surname, fullName, guestJolly;
+      if (_datiPresent) {
+        const normalizedCardName = normalizeImportedPlayerNameParts(_cardVal('cardFirstName',''), _cardVal('cardSurname',''));
+        firstName = normalizedCardName.firstName;
+        surname = normalizedCardName.surname;
+        fullName = compactSpaces(`${firstName} ${surname}`);
+        guestJolly = isGuestJollyName(fullName);
+        if (!firstName || (!surname && !guestJolly)) return showAlert('❌ Nome e cognome obbligatori. Eccezione: “Ospite” può restare senza altri dati.', 'danger');
+      } else {
+        firstName = cleanCell(current.firstName || '');
+        surname = cleanCell(current.surname || '');
+        fullName = compactSpaces(`${firstName} ${surname}`) || cleanCell(current.name || '');
+        guestJolly = isGuestJollyMember(current);
+      }
+      const cardLevelRaw = _datiPresent ? cleanCell(_cardVal('cardLevel','') || '') : cleanCell(String(current.level ?? ''));
       // Validazioni condivise con l'assistente (parità): livello 0–7, email formato, telefono.
-      const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(document.getElementById('cardEmail').value), document.getElementById('cardPhone').value);
-      if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
+      if (_datiPresent) {
+        const _vCardErr = pmoAnaFieldError(cardLevelRaw, cleanCell(_cardVal('cardEmail','')), _cardVal('cardPhone',''));
+        if (!guestJolly && _vCardErr) return showAlert(_vCardErr, 'danger');
+      }
       const currentGuestJolly = isGuestJollyMember(current);
+      const _curPrefDays = Array.isArray(current.prefDays) ? current.prefDays.join(', ') : (current.prefDays || '');
+      const _curPrefHours = Array.isArray(current.prefHours) ? current.prefHours.join(', ') : (current.prefHours || '');
+      const _curAvail = current.availabilityProfile || {};
       const nextEditable = {
         firstName,
         surname,
-        gender: document.getElementById('cardGender').value,
+        gender: _datiPresent ? _cardVal('cardGender', current.gender || 'NA') : (current.gender || 'NA'),
         level: guestJolly && !cardLevelRaw ? '' : parseLevel(cardLevelRaw, 3),
-        phone: normalizePhone(document.getElementById('cardPhone').value),
-        email: cleanCell(document.getElementById('cardEmail').value),
+        phone: _datiPresent ? normalizePhone(_cardVal('cardPhone','')) : normalizePhone(current.phone || ''),
+        email: _datiPresent ? cleanCell(_cardVal('cardEmail','')) : cleanCell(current.email || ''),
         guestJolly,
-        prefDays: splitList(document.getElementById('cardPrefDays').value),
-        prefHours: splitList(document.getElementById('cardPrefHours').value),
+        prefDays: splitList(_prefPresent ? _cardVal('cardPrefDays','') : _curPrefDays),
+        prefHours: splitList(_prefPresent ? _cardVal('cardPrefHours','') : _curPrefHours),
         availabilityProfile: {
-          time: cleanCell(document.getElementById('cardAvailabilityTime')?.value || document.getElementById('cardPrefHours').value),
-          days: cleanCell(document.getElementById('cardAvailabilityDays')?.value || document.getElementById('cardPrefDays').value),
-          frequency: cleanCell(document.getElementById('cardDesiredFrequency')?.value || ''),
-          notice: cleanCell(document.getElementById('cardNotice')?.value || ''),
-          matchType: cleanCell(document.getElementById('cardPreferredMatchType')?.value || ''),
+          time: cleanCell(_prefPresent ? (_cardVal('cardAvailabilityTime', _cardVal('cardPrefHours',''))) : (_curAvail.time || current.availabilityTime || '')),
+          days: cleanCell(_prefPresent ? (_cardVal('cardAvailabilityDays', _cardVal('cardPrefDays',''))) : (_curAvail.days || current.preferredDays || '')),
+          frequency: cleanCell(_prefPresent ? _cardVal('cardDesiredFrequency','') : (_curAvail.frequency || current.desiredFrequency || '')),
+          notice: cleanCell(_prefPresent ? _cardVal('cardNotice','') : (_curAvail.notice || current.notice || '')),
+          matchType: cleanCell(_prefPresent ? _cardVal('cardPreferredMatchType','') : (_curAvail.matchType || current.preferredMatchType || '')),
           source: 'scheda socio'
         },
-        availabilityTime: cleanCell(document.getElementById('cardAvailabilityTime')?.value || ''),
-        preferredDays: cleanCell(document.getElementById('cardAvailabilityDays')?.value || ''),
-        desiredFrequency: cleanCell(document.getElementById('cardDesiredFrequency')?.value || ''),
-        notice: cleanCell(document.getElementById('cardNotice')?.value || ''),
-        preferredMatchType: cleanCell(document.getElementById('cardPreferredMatchType')?.value || ''),
+        availabilityTime: cleanCell(_prefPresent ? _cardVal('cardAvailabilityTime','') : (current.availabilityTime || '')),
+        preferredDays: cleanCell(_prefPresent ? _cardVal('cardAvailabilityDays','') : (current.preferredDays || '')),
+        desiredFrequency: cleanCell(_prefPresent ? _cardVal('cardDesiredFrequency','') : (current.desiredFrequency || '')),
+        notice: cleanCell(_prefPresent ? _cardVal('cardNotice','') : (current.notice || '')),
+        preferredMatchType: cleanCell(_prefPresent ? _cardVal('cardPreferredMatchType','') : (current.preferredMatchType || '')),
         availabilitySource: 'scheda socio'
       };
       const currentAvailability = current.availabilityProfile || {};
