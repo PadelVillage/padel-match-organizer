@@ -6389,6 +6389,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <h3>Calendario campi staff</h3>
                 <p>Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
                 <span id="staffCalCloudStatus" style="font-size:11px;color:#999;margin-top:2px;display:none;">aggiorno…</span>
+                <span id="staffCalSessionWarning" onclick="staffLogout()" title="Esci e rientra" style="display:none;cursor:pointer;font-size:12px;font-weight:600;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:4px 10px;margin-top:4px;">⚠️ Sessione scaduta — tocca qui per uscire e rientrare (il calendario potrebbe mostrare dati non aggiornati)</span>
               </div>
               <div class="staff-cal-date-nav" style="margin-left:auto">
                 <button onclick="staffCalPrevDay()" title="Giorno precedente">‹</button>
@@ -7834,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.063';
+    const APP_VERSION = '6.064';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -36659,6 +36660,13 @@ Per confermare scrivi ELIMINA.`);
     } catch (e) { console.warn('staffCalReconcileMembersFromCloud:', e); }
   }
 
+  // v6.064 — Avviso "sessione scaduta". Se lo scarico dal cloud fallisce per sessione
+  // non rinnovabile, il calendario resta su dati locali VECCHI senza dirlo: mostriamo un
+  // banner cliccabile (→ logout) invece del silenzio. Si toglie da solo appena un refresh
+  // torna a buon fine.
+  function _staffCalSetSessionWarning(show) {
+    try { const el = document.getElementById('staffCalSessionWarning'); if (el) el.style.display = show ? '' : 'none'; } catch (e) {}
+  }
   async function staffCalRefreshFromCloud(opts) {
     try {
       const force = opts && opts.force;
@@ -36669,9 +36677,10 @@ Per confermare scrivi ELIMINA.`);
       if (!(typeof pmoIsSupabaseSessionFresh === 'function' && pmoIsSupabaseSessionFresh(supabaseSession))) {
         let _refreshedToken = '';
         try { if (typeof pmoGetSupabaseStaffAccessToken === 'function') _refreshedToken = await pmoGetSupabaseStaffAccessToken(); } catch (e) {}
-        if (!_refreshedToken) return;   // refresh fallito → solo qui ci si ferma
+        if (!_refreshedToken) { _staffCalSetSessionWarning(true); return; }   // refresh fallito → avvisa e fermati
       }
       if (!(typeof pmoIsStaffProfileActive === 'function' && pmoIsStaffProfileActive(pmoStaffProfile))) return;
+      _staffCalSetSessionWarning(false);   // sessione valida/rinnovata → togli l'avviso
       try { staffCalRtStart(); } catch (e) {}
       // Debounce: skip if last pull was less than 60s ago, unless force
       const now = Date.now();
@@ -36770,6 +36779,8 @@ Per confermare scrivi ELIMINA.`);
       if (statusEl) statusEl.style.display = 'none';
     } catch (err) {
       console.warn('staffCalRefreshFromCloud:', err);
+      // Errore di autenticazione (sessione/token) → mostra l'avviso invece di dati vecchi in silenzio.
+      try { const _m = String((err && err.message) || err || ''); if (/email personale Supabase|AUTH_REQUIRED|PERMISSION_DENIED|sessione scadut|401/i.test(_m)) _staffCalSetSessionWarning(true); } catch (e) {}
       try { const statusEl = document.getElementById('staffCalCloudStatus'); if (statusEl) statusEl.style.display = 'none'; } catch {}
     }
   }
