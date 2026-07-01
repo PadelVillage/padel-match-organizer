@@ -7209,8 +7209,20 @@ async function editBookingWithBrowser(input = {}) {
       }
 
       // AGGIUNTE
+      let addReloadUsed = false;
       for (const p of (players.add || [])) {
-        const r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
+        let r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
+        // 🛡️ Anti-instabilità: se manca la sezione "aggiungi giocatore" (ficha non
+        // renderizzata del tutto, tipico SUBITO dopo un rilancio del browser), ri-naviga
+        // la ficha UNA volta e ritenta prima di arrenderti. Vedi incidente Campo 4 (add
+        // input assente mentre il browser si stava rilanciando → 0 aggiunti ma ok:true).
+        if (!r.added && r.reason === 'input_not_found' && !addReloadUsed) {
+          addReloadUsed = true;
+          diagnostic.steps.push(`add_input_missing_reload:${p.nome}`);
+          await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
+          await page.waitForTimeout(1500);
+          r = await searchAndAddPlayer(page, page, p.nome, diagnostic, ADD_PFX, p.codice, p.codiceCliente);
+        }
         addResults.push(r);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
@@ -7237,6 +7249,18 @@ async function editBookingWithBrowser(input = {}) {
             idx++;
           }
         }
+      }
+
+      // 🚫 NIENTE FALSO SUCCESSO: se un giocatore RICHIESTO non è stato aggiunto (es. la
+      // sezione "aggiungi" non è mai comparsa per instabilità del browser), NON proseguire
+      // col salvataggio dichiarando ok. Fallisci in modo esplicito così l'app SA che deve
+      // ritentare, invece di mostrare "fatto" senza aver aggiunto nessuno. (no_name = voce
+      // vuota, non un fallimento reale → esclusa.)
+      const addFalliti = addResults.filter((r) => r && r.added === false && r.reason !== 'no_name');
+      if (addFalliti.length) {
+        throw fail('PLAYER_ADD_INCOMPLETE',
+          `Aggiunta non completata per ${addFalliti.length} giocatore/i: ${addFalliti.map((r) => `${r.nome}(${r.reason || '?'})`).join(', ')}. Riprova.`,
+          diagnostic);
       }
 
       // Osservazioni (← note): riempi PRIMA del salvataggio giocatori → un solo save.
