@@ -6526,6 +6526,17 @@ async function createBookingWithBrowser(options = {}) {
       }
       diagnostic.playersResult = playersResult;
 
+      // 🚫 #9 — NIENTE FALSO SUCCESSO in CREATE: se un giocatore RICHIESTO non è stato
+      // aggiunto (es. sezione "aggiungi" non renderizzata per instabilità del browser),
+      // NON salvare dichiarando "creata". Fallisci esplicito → l'app SA di dover ritentare.
+      // Specchio della guardia EDIT (#476, server.mjs). no_name = voce vuota → esclusa.
+      const addFallitiCreatePartita = playersResult.filter((r) => r && r.added === false && r.reason !== 'no_name');
+      if (addFallitiCreatePartita.length) {
+        throw fail('PLAYER_ADD_INCOMPLETE',
+          `Aggiunta non completata per ${addFallitiCreatePartita.length} giocatore/i: ${addFallitiCreatePartita.map((r) => `${r.nome}(${r.reason || '?'})`).join(', ')}. Riprova.`,
+          diagnostic);
+      }
+
       // 2b. Osservazioni (← note): per ultimo, prima del salvataggio.
       const notePartita = clean(booking.note || '');
       if (notePartita) await fillOsservazioni(formCtx, page, notePartita, diagnostic);
@@ -6645,6 +6656,16 @@ async function createBookingWithBrowser(options = {}) {
         playersResult.push(await searchAndAddPlayer(formCtx, page, p.nome, diagnostic, LEZIONE_PLAYER_PFX, p.codice, p.codiceCliente));
       }
       diagnostic.playersResult = playersResult;
+
+      // 🚫 #9 — stessa guardia anti-falso-successo del ramo Partita: un ALLIEVO richiesto
+      // non aggiunto NON deve produrre una lezione "creata" senza di lui. Fallisci prima
+      // di selezionare l'istruttore e salvare → l'app ritenta. (no_name = voce vuota → esclusa.)
+      const addFallitiCreateLezione = playersResult.filter((r) => r && r.added === false && r.reason !== 'no_name');
+      if (addFallitiCreateLezione.length) {
+        throw fail('PLAYER_ADD_INCOMPLETE',
+          `Aggiunta non completata per ${addFallitiCreateLezione.length} allievo/i: ${addFallitiCreateLezione.map((r) => `${r.nome}(${r.reason || '?'})`).join(', ')}. Riprova.`,
+          diagnostic);
+      }
 
       // 2. Seleziona l'ISTRUTTORE per ultimo (il suo AutoPostBack resta dopo
       //    l'inserimento allievi). selectIstruttore attende già il networkidle.
