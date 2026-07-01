@@ -485,16 +485,21 @@ async function enrichBookingsWithTabellone(
   username: string,
   password: string,
   baseUrl: string,
+  opts: { fullWindow?: boolean; settleMaxMs?: number } = {},
 ): Promise<void> {
-  // Finestra PIENA: leggiamo il tabellone per OGNI giorno futuro (oggi..+DEFAULT_FUTURE_DAYS),
-  // non solo i giorni con prenotazioni. Motivo: la MANUTENZIONE vive solo sul tabellone e un
-  // giorno di SOLA manutenzione (senza partite/lezioni nell'export) altrimenti non verrebbe mai
-  // letto → la sua manutenzione non veniva importata (bug "sabato sì / domenica no"). Scrapando
-  // SEMPRE tutti i giorni la riconciliazione resta coerente (niente manutenzione che appare e
-  // sparisce). Costo modesto: ~30 giorni vs i ~21 già scrapati dai soli prenotati.
+  // fullWindow=true (tick "full", periodico): leggiamo il tabellone per OGNI giorno futuro
+  // (oggi..+DEFAULT_FUTURE_DAYS), non solo i prenotati. Motivo: la MANUTENZIONE vive solo sul
+  // tabellone e un giorno di SOLA manutenzione altrimenti non verrebbe mai letto (bug "sabato
+  // sì / domenica no"). Su questi tick la riconciliazione manutenzione resta coerente.
+  // fullWindow=false (tick "light", frequente): SOLO i giorni con prenotazioni → arricchiamo
+  // roster/idReserva dei booking reali senza pagare la navigazione dei giorni vuoti. La
+  // manutenzione NON viene toccata qui (l'add è gated sotto e il reconcile non la tombstona).
+  const fullWindow = opts.fullWindow !== false;
   const today = todayIsoRome();
   const dateSet = new Set<string>();
-  for (let i = 0; i <= DEFAULT_FUTURE_DAYS; i++) dateSet.add(addDaysIso(today, i));
+  if (fullWindow) {
+    for (let i = 0; i <= DEFAULT_FUTURE_DAYS; i++) dateSet.add(addDaysIso(today, i));
+  }
   for (const b of bookings) { if (b.data && b.data >= today) dateSet.add(b.data); }
   const dates = [...dateSet].sort();
 
@@ -511,7 +516,9 @@ async function enrichBookingsWithTabellone(
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({ username, password, baseUrl, dates }),
+      // settleMaxMs (se fornito) accorcia l'attesa di assestamento roster per-giorno → sync
+      // più rapido, sotto il limite 150s dell'edge. Il worker lo legge da options.settleMaxMs.
+      body: JSON.stringify({ username, password, baseUrl, dates, ...(opts.settleMaxMs ? { settleMaxMs: opts.settleMaxMs } : {}) }),
     });
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -545,6 +552,12 @@ async function enrichBookingsWithTabellone(
       matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
   }
+
+  // Tick "light": abbiamo scrapato solo i giorni prenotati → NON ricalcolare la manutenzione
+  // (i giorni di sola manutenzione non sono stati letti). La manutenzione esistente resta
+  // com'è: il reconcile NON la tombstona sui light tick (vedi handler principale). Il tick
+  // "full" periodico la ri-aggiunge/riconcilia sull'intera finestra.
+  if (!fullWindow) return;
 
   // MANUTENZIONE (import 2026-06-19): i blocchi del tabellone marcati 'manutenzione' (senza
   // giocatori, solo eventuale nota) NON sono nell'export Excel → li aggiungiamo come occupancy
@@ -922,6 +935,24 @@ Deno.serve(async (req) => {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }
 
+    // ── DECOUPLING MANUTENZIONE (fix 504 sync lento) ──────────────────────────────
+    // Il tabellone si scrapea giorno-per-giorno: sui 31 giorni pieni il sync arrivava a
+    // 80-150s e sbatteva sul limite 150s dell'edge (504) → gli slot si aggiornavano "a
+    // fatica" in PROD e il sync manuale falliva sempre in TEST. La finestra piena serve
+    // SOLO alla manutenzione (che vive solo sul tabellone). Quindi:
+    //  • tick "light" (frequente): scrape SOLO i giorni con prenotazioni (roster/idReserva
+    //    dei booking reali) + settle più corto → veloce, sotto i 150s. NON tocca la
+    //    manutenzione (né la aggiunge né la tombstona: vedi reconcile sotto).
+    //  • tick "full" (periodico ~ogni 15 min): finestra piena 31gg + manutenzione, come prima.
+    // I booking REALI arrivano SEMPRE dall'export Excel completo → la loro freschezza e
+    // riconciliazione sono invariate su OGNI tick. Solo la manutenzione è a bassa cadenza.
+    // Il manuale ("Aggiorna prenotazioni") è light = veloce: all'operatore servono le
+    // prenotazioni, non la manutenzione. Scelta stateless via orologio (niente cron da toccare).
+    const reqBodyForMode = await req.clone().json().catch(() => ({} as JsonMap));
+    const syncSource = clean((reqBodyForMode as JsonMap)?.source as string || '');
+    const isManualSync = syncSource === 'pmo_dati_in_out';
+    const isFullTick = !isManualSync && ((new Date().getUTCMinutes() % 15) < 2);
+
     const exported = await exportFutureBookingsViaBrowserWorker();
     const validation = validateFutureBookingsWorkbook(exported.bytes);
     if (!validation.ok) {
@@ -963,6 +994,10 @@ Deno.serve(async (req) => {
           enrichUsername,
           enrichPassword,
           enrichBaseUrl,
+          // Light tick: solo giorni prenotati, niente manutenzione, settle più corto (il
+          // roster è comunque autorevole dall'Excel + protetto dallo STICKY ROSTER sotto).
+          // Full tick: finestra piena + manutenzione, settle moderato (sotto i 150s edge).
+          { fullWindow: isFullTick, settleMaxMs: isFullTick ? 5000 : 3500 },
         );
       }
     } catch (err) {
@@ -1046,6 +1081,12 @@ Deno.serve(async (req) => {
       const key = clean(record?.local_key || '');
       if (!type || !key) continue;
       if (currentKeysByType.get(type)?.has(key)) continue;
+      // LIVE/LIGHT TICK — decoupling manutenzione: sui tick frequenti non scrapiamo la
+      // finestra piena → le occupancy di MANUTENZIONE non sono nei current keys. NON vanno
+      // tombstonate qui (le possiede il tick "full" periodico): senza questo skip
+      // ri-lampeggerebbero ad ogni sync (regressione del fix PR#425). I booking REALI
+      // arrivano sempre dall'export Excel completo → la loro riconciliazione è invariata.
+      if (!isFullTick && type === 'booking_occupancy' && clean((record?.payload as JsonMap)?.tipo as string) === 'manutenzione') continue;
       if (type === 'booking') deletedBookings += 1;
       if (type === 'booking_occupancy') deletedOccupancies += 1;
       records.push({
