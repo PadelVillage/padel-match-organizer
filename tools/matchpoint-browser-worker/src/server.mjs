@@ -7183,12 +7183,35 @@ async function editBookingWithBrowser(input = {}) {
       }
       await page.waitForTimeout(2500);
     } else if (players) {
-      const removeNames = (players.remove || []).map((n) => n.toLowerCase().trim());
+      const removeNamesRaw = (players.remove || []).map((n) => String(n).toLowerCase().trim());
       const removeAll = players.removeAll === true;
+      const anyRemovalRequested = removeAll || removeNamesRaw.length > 0;
+      // ⚠️ OSPITE: il cliente MP "Ospite" (unico, codice 000001 / id interno 1) NON
+      // espone il nome nella riga (TextBoxNombreValor vuoto) → non è rimovibile per
+      // nome. Lo trattiamo per IDENTITÀ (id cliente = 1) e per CONTEGGIO: quanti ospiti
+      // togliere = numero di voci 'ospite' (o '' inviato da client vecchi) nella lista.
+      // I soci restano rimossi per nome. Simmetrico all'aggiunta-per-conteggio (#474).
+      const _od = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
+      const removeNames = removeNamesRaw.filter((n) => n && n !== 'ospite');
+      const guestWantedInitial = removeNamesRaw.filter((n) => n === 'ospite' || n === '').length;
+      let guestToRemove = guestWantedInitial;
 
       // RIMOZIONI — loop con ri-scan (no indici cached: il repeater si re-indicizza dopo ogni postback)
-      if (removeAll || removeNames.length > 0) {
-        diagnostic.steps.push('rimozioni_start');
+      if (anyRemovalRequested) {
+        diagnostic.steps.push(`rimozioni_start:names=${removeNames.length}:guest=${guestWantedInitial}`);
+        // baseline righe-ospite (per la verifica per-conteggio: l'ospite non ha nome)
+        const _countGuestRows = async () => {
+          let gi = 0, n = 0;
+          while (true) {
+            const gni = page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${gi}_TextBoxNombreValor_${gi}"]`);
+            if (!(await gni.count().catch(() => 0))) break;
+            const gic = page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${gi}_HiddenFieldIdCliente_${gi}"]`);
+            if (_od(await gic.first().inputValue().catch(() => '')) === '1') n++;
+            gi++;
+          }
+          return n;
+        };
+        const guestBefore = await _countGuestRows();
         let keepRemoving = true;
         while (keepRemoving) {
           keepRemoving = false;
@@ -7199,18 +7222,37 @@ async function editBookingWithBrowser(input = {}) {
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
             const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
-            const doRemove = removeAll || removeNames.includes(nomeVal);
+            const idCliInput = page.locator(
+              `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
+            );
+            const isGuestRow = _od(await idCliInput.first().inputValue().catch(() => '')) === '1';
+            const nameHit = !!nomeVal && removeNames.includes(nomeVal);
+            const guestHit = !removeAll && !nameHit && isGuestRow && guestToRemove > 0;
+            const doRemove = removeAll || nameHit || guestHit;
             if (doRemove) {
-              diagnostic.steps.push(`elimina:${nomeVal}`);
+              diagnostic.steps.push(`elimina:${nomeVal || '(ospite)'}${isGuestRow ? '#1' : ''}`);
               const elimBtn = page.locator(
                 `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_LinkButtonEliminar_${idx}`,
               );
               await elimBtn.first().click({ timeout: 8000 });
               await page.waitForTimeout(1200);
+              if (guestHit) guestToRemove--;
               keepRemoving = true;
               break; // ri-scan dall'inizio dopo il postback
             }
             idx++;
+          }
+        }
+        // VERIFICA ospiti per CONTEGGIO (l'ospite non ha nome → la verifica per nome più
+        // sotto non lo coprirebbe, dando un falso "rimosso ok"). Pretende che siano sparite
+        // tante righe-ospite quante richieste (cap al numero effettivamente presente).
+        if (!removeAll && guestWantedInitial > 0) {
+          const guestAfter = await _countGuestRows();
+          const expectedRemoved = Math.min(guestWantedInitial, guestBefore);
+          if ((guestBefore - guestAfter) < expectedRemoved) {
+            throw fail('EDIT_VERIFICA_FALLITA',
+              `Ospiti non rimossi: richiesti ${guestWantedInitial}, presenti ${guestBefore}, rimasti ${guestAfter}.`,
+              diagnostic);
           }
         }
       }
@@ -7220,7 +7262,7 @@ async function editBookingWithBrowser(input = {}) {
       // (senza, un add subito dopo un remove puo' lasciare HiddenFieldIdPeople vuoto).
       // NB: serve SOLO se seguono delle aggiunte. Per una rimozione pura il reload è
       // un giro a vuoto (una ricarica completa di Ficha) → si salta e si va al salvataggio.
-      if ((removeAll || removeNames.length > 0) && (players.add || []).length > 0) {
+      if (anyRemovalRequested && (players.add || []).length > 0) {
         diagnostic.steps.push('reload_after_removals');
         await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
         await page.waitForTimeout(800);
