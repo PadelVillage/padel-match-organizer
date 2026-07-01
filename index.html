@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.059';
+    const APP_VERSION = '6.060';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44652,6 +44652,22 @@ Per confermare scrivi ELIMINA.`);
       const _now = (Date.now ? Date.now() : new Date().getTime());
       if (aiFlowState && _aiFlowAt && (_now - _aiFlowAt) > AI_FLOW_TTL_MS) aiFlowState = null;
       _aiFlowAt = _now;
+      // ⭐ POSTULATO SCHEDA-MASTER (decisione utente): se una scheda partita è APERTA e il suo
+      // roster non è ancora popolato (scheda appena aperta, lettura autorevole worker ancora in
+      // corso → rosterLoading), leggilo SUBITO dal calendario (store `staffBookings`, cioè chi è
+      // davvero disegnato nel box) PRIMA di interpretare il comando e rispondere. Così OGNI ramo
+      // (aggiungi / togli / annulla / query sui giocatori) lavora sullo stato reale della partita
+      // aperta invece che su un roster vuoto/parziale. Vale sia su MOBILE che su DESKTOP: entrambi
+      // aprono la scheda con lo stesso `staffCalPlayersState` e passano di qui via PMOAi.handle.
+      // Fonte di verità = il calendario, non lo stato a metà di una scheda appena aperta. Non
+      // sovrascrive un roster già letto (solo se vuoto) → la lettura worker autorevole vince quando arriva.
+      try {
+        const _openSt = staffCalPlayersState;
+        if (_openSt && _openSt.hasPlayers && (!Array.isArray(_openSt.roster) || !_openSt.roster.length)) {
+          const _calRoster = _rosterFromCalendar(_openSt);
+          if (_calRoster && _calRoster.length) _openSt.roster = _calRoster;
+        }
+      } catch (e) {}
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
       // risposta al dialogo, non un nuovo comando. Instrada in base al TIPO di flusso (kind).
       if (aiFlowState) {
