@@ -1066,7 +1066,24 @@ Deno.serve(async (req) => {
         const hasAuthoritativeRoster = playersFromDescrizione((booking as JsonMap).descrizione as string).length > 0;
         const freshG = Array.isArray(booking.giocatori) ? booking.giocatori : [];
         const prevG = Array.isArray(prevOcc.giocatori) ? prevOcc.giocatori : [];
-        if (!hasAuthoritativeRoster && freshG.length <= 1 && prevG.length >= 2) booking.giocatori = prevG as string[];
+        // STICKY ROSTER **con CONFERMA** (fix "le formazioni non si aggiornano dentro gli slot"):
+        // un roster fresco degenere (0/1 nome) su una prenotazione che prima ne aveva >=2, senza
+        // descrizione autorevole, può essere (a) una lettura tabellone flaky oppure (b) una VERA
+        // riduzione. Non distinguibili in un colpo. Il vecchio sticky teneva SEMPRE il completo →
+        // una riduzione reale (es. lezione 2->1, roster svuotato) restava congelata all'infinito.
+        // Ora confermiamo su 2 sync: la 1ª volta teniamo il completo (assorbe il flake) e marchiamo
+        // `_rosterShrinkSeen`; se ANCHE il sync successivo legge degenere, accettiamo il fresco
+        // (riduzione confermata). Una lettura >=2 in mezzo NON rimette il marker → il flake è
+        // dimenticato. Una vera rimozione 4->2/3 ha freshG>=2 e passa comunque subito (invariato).
+        if (!hasAuthoritativeRoster && freshG.length <= 1 && prevG.length >= 2) {
+          if (prevOcc._rosterShrinkSeen === true) {
+            // 2ª lettura degenere consecutiva → riduzione reale confermata: tieni il roster fresco
+            // (nessun marker ripristinato).
+          } else {
+            booking.giocatori = prevG as string[];          // 1ª volta: mantieni il roster completo…
+            (booking as JsonMap)._rosterShrinkSeen = true;   // …e marca, per confermare al giro dopo.
+          }
+        }
         if (!clean((booking as JsonMap).idReserva) && clean(prevOcc.idReserva)) {
           booking.idReserva = String(prevOcc.idReserva);
         }
