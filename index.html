@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.056';
+    const APP_VERSION = '6.057';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38780,8 +38780,19 @@ Per confermare scrivi ELIMINA.`);
     // La lettura "autorevole" dal worker parte in sottofondo e aggiorna la lista SOLO se la scheda è
     // ancora aperta e non hai ancora toccato nulla. v5.707.
     const _normRoster = function (arr) {
+      // L'Ospite (cliente MP 000001 / id 1) NON espone il nome quando il roster arriva
+      // dal worker (nome vuoto). Senza normalizzarlo, _names().filter(Boolean) lo scarta
+      // (conteggio perso) e il regex /^ospite/ non lo riconosce (assistente cieco), e la
+      // rimozione manderebbe '' al worker. Lo mappiamo a nome 'Ospite' + flag ospite.
+      const _guestId = function (v) { return String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+/, '') === '1'; };
       return (Array.isArray(arr) ? arr : [])
-        .map(function (p) { return (p && p.nome != null) ? p : null; })
+        .map(function (p) {
+          if (!p) return null;
+          if ((p.nome == null || String(p.nome).trim() === '') && _guestId(p.idCliente)) {
+            return Object.assign({}, p, { nome: 'Ospite', ospite: true });
+          }
+          return (p.nome != null) ? p : null;
+        })
         .filter(Boolean)
         .map(function (p, i) { return Object.assign({}, p, { idx: (p.idx != null ? p.idx : i), nome: String(p.nome).trim() }); });
     };
