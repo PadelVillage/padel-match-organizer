@@ -7213,14 +7213,17 @@ async function editBookingWithBrowser(input = {}) {
       // RIMOZIONI — loop con ri-scan (no indici cached: il repeater si re-indicizza dopo ogni postback)
       if (anyRemovalRequested) {
         diagnostic.steps.push(`rimozioni_start:names=${removeNames.length}:guest=${guestWantedInitial}`);
-        // baseline righe-ospite (per la verifica per-conteggio: l'ospite non ha nome)
+        // baseline righe-ospite (per la verifica per-conteggio). ⚠️ L'Ospite ha DUE
+        // rappresentazioni nel form MP: alcune fiche espongono idCliente=000001 con nome
+        // vuoto, altre mostrano nome='Ospite' con idCliente vuoto → riconosco ENTRAMBE.
         const _countGuestRows = async () => {
           let gi = 0, n = 0;
           while (true) {
             const gni = page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${gi}_TextBoxNombreValor_${gi}"]`);
             if (!(await gni.count().catch(() => 0))) break;
+            const gnome = (await gni.first().inputValue().catch(() => '')).toLowerCase().trim();
             const gic = page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${gi}_HiddenFieldIdCliente_${gi}"]`);
-            if (_od(await gic.first().inputValue().catch(() => '')) === '1') n++;
+            if (_od(await gic.first().inputValue().catch(() => '')) === '1' || gnome === 'ospite') n++;
             gi++;
           }
           return n;
@@ -7239,7 +7242,7 @@ async function editBookingWithBrowser(input = {}) {
             const idCliInput = page.locator(
               `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_HiddenFieldIdCliente_${idx}"]`,
             );
-            const isGuestRow = _od(await idCliInput.first().inputValue().catch(() => '')) === '1';
+            const isGuestRow = _od(await idCliInput.first().inputValue().catch(() => '')) === '1' || nomeVal === 'ospite';
             const nameHit = !!nomeVal && removeNames.includes(nomeVal);
             const guestHit = !removeAll && !nameHit && isGuestRow && guestToRemove > 0;
             const doRemove = removeAll || nameHit || guestHit;
@@ -7441,8 +7444,12 @@ async function editBookingWithBrowser(input = {}) {
       }
       // REMOVE: qui invece FALLIAMO se il giocatore risulta ANCORA presente. Il match per
       // sottoinsieme di token lo riconosce anche con formato diverso → niente falso "rimosso ok".
+      // ⚠️ L'OSPITE è escluso: è rimosso per CONTEGGIO (più righe 'Ospite' identiche) e già
+      // verificato per conteggio nel blocco rimozioni. Qui il match per nome darebbe un falso
+      // fallimento quando se ne toglie UNO di più e ne restano altri con lo stesso nome 'Ospite'.
       if (!players.removeAll) {
         for (const nome of (players.remove || [])) {
+          if (String(nome).toLowerCase().trim() === 'ospite') continue;
           if (rosterNames.some((rn) => _nameMatch(rn, nome))) {
             throw fail('EDIT_VERIFICA_FALLITA',
               `Giocatore ${nome} doveva essere rimosso ma è ancora presente.`, diagnostic);
