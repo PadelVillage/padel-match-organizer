@@ -44810,6 +44810,11 @@ Per confermare scrivi ELIMINA.`);
         const _c = res.slots && res.slots.court, _tm = res.slots && res.slots.time;
         const _sameCourt = !_c || Number(_c) === Number(staffCalPlayersState.campo);
         const _sameTime = !_tm || String(_tm) === String(staffCalPlayersState.ora);
+        // Verifica anche il GIORNO (il ramo annulla lo fa già): un comando che nomina una data
+        // diversa da quella della scheda aperta NON deve aggiungere alla scheda aperta → cade nel
+        // routing normale e colpisce la prenotazione giusta. Senza data esplicita = scheda aperta.
+        const _dd = res.slots && res.slots.date;
+        const _sameDay = !_dd || String(_dd) === String(staffCalPlayersState.origIso || staffCalPlayersState.isoDate);
         const _hasContact = /(?:\+?\d[\s.\-]?){6,}/.test(t) || /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
         // COMANDO COMPOSTO «togli … E aggiungi …» a scheda aperta: una rimozione + un'aggiunta
         // in un colpo. Intercetta PRIMA del solo-aggiungi (che altrimenti aggiungerebbe anche i
@@ -44817,7 +44822,7 @@ Per confermare scrivi ELIMINA.`);
         const _remVerbOpen = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai])\b/.test(_norm(t));
         const _isNoteOpen = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_norm(t));
         const _isDurOpen = (typeof _durToMin === 'function') && _durToMin(t) != null;
-        if (_addVerb && _remVerbOpen && !_isNoteOpen && !_isDurOpen && _sameCourt && _sameTime && !_hasContact) {
+        if (_addVerb && _remVerbOpen && !_isNoteOpen && !_isDurOpen && _sameCourt && _sameTime && _sameDay && !_hasContact) {
           const _cl = _splitEditClauses(t);
           if (_cl) return _runCompoundEdit(staffCalPlayersState, _cl.addRaw, _cl.removeRaw);
         }
@@ -44827,7 +44832,7 @@ Per confermare scrivi ELIMINA.`);
         // "aggiungi/metti <durata>" (es. "aggiungi 60 minuti") = ALLUNGA la durata, non aggiunge
         // un giocatore: se c'è una durata vera, lascia proseguire verso la modifica durata.
         const _isDurQty = (typeof _durToMin === 'function') && _durToMin(t) != null;
-        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && !_isDurQty && _sameCourt && _sameTime && !_hasContact) {
+        if ((res.addAmbiguous || _addVerb) && !_isNoteCmd && !_isDurQty && _sameCourt && _sameTime && _sameDay && !_hasContact) {
           return _addPlayerToOpenBooking(res, t);
         }
       }
@@ -44845,6 +44850,15 @@ Per confermare scrivi ELIMINA.`);
           && !/(giocator\w*|allie\w*)/.test(_rn);
         const _timeQty = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_rn);
         const _noteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_rn);
+        // Verifica coordinate: se il comando nomina campo/ora/giorno DIVERSI dalla scheda aperta,
+        // NON toglie dalla scheda aperta → cade nel routing normale e colpisce la prenotazione
+        // nominata. Senza coordinate esplicite = scheda aperta (postulato). (Il ramo aggiungi/annulla
+        // fa lo stesso; qui prima non c'era alcun controllo → un "togli X di campo 3" a scheda campo 2
+        // aperta agiva sulla scheda sbagliata.)
+        const _rc = res.slots && res.slots.court, _rtm = res.slots && res.slots.time, _rd = res.slots && res.slots.date;
+        const _rSameSlot = (!_rc || Number(_rc) === Number(staffCalPlayersState.campo))
+          && (!_rtm || String(_rtm) === String(staffCalPlayersState.ora))
+          && (!_rd || String(_rd) === String(staffCalPlayersState.origIso || staffCalPlayersState.isoDate));
         let _rawName = String(t || '')
           .replace(/^\s*\W*(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b\s*/i, ' ')
           .replace(/\b((?:il|un|lo)\s+giocator\w*|giocator\w*|allie\w*|(?:da|dal|dalla|dalle|dallo)\s+(?:prenotazion\w*|partit\w*|lezion\w*|match))\b/ig, ' ');
@@ -44853,14 +44867,14 @@ Per confermare scrivi ELIMINA.`);
         // quantità=1. Gli ospiti sono FUNGIBILI (stesso nominativo "Ospite") → toglierne UNO è
         // univoco: lo facciamo SENZA chiedere "quale", invece di _askRemoveConfirm (che con 2
         // ospiti elencherebbe doppioni identici). Riusa _removePlayerNow (rimozione ottimistica).
-        if (_rmVerb && !_wholeBooking && !_timeQty && !_noteCmd
+        if (_rmVerb && _rSameSlot && !_wholeBooking && !_timeQty && !_noteCmd
           && res.operazione === 'rimuovi' && res.slotPreimpostati
           && res.slotPreimpostati.ruolo === 'ospite' && Number(res.slotPreimpostati.quantita || 1) === 1) {
           return _removeOneGuestNow(staffCalPlayersState);
         }
         // SOLO se c'è un NOME dopo il verbo è una rimozione-giocatore. "cancella"/"elimina" da
         // SOLI (nome vuoto) NON sono rimozione: cadono su CANCELLA → annulla la prenotazione aperta.
-        if (_rmVerb && _rawName && !_wholeBooking && !_timeQty && !_noteCmd) {
+        if (_rmVerb && _rSameSlot && _rawName && !_wholeBooking && !_timeQty && !_noteCmd) {
           return _askRemoveConfirm(staffCalPlayersState, _rawName);
         }
       }
