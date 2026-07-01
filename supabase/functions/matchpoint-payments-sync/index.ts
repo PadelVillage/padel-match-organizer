@@ -252,6 +252,7 @@ async function loadMembers(admin: ReturnType<typeof createClient>): Promise<Memb
   const byCode = new Map<string, MemberRecord>();
   const byEmail = new Map<string, MemberRecord>();
   const byName = new Map<string, MemberRecord>();
+  const nameCount = new Map<string, number>();
   for (const rec of records) {
     const p = rec.payload || {};
     const code = normalizeCode(p.memberId);
@@ -259,8 +260,15 @@ async function loadMembers(admin: ReturnType<typeof createClient>): Promise<Memb
     const email = normalizeEmail(p.email);
     if (email && !byEmail.has(email)) byEmail.set(email, rec);
     const name = normalizeName(p.name || `${clean(p.firstName)} ${clean(p.surname)}`);
-    if (name && !byName.has(name)) byName.set(name, rec);
+    if (name) {
+      nameCount.set(name, (nameCount.get(name) || 0) + 1);
+      if (!byName.has(name)) byName.set(name, rec);
+    }
   }
+  // #4 — i nomi AMBIGUI (≥2 soci OMONIMI) vengono ESCLUSI dal match-per-nome: altrimenti il
+  // "primo vince" attribuirebbe il pagamento al socio sbagliato (borsellino/incassi errati).
+  // Meglio nessun match → member_local_id null: l'incasso resta in cassa, ma non mal-attribuito.
+  for (const [name, n] of nameCount) { if (n > 1) byName.delete(name); }
   return { byCode, byEmail, byName };
 }
 
@@ -346,6 +354,12 @@ Deno.serve(async (req: Request) => {
   let matched = 0;
   const byMethod: Record<string, number> = { cash: 0, card: 0, wallet: 0, other: 0 };
   let totalCents = 0;
+  // #3 — per la riconciliazione tombstone: chiavi dei pagamenti PRESENTI nel report + la
+  // finestra effettiva coperta (min/max data-pagamento). Il report è completo per finestra
+  // date, quindi ciò che è in [minPayDate,maxPayDate] ma NON in newPaymentKeys è stato stornato.
+  const newPaymentKeys = new Set<string>();
+  let minPayDate = '';
+  let maxPayDate = '';
 
   for (const row of parsed.rows) {
     const rec = (row.cod ? members.byCode.get(row.cod) : undefined)
@@ -362,6 +376,11 @@ Deno.serve(async (req: Request) => {
     const seq = (seqByKey.get(baseKey) || 0) + 1;
     seqByKey.set(baseKey, seq);
     const localKey = `pay|${baseKey}|${seq}`;
+    newPaymentKeys.add(localKey);
+    if (row.payDateIso) {
+      if (!minPayDate || row.payDateIso < minPayDate) minPayDate = row.payDateIso;
+      if (!maxPayDate || row.payDateIso > maxPayDate) maxPayDate = row.payDateIso;
+    }
     byMethod[row.method] += row.amountCents;
     totalCents += row.amountCents;
     records.push({
@@ -391,13 +410,52 @@ Deno.serve(async (req: Request) => {
   }
   const paymentsWritten = records.length;
 
+  // 3b) #3 — TOMBSTONE dei cobros spariti dal report (stornati/mutati in Matchpoint). Senza
+  // questa passata un pagamento annullato in MP resterebbe come record `payment` ATTIVO e la
+  // sezione Incassi lo conterebbe ancora (doppio conteggio). Riconciliazione sulla FINESTRA
+  // effettiva del report [minPayDate,maxPayDate] (completa per finestra date): ogni `payment`
+  // esistente in quella finestra la cui chiave non è più nel report → deleted:true.
+  // NB: se il report è VUOTO (minPayDate assente) NON si tombstona nulla (evita che un export
+  // fallito/vuoto cancelli pagamenti veri).
+  let tombstoned = 0;
+  if (minPayDate && maxPayDate) {
+    const existing: { local_key: string; payload: JsonMap }[] = [];
+    for (let from = 0, page = 0; page < 200; page += 1, from += SUPABASE_PAGE_SIZE) {
+      const { data, error } = await admin
+        .from('pmo_cloud_records')
+        .select('local_key,payload')
+        .eq('record_type', 'payment')
+        .eq('deleted', false)
+        .gte('payload->>data', minPayDate)
+        .lte('payload->>data', maxPayDate)
+        .range(from, from + SUPABASE_PAGE_SIZE - 1);
+      if (error) { await logAudit(admin, actor, 'matchpoint_payments_sync_error', { source, message: 'tombstone_scan: ' + errorText(error) }); break; }
+      const rows = (Array.isArray(data) ? data : []) as { local_key: string; payload: JsonMap }[];
+      existing.push(...rows);
+      if (rows.length < SUPABASE_PAGE_SIZE) break;
+    }
+    for (const exRow of existing) {
+      if (!newPaymentKeys.has(exRow.local_key)) {
+        records.push({
+          record_type: 'payment',
+          local_key: exRow.local_key,
+          payload: { ...(exRow.payload || {}), status: 'voided', voided_at: importedAt, synced_at: importedAt },
+          payload_hash: null,
+          deleted: true,
+          synced_at: importedAt,
+        });
+        tombstoned += 1;
+      }
+    }
+  }
+
   // 4) Record riepilogo (diagnostica + sezione Incassi).
   records.push({
     record_type: 'matchpoint_data',
     local_key: 'matchpoint_payments_sync_last',
     payload: {
       synced_at: importedAt, source, dateFrom: dateFrom || null, dateTo: dateTo || null,
-      reportRows: parsed.rows.length, written: paymentsWritten, matched,
+      reportRows: parsed.rows.length, written: paymentsWritten, matched, tombstoned,
       unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers,
     },
     payload_hash: null,
@@ -432,5 +490,5 @@ Deno.serve(async (req: Request) => {
 
   await logAudit(admin, actor, 'matchpoint_payments_sync_success', { source, reportRows: parsed.rows.length, matched, totalCents, byMethod });
 
-  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reportRows: parsed.rows.length, written: paymentsWritten, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
+  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reportRows: parsed.rows.length, written: paymentsWritten, tombstoned, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
 });
