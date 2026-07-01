@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.054';
+    const APP_VERSION = '6.055';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21858,7 +21858,7 @@ Grazie!`
           <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
           <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
-            ${PMO_PAYMENTS_SIMULATE ? `<button type="button" class="btn-secondary small-btn" onclick="pmoIncassiCleanSim(this)" title="Cancella dal cloud TEST tutti gli incassi simulati (source pmo_simulate)" style="color:#92600a;border-color:#f5d98a;">🧹 Pulisci simulazioni</button>` : ''}
+            ${PMO_PAYMENTS_SIMULATE ? `<button type="button" class="btn-secondary small-btn" onclick="pmoIncassiCleanSim(this)" title="Cancella dal cloud TEST tutti gli incassi simulati (source pmo_simulate)" style="color:#5b3d00;background:#fdf0cf;border-color:#e6b84a;font-weight:700;">🧹 Pulisci simulazioni</button>` : ''}
             <button type="button" class="btn-primary small-btn" onclick="pmoPaymentsSyncAll(this)" title="Legge da Matchpoint i pagamenti delle prenotazioni nell'intervallo selezionato (report 11.13)">⟳ Sincronizza da Matchpoint</button>
           </div>
         </div>`;
