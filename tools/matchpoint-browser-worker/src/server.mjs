@@ -7244,6 +7244,24 @@ async function editBookingWithBrowser(input = {}) {
       // RIMOZIONI — loop con ri-scan (no indici cached: il repeater si re-indicizza dopo ogni postback)
       if (anyRemovalRequested) {
         diagnostic.steps.push(`rimozioni_start:names=${removeNames.length}:guest=${guestWantedInitial}`);
+        // 🛡️ Guardia anti-instabilità (specchio del ramo AGGIUNTA, casi input_not_found/
+        // add_link_missing): se il repeater partecipanti è VUOTO (0 righe) mentre una rimozione
+        // è richiesta, la Ficha non è renderizzata del tutto — tipico SUBITO dopo un rilancio del
+        // browser. Senza guardia lo scan trova 0 righe, non rimuove nulla e la verifica post-save
+        // dà un FALSO EDIT_VERIFICA_FALLITA (incidente 01/07 10:14: sessione warm_new in login).
+        // Ricarico la Ficha UNA volta e ri-conto prima di procedere. Una prenotazione da cui si
+        // rimuove HA per forza dei partecipanti → 0 righe = glitch di rendering, non stato reale.
+        const _countAllRows = async () => {
+          let ri = 0;
+          while (await page.locator(`input[id*="RepeaterParticipantes_${RP}_Listado_${ri}_TextBoxNombreValor_${ri}"]`).count().catch(() => 0)) ri++;
+          return ri;
+        };
+        if ((await _countAllRows()) === 0) {
+          diagnostic.steps.push('rimozioni_repeater_empty_reload');
+          await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
+          await page.waitForTimeout(1500);
+          diagnostic.steps.push(`rimozioni_rows_after_reload:${await _countAllRows()}`);
+        }
         // baseline righe-ospite (per la verifica per-conteggio). ⚠️ L'Ospite ha DUE
         // rappresentazioni nel form MP: alcune fiche espongono idCliente=000001 con nome
         // vuoto, altre mostrano nome='Ospite' con idCliente vuoto → riconosco ENTRAMBE.
