@@ -2511,6 +2511,16 @@ async function mpReadRetry(label, fn) {
       // 1° retry "soft": NON invalidare, ri-naviga sulla STESSA pagina calda (la maggior
       // parte dei TABELLONE_NOT_FOUND è un interstiziale transitorio). Dal 2° retry in poi
       // si invalida (login fresco). Meno relogin = meno rilanci del browser sotto carico.
+      //
+      // ⚠️ #2 — INVARIANTE DI ACCOPPIAMENTO (soft/hard retry ↔ _opFailed a livello op):
+      // il soft retry riusa la sessione calda SOLO se l'operazione avvolta NON l'ha già
+      // invalidata nel suo `finally { release(_opFailed) }`. Perciò le op di LETTURA passate
+      // a mpReadRetry (getSlotsWithBrowser, readTabelloneWithBrowser) DEVONO impostare
+      // `_opFailed = !_isRetriableNavError(e)` — su un nav-error retriabile NON invalidano,
+      // lasciando a QUESTA sede l'escalation soft→hard. Se un domani un'op facesse
+      // `release(true)` su un errore retriabile, il "soft" degraderebbe a login a freddo
+      // (funziona comunque, ma vanifica il fix #477). Chi tocca `_isRetriableNavError` o
+      // l'`_opFailed` delle op di lettura deve preservare questa invariante.
       const hard = attempt >= 1;
       console.log(JSON.stringify({ event: 'mp_read_nav_retry', label: String(label || ''), attempt: attempt + 1, code: e.code, hard, time: new Date().toISOString() }));
       if (hard) await mpWarmInvalidate();        // forza un login fresco al prossimo mpAcquirePage
@@ -7314,7 +7324,11 @@ async function editBookingWithBrowser(input = {}) {
         // renderizzata del tutto, tipico SUBITO dopo un rilancio del browser), ri-naviga
         // la ficha UNA volta e ritenta prima di arrenderti. Vedi incidente Campo 4 (add
         // input assente mentre il browser si stava rilanciando → 0 aggiunti ma ok:true).
-        if (!r.added && r.reason === 'input_not_found' && !addReloadUsed) {
+        // #1 — `add_link_missing` (LinkButtonAnyadir assente) è la STESSA sindrome di
+        // `input_not_found` (sezione "aggiungi" non ancora renderizzata, tipico subito dopo
+        // un rilancio del browser): merita lo stesso reload+retry-una-volta, altrimenti un
+        // giocatore richiesto non entra e — con la guardia #9 — l'op fallisce inutilmente.
+        if (!r.added && (r.reason === 'input_not_found' || r.reason === 'add_link_missing') && !addReloadUsed) {
           addReloadUsed = true;
           diagnostic.steps.push(`add_input_missing_reload:${p.nome}`);
           await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
