@@ -5985,9 +5985,12 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // = 4 righe con lo stesso id=1). Per l'Ospite quindi NON vale l'idempotenza per
   // id/nome (troverebbe sempre il 1° come "già presente" e salterebbe gli aggiuntivi,
   // riportando added:true a vuoto): si aggiunge sempre e si conferma per INCREMENTO del
-  // numero di righe. Escludiamo un eventuale socio REALE di nome "Ospite" (che avrebbe
-  // un codice cliente) richiedendo l'assenza del codice atteso.
-  const isGuest = norm(nome) === 'ospite' && !wantCode;
+  // numero di righe.
+  // ⚠️ L'Ospite si riconosce PROPRIO dalla sua identità Matchpoint: id interno agganciato
+  // = 1 (wantPeople) oppure codice cliente 000001 (wantCode; onlyDigits→"1"), o per nome.
+  // L'app PUÒ passare il codice 000001 → NON si può pretendere l'assenza del codice.
+  const isGuest = wantPeople === '1' || wantCode === '1' || norm(nome) === 'ospite';
+  diagnostic.steps.push('player_guest_mode:' + isGuest);
 
   // 🔒 PRE-CHECK IDEMPOTENZA: se questo giocatore è GIÀ tra i partecipanti (per id o
   // per nome) non aggiungerlo di nuovo. Evita il doppione quando un click precedente
