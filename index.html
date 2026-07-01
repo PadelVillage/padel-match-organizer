@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.058';
+    const APP_VERSION = '6.059';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -35427,9 +35427,21 @@ Per confermare scrivi ELIMINA.`);
       waInited = true;
       const dashboard = document.getElementById('waInboundDashboard');
       if (dashboard) dashboard.style.display = 'block';
-      /* Mostra banner di sicurezza se siamo in env=test */
+      /* #5 — In TEST NON connettere la dashboard WhatsApp. Il progetto Supabase WA è UNICO
+         (nessuna separazione TEST/PROD): connettersi da TEST leggerebbe i messaggi REALI di
+         PROD (dati sensibili dei clienti). L'INVIO era già limitato al solo numero di test
+         (WA_TEST_OVERRIDE_NUMBER), ma la LETTURA no. Finché non esiste un progetto/tabella
+         TEST separati, in TEST la dashboard resta disattivata (nessuna lettura dei dati PROD). */
       const testBanner = document.getElementById('waTestModeBanner');
-      if (testBanner) testBanner.style.display = isTestEnv() ? 'block' : 'none';
+      if (isTestEnv()) {
+        if (testBanner) {
+          testBanner.style.display = 'block';
+          testBanner.textContent = '💬 Dashboard WhatsApp disattivata in TEST: i dati sarebbero quelli reali di PROD (nessuna separazione TEST/PROD). Usala dall\'ambiente di produzione.';
+        }
+        waSetRt('', 'Disattivata in TEST');
+        return;
+      }
+      if (testBanner) testBanner.style.display = 'none';
       try {
         waSb = supabase.createClient(WA_URL, WA_KEY);
         waLoadMessages();
