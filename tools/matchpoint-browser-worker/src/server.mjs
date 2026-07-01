@@ -2499,8 +2499,12 @@ async function mpReadRetry(label, fn) {
     } catch (e) {
       lastErr = e;
       if (!_isRetriableNavError(e) || attempt === MP_READ_NAV_RETRIES) throw e;
-      console.log(JSON.stringify({ event: 'mp_read_nav_retry', label: String(label || ''), attempt: attempt + 1, code: e.code, time: new Date().toISOString() }));
-      await mpWarmInvalidate();        // forza un login fresco al prossimo mpAcquirePage
+      // 1° retry "soft": NON invalidare, ri-naviga sulla STESSA pagina calda (la maggior
+      // parte dei TABELLONE_NOT_FOUND è un interstiziale transitorio). Dal 2° retry in poi
+      // si invalida (login fresco). Meno relogin = meno rilanci del browser sotto carico.
+      const hard = attempt >= 1;
+      console.log(JSON.stringify({ event: 'mp_read_nav_retry', label: String(label || ''), attempt: attempt + 1, code: e.code, hard, time: new Date().toISOString() }));
+      if (hard) await mpWarmInvalidate();        // forza un login fresco al prossimo mpAcquirePage
       if (MP_READ_NAV_RETRY_GAP_MS) await new Promise((r) => setTimeout(r, MP_READ_NAV_RETRY_GAP_MS));
     }
   }
@@ -3583,7 +3587,11 @@ async function readTabelloneWithBrowser(options = {}) {
     }
     diagnostic.finishedAt = new Date().toISOString();
   } catch (_e) {
-    _opFailed = true;
+    // TABELLONE_NOT_FOUND = flakiness di navigazione TRANSITORIA: NON invalidare la
+    // sessione calda (niente relogin). Lascia a mpReadRetry l'escalation soft→hard (il
+    // 1° retry ri-naviga la STESSA pagina calda, solo dal 2° si fa login fresco). Evita
+    // i rilanci a raffica del browser sotto carico (indagine stabilità 01/07).
+    _opFailed = !_isRetriableNavError(_e);
     throw _e;
   } finally {
     await acq.release(_opFailed);
@@ -3606,6 +3614,12 @@ async function handleGetSlots(req, res) {
 // con chunk=2 → ~14-16s anche se ogni data del chunk tarda ad assestarsi (misurato live:
 // un chunk da 4 date "lente" arrivava a ~35s e una cancel ci finiva dietro).
 const MP_READ_TAB_CHUNK = Math.max(1, Math.min(31, Number(env('MATCHPOINT_READ_TAB_CHUNK', '2'))));
+// Throttle tra chunk nelle letture multi-giorno (il sync legge ~30 date in ~15 chunk).
+// Senza pausa, le navigazioni tabellone back-to-back martellano Matchpoint → picchi di
+// TABELLONE_NOT_FOUND che invalidano la sessione calda (indagine stabilità 01/07). Una
+// piccola pausa dà respiro a MP; non rallenta le op interattive (si infilano in coda tra
+// i chunk grazie alla priorità). 0 = disattivato.
+const MP_READ_TAB_CHUNK_GAP_MS = Math.max(0, Math.min(5000, Number(env('MATCHPOINT_READ_TAB_CHUNK_GAP_MS', '300'))));
 
 async function handleReadTabellone(req, res) {
   requireWorkerAuth(req);
@@ -3630,6 +3644,10 @@ async function handleReadTabellone(req, res) {
       const r = await mpQueueRun(mpJobMeta('read-tabellone', chunkBody), () => mpReadRetry('read-tabellone', () => readTabelloneWithBrowser(chunkBody)));
       if (r && r.result) Object.assign(merged, r.result);
       if (r && r.diagnostic && r.diagnostic.settle) parts.push({ dates: slice, settle: r.diagnostic.settle });
+      // Throttle: pausa prima del prossimo chunk (mai dopo l'ultimo) per non martellare MP.
+      if (MP_READ_TAB_CHUNK_GAP_MS && i + MP_READ_TAB_CHUNK < allDates.length) {
+        await new Promise((r2) => setTimeout(r2, MP_READ_TAB_CHUNK_GAP_MS));
+      }
     }
     return json(res, 200, { ok: true, result: merged, diagnostic: { flow: 'read_tabellone', chunked: allDates.length, chunkSize: MP_READ_TAB_CHUNK, parts } });
   }
