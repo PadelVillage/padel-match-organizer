@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.055';
+    const APP_VERSION = '6.056';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -34842,8 +34842,9 @@ Per confermare scrivi ELIMINA.`);
     const WA_URL  = 'https://aylykijfirtegyxzdwgu.supabase.co';
     const WA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5bHlraWpmaXJ0ZWd5eHpkd2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDA4OTcsImV4cCI6MjA5NDg3Njg5N30._wJ9l8-yHbDtcjSe5rNT2qRKK6bfdyERQKI_D2EljEg';
     const WA_TABLE = 'whatsapp_inbound_messages';
-    const SHADOW_URL = 'https://shadow.91.99.131.243.nip.io';
-    const SHADOW_KEY = 'a17a4d4e434e14130b4f8f8d1c2e6f231d0163a17df903ee4b867c2ab0778e1f';
+    // NB: URL e token dello Shadow backend NON sono più nel client (erano in chiaro nel
+    // sorgente pubblico). Le chiamate /webhook/* passano dall'edge autenticata
+    // wa-shadow-proxy, che tiene il token come secret server-side (vedi waShadowCall).
 
     /* Detect test env using the same logic as the main app */
     function isTestEnv() {
@@ -35227,20 +35228,30 @@ Per confermare scrivi ELIMINA.`);
 
     /* ── Shadow Mode backend integration ── */
 
+    /** Proxy autenticato verso lo Shadow backend: il token NON è più nel client,
+     *  vive come secret nell'edge function wa-shadow-proxy. Passa il JWT staff.
+     *  Ritorna { status, ok, data } preservando lo status (es. 429). */
+    async function waShadowCall(action, payload) {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('', 'usare la messaggistica WhatsApp');
+      const resp = await fetch(`${supabaseUrl}/functions/v1/wa-shadow-proxy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ action, payload }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      return { status: resp.status, ok: resp.ok, data };
+    }
+
     /** Chiama POST /webhook/suggest → genera 3 varianti IA */
     window.waGeneraVarianti = async function() {
       if (!waActiveMsg) return;
       const btn = document.getElementById('waBtnGenera');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Generazione in corso…'; }
       try {
-        const resp = await fetch(`${SHADOW_URL}/webhook/suggest`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SHADOW_KEY}` },
-          body: JSON.stringify({ message_id: waActiveMsg.id })
-        });
-        const data = await resp.json();
-        if (resp.status === 429) throw new Error(data.errore || '⏱ Limite IA: riprova tra un minuto.');
-        if (!resp.ok || !data.success) throw new Error(data.errore || `HTTP ${resp.status}`);
+        const { status, ok, data } = await waShadowCall('suggest', { message_id: waActiveMsg.id });
+        if (status === 429) throw new Error(data.errore || '⏱ Limite IA: riprova tra un minuto.');
+        if (!ok || !data.success) throw new Error(data.errore || `HTTP ${status}`);
         /* Fallback IA: dati insufficienti, l'operatore deve rispondere manualmente */
         if (data.fallback) {
           waActiveMsg._fallback_ia    = true;
@@ -35277,33 +35288,24 @@ Per confermare scrivi ELIMINA.`);
 
       try {
         /* Step 1 — approva variante sul backend (aggiorna profilo IA) */
-        const body = { message_id: waActiveMsg.id, variante_indice: indice };
-        if (contactId) body.contact_id = contactId;
-        const resp = await fetch(`${SHADOW_URL}/webhook/approve-suggestion`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SHADOW_KEY}` },
-          body: JSON.stringify(body)
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data.success) throw new Error(data.errore || `HTTP ${resp.status}`);
+        const approveBody = { message_id: waActiveMsg.id, variante_indice: indice };
+        if (contactId) approveBody.contact_id = contactId;
+        const { ok, data, status } = await waShadowCall('approve-suggestion', approveBody);
+        if (!ok || !data.success) throw new Error(data.errore || `HTTP ${status}`);
 
         /* Step 2 — recupera testo variante e invia via WhatsApp */
         const chosenV = (waActiveMsg.varianti_ia || []).find(v => v.indice === indice);
         const testo = chosenV?.testo || '';
         if (!testo) throw new Error('Testo variante vuoto, impossibile inviare.');
 
-        const sendResp = await fetch(`${SHADOW_URL}/webhook/send`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SHADOW_KEY}` },
-          body:    JSON.stringify({
-            message_id: waActiveMsg.id,
-            testo,
-            numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
-            contact_id: waActiveMsg.contact_id   || undefined,
-          }),
+        const sent = await waShadowCall('send', {
+          message_id: waActiveMsg.id,
+          testo,
+          numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
+          contact_id: waActiveMsg.contact_id   || undefined,
         });
-        const sendData = await sendResp.json();
-        if (!sendResp.ok || !sendData.success) throw new Error(sendData.errore || `HTTP ${sendResp.status}`);
+        const sendData = sent.data;
+        if (!sent.ok || !sendData.success) throw new Error(sendData.errore || `HTTP ${sent.status}`);
 
         /* Step 3 — aggiorna stato locale */
         waActiveMsg.variante_scelta        = indice;
@@ -35367,18 +35369,13 @@ Per confermare scrivi ELIMINA.`);
       }, 1000);
 
       try {
-        const resp = await fetch(`${SHADOW_URL}/webhook/send`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SHADOW_KEY}` },
-          body:    JSON.stringify({
-            message_id: waActiveMsg.id,
-            testo:      txt,
-            numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
-            contact_id: waActiveMsg.contact_id   || undefined,
-          }),
+        const { ok, data, status } = await waShadowCall('send', {
+          message_id: waActiveMsg.id,
+          testo:      txt,
+          numero:     waTestOverrideNumero(waActiveMsg.sender_number || ''),
+          contact_id: waActiveMsg.contact_id   || undefined,
         });
-        const data = await resp.json();
-        if (!resp.ok || !data.success) throw new Error(data.errore || `HTTP ${resp.status}`);
+        if (!ok || !data.success) throw new Error(data.errore || `HTTP ${status}`);
 
         /* Aggiorna stato locale (Supabase lo aggiornerà anche via Realtime) */
         waActiveMsg.status = 'Risposto';
