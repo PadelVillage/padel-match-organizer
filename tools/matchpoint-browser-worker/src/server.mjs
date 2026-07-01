@@ -7324,27 +7324,38 @@ async function editBookingWithBrowser(input = {}) {
         addResults.push(r);
         diagnostic.steps.push(`add_result:${p.nome}:added=${r.added}`);
 
-        // Imposta costo se fornito
+        // Imposta costo se fornito.
+        // ⚠️ #6 — L'OSPITE ha TextBoxNombreValor VUOTO (MP non espone il nome) → il match
+        // per nome non lo trovava MAI e il costo restava non impostato (e con più Ospiti il
+        // nome non li distinguerebbe comunque). L'aggiunta appende in coda (righe per
+        // INCREMENTO, come la logica ospite #474) → la riga appena aggiunta è l'ULTIMA.
+        // Quindi: SOCIO = per nome (invariato); OSPITE = ultima riga. Il costo si imposta
+        // subito dopo ogni add, quindi per più Ospiti ciascuno prende il suo.
         if (p.costo != null && r.added) {
-          let idx = 0;
+          const _isGuestAdd = (() => { const n = String(p.nome || '').toLowerCase().trim(); return n === '' || n === 'ospite'; })();
+          let idx = 0, lastIdx = -1, targetIdx = -1;
           while (true) {
             const nomeInput = page.locator(
               `input[id*="RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxNombreValor_${idx}"]`,
             );
             if (!(await nomeInput.count().catch(() => 0))) break;
-            const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
-            if (nomeVal === p.nome.toLowerCase().trim()) {
-              const costoField = page.locator(
-                `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_TextBoxCargoReserva_${idx}`,
-              );
-              if (await costoField.count().catch(() => 0)) {
-                await costoField.first().fill(String(p.costo), { timeout: 5000 });
-                await costoField.first().dispatchEvent('change');
-                diagnostic.steps.push(`costo_set:${p.nome}=${p.costo}`);
-              }
-              break;
+            lastIdx = idx;
+            if (!_isGuestAdd) {
+              const nomeVal = (await nomeInput.first().inputValue().catch(() => '')).toLowerCase().trim();
+              if (nomeVal === p.nome.toLowerCase().trim()) { targetIdx = idx; break; }
             }
             idx++;
+          }
+          if (_isGuestAdd) targetIdx = lastIdx; // Ospite = riga appena appesa (ultima)
+          if (targetIdx >= 0) {
+            const costoField = page.locator(
+              `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${targetIdx}_TextBoxCargoReserva_${targetIdx}`,
+            );
+            if (await costoField.count().catch(() => 0)) {
+              await costoField.first().fill(String(p.costo), { timeout: 5000 });
+              await costoField.first().dispatchEvent('change');
+              diagnostic.steps.push(`costo_set:${p.nome || '(ospite)'}@idx${targetIdx}=${p.costo}`);
+            }
           }
         }
       }
