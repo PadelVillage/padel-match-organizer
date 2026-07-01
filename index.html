@@ -7806,7 +7806,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.053';
+    const APP_VERSION = '6.054';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10031,7 +10031,10 @@ Grazie.`
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
             if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
             if (tabName === 'members') displayMembers();
-            if (tabName === 'incassi') renderIncassi();
+            // Ogni rientro nella scheda Incassi ri-legge dal cloud (refresh leggero, non
+            // la sync MP pesante): sostituisce il vecchio pulsante ↻ Aggiorna rimosso, così
+            // i dati non restano fermi alla cache caricata al primo ingresso.
+            if (tabName === 'incassi') { _incassiState.rows = null; renderIncassi(); }
             if (tabName === 'fillSlots') renderFillSlotsSection();
             if (tabName === 'assessment') {
               displayAssessment();
