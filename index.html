@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.060';
+    const APP_VERSION = '6.061';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44770,6 +44770,7 @@ Per confermare scrivi ELIMINA.`);
           if (_k === 'removeconfirm') return _confirmRemoveAnswer(t);
           if (_k === 'moveconfirm') return _confirmMoveAnswer(t);
           if (_k === 'movedest') return _continueMoveDest(t);
+          if (_k === 'movesrc') return _continueMoveSrc(t);
           if (_k === 'durataconfirm') return _confirmDurataAnswer(t);
           if (_k === 'notaconfirm') return _confirmNotaAnswer(t);
           if (_k === 'reasonconfirm') return _confirmReasonAnswer(t);
@@ -47010,6 +47011,32 @@ Per confermare scrivi ELIMINA.`);
               const b = _calBookingAt(isoCands[di], tryCampi[ci], tryTimes[ti]);
               if (b) src = { iso: isoCands[di], campo: tryCampi[ci], ora: tryTimes[ti], durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
             }
+        // ⭐ Nessun ORARIO nel comando ("sposta la partita dal campo 3 al campo 4"): l'operatore
+        // intende la partita che è SU quel campo, allo STESSO orario. Risolvi la sorgente per
+        // (giorno + campo sorgente): il campo sorgente è quello indicato con "dal/di" (slots.court);
+        // se manca, il primo campo citato. Una sola prenotazione su quel campo quel giorno → usala
+        // subito (stesso orario); più d'una → chiedi QUALE elencando SOLO quelle di quel campo (non
+        // l'intera giornata: era la "lista grossa"). Zero → messaggio chiaro sotto.
+        if (!src && !tryTimes.length) {
+          const srcCourt = Number(court) || (campi.length ? campi[0] : 0);
+          for (let di = 0; di < isoCands.length && !src && srcCourt; di++) {
+            const onCourt = _cancelCandidates(isoCands[di], srcCourt, '', '');
+            if (onCourt.length === 1) {
+              const b0 = onCourt[0];
+              src = { iso: isoCands[di], campo: srcCourt, ora: b0.ora, durata: _staffCalDurMin(b0.durata), tipoR: b0.tipoReale || 'partita' };
+            } else if (onCourt.length > 1) {
+              const destC = campi.filter(function (c) { return c !== srcCourt; })[0] || null;
+              aiFlowState = { kind: 'movesrc', stage: 'pick', iso: isoCands[di], list: onCourt, destCampo: destC, destText: text };
+              _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+              const _mm = _say('Su <strong>Campo ' + srcCourt + '</strong> (' + _dayLabel(isoCands[di]) + ') ho più prenotazioni. <strong>Quale sposto' + (destC ? ' sul Campo ' + destC : '') + '?</strong> Dimmi il <strong>numero</strong> o l’<strong>orario</strong>.');
+              _choiceButtons(_mm,
+                onCourt.map(function (r) { return r.ora + ' · ' + ((r.nome || '').replace(/\n/g, ', ') || '—') + ' (' + _cancelTipoLabel(r) + ')'; }),
+                function (i) { const _f = aiFlowState; aiFlowState = null; _moveSrcChosen(_f.iso, _f.list[i], _f.destCampo, _f.destText); },
+                function () { aiFlowState = null; _say('👍 Ok, lasciamo perdere.'); });
+              return true;
+            }
+          }
+        }
       }
       if (!src) return _say('🔍 Non trovo la prenotazione da spostare. Dimmi campo e ora di partenza, es. «<em>sposta la partita di campo 1 alle 14 sul campo 2</em>».');
       // DESTINAZIONE: ciò che differisce dalla sorgente (altro campo / altro orario / altro giorno).
@@ -47029,6 +47056,43 @@ Per confermare scrivi ELIMINA.`);
       const dest = { iso: destIso || src.iso, campo: destCampo || src.campo, ora: destOra || src.ora };
       dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
       return _askMoveConfirm(src, dest);
+    }
+    // Sorgente scelta (tra più prenotazioni dello stesso campo): costruisce src e destinazione
+    // (campo scelto, STESSO orario salvo orario/giorno espliciti nel testo) e chiede conferma.
+    function _moveSrcChosen(iso, b, destCampo, origText) {
+      const src = { iso: iso, campo: Number(b.campo), ora: b.ora, durata: _staffCalDurMin(b.durata), tipoR: b.tipoReale || 'partita' };
+      let dCampo = destCampo, dOra = null, dIso = null;
+      const times2 = _allTimes(origText || '').filter(function (t) { return t !== src.ora; });
+      if (times2.length) dOra = times2[0];
+      if (origText) { const sh = _relDayShift(origText); if (sh != null) dIso = _addDaysIso(src.iso, sh); }
+      if (dCampo == null && dOra == null && dIso == null) {
+        _openEditor(src.iso, { campo: src.campo, ora: src.ora, durata: src.durata, tipoReale: src.tipoR, nome: '' });
+        aiFlowState = { kind: 'movedest', stage: 'await', src: src };
+        _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
+        return _say('📝 Ho aperto la partita di <strong>Campo ' + src.campo + ' · ' + src.ora + '</strong>. <strong>Dove la sposto?</strong> Dimmi un campo, un orario o un giorno.');
+      }
+      const dest = { iso: dIso || src.iso, campo: dCampo || src.campo, ora: dOra || src.ora };
+      dest.oraFin = _staffCalEndTime(dest.ora, src.durata || 90);
+      return _askMoveConfirm(src, dest);
+    }
+    // Risposta alla domanda "quale sposto?" (più prenotazioni sullo stesso campo): numero o orario.
+    function _continueMoveSrc(text) {
+      const fs = aiFlowState;
+      if (!fs || fs.kind !== 'movesrc') { aiFlowState = null; return _say('Dimmi pure cosa spostare.'); }
+      const n = ' ' + _norm(text) + ' ';
+      if (/( no | annull\w* | lascia\w* | stop | niente )/.test(n)) { aiFlowState = null; return _say('👍 Ok, lasciamo perdere.'); }
+      const list = fs.list || [];
+      let pick = null;
+      const tm = _extractTime(text);
+      if (tm) pick = list.filter(function (r) { return String(r.ora) === String(tm); })[0] || null;
+      const m = String(text || '').match(/\b(\d{1,2})\b/);
+      const num = m ? parseInt(m[1], 10) : null;
+      // Numero = ORA (es. "18" → 18:00) se combacia con una prenotazione; altrimenti INDICE 1..N.
+      if (!pick && num != null) pick = list.filter(function (r) { return parseInt(String(r.ora), 10) === num; })[0] || null;
+      if (!pick && num != null && num >= 1 && num <= list.length) pick = list[num - 1];
+      if (!pick) return _say('Dimmi il <strong>numero</strong> (1–' + list.length + ') o l’<strong>orario</strong> della partita da spostare.');
+      const _f = aiFlowState; aiFlowState = null;
+      return _moveSrcChosen(_f.iso, pick, _f.destCampo, _f.destText);
     }
     function _askMoveConfirm(src, dest) {
       // Niente spostamenti PIÙ indietro nel passato: blocca solo se la destinazione è prima della
