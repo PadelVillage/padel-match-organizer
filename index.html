@@ -7806,7 +7806,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.056';
+    const APP_VERSION = '6.063';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -7903,6 +7903,18 @@ body.assessment-public-mode .assessment-public-only-card {
 
     let giocatori = safeLoad('giocatori', []);
     let memberIdCounter = safeLoad('memberIdCounter', 0);
+    // Reset una-tantum della cache locale prenotazioni (v6.062). Rimuove residui stantii
+    // in localStorage — card rimaste a uno slot sbagliato che il refresh normale non
+    // ripuliva (es. una partita mostrata all'ora sbagliata mentre il cloud è corretto).
+    // Gira UNA SOLA VOLTA per device (flag) e non tocca login/soci/anagrafica; le
+    // prenotazioni si riscaricano subito da zero dal cloud (staffCalRefreshFromCloud).
+    // Nota: NON tocca storicoPrenotazioni (storia non ri-scaricata dal refresh calendario).
+    try {
+      if (pmoLocalGetItem('pmoBookingCacheResetV1') !== '1') {
+        ['prenotazioni', 'prenotazioniOccupazione', 'staffBookings', 'staffCalCancelled'].forEach(function (k) { try { pmoLocalRemoveItem(k); } catch (e) {} });
+        pmoLocalSetItem('pmoBookingCacheResetV1', '1');
+      }
+    } catch (e) {}
     let prenotazioni = safeLoad('prenotazioni', []);
     let prenotazioniOccupazione = safeLoad('prenotazioniOccupazione', []);
     let potentialSlotSchedule = normalizePotentialSlotSchedule(safeLoad('potentialSlotSchedule', DEFAULT_POTENTIAL_SLOT_SCHEDULE));
@@ -37007,7 +37019,14 @@ Per confermare scrivi ELIMINA.`);
     // promuove e l'edit usa la terna campo+data+ora (il worker ricava l'idReserva dal tabellone).
     const storico = (typeof storicoPrenotazioni !== 'undefined' && Array.isArray(storicoPrenotazioni))
       ? storicoPrenotazioni : [];
-    for (const p of storico) {
+    // v6.063 — L'archivio va usato SOLO per le date PASSATE (dove l'occupazione live dal
+    // cloud non è più mantenuta). Per OGGI/FUTURO l'occupazione cloud è autorevole: uno
+    // slot vuoto è davvero libero. Senza questo gate l'archivio — che NON registra le
+    // cancellazioni — riempiva slot liberi di oggi con prenotazioni ANNULLATE (es. "marco"
+    // a Campo 3 21:00 dopo che era stata cancellata su Matchpoint).
+    const _stTodayIso = (typeof staffCalTodayIso === 'function') ? staffCalTodayIso() : '';
+    const _stAllowStorico = !_stTodayIso || isoDate < _stTodayIso;
+    for (const p of (_stAllowStorico ? storico : [])) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
       const campoNum = parseInt(String(p.campo).replace(/\D/g, '')) || 0;
       if (campoNum < 1 || campoNum > 4) continue;
