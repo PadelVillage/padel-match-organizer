@@ -2387,9 +2387,18 @@ async function mpBuildWarm(baseUrl, username, password, diagnostic) {
   if (_mpWarmBuilding) { await _mpWarmBuilding; return; }
   _mpWarmBuilding = (async () => {
     const browser = await chromium.launch(mpLaunchOptions());
-    const { context, page } = await mpNewContextPage(browser);
-    await mpDoLogin(page, baseUrl, username, password, diagnostic);
-    _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+    try {
+      const { context, page } = await mpNewContextPage(browser);
+      await mpDoLogin(page, baseUrl, username, password, diagnostic);
+      _mpWarm = { browser, context, page, createdAt: Date.now(), lastOkAt: Date.now() };
+    } catch (_e) {
+      // Se setup/login falliscono DOPO il launch, chiudi il browser appena lanciato:
+      // _mpWarm non è ancora assegnato, quindi mpWarmInvalidate non lo chiuderebbe →
+      // resterebbe un Chromium orfano. Sotto outage di Matchpoint (keepalive + poller)
+      // si accumulerebbero processi zombie fino a esaurire RAM/swap sul box condiviso.
+      try { await browser.close(); } catch (_) {}
+      throw _e;
+    }
   })();
   try { await _mpWarmBuilding; } finally { _mpWarmBuilding = null; }
 }
@@ -2551,7 +2560,12 @@ async function getSlotsWithBrowser(options = {}) {
       diagnostic,
     };
   } catch (_e) {
-    _opFailed = true;
+    // Path di LETTURA del poller (multi-giorno, il più frequente): un TABELLONE_NOT_FOUND
+    // è flakiness TRANSITORIA → NON invalidare la sessione calda (niente relogin a raffica).
+    // Specchio di readTabelloneWithBrowser: lascia a mpReadRetry l'escalation soft→hard
+    // (il 1° retry ri-naviga la STESSA pagina calda). Senza questo, ogni NOT_FOUND del
+    // poller forzava un login a freddo, vanificando il fix #477 (indagine stabilità 01/07).
+    _opFailed = !_isRetriableNavError(_e);
     throw _e;
   } finally {
     await acq.release(_opFailed);
