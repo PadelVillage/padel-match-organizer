@@ -7834,7 +7834,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.052';
+    const APP_VERSION = '6.053';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -21850,7 +21850,11 @@ Grazie!`
             <div style="font-size:11px;color:#888;margin-top:2px;">Ultima sinc.: <strong>${_incassiSyncLabel()}</strong></div>
           </div>
           <div><label style="${lblCss}">&nbsp;</label>
-            <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button></div>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <button type="button" class="btn-secondary small-btn" onclick="_incassiShiftDay(-1)" title="Giorno precedente" aria-label="Giorno precedente">◀</button>
+              <button type="button" class="${isToday ? 'btn-primary' : 'btn-secondary'} small-btn" onclick="_incassiSetToday()">Oggi</button>
+              <button type="button" class="btn-secondary small-btn" onclick="_incassiShiftDay(1)" title="Giorno successivo" aria-label="Giorno successivo">▶</button>
+            </div></div>
           <div><label style="${lblCss}">Dal giorno</label><input type="date" id="incassiFrom" value="${st.from}" max="${st.to}" onchange="_incassiSetFrom(this.value)"></div>
           <div><label style="${lblCss}">Al giorno</label><input type="date" id="incassiTo" value="${st.to}" min="${st.from}" onchange="_incassiSetTo(this.value)"></div>
           <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
@@ -21948,6 +21952,22 @@ Grazie!`
       root.innerHTML = `<div style="position:sticky;top:0;z-index:5;background:#f8f9fb;box-shadow:0 6px 10px -8px rgba(0,0,0,.18);">${controls}${summary}</div>${table}`;
     }
     function _incassiSetToday() { const t = _incassiToday(); _incassiState.from = t; _incassiState.to = t; renderIncassi(); }
+    // Sposta l'intervallo di ±1 giorno. Giorno singolo → prev/next; intervallo → trasla intero.
+    function _incassiShiftDay(delta) {
+      const shift = (s) => {
+        const parts = String(s).split('-').map(Number);
+        const dt = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+        if (isNaN(dt.getTime())) return s;
+        dt.setDate(dt.getDate() + delta);
+        const p = (n) => String(n).padStart(2, '0');
+        return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate());
+      };
+      if (!_incassiState.from) _incassiState.from = _incassiToday();
+      if (!_incassiState.to) _incassiState.to = _incassiState.from;
+      _incassiState.from = shift(_incassiState.from);
+      _incassiState.to = shift(_incassiState.to);
+      renderIncassi();
+    }
     function _incassiSetFrom(d) { _incassiState.from = d || _incassiState.from; if (_incassiState.to && _incassiState.to < _incassiState.from) _incassiState.to = _incassiState.from; renderIncassi(); }
     function _incassiSetTo(d) { _incassiState.to = d || _incassiState.to; if (_incassiState.from && _incassiState.to < _incassiState.from) _incassiState.from = _incassiState.to; renderIncassi(); }
     async function _incassiReload() {
