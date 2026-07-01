@@ -5980,10 +5980,20 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const wantCode = onlyDigits(expectedClientCode);
   const wantPeople = onlyDigits(lockedId);
 
+  // 👥 OSPITE GENERICO: il cliente "Ospite" (codice 000001, id interno 1) è UNICO e
+  // condiviso da TUTTI gli ospiti → una partita può contenerne PIÙ D'UNO (es. 4 ospiti
+  // = 4 righe con lo stesso id=1). Per l'Ospite quindi NON vale l'idempotenza per
+  // id/nome (troverebbe sempre il 1° come "già presente" e salterebbe gli aggiuntivi,
+  // riportando added:true a vuoto): si aggiunge sempre e si conferma per INCREMENTO del
+  // numero di righe. Escludiamo un eventuale socio REALE di nome "Ospite" (che avrebbe
+  // un codice cliente) richiedendo l'assenza del codice atteso.
+  const isGuest = norm(nome) === 'ospite' && !wantCode;
+
   // 🔒 PRE-CHECK IDEMPOTENZA: se questo giocatore è GIÀ tra i partecipanti (per id o
   // per nome) non aggiungerlo di nuovo. Evita il doppione quando un click precedente
   // (o un EDIT che re-invia lo stesso add) lo ha già inserito.
-  {
+  // ⚠️ SALTATO per l'Ospite generico (vedi sopra): più Ospite sono leciti.
+  if (!isGuest) {
     const pre = await scanParticipantRow(page, nome, wantCode, wantPeople);
     if (pre.idCliente !== null) {
       diagnostic.steps.push('player_already_present:' + nome);
@@ -6005,7 +6015,12 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const baseRows = await page.locator(rowSel).count().catch(() => 0);
   let prevDismissedSwal = true; // addTry 0 clicca sempre
   for (let addTry = 0; addTry < 3; addTry++) {
-    if ((await scanParticipantRow(page, nome, wantCode, wantPeople)).idCliente !== null) break;
+    // Uscita anticipata: la riga è già comparsa. Per l'Ospite (indistinguibile per
+    // id/nome) si guarda l'INCREMENTO del numero di righe, non il match d'identità.
+    const rigaComparsa = isGuest
+      ? (await page.locator(rowSel).count().catch(() => 0)) > baseRows
+      : (await scanParticipantRow(page, nome, wantCode, wantPeople)).idCliente !== null;
+    if (rigaComparsa) break;
     if (addTry > 0 && !prevDismissedSwal) {
       // Click precedente già registrato (nessun avviso): attendi il postback, non ri-cliccare.
       await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
@@ -6046,6 +6061,16 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       await dismissSwalOk(page, diagnostic, 'verify' + vTry);
       await mpWaitAsyncPostbackIdle(page, 4000).catch(() => {});
       await page.waitForTimeout(700);
+    }
+    if (isGuest) {
+      // Ospite indistinguibile per id/nome (tutti id=1) → conferma per INCREMENTO righe.
+      const nowRows = await page.locator(rowSel).count().catch(() => 0);
+      if (nowRows > baseRows) {
+        addedIdCliente = String(wantPeople || wantCode || '1');
+        diagnostic.steps.push(`player_row_count_confirm:Ospite:rows=${nowRows}/base${baseRows}:vtry=${vTry}`);
+      }
+      diagnostic.steps.push(`player_verify_scan:vtry=${vTry}:rows=${nowRows}`);
+      continue;
     }
     const found = await scanParticipantRow(page, nome, wantCode, wantPeople);
     righeViste = found.righeViste;
