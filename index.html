@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.064';
+    const APP_VERSION = '6.065';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38719,6 +38719,9 @@ Per confermare scrivi ELIMINA.`);
     // Nota nota in locale (staff_booking.note) per pre-popolare il campo. La lettura autorevole
     // dal worker (sotto, per partita/lezione) la sovrascrive se l'utente non l'ha ancora toccata.
     let _localNote = '';
+    // Maestro corrente della lezione (istruttore dello staff_booking): pre-popola il selettore
+    // Maestro. Il worker in edit non lo rilegge → la baseline resta questo valore locale.
+    let _localIstruttore = '';
     try {
       const _ln = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
       const _lb = (Array.isArray(_ln) ? _ln : []).find(function (x) {
@@ -38727,6 +38730,7 @@ Per confermare scrivi ELIMINA.`);
           && String(x.ora).trim() === String(ora).trim();
       });
       if (_lb && typeof _lb.note === 'string') _localNote = _lb.note;
+      if (_lb && typeof _lb.istruttore === 'string') _localIstruttore = _lb.istruttore;
     } catch (e) {}
 
     const buildState = function (roster, note0) {
@@ -38744,6 +38748,8 @@ Per confermare scrivi ELIMINA.`);
         isManut: String(tipoR).includes('manuten'),
         descrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
         origDescrizione: String(tipoR).includes('manuten') ? String(nome || '') : '',
+        // Maestro (solo lezione): valore corrente + baseline per il confronto al salvataggio.
+        istruttore: String(_localIstruttore || ''), origIstruttore: String(_localIstruttore || ''),
         idReserva: _initIdReserva || null,
         // Per partita/lezione il roster locale può essere INCOMPLETO/stantio: mostriamo le sezioni
         // Giocatori/Pagamenti in stato "caricamento" finché la lettura autorevole del worker non
@@ -39024,6 +39030,32 @@ Per confermare scrivi ELIMINA.`);
       slotSec.appendChild(warn);
     }
     box.appendChild(slotSec);
+
+    // ── MAESTRO (solo Lezione) — selettore per CAMBIARE l'istruttore della lezione su Matchpoint.
+    //    Prima non era modificabile dalla scheda: si poteva impostare solo in creazione. Ora la
+    //    scelta viene inviata al worker (edit-booking → dropdown "Monitor" della ficha lezione).
+    if (st.hasPlayers && String(st.tipoReale || '').toLowerCase().includes('lez')) {
+      const maestroSec = mkSection('ti-school', 'Maestro');
+      const validi = (PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && Array.isArray(PARSER_RULES.campi_opzionali.istruttore.valori_validi))
+        ? PARSER_RULES.campi_opzionali.istruttore.valori_validi.slice()
+        : ['Santiago', 'LoZio', 'Spinazze'];
+      const cur = String(st.istruttore || '').trim();
+      // Se il maestro corrente non è tra i valori validi (es. rinominato su MP) lo mostro comunque.
+      if (cur && !validi.some(function (v) { return v.toLowerCase() === cur.toLowerCase(); })) validi.unshift(cur);
+      const maestroSel = document.createElement('select');
+      maestroSel.className = 'svc-edit-field'; maestroSel.style.width = '100%'; maestroSel.disabled = st.busy;
+      // Placeholder "— scegli —" SOLO se non c'è ancora un maestro: se ce n'è uno, non offro il "vuoto"
+      // (il worker non sa togliere il maestro, solo cambiarlo).
+      if (!cur) { const optNone = document.createElement('option'); optNone.value = ''; optNone.textContent = '— scegli maestro —'; optNone.selected = true; maestroSel.appendChild(optNone); }
+      validi.forEach(function (v) { const o = document.createElement('option'); o.value = v; o.textContent = v; if (cur && v.toLowerCase() === cur.toLowerCase()) o.selected = true; maestroSel.appendChild(o); });
+      maestroSel.addEventListener('change', function () { st.istruttore = maestroSel.value; });
+      maestroSec.appendChild(maestroSel);
+      const maestroHint = document.createElement('div');
+      maestroHint.className = 'svc-edit-label'; maestroHint.style.marginTop = '4px';
+      maestroHint.textContent = 'Cambia il maestro della lezione: verrà salvato su Matchpoint.';
+      maestroSec.appendChild(maestroHint);
+      box.appendChild(maestroSec);
+    }
 
     if (st.hasPlayers && _loadingRoster) {
       const playersSec = mkSection('ti-users', 'Giocatori e pagamenti');
@@ -39482,8 +39514,14 @@ Per confermare scrivi ELIMINA.`);
     const noteChanged = String((st && st.note) || '') !== String((st && st.origNote) || '');
     // MANUTENZIONE — descrizione (TextBox2) cambiata vs il valore caricato.
     const descrChanged = !!(st && st.isManut) && String((st && st.descrizione) || '') !== String((st && st.origDescrizione) || '');
+    // MAESTRO (solo lezione) — istruttore cambiato vs il valore caricato. Solo valori non vuoti
+    // (il selettore non permette di "svuotare" un maestro già impostato).
+    const _isLez = String((st && st.tipoReale) || '').toLowerCase().includes('lez');
+    const istruttoreChanged = _isLez
+      && String((st && st.istruttore) || '').trim() !== String((st && st.origIstruttore) || '').trim()
+      && String((st && st.istruttore) || '').trim() !== '';
 
-    if (!moveChanged && !playersChanged && !noteChanged && !descrChanged) {
+    if (!moveChanged && !playersChanged && !noteChanged && !descrChanged && !istruttoreChanged) {
       svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare.');
       return;
     }
@@ -39498,6 +39536,7 @@ Per confermare scrivi ELIMINA.`);
     if (playersChanged) parts.push('Giocatori: ' + (addArr.length ? ('+' + addArr.length) : '') + (remove.length ? (' -' + remove.length) : ''));
     if (noteChanged) parts.push((st.note ? (st.isManut ? 'Osservazioni aggiornate' : 'Nota aggiornata') : (st.isManut ? 'Osservazioni rimosse' : 'Nota rimossa')));
     if (descrChanged) parts.push('Descrizione aggiornata');
+    if (istruttoreChanged) parts.push('Maestro → ' + (st.istruttore || ''));
     // skipConfirm = chiamata dall'assistente ("salva" a voce): la conferma è già stata data a voce,
     // niente popup nativo (che spezzerebbe il flusso vocale). Il pulsante Salva manuale lo mantiene.
     if (!opts.skipConfirm && !confirm('Salvare su Matchpoint?\n\n' + parts.join('\n'))) return;
@@ -39509,6 +39548,7 @@ Per confermare scrivi ELIMINA.`);
       origDurMin: st.origDurMin, hasPlayers: st.hasPlayers,
       note: (st.note || ''), origNote: (st.origNote || ''), noteChanged: noteChanged,
       isManut: !!st.isManut, descrizione: (st.descrizione || ''), origDescrizione: (st.origDescrizione || ''), descrChanged: descrChanged,
+      istruttore: (st.istruttore || ''), origIstruttore: (st.origIstruttore || ''), istruttoreChanged: istruttoreChanged,
       idReserva: (st.idReserva || null),
     };
     const payload = { campo: op.origCampo, data: op.origIso, ora: op.origOra };
@@ -39521,6 +39561,7 @@ Per confermare scrivi ELIMINA.`);
 
     if (noteChanged) payload.note = st.note || '';
     if (descrChanged) payload.descrizione = st.descrizione || '';
+    if (istruttoreChanged) payload.istruttore = op.istruttore || '';
     const pendKey = _staffCalEditKey(op.origIso, op.origCampo, op.origOra);
     _staffCalPendingEdits.add(pendKey);
 
@@ -39530,7 +39571,7 @@ Per confermare scrivi ELIMINA.`);
     // delle modifiche manuali della scheda).
     const _aiExecRef = (opts.skipConfirm && window.PMOAi && PMOAi.execBegin) ? PMOAi.execBegin() : null;
     const _aiExecVia = opts.skipConfirm ? 'assistente' : 'calendario';
-    const _aiExecAzione = playersChanged ? 'giocatori' : (moveChanged ? 'sposta' : (noteChanged ? 'nota' : (descrChanged ? 'descrizione' : 'durata')));
+    const _aiExecAzione = playersChanged ? 'giocatori' : (moveChanged ? 'sposta' : (istruttoreChanged ? 'istruttore' : (noteChanged ? 'nota' : (descrChanged ? 'descrizione' : 'durata'))));
     function _aiExecSettle(ok, reason) {
       try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
     }
@@ -39548,6 +39589,7 @@ Per confermare scrivi ELIMINA.`);
     if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
     if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
     if (op.descrChanged) { try { staffCalApplyLocalDescrizione(_curIso, _curCampo, _curOra, op.descrizione); } catch (e) { console.warn('staff edit descrizione locale:', e); } }
+    if (op.istruttoreChanged) { try { staffCalApplyLocalIstruttore(_curIso, _curCampo, _curOra, op.istruttore); } catch (e) { console.warn('staff edit istruttore locale:', e); } }
     // ⭐ CROSS-DEVICE OTTIMISTICO: spingi SUBITO lo stato al cloud, così un SECONDO device vede la
     // modifica all'istante (come create/cancel), senza aspettare la conferma Matchpoint. Lo SLOT-move
     // (campo/giorno/ora-inizio) va come reassign (annulla origine + crea destinazione); gli edit
@@ -39570,8 +39612,9 @@ Per confermare scrivi ELIMINA.`);
       : '';
     const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ((op.isManut ? 'Osservazioni: ' : 'Nota: ') + op.note) : (op.isManut ? 'Osservazioni rimosse' : 'Nota rimossa'))) : '';
     const _descrTxt = op.descrChanged ? ('<br>🔧 Descrizione: ' + (op.descrizione || '(vuota)')) : '';
+    const _istrTxt = op.istruttoreChanged ? ('<br>🎓 Maestro: ' + (op.istruttore || '')) : '';
     const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto scrivendo su Matchpoint…</span>';
-    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _descrTxt + _noteTxt + _syncNote, 'ok');
+    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _istrTxt + _descrTxt + _noteTxt + _syncNote, 'ok');
     const _setEditSyncNote = function (html, color) {
       try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
       svcMpSyncConfirmed(color);
@@ -39707,6 +39750,7 @@ Per confermare scrivi ELIMINA.`);
     try { if (op.hasPlayers && ((addArr && addArr.length) || (removeArr && removeArr.length))) _staffCalRevertPlayersLocal(curIso, curCampo, curOra, addArr, removeArr); } catch (e) {}
     try { if (op.noteChanged) staffCalApplyLocalNote(curIso, curCampo, curOra, op.origNote); } catch (e) {}
     try { if (op.descrChanged) staffCalApplyLocalDescrizione(curIso, curCampo, curOra, op.origDescrizione); } catch (e) {}
+    try { if (op.istruttoreChanged) staffCalApplyLocalIstruttore(curIso, curCampo, curOra, op.origIstruttore); } catch (e) {}
     try { if (moveChanged) _staffCalRevertMoveLocal(op); } catch (e) {}
     try { _staffCalSetSyncing(curIso, curCampo, curOra, false); } catch (e) {}
     try { if (slotMoved) _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
@@ -39812,6 +39856,26 @@ Per confermare scrivi ELIMINA.`);
           Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
           String(b.ora).trim() === wantOra) {
         b.nome = String(descrizione || '');
+        changed = true;
+      }
+    });
+    if (changed) save('staffBookings', existing);
+  }
+
+  // LEZIONE — applica in locale il MAESTRO (istruttore) dello staff_booking, così la card del
+  // calendario mostra subito il nuovo maestro (ottimistico) e il push cloud lo propaga cross-device.
+  // Il revert su rifiuto ripristina il maestro precedente.
+  function staffCalApplyLocalIstruttore(isoDate, campo, ora, istruttore) {
+    if (typeof safeLoad !== 'function' || typeof save !== 'function') return;
+    const existing = safeLoad('staffBookings', []);
+    const wantCampo = Number(String(campo).replace(/\D/g, ''));
+    const wantOra = String(ora).trim();
+    let changed = false;
+    existing.forEach(function(b) {
+      if (String(b.data).trim() === String(isoDate).trim() &&
+          Number(String(b.campo).replace(/\D/g, '')) === wantCampo &&
+          String(b.ora).trim() === wantOra) {
+        b.istruttore = String(istruttore || '');
         changed = true;
       }
     });

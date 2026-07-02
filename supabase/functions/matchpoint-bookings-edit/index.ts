@@ -33,6 +33,7 @@ type EditRequest = {
   players?: EditPlayers;
   note?: string;            // Osservazioni Matchpoint (← nota app). '' = azzera; assente = non toccare.
   descrizione?: string;     // SOLO manutenzione: descrizione (TextBox2, testo del tabellone). '' = azzera; assente = non toccare.
+  istruttore?: string;      // SOLO lezione: maestro (dropdown "Monitor"). Stringa non vuota = cambia; assente/'' = non toccare.
   read?: boolean;           // lettura sola: restituisce i partecipanti attuali senza modificare
 };
 
@@ -119,7 +120,7 @@ async function callWorkerEditBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, note: edit.note, descrizione: edit.descrizione, read: edit.read === true, operatore: operatore ?? '' }),
+      body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, note: edit.note, descrizione: edit.descrizione, istruttore: edit.istruttore, read: edit.read === true, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
     throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
@@ -156,6 +157,7 @@ async function saveStaffEditRecord(opts: {
       move: edit.move ?? null,
       players: edit.players ?? null,
       note: edit.note ?? null,
+      istruttore: edit.istruttore ?? null,
       edited_by_email: actor.email,
       edited_by_role: actor.role,
       worker_result: workerResult,
@@ -197,6 +199,9 @@ Deno.serve(async (req: Request) => {
   // descrizione (solo manutenzione): presente (anche '') → si scrive su TextBox2; assente = non toccare.
   const descrizioneProvided = body.descrizione !== undefined && body.descrizione !== null;
   const descrizione = descrizioneProvided ? clean(body.descrizione) : undefined;
+  // istruttore (solo lezione): stringa NON vuota → cambia il maestro; assente/'' = non toccare.
+  const istruttore = body.istruttore != null ? clean(body.istruttore) : undefined;
+  const istruttoreProvided = !!istruttore;
   const readOnly = body.read === true;
 
   // Validation: serve idReserva OPPURE (campo+data+ora). Per modificare serve almeno uno tra
@@ -211,11 +216,11 @@ Deno.serve(async (req: Request) => {
     (Array.isArray(players.remove) && players.remove.length > 0) ||
     players.removeAll === true
   );
-  if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided) {
-    return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note e descrizione.');
+  if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided && !istruttoreProvided) {
+    return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note, descrizione e istruttore.');
   }
 
-  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, read: readOnly };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, read: readOnly };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -257,6 +262,7 @@ Deno.serve(async (req: Request) => {
   if (hasPlayers) parts.push('giocatori aggiornati');
   if (noteProvided) parts.push('nota aggiornata');
   if (descrizioneProvided) parts.push('descrizione aggiornata');
+  if (istruttoreProvided) parts.push(`maestro → ${istruttore}`);
 
   return ok({
     message: `Modifica richiesta: ${parts.join(' · ')}`,
