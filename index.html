@@ -2836,7 +2836,7 @@
     .svc-note-edit-lbl { font-size:.8rem; font-weight:700; color:#334155; }
     .svc-edit-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 6px; }
     /* Scheda "Modifica prenotazione" — sezioni a schede (Proposta A) */
-    .svc-edit-section { background:#fff; border:1px solid rgba(17,24,39,.28); border-radius:10px; padding:11px 12px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 3px rgba(16,24,40,.10); }
+    .svc-edit-section { background:#fff; border:1px solid #e8eaf0; border-radius:12px; padding:12px 13px; margin-bottom:10px; box-sizing:border-box; max-width:100%; box-shadow:0 1px 2px rgba(16,24,40,.05); }
     /* Scheda modifica SENZA cornice esterna: la bolla del messaggio è invisibile, restano solo le schede sezione.
        Si aggancia alla classe .svc-edit-host (messa alla creazione) così è frameless dal primo frame: niente flash
        della vecchia bolla grigia/azzurra prima che la card interna venga riempita. */
@@ -2859,6 +2859,29 @@
     .svc-pay-amt-lbl { font-size:.72rem; font-weight:600; color:var(--text-muted); flex:0 0 auto; }
     .svc-pay-amt-input { width:84px; box-sizing:border-box; text-align:right; font-size:.82rem; font-weight:700; padding:4px 7px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--text); }
     .svc-pay-amt-input:disabled { opacity:.55; border-color:#dfe3e8; }
+    /* ── Scheda prenotazione — riga giocatore (redesign v6.050): stato a icona; chi ha pagato
+       si ripiega su una riga (icona ✓ + importo + storna); chi deve pagare ha il € inline +
+       i metodi in griglia 3 colonne, bottoni alti per il pollice. ── */
+    .svc-pl { padding:8px 0; }
+    .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
+    .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
+    .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
+    .svc-pl-ic-due { font-size:16px; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.8rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
+    .svc-pl-paid { flex:0 0 auto; font-size:.76rem; font-weight:700; color:var(--green); white-space:nowrap; }
+    .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:2px; border:1px solid var(--accent); border-radius:8px; padding:0 6px; height:30px; background:var(--surface); }
+    .svc-pl-eur-sym { color:var(--text-muted); font-size:.74rem; }
+    .svc-pl-eur-input { width:58px; height:28px; border:none; padding:0; text-align:right; font-size:.8rem; font-weight:700; background:transparent; color:var(--text); }
+    .svc-pl-eur-input:disabled { opacity:.55; }
+    .svc-pl-iconbtn { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:transparent; color:var(--text-muted); border-radius:7px; cursor:pointer; font-size:15px; transition:background .12s,color .12s; }
+    .svc-pl-iconbtn:hover:not(:disabled) { background:var(--accent-light); color:var(--accent); }
+    .svc-pl-iconbtn:disabled { opacity:.4; cursor:not-allowed; }
+    .svc-pl-note { font-size:.7rem; color:#b45309; margin-top:5px; }
+    .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
+    .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
+    .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
+    .svc-pl-method:disabled { opacity:.4; cursor:not-allowed; border-color:var(--border); color:var(--text-muted); background:var(--surface2); }
+    .svc-pl-method i { font-size:14px; flex:0 0 auto; }
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
@@ -2910,6 +2933,11 @@
       .svc-player-chip { font-size:17px; }
       .svc-btn-add { font-size:17px; }
       .svc-players-empty { font-size:15px; }
+      .svc-pl-name { font-size:1rem; }
+      .svc-pl-paid { font-size:.95rem; }
+      .svc-pl-eur-input { font-size:1rem; width:80px; }
+      .svc-pl-method { font-size:.92rem; height:44px; }
+      .svc-pl-iconbtn { width:34px; height:34px; font-size:19px; }
       .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
       .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
       .svc-fab-badge { position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%; background:#ef4444; color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
@@ -7807,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.066';
+    const APP_VERSION = '6.067';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -7855,6 +7883,15 @@ body.assessment-public-mode .assessment-public-only-card {
     }
     const PMO_RUNTIME_ENV = pmoDetectRuntimeEnv();
     const PMO_IS_TEST_ENV = PMO_RUNTIME_ENV === 'test';
+    // Fase 2b — SIMULAZIONE pagamenti (SOLO TEST). Esercita TUTTA la UI incasso
+    // (Cash/Card/Wallet + importo editabile) e il collegamento scheda → Incassi SENZA
+    // toccare Matchpoint: il cobro/storno NON chiama edge/worker, scrive/aggiorna un
+    // record `payment` nel cloud di TEST (che in test fa da SOSTITUTO del libro mastro MP),
+    // così la sezione Incassi lo legge dal percorso genuino. In PROD la verità resta
+    // Matchpoint (vedi memoria "Matchpoint = economia principale unica"). Impossibile in
+    // PROD perché gated PMO_IS_TEST_ENV. Precedenza sull'harness edge (__pmoPayHarness): la
+    // simulazione NON si attiva quando il test pilota il percorso edge reale (mockato).
+    const PMO_PAYMENTS_SIMULATE = PMO_IS_TEST_ENV;
     // Assistente AI: attivo in TUTTI gli ambienti (TEST e PROD). Il gating fine per chi lo
     // vede resta il permesso ruolo `view_assistante_ai` (owner/admin sempre). Storicamente
     // l'assistente era legato a PMO_IS_TEST_ENV; promosso/attivato in PROD da v5.815.
@@ -25436,7 +25473,7 @@ Per confermare scrivi ELIMINA.`);
       // v5.14.8: versione stabile con import protetti e refresh automatico dopo import.
       return;
     }
-    function loadExternalScriptOnce(url, globalName) {
+    function loadExternalScriptOnce(url, globalName, _attempt = 0) {
       return new Promise((resolve, reject) => {
         const cleanedUrl = cleanCell(url);
         if (!cleanedUrl) return reject(new Error('URL config Supabase mancante'));
@@ -25447,7 +25484,19 @@ Per confermare scrivi ELIMINA.`);
         script.id = 'remoteSupabaseConfigScript';
         script.src = cleanedUrl + (cleanedUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
         script.onload = () => resolve(window[globalName]);
-        script.onerror = () => reject(new Error('Non riesco a leggere config.js da GitHub Pages'));
+        script.onerror = () => {
+          // GitHub Pages/CDN può far fallire in modo TRANSITORIO il caricamento dello <script>
+          // (blip di rete, tipico subito dopo un deploy). Ritenta fino a 3 volte con backoff
+          // crescente prima di arrendersi: così un'operazione (es. cambio maestro / salvataggio
+          // prenotazione) non fallisce per un singolo colpo a vuoto sul config.js.
+          if (_attempt < 2) {
+            setTimeout(function () {
+              loadExternalScriptOnce(url, globalName, _attempt + 1).then(resolve, reject);
+            }, 400 * (_attempt + 1));
+          } else {
+            reject(new Error('Non riesco a leggere config.js da GitHub Pages'));
+          }
+        };
         document.head.appendChild(script);
       });
     }
@@ -38859,7 +38908,7 @@ Per confermare scrivi ELIMINA.`);
     }
 
     if (st.hasPlayers && _loadingRoster) {
-      const playersSec = mkSection('ti-users', 'Giocatori');
+      const playersSec = mkSection('ti-users', 'Giocatori e pagamenti');
       const load = document.createElement('div');
       load.className = 'svc-players-empty';
       load.style.cssText = 'margin-top:0;display:flex;align-items:center;gap:7px;font-style:normal;';
@@ -38867,10 +38916,25 @@ Per confermare scrivi ELIMINA.`);
       playersSec.appendChild(load);
       box.appendChild(playersSec);
     } else if (st.hasPlayers) {
-      const playersSec = mkSection('ti-users', 'Giocatori');
-      const chipsWrap = document.createElement('div');
-      chipsWrap.className = 'svc-player-chips';
-      chipsWrap.style.marginTop = '0';
+      // SEZIONE UNIFICATA "Giocatori e pagamenti": una riga per persona = nome + ✕ (rimuovi
+      // giocatore, icona sola con tooltip), e SOTTO — se i pagamenti sono attivi — lo stato
+      // + i controlli di incasso (o "Storna" se già pagato). "+ Aggiungi giocatore" in fondo.
+      const playersSec = mkSection('ti-users', 'Giocatori e pagamenti');
+      playersSec.setAttribute('data-feature', 'players-payments');
+      const _payShow = PMO_PAYMENTS_UI_ENABLED && !st.isManut && Array.isArray(st.roster);
+      // Incasso ATTIVO se write reale ON, oppure simulazione (TEST), oppure harness mockato.
+      const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
+        || PMO_PAYMENTS_SIMULATE
+        || (PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true);
+      const _paySimUi = PMO_PAYMENTS_SIMULATE && !PMO_PAYMENTS_WRITE_ENABLED;
+      let _anyUnknown = false;
+      const _payAmtInputs = []; // campi "€ a carico" → totale live
+      if (_payShow && _paySimUi) {
+        const simNote = document.createElement('div');
+        simNote.style.cssText = 'font-size:.74rem;color:#92600a;background:#fff7e6;border:1px solid #f5d98a;border-radius:8px;padding:6px 8px;margin-bottom:8px;';
+        simNote.innerHTML = '🧪 <strong>Simulazione</strong> — gli incassi non toccano Matchpoint: appaiono solo nella sezione Incassi (cloud TEST).';
+        playersSec.appendChild(simNote);
+      }
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
@@ -38880,38 +38944,143 @@ Per confermare scrivi ELIMINA.`);
       } else {
         st.roster.forEach(function (p) {
           const marked = !!st.remove[p.idx];
-          const chip = document.createElement('span');
-          chip.className = 'svc-player-chip';
-          if (marked) { chip.style.textDecoration = 'line-through'; chip.style.opacity = '.5'; }
-          chip.appendChild(document.createTextNode(p.nome));
+          const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
+          const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
+          const stato = p.stato; // 'riscosso' | 'in_sospeso' | null
+          const payRow = _payShow && !marked;        // mostriamo i controlli di pagamento?
+          const isPaid = payRow && stato === 'riscosso';
+          const item = document.createElement('div');
+          item.className = 'svc-pl';
+          // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
+          const row = document.createElement('div');
+          row.className = 'svc-pl-row';
+          if (payRow) {
+            const ic = document.createElement('i');
+            ic.className = 'ti ' + (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle svc-pl-ic-due');
+            ic.setAttribute('aria-hidden', 'true');
+            row.appendChild(ic);
+          }
+          const nm = document.createElement('span');
+          nm.className = 'svc-pl-name';
+          nm.textContent = p.nome;
+          if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
+          row.appendChild(nm);
+          let amt = null;
+          if (payRow && isPaid) {
+            // Pagato → si ripiega: importo verde + icona storna.
+            const paid = document.createElement('span');
+            paid.className = 'svc-pl-paid';
+            paid.textContent = (importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato';
+            row.appendChild(paid);
+            if (_payWriteActive) {
+              const sBtn = document.createElement('button');
+              sBtn.type = 'button'; sBtn.className = 'svc-pl-iconbtn';
+              sBtn.innerHTML = '<i class="ti ti-arrow-back-up" aria-hidden="true"></i>';
+              sBtn.title = 'Storna il pagamento';
+              sBtn.setAttribute('aria-label', 'Storna il pagamento di ' + p.nome);
+              sBtn.disabled = st.busy;
+              sBtn.addEventListener('click', function () {
+                if (sBtn.disabled) return;
+                _pmoVoidPayment({
+                  idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+                  idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+                  idx: (p.idx != null ? String(p.idx) : ''),
+                  playerName: p.nome, importoCents: importoCents,
+                  campo: st.campo, data: st.isoDate, ora: st.ora,
+                  sourceBtns: [sBtn],
+                });
+              });
+              row.appendChild(sBtn);
+            }
+          } else if (payRow) {
+            // Da incassare → campo € inline editabile (default = pendente o importo letto, sennò 0).
+            const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
+              : (importoCents != null ? importoCents : 0);
+            const eur = document.createElement('div');
+            eur.className = 'svc-pl-eur';
+            const sym = document.createElement('span'); sym.className = 'svc-pl-eur-sym'; sym.textContent = '€';
+            amt = document.createElement('input');
+            amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pl-eur-input';
+            amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            amt.disabled = !_payWriteActive;
+            amt.setAttribute('aria-label', 'Importo a carico di ' + p.nome);
+            eur.appendChild(sym); eur.appendChild(amt);
+            row.appendChild(eur);
+            _payAmtInputs.push(amt);
+            if (stato == null) _anyUnknown = true;
+          }
+          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip).
           const x = document.createElement('button');
-          x.type = 'button';
-          x.className = 'svc-chip-x';
+          x.type = 'button'; x.className = 'svc-pl-iconbtn';
           x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
-          x.title = marked ? 'Ripristina' : 'Rimuovi';
+          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
+          x.setAttribute('aria-label', x.title);
           x.disabled = st.busy;
           x.addEventListener('click', function () {
             if (st.busy) return;
             if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
             staffCalRenderPlayersEditor();
           });
-          chip.appendChild(x);
-          chipsWrap.appendChild(chip);
+          row.appendChild(x);
+          item.appendChild(row);
+          // Metodi di incasso (solo per chi deve ancora pagare).
+          if (payRow && !isPaid) {
+            const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
+            if (stato === 'in_sospeso' && importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
+              const part = document.createElement('div');
+              part.className = 'svc-pl-note';
+              part.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
+              item.appendChild(part);
+            }
+            const methods = document.createElement('div');
+            methods.className = 'svc-pl-methods';
+            const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-pl-method'; cBtn.innerHTML = '<i class="ti ti-cash" aria-hidden="true"></i>Cash';
+            const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-pl-method'; kBtn.innerHTML = '<i class="ti ti-credit-card" aria-hidden="true"></i>Card';
+            const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-pl-method'; wBtn.innerHTML = '<i class="ti ti-wallet" aria-hidden="true"></i>Wallet';
+            const _syncWallet = function () {
+              if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
+              const a = _pmoEuroToCents(amt.value);
+              const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
+              wBtn.disabled = !okSaldo;
+              wBtn.title = okSaldo
+                ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
+                : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
+            };
+            if (!_payWriteActive) {
+              cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
+              kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
+              _syncWallet();
+            } else {
+              cBtn.title = 'Incassa in contanti';
+              kBtn.title = 'Incassa con carta';
+              _syncWallet();
+              amt.addEventListener('input', _syncWallet);
+              const _collect = function (method) {
+                return _pmoCollectPayment({
+                  idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
+                  idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
+                  idx: (p.idx != null ? String(p.idx) : ''),
+                  playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
+                  campo: st.campo, data: st.isoDate, ora: st.ora,
+                  sourceBtns: [cBtn, kBtn, wBtn],
+                });
+              };
+              cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
+              kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
+              wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
+            }
+            methods.appendChild(cBtn); methods.appendChild(kBtn); methods.appendChild(wBtn);
+            item.appendChild(methods);
+          }
+          playersSec.appendChild(item);
         });
       }
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;" aria-hidden="true"></i>Aggiungi';
-      addBtn.className = 'svc-btn-add';
-      addBtn.disabled = st.busy;
-      addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
-      chipsWrap.appendChild(addBtn);
-      playersSec.appendChild(chipsWrap);
+      // Elenco "Da aggiungere" (adesioni in coda) — sopra il pulsante Aggiungi.
       if (st.add.length) {
         const addLbl = document.createElement('div');
         addLbl.textContent = 'Da aggiungere:';
         addLbl.className = 'svc-edit-label';
-        addLbl.style.cssText = 'margin:8px 0 2px;';
+        addLbl.style.cssText = 'margin:12px 0 2px;';
         playersSec.appendChild(addLbl);
         const addChips = document.createElement('div');
         addChips.className = 'svc-player-chips';
@@ -38936,146 +39105,48 @@ Per confermare scrivi ELIMINA.`);
         });
         playersSec.appendChild(addChips);
       }
+      // "+ Aggiungi giocatore" a tutta larghezza, in fondo alla sezione.
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'svc-btn-add';
+      addBtn.style.cssText = 'display:flex;width:100%;justify-content:center;margin-top:12px;box-sizing:border-box;';
+      addBtn.innerHTML = '<i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:3px;" aria-hidden="true"></i>Aggiungi giocatore';
+      addBtn.disabled = st.busy;
+      addBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersAdd(); });
+      playersSec.appendChild(addBtn);
+      // Totale live (somma dei "€ a carico") — solo con incasso attivo.
+      if (_payShow && _payWriteActive && _payAmtInputs.length) {
+        const totWrap = document.createElement('div');
+        totWrap.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:8px;border-top:1px dashed #e3e6ea;font-size:.84rem;font-weight:700;';
+        const totLbl = document.createElement('span'); totLbl.textContent = 'Totale da incassare';
+        const totVal = document.createElement('span'); totVal.style.cssText = 'font-weight:800;';
+        totWrap.appendChild(totLbl); totWrap.appendChild(totVal);
+        const _updatePayTotal = function () {
+          let s = 0;
+          _payAmtInputs.forEach(function (inp) { const c = _pmoEuroToCents(inp.value); if (c != null && c > 0) s += c; });
+          totVal.textContent = _incassiEuro(s);
+        };
+        _payAmtInputs.forEach(function (inp) { inp.addEventListener('input', _updatePayTotal); });
+        _updatePayTotal();
+        playersSec.appendChild(totWrap);
+      }
+      if (_payShow) {
+        const payHint = document.createElement('div');
+        payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
+        payHint.textContent = _paySimUi
+          ? 'Imposta il costo per ogni giocatore, poi incassa: in simulazione il pagamento appare solo in Incassi (non tocca Matchpoint).'
+          : (_anyUnknown
+              ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
+              : (_payWriteActive
+                  ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
+                  : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).'));
+        playersSec.appendChild(payHint);
+      }
       box.appendChild(playersSec);
     }
 
-    // PAGAMENTI per giocatore — Fase 2 LETTURA (sola lettura, dietro flag). Lo stato reale
-    // (riscosso/in sospeso + importo) arriva dalla lettura worker `/edit-booking` (campi
-    // importoCents/pendenteCents/stato su ogni voce del roster, preservati da _normRoster).
-    // L'incasso effettivo (Contanti/Carta) resta disattivato fino alla Fase 2b (scrittura su MP).
-    if (PMO_PAYMENTS_UI_ENABLED && st.hasPlayers && !st.isManut && !_loadingRoster && Array.isArray(st.roster) && st.roster.length) {
-      const paySec = mkSection('ti-cash', 'Pagamenti');
-      paySec.setAttribute('data-feature', 'payments-shell');
-      let _anyUnknown = false;
-      // Incasso ATTIVO solo se il flag write è ON (PROD/test reali: OFF) oppure se siamo
-      // nell'harness mockato (bypass solo-TEST). Altrimenti input/bottoni sono in sola lettura.
-      const _payWriteActive = PMO_PAYMENTS_WRITE_ENABLED
-        || (PMO_IS_TEST_ENV && typeof window !== 'undefined' && window.__pmoPayHarness === true);
-      st.roster.forEach(function (p) {
-        const item = document.createElement('div');
-        item.className = 'svc-pay-item';
-        const row = document.createElement('div');
-        row.className = 'svc-pay-row';
-        const nm = document.createElement('span'); nm.textContent = p.nome; nm.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem;';
-        const importoCents = (typeof p.importoCents === 'number') ? p.importoCents : null;
-        const pendenteCents = (typeof p.pendenteCents === 'number') ? p.pendenteCents : null;
-        const stato = p.stato; // 'riscosso' | 'in_sospeso' | null (non ancora letto)
-        const status = document.createElement('span');
-        status.className = 'svc-pay-status';
-        let showButtons = true;
-        if (stato === 'riscosso') {
-          status.classList.add('is-paid');
-          status.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>Pagato' + (importoCents != null && importoCents > 0 ? ' \xb7 ' + _incassiEuro(importoCents) : '');
-          showButtons = false; // già riscosso → nessun incasso da fare
-        } else if (stato === 'in_sospeso') {
-          status.classList.add('is-due');
-          if (importoCents != null && pendenteCents != null && pendenteCents > 0 && pendenteCents < importoCents) {
-            status.textContent = 'Parziale \xb7 resta ' + _incassiEuro(pendenteCents) + ' di ' + _incassiEuro(importoCents);
-          } else {
-            const dovuto = (pendenteCents != null) ? pendenteCents : importoCents;
-            status.textContent = 'Da pagare' + (dovuto != null && dovuto > 0 ? ' \xb7 ' + _incassiEuro(dovuto) : '');
-          }
-        } else {
-          status.style.color = 'var(--text-muted)';
-          status.textContent = '— saldo da leggere';
-          _anyUnknown = true;
-        }
-        row.appendChild(nm); row.appendChild(status);
-        item.appendChild(row);
-        // STORNO — giocatore già riscosso: azione per annullare il cobro (denaro reale).
-        // Visibile solo con write attivo; in env reale (flag OFF) resta nascosta.
-        if (stato === 'riscosso' && _payWriteActive) {
-          const undo = document.createElement('div');
-          undo.className = 'svc-pay-actions';
-          const sBtn = document.createElement('button');
-          sBtn.type = 'button'; sBtn.className = 'svc-btn-step';
-          sBtn.style.cssText = 'flex:0 0 auto;color:#b42318;border-color:#f1b5ae;';
-          sBtn.innerHTML = '<i class="ti ti-arrow-back-up" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Storna';
-          sBtn.title = 'Annulla il pagamento di questo giocatore su Matchpoint';
-          sBtn.addEventListener('click', function () {
-            if (sBtn.disabled) return;
-            _pmoVoidPayment({
-              idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
-              idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
-              idx: (p.idx != null ? String(p.idx) : ''),
-              playerName: p.nome, importoCents: importoCents,
-              campo: st.campo, data: st.isoDate, ora: st.ora,
-              sourceBtns: [sBtn],
-            });
-          });
-          undo.appendChild(sBtn);
-          item.appendChild(undo);
-        }
-        if (showButtons) {
-          // Importo "a carico" (€): default = pendente se presente, altrimenti importo letto.
-          // Editandolo si corregge quanto deve il giocatore (worker: set TextBoxCargoReserva →
-          // Actualizar) e POI si incassa l'intero. Niente cobri parziali (decisione 29/06).
-          const dovutoCents = (pendenteCents != null && pendenteCents > 0) ? pendenteCents
-            : (importoCents != null ? importoCents : 0);
-          const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
-          const amtWrap = document.createElement('div');
-          amtWrap.className = 'svc-pay-amt';
-          const amtLbl = document.createElement('span'); amtLbl.className = 'svc-pay-amt-lbl'; amtLbl.textContent = '€ a carico';
-          const amt = document.createElement('input');
-          amt.type = 'text'; amt.inputMode = 'decimal'; amt.className = 'svc-pay-amt-input';
-          amt.value = ((dovutoCents || 0) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          amt.disabled = !_payWriteActive;
-          amtWrap.appendChild(amtLbl); amtWrap.appendChild(amt);
-          item.appendChild(amtWrap);
-
-          const acts = document.createElement('div');
-          acts.className = 'svc-pay-actions';
-          const cBtn = document.createElement('button'); cBtn.type = 'button'; cBtn.className = 'svc-btn-step'; cBtn.innerHTML = '<i class="ti ti-cash" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Cash';
-          const kBtn = document.createElement('button'); kBtn.type = 'button'; kBtn.className = 'svc-btn-step'; kBtn.innerHTML = '<i class="ti ti-credit-card" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Card';
-          const wBtn = document.createElement('button'); wBtn.type = 'button'; wBtn.className = 'svc-btn-step'; wBtn.innerHTML = '<i class="ti ti-wallet" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Wallet';
-          // Wallet abilitato solo se il borsellino copre l'importo digitato (ricalcolato a ogni input).
-          const _syncWallet = function () {
-            if (!_payWriteActive) { wBtn.disabled = true; wBtn.title = 'Incasso dal borsellino disponibile dalla Fase 2b'; return; }
-            const a = _pmoEuroToCents(amt.value);
-            const okSaldo = (saldoCents != null && a != null && a > 0 && saldoCents >= a);
-            wBtn.disabled = !okSaldo;
-            wBtn.title = okSaldo
-              ? 'Incassa dal borsellino (saldo ' + _incassiEuro(saldoCents) + ')'
-              : (saldoCents == null ? 'Saldo borsellino non disponibile' : 'Saldo insufficiente (' + _incassiEuro(saldoCents || 0) + ')');
-          };
-          if (!_payWriteActive) {
-            cBtn.disabled = true; cBtn.title = 'Incasso disponibile dalla Fase 2b';
-            kBtn.disabled = true; kBtn.title = 'Incasso disponibile dalla Fase 2b';
-            _syncWallet();
-          } else {
-            cBtn.disabled = false; cBtn.title = 'Incassa in contanti';
-            kBtn.disabled = false; kBtn.title = 'Incassa con carta';
-            _syncWallet();
-            amt.addEventListener('input', _syncWallet);
-            const _collect = function (method) {
-              return _pmoCollectPayment({
-                idReserva: (st.idReserva != null ? String(st.idReserva) : ''),
-                idCliente: (p.idCliente != null ? String(p.idCliente) : ''),
-                idx: (p.idx != null ? String(p.idx) : ''),
-                playerName: p.nome, method: method, amountCents: _pmoEuroToCents(amt.value),
-                campo: st.campo, data: st.isoDate, ora: st.ora,
-                sourceBtns: [cBtn, kBtn, wBtn],
-              });
-            };
-            cBtn.addEventListener('click', function () { if (!cBtn.disabled) _collect('cash'); });
-            kBtn.addEventListener('click', function () { if (!kBtn.disabled) _collect('card'); });
-            wBtn.addEventListener('click', function () { if (!wBtn.disabled) _collect('wallet'); });
-          }
-          acts.appendChild(cBtn); acts.appendChild(kBtn); acts.appendChild(wBtn);
-          item.appendChild(acts);
-        }
-        paySec.appendChild(item);
-      });
-      const payHint = document.createElement('div');
-      payHint.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:8px;';
-      payHint.textContent = _anyUnknown
-        ? 'Lo stato dei pagamenti si aggiorna da Matchpoint appena la lista giocatori è letta.'
-        : (_payWriteActive
-            ? 'Modifica l’importo a carico se serve, poi incassa: il pagamento viene scritto su Matchpoint.'
-            : 'Stato letto da Matchpoint. L’incasso (Cash/Card/Wallet) è disattivato (si abilita nel test dal vivo).');
-      paySec.appendChild(payHint);
-      box.appendChild(paySec);
-    }
+    // (La sezione "Pagamenti" è stata FUSA nella sezione "Giocatori e pagamenti" qui sopra:
+    // ogni giocatore ha lo stato + i controlli di incasso sulla propria riga.)
 
     // MANUTENZIONE — campo DESCRIZIONE (TextBox2 di Matchpoint = il testo visibile sul tabellone).
     // Sta SOPRA le osservazioni; modificandolo cambi ciò che si legge sulla card e su Matchpoint.
@@ -39116,7 +39187,7 @@ Per confermare scrivi ELIMINA.`);
     saveBtn.type = 'button';
     saveBtn.innerHTML = '<i class="ti ti-check" style="font-size:14px;vertical-align:-2px;margin-right:3px;" aria-hidden="true"></i>Salva';
     saveBtn.className = 'svc-btn-confirm svc-btn-yes';
-    saveBtn.style.flex = '1';
+    saveBtn.style.flex = '2';
     saveBtn.disabled = st.busy;
     saveBtn.addEventListener('click', function () { if (!st.busy) staffCalPlayersSave(); });
     const closeBtn = document.createElement('button');
