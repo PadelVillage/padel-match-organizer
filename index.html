@@ -26044,7 +26044,9 @@ Per confermare scrivi ELIMINA.`);
 	        if (record) records.push(record);
 	      });
 	      (Array.isArray(prenotazioni) ? prenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking', pmoBookingCloudKey(item, index, 'booking'), item));
-	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
+	      // Escludi le occupancy `_retained` (bridge locale anti-buco mezzanotte, v6.067): sono copie
+	      // LIVE di date passate che il cloud ha già tombstonato → NON vanno ripushate (le resusciterebbe).
+	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).filter(item => !(item && item._retained)).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
 	      if (!PMO_IS_TEST_ENV) {
 	        (Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_history', pmoBookingCloudKey(item, index, 'history'), item));
 	      }
@@ -36066,6 +36068,22 @@ Per confermare scrivi ELIMINA.`);
   const STAFF_CAL_START_H = 8;
   const STAFF_CAL_END_H = 24;
   const STAFF_CAL_SLOT_MIN = 30;
+  // v6.067 — RETENZIONE occupazione recente. L'edge di sync, dopo mezzanotte, tombstona
+  // l'occupazione live delle date passate (finestra da OGGI in poi): il calendario per ieri
+  // resta scoperto finché l'archivio (storicoPrenotazioni) non subentra → le prenotazioni di
+  // ieri "sparivano per qualche minuto" al cambio data. Teniamo in locale l'occupazione live
+  // degli ultimi N giorni che il cloud non riporta più, così ieri resta visibile con dati LIVE
+  // (accurati) e si passa all'archivio senza buco. Bridge breve: 2 giorni bastano.
+  const STAFF_CAL_OCC_RETAIN_DAYS = 2;
+  function _staffCalIsoMinusDays(iso, n) {
+    try {
+      const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return '';
+      const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      d.setUTCDate(d.getUTCDate() - n);
+      return d.toISOString().slice(0, 10);
+    } catch (e) { return ''; }
+  }
 
   // ── Parser Rules — regole di fallback hardcoded (usate se GitHub non è raggiungibile) ──
   const STAFF_CAL_FALLBACK_RULES = {
@@ -36780,10 +36798,30 @@ Per confermare scrivi ELIMINA.`);
         // effetti collaterali → la propagazione cross-device (es. annullo) non resta appesa ai ~15s
         // dell'heartbeat realtime quando il broadcast non viene consegnato (socket stantio).
         const _occSig = (arr) => { try { return JSON.stringify(arr || []); } catch (e) { return String((arr || []).length); } };
+        // v6.067 — BRIDGE anti-buco di mezzanotte: l'occupazione LIVE del giorno appena finito che
+        // il cloud non riporta più (tombstonata dall'edge alle ~00:04) verrebbe cancellata qui e ieri
+        // resterebbe scoperto finché l'archivio non subentra. La CONSERVIAMO come fallback: solo date
+        // passate recenti [oggi-N, oggi) e solo gli slot NON più presenti nel cloud. Marcata `_retained`
+        // così pmoBuildCloudRecordsFromLocalState NON la ripusha (non resuscita i tombstone). Calcolata
+        // dal valore ATTUALE di prenotazioniOccupazione (che al primo refresh dopo il tombstone contiene
+        // ancora ieri) PRIMA della riassegnazione. Invecchia da sola quando la data esce dalla finestra.
+        let _occToStore = cloud.occupancyBookings;
+        try {
+          const _todayIso = staffCalTodayIso();
+          const _retainFrom = _staffCalIsoMinusDays(_todayIso, STAFF_CAL_OCC_RETAIN_DAYS);
+          if (_todayIso && _retainFrom) {
+            const _slotKey = (p) => `${p.data}|${Number(String(p.campo).replace(/\D/g, ''))}|${p.ora}`;
+            const _cloudSlots = new Set(cloud.occupancyBookings.map(_slotKey));
+            const _retained = (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : [])
+              .filter((p) => p && p.data && p.data >= _retainFrom && p.data < _todayIso && !_cloudSlots.has(_slotKey(p)))
+              .map((p) => (p && p._retained ? p : Object.assign({}, p, { _retained: true })));
+            if (_retained.length) _occToStore = cloud.occupancyBookings.concat(_retained);
+          }
+        } catch (e) {}
         const _occChanged = _occSig(cloud.bookings) !== _occSig(prenotazioni) ||
-                            _occSig(cloud.occupancyBookings) !== _occSig(prenotazioniOccupazione);
+                            _occSig(_occToStore) !== _occSig(prenotazioniOccupazione);
         prenotazioni = cloud.bookings;
-        prenotazioniOccupazione = cloud.occupancyBookings;
+        prenotazioniOccupazione = _occToStore;
         save('prenotazioni', prenotazioni);
         save('prenotazioniOccupazione', prenotazioniOccupazione);
         if (_occChanged) renderStaffCalendar();
