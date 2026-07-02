@@ -7807,7 +7807,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.065';
+    const APP_VERSION = '6.066';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43777,7 +43777,13 @@ Per confermare scrivi ELIMINA.`);
       if (m) return { campo: +m[1] };
       // ultimo tentativo (telegrafico "…rossi 2…"): un 1–4 isolato NON preceduto da una
       // preposizione oraria (così non prende "alle 4") → campo.
-      const t2 = tx.replace(/\b(?:alle|dalle|dall'|delle|dell'|ore|ora|h)\s*\d{1,2}(?::\d{2})?/g, ' ');
+      const t2 = tx
+        .replace(/\b(?:alle|dalle|dall'|delle|dell'|ore|ora|h)\s*\d{1,2}(?::\d{2})?/g, ' ')
+        // "N ospiti/giocatori/allievi/persone/amici" = QUANTITÀ, non campo: togli numero+sostantivo
+        // così "aggiungi 3 ospiti" non diventa "campo 3" (l'euristica sotto prende una cifra 1–4
+        // isolata → rubava il conteggio degli ospiti e mancava la scheda aperta). Le forme esplicite
+        // ("campo 3", "sul 3", "il 3") sono già state gestite sopra su `tx`, quindi non toccate.
+        .replace(/\b\d{1,2}\s+(?:ospit[ei]|giocator\w*|allie\w*|person\w*|amic[oi]|jolly)\b/gi, ' ');
       m = t2.match(/(?:^|\s)([1-4])(?=\s|$)/);
       if (m) return { campo: +m[1] };
       return {};
