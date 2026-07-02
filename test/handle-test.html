@@ -1277,6 +1277,33 @@ const CASES = [
       checks.push({ label: 'NESSUN record reale toccato (solo pmo_simulate)', ok: recs.every(r => /^pmo_sim_pay\|/.test(r.local_key || '')) });
       return checks;
     }
+  },
+  {
+    id: 52, flow: 'Giocatore/Pattern', name: 'handle: SCHEDA APERTA (Campo 4) + "mi aggiungi 3 ospiti alla partita" (cifra) → aggiunge 3 Ospite alla scheda aperta, NON legge "3" come Campo 3',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Regressione bug live 02/07: la cifra "3" di «3 ospiti» veniva letta come «campo 3» dall'euristica
+      // telegrafica in _campoX → _sameCourt falliva (scheda su Campo 4) → cadeva nella disambiguazione
+      // «Quale prenotazione?» elencando i Campi 3. La scheda è su Campo 4 apposta: se il numero tornasse
+      // a essere letto come campo, il target sarebbe Campo 3 e questo caso fallirebbe.
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-2100', campo: '4', ora: '21:00', oraFine: '22:30', giocatori: [{ nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // 1) il parse NON deve impostare campo (la cifra è una quantità di ospiti, non un campo)
+      const r = win.PMOAi.parse('mi aggiungi 3 ospiti alla partita');
+      checks.push({ label: 'parse: NESSUN campo dedotto da "3 ospiti"', ok: !r || r.campo == null });
+      // 2) scheda aperta su Campo 4 → il comando aggiunge alla scheda aperta (no domanda "quale prenotazione?")
+      await openCard(H, iso, 4, '21:00', 90, 'partita');
+      await handleSeq(win, ['mi aggiungi 3 ospiti alla partita', 'sì']);
+      const pushed = await waitFor(() => editSavePushes()[0], 5000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato sul Campo 4 (scheda aperta)', ok: !!pushed && String(pushed.body.campo).replace(/\D/g, '') === '4' });
+      const addOsp = (pushed && pushed.body.players && Array.isArray(pushed.body.players.add)) ? pushed.body.players.add.filter(p => /ospite/i.test(p.nome)).length : 0;
+      checks.push({ label: 'players.add con TRE Ospite', ok: addOsp === 3 });
+      checks.push({ label: 'NON ha chiesto "quale prenotazione" (no disambiguazione)', ok: !/quale prenotazione/i.test(chatTranscript(win)) });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 4, '21:00').match(/Ospite/gi) || []).length === 4, 3000);
+      checks.push({ label: 'roster locale Campo 4: 1 → 4 Ospiti (+3)', ok: ok2 });
+      return checks;
+    }
   }
 ];
 
