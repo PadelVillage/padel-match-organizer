@@ -6963,9 +6963,14 @@ async function editBookingWithBrowser(input = {}) {
   // stringa (anche vuota) = scrivi; null = non fornito → non toccare la descrizione.
   const descrizione = (typeof input.descrizione === 'string') ? input.descrizione : null;
   const descrizioneProvided = descrizione !== null;
-  if (!move && !players && !readOnly && !noteProvided && !descrizioneProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note/descrizione fornito.');
+  // istruttore: SOLO lezione (dropdown "Monitor" della ficha). Stringa non vuota = cambia il maestro;
+  // null/'' = non fornito → non toccare l'istruttore. La selezione fa AutoPostBack (ricarica il pannello)
+  // quindi va DOPO le eventuali aggiunte allievi, prima del salvataggio (come nel ramo create).
+  const istruttore = (typeof input.istruttore === 'string') ? input.istruttore.trim() : null;
+  const istruttoreProvided = !!istruttore;
+  if (!move && !players && !readOnly && !noteProvided && !descrizioneProvided && !istruttoreProvided) throw fail('EDIT_NESSUNA_MODIFICA', 'Nessun blocco move/players/note/descrizione/istruttore fornito.');
 
-  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided, descrizioneProvided } };
+  const diagnostic = { mode: 'edit_booking', steps: [], input: { idReserva, campo: input.campo, data: input.data, ora: input.ora, move, players, noteProvided, descrizioneProvided, istruttoreProvided } };
   instrumentStepTiming(diagnostic);
   let fichaUrl = null; // rilevata dopo il login: partita / lezione / manutenzione
 
@@ -7189,10 +7194,10 @@ async function editBookingWithBrowser(input = {}) {
       await page.waitForTimeout(2500);
       moved = true;
 
-      // Ricarica Ficha pulita SOLO se seguono modifiche ai giocatori (per agganciare
-      // l'autocomplete in modo affidabile). Per uno spostamento puro è ridondante:
+      // Ricarica Ficha pulita SOLO se seguono modifiche ai giocatori o al maestro (per agganciare
+      // l'autocomplete / il dropdown Monitor in modo affidabile). Per uno spostamento puro è ridondante:
       // subito dopo c'è verifica_reload che ricarica comunque la Ficha → si evita un reload.
-      if (players) {
+      if (players || istruttoreProvided) {
         diagnostic.steps.push('reload_after_move');
         await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
       }
@@ -7227,7 +7232,8 @@ async function editBookingWithBrowser(input = {}) {
         await clickFormSave(page, page, ['Salvare', 'Actualizar', 'Guardar'], diagnostic);
       }
       await page.waitForTimeout(2500);
-    } else if (players) {
+    } else if (players || istruttoreProvided) {
+      if (players) {
       const removeNamesRaw = (players.remove || []).map((n) => String(n).toLowerCase().trim());
       const removeAll = players.removeAll === true;
       const anyRemovalRequested = removeAll || removeNamesRaw.length > 0;
@@ -7403,11 +7409,24 @@ async function editBookingWithBrowser(input = {}) {
           `Aggiunta non completata per ${addFalliti.length} giocatore/i: ${addFalliti.map((r) => `${r.nome}(${r.reason || '?'})`).join(', ')}. Riprova.`,
           diagnostic);
       }
+      } // ── fine ramo giocatori (players) ──
 
-      // Osservazioni (← note): riempi PRIMA del salvataggio giocatori → un solo save.
+      // ── ISTRUTTORE (solo lezione): cambia il maestro nel dropdown "Monitor" della ficha.
+      //    Va DOPO eventuali aggiunte allievi (il suo AutoPostBack ricarica il pannello),
+      //    prima del salvataggio, così finisce nello stesso Actualizar. Su ficha non-lezione
+      //    (partita/manutenzione) non c'è dropdown maestro → si ignora, senza fallire.
+      if (istruttoreProvided) {
+        if (fichaUrl.includes('ClaseSuelta')) {
+          await selectIstruttore(page, page, istruttore, diagnostic);
+        } else {
+          diagnostic.steps.push('istruttore_skip_non_lezione');
+        }
+      }
+
+      // Osservazioni (← note): riempi PRIMA del salvataggio → un solo save.
       if (noteProvided) await fillOsservazioni(page, page, note, diagnostic);
 
-      // SALVA giocatori con ButtonActualizar (clic robusto: dismiss-swal + retry)
+      // SALVA con ButtonActualizar (clic robusto: dismiss-swal + retry)
       diagnostic.steps.push('salva');
       await clickSaveActualizar(page, diagnostic, 'salva');
       await page.waitForTimeout(2500);
@@ -7526,7 +7545,7 @@ async function editBookingWithBrowser(input = {}) {
     const resolvedPlayersEdit = addResults
       .filter((r) => r.added && r.idPeople)
       .map((r) => ({ nome: r.nome, codiceCliente: r.codiceCliente, idPeople: r.idPeople }));
-    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
+    return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
     throw _e;
