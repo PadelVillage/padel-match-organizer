@@ -1304,6 +1304,26 @@ const CASES = [
       checks.push({ label: 'roster locale Campo 4: 1 → 4 Ospiti (+3)', ok: ok2 });
       return checks;
     }
+  },
+  {
+    id: 53, flow: 'Giocatore/Pattern', name: 'handle: "mi aggiungi tre ospiti" (NESSUNA scheda aperta) → chiede "a quale prenotazione?", MAI "iscrivo come nuovo socio" (un Ospite non è un socio)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07: senza scheda aperta, "aggiungi N ospiti" cadeva nella domanda socio/giocatore
+      // ("lo iscrivo come nuovo socio?") — assurda per un Ospite (socio jolly ID 000001, MAI un nuovo
+      // nominativo). Deve invece chiedere DRITTO "a quale prenotazione?" elencando quelle del giorno.
+      H.resetCard();  // garantisci NESSUNA scheda aperta (l'iframe è condiviso tra i casi)
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-0830', campo: '4', ora: '08:30', oraFine: '10:00', giocatori: [{ nome: 'Ospite' }] })]);
+      setCalDay(win, iso);
+      const checks = [];
+      await win.PMOAi.handle('mi aggiungi tre ospiti'); await sleep(200);
+      const tx = chatTranscript(win);
+      checks.push({ label: 'NON ha proposto "iscrivo/nuovo socio"', ok: !/nuovo socio/i.test(tx) && !/iscriv/i.test(tx) });
+      checks.push({ label: 'ha chiesto "a quale prenotazione"', ok: /quale prenotazione/i.test(tx) });
+      checks.push({ label: 'elenca la prenotazione Campo 4 · 08:30', ok: /08:30/.test(tx) && /Campo\s*4/i.test(tx) });
+      if (!/quale prenotazione/i.test(tx) || /nuovo socio/i.test(tx)) ctx.diag['53'] = tx;
+      return checks;
+    }
   }
 ];
 

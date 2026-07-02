@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.067';
+    const APP_VERSION = '6.069';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -42439,6 +42439,7 @@ Per confermare scrivi ELIMINA.`);
     try {
       window.__PMOStaffCalTest = {
         openCard: function () { return staffCalEditPlayers.apply(null, arguments); },
+        resetCard: function () { staffCalPlayersState = null; try { _lastChatBooking = null; } catch (e) {} },
         getPlayersState: function () { return staffCalPlayersState; },
         setBookings: function (arr) { return save('staffBookings', Array.isArray(arr) ? arr : []); },
         getBookings: function () { return safeLoad('staffBookings', []); },
@@ -45120,6 +45121,15 @@ Per confermare scrivi ELIMINA.`);
       if (res.addAmbiguous) {
         const _nm = (res.giocatori && res.giocatori.length) ? res.giocatori.join(' ') : '';
         const _nmEsc = _escapeHtml(_nm);
+        // Un OSPITE/jolly è un socio jolly dell'anagrafica (ID 000001), MAI un nuovo nominativo:
+        // "aggiungi tre ospiti" NON è ambiguo (giocatore vs socio) — un ospite non si "iscrive".
+        // Salta la domanda socio/giocatore e chiedi dritto a QUALE prenotazione (a pulsanti). Vale
+        // solo se NON c'è anche un nome reale (per "aggiungi Mario e un ospite" resta la domanda).
+        const _onlyGuests = /\b(ospit[ei]|jolly)\b/.test(_norm(t))
+          && !(res.giocatori || []).some(function (g) { return !/\b(ospit[ei]|jolly)\b/.test(_norm(g)); });
+        if (_onlyGuests) {
+          return _askWhichBookingForPlayer(res, t, _nmEsc);
+        }
         // L'utente ha già detto ESPLICITAMENTE "come giocatore/allievo" → NON è ambiguo
         // (giocatore vs nuovo socio): salta la domanda e chiedi solo a QUALE prenotazione.
         if (/(^|\s)come\s+(?:giocator|alliev)/.test(_norm(t))) {
