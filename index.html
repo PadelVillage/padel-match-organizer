@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.066';
+    const APP_VERSION = '6.067';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -25493,7 +25493,7 @@ Per confermare scrivi ELIMINA.`);
       // v5.14.8: versione stabile con import protetti e refresh automatico dopo import.
       return;
     }
-    function loadExternalScriptOnce(url, globalName) {
+    function loadExternalScriptOnce(url, globalName, _attempt = 0) {
       return new Promise((resolve, reject) => {
         const cleanedUrl = cleanCell(url);
         if (!cleanedUrl) return reject(new Error('URL config Supabase mancante'));
@@ -25504,7 +25504,19 @@ Per confermare scrivi ELIMINA.`);
         script.id = 'remoteSupabaseConfigScript';
         script.src = cleanedUrl + (cleanedUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
         script.onload = () => resolve(window[globalName]);
-        script.onerror = () => reject(new Error('Non riesco a leggere config.js da GitHub Pages'));
+        script.onerror = () => {
+          // GitHub Pages/CDN può far fallire in modo TRANSITORIO il caricamento dello <script>
+          // (blip di rete, tipico subito dopo un deploy). Ritenta fino a 3 volte con backoff
+          // crescente prima di arrendersi: così un'operazione (es. cambio maestro / salvataggio
+          // prenotazione) non fallisce per un singolo colpo a vuoto sul config.js.
+          if (_attempt < 2) {
+            setTimeout(function () {
+              loadExternalScriptOnce(url, globalName, _attempt + 1).then(resolve, reject);
+            }, 400 * (_attempt + 1));
+          } else {
+            reject(new Error('Non riesco a leggere config.js da GitHub Pages'));
+          }
+        };
         document.head.appendChild(script);
       });
     }
