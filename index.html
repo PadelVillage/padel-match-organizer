@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.073';
+    const APP_VERSION = '6.074';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44954,8 +44954,15 @@ Per confermare scrivi ELIMINA.`);
           if (_verbs !== undefined) {
             const _cw = 'conferm\\w*|confermo|s[iì]|ok(?:ay|ey)?|va\\s+bene|vabb?ene|proced\\w*|cert\\w*|perfett\\w*|sicur\\w*|pure|adesso|subito|va[i]?|salv\\w*|giust\\w*|esatt\\w*|no|lasc\\w*|stop|niente|nessun\\w*|chiud\\w*|esci|basta';
             const _re = new RegExp('^\\s*(?:(?:' + (_verbs ? _verbs + '|' : '') + _cw + ')[\\s,.!]*)+$', 'i');
-            // Parola di USCITA (no/annulla) vs conferma, per dispacciare un canonico sì/no.
-            const _exitRe = /\b(no|annull\w*|lasc\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)\b/i;
+            // Parola di USCITA vs conferma, per dispacciare un canonico sì/no. NB: per il flusso
+            // 'cancella' "annulla" È il verbo dell'azione (= conferma), NON un'uscita — come già
+            // deciso dal gestore dedicato _confirmCancellaAnswer. Se restasse nell'exit set, una
+            // conferma come «sì annulla»/«annulla» diventerebbe un "no" ("non ho annullato nulla"),
+            // tanto più che la «sì» accentata non salva via _yesRe (il \b dopo "ì" non è confine di
+            // parola). Per uscire da un annullo si dice no/lascia/stop.
+            const _exitRe = (_kc === 'cancella')
+              ? /\b(no|lasc\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)\b/i
+              : /\b(no|annull\w*|lasc\w*|stop|niente|nessun\w*|chiud\w*|esci|basta)\b/i;
             const _yesRe = /\b(s[iì]|conferm\w*|proced\w*|va[i]?|va\s+bene|vabb?ene|cert\w*|perfett\w*|esatt\w*|giust\w*|salv\w*|ok|okay|pure|sicur\w*)\b/i;
             // Vocabolario anche nelle CONFERME: una voce «okk → sì» / «daje → sì» / «manco → no»
             // riscrive il testo PRIMA del test, così la parola insegnata vale come conferma/rifiuto.
@@ -48879,7 +48886,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
+    return { isEnabled: isEnabled, parse: parse, handle: handle, resetFlow: function () { aiFlowState = null; }, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
       setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; },
       setLearningModeGlobal: setLearningModeGlobal, refreshLearningToggle: _loadLearningModeSetting, loadAiUsage: loadAiUsage, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();

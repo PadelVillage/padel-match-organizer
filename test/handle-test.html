@@ -1389,6 +1389,28 @@ const CASES = [
       checks.push({ label: 'messaggio "esito non confermato" (non "Modifica non riuscita")', ok: /non confermato|potrebbe essere passata/i.test(chatTranscript(win)) && !/Modifica non riuscita/i.test(chatTranscript(win)) });
       return checks;
     }
+  },
+  {
+    // Regressione bug PROD v6.073: al riepilogo "annullo questa?" l'utente conferma con «Sì annulla»
+    // (o «annulla» secco) e l'assistente rispondeva «non ho annullato nulla». Causa: la guardia
+    // conferma generica trattava "annulla" come parola di USCITA (canon→no); per 'cancella' "annulla"
+    // È invece la conferma. La «sì» accentata non salvava (il \b dopo "ì" non è confine di parola).
+    id: 57, flow: 'Routing/Cancel', name: 'handle: "annulla la partita…" poi conferma con «Sì annulla» → annulla davvero (non "non ho annullato nulla")',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['annulla la partita di campo 2 di domani alle 18', 'Sì annulla']);
+      const checks = [];
+      const gone = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 4000);
+      const pushed = await waitFor(() => workerPushes('cancel').length > 0, 2000);
+      checks.push({ label: 'booking annullata (conferma "Sì annulla" letta come sì)', ok: gone });
+      checks.push({ label: 'worker cancel inviato', ok: pushed });
+      checks.push({ label: 'NON dice "non ho annullato nulla"', ok: !/non ho annullato nulla/i.test(chatTranscript(win)) });
+      if (!gone || !pushed) ctx.diag['57'] = chatTranscript(win);
+      return checks;
+    }
   }
 ];
 
@@ -1436,6 +1458,11 @@ async function run() {
   const CASES_RUN = _only ? CASES.filter(c => String(c.flow).toLowerCase() === _only || String(c.id) === _only) : CASES;
   for (const c of CASES_RUN) {
     captureReset();
+    // Isolamento tra test: azzera un eventuale flusso conversazionale/scheda lasciati aperti dal
+    // caso precedente (aiFlowState/scheda) — altrimenti un flow in sospeso cattura il primo comando
+    // del test seguente (bleed di stato → falsi rossi tipo "annulla la partita" mangiato da un add).
+    try { W.PMOAi && W.PMOAi.resetFlow && W.PMOAi.resetFlow(); } catch (e) {}
+    try { H.resetCard && H.resetCard(); } catch (e) {}
     let checks, err = null;
     try { checks = await c.run(W, H, ctx); }
     catch (e) { checks = [{ label: 'EXCEPTION: ' + (e && e.message || e), ok: false }]; err = e; }
