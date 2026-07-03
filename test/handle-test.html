@@ -1348,6 +1348,47 @@ const CASES = [
       if (!pushed || /quale prenotazione/i.test(chatTranscript(win))) ctx.diag['54'] = chatTranscript(win);
       return checks;
     }
+  },
+  {
+    id: 55, flow: 'Cancel', name: 'annullo con TIMEOUT edge ("idle timeout 150s") → NON ripristina (esito incerto: il worker può aver annullato lo stesso — origine dei fantasmi)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07: l'edge Supabase supera il suo idle-timeout (worker in coda) e torna
+      // "Request idle timeout limit (150s) reached" come ERRORE, ma il worker completa l'annullo
+      // LO STESSO poco dopo. Prima l'app ripristinava alla cieca → app mostra la prenotazione, MP
+      // no → FANTASMA. Ora un errore di timeout NON deve ripristinare. (Contrasto col caso 2, dove
+      // SLOT_OCCUPATO è un rifiuto vero → ripristina.)
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      checks.push({ label: 'rimossa subito (ottimistico)', ok: findBooking(H.getBookings(), iso, 2, '18:00').length === 0 });
+      // dopo il timeout NON deve tornare: resta rimossa (esito incerto → sync riconcilia)
+      const restored = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length > 0, 2500);
+      checks.push({ label: 'NON ripristinata dopo timeout (resta rimossa)', ok: !restored });
+      checks.push({ label: 'messaggio "esito non confermato" (non "non riuscito")', ok: /non confermato|potrebbe essere passato/i.test(chatTranscript(win)) && !/Annullamento non riuscito/i.test(chatTranscript(win)) });
+      return checks;
+    }
+  },
+  {
+    id: 56, flow: 'Giocatori', name: 'edit con TIMEOUT edge → NON reverta il roster (la modifica può essere passata lo stesso)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const added = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 2000);
+      checks.push({ label: 'roster +Anna (ottimistico)', ok: added });
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      // dopo il timeout NON deve revertire: Anna resta
+      const stillThere = await waitFor(() => !/Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 2000);
+      checks.push({ label: 'NON reverta dopo timeout (Anna resta)', ok: !stillThere });
+      checks.push({ label: 'messaggio "esito non confermato" (non "Modifica non riuscita")', ok: /non confermato|potrebbe essere passata/i.test(chatTranscript(win)) && !/Modifica non riuscita/i.test(chatTranscript(win)) });
+      return checks;
+    }
   }
 ];
 

@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.072';
+    const APP_VERSION = '6.073';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39493,6 +39493,20 @@ Per confermare scrivi ELIMINA.`);
   // ("recurso 13"), niente rumore di debug (steps=[…], url=…). Riconosce i casi noti; altrimenti tiene
   // solo la parte umana accorciata. NB: il diario (execEnd/logManual) continua a salvare il motivo
   // COMPLETO — questo è solo ciò che si MOSTRA in chat.
+  // Errore di TIMEOUT lato edge/worker (NON un rifiuto): l'edge Supabase ha un idle-timeout (~150s)
+  // e sotto carico (coda worker satura) restituisce "Request idle timeout limit (150s) reached"
+  // come risposta di ERRORE — ma il worker spesso completa l'operazione LO STESSO poco dopo. In
+  // questi casi l'esito è INCERTO, non fallito: NON si deve ripristinare/revertire alla cieca
+  // (è l'origine dei "fantasmi": annullo passato su MP ma rollback locale → l'app la ri-mostra e
+  // ogni modifica successiva dà PRENOTAZIONE_NON_TROVATA). Vale anche per i gateway 502/504/524 e
+  // per i messaggi di deadline. (Il 502 "WORKER_ERROR" generico NON è qui: lo intercettiamo solo
+  // se il MESSAGGIO parla di timeout/deadline, per non silenziare i rifiuti veri.)
+  function _staffCalIsTimeoutClass(raw, status) {
+    const s = String(raw == null ? '' : (raw && raw.message != null ? raw.message : raw));
+    if (/idle timeout|request idle|timed out|deadline exceeded|\btimeout\b[^]*\b(limit|reached|exceeded)\b|non ha risposto in tempo|gateway time-?out/i.test(s)) return true;
+    const st = Number(status);
+    return st === 504 || st === 524 || st === 408;
+  }
   function _staffCalFriendlyOpError(raw) {
     const s = String(raw == null ? '' : (raw.message != null ? raw.message : raw));
     // NB: il caso giocatore-non-confermato va controllato PRIMA del "non trovata" generico, altrimenti
@@ -39794,6 +39808,14 @@ Per confermare scrivi ELIMINA.`);
           try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
           _setEditSyncNote('✅ Salvata su Matchpoint', '#067647');
           _aiExecSettle(true, null);
+          renderStaffCalendar();
+        } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
+          // TIMEOUT edge (worker in coda): esito INCERTO, la modifica può essere passata lo stesso.
+          // NON revertire alla cieca (eviti roster sfasato app↔MP e possibili doppioni al retry).
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): la modifica <strong>potrebbe essere passata lo stesso</strong>. Non ho revertito niente — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
+          _aiExecSettle(false, 'timeout');
           renderStaffCalendar();
         } else {
           const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
@@ -41320,6 +41342,11 @@ Per confermare scrivi ELIMINA.`);
         } else if (notFoundOnMatchpoint) {
           // Non era più su Matchpoint (ghost): la rimozione locale resta valida.
           _setSync('🧹 Non era più su Matchpoint — rimossa', '#067647');
+        } else if (_staffCalIsTimeoutClass(_msgTxt, response.status)) {
+          // TIMEOUT edge (worker in coda): esito INCERTO, il worker può aver annullato lo stesso.
+          // NON ripristinare (evita il "fantasma": annullo passato su MP ma ri-mostrato in locale).
+          _setSync('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): l\'annullamento <strong>potrebbe essere passato lo stesso</strong>. Non ho ripristinato niente alla cieca — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarlo.', 'error');
         } else {
           // Rifiuto reale: RIPRISTINA la prenotazione in locale e avvisa.
           const msg = _msgTxt || ('errore HTTP ' + response.status);
