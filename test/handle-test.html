@@ -1324,6 +1324,30 @@ const CASES = [
       if (!/quale prenotazione/i.test(tx) || /nuovo socio/i.test(tx)) ctx.diag['53'] = tx;
       return checks;
     }
+  },
+  {
+    id: 54, flow: 'Giocatore/Pattern', name: 'handle: SCHEDA APERTA (C4, 4 Ospiti) + "mi levi due ospiti a questa partita" → toglie 2 dalla scheda aperta, NON chiede "quale prenotazione"',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07 (inverso dell'aggiunta): con la parola "partita" nel comando, il guard
+      // _wholeBooking marcava «leva due ospiti a questa partita» come annullo-intero → saltava la
+      // scheda aperta e cadeva nella disambiguazione «Quale prenotazione vuoi togliere due ospiti da?».
+      // Gli ospiti sono giocatori: deve toglierne 2 dalla scheda già aperta, senza chiedere.
+      H.resetCard();
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-0800', campo: '4', ora: '08:00', oraFine: '09:30', giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await openCard(H, iso, 4, '08:00', 90, 'partita');
+      await handleSeq(win, ['mi levi due ospiti a questa partita']);
+      const pushed = await waitFor(() => editSavePushes()[0], 5000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato sul Campo 4 (scheda aperta)', ok: !!pushed && String(pushed.body.campo).replace(/\D/g, '') === '4' });
+      checks.push({ label: 'payload players.remove con DUE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 2 });
+      checks.push({ label: 'NON ha chiesto "quale prenotazione" (no disambiguazione)', ok: !/quale prenotazione/i.test(chatTranscript(win)) });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 4, '08:00').match(/Ospite/gi) || []).length === 2, 3000);
+      checks.push({ label: 'roster locale Campo 4: 4 → 2 Ospiti (-2)', ok: ok2 });
+      if (!pushed || /quale prenotazione/i.test(chatTranscript(win))) ctx.diag['54'] = chatTranscript(win);
+      return checks;
+    }
   }
 ];
 

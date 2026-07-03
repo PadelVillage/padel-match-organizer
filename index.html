@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.069';
+    const APP_VERSION = '6.070';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44998,8 +44998,13 @@ Per confermare scrivi ELIMINA.`);
       if (staffCalPlayersState && staffCalPlayersState.hasPlayers && !staffCalPlayersState.busy) {
         const _rn = _norm(t);
         const _rmVerb = /(^|\s)(togl\w*|tolg\w*|rimuov\w*|lev[ai]|cancell\w*|elimin\w*|scart\w*|caccia)\b/.test(_rn);
+        // "…partita/lezione/prenotazione" senza un giocatore nominato = rimozione dell'INTERA
+        // prenotazione (annullo). MA gli OSPITI sono giocatori: «leva due ospiti a questa partita»
+        // è una rimozione-giocatore, non un annullo — quindi escludiamo ospit[ei]/jolly oltre a
+        // giocatori/allievi (senza, la parola "partita" faceva saltare la scheda aperta → chiedeva
+        // "quale prenotazione?" invece di togliere gli ospiti dalla scheda già aperta).
         const _wholeBooking = /(^|\s)(tutt[oa]|la|le|l['’]|il|lo)?\s*(partit\w*|lezion\w*|prenotazion\w*|match)\b/.test(_rn)
-          && !/(giocator\w*|allie\w*)/.test(_rn);
+          && !/(giocator\w*|allie\w*|ospit[ei]|jolly)\b/.test(_rn);
         const _timeQty = /(mezz|minut|\bor[ae]\b|quart\w|durat|abbrevi|accorci|allung|prolung|estend|riduc)/.test(_rn);
         const _noteCmd = /(^|\s)(not[ae]|osservazion\w*|annot\w*|appunt\w*|promemoria)\b/.test(_rn);
         // Verifica coordinate: se il comando nomina campo/ora/giorno DIVERSI dalla scheda aperta,
