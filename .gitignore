@@ -26,6 +26,13 @@ pmo_deploy_key.pub
 # Config locale editor/agent (non versionata)
 .claude/
 
+# Progetto SEPARATO (chat frontend giocatori / emulatore WhatsApp): vive nel suo
+# repo git annidato (chat-frontend-giocatori/chat-giocatori-emulatore/.git) e si
+# pubblica SOLO con `git -C chat-frontend-giocatori/chat-giocatori-emulatore …`.
+# MAI committarlo nel repo principale (il 03/07 un `git add -A` leakò i doc privati).
+# Ignorarlo qui blinda la regola e toglie il rumore dal pannello source control.
+chat-frontend-giocatori/
+
 # Artefatti scratch generati da skill/agent (generazione documenti, debug locale):
 # NON fanno parte del progetto (l'app è il solo index.html) → non versionare.
 node_modules/
