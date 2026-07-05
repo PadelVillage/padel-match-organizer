@@ -144,7 +144,13 @@ function absoluteUrl(baseUrl, pathOrUrl) {
 // volta. Ogni operazione che lancia Chromium DEVE essere serializzata: mai due
 // sessioni Matchpoint in parallelo (collisione di sessione + carico VM). La coda è
 // in memoria, nel processo singolo del worker, e si azzera al restart (accettabile).
-const QUEUE_JOB_TIMEOUT_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_MS', '180000')); // 3 min di sicurezza
+const QUEUE_JOB_TIMEOUT_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_MS', '180000')); // interattive: 3 min di sicurezza
+// Timeout PIÙ CORTO per le op di background SEMPRE BREVI (read-tabellone chunkato ≤~35s,
+// keepalive ~0s): un chunk piantato non deve bloccare le create dell'operatore per 3 minuti
+// (head-of-line blocking → attesa di ~160s vista nei log del 05/07). Le op interattive
+// (create/edit/cancel) E quelle di background che possono durare legittimamente a lungo
+// (poll = sync completo ~176s; export report) restano ai 180s per non troncarle a metà.
+const QUEUE_JOB_TIMEOUT_BG_MS = Number(env('MATCHPOINT_QUEUE_TIMEOUT_BG_MS', '90000')); // short bg: 90s
 const mpQueue = {
   seq: 0,
   running: null, // { id, op, label, operatore, priority, startedAt }
@@ -162,6 +168,12 @@ const MP_INTERACTIVE_OPS = new Set(['create', 'edit', 'cancel', 'client', 'disab
 function mpJobPriority(meta) {
   if (meta && typeof meta.priority === 'number') return meta.priority;
   return (meta && MP_INTERACTIVE_OPS.has(meta.op)) ? 1 : 0;
+}
+// Op di background SEMPRE BREVI se sane → timeout corto (90s). Tutto il resto (interattive
+// + poll/export che possono durare legittimamente >90s) tiene i 180s. Vedi commento sopra.
+const MP_SHORT_BG_OPS = new Set(['read-tabellone', 'keepalive']);
+function mpJobTimeoutMs(op) {
+  return MP_SHORT_BG_OPS.has(op) ? QUEUE_JOB_TIMEOUT_BG_MS : QUEUE_JOB_TIMEOUT_MS;
 }
 
 // Etichetta leggibile ("cosa") per /queue/status, ricavata dal payload della richiesta.
@@ -282,15 +294,25 @@ function mpQueuePump() {
     let _hasErr = false;
     try {
       // Timeout di sicurezza: un job piantato non deve bloccare la coda all'infinito.
+      // Timeout PER-OPERAZIONE: background 90s, interattive 180s (mpJobTimeoutMs).
+      const jobTimeoutMs = mpJobTimeoutMs(job.op);
       const guard = new Promise((_resolve, reject) => {
         timer = setTimeout(() => reject(fail('QUEUE_JOB_TIMEOUT',
-          `Operazione "${job.label}" oltre ${Math.round(QUEUE_JOB_TIMEOUT_MS / 1000)}s: annullata per non bloccare la coda.`)),
-          QUEUE_JOB_TIMEOUT_MS);
+          `Operazione "${job.label}" oltre ${Math.round(jobTimeoutMs / 1000)}s: annullata per non bloccare la coda.`)),
+          jobTimeoutMs);
       });
       _val = await Promise.race([Promise.resolve().then(job.fn), guard]);
     } catch (e) {
       _err = e;
       _hasErr = true;
+      // ⚠️ TIMEOUT di coda: Promise.race ha smesso di ATTENDERE job.fn, ma l'operazione
+      // Playwright NON è stata interrotta e sta ancora usando la pagina warm CONDIVISA
+      // (zombie). Invalidiamo la sessione: chiude il browser → lo zombie fallisce sulle
+      // chiamate successive (target closed) e l'op seguente riparte pulita, invece di
+      // ereditare una pagina a metà operazione (origine dei `warm_new` rotti nei log).
+      if (e && e.code === 'QUEUE_JOB_TIMEOUT') {
+        try { await mpWarmInvalidate(); } catch (_e) {}
+      }
     } finally {
       if (timer) clearTimeout(timer);
       mpQueue.running = null;
@@ -5762,17 +5784,28 @@ async function mpWaitAsyncPostbackIdle(page, timeoutMs = 12000) {
 // elenco → falso PLAYER_ADD_NOT_CONFIRMED (caso reale "Lidia Ciao Comes": 8,00 in attesa).
 // ⚠️ Controllo IMMEDIATO e non bloccante: isVisible() non auto-attende, quindi se l'avviso
 // non c'è si esce subito (nessun rischio del timeout-trap che ruppe le prenotazioni).
+// Ritorna { dismissed, count, text }: `count` = quante volte il popup si è ri-aperto
+// (1 = semaforo transitorio normale; ≥3 = avviso PERSISTENTE/bloccante), `text` = testo
+// del popup catturato alla PRIMA occorrenza. Prima si logga solo `swal=true` senza sapere
+// PERCHÉ MP rifiuta: il testo rende diagnosticabile il fallimento e permette il fail-veloce.
 async function dismissSwalOk(page, diagnostic, where) {
-  let dismissed = false;
+  let count = 0;
+  let text = '';
   for (let i = 0; i < 6; i++) {
     const ok = page.locator('button.swal2-confirm');
     if (!(await ok.isVisible().catch(() => false))) break;
+    if (!text) {
+      const title = (await page.locator('.swal2-title').first().innerText().catch(() => '')) || '';
+      const body  = (await page.locator('.swal2-html-container').first().innerText().catch(() => '')) || '';
+      text = [title, body].map((s) => String(s).replace(/\s+/g, ' ').trim()).filter(Boolean).join(' — ').slice(0, 160);
+      if (text) diagnostic.steps.push('swal_text:' + where + ':' + text.slice(0, 80));
+    }
     await ok.first().click({ timeout: 1500 }).catch(() => {});
-    dismissed = true;
+    count++;
     diagnostic.steps.push('swal_dismiss:' + where);
     await page.waitForTimeout(300);
   }
-  return dismissed;
+  return { dismissed: count > 0, count, text };
 }
 
 // ── Helper: clic robusto su "Salva/Actualizar" della Ficha ───────────────────
@@ -6059,6 +6092,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   const rowSel = 'input[id*="Listado"][id*="TextBoxNombreValor"]';
   const baseRows = await page.locator(rowSel).count().catch(() => 0);
   let prevDismissedSwal = true; // addTry 0 clicca sempre
+  let blockingSwalText = '';    // testo del popup, se persistente (per fail-veloce / diagnosi)
   for (let addTry = 0; addTry < 3; addTry++) {
     // Uscita anticipata: la riga è già comparsa. Per l'Ospite (indistinguibile per
     // id/nome) si guarda l'INCREMENTO del numero di righe, non il match d'identità.
@@ -6072,12 +6106,31 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
       await page.waitForTimeout(700);
       continue;
     }
+    // (B) Non cliccare "+ Aggiungere" in una pagina non stabile: prima attendi che il
+    // postback async sia concluso e chiudi eventuali popup residui, altrimenti su sessione
+    // fredda il click viene intercettato dallo swal e l'aggiunta non entra mai (la
+    // "tempesta di popup" da ~88s vista nei log del 05/07 per Valeria Moschet).
+    await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
+    const preAdd = await dismissSwalOk(page, diagnostic, 'settle' + addTry);
+    if (preAdd.text) blockingSwalText = preAdd.text;
     await addLink.first().click({ timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(1000);
-    prevDismissedSwal = await dismissSwalOk(page, diagnostic, 'add' + addTry);
+    const sw = await dismissSwalOk(page, diagnostic, 'add' + addTry);
+    prevDismissedSwal = sw.dismissed;
+    if (sw.text) blockingSwalText = sw.text;
     await mpWaitAsyncPostbackIdle(page, 6000).catch(() => {});
     const rows = await page.locator(rowSel).count().catch(() => 0);
     diagnostic.steps.push(`player_add_try:${addTry}:rows=${rows}/base${baseRows}:swal=${prevDismissedSwal}`);
+    // (A) Popup PERSISTENTE (si ri-apre a raffica: count≥3) e riga ANCORA assente = blocco
+    // vero (semaforo rosso / validazione MP), non una race: inutile macinare altri giri e
+    // 5 verifiche a vuoto (~90s). Fallisci SUBITO col testo del popup, così l'operatore
+    // capisce il motivo. Il caso semaforo legittimo dismette una volta sola (count=1) e la
+    // riga compare → questa guardia non scatta.
+    if (sw.count >= 3 && rows <= baseRows) {
+      throw fail('PLAYER_ADD_BLOCKED_BY_SWAL',
+        `Matchpoint blocca l'aggiunta di ${nome}${blockingSwalText ? ': ' + blockingSwalText : ' (avviso ripetuto non chiudibile)'}.`,
+        diagnostic);
+    }
   }
 
   // Verifica post-aggiunta: scansiona TUTTE le righe partecipanti, qualunque sia il
@@ -6103,7 +6156,8 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // chiudendo eventuali avvisi swal residui ("importi in attesa") tra i tentativi.
   for (let vTry = 0; vTry < 5 && addedIdCliente === null; vTry++) {
     if (vTry > 0) {
-      await dismissSwalOk(page, diagnostic, 'verify' + vTry);
+      const vs = await dismissSwalOk(page, diagnostic, 'verify' + vTry);
+      if (vs.text) blockingSwalText = vs.text;
       await mpWaitAsyncPostbackIdle(page, 4000).catch(() => {});
       await page.waitForTimeout(700);
     }
@@ -6129,7 +6183,7 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
 
   if (addedIdCliente === null) {
     throw fail('PLAYER_ADD_NOT_CONFIRMED',
-      `Giocatore ${nome} non trovato nelle righe partecipanti dopo l'aggiunta.`,
+      `Giocatore ${nome} non trovato nelle righe partecipanti dopo l'aggiunta${blockingSwalText ? ` (avviso Matchpoint: ${blockingSwalText})` : ''}.`,
       diagnostic);
   }
 
