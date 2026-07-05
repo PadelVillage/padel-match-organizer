@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.074';
+    const APP_VERSION = '6.075';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8438,6 +8438,41 @@ Grazie.`
         throw retryError;
       }
     }
+    // Chiavi cache RICOSTRUIBILI dal cloud (snapshot dati + prenotazioni): in caso di
+    // localStorage pieno (QuotaExceededError) si possono sfrattare per far posto a una
+    // scrittura CRITICA come il token di sessione, così il login non fallisce mai.
+    // Coprono ENTRAMBI gli ambienti (PROD '' e 'test:'): condividono la stessa origine,
+    // quindi il login di un ambiente può liberare le cache dell'altro (era la causa del
+    // "setItem exceeded the quota" su /test/: PROD+TEST riempivano insieme la memoria).
+    const PMO_EVICTABLE_CACHE_BASENAMES = ['pmoAutoDataSnapshotV1', 'storicoPrenotazioni', 'prenotazioni', 'prenotazioniOccupazione'];
+    function pmoEvictableStorageKeys() {
+      const keys = [];
+      for (const p of ['', 'test:']) for (const b of PMO_EVICTABLE_CACHE_BASENAMES) keys.push(p + b);
+      return keys;
+    }
+    // setItem robusto per le scritture critiche: se la memoria è piena, sfratta le cache
+    // ricostruibili (le più grandi prima, così bastano meno sfratti) e ritenta finché
+    // salva. Ritorna true se salvato, false se non c'è proprio stato verso (non lancia:
+    // meglio un salvataggio saltato che un login rotto). Le cache si ri-idratano dal cloud.
+    function pmoSetItemResilient(rawKey, value) {
+      try { localStorage.setItem(rawKey, value); return true; }
+      catch (e) { if (!pmoIsStorageQuotaError(e)) throw e; }
+      const victims = pmoEvictableStorageKeys()
+        .filter(k => k !== rawKey)
+        .map(k => [k, (localStorage.getItem(k) || '').length])
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1]);
+      for (const [k] of victims) {
+        try { localStorage.removeItem(k); } catch {}
+        try {
+          localStorage.setItem(rawKey, value);
+          console.warn(`Storage pieno: sfrattata cache "${k}" per salvare "${rawKey}".`);
+          return true;
+        } catch (e) { if (!pmoIsStorageQuotaError(e)) throw e; }
+      }
+      console.warn(`Storage pieno: "${rawKey}" non salvato nemmeno dopo lo sfratto delle cache.`);
+      return false;
+    }
     function safeLoad(key, fallback) {
       try {
         const parsed = JSON.parse(pmoLocalGetItem(key));
@@ -8707,12 +8742,12 @@ Grazie.`
         user: data.user || null,
         saved_at: Date.now()
       };
-      localStorage.setItem(PMO_STAFF_SUPABASE_SESSION_KEY, JSON.stringify(session));
+      pmoSetItemResilient(PMO_STAFF_SUPABASE_SESSION_KEY, JSON.stringify(session));
       return session;
     }
     function pmoStoreStaffProfile(profile) {
       pmoStaffProfile = profile || null;
-      if (pmoStaffProfile) localStorage.setItem(PMO_STAFF_PROFILE_KEY, JSON.stringify(pmoStaffProfile));
+      if (pmoStaffProfile) pmoSetItemResilient(PMO_STAFF_PROFILE_KEY, JSON.stringify(pmoStaffProfile));
       else localStorage.removeItem(PMO_STAFF_PROFILE_KEY);
       try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
       // Su rete lenta (4G) il profilo staff arriva DOPO i tentativi di initChatUI al boot →
