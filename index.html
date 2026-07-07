@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.075';
+    const APP_VERSION = '6.076';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39895,6 +39895,8 @@ Per confermare scrivi ELIMINA.`);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
       const staff = await pmoRequireStaffPermission('cloud_sync', 'spostare la prenotazione Matchpoint');
       const _idReservaMove = _staffCalLookupIdReserva(from.iso, from.campo, from.ora);
+      const _ctrl = new AbortController();
+      const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
       const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
         method: 'POST',
         headers: {
@@ -39907,10 +39909,12 @@ Per confermare scrivi ELIMINA.`);
             move: { campo: toCampoNum, data: toIso, oraInizio: toOra, oraFine: toOraFine } },
           _idReservaMove ? { idReserva: _idReservaMove } : {}
         )),
+        signal: _ctrl.signal,
       });
       const respText = await response.text();
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      clearTimeout(_to);
       clearInterval(_timer);
 
       if (response.ok && data?.ok !== false) {
@@ -39934,13 +39938,22 @@ Per confermare scrivi ELIMINA.`);
         renderStaffCalendar();
         svcResetToNeutral(); svcAutoCloseIfMobile();
         svcScheduleAutoClear(); // spostamento confermato dal worker → pulizia chat
+      } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
+        // TIMEOUT edge (worker in coda): esito INCERTO, lo spostamento può essere passato lo stesso.
+        // NON dichiarare fallimento (era il messaggio falso "non riuscito" su operazione riuscita).
+        svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): lo spostamento <strong>potrebbe essere passato lo stesso</strong>. Non ho revertito niente — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarlo (rischi un doppione).', 'error');
       } else {
         const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
-        svcAddMessage('system', '❌ Spostamento non riuscito: ' + msg);
+        svcAddMessage('system', '❌ Spostamento non riuscito: ' + _staffCalFriendlyOpError(msg));
       }
     } catch (err) {
       clearInterval(_timer);
-      svcAddMessage('system', '❌ Errore durante lo spostamento: ' + (err?.message || err || 'sconosciuto'));
+      if (err && err.name === 'AbortError') {
+        // Timeout duro (>200s): NON dichiarare fallimento, lo spostamento potrebbe essere passato.
+        svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ Lo spostamento <strong>potrebbe essere stato applicato lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarlo (rischi un doppione).', 'error');
+      } else {
+        svcAddMessage('system', '❌ Errore durante lo spostamento: ' + _staffCalFriendlyOpError(err?.message || err || 'sconosciuto'));
+      }
     } finally {
       _staffCalPendingEdits.delete(_pendMoveKey);
     }
