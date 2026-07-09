@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.080';
+    const APP_VERSION = '6.081';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44972,6 +44972,21 @@ Per confermare scrivi ELIMINA.`);
         if (_openSt && _openSt.hasPlayers && (!Array.isArray(_openSt.roster) || !_openSt.roster.length)) {
           const _calRoster = _rosterFromCalendar(_openSt);
           if (_calRoster && _calRoster.length) _openSt.roster = _calRoster;
+        }
+      } catch (e) {}
+      // GUARD «card di modifica aperta»: se una scheda/card di modifica prenotazione è aperta
+      // (staffCalPlayersState) e NON c'è un flusso conversazionale attivo, una frase di ABBANDONO
+      // chiara («lascia stare», «lascia perdere», «niente», «chiudi») deve CHIUDERE la card (come
+      // il bottone Chiudi, azione NON distruttiva) invece di essere instradata come nuovo comando:
+      // la parola «modificare/niente» finiva per sbaglio nella ricerca soci ("Non trovo un socio…").
+      // Escluso il bare «annulla»: qui è ambiguo con «Annulla prenotazione» (cancella davvero).
+      try {
+        if (staffCalPlayersState && !staffCalPlayersState.busy && !aiFlowState) {
+          const _ab = ' ' + _norm(t) + ' ';
+          if (/(^| )(lascia|lasciamo) (stare|perdere)( |$)|(^| )niente( |$)|(^| )chiudi(la)?( |$)|(^| )(fa|fai) niente( |$)/.test(_ab)) {
+            staffCalPlayersState = null;
+            return svcAddMessage('system', '📝 Modifica chiusa.');
+          }
         }
       } catch (e) {}
       // Se c'è un dialogo in corso (slot mancanti / scelta / attesa conferma), il testo è la
