@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.077';
+    const APP_VERSION = '6.078';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -47198,7 +47198,33 @@ Per confermare scrivi ELIMINA.`);
       }
       aiFlowState = { kind: 'moveconfirm', stage: 'confirm', src: src, dest: dest };
       _aiFlowAt = (Date.now ? Date.now() : new Date().getTime());
-      return _say('🤔 La sposto da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Dimmi <strong>sì</strong> e ci penso io.');
+      const _mv = _say('🤔 La sposto da <strong>Campo ' + src.campo + ' · ' + _dmy(src.iso) + ' · ' + src.ora + '</strong> a <strong>' + dstTxt + '</strong>? Dimmi <strong>sì</strong> e ci penso io.');
+      _appendMoveButtons(_mv);
+      return _mv;
+    }
+    // v6.078 — pulsanti Sì/No sulla conferma di spostamento (parità con prenota/annulla —
+    // principio "disambiguazione a pulsanti ovunque"). Delegano al path testuale _confirmMoveAnswer,
+    // così il comportamento è identico a quando si scrive/detta "sì"/"no".
+    function _appendMoveButtons(div) {
+      if (!div || !div.appendChild) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-step-buttons'; wrap.style.marginTop = '8px';
+      const yes = document.createElement('button');
+      yes.type = 'button'; yes.className = 'svc-btn-step'; yes.textContent = '↪️ Sì, sposta';
+      const no = document.createElement('button');
+      no.type = 'button'; no.className = 'svc-btn-step-cancel'; no.textContent = '✕ No, lascia';
+      yes.addEventListener('click', function () {
+        if (yes.disabled) return;
+        yes.disabled = true; no.disabled = true; yes.classList.add('selected');
+        _confirmMoveAnswer('sì');
+      });
+      no.addEventListener('click', function () {
+        if (no.disabled) return;
+        yes.disabled = true; no.disabled = true;
+        _confirmMoveAnswer('no');
+      });
+      wrap.appendChild(yes); wrap.appendChild(no);
+      div.appendChild(wrap);
     }
     function _confirmMoveAnswer(text) {
       const fs = aiFlowState;
