@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.076';
+    const APP_VERSION = '6.077';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -45334,7 +45334,15 @@ Per confermare scrivi ELIMINA.`);
       rows.sort(function (a, b) { return (a.ora || '').localeCompare(b.ora || '') || (a.campo - b.campo); });
       const items = rows.map(function (r) {
         const tipo = (r.tipoReale || r.tipo || '').toString().toLowerCase().includes('lez') ? '📚 lezione' : '🎾 partita';
-        const nome = _escapeHtml((r.nome || '').replace(/\n/g, ', ')) || '<em>—</em>';
+        // v6.077 — allinea alla card (_staffCalBuildHorizontal): usa PRIMA l'array `giocatori`
+        // (roster completo), fallback a `nome` (per le partite MP `nome` è solo l'intestatario).
+        let _names = Array.isArray(r.giocatori)
+          ? r.giocatori.map(function (g) { return typeof g === 'string' ? g.trim() : (g && g.nome ? String(g.nome).trim() : ''); }).filter(Boolean)
+          : [];
+        if (!_names.length && r.nome) {
+          _names = String(r.nome).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        const nome = _names.length ? _escapeHtml(_names.join(', ')) : '<em>—</em>';
         const istr = r.istruttore ? ' · maestro ' + _escapeHtml(r.istruttore) : '';
         return '• <strong>' + r.ora + '</strong> Campo ' + r.campo + ' — ' + nome + ' (' + tipo + istr + ')';
       });
