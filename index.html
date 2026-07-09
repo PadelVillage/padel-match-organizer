@@ -2024,7 +2024,11 @@
       .assessment-clean-row > div:nth-child(n+3) { grid-column:2; }
       .assessment-clean-row .actions { justify-content:flex-start; }
     }
-    @media (max-width: 800px) {
+    /* Frontiera mobile↔desktop unificata a 899/900 (come la shell calendario #staffCalV36 ≤899
+       e il redesign desktop min-width:900). Prima il drawer/sidebar usava 800/801: nella fascia
+       801–899 (iPad/tablet portrait) il ☰ mostrava ma non apriva il menu → navigazione bloccata
+       sul calendario. Ora tutti i breakpoint sidebar/scroll/offset usano 899/900. */
+    @media (max-width: 899px) {
       .container { padding: 10px; }
       table { display: block; overflow-x: auto; }
       .tab-button { padding: 10px 12px; }
@@ -2627,7 +2631,7 @@
     .staff-cal-cell.lezione .staff-cal-slot-name { color:#14532d; }
     .staff-cal-input-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:2px solid #e5e7eb; padding:10px 16px 12px; z-index:300; box-shadow:0 -4px 16px rgba(0,0,0,.09); }
     body:not(.sidebar-collapsed) .staff-cal-input-bar { left:304px; }
-    @media(max-width:800px) { body:not(.sidebar-collapsed) .staff-cal-input-bar { left:0; } }
+    @media(max-width:899px) { body:not(.sidebar-collapsed) .staff-cal-input-bar { left:0; } }
     .staff-cal-input-wrap { display:flex; align-items:flex-end; gap:8px; max-width:760px; margin:0 auto; }
     .staff-cal-input-wrap textarea { flex:1; border:1.5px solid #d1d5db; border-radius:14px; padding:10px 14px; font-size:14px; resize:none; line-height:1.45; min-height:44px; max-height:140px; font-family:inherit; color:#111827; outline:none; transition:border-color .2s; }
     .staff-cal-input-wrap textarea:focus { border-color:var(--primary); }
@@ -3468,7 +3472,7 @@
     }
     @media (max-width:760px) { .fill-request-grid { grid-template-columns:1fr; } .fill-request-modal { padding:10px; } }
 
-    @media (min-width:801px) {
+    @media (min-width:900px) {
       body:not(.sidebar-collapsed) .fill-request-modal { left:304px; }
       body:not(.sidebar-collapsed) .side-nav { z-index:2500; overflow-y:scroll !important; min-height:0; }
       body:not(.sidebar-collapsed) .side-nav-content { min-height:max-content; padding-bottom:96px; }
@@ -3729,7 +3733,7 @@
     body.dashboard-view .main-content { height:100vh; max-height:100vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
     body.dashboard-view #dashboard { padding-bottom:48px; }
     body.dashboard-view #dashboard .dashboard-import-card { box-shadow:0 4px 14px rgba(15,23,42,.12); }
-    @media (max-width:800px) {
+    @media (max-width:899px) {
       body.dashboard-view .top-nav-bar { position:sticky; top:0; z-index:150; }
       body.dashboard-view #dashboard .dashboard-import-card { top:58px; }
     }
@@ -3755,7 +3759,7 @@
     .side-submenu .tab-button.active, .side-sub-link.active-sub { background:#fff; color:var(--primary); box-shadow:none; }
     [data-test-only-section] { display:none !important; }
     body.pmo-env-test [data-test-only-section] { display:block !important; }
-    @media (max-width:800px) { .side-nav { width:304px; } }
+    @media (max-width:899px) { .side-nav { width:304px; } }
 
     /* v5.96 - layout storico anagrafica soci */
     .players-v94-layout { grid-template-columns:minmax(0,1fr) 390px; }
@@ -4754,7 +4758,11 @@ body.assessment-public-mode .assessment-public-only-card {
       width: 100%;
     }
 
-    @media (max-width: 760px) {
+    /* v5.124 — esteso da ≤760 a ≤899 per unificare la frontiera mobile: è la regola che rende
+       il drawer .side-nav position:fixed (fuori flusso, nessun gap) e vince nella cascata perché
+       sorge DOPO il secondo .side-nav{position:sticky} globale. Le altre regole di questo blocco
+       (html/body/app-shell/main-content) sono già dominate dal blocco scroll mobile ≤899. */
+    @media (max-width: 899px) {
       html,
       body {
         height: 100%;
@@ -5215,7 +5223,7 @@ body.assessment-public-mode .assessment-public-only-card {
       overscroll-behavior:auto;
       -webkit-overflow-scrolling:touch;
     }
-    @media (max-width:800px) {
+    @media (max-width:899px) {
       body,
       .app-shell,
       .main-content {
@@ -5473,13 +5481,13 @@ body.assessment-public-mode .assessment-public-only-card {
       white-space:nowrap;
       border:0;
     }
-    @media (max-width:800px) {
+    @media (max-width:899px) {
       .side-nav {
         width:304px;
       }
     }
-    /* v5.250 - Scroll indipendente globale: menu sinistro e contenuto destro */
-    @media (min-width:801px) {
+    /* v5.250 - Scroll indipendente globale: menu sinistro e contenuto destro (solo desktop ≥900) */
+    @media (min-width:900px) {
       html,
       body {
         height:100%;
@@ -5527,7 +5535,7 @@ body.assessment-public-mode .assessment-public-only-card {
         max-height:100vh;
       }
     }
-    @media (max-width:800px) {
+    @media (max-width:899px) {
       html,
       body {
         height:auto;
@@ -5841,7 +5849,7 @@ body.assessment-public-mode .assessment-public-only-card {
     .routine-mini { color:#667085; font-size:12px; margin-top:3px; line-height:1.35; }
     .routine-option-box { border:1px solid #e1e7ef; border-radius:8px; background:#fbfdff; padding:10px; }
     .routine-option-box label { display:flex; gap:8px; align-items:center; margin:0; font-weight:850; color:#344054; }
-    @media (max-width:800px) {
+    @media (max-width:899px) {
       body.dashboard-view .top-nav-bar {
         display:flex;
       }
@@ -7835,7 +7843,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.081';
+    const APP_VERSION = '6.082';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -9724,7 +9732,7 @@ Grazie.`
 
     function initSidebarNavigation() {
       const collapsed = localStorage.getItem('pmoSidebarCollapsed') === '1';
-      if (collapsed && window.innerWidth > 800) document.body.classList.add('sidebar-collapsed');
+      if (collapsed && window.innerWidth > 899) document.body.classList.add('sidebar-collapsed');
       updateCurrentSectionLabel('dashboard');
       const firstButton = Array.from(document.querySelectorAll('.tab-button')).find(b => (b.getAttribute('onclick') || '').includes("'dashboard'"));
       if (firstButton) firstButton.classList.add('active');
@@ -9732,7 +9740,7 @@ Grazie.`
     }
 
     function toggleSidebar(forceOpen = null) {
-      const isMobile = window.innerWidth <= 800;
+      const isMobile = window.innerWidth <= 899;
       if (isMobile) {
         const open = forceOpen === null ? !document.body.classList.contains('sidebar-open') : !!forceOpen;
         document.body.classList.toggle('sidebar-open', open);
@@ -9820,7 +9828,7 @@ Grazie.`
       document.body.classList.toggle('dashboard-view', tabName === 'dashboard');
       document.body.classList.toggle('assessment-view', tabName === 'assessment');
       pmoSyncChapterBar(tabName);
-      if (tabName === 'dashboard' && window.innerWidth > 800 && document.body.classList.contains('sidebar-collapsed')) {
+      if (tabName === 'dashboard' && window.innerWidth > 899 && document.body.classList.contains('sidebar-collapsed')) {
         document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('pmoSidebarCollapsed', '0');
       }
@@ -10183,7 +10191,7 @@ Grazie.`
 
       updateCurrentSectionLabel(tabName);
       syncSidebarGroupState(tabName);
-      if (window.innerWidth <= 800) document.body.classList.remove('sidebar-open');
+      if (window.innerWidth <= 899) document.body.classList.remove('sidebar-open');
 
       if (!options?.skipRender) {
         requestAnimationFrame(() => {
