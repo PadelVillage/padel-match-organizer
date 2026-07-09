@@ -7835,7 +7835,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.079';
+    const APP_VERSION = '6.080';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -47524,7 +47524,7 @@ Per confermare scrivi ELIMINA.`);
     // Lettura (interrogazione) e disattivazione di un socio. La lettura vale solo se NON c'è
     // un verbo di creazione/aggiornamento (quelli hanno priorità). La disattivazione NON è
     // mai un'eliminazione: l'assistente può solo marcare inattivo (vedi regola di prodotto).
-    const _ANA_READ_VERB = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere)( |$)/;
+    const _ANA_READ_VERB = /(^| )(qual[e']?|quant\w*|che|chi|mostr\w*|dimmi|fammi|vedi|visualizz\w*|scheda|info\w*|dettagl\w*|recapit\w*|sai|sapere|cerc\w*|trov\w*|dammi|guard\w*|apri|aprir\w*)( |$)/;
     const _ANA_DEACT_VERB = /(^| )(disattiv\w*|disabilit\w*|cancell\w*|elimin\w*|rimuov\w*|togl\w*)( |$)/;
     const _ANA_REACTIVATE_VERB = /(^| )(riattiv\w*|riabilit\w*|reiscriv\w*|re-iscriv\w*)( |$)/;
     // Un campo della scheda nominato (anche senza verbo di lettura) = interrogazione: "telefono di X".
@@ -47560,6 +47560,10 @@ Per confermare scrivi ELIMINA.`);
     // ("Di Marco", "De Luca", "Lo Russo") che vanno preservate.
     function _anaStripFieldTokens(text) {
       let t = ' ' + String(text || '') + ' ';
+      // Punteggiatura di frase (due punti dopo "socio:", virgole che separano i campi,
+      // punti e virgola) → spazio: non fa parte del NOME. Senza, "socio: Marco Rossi, tel…"
+      // lasciava firstName=":" e cognome sporco di virgole.
+      t = t.replace(/[,:;]+/g, ' ');
       t = t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, ' ');
       t = t.replace(/\bliv(?:ello)?\.?\s*[0-9](?:[.,][0-9])?\b/gi, ' ');
       t = t.replace(/(?:\+?\d(?:[\s.\-]?\d){4,})/g, ' ');
@@ -47567,7 +47571,7 @@ Per confermare scrivi ELIMINA.`);
       // Parole di lettura/domanda e disattivazione ("qual è", "che livello ha", "mostrami la
       // scheda di", "cancella il socio") vanno tolte come i verbi di scrittura, così resta il NOME.
       t = t.replace(/\s(?:è|é|e')\s/gi, ' ');
-      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|variar\w*|varia\w*|vari|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|definitiv\w*|davvero|completament\w*|totalment\w*|sempre|proprio|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
+      t = t.replace(/\b(aggiung\w*|crea\w*|registr\w*|inserisc\w*|nuov[oa]|aggiorn\w*|modific\w*|cambi\w*|imposta\w*|corregg\w*|aggiust\w*|rettific\w*|variar\w*|varia\w*|vari|disattiv\w*|disabilit\w*|riattiv\w*|riabilit\w*|reiscriv\w*|cancell\w*|elimin\w*|definitiv\w*|davvero|completament\w*|totalment\w*|sempre|proprio|rimuov\w*|togl\w*|qual\w*|quant\w*|che|chi|cosa|come|ha|hai|hanno|fai|fa|fammi|fatti|cerc\w*|trov\w*|guard\w*|apri|aprire|portami|dammi|dat[oi]|mostr\w*|dimmi|vedi|vedere|visualizz\w*|scheda|schede|info\w*|dettagl\w*|sai|sapere|socio|soci|socia|giocator\w*|anagrafic\w*|telefono|telefonico|cellulare|numero|recapito|tel|email|e-mail|mail|posta|livell\w*|sesso|genere|posizion\w*|gioco|maschi\w*|femmin\w*|uomo|donna|ragazz[oa]|signor[ae]|contatt\w*|chiama|chiamano)\b/gi, ' ');
       t = t.replace(/\s{2,}/g, ' ').trim();
       // Filler INIZIALE (articoli/preposizioni) — preserva le particelle interne dei cognomi.
       let prev = null;
