@@ -7577,11 +7577,12 @@ body.assessment-public-mode .assessment-public-only-card {
 
                     <article class="matchpoint-data-box clients" id="anchor-rubrica-google">
                       <h3><span class="matchpoint-data-step">2·b</span> Importa contatti rubrica Google</h3>
-                      <p class="matchpoint-data-copy">Carica l'export dei Contatti Google (CSV/XLSX). Filtro etichetta «padel», dedup per numero, sesso dedotto dal nome (correggibile), livello 0.5. I nuovi soci entrano <strong>solo in app e cloud</strong>: la scheda Matchpoint nasce alla prima prenotazione.</p>
+                      <p class="matchpoint-data-copy">Importa i contatti «padel» <strong>direttamente dalla rubrica Google collegata</strong> (nessun file da caricare), oppure carica un export CSV/XLSX come alternativa. Dedup per numero, sesso dedotto dal nome (correggibile), livello 0.5. I nuovi soci entrano <strong>solo in app e cloud</strong>: la scheda Matchpoint nasce alla prima prenotazione.</p>
                       <div class="matchpoint-data-file">
                         <div class="matchpoint-data-actions" style="flex-wrap:wrap;gap:8px;">
+                          <button id="rubricaImportLiveBtn" class="btn-primary" onclick="googleContactsImportPreview()" title="Legge la rubrica Google collegata e propone i contatti «padel» nuovi">Importa da Google Contacts (live)</button>
                           <input id="rubricaImportFile" type="file" accept=".csv,.xlsx,.xls" style="font-size:13px;">
-                          <button id="rubricaImportPreviewBtn" class="btn-secondary" onclick="rubricaImportPreviewFromFile()">Anteprima import</button>
+                          <button id="rubricaImportPreviewBtn" class="btn-secondary" onclick="rubricaImportPreviewFromFile()">Anteprima da file</button>
                         </div>
                         <div id="rubricaImportPreview" style="margin-top:12px;"></div>
                       </div>
@@ -7856,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.084';
+    const APP_VERSION = '6.085';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10868,6 +10869,8 @@ Grazie.`
     }
 
     async function rubricaImportApply() {
+      // Percorso "live" (rubrica Google via edge): l'edge scrive sul cloud, qui si fonde solo in locale.
+      if (window.rubricaImportState && window.rubricaImportState.source === 'google-live') return googleContactsImportApply();
       if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('importare i contatti')) return;
       const state = window.rubricaImportState;
       const toImport = (state.rows || []).filter(r => r.status === 'new');
@@ -10919,6 +10922,110 @@ Grazie.`
       const input = document.getElementById('rubricaImportFile');
       if (input) input.value = '';
       rubricaImportRenderPreview();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // IMPORT LIVE da GOOGLE CONTACTS (People API) — riusa modale + apply dell'import CSV
+    // ─────────────────────────────────────────────────────────────────────────
+    // preview: l'edge google-contacts-import legge la rubrica Google collegata, filtra
+    // «padel», deduplica e ritorna le righe nella STESSA forma dell'import CSV, così la
+    // modale (rubricaImportRenderPreview) e la correzione sesso non cambiano. apply: l'edge
+    // scrive sul cloud e ritorna i payload; qui si fondono solo in locale (niente riscrittura cloud).
+    // ══════════════════════════════════════════════════════════════════════════
+    // Stato "ultimo import riuscito" per la riga nella tabella Routine (localStorage, come il backup cloud).
+    function getGoogleContactsLastImportInfo() {
+      try { return JSON.parse(pmoLocalGetItem('googleContactsLastImportInfo') || 'null'); } catch (e) { return null; }
+    }
+    function saveGoogleContactsLastImportInfo(count = 0) {
+      const info = { createdAt: new Date().toISOString(), count: parseInt(count, 10) || 0 };
+      try { pmoLocalSetItem('googleContactsLastImportInfo', JSON.stringify(info)); } catch (e) {}
+      return info;
+    }
+    function googleContactsFriendlyError(value) {
+      const raw = cleanCell(value?.message || value?.error || value || '');
+      if (/CONTACTS_SECRETS_MISSING/.test(raw)) return 'Rubrica Google non collegata: manca il refresh token nei secret Supabase (GOOGLE_CONTACTS_REFRESH_TOKEN).';
+      if (/invalid_grant|CONTACTS_TOKEN_FAILED/.test(raw)) return 'Autorizzazione Google scaduta o revocata: rigenera il refresh token (o verifica che l’app OAuth sia «In produzione»).';
+      if (/CONTACTS_FETCH_FAILED/.test(raw)) return 'People API non raggiungibile o permesso contatti mancante. Riprova tra poco.';
+      if (/UNAUTHORIZED|AUTH_REQUIRED/.test(raw)) return 'Accedi come staff con permesso Sincronizzazione cloud per importare i contatti.';
+      if (/FORBIDDEN/.test(raw)) return 'Il tuo profilo non ha il permesso Sincronizzazione cloud.';
+      return raw || 'Import contatti Google non riuscito.';
+    }
+
+    async function googleContactsImportRequest(payload) {
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'importare i contatti dalla rubrica Google');
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const response = await fetch(`${supabaseUrl}/functions/v1/google-contacts-import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ source: 'pmo_contacts_live', appVersion: APP_VERSION, ...payload })
+      });
+      const text = await response.text();
+      let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok || !data || data.ok === false) throw new Error(googleContactsFriendlyError(data || text || `Errore HTTP ${response.status}`));
+      return data;
+    }
+
+    async function googleContactsImportPreview() {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('importare i contatti')) return;
+      const btn = document.getElementById('rubricaImportLiveBtn');
+      const host = document.getElementById('rubricaImportPreview');
+      if (btn) btn.disabled = true;
+      if (host) host.innerHTML = '<div style="padding:8px;font-size:13px;color:#475569;">Leggo la rubrica Google…</div>';
+      try {
+        const data = await googleContactsImportRequest({ mode: 'preview' });
+        window.rubricaImportState = { fileName: data.fileName || 'Google Contacts (live)', rows: data.rows || [], summary: data.summary || null, source: 'google-live' };
+        rubricaImportRenderPreview();
+      } catch (e) {
+        console.error('GOOGLE_CONTACTS_PREVIEW_FAIL', e);
+        showAlert('❌ ' + ((e && e.message) || e), 'danger');
+        if (host) host.innerHTML = '';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function googleContactsImportApply() {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('importare i contatti')) return;
+      const state = window.rubricaImportState;
+      const toImport = (state.rows || []).filter(r => r.status === 'new');
+      if (!toImport.length) { showAlert('ℹ️ Nessun nuovo contatto da importare.', 'info'); return; }
+      const btn = document.getElementById('rubricaImportApplyBtn');
+      const progEl = document.getElementById('rubricaImportProgress');
+      if (btn) btn.disabled = true;
+      if (progEl) progEl.textContent = 'Scrivo i nuovi soci su cloud…';
+      // Le correzioni di sesso fatte a mano in anteprima viaggiano come overrides (chiave = cifre telefono).
+      const overrides = toImport
+        .map(r => ({ phoneDigits: phoneDigitsForWhatsApp(r.cand.phone || ''), gender: (r.cand.gender === 'M' || r.cand.gender === 'F') ? r.cand.gender : 'NA' }))
+        .filter(o => o.phoneDigits);
+      try {
+        const data = await googleContactsImportRequest({ mode: 'apply', overrides });
+        // L'edge ha già scritto sul cloud: fondo in locale SENZA riscrivere (dedup per telefono/email/nome).
+        const members = Array.isArray(data.members) ? data.members : [];
+        let merged = 0;
+        members.forEach(m => {
+          if (findMatchingMemberIndex(m) >= 0) return;   // già presente in locale
+          const member = { ...m };
+          if (!member.id) member.id = makeId();          // memberId resta '': il codice PMO nasce al primo tocco
+          giocatori.push(member);
+          merged++;
+        });
+        if (merged) { save('giocatori', giocatori); try { displayMembers(); updateStats(); } catch (e) {} }
+        try { pmoCloudState.lastSyncAt = new Date().toISOString(); save('pmoCloudState', pmoCloudState); } catch (e) {}
+        if (progEl) progEl.textContent = '';
+        const w = data.written || 0, f = data.failed || 0;
+        saveGoogleContactsLastImportInfo(w);
+        try { renderMatchpointRoutinePanel(); } catch (e) {}
+        const msg = f === 0
+          ? `✅ Importati ${w} nuovi soci da Google Contacts (app+cloud). La scheda Matchpoint verrà creata alla prima prenotazione.`
+          : `⚠️ Scritti ${w} soci su cloud; ${f} da risincronizzare (riprova).`;
+        showAlert(msg, f === 0 ? 'success' : 'warning');
+        window.rubricaImportState = { fileName: '', rows: [], summary: null };
+        rubricaImportRenderPreview();
+      } catch (e) {
+        console.error('GOOGLE_CONTACTS_APPLY_FAIL', e);
+        showAlert('❌ ' + ((e && e.message) || e), 'danger');
+        if (btn) btn.disabled = false;
+      }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -15030,6 +15137,7 @@ Grazie.`
       if (key === 'bookings') return importMatchpointBookingsAutomatic();
       if (key === 'history') return importMatchpointHistoryAutomatic();
       if (key === 'cloudBackup') return saveCloudBackup();
+      if (key === 'contacts') return googleContactsImportPreview();
     }
 
     function matchpointRoutineCloudSummaryFromRecord(record) {
@@ -15193,6 +15301,17 @@ Grazie.`
           info:getLatestMatchpointImportSummaryByTypes(['clienti']),
           lastValid:'',
           nextTimes:['04:30'],
+          manualLabel:'Aggiorna ora'
+        },
+        {
+          key:'contacts',
+          title:'Contatti Google',
+          note:'Rubrica «padel» → anagrafica',
+          actionKey:'contacts',
+          anchorId:'anchor-rubrica-google',
+          info:getGoogleContactsLastImportInfo(),
+          lastValid:'',
+          nextTimes:['04:15'],
           manualLabel:'Aggiorna ora'
         },
         {
