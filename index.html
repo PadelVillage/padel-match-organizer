@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.085';
+    const APP_VERSION = '6.086';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10137,7 +10137,7 @@ Grazie.`
           setTimeout(() => {
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
             if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
-            if (tabName === 'members') displayMembers();
+            if (tabName === 'members') { displayMembers(); if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); }
             // Ogni rientro nella scheda Incassi ri-legge dal cloud (refresh leggero, non
             // la sync MP pesante): sostituisce il vecchio pulsante ↻ Aggiorna rimosso, così
             // i dati non restano fermi alla cache caricata al primo ingresso.
@@ -12282,6 +12282,78 @@ Grazie.`
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
       const summary = list.find(row => row?.record_type === 'matchpoint_data' && row.local_key === 'matchpoint_clients_auto_import_last')?.payload || null;
       return { members, summary };
+    }
+
+    // ── Idratazione dei contatti RUBRICA GOOGLE dal cloud ───────────────────────
+    // I contatti importati dalla rubrica (importedFrom='rubrica-google') vivono su
+    // pmo_cloud_records ma NON hanno source='matchpoint_auto'/matchpointImportedAt,
+    // quindi pmoLoadMatchpointMembersFromCloud (MP-only) NON li carica: senza questa
+    // funzione comparivano SOLO nel browser che aveva eseguito l'import (giocatori
+    // locale). Qui li scarichiamo dal cloud e li fondiamo in locale "add-if-missing"
+    // (match per telefono/email/nome via findMatchingMemberIndex), così l'anagrafica
+    // mostra la rubrica curata su OGNI dispositivo. Sola lettura dal cloud + scrittura
+    // in localStorage: nessuna scrittura sul cloud né su Matchpoint.
+    async function pmoLoadRubricaGoogleMembersFromCloud() {
+      const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
+        p_record_types: ['member'],
+        p_since: null
+      }, 'cloud_sync', 'scaricare i contatti rubrica dal cloud');
+      const list = Array.isArray(rows) ? rows : [];
+      return list
+        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload && row.payload.importedFrom === 'rubrica-google')
+        .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
+    }
+
+    let _pmoRubricaGoogleHydratedAt = 0;
+    let _pmoRubricaGoogleHydrating = false;
+    async function pmoEnsureRubricaGoogleHydrated(opts = {}) {
+      if (_pmoRubricaGoogleHydrating) return;
+      try {
+        if (!Array.isArray(giocatori)) return;
+        // Richiede staff Supabase autenticato (la RPC vuole cloud_sync); in modalità pubblica salta.
+        if (typeof pmoIsPublicAccessMode === 'function' && pmoIsPublicAccessMode()) return;
+        const supabaseSession = (typeof pmoReadSupabaseStaffSession === 'function') ? pmoReadSupabaseStaffSession() : null;
+        if (!supabaseSession) return;
+        const now = Date.now();
+        // Throttle 10 min (dopo un caricamento riuscito): evita di riscaricare ~1700 record
+        // ad ogni rientro nella scheda. force:true bypassa il throttle.
+        if (!opts.force && _pmoRubricaGoogleHydratedAt && (now - _pmoRubricaGoogleHydratedAt) < 600000) return;
+        _pmoRubricaGoogleHydrating = true;
+        const members = await pmoLoadRubricaGoogleMembersFromCloud();
+        _pmoRubricaGoogleHydratedAt = Date.now();
+        // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
+        // NON usiamo findMatchingMemberIndex perché matcha anche per SOLO nome → nasconderebbe
+        // una persona diversa che condivide il nome con un socio (falso merge). Con nome+telefono
+        // evitiamo insieme i duplicati e i falsi merge. Set per lookup O(1) su ~1700 record.
+        const seenKeys = new Set();
+        const seenIds = new Set();
+        giocatori.forEach(g => {
+          const k = pmoImportContactKey(g); if (k) seenKeys.add(k);
+          const id = (g && g.id != null) ? String(g.id) : ''; if (id) seenIds.add(id);
+        });
+        let added = 0;
+        (Array.isArray(members) ? members : []).forEach(m => {
+          if (!m) return;
+          const id = (m.id != null) ? String(m.id) : '';
+          if (id && seenIds.has(id)) return;             // stesso record già in locale
+          const k = pmoImportContactKey(m);
+          if (k && seenKeys.has(k)) return;              // stessa persona (nome+telefono) già presente
+          giocatori.push({ ...m, id: m.id || makeId() });
+          if (k) seenKeys.add(k);
+          if (id) seenIds.add(id);
+          added++;
+        });
+        if (added > 0) {
+          save('giocatori', giocatori);
+          try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+          try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
+          console.log('PMO_RUBRICA_GOOGLE_HYDRATED', { added, total: giocatori.length });
+        }
+      } catch (e) {
+        console.warn('pmoEnsureRubricaGoogleHydrated:', e);
+      } finally {
+        _pmoRubricaGoogleHydrating = false;
+      }
     }
 
     function pmoMemberAuditPayload(row={}) {
