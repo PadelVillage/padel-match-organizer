@@ -11007,6 +11007,15 @@ Grazie.`
     // modale (rubricaImportRenderPreview) e la correzione sesso non cambiano. apply: l'edge
     // scrive sul cloud e ritorna i payload; qui si fondono solo in locale (niente riscrittura cloud).
     // ══════════════════════════════════════════════════════════════════════════
+    // Stato "ultimo import riuscito" per la riga nella tabella Routine (localStorage, come il backup cloud).
+    function getGoogleContactsLastImportInfo() {
+      try { return JSON.parse(pmoLocalGetItem('googleContactsLastImportInfo') || 'null'); } catch (e) { return null; }
+    }
+    function saveGoogleContactsLastImportInfo(count = 0) {
+      const info = { createdAt: new Date().toISOString(), count: parseInt(count, 10) || 0 };
+      try { pmoLocalSetItem('googleContactsLastImportInfo', JSON.stringify(info)); } catch (e) {}
+      return info;
+    }
     function googleContactsFriendlyError(value) {
       const raw = cleanCell(value?.message || value?.error || value || '');
       if (/CONTACTS_SECRETS_MISSING/.test(raw)) return 'Rubrica Google non collegata: manca il refresh token nei secret Supabase (GOOGLE_CONTACTS_REFRESH_TOKEN).';
@@ -11079,6 +11088,8 @@ Grazie.`
         try { pmoCloudState.lastSyncAt = new Date().toISOString(); save('pmoCloudState', pmoCloudState); } catch (e) {}
         if (progEl) progEl.textContent = '';
         const w = data.written || 0, f = data.failed || 0;
+        saveGoogleContactsLastImportInfo(w);
+        try { renderMatchpointRoutinePanel(); } catch (e) {}
         const msg = f === 0
           ? `✅ Importati ${w} nuovi soci da Google Contacts (app+cloud). La scheda Matchpoint verrà creata alla prima prenotazione.`
           : `⚠️ Scritti ${w} soci su cloud; ${f} da risincronizzare (riprova).`;
@@ -15201,6 +15212,7 @@ Grazie.`
       if (key === 'bookings') return importMatchpointBookingsAutomatic();
       if (key === 'history') return importMatchpointHistoryAutomatic();
       if (key === 'cloudBackup') return saveCloudBackup();
+      if (key === 'contacts') return googleContactsImportPreview();
     }
 
     function matchpointRoutineCloudSummaryFromRecord(record) {
@@ -15364,6 +15376,17 @@ Grazie.`
           info:getLatestMatchpointImportSummaryByTypes(['clienti']),
           lastValid:'',
           nextTimes:['04:30'],
+          manualLabel:'Aggiorna ora'
+        },
+        {
+          key:'contacts',
+          title:'Contatti Google',
+          note:'Rubrica «padel» → anagrafica',
+          actionKey:'contacts',
+          anchorId:'anchor-rubrica-google',
+          info:getGoogleContactsLastImportInfo(),
+          lastValid:'',
+          nextTimes:['04:15'],
           manualLabel:'Aggiorna ora'
         },
         {
