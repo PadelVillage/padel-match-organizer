@@ -6266,7 +6266,7 @@ body.assessment-public-mode .assessment-public-only-card {
         <div id="subAdministration" class="side-submenu" data-section-key="administration">
           <button class="side-sub-link" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
-          <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
           <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
         </div><!-- /.side-nav-chapters -->
@@ -6314,7 +6314,7 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="pmo-chapter-dropdown">
           <button type="button" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button type="button" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
-          <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati Matchpoint</button>
+          <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
           <button type="button" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
       </div>
@@ -7500,7 +7500,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="admin-panel" id="pmoAdminMatchpointDataPanel" data-admin-anchor="dati-matchpoint">
             <div class="admin-panel-head">
               <div>
-                <h3>Dati Matchpoint</h3>
+                <h3>Dati</h3>
                 <p>Clienti, prenotazioni, storico, backup e slot potenziali.</p>
               </div>
             </div>
@@ -7552,7 +7552,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
                 <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
                   <span>
-                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti Matchpoint e backup</span>
+                    <span class="matchpoint-data-accordion-title"><span class="matchpoint-data-step">2</span> Aggiornamenti dati e backup</span>
                     <span class="matchpoint-data-accordion-subtitle">Clienti, prenotazioni future, storico e backup cloud.</span>
                   </span>
                   <span class="matchpoint-data-chevron">›</span>
@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.087';
+    const APP_VERSION = '6.088';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -9628,7 +9628,7 @@ Grazie.`
 
     const SECTION_LABELS = {
       dashboard: '🏠 Dashboard',
-      matchpoint: 'Dati Matchpoint',
+      matchpoint: 'Dati',
       members: '👥 Anagrafica soci',
       assessment: 'Autovalutazione',
       fillSlots: '🎯 Apri Partite',
@@ -10216,7 +10216,7 @@ Grazie.`
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
         { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
         { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
-        { key:'view_admin_matchpoint', label:'Dati Matchpoint', adminSection:'matchpoint-data' },
+        { key:'view_admin_matchpoint', label:'Dati', adminSection:'matchpoint-data' },
         { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
       ]},
     ];
