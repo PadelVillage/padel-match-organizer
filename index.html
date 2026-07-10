@@ -6539,6 +6539,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="players-head-actions">
             <button class="btn-secondary" onclick="setActionAnchor(this); pmoWalletSyncAll(this)" title="Legge da Matchpoint i saldi borsellino di tutti i soci (report 'Clienti con credito residuo')">↻ Aggiorna saldi borsellino</button>
             <button class="btn-success" onclick="setActionAnchor(this); openMemberContactsExportPanel()">Esporta rubrica soci</button>
+            <button class="btn-secondary" onclick="setActionAnchor(this); pmoNameFixOpen()" title="Trova i soci con nome e cognome probabilmente invertiti (cognome = un nome noto) e scambiali">🔁 Correggi nome↔cognome</button>
             <button class="btn-primary" onclick="setActionAnchor(this); showAddMember()">+ Nuovo socio</button>
           </div>
         </div>
@@ -7574,6 +7575,18 @@ body.assessment-public-mode .assessment-public-only-card {
                       </div>
                     </article>
 
+                    <article class="matchpoint-data-box clients" id="anchor-rubrica-google">
+                      <h3><span class="matchpoint-data-step">2·b</span> Importa contatti rubrica Google</h3>
+                      <p class="matchpoint-data-copy">Carica l'export dei Contatti Google (CSV/XLSX). Filtro etichetta «padel», dedup per numero, sesso dedotto dal nome (correggibile), livello 0.5. I nuovi soci entrano <strong>solo in app e cloud</strong>: la scheda Matchpoint nasce alla prima prenotazione.</p>
+                      <div class="matchpoint-data-file">
+                        <div class="matchpoint-data-actions" style="flex-wrap:wrap;gap:8px;">
+                          <input id="rubricaImportFile" type="file" accept=".csv,.xlsx,.xls" style="font-size:13px;">
+                          <button id="rubricaImportPreviewBtn" class="btn-secondary" onclick="rubricaImportPreviewFromFile()">Anteprima import</button>
+                        </div>
+                        <div id="rubricaImportPreview" style="margin-top:12px;"></div>
+                      </div>
+                    </article>
+
                     <article class="matchpoint-data-box bookings" id="anchor-matchpoint-prenotazioni">
                       <h3><span class="matchpoint-data-step">3</span> Prenotazioni future Matchpoint</h3>
                       <p class="matchpoint-data-copy">Fotografia occupazioni prossimi 30 giorni.</p>
@@ -7843,7 +7856,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.082';
+    const APP_VERSION = '6.083';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10631,6 +10644,396 @@ Grazie.`
         if (byName >= 0) return byName;
       }
       return -1;
+    }
+
+    // ── Email tecnica per soci importati dalla rubrica (senza email vera) ─────────
+    // Sottodominio NON instradabile: il worker Matchpoint la accetta (è formalmente valida)
+    // ma non è un indirizzo reale, così la creazione MP passa senza modifiche al worker.
+    // Ovunque conti un'email VERA (Autovalutazione, KPI "Senza email", scheda) va trattata
+    // come assente: se ne occupa assessmentEmailHasValidEmail via pmoIsSyntheticEmail.
+    const PMO_SYNTHETIC_EMAIL_DOMAIN = 'nomail.padelvillage.club';
+    function pmoSyntheticEmailFor(phone) {
+      const digits = String(phone || '').replace(/\D/g, '');
+      return digits ? `${digits}@${PMO_SYNTHETIC_EMAIL_DOMAIN}` : '';
+    }
+    function pmoIsSyntheticEmail(email) {
+      return /@nomail\.padelvillage\.club$/i.test(String(email || '').trim());
+    }
+
+    // ── Import contatti rubrica Google → chiave dedup STRETTA nome+telefono ───────
+    // Volutamente più stretta di findMatchingMemberIndex (phone OR name): due persone
+    // DIVERSE possono condividere lo stesso numero, quindi due contatti sono la stessa
+    // persona solo se coincidono NOME COMPLETO e TELEFONO insieme.
+    function pmoImportContactKey(member) {
+      const name = normalizeKey(`${member?.firstName || ''} ${member?.surname || ''}`);
+      const phone = phoneDigitsForWhatsApp(member?.phone || member?.telefono || '');
+      return `${name}|${phone}`;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // IMPORT CONTATTI RUBRICA GOOGLE → anagrafica app (solo app+cloud; Matchpoint LAZY)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Carica un CSV/XLSX esportato dai Contatti Google, filtra l'etichetta "padel", deduplica
+    // per NUMERO (chiave cloud), deduce il sesso dal nome (correggibile in anteprima), livello
+    // 0.5, email tecnica se manca quella vera. NON crea schede Matchpoint: nascono al primo
+    // utilizzo in prenotazione (pmoEnsureBookingPlayersOnMatchpoint).
+    // ══════════════════════════════════════════════════════════════════════════
+    window.rubricaImportState = window.rubricaImportState || { fileName:'', rows:[], summary:null };
+
+    function rubricaImportRowPadelInfo(row) {
+      // L'etichetta "padel" nel file dell'utente è in Organization Name; fallback su Labels /
+      // Group Membership (export Google standard). Se NESSUNA colonna etichette è presente in
+      // tutto il file → importa-tutto (deciso a monte in rubricaImportAnalyze).
+      const labelCols = ['Organization Name','Organization 1 - Name','Labels','Group Membership','Categories','Category'];
+      let hadLabelColumn = false, isPadel = false;
+      for (const col of labelCols) {
+        const v = cleanCell(getMatchpointCell(row, [col]));
+        if (v) { hadLabelColumn = true; if (/padel/i.test(v)) isPadel = true; }
+      }
+      return { isPadel, hadLabelColumn };
+    }
+
+    function parseGoogleContactRow(row) {
+      const rawFirst = cleanCell(getMatchpointCell(row, ['First Name','Given Name','Nome']));
+      const rawLast  = cleanCell(getMatchpointCell(row, ['Last Name','Family Name','Cognome']));
+      // Pulisci il nome: via emoji, simboli, cifre e punteggiatura spuria ovunque (". Silvia",
+      // "Consuelo ✨", "Padel Schio 60"), preservando lettere accentate, apostrofi e trattini.
+      const cleanNamePart = s => String(s || '').replace(/[^\p{L}\p{M}\s'\-]/gu, ' ').replace(/\s+/g, ' ').trim();
+      const parts = normalizeImportedPlayerNameParts(cleanNamePart(rawFirst), cleanNamePart(rawLast));
+      const firstName = parts.firstName, surname = parts.surname;
+      const phoneRaw = cleanCell(getMatchpointCell(row, ['Phone 1 - Value','Phone 2 - Value','Telefono','Phone','Mobile']));
+      const phoneInfo = getWhatsAppPhoneInfo(phoneRaw);
+      const realEmail = cleanCell(getMatchpointCell(row, ['E-mail 1 - Value','E-mail 2 - Value','Email','E-mail']));
+      const hasRealEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(realEmail);
+      return {
+        firstName, surname,
+        name: compactSpaces(`${firstName} ${surname}`),
+        phone: phoneInfo.e164, phoneOk: phoneInfo.ok, phoneRaw,
+        email: hasRealEmail ? realEmail : '', hasRealEmail,
+        gender: genderFromValue('', firstName)
+      };
+    }
+
+    function rubricaImportAnalyze(rows) {
+      const state = window.rubricaImportState;
+      state.rows = [];
+      const list = Array.isArray(rows) ? rows : [];
+      // Se in TUTTO il file non esiste nessuna colonna etichette → importa-tutto (con avviso).
+      const anyLabelCol = list.some(r => rubricaImportRowPadelInfo(r).hadLabelColumn);
+      // Numeri già in anagrafica (chiave cloud = telefono) → mappa per note su nome.
+      const existingByPhone = new Map();
+      (Array.isArray(giocatori) ? giocatori : []).forEach(g => {
+        const p = phoneDigitsForWhatsApp(g.phone || g.telefono || '');
+        if (p && !existingByPhone.has(p)) existingByPhone.set(p, g);
+      });
+      const seenPhone = new Map();   // digits → primo candidato del file con quel numero
+      let cNew = 0, cExisting = 0, cDiscard = 0;
+      list.forEach((row, idx) => {
+        const padel = rubricaImportRowPadelInfo(row);
+        const cand = parseGoogleContactRow(row);
+        const phoneDigits = phoneDigitsForWhatsApp(cand.phone || '');
+        let status, reason = '';
+        if (anyLabelCol && !padel.isPadel) { status = 'discard'; reason = 'non etichettato «padel»'; }
+        else if (!cand.firstName || !cand.surname) { status = 'discard'; reason = 'manca nome o cognome'; }
+        else if (!cand.phoneOk || !phoneDigits) { status = 'discard'; reason = 'telefono mancante o non valido'; }
+        else if (existingByPhone.has(phoneDigits)) {
+          status = 'existing';
+          const other = existingByPhone.get(phoneDigits);
+          const sameName = pmoImportContactKey(other) === pmoImportContactKey(cand);
+          reason = sameName ? 'già in anagrafica' : `numero già di «${playerFullName(other) || 'un socio'}» in anagrafica`;
+        }
+        else if (seenPhone.has(phoneDigits)) {
+          status = 'discard';
+          const first = seenPhone.get(phoneDigits);
+          reason = `stesso numero di «${first.name}» già nel file`;
+        }
+        else {
+          status = 'new';
+          seenPhone.set(phoneDigits, cand);
+          // Nota soft: stesso NOME di un socio esistente (numero diverso) → possibile omonimo/variante.
+          const twinIdx = giocatori.findIndex(g => memberNameKey(g) === normalizeKey(cand.name));
+          if (twinIdx >= 0) reason = 'stesso nome di un socio esistente (numero diverso)';
+        }
+        if (status === 'new') cNew++; else if (status === 'existing') cExisting++; else cDiscard++;
+        state.rows.push({ idx, cand, status, reason, isPadel: padel.isPadel });
+      });
+      state.summary = { total: list.length, new: cNew, existing: cExisting, discard: cDiscard, anyLabelCol };
+      rubricaImportRenderPreview();
+    }
+
+    function rubricaImportSetGender(rowIdx, value) {
+      const state = window.rubricaImportState;
+      const r = (state.rows || []).find(x => x.idx === rowIdx);
+      if (r) { r.cand.gender = (value === 'M' || value === 'F') ? value : 'NA'; }
+      // Aggiorna solo l'evidenza NA della riga toccata (niente re-render pesante di 1735 righe).
+      try {
+        const tr = document.querySelector(`#rubricaImportPanel tr[data-ridx="${rowIdx}"]`);
+        if (tr) tr.style.background = (r && (r.cand.gender === 'NA')) ? 'rgba(240,180,20,.14)' : '';
+      } catch (e) {}
+    }
+
+    // La modale è una finestra a schermo intero (l'accordion è troppo stretto per 1735 righe).
+    function rubricaImportEnsureModal() {
+      let ov = document.getElementById('rubricaImportModal');
+      if (ov) return ov;
+      ov = document.createElement('div');
+      ov.id = 'rubricaImportModal';
+      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:10600;background:rgba(16,24,40,.5);padding:24px;box-sizing:border-box;align-items:center;justify-content:center;';
+      ov.innerHTML = '<div id="rubricaImportPanel" style="background:#fff;border-radius:14px;max-width:980px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden;"></div>';
+      document.body.appendChild(ov);
+      return ov;
+    }
+    function rubricaImportCloseModal() {
+      const ov = document.getElementById('rubricaImportModal');
+      if (ov) ov.style.display = 'none';
+    }
+
+    function rubricaImportRenderPreview() {
+      const state = window.rubricaImportState;
+      const s = state.summary;
+      const inlineHost = document.getElementById('rubricaImportPreview');
+      if (!s) { if (inlineHost) inlineHost.innerHTML = ''; rubricaImportCloseModal(); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
+      const news = state.rows.filter(r => r.status === 'new');
+      const others = state.rows.filter(r => r.status !== 'new');
+      // Casi "azionabili" (numero condiviso) da evidenziare a parte: esistenti «numero già di …» + doppioni file.
+      const collisions = others.filter(r => /numero già di|stesso numero di/.test(r.reason || ''));
+      const ov = rubricaImportEnsureModal();
+      const panel = document.getElementById('rubricaImportPanel');
+      let head = `<div style="flex:0 0 auto;padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">`
+        + `<div style="font-size:17px;font-weight:800;color:#0f172a;">Anteprima import rubrica</div>`
+        + `<div style="font-size:13px;color:#475569;">Su <strong>${s.total}</strong> righe: <strong style="color:#067647">${s.new} nuovi</strong> · ${s.existing} già in anagrafica · ${s.discard} scartati</div>`
+        + `<button onclick="rubricaImportCloseModal()" title="Chiudi" style="margin-left:auto;border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#334155;">✕</button></div>`;
+      let body = `<div style="flex:1 1 auto;overflow:auto;padding:16px 20px;">`;
+      if (!s.anyLabelCol) body += `<div style="margin:0 0 12px;padding:8px 10px;border-radius:6px;background:rgba(240,180,20,.14);font-size:13px;">⚠️ Nessuna colonna etichette trovata nel file: importo <strong>tutti</strong> i contatti (nessun filtro «padel»).</div>`;
+      body += `<div style="font-size:13px;color:#64748b;margin-bottom:8px;">Righe <strong>NUOVE</strong> (da importare). Correggi il <strong>sesso</strong> dove serve (le righe <span style="background:rgba(240,180,20,.35);padding:0 4px;border-radius:3px;">gialle</span> sono da completare); livello fisso 0.5; «— email tecnica» = senza email vera.</div>`;
+      body += `<div style="max-height:52vh;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;">`;
+      body += `<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="position:sticky;top:0;background:#f8fafc;z-index:1;">`
+        + `<th style="text-align:left;padding:6px 8px;">Nome</th><th style="text-align:left;padding:6px 8px;">Cognome</th>`
+        + `<th style="text-align:left;padding:6px 8px;">Telefono</th><th style="text-align:left;padding:6px 8px;">Email</th>`
+        + `<th style="text-align:left;padding:6px 8px;">Sesso</th><th style="text-align:left;padding:6px 8px;">Liv.</th><th style="text-align:left;padding:6px 8px;">Nota</th></tr></thead><tbody>`;
+      news.forEach(r => {
+        const c = r.cand;
+        const emailLabel = c.hasRealEmail ? esc(c.email) : '<em style="color:#64748b">— email tecnica</em>';
+        const naBg = (c.gender === 'NA') ? 'rgba(240,180,20,.14)' : '';
+        const sel = `<select onchange="rubricaImportSetGender(${r.idx}, this.value)" style="padding:2px 4px;min-width:130px;">`
+          + `<option value="NA"${c.gender === 'NA' ? ' selected' : ''}>Da completare</option>`
+          + `<option value="M"${c.gender === 'M' ? ' selected' : ''}>Uomo</option>`
+          + `<option value="F"${c.gender === 'F' ? ' selected' : ''}>Donna</option></select>`;
+        body += `<tr data-ridx="${r.idx}" style="border-top:1px solid #eef2f7;background:${naBg}">`
+          + `<td style="padding:5px 8px;">${esc(c.firstName)}</td><td style="padding:5px 8px;">${esc(c.surname)}</td>`
+          + `<td style="padding:5px 8px;">${esc(c.phone)}</td><td style="padding:5px 8px;">${emailLabel}</td>`
+          + `<td style="padding:5px 8px;">${sel}</td><td style="padding:5px 8px;">0.5</td>`
+          + `<td style="padding:5px 8px;color:#b45309;">${esc(r.reason || '')}</td></tr>`;
+      });
+      body += `</tbody></table></div>`;
+      // Esclusi: conteggi per motivo + lista esplicita dei casi "numero condiviso" (da decidere a mano).
+      if (others.length) {
+        const byReason = {};
+        others.forEach(r => { const k = (r.status === 'existing' ? (/numero già di/.test(r.reason || '') ? 'numero già in anagrafica (nome diverso)' : 'già in anagrafica') : (r.reason || 'scartato')); byReason[k] = (byReason[k] || 0) + 1; });
+        body += `<details style="margin-top:14px;font-size:13px;" open><summary style="cursor:pointer;font-weight:700;">Esclusi (${others.length}) — motivi</summary><ul style="margin:8px 0 0 18px;">`;
+        Object.keys(byReason).sort().forEach(k => { body += `<li>${esc(k)}: <strong>${byReason[k]}</strong></li>`; });
+        body += `</ul>`;
+        if (collisions.length) {
+          body += `<div style="margin-top:10px;font-weight:700;color:#b45309;">⚠️ Numeri condivisi da rivedere a mano (${collisions.length}):</div><div style="max-height:22vh;overflow:auto;margin-top:4px;border:1px solid #f0d9b5;border-radius:6px;">`;
+          body += `<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>`;
+          collisions.forEach(r => { body += `<tr style="border-top:1px solid #f6e8cf;"><td style="padding:4px 8px;">${esc(r.cand.name)}</td><td style="padding:4px 8px;">${esc(r.cand.phone)}</td><td style="padding:4px 8px;color:#b45309;">${esc(r.reason)}</td></tr>`; });
+          body += `</tbody></table></div>`;
+        }
+        body += `</details>`;
+      }
+      body += `</div>`;
+      const foot = `<div style="flex:0 0 auto;padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">`
+        + `<button id="rubricaImportApplyBtn" class="btn-primary" onclick="rubricaImportApply()"${s.new ? '' : ' disabled'}>Importa ${s.new} nuovi soci</button>`
+        + `<button class="btn-secondary" onclick="rubricaImportCloseModal()">Chiudi</button>`
+        + `<span id="rubricaImportProgress" style="font-size:13px;color:#475569;"></span>`
+        + `<span style="margin-left:auto;font-size:12px;color:#64748b;">Entrano in app+cloud. Scheda Matchpoint alla 1ª prenotazione.</span></div>`;
+      panel.innerHTML = head + body + foot;
+      ov.style.display = 'flex';
+      // Nel box dell'accordion lascio un richiamo per riaprire la finestra se la chiudi.
+      if (inlineHost) inlineHost.innerHTML = `<div style="font-size:13px;color:#475569;">Anteprima pronta: <strong style="color:#067647">${s.new} nuovi</strong>. <button class="btn-secondary" style="padding:4px 10px;" onclick="rubricaImportRenderPreview()">Riapri anteprima</button></div>`;
+    }
+
+    function rubricaImportPreviewFromFile() {
+      const input = document.getElementById('rubricaImportFile');
+      const file = input && input.files && input.files[0];
+      if (!file) { showAlert('Scegli prima un file CSV/XLSX della rubrica.', 'info'); return; }
+      window.rubricaImportState = { fileName: file.name, rows: [], summary: null };
+      const host = document.getElementById('rubricaImportPreview');
+      if (host) host.innerHTML = '<div style="padding:8px;font-size:13px;color:#475569;">Leggo il file…</div>';
+      readExcel(file, rows => {
+        try { rubricaImportAnalyze(rows); }
+        catch (err) { console.error('RUBRICA_IMPORT_ANALYZE_FAIL', err); showAlert('❌ Errore analisi file: ' + (err.message || err), 'danger'); if (host) host.innerHTML = ''; }
+      });
+    }
+
+    async function rubricaImportApply() {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('importare i contatti')) return;
+      const state = window.rubricaImportState;
+      const toImport = (state.rows || []).filter(r => r.status === 'new');
+      if (!toImport.length) { showAlert('ℹ️ Nessun nuovo contatto da importare.', 'info'); return; }
+      const btn = document.getElementById('rubricaImportApplyBtn');
+      const progEl = document.getElementById('rubricaImportProgress');
+      let staff;
+      try { staff = await pmoRequireStaffPermission('cloud_sync', 'importare i contatti in anagrafica'); }
+      catch (e) { showAlert('❌ ' + ((e && e.message) || e), 'danger'); return; }
+      if (btn) btn.disabled = true;
+      const now = new Date().toISOString();
+      const records = [];
+      toImport.forEach(r => {
+        const c = r.cand;
+        const email = (c.hasRealEmail && c.email) ? c.email : pmoSyntheticEmailFor(c.phone);
+        const gender = (c.gender === 'F') ? 'F' : (c.gender === 'M' ? 'M' : 'NA');
+        const member = ensureMemberId({
+          id: makeId(), memberId: '',
+          firstName: c.firstName, surname: c.surname, name: c.name,
+          phone: c.phone, email, level: 0.5, gender,
+          guestJolly: false, active: true, importedFrom: 'rubrica-google',
+          createdAt: now, updatedAt: now
+        });
+        giocatori.push(member);
+        const rec = pmoBuildMemberCloudRecord(member, { now });
+        if (rec) records.push(rec);
+      });
+      save('giocatori', giocatori);
+      try { displayMembers(); updateStats(); } catch (e) {}
+      // Cloud in blocchi: chiamo direttamente la RPC (evita la tempesta di broadcast realtime
+      // della sync standard, che manderebbe un evento per ognuno dei ~1735 soci).
+      const CHUNK = 200;
+      let ok = 0, fail = 0;
+      for (let i = 0; i < records.length; i += CHUNK) {
+        const slice = records.slice(i, i + CHUNK);
+        if (progEl) progEl.textContent = `Salvo su cloud… ${Math.min(i + slice.length, records.length)}/${records.length}`;
+        try {
+          const res = await pmoCloudRpc('pmo_upsert_records_admin', { p_records: slice }, { accessToken: staff.accessToken });
+          if (res && res.ok === true) ok += slice.length; else { fail += slice.length; console.warn('RUBRICA_IMPORT_CHUNK_FAIL', res); }
+        } catch (e) { fail += slice.length; console.warn('RUBRICA_IMPORT_CHUNK_ERR', e); }
+      }
+      try { pmoCloudState.lastSyncAt = new Date().toISOString(); save('pmoCloudState', pmoCloudState); } catch (e) {}
+      if (progEl) progEl.textContent = '';
+      const msg = fail === 0
+        ? `✅ Importati ${ok} nuovi soci in app e cloud. La scheda Matchpoint verrà creata alla prima prenotazione.`
+        : `⚠️ Importati in app ${records.length} soci; cloud: ${ok} ok, ${fail} da risincronizzare (riprova il Backup/sync cloud).`;
+      showAlert(msg, fail === 0 ? 'success' : 'warning');
+      window.rubricaImportState = { fileName: '', rows: [], summary: null };
+      const input = document.getElementById('rubricaImportFile');
+      if (input) input.value = '';
+      rubricaImportRenderPreview();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CORREGGI NOME↔COGNOME (Gestione Soci) — soci importati dalla rubrica Google
+    // ─────────────────────────────────────────────────────────────────────────
+    // I Contatti Google hanno spesso nome/cognome invertiti o un nome nel campo cognome.
+    // Sospetto = il COGNOME normalizzato è un nome noto (dizionari maleNames/femaleNames);
+    // "probabile" (forte) se ANCHE il nome non è un nome noto → verosimile inversione.
+    // Ambito: solo i soci con importedFrom='rubrica-google' (non tocca l'anagrafica curata).
+    // ══════════════════════════════════════════════════════════════════════════
+    function pmoTokenIsKnownFirstName(token) {
+      const n = normalizeKey(token);
+      return !!n && (maleNames.includes(n) || femaleNames.includes(n));
+    }
+    function pmoNameFixSuspects() {
+      return (Array.isArray(giocatori) ? giocatori : [])
+        .filter(g => g && g.active !== false && !g.guestJolly && g.importedFrom === 'rubrica-google')
+        .map(g => pmoTokenIsKnownFirstName(g.surname) ? { g, strong: !pmoTokenIsKnownFirstName(g.firstName) } : null)
+        .filter(Boolean)
+        .sort((a, b) => (a.strong === b.strong)
+          ? normalizeText(playerFullName(a.g)).localeCompare(normalizeText(playerFullName(b.g)), 'it')
+          : (a.strong ? -1 : 1));
+    }
+    function pmoNameFixEnsureModal() {
+      let ov = document.getElementById('pmoNameFixModal');
+      if (ov) return ov;
+      ov = document.createElement('div');
+      ov.id = 'pmoNameFixModal';
+      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:10600;background:rgba(16,24,40,.5);padding:24px;box-sizing:border-box;align-items:center;justify-content:center;';
+      ov.innerHTML = '<div id="pmoNameFixPanel" style="background:#fff;border-radius:14px;max-width:680px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden;"></div>';
+      document.body.appendChild(ov);
+      return ov;
+    }
+    function pmoNameFixClose() { const ov = document.getElementById('pmoNameFixModal'); if (ov) ov.style.display = 'none'; }
+    function pmoNameFixOpen() { pmoNameFixRender(); }
+    function pmoNameFixRender() {
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
+      const list = pmoNameFixSuspects();
+      const strongN = list.filter(s => s.strong).length;
+      const ov = pmoNameFixEnsureModal();
+      const panel = document.getElementById('pmoNameFixPanel');
+      let head = `<div style="flex:0 0 auto;padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">`
+        + `<div style="font-size:17px;font-weight:800;color:#0f172a;">Correggi nome↔cognome</div>`
+        + `<div style="font-size:13px;color:#475569;">${list.length} sospetti (${strongN} probabili) tra i soci da rubrica</div>`
+        + `<button onclick="pmoNameFixClose()" title="Chiudi" style="margin-left:auto;border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#334155;">✕</button></div>`;
+      let body = `<div style="flex:1 1 auto;overflow:auto;padding:16px 20px;">`;
+      if (!list.length) {
+        body += `<div style="font-size:14px;color:#475569;">Nessun socio da rubrica con il cognome uguale a un nome noto. 👍</div>`;
+      } else {
+        body += `<div style="font-size:13px;color:#64748b;margin-bottom:10px;">«Probabile» = anche il nome non è un nome noto (inversione verosimile). «Possibile» = il cognome è anche un nome (potrebbe essere corretto). Controlla e scambia solo dove serve.</div>`;
+        body += `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f8fafc;">`
+          + `<th style="text-align:left;padding:6px 8px;">Nome</th><th style="text-align:left;padding:6px 8px;">Cognome</th><th style="text-align:left;padding:6px 8px;">Telefono</th><th style="padding:6px 8px;"></th></tr></thead><tbody>`;
+        list.forEach(s => {
+          const g = s.g;
+          const badge = s.strong
+            ? `<span style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:6px;">probabile</span>`
+            : `<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:6px;">possibile</span>`;
+          body += `<tr style="border-top:1px solid #eef2f7;">`
+            + `<td style="padding:5px 8px;">${badge}${esc(g.firstName)}</td><td style="padding:5px 8px;">${esc(g.surname)}</td>`
+            + `<td style="padding:5px 8px;">${esc(g.phone || '')}</td>`
+            + `<td style="padding:5px 8px;text-align:right;"><button class="btn-secondary" style="padding:3px 10px;" onclick="pmoNameFixSwap('${esc(g.id)}')" title="Diventa: ${esc(g.surname)} ${esc(g.firstName)}">⇄ Scambia</button></td></tr>`;
+        });
+        body += `</tbody></table></div>`;
+      }
+      body += `</div>`;
+      const foot = `<div style="flex:0 0 auto;padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">`
+        + `<button class="btn-primary" onclick="pmoNameFixSwapAllStrong()"${strongN ? '' : ' disabled'}>⇄ Scambia tutti i probabili (${strongN})</button>`
+        + `<button class="btn-secondary" onclick="pmoNameFixClose()">Chiudi</button>`
+        + `<span id="pmoNameFixProgress" style="font-size:13px;color:#475569;"></span></div>`;
+      panel.innerHTML = head + body + foot;
+      ov.style.display = 'flex';
+    }
+    // Scambia nome↔cognome di UN socio (aggiorna name, ri-deduce il sesso se era NA, salva+cloud).
+    function pmoNameFixApplySwap(g) {
+      const f = g.firstName || '';
+      g.firstName = g.surname || '';
+      g.surname = f;
+      g.name = compactSpaces(`${g.firstName} ${g.surname}`);
+      if (!g.gender || g.gender === 'NA') { const d = detectGenderByName(g.firstName); if (d !== 'NA') g.gender = d; }
+      g.updatedAt = new Date().toISOString();
+    }
+    function pmoNameFixSwap(memberId) {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('correggere un socio')) return;
+      const g = (giocatori || []).find(x => String(x.id) === String(memberId));
+      if (!g) return;
+      pmoNameFixApplySwap(g);
+      save('giocatori', giocatori);
+      pmoQueueImmediateMemberCloudSync(g, 'correzione nome/cognome socio');
+      try { displayMembers(); updateStats(); } catch (e) {}
+      pmoNameFixRender();
+    }
+    async function pmoNameFixSwapAllStrong() {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('correggere i soci')) return;
+      const strong = pmoNameFixSuspects().filter(s => s.strong).map(s => s.g);
+      if (!strong.length) return;
+      if (!window.confirm(`Scambio nome↔cognome per ${strong.length} soci «probabili». Procedo?`)) return;
+      const prog = document.getElementById('pmoNameFixProgress');
+      let staff;
+      try { staff = await pmoRequireStaffPermission('cloud_sync', 'correggere i soci'); }
+      catch (e) { showAlert('❌ ' + ((e && e.message) || e), 'danger'); return; }
+      const now = new Date().toISOString();
+      const records = [];
+      strong.forEach(g => { pmoNameFixApplySwap(g); g.updatedAt = now; const rec = pmoBuildMemberCloudRecord(g, { now }); if (rec) records.push(rec); });
+      save('giocatori', giocatori);
+      try { displayMembers(); updateStats(); } catch (e) {}
+      const CHUNK = 200; let ok = 0, fail = 0;
+      for (let i = 0; i < records.length; i += CHUNK) {
+        const slice = records.slice(i, i + CHUNK);
+        if (prog) prog.textContent = `Salvo su cloud… ${Math.min(i + slice.length, records.length)}/${records.length}`;
+        try { const res = await pmoCloudRpc('pmo_upsert_records_admin', { p_records: slice }, { accessToken: staff.accessToken }); if (res && res.ok === true) ok += slice.length; else fail += slice.length; }
+        catch (e) { fail += slice.length; console.warn('NAMEFIX_CHUNK_ERR', e); }
+      }
+      if (prog) prog.textContent = '';
+      showAlert(fail === 0 ? `✅ Scambiati ${ok} soci.` : `⚠️ Scambiati in app ${records.length}; cloud: ${ok} ok, ${fail} da risincronizzare.`, fail === 0 ? 'success' : 'warning');
+      pmoNameFixRender();
     }
 
     function migrateMemberIds() {
@@ -28897,6 +29300,10 @@ Per confermare scrivi ELIMINA.`);
     }
     function assessmentEmailHasValidEmail(member) {
       const email = assessmentEmailMemberEmail(member);
+      // Email tecnica dei soci importati dalla rubrica (<telefono>@nomail.padelvillage.club):
+      // formalmente valida ma NON instradabile → va contata come "senza email" ovunque
+      // (idoneità Autovalutazione, KPI "Senza email", scheda). Vedi pmoIsSyntheticEmail.
+      if (typeof pmoIsSyntheticEmail === 'function' && pmoIsSyntheticEmail(email)) return false;
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
     function assessmentEmailDateMs(value) {
@@ -40136,6 +40543,72 @@ Per confermare scrivi ELIMINA.`);
   // Stato pending per conferma ricorrenza (double-click pattern)
   let _staffCalPendingRicorrenza = null;
 
+  // ── LAZY Matchpoint: crea al volo i soci "solo app" PRIMA di prenotarli ─────
+  // I contatti importati dalla rubrica vivono solo in app+cloud finché non li si prenota
+  // davvero (nessuna creazione MP di massa). Una prenotazione con un socio non su Matchpoint
+  // fallirebbe HARD lato worker (PLAYER_ID_NOT_LOCKED), quindi qui — prima della card
+  // ottimistica — ci si assicura che ogni giocatore non-Ospite abbia una scheda MP:
+  //   • ha già un codice cliente numerico → NO-OP istantaneo (99% dei casi, nessun worker);
+  //   • socio "solo app" → pmoCreateMemberInMatchpoint (idempotente) e si aspetta l'esito.
+  // Se la creazione fallisce si LANCIA, così il chiamante blocca la prenotazione con un
+  // messaggio chiaro invece di lasciarla fallire genericamente a valle. onStatus (opzionale)
+  // riceve un messaggio di avanzamento per l'attesa breve ("↻ Preparo X su Matchpoint…").
+  async function pmoEnsureBookingPlayersOnMatchpoint(parsed, onStatus) {
+    if (!parsed) return;
+    // In TEST il collegamento Matchpoint è staccato: niente creazione reale, niente blocco.
+    if (typeof PMO_IS_TEST_ENV !== 'undefined' && PMO_IS_TEST_ENV) return;
+    if ((parsed.tipo || 'partita') === 'manutenzione') return;
+    // Elenco {nome, code} da controllare: prima parsed.giocatori (che spesso porta già il
+    // codice cliente), altrimenti parsed.nome (solo partita/lezione).
+    let items = [];
+    if (Array.isArray(parsed.giocatori) && parsed.giocatori.length) {
+      items = parsed.giocatori.map(g => (g && typeof g === 'object')
+        ? { nome: g.nome || '', code: String(g.codiceCliente || '').trim() }
+        : { nome: String(g || ''), code: '' });
+    } else if (parsed.nome && ['partita', 'lezione'].includes(parsed.tipo || 'partita')) {
+      items = String(parsed.nome).split(/\s*,\s*|\s*;\s*|\s*&\s*|\s+ed?\s+|\n+/i).map(s => ({ nome: s.trim(), code: '' }));
+    }
+    items = items.filter(it => it.nome);
+    if (!items.length) return;
+    const seen = new Set();
+    for (const it of items) {
+      const nm = it.nome;
+      if (!nm || (typeof isGuestJollyName === 'function' && isGuestJollyName(nm))) continue;
+      // Fast-path: l'entry porta già un codice cliente numerico → no-op, niente scan del roster.
+      if (/^\d{4,6}$/.test(it.code)) continue;
+      const key = normalizeKey(nm);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const matches = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(nm, 5) : [];
+      if (!matches.length) continue;                 // nome sconosciuto: comportamento invariato (gestito a valle)
+      const member = matches[0].member;
+      if (!member || (typeof isGuestJollyMember === 'function' && isGuestJollyMember(member))) continue;
+      // Ha già un vero codice cliente Matchpoint → nulla da fare.
+      if (/^\d{4,6}$/.test(String(member.memberId || '').trim())) continue;
+      const full = playerFullName(member) || member.name || nm;
+      if (typeof onStatus === 'function') { try { onStatus('↻ Preparo ' + full + ' su Matchpoint…'); } catch (e) {} }
+      let res;
+      try {
+        res = await pmoCreateMemberInMatchpoint(member, { notify: false });
+      } catch (e) {
+        res = { status: 'error', reason: (e && e.message) ? e.message : String(e) };
+      }
+      if (res && res.status === 'error') {
+        throw new Error('Non riesco a creare ' + full + ' su Matchpoint: ' + (res.reason || 'errore sconosciuto') + '. Correggi la scheda del socio e riprova.');
+      }
+      // Creato ora: member.memberId è il codice reale → aggiorna l'entry in parsed.giocatori
+      // così il payload porta i codici freschi (id interno + codice cliente).
+      if (res && res.status === 'ok' && Array.isArray(parsed.giocatori)) {
+        parsed.giocatori.forEach(g => {
+          if (g && typeof g === 'object' && normalizeKey(g.nome || '') === key) {
+            g.codice = (typeof _staffCalPlayerCode === 'function') ? _staffCalPlayerCode(member) : String(member.matchpointIdInterno || '').trim();
+            g.codiceCliente = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(member) : String(member.memberId || '').trim();
+          }
+        });
+      }
+    }
+  }
+
   // ── Submit singola prenotazione via edge function ──────────────────────────
   async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, options = {}) {
     let giocatoriPayload;
@@ -40698,6 +41171,8 @@ Per confermare scrivi ELIMINA.`);
       try {
         const staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        // ⭐ LAZY Matchpoint: crea al volo i soci "solo app" una volta, prima delle N date.
+        await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => staffCalSetStatus(msg, 'pending'));
         let ok = 0, fail = 0;
         for (let i = 0; i < dates.length; i++) {
           const singleParsed = { ...parsed, data: dates[i] };
@@ -40750,6 +41225,15 @@ Per confermare scrivi ELIMINA.`);
     } catch (err) {
       if (sendBtn) sendBtn.disabled = false;
       staffCalSetStatus('Errore: ' + (err.message || err), 'error');
+      return;
+    }
+    // ⭐ LAZY Matchpoint (opzione A): crea al volo i soci "solo app" PRIMA della card. Se
+    //    fallisce, blocca la prenotazione con messaggio chiaro (niente card-fantasma).
+    try {
+      await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => staffCalSetStatus(msg, 'pending'));
+    } catch (err) {
+      if (sendBtn) sendBtn.disabled = false;
+      staffCalSetStatus('⚠️ ' + ((err && err.message) ? err.message : String(err)), 'error');
       return;
     }
     // ── Commit OTTIMISTICO: mostra SUBITO la prenotazione come fatta; scrittura su Matchpoint
@@ -42089,6 +42573,16 @@ Per confermare scrivi ELIMINA.`);
     } catch (err) {
       svcAddMessage('system', '❌ Errore: ' + (err.message || err));
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+      return;
+    }
+    // ⭐ LAZY Matchpoint (opzione A): crea al volo i soci "solo app" PRIMA della card. Se
+    //    fallisce, blocca la prenotazione e riabilita la scheda per correggere e riprovare.
+    try {
+      await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => svcAddMessage('system', msg));
+    } catch (err) {
+      svcAddMessage('system', '⚠️ ' + ((err && err.message) ? err.message : String(err)));
+      try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea_socio_mp', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+      _svcUnlockCardFooter();
       return;
     }
     // ── Commit OTTIMISTICO: prenotazione mostrata SUBITO come fatta; la scheda si CHIUDE e si
@@ -46513,6 +47007,15 @@ Per confermare scrivi ELIMINA.`);
         const c = (typeof staffCalFindConflict === 'function') ? staffCalFindConflict(parsed) : null;
         if (c) { draft.__started = false; return _suggestFreeCourts(draft, c); }
       } catch (e) {}
+      // ⭐ LAZY Matchpoint (opzione A): crea al volo i soci "solo app" PRIMA della card. Se
+      //    fallisce, blocca e sblocca il draft così l'utente corregge e riprova.
+      try {
+        await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => { try { _say(msg); } catch (e) {} });
+      } catch (err) {
+        draft.__started = false;
+        try { _say('⚠️ ' + ((err && err.message) ? err.message : String(err))); } catch (e) {}
+        return;
+      }
       // Permessi + config: NON più bloccanti prima del "✅" (v5.883). Vengono caricati nel
       // BACKGROUND insieme alla scrittura Matchpoint, così la prenotazione appare SUBITO anche a
       // freddo (profilo non in cache). Se permesso/config falliscono → la card ottimistica viene
