@@ -10841,26 +10841,48 @@ Grazie.`
       if (r) { r.cand.gender = (value === 'M' || value === 'F') ? value : 'NA'; }
       // Aggiorna solo l'evidenza NA della riga toccata (niente re-render pesante di 1735 righe).
       try {
-        const tr = document.querySelector(`#rubricaImportPreview tr[data-ridx="${rowIdx}"]`);
+        const tr = document.querySelector(`#rubricaImportPanel tr[data-ridx="${rowIdx}"]`);
         if (tr) tr.style.background = (r && (r.cand.gender === 'NA')) ? 'rgba(240,180,20,.14)' : '';
       } catch (e) {}
     }
 
+    // La modale è una finestra a schermo intero (l'accordion è troppo stretto per 1735 righe).
+    function rubricaImportEnsureModal() {
+      let ov = document.getElementById('rubricaImportModal');
+      if (ov) return ov;
+      ov = document.createElement('div');
+      ov.id = 'rubricaImportModal';
+      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:10600;background:rgba(16,24,40,.5);padding:24px;box-sizing:border-box;align-items:center;justify-content:center;';
+      ov.innerHTML = '<div id="rubricaImportPanel" style="background:#fff;border-radius:14px;max-width:980px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden;"></div>';
+      document.body.appendChild(ov);
+      return ov;
+    }
+    function rubricaImportCloseModal() {
+      const ov = document.getElementById('rubricaImportModal');
+      if (ov) ov.style.display = 'none';
+    }
+
     function rubricaImportRenderPreview() {
-      const host = document.getElementById('rubricaImportPreview');
-      if (!host) return;
       const state = window.rubricaImportState;
       const s = state.summary;
-      if (!s) { host.innerHTML = ''; return; }
+      const inlineHost = document.getElementById('rubricaImportPreview');
+      if (!s) { if (inlineHost) inlineHost.innerHTML = ''; rubricaImportCloseModal(); return; }
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
       const news = state.rows.filter(r => r.status === 'new');
       const others = state.rows.filter(r => r.status !== 'new');
-      const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
-      let html = '';
-      if (!s.anyLabelCol) html += `<div style="margin:6px 0;padding:8px 10px;border-radius:6px;background:rgba(240,180,20,.14);font-size:13px;">⚠️ Nessuna colonna etichette trovata nel file: importo <strong>tutti</strong> i contatti (nessun filtro «padel»).</div>`;
-      html += `<div style="margin:8px 0;font-size:14px;">Su <strong>${s.total}</strong> righe: <strong style="color:#067647">${s.new} nuovi</strong> · ${s.existing} già in anagrafica · ${s.discard} scartati.</div>`;
-      // Righe nuove: sesso correggibile (NA evidenziato), livello fisso 0.5, email tecnica se manca.
-      html += `<div style="max-height:360px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;">`;
-      html += `<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="position:sticky;top:0;background:#f8fafc;">`
+      // Casi "azionabili" (numero condiviso) da evidenziare a parte: esistenti «numero già di …» + doppioni file.
+      const collisions = others.filter(r => /numero già di|stesso numero di/.test(r.reason || ''));
+      const ov = rubricaImportEnsureModal();
+      const panel = document.getElementById('rubricaImportPanel');
+      let head = `<div style="flex:0 0 auto;padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">`
+        + `<div style="font-size:17px;font-weight:800;color:#0f172a;">Anteprima import rubrica</div>`
+        + `<div style="font-size:13px;color:#475569;">Su <strong>${s.total}</strong> righe: <strong style="color:#067647">${s.new} nuovi</strong> · ${s.existing} già in anagrafica · ${s.discard} scartati</div>`
+        + `<button onclick="rubricaImportCloseModal()" title="Chiudi" style="margin-left:auto;border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#334155;">✕</button></div>`;
+      let body = `<div style="flex:1 1 auto;overflow:auto;padding:16px 20px;">`;
+      if (!s.anyLabelCol) body += `<div style="margin:0 0 12px;padding:8px 10px;border-radius:6px;background:rgba(240,180,20,.14);font-size:13px;">⚠️ Nessuna colonna etichette trovata nel file: importo <strong>tutti</strong> i contatti (nessun filtro «padel»).</div>`;
+      body += `<div style="font-size:13px;color:#64748b;margin-bottom:8px;">Righe <strong>NUOVE</strong> (da importare). Correggi il <strong>sesso</strong> dove serve (le righe <span style="background:rgba(240,180,20,.35);padding:0 4px;border-radius:3px;">gialle</span> sono da completare); livello fisso 0.5; «— email tecnica» = senza email vera.</div>`;
+      body += `<div style="max-height:52vh;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;">`;
+      body += `<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="position:sticky;top:0;background:#f8fafc;z-index:1;">`
         + `<th style="text-align:left;padding:6px 8px;">Nome</th><th style="text-align:left;padding:6px 8px;">Cognome</th>`
         + `<th style="text-align:left;padding:6px 8px;">Telefono</th><th style="text-align:left;padding:6px 8px;">Email</th>`
         + `<th style="text-align:left;padding:6px 8px;">Sesso</th><th style="text-align:left;padding:6px 8px;">Liv.</th><th style="text-align:left;padding:6px 8px;">Nota</th></tr></thead><tbody>`;
@@ -10868,30 +10890,42 @@ Grazie.`
         const c = r.cand;
         const emailLabel = c.hasRealEmail ? esc(c.email) : '<em style="color:#64748b">— email tecnica</em>';
         const naBg = (c.gender === 'NA') ? 'rgba(240,180,20,.14)' : '';
-        const sel = `<select onchange="rubricaImportSetGender(${r.idx}, this.value)" style="padding:2px 4px;">`
+        const sel = `<select onchange="rubricaImportSetGender(${r.idx}, this.value)" style="padding:2px 4px;min-width:130px;">`
           + `<option value="NA"${c.gender === 'NA' ? ' selected' : ''}>Da completare</option>`
           + `<option value="M"${c.gender === 'M' ? ' selected' : ''}>Uomo</option>`
           + `<option value="F"${c.gender === 'F' ? ' selected' : ''}>Donna</option></select>`;
-        html += `<tr data-ridx="${r.idx}" style="border-top:1px solid #eef2f7;background:${naBg}">`
+        body += `<tr data-ridx="${r.idx}" style="border-top:1px solid #eef2f7;background:${naBg}">`
           + `<td style="padding:5px 8px;">${esc(c.firstName)}</td><td style="padding:5px 8px;">${esc(c.surname)}</td>`
           + `<td style="padding:5px 8px;">${esc(c.phone)}</td><td style="padding:5px 8px;">${emailLabel}</td>`
           + `<td style="padding:5px 8px;">${sel}</td><td style="padding:5px 8px;">0.5</td>`
           + `<td style="padding:5px 8px;color:#b45309;">${esc(r.reason || '')}</td></tr>`;
       });
-      html += `</tbody></table></div>`;
-      // Dettaglio scartati/esistenti aggregato per motivo (solo conteggi, no tabella enorme).
+      body += `</tbody></table></div>`;
+      // Esclusi: conteggi per motivo + lista esplicita dei casi "numero condiviso" (da decidere a mano).
       if (others.length) {
         const byReason = {};
-        others.forEach(r => { const k = (r.status === 'existing' ? 'già in anagrafica' : (r.reason || 'scartato')); byReason[k] = (byReason[k] || 0) + 1; });
-        html += `<details style="margin-top:8px;font-size:13px;"><summary style="cursor:pointer;">Dettaglio esclusi (${others.length})</summary><ul style="margin:6px 0 0 18px;">`;
-        Object.keys(byReason).sort().forEach(k => { html += `<li>${esc(k)}: <strong>${byReason[k]}</strong></li>`; });
-        html += `</ul></details>`;
+        others.forEach(r => { const k = (r.status === 'existing' ? (/numero già di/.test(r.reason || '') ? 'numero già in anagrafica (nome diverso)' : 'già in anagrafica') : (r.reason || 'scartato')); byReason[k] = (byReason[k] || 0) + 1; });
+        body += `<details style="margin-top:14px;font-size:13px;" open><summary style="cursor:pointer;font-weight:700;">Esclusi (${others.length}) — motivi</summary><ul style="margin:8px 0 0 18px;">`;
+        Object.keys(byReason).sort().forEach(k => { body += `<li>${esc(k)}: <strong>${byReason[k]}</strong></li>`; });
+        body += `</ul>`;
+        if (collisions.length) {
+          body += `<div style="margin-top:10px;font-weight:700;color:#b45309;">⚠️ Numeri condivisi da rivedere a mano (${collisions.length}):</div><div style="max-height:22vh;overflow:auto;margin-top:4px;border:1px solid #f0d9b5;border-radius:6px;">`;
+          body += `<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>`;
+          collisions.forEach(r => { body += `<tr style="border-top:1px solid #f6e8cf;"><td style="padding:4px 8px;">${esc(r.cand.name)}</td><td style="padding:4px 8px;">${esc(r.cand.phone)}</td><td style="padding:4px 8px;color:#b45309;">${esc(r.reason)}</td></tr>`; });
+          body += `</tbody></table></div>`;
+        }
+        body += `</details>`;
       }
-      html += `<div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">`
+      body += `</div>`;
+      const foot = `<div style="flex:0 0 auto;padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">`
         + `<button id="rubricaImportApplyBtn" class="btn-primary" onclick="rubricaImportApply()"${s.new ? '' : ' disabled'}>Importa ${s.new} nuovi soci</button>`
-        + `<span id="rubricaImportProgress" style="font-size:13px;color:#475569;"></span></div>`;
-      html += `<div style="margin-top:6px;font-size:12px;color:#64748b;">I nuovi soci entrano in app e cloud. La scheda Matchpoint viene creata alla <strong>prima prenotazione</strong>.</div>`;
-      host.innerHTML = html;
+        + `<button class="btn-secondary" onclick="rubricaImportCloseModal()">Chiudi</button>`
+        + `<span id="rubricaImportProgress" style="font-size:13px;color:#475569;"></span>`
+        + `<span style="margin-left:auto;font-size:12px;color:#64748b;">Entrano in app+cloud. Scheda Matchpoint alla 1ª prenotazione.</span></div>`;
+      panel.innerHTML = head + body + foot;
+      ov.style.display = 'flex';
+      // Nel box dell'accordion lascio un richiamo per riaprire la finestra se la chiudi.
+      if (inlineHost) inlineHost.innerHTML = `<div style="font-size:13px;color:#475569;">Anteprima pronta: <strong style="color:#067647">${s.new} nuovi</strong>. <button class="btn-secondary" style="padding:4px 10px;" onclick="rubricaImportRenderPreview()">Riapri anteprima</button></div>`;
     }
 
     function rubricaImportPreviewFromFile() {
