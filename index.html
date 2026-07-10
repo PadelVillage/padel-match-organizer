@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.086';
+    const APP_VERSION = '6.087';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8433,6 +8433,15 @@ Grazie.`
           fields: PMO_COMPACT_BOOKING_FIELDS,
           rows: value.map(pmoCompactBookingItem)
         });
+      }
+      // I contatti rubrica Google (importedFrom='rubrica-google') NON si persistono in
+      // localStorage: sono cloud-backed e ri-idratati ad ogni sessione da
+      // pmoEnsureRubricaGoogleHydrated. Persisterli (~1700 record ≈ 1MB) satura la quota
+      // su browser già pieni (PROD+TEST condividono l'origine) e farebbe fallire QUALSIASI
+      // save('giocatori'). Choke-point unico: qui li togliamo prima di serializzare, così
+      // il localStorage resta leggero (solo Matchpoint) e nessun save lancia mai per colpa loro.
+      if (key === 'giocatori' && Array.isArray(value)) {
+        return stableDataString(value.filter(m => !(m && m.importedFrom === 'rubrica-google')));
       }
       return stableDataString(value);
     }
@@ -12419,7 +12428,10 @@ Grazie.`
           added++;
         });
         if (added > 0) {
-          save('giocatori', giocatori);
+          // I google NON vengono persistiti (pmoEncodeForStorage li filtra): questo save
+          // scrive solo l'eventuale delta MP ed è di fatto un no-op per il delta google.
+          // Comunque difensivo: un fallimento del save non deve impedire il re-render.
+          try { save('giocatori', giocatori); } catch (e) { console.warn('rubrica hydrate persist skip:', e); }
           try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
           try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
           console.log('PMO_RUBRICA_GOOGLE_HYDRATED', { added, total: giocatori.length });
