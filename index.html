@@ -12396,11 +12396,26 @@ Grazie.`
         _pmoRubricaGoogleHydrating = true;
         const members = await pmoLoadRubricaGoogleMembersFromCloud();
         _pmoRubricaGoogleHydratedAt = Date.now();
+        // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
+        // NON usiamo findMatchingMemberIndex perché matcha anche per SOLO nome → nasconderebbe
+        // una persona diversa che condivide il nome con un socio (falso merge). Con nome+telefono
+        // evitiamo insieme i duplicati e i falsi merge. Set per lookup O(1) su ~1700 record.
+        const seenKeys = new Set();
+        const seenIds = new Set();
+        giocatori.forEach(g => {
+          const k = pmoImportContactKey(g); if (k) seenKeys.add(k);
+          const id = (g && g.id != null) ? String(g.id) : ''; if (id) seenIds.add(id);
+        });
         let added = 0;
         (Array.isArray(members) ? members : []).forEach(m => {
           if (!m) return;
-          if (findMatchingMemberIndex(m) >= 0) return;   // già presente (telefono/email/nome)
+          const id = (m.id != null) ? String(m.id) : '';
+          if (id && seenIds.has(id)) return;             // stesso record già in locale
+          const k = pmoImportContactKey(m);
+          if (k && seenKeys.has(k)) return;              // stessa persona (nome+telefono) già presente
           giocatori.push({ ...m, id: m.id || makeId() });
+          if (k) seenKeys.add(k);
+          if (id) seenIds.add(id);
           added++;
         });
         if (added > 0) {
