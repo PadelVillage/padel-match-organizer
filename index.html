@@ -6485,7 +6485,7 @@ body.assessment-public-mode .assessment-public-only-card {
                         <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewSurname">Cognome<span class="required-star">*</span></label><input type="text" id="staffCalSociNewSurname" class="smc-soci-input" placeholder="Cognome"></div>
                       </div>
                       <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewPhone">Telefono<span class="required-star">*</span></label><input type="tel" id="staffCalSociNewPhone" class="smc-soci-input" placeholder="Telefono"></div>
-                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewEmail">Email<span class="required-star">*</span></label><input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="Email"></div>
+                      <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewEmail">Email <span style="color:#98a2b3;font-weight:400;font-size:11px">(facoltativa)</span></label><input type="email" id="staffCalSociNewEmail" class="smc-soci-input" placeholder="facoltativa"></div>
                       <div class="smc-soci-row">
                         <div class="smc-soci-field"><label class="smc-soci-label" for="staffCalSociNewGender">Sesso<span class="required-star">*</span></label>
                           <select id="staffCalSociNewGender" class="smc-soci-input">
@@ -6591,7 +6591,7 @@ body.assessment-public-mode .assessment-public-only-card {
             </div>
             <div class="row">
               <div class="col"><label>Telefono<span class="required-star">*</span></label><input id="phone" required /></div>
-              <div class="col"><label>Email<span class="required-star">*</span></label><input id="email" type="email" required /></div>
+              <div class="col"><label>Email <span style="color:#98a2b3;font-weight:400;font-size:12px">(facoltativa)</span></label><input id="email" type="email" placeholder="facoltativa" /></div>
             </div>
             <div class="row">
               <div class="col"><label>Giorni preferiti</label><input id="prefDays" placeholder="Lunedi, Mercoledi" /></div>
@@ -7856,7 +7856,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.083';
+    const APP_VERSION = '6.084';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13642,18 +13642,19 @@ Grazie.`
       if (!guestJolly && (!genderValue || genderValue === 'NA')) { showAlert('❌ Sesso obbligatorio', 'danger'); return null; }
       if (!guestJolly && !levelRaw) { showAlert('❌ Livello obbligatorio', 'danger'); return null; }
       const emailVal = cleanCell(document.getElementById('email').value);
-      // Email OBBLIGATORIA in creazione: il worker Matchpoint la richiede (oltre a
-      // telefono e sesso); senza, il socio si creava in locale ma la creazione su
-      // Matchpoint falliva. Meglio bloccare subito (eccezione: "Ospite").
-      if (!guestJolly && !emailVal) { showAlert('❌ Email obbligatoria', 'danger'); return null; }
+      // Email FACOLTATIVA (v6.084): se manca, si usa un'email tecnica <cifre>@nomail.padelvillage.club
+      // (sottodominio non instradabile) così il worker Matchpoint — che richiede un'email formalmente
+      // valida — passa senza modifiche. Ovunque conti un'email VERA (KPI/Autovalutazione/scheda) è
+      // trattata come assente da pmoIsSyntheticEmail. Stessa scelta dell'import rubrica. (Ospite: nessun dato.)
       const _vErr = pmoAnaFieldError(levelRaw, emailVal, phone);
       if (!guestJolly && _vErr) { showAlert(_vErr, 'danger'); return null; }
+      const emailFinal = (!guestJolly && !emailVal) ? pmoSyntheticEmailFor(phone) : emailVal;
       const candidate = {
         firstName,
         surname,
         name: fullName,
         phone,
-        email: cleanCell(document.getElementById('email').value)
+        email: emailFinal
       };
       const exists = findMatchingMemberIndex(candidate) >= 0;
       if (exists) { showAlert('❌ Socio già esistente: telefono, email o nome già presenti.', 'danger'); return null; }
@@ -48647,7 +48648,12 @@ Per confermare scrivi ELIMINA.`);
         const fullName = compactSpaces((firstName + ' ' + surname).trim());
         const guest = (typeof isGuestJollyName === 'function') && isGuestJollyName(fullName);
         if (!firstName || (!surname && !guest)) { _afterAnaCreate = null; return _say('❌ Nome e cognome obbligatori. Non ho creato nulla.'); }
-        const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: draft.email || '' };
+        // Email FACOLTATIVA (parità col form manuale, v6.084): se manca, email tecnica da telefono
+        // così la creazione su Matchpoint passa; trattata come assente ovunque (pmoIsSyntheticEmail).
+        const _emailFinal = (!guest && !(draft.email || '') && typeof pmoSyntheticEmailFor === 'function')
+          ? pmoSyntheticEmailFor(draft.phone || '')
+          : (draft.email || '');
+        const candidate = { firstName: firstName, surname: surname, name: fullName, phone: draft.phone || '', email: _emailFinal };
         const _dupIdx = (typeof findMatchingMemberIndex === 'function') ? findMatchingMemberIndex(candidate) : -1;
         if (_dupIdx >= 0) {
           // Già in anagrafica (per nome/telefono/email): non ricreare. Se eravamo dentro un'aggiunta
@@ -48662,7 +48668,7 @@ Per confermare scrivi ELIMINA.`);
         const now = new Date().toISOString();
         const newMember = ensureMemberId({
           id: makeId(), memberId: '', firstName: firstName, surname: surname, name: fullName,
-          phone: draft.phone || '', email: draft.email || '',
+          phone: draft.phone || '', email: _emailFinal,
           level: guest ? '' : parseLevel(draft.level, 3),
           gender: guest ? 'NA' : (draft.gender || 'NA'),
           guestJolly: guest, active: true, prefDays: [], prefHours: [],
