@@ -6539,6 +6539,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="players-head-actions">
             <button class="btn-secondary" onclick="setActionAnchor(this); pmoWalletSyncAll(this)" title="Legge da Matchpoint i saldi borsellino di tutti i soci (report 'Clienti con credito residuo')">↻ Aggiorna saldi borsellino</button>
             <button class="btn-success" onclick="setActionAnchor(this); openMemberContactsExportPanel()">Esporta rubrica soci</button>
+            <button class="btn-secondary" onclick="setActionAnchor(this); pmoNameFixOpen()" title="Trova i soci con nome e cognome probabilmente invertiti (cognome = un nome noto) e scambiali">🔁 Correggi nome↔cognome</button>
             <button class="btn-primary" onclick="setActionAnchor(this); showAddMember()">+ Nuovo socio</button>
           </div>
         </div>
@@ -10993,6 +10994,121 @@ Grazie.`
       const input = document.getElementById('rubricaImportFile');
       if (input) input.value = '';
       rubricaImportRenderPreview();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CORREGGI NOME↔COGNOME (Gestione Soci) — soci importati dalla rubrica Google
+    // ─────────────────────────────────────────────────────────────────────────
+    // I Contatti Google hanno spesso nome/cognome invertiti o un nome nel campo cognome.
+    // Sospetto = il COGNOME normalizzato è un nome noto (dizionari maleNames/femaleNames);
+    // "probabile" (forte) se ANCHE il nome non è un nome noto → verosimile inversione.
+    // Ambito: solo i soci con importedFrom='rubrica-google' (non tocca l'anagrafica curata).
+    // ══════════════════════════════════════════════════════════════════════════
+    function pmoTokenIsKnownFirstName(token) {
+      const n = normalizeKey(token);
+      return !!n && (maleNames.includes(n) || femaleNames.includes(n));
+    }
+    function pmoNameFixSuspects() {
+      return (Array.isArray(giocatori) ? giocatori : [])
+        .filter(g => g && g.active !== false && !g.guestJolly && g.importedFrom === 'rubrica-google')
+        .map(g => pmoTokenIsKnownFirstName(g.surname) ? { g, strong: !pmoTokenIsKnownFirstName(g.firstName) } : null)
+        .filter(Boolean)
+        .sort((a, b) => (a.strong === b.strong)
+          ? normalizeText(playerFullName(a.g)).localeCompare(normalizeText(playerFullName(b.g)), 'it')
+          : (a.strong ? -1 : 1));
+    }
+    function pmoNameFixEnsureModal() {
+      let ov = document.getElementById('pmoNameFixModal');
+      if (ov) return ov;
+      ov = document.createElement('div');
+      ov.id = 'pmoNameFixModal';
+      ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:10600;background:rgba(16,24,40,.5);padding:24px;box-sizing:border-box;align-items:center;justify-content:center;';
+      ov.innerHTML = '<div id="pmoNameFixPanel" style="background:#fff;border-radius:14px;max-width:680px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden;"></div>';
+      document.body.appendChild(ov);
+      return ov;
+    }
+    function pmoNameFixClose() { const ov = document.getElementById('pmoNameFixModal'); if (ov) ov.style.display = 'none'; }
+    function pmoNameFixOpen() { pmoNameFixRender(); }
+    function pmoNameFixRender() {
+      const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
+      const list = pmoNameFixSuspects();
+      const strongN = list.filter(s => s.strong).length;
+      const ov = pmoNameFixEnsureModal();
+      const panel = document.getElementById('pmoNameFixPanel');
+      let head = `<div style="flex:0 0 auto;padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">`
+        + `<div style="font-size:17px;font-weight:800;color:#0f172a;">Correggi nome↔cognome</div>`
+        + `<div style="font-size:13px;color:#475569;">${list.length} sospetti (${strongN} probabili) tra i soci da rubrica</div>`
+        + `<button onclick="pmoNameFixClose()" title="Chiudi" style="margin-left:auto;border:none;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#334155;">✕</button></div>`;
+      let body = `<div style="flex:1 1 auto;overflow:auto;padding:16px 20px;">`;
+      if (!list.length) {
+        body += `<div style="font-size:14px;color:#475569;">Nessun socio da rubrica con il cognome uguale a un nome noto. 👍</div>`;
+      } else {
+        body += `<div style="font-size:13px;color:#64748b;margin-bottom:10px;">«Probabile» = anche il nome non è un nome noto (inversione verosimile). «Possibile» = il cognome è anche un nome (potrebbe essere corretto). Controlla e scambia solo dove serve.</div>`;
+        body += `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f8fafc;">`
+          + `<th style="text-align:left;padding:6px 8px;">Nome</th><th style="text-align:left;padding:6px 8px;">Cognome</th><th style="text-align:left;padding:6px 8px;">Telefono</th><th style="padding:6px 8px;"></th></tr></thead><tbody>`;
+        list.forEach(s => {
+          const g = s.g;
+          const badge = s.strong
+            ? `<span style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:6px;">probabile</span>`
+            : `<span style="background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:6px;">possibile</span>`;
+          body += `<tr style="border-top:1px solid #eef2f7;">`
+            + `<td style="padding:5px 8px;">${badge}${esc(g.firstName)}</td><td style="padding:5px 8px;">${esc(g.surname)}</td>`
+            + `<td style="padding:5px 8px;">${esc(g.phone || '')}</td>`
+            + `<td style="padding:5px 8px;text-align:right;"><button class="btn-secondary" style="padding:3px 10px;" onclick="pmoNameFixSwap('${esc(g.id)}')" title="Diventa: ${esc(g.surname)} ${esc(g.firstName)}">⇄ Scambia</button></td></tr>`;
+        });
+        body += `</tbody></table></div>`;
+      }
+      body += `</div>`;
+      const foot = `<div style="flex:0 0 auto;padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">`
+        + `<button class="btn-primary" onclick="pmoNameFixSwapAllStrong()"${strongN ? '' : ' disabled'}>⇄ Scambia tutti i probabili (${strongN})</button>`
+        + `<button class="btn-secondary" onclick="pmoNameFixClose()">Chiudi</button>`
+        + `<span id="pmoNameFixProgress" style="font-size:13px;color:#475569;"></span></div>`;
+      panel.innerHTML = head + body + foot;
+      ov.style.display = 'flex';
+    }
+    // Scambia nome↔cognome di UN socio (aggiorna name, ri-deduce il sesso se era NA, salva+cloud).
+    function pmoNameFixApplySwap(g) {
+      const f = g.firstName || '';
+      g.firstName = g.surname || '';
+      g.surname = f;
+      g.name = compactSpaces(`${g.firstName} ${g.surname}`);
+      if (!g.gender || g.gender === 'NA') { const d = detectGenderByName(g.firstName); if (d !== 'NA') g.gender = d; }
+      g.updatedAt = new Date().toISOString();
+    }
+    function pmoNameFixSwap(memberId) {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('correggere un socio')) return;
+      const g = (giocatori || []).find(x => String(x.id) === String(memberId));
+      if (!g) return;
+      pmoNameFixApplySwap(g);
+      save('giocatori', giocatori);
+      pmoQueueImmediateMemberCloudSync(g, 'correzione nome/cognome socio');
+      try { displayMembers(); updateStats(); } catch (e) {}
+      pmoNameFixRender();
+    }
+    async function pmoNameFixSwapAllStrong() {
+      if (typeof pmoBlockWriteIfReadonly === 'function' && pmoBlockWriteIfReadonly('correggere i soci')) return;
+      const strong = pmoNameFixSuspects().filter(s => s.strong).map(s => s.g);
+      if (!strong.length) return;
+      if (!window.confirm(`Scambio nome↔cognome per ${strong.length} soci «probabili». Procedo?`)) return;
+      const prog = document.getElementById('pmoNameFixProgress');
+      let staff;
+      try { staff = await pmoRequireStaffPermission('cloud_sync', 'correggere i soci'); }
+      catch (e) { showAlert('❌ ' + ((e && e.message) || e), 'danger'); return; }
+      const now = new Date().toISOString();
+      const records = [];
+      strong.forEach(g => { pmoNameFixApplySwap(g); g.updatedAt = now; const rec = pmoBuildMemberCloudRecord(g, { now }); if (rec) records.push(rec); });
+      save('giocatori', giocatori);
+      try { displayMembers(); updateStats(); } catch (e) {}
+      const CHUNK = 200; let ok = 0, fail = 0;
+      for (let i = 0; i < records.length; i += CHUNK) {
+        const slice = records.slice(i, i + CHUNK);
+        if (prog) prog.textContent = `Salvo su cloud… ${Math.min(i + slice.length, records.length)}/${records.length}`;
+        try { const res = await pmoCloudRpc('pmo_upsert_records_admin', { p_records: slice }, { accessToken: staff.accessToken }); if (res && res.ok === true) ok += slice.length; else fail += slice.length; }
+        catch (e) { fail += slice.length; console.warn('NAMEFIX_CHUNK_ERR', e); }
+      }
+      if (prog) prog.textContent = '';
+      showAlert(fail === 0 ? `✅ Scambiati ${ok} soci.` : `⚠️ Scambiati in app ${records.length}; cloud: ${ok} ok, ${fail} da risincronizzare.`, fail === 0 ? 'success' : 'warning');
+      pmoNameFixRender();
     }
 
     function migrateMemberIds() {
