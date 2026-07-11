@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import { collectTabelloneOnlyOccupancies } from './tabellone-rescue.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -591,6 +592,17 @@ async function enrichBookingsWithTabellone(
     console.warn(JSON.stringify({ event: 'manutenzione_occupancy_failed', error: String(err) }));
   }
   console.log(JSON.stringify({ event: 'manutenzione_occupancy_added', added }));
+
+  // LEZIONI SENZA GIOCATORI (fix "campo Libero mentre su Matchpoint c'è la lezione"): gli eventi
+  // del tabellone privi di riga nell'export (tipicamente lezioni senza giocatori) diventano
+  // occupancy, così lo slot risulta occupato in app. Logica + sicurezze anti-fantasma nel modulo
+  // puro tabellone-rescue.ts (testato). Marcate `_tabelloneOnly:true` → come la manutenzione:
+  // aggiunte SOLO su full tick e il reconcile NON le tombstona sui light tick (vedi handler),
+  // così non lampeggiano.
+  const exportNumeri = new Set(bookings.map((b) => clean(b.numero || '')).filter(Boolean));
+  const rescuedLezioni = collectTabelloneOnlyOccupancies(tabelloneData, matchedKeys, exportNumeri);
+  for (const r of rescuedLezioni) bookings.push(r as unknown as ParsedBooking);
+  console.log(JSON.stringify({ event: 'lezione_senza_giocatori_added', added: rescuedLezioni.length }));
 }
 
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
@@ -1103,7 +1115,7 @@ Deno.serve(async (req) => {
       // tombstonate qui (le possiede il tick "full" periodico): senza questo skip
       // ri-lampeggerebbero ad ogni sync (regressione del fix PR#425). I booking REALI
       // arrivano sempre dall'export Excel completo → la loro riconciliazione è invariata.
-      if (!isFullTick && type === 'booking_occupancy' && clean((record?.payload as JsonMap)?.tipo as string) === 'manutenzione') continue;
+      if (!isFullTick && type === 'booking_occupancy' && (clean((record?.payload as JsonMap)?.tipo as string) === 'manutenzione' || (record?.payload as JsonMap)?._tabelloneOnly === true)) continue;
       if (type === 'booking') deletedBookings += 1;
       if (type === 'booking_occupancy') deletedOccupancies += 1;
       records.push({
