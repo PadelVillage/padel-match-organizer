@@ -201,6 +201,9 @@ function normalizePhone(value: unknown) {
   let digits = raw.replace(/\D/g, '');
   if (!digits) return '';
   if (digits.startsWith('00')) digits = digits.slice(2);
+  // v6.090: collassa prefisso 39 duplicato (dato sporco Matchpoint "+39+39..." / "+3939...").
+  // Rende canonici i soci MP double-39 → agganciano per telefono il gemello Google e si fondono.
+  if (digits.length === 14 && digits.startsWith('3939') && /^393\d{9}$/.test(digits.slice(2))) digits = digits.slice(2);
   if (digits.length === 10 && digits.startsWith('3')) digits = `39${digits}`;
   else if (digits.startsWith('0') && digits.length >= 7 && digits.length <= 11) digits = `39${digits}`;
   else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11) digits = `39${digits}`;
@@ -1931,6 +1934,21 @@ Deno.serve(async (req) => {
       for (const candidate of candidates) {
         const candidateKey = clean(candidate?.local_key || '');
         if (!candidateKey || candidateKey === localKey) continue;
+        // v6.090: i record della rubrica Google (numero WhatsApp curato) non vanno MAI tombstonati
+        // come duplicato quando la chiave differisce dal sopravvissuto. La chiave differisce solo se
+        // il numero è diverso: è il numero corretto di un socio il cui telefono in Matchpoint è
+        // rotto/troncato. Cancellarlo perde il dato e innesca il churn con google-contacts-import
+        // (ricrea → clients-sync ricancella → «new:N» ogni notte). Va a revisione manuale, non delete.
+        if (clean(candidate?.payload?.importedFrom) === 'rubrica-google') {
+          legacyDuplicateReview += 1;
+          if (legacyDuplicateReviewSample.length < 50) {
+            legacyDuplicateReviewSample.push({
+              firstName: clean(candidate?.payload?.firstName || ''),
+              surname: clean(candidate?.payload?.surname || ''),
+            });
+          }
+          continue;
+        }
         if (shouldDeleteDuplicateMemberRecord(candidate)) {
           duplicateDeletesByKey.set(candidateKey, buildDeletedMemberRecord(candidate, importedAt, 'matchpoint_snapshot_duplicate'));
           continue;
