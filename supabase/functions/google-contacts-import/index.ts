@@ -133,6 +133,14 @@ function getWhatsAppPhoneInfo(value: unknown) {
 
   if (digits.startsWith('00')) { digits = digits.slice(2); notes.push('Rimosso prefisso internazionale 00.'); }
 
+  // v6.090: collassa un prefisso paese 39 duplicato (dato sporco Matchpoint "+39+39..." / "+3939...").
+  // 14 cifre che iniziano con 3939 e che, tolto un "39", danno un mobile IT valido → togli il 39 di troppo.
+  // I mobili 39x legittimi (12 cifre) restano intatti.
+  if (digits.length === 14 && digits.startsWith('3939') && /^393\d{9}$/.test(digits.slice(2))) {
+    digits = digits.slice(2);
+    notes.push('Rimosso prefisso 39 duplicato.');
+  }
+
   if (digits.length === 10 && digits.startsWith('3')) {
     notes.push('Numero mobile italiano locale: aggiunto prefisso 39.');
     digits = '39' + digits;
