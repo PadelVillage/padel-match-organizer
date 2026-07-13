@@ -446,6 +446,23 @@ function buildMemberRecord(cand: Candidate, gender: 'M' | 'F' | 'NA', now: strin
   return { record: { record_type: 'member', local_key: localKey, payload, deleted: false }, payload };
 }
 
+// ── Marker di stato per la tabella "Stato routine automatiche" dell'app ───────
+// Stessa convenzione di matchpoint-bookings-sync: record_type 'matchpoint_data',
+// local_key '<kind>_auto_import_last'. L'app lo legge da pmo_cloud_records e
+// mostra data/esito/conteggi della notte su OGNI dispositivo — così un cron
+// andato male (es. token scaduto) diventa VISIBILE invece che silenzioso.
+const CONTACTS_MARKER_KEY = 'matchpoint_contacts_auto_import_last';
+async function writeContactsMarker(admin: ReturnType<typeof createClient>, payload: JsonMap) {
+  try {
+    await admin.from('pmo_cloud_records').upsert(
+      { record_type: 'matchpoint_data', local_key: CONTACTS_MARKER_KEY, payload, deleted: false },
+      { onConflict: 'record_type,local_key' },
+    );
+  } catch (e) {
+    console.log(JSON.stringify({ event: 'google_contacts_marker_fail', message: errorText(e) }));
+  }
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -476,18 +493,26 @@ Deno.serve(async (req: Request) => {
 
   const strict = actor.isRoutine;  // cron: sesso NA quando incerto; staff: euristica -a/-o (l'umano corregge)
 
+  // Marker di fallimento — SOLO cron: rende visibile in app una notte andata male
+  // (token/People API/lettura anagrafica). Le failure staff restano live (toast).
+  const markFailure = async (code: string, e: unknown) => {
+    if (!actor.isRoutine) return;
+    const at = new Date().toISOString();
+    await writeContactsMarker(admin, { source: 'google_contacts_auto', importedAt: at, createdAt: at, ok: false, error: `${code}: ${errorText(e)}`, rows: {} });
+  };
+
   // 1) Token contatti + fetch People API + filtro padel.
   let accessToken: string;
   try { accessToken = await getContactsAccessToken(); }
-  catch (e) { return err(502, 'CONTACTS_TOKEN_FAILED', errorText(e)); }
+  catch (e) { await markFailure('CONTACTS_TOKEN_FAILED', e); return err(502, 'CONTACTS_TOKEN_FAILED', errorText(e)); }
   let fetched: { padel: JsonMap[]; scanned: number };
   try { fetched = await fetchPadelConnections(accessToken); }
-  catch (e) { return err(502, 'CONTACTS_FETCH_FAILED', errorText(e)); }
+  catch (e) { await markFailure('CONTACTS_FETCH_FAILED', e); return err(502, 'CONTACTS_FETCH_FAILED', errorText(e)); }
 
   // 2) Dedup vs anagrafica + analisi.
   let existingPhones: Set<string>;
   try { existingPhones = await loadExistingPhoneDigits(admin); }
-  catch (e) { return err(500, 'MEMBERS_READ_FAILED', errorText(e)); }
+  catch (e) { await markFailure('MEMBERS_READ_FAILED', e); return err(500, 'MEMBERS_READ_FAILED', errorText(e)); }
   const { rows, summary } = analyzeConnections(fetched.padel, existingPhones, strict);
 
   if (mode === 'preview') {
@@ -527,6 +552,21 @@ Deno.serve(async (req: Request) => {
     emailResult = await sendSummaryEmail(env, members);
     console.log(JSON.stringify({ event: 'google_contacts_import_cron', env, scanned: fetched.scanned, padel: fetched.padel.length, written, failed, email: emailResult }));
   }
+
+  // 5) Marker di stato (cron + manuale): la tabella "Stato routine automatiche"
+  //    dell'app legge questo record e mostra data/esito/conteggi su ogni dispositivo.
+  await writeContactsMarker(admin, {
+    source: actor.isRoutine ? 'google_contacts_auto' : 'google_contacts_manual',
+    importedAt: now, createdAt: now, ok: true,
+    rows: {
+      scanned: fetched.scanned,
+      padel: summary.total,
+      new: summary.new,
+      existing: summary.existing,
+      discard: summary.discard,
+      written, failed,
+    },
+  });
 
   return ok({ mode: 'apply', env, summary, written, failed, members, ...(emailResult ? { email: emailResult } : {}) });
 });
