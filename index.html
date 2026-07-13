@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.089';
+    const APP_VERSION = '6.090';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10547,6 +10547,14 @@ Grazie.`
       if (digits.startsWith('00')) {
         digits = digits.slice(2);
         notes.push('Rimosso prefisso internazionale 00.');
+      }
+
+      // v6.090: collassa un prefisso paese 39 duplicato (dato sporco Matchpoint tipo
+      // "+39+39..." / "+3939..."): 14 cifre che iniziano con 3939 e che, tolto un "39",
+      // danno un mobile IT valido → togli il 39 di troppo. I mobili 39x legittimi (12 cifre) restano intatti.
+      if (digits.length === 14 && digits.startsWith('3939') && /^393\d{9}$/.test(digits.slice(2))) {
+        digits = digits.slice(2);
+        notes.push('Rimosso prefisso 39 duplicato.');
       }
 
       if (digits.length === 10 && digits.startsWith('3')) {
