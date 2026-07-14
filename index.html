@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.090';
+    const APP_VERSION = '6.092';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39983,6 +39983,14 @@ Per confermare scrivi ELIMINA.`);
     if (!st || st.busy) return;
     const raw = (prompt('Nome e cognome del giocatore da aggiungere:') || '').trim();
     if (!raw) return;
+    // "Ospite" (jolly Matchpoint 000001) è SEMPRE valido: aggiungilo diretto, senza passare per
+    // l'anagrafica — evita sia il blocco nome-sconosciuto sotto, sia un fuzzy-match verso un socio a caso.
+    if (typeof isGuestJollyName === 'function' && isGuestJollyName(raw)) {
+      st.add.push((typeof _ospitePlayer === 'function') ? _ospitePlayer() : { nome: 'Ospite', codice: '', codiceCliente: '000001' });
+      staffCalRenderPlayersEditor();
+      staffCalBringEditorToTop();
+      return;
+    }
     const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
     const addResolved = function(member) {
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
@@ -39990,8 +39998,12 @@ Per confermare scrivi ELIMINA.`);
       staffCalBringEditorToTop();
     };
     if (sugg.length === 0) {
-      const ok = confirm('"' + raw + '" non risulta tra i soci.\nAggiungerlo comunque come testo libero (senza codice)?');
-      if (ok) { st.add.push({ nome: raw, codice: '' }); staffCalRenderPlayersEditor(); staffCalBringEditorToTop(); }
+      // Regola (parità con l'assistente + no-nuovi-nomi su Matchpoint): un nome NON in anagrafica
+      // NON va aggiunto grezzo. Il worker lo rifiuterebbe HARD (PLAYER_ID_NOT_LOCKED: autocomplete
+      // non agganciato) e la prenotazione verrebbe revertita. Blocca e invita a crearlo prima come
+      // socio; per un occasionale c'è "Ospite" (che risolve al jolly 000001, quindi NON finisce qui).
+      const _safe = (typeof escapeHtml === 'function') ? escapeHtml(raw) : raw;
+      svcAddMessage('system', '⛔ <strong>«' + _safe + '» non è tra i soci</strong>: non posso aggiungerlo così — Matchpoint rifiuterebbe un nome senza scheda. Crealo prima in <strong>Anagrafica</strong> e poi riaggiungilo; se è un occasionale, aggiungi <strong>Ospite</strong>.', 'error');
       return;
     }
     if (sugg.length === 1 || (sugg[0].distance === 0 && sugg[1] && sugg[1].distance > 0)) {
@@ -40228,6 +40240,25 @@ Per confermare scrivi ELIMINA.`);
         // pull e reso disponibile l'idReserva: ripristino la protezione e ri-cerco l'id adesso.
         try { _staffCalPendingEdits.add(pendKey); } catch (e) {}
         if (!payload.idReserva) { try { const _idLate = _staffCalLookupIdReserva(op.origIso, op.origCampo, op.origOra); if (_idLate) payload.idReserva = _idLate; } catch (e) {} }
+        // ⭐ LAZY Matchpoint anche in EDIT (parità con la create): se sto AGGIUNGENDO soci "solo app"
+        // (in anagrafica ma senza codice Matchpoint, es. contatti rubrica Google), creali al volo su
+        // Matchpoint ADESSO — altrimenti l'aggiunta a una prenotazione ESISTENTE fallirebbe HARD lato
+        // worker (PLAYER_ID_NOT_LOCKED, autocomplete vuoto). La guardia muta in place codice/codiceCliente
+        // di addArr (= payload.players.add), così il payload porta i codici freschi. In TEST è inerte
+        // (PMO_IS_TEST_ENV) e per i soci con codice numerico è un no-op istantaneo (nessun worker).
+        if (addArr && addArr.length) {
+          try {
+            await pmoEnsureBookingPlayersOnMatchpoint({ tipo: 'partita', giocatori: addArr }, function (m) { _setEditSyncNote(m); });
+          } catch (eLazy) {
+            _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
+            _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
+            svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(eLazy) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+            try { _staffCalPendingEdits.delete(pendKey); } catch (e) {}
+            _aiExecSettle(false, (eLazy && eLazy.message) ? eLazy.message : String(eLazy));
+            renderStaffCalendar();
+            return;
+          }
+        }
         _setEditSyncNote('↻ La sto scrivendo su Matchpoint…');
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
@@ -42785,7 +42816,7 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
     if (tipoEngine !== 'manutenzione' && !(giocatori || []).some(function (g) { return g && g.nome; })) {
-      svcAddMessage('system', '👥 Aggiungi un <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
+      svcAddMessage('system', '👥 Aggiungi il <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'validation_error', { via: 'slot calendario', reason: 'manca giocatore', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
       _svcUnlockCardFooter();
       return;
@@ -47184,7 +47215,7 @@ Per confermare scrivi ELIMINA.`);
       }
       // "salva/conferma" esplicito ma senza nulla da salvare → spiega (non cade nel messaggio d'aiuto).
       if (/^\s*(salv\w*|conferm\w*)\s*$/.test(n)) {
-        return _say('Non c’è nessuna modifica da salvare in questa scheda. Aggiungi un giocatore, oppure scrivi “<strong>chiudi</strong>”.');
+        return _say('Non c’è nessuna modifica da salvare in questa scheda. Aggiungi il giocatore, oppure scrivi “<strong>chiudi</strong>”.');
       }
       return null;
     }
