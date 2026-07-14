@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.091';
+    const APP_VERSION = '6.092';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43058,7 +43058,7 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
     if (tipoEngine !== 'manutenzione' && !(giocatori || []).some(function (g) { return g && g.nome; })) {
-      svcAddMessage('system', '👥 Aggiungi un <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
+      svcAddMessage('system', '👥 Aggiungi il <strong>giocatore</strong> (o scrivi <em>Ospite</em>) prima di confermare.');
       try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'validation_error', { via: 'slot calendario', reason: 'manca giocatore', campo: campo, data: dateISO, ora: ora }); } catch (e) {}
       _svcUnlockCardFooter();
       return;
@@ -47461,7 +47461,7 @@ Per confermare scrivi ELIMINA.`);
       }
       // "salva/conferma" esplicito ma senza nulla da salvare → spiega (non cade nel messaggio d'aiuto).
       if (/^\s*(salv\w*|conferm\w*)\s*$/.test(n)) {
-        return _say('Non c’è nessuna modifica da salvare in questa scheda. Aggiungi un giocatore, oppure scrivi “<strong>chiudi</strong>”.');
+        return _say('Non c’è nessuna modifica da salvare in questa scheda. Aggiungi il giocatore, oppure scrivi “<strong>chiudi</strong>”.');
       }
       return null;
     }
