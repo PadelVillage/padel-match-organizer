@@ -2870,7 +2870,8 @@
     .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
     .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
     .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
-    .svc-pl-ic-due { font-size:16px; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pl-ic-gift { font-size:16px; color:#c98a04; flex:0 0 auto; }
+    .svc-pl-ic-due { font-size:16px; color:#dc2626; flex:0 0 auto; }
     .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.8rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
     .svc-pl-paid { flex:0 0 auto; font-size:.76rem; font-weight:700; color:var(--green); white-space:nowrap; }
     .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:2px; border:1px solid var(--accent); border-radius:8px; padding:0 6px; height:30px; background:var(--surface); }
@@ -2886,6 +2887,7 @@
     .svc-pl-paidmeth { display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; color:var(--green); background:rgba(22,163,74,.08); border:1px solid rgba(22,163,74,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
     .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
     .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
+    .svc-pl-paidmeth-gift { color:#92600a; background:#fff7e6; border-color:#f5d98a; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7877,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.096';
+    const APP_VERSION = '6.099';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -22607,21 +22609,27 @@ Grazie!`
       if (st.loading) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">Carico gli incassi…</div>`; return; }
       if (st.rows == null) { root.innerHTML = controls + `<div class="section" style="text-align:center;padding:30px;color:#888;">—</div>`; _incassiReload(); return; }
 
-      // somma i pagamenti nell'intervallo [from,to]; raggruppa per GIORNO e, dentro, per GIOCATORE
+      // somma i pagamenti nell'intervallo [from,to]; raggruppa per GIORNO e, dentro, per GIOCATORE.
+      // Gli OMAGGI (method 'gift', quota offerta a 0 €) contano a parte: compaiono come riga a
+      // 0,00 € e nel contatore «omaggi», ma NON gonfiano il numero di pagamenti né i totali.
       const byDay = new Map();
-      const sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 };
+      const sel = { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, omaggi: 0 };
       for (const p of st.rows) {
         if (p.voided || p.status === 'void') continue;
         const data = p.data || (p.recorded_at ? String(p.recorded_at).slice(0, 10) : '');
         if (!data || data < st.from || data > st.to) continue;
+        const isGiftRec = /gift|omagg|offert/i.test(String(p.method || '')) || p.source === 'pmo_gift';
         const bucket = _incassiMethodBucket(p.method); const cents = Number(p.amount_cents) || 0;
-        if (!byDay.has(data)) byDay.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, players: new Map() });
-        const d = byDay.get(data); d[bucket] += cents; d.totale += cents; d.n += 1;
+        if (!byDay.has(data)) byDay.set(data, { contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, omaggi: 0, players: new Map() });
+        const d = byDay.get(data);
         const pid = (p.id_cliente != null ? String(p.id_cliente) : '').trim();
         const pname = (p.player_name || '').trim();
         const pkey = pid || ('n:' + pname.toLowerCase()) || 'na';
-        if (!d.players.has(pkey)) d.players.set(pkey, { id: pid, name: pname, contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0 });
-        const pl = d.players.get(pkey); pl[bucket] += cents; pl.totale += cents; pl.n += 1;
+        if (!d.players.has(pkey)) d.players.set(pkey, { id: pid, name: pname, contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, omaggi: 0 });
+        const pl = d.players.get(pkey);
+        if (isGiftRec) { d.omaggi += 1; pl.omaggi += 1; sel.omaggi += 1; continue; }
+        d[bucket] += cents; d.totale += cents; d.n += 1;
+        pl[bucket] += cents; pl.totale += cents; pl.n += 1;
         sel[bucket] += cents; sel.totale += cents; sel.n += 1;
       }
       const selKey = isToday ? `Oggi · ${st.from}` : `${st.from} → ${st.to}`;
@@ -22637,7 +22645,7 @@ Grazie!`
           <div style="flex:1;min-width:130px;background:#f0f7ff;border:1px solid #cfe3fb;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#5a7;font-weight:700;">TOTALE</div>
             <div style="font-size:22px;font-weight:900;color:#0b5;">${_incassiEuro(sel.totale)}</div>
-            <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'} · ${selKey}</div></div>
+            <div style="font-size:11px;color:#888;">${sel.n} pagament${sel.n === 1 ? 'o' : 'i'}${sel.omaggi ? ` · 🎁 ${sel.omaggi} omagg${sel.omaggi === 1 ? 'io' : 'i'}` : ''} · ${selKey}</div></div>
           <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:12px;">
             <div style="font-size:12px;color:#666;font-weight:700;">💵 Cash</div>
             <div style="font-size:18px;font-weight:800;">${_incassiEuro(sel.contanti)}</div>${_pctLine(sel.contanti)}</div>
@@ -22663,7 +22671,7 @@ Grazie!`
           const d = byDay.get(k);
           const isSel = k === today;
           bodyRows += `<tr style="background:#eaf2fb;border-top:2px solid #cfe0f5;">
-            <td colspan="2" style="font-weight:800;">📅 ${k}${isSel ? ' · Oggi' : ''} <span style="font-weight:500;color:#7a8;">· ${d.n} pagament${d.n === 1 ? 'o' : 'i'}</span></td>
+            <td colspan="2" style="font-weight:800;">📅 ${k}${isSel ? ' · Oggi' : ''} <span style="font-weight:500;color:#7a8;">· ${d.n} pagament${d.n === 1 ? 'o' : 'i'}${d.omaggi ? ` · 🎁 ${d.omaggi} omagg${d.omaggi === 1 ? 'io' : 'i'}` : ''}</span></td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.contanti)}</td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.carta)}</td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.borsellino)}</td>
@@ -22672,7 +22680,7 @@ Grazie!`
           for (const pl of players) {
             bodyRows += `<tr style="border-bottom:1px solid #f0f0f0;">
               <td style="color:#999;white-space:nowrap;">${pl.id ? esc(pl.id) : '—'}</td>
-              <td>${esc(pl.name || '—')}</td>
+              <td>${esc(pl.name || '—')}${pl.omaggi ? ` <span title="Quota offerta (riscossa a 0 € su Matchpoint)">🎁</span>` : ''}</td>
               <td style="text-align:right;">${_incassiEuro(pl.contanti)}</td>
               <td style="text-align:right;">${_incassiEuro(pl.carta)}</td>
               <td style="text-align:right;">${_incassiEuro(pl.borsellino)}</td>
@@ -37984,11 +37992,12 @@ Per confermare scrivi ELIMINA.`);
   }
   // Bucket canonico ← `_incassiMethodBucket` (regge sia i valori già normalizzati dal sync
   // — cash/card/wallet/other — sia un'etichetta grezza di Matchpoint).
-  const _PAY_METHOD_LABEL = { contanti: 'Contanti', carta: 'Carta', borsellino: 'Borsellino', altro: 'Altro' };
-  const _PAY_METHOD_ICON = { contanti: 'ti-cash', carta: 'ti-credit-card', borsellino: 'ti-wallet', altro: 'ti-receipt' };
+  const _PAY_METHOD_LABEL = { contanti: 'Contanti', carta: 'Carta', borsellino: 'Borsellino', omaggio: 'Offerta', altro: 'Altro' };
+  const _PAY_METHOD_ICON = { contanti: 'ti-cash', carta: 'ti-credit-card', borsellino: 'ti-wallet', omaggio: 'ti-gift', altro: 'ti-receipt' };
   function _payBucket(method) {
     const m = String(method == null ? '' : method).trim();
     if (!m) return '';
+    if (/gift|omagg|offert/i.test(m)) return 'omaggio'; // record `payment` a 0 € scritti da _pmoGiftSyncFromRoster
     try { return (typeof _incassiMethodBucket === 'function') ? _incassiMethodBucket(m) : ''; } catch (e) { return ''; }
   }
   function _staffCalPaidIndexAdd(key, name, method, cents) {
@@ -38023,6 +38032,15 @@ Per confermare scrivi ELIMINA.`);
       .map(function (b) { return _PAY_METHOD_LABEL[b] || ''; })
       .filter(Boolean);
     return arr.join(' + ');
+  }
+  // Pastiglia della riga "pagato" in scheda. Una quota riscossa a 0 € su Matchpoint
+  // è una quota OFFERTA: non è un pagamento, quindi non compare mai nel report 11.13
+  // e nessuna "modalità" arriverà dalla sync — senza questo caso la scheda direbbe
+  // «modalità in arrivo…» per sempre. Importo illeggibile (null) NON è un'offerta.
+  function _payPaidBadge(stato, importoCents, methods) {
+    if (stato === 'riscosso' && importoCents === 0) return { kind: 'gift' };
+    const arr = Array.isArray(methods) ? methods : [];
+    return arr.length ? { kind: 'methods', methods: arr } : { kind: 'wait' };
   }
   async function _staffCalRefreshPaidIndex() {
     try {
@@ -38063,6 +38081,49 @@ Per confermare scrivi ELIMINA.`);
     if (now - _staffCalPaidIndexAt < 120000) return; // throttle 2 min (≤ granularità sync)
     _staffCalPaidIndexAt = now;
     _staffCalRefreshPaidIndex();
+  }
+
+  // ── Quota OFFERTA (omaggio) → record `payment` a 0 € ─────────────────────────────
+  // La ficha MP è l'UNICA fonte che vede gli omaggi (riscosso a importo 0): il report
+  // 11.13 registra i pagamenti e un omaggio non lo è. Alla lettura autorevole della
+  // scheda li persistiamo come record `payment` a 0 € (method 'gift'), così Incassi
+  // li elenca (conteggiati a zero) e il ✓ delle chip si accende. Chiave deterministica
+  // per slot+nome → idempotente sulle riaperture. Il tombstone della sync riconcilia
+  // SOLO le sue chiavi `pay|…` (filtro nell'edge) → questi record non li tocca.
+  function _pmoGiftKey(isoDate, campo, ora, playerName) {
+    return 'paygift|' + _payNatKey(isoDate, campo, ora) + '|' + _payNormName(playerName);
+  }
+  function _pmoGiftRecord(isoDate, campo, ora, p) {
+    const campoNum = Number(String(campo == null ? '' : campo).replace(/\D/g, '')) || 0;
+    return {
+      record_type: 'payment',
+      local_key: _pmoGiftKey(isoDate, campo, ora, p.nome),
+      payload: {
+        player_name: p.nome || '', method: 'gift', amount_cents: 0,
+        data: isoDate, booking_data: isoDate, campo: String(campoNum), ora: String(ora || ''),
+        status: 'paid', source: 'pmo_gift', recorded_at: new Date().toISOString(),
+      },
+      deleted: false,
+    };
+  }
+  async function _pmoGiftSyncFromRoster(isoDate, campo, ora, roster) {
+    try {
+      if (typeof pmoSyncCloudRecordsNow !== 'function') return 0;
+      const natKey = _payNatKey(isoDate, campo, ora);
+      const recs = [];
+      for (const p of (Array.isArray(roster) ? roster : [])) {
+        if (!p || !p.nome || p.stato !== 'riscosso' || p.importoCents !== 0) continue;
+        const info = _staffCalPaidInfo(isoDate, campo, ora, p.nome);
+        if (info && Array.isArray(info.methods) && info.methods.indexOf('omaggio') >= 0) continue; // già registrato
+        recs.push(_pmoGiftRecord(isoDate, campo, ora, p));
+        _staffCalPaidIndexAdd(natKey, p.nome, 'gift', 0); // chip/scheda subito, senza aspettare la sync
+      }
+      if (recs.length) {
+        await pmoSyncCloudRecordsNow(recs, 'registrare una quota offerta');
+        try { if (typeof _incassiState !== 'undefined' && _incassiState) _incassiState.rows = null; } catch (e) {}
+      }
+      return recs.length;
+    } catch (e) { return 0; }
   }
 
   // ── Pagamenti Fase 2b — SCRITTURA incasso (denaro reale) ────────────────────
@@ -39601,6 +39662,11 @@ Per confermare scrivi ELIMINA.`);
           if (ok && roster && roster.length && !_editingNow) {
             try { _staffCalPersistRosterFromWorker(isoDate, campoNum, ora, roster); } catch (e) {}
           }
+          // Quote OFFERTE (riscosso a 0 € sulla ficha): persistile come record `payment` a 0 €
+          // così Incassi le conta (a zero) e il ✓ delle chip si accende. Idempotente, fire-and-forget.
+          if (ok && roster && roster.length) {
+            try { _pmoGiftSyncFromRoster(isoDate, campoNum, ora, roster); } catch (e) {}
+          }
           if (ok && roster && untouched) {
             st.roster = roster;
             if (stillOpen) staffCalRenderPlayersEditor();
@@ -39779,6 +39845,8 @@ Per confermare scrivi ELIMINA.`);
           // Arriva dai record `payment` del report 11.13, agganciati per giorno|campo|ora + nome.
           let _payInfo = null;
           if (isPaid) { try { _payInfo = _staffCalPaidInfo(st.isoDate, st.campo, st.ora, p.nome); } catch (e) { _payInfo = null; } }
+          const _payBadge = isPaid ? _payPaidBadge(stato, importoCents, _payInfo && _payInfo.methods) : null;
+          const isGift = !!(_payBadge && _payBadge.kind === 'gift');
           const item = document.createElement('div');
           item.className = 'svc-pl';
           // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
@@ -39786,7 +39854,8 @@ Per confermare scrivi ELIMINA.`);
           row.className = 'svc-pl-row';
           if (payRow) {
             const ic = document.createElement('i');
-            ic.className = 'ti ' + (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle svc-pl-ic-due');
+            // ✓ verde = pagato · ✗ rossa = da incassare (come «In sospeso» su MP) · 🎁 = offerta
+            ic.className = 'ti ' + (isGift ? 'ti-gift svc-pl-ic-gift' : (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle-x svc-pl-ic-due'));
             ic.setAttribute('aria-hidden', 'true');
             row.appendChild(ic);
           }
@@ -39800,9 +39869,11 @@ Per confermare scrivi ELIMINA.`);
             // Pagato → si ripiega: importo verde + icona storna.
             const paid = document.createElement('span');
             paid.className = 'svc-pl-paid';
-            paid.textContent = (importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato';
+            paid.textContent = isGift ? 'Offerta'
+              : ((importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato');
             row.appendChild(paid);
-            if (_payWriteActive) {
+            // Offerta = nessun cobro registrato in MP → non c'è niente da stornare.
+            if (_payWriteActive && !isGift) {
               const sBtn = document.createElement('button');
               sBtn.type = 'button'; sBtn.className = 'svc-pl-iconbtn';
               sBtn.innerHTML = '<i class="ti ti-arrow-back-up" aria-hidden="true"></i>';
@@ -39857,11 +39928,18 @@ Per confermare scrivi ELIMINA.`);
           // più di una quando la stessa persona compare con metodi diversi (parziale + saldo,
           // o due "Ospite" nella stessa partita, indistinguibili per nome).
           if (payRow && isPaid) {
-            const meths = (_payInfo && Array.isArray(_payInfo.methods)) ? _payInfo.methods : [];
             const wrap = document.createElement('div');
             wrap.className = 'svc-pl-paidmeths';
-            if (meths.length) {
-              meths.forEach(function (b) {
+            if (isGift) {
+              // Riscossa a 0 € su Matchpoint: quota offerta, nessuna modalità da aspettare.
+              const tag = document.createElement('span');
+              tag.className = 'svc-pl-paidmeth svc-pl-paidmeth-gift';
+              tag.innerHTML = '<i class="ti ti-gift" aria-hidden="true"></i>';
+              tag.appendChild(document.createTextNode('Offerta'));
+              tag.title = 'Su Matchpoint la quota risulta riscossa a 0 €: è stata offerta.';
+              wrap.appendChild(tag);
+            } else if (_payBadge && _payBadge.kind === 'methods') {
+              _payBadge.methods.forEach(function (b) {
                 const tag = document.createElement('span');
                 tag.className = 'svc-pl-paidmeth';
                 const ic = document.createElement('i');
@@ -43290,6 +43368,10 @@ Per confermare scrivi ELIMINA.`);
           return i ? _payMethodsLabel(i.methods) : '';
         },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
+        paidBadge: function (stato, importoCents, methods) { return _payPaidBadge(stato, importoCents, methods); },
+        giftKey: function (data, campo, ora, name) { return _pmoGiftKey(data, campo, ora, name); },
+        giftRecord: function (data, campo, ora, p) { return _pmoGiftRecord(data, campo, ora, p); },
+        giftSyncFromRoster: function (data, campo, ora, roster) { return _pmoGiftSyncFromRoster(data, campo, ora, roster); },
         paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
