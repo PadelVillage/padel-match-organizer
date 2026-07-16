@@ -7870,7 +7870,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.094';
+    const APP_VERSION = '6.095';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8665,6 +8665,19 @@ Grazie.`
       const overlay = document.getElementById('pmoLoginOverlay');
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
       try { if (typeof pmoApplyTabVisibility === 'function') pmoApplyTabVisibility(); } catch {}
+      // IDRATAZIONE ANTICIPATA della rubrica Google: i contatti non stanno in localStorage (v6.087)
+      // e senza questo si caricano solo all'apertura di Anagrafica, facendo saltare i conteggi sotto
+      // gli occhi. Qui è il punto giusto: è l'unico attraversato SIA dal login SIA dal reload con
+      // sessione valida (initStaffAccessGate), e a questo punto la sessione Supabase è già salvata
+      // (pmoStoreSupabaseStaffSession viene prima) — serve, perché la RPC richiede cloud_sync.
+      // NB: il boot chiama renderInitialDashboard() diretto, non switchTab → agganciarsi al cambio
+      // scheda NON avrebbe coperto l'ingresso normale nell'app. Ritardo di 2s per lasciare la rete
+      // al primo disegno del calendario; throttle interno di 10 min contro il lavoro doppio.
+      if (unlocked) {
+        setTimeout(function () {
+          try { if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); } catch (e) {}
+        }, 2000);
+      }
       if (!unlocked) {
         pmoResetLoginActionButtons();
         setTimeout(() => {
@@ -10233,19 +10246,7 @@ Grazie.`
         requestAnimationFrame(() => {
           setTimeout(() => {
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
-            if (tabName === 'dashboard') {
-              renderInitialDashboard();
-              if (typeof staffCalInit === 'function') staffCalInit();
-              if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud();
-              // IDRATAZIONE ANTICIPATA della rubrica Google: il calendario è la scheda d'ingresso,
-              // quindi partendo di qui i contatti sono quasi sempre già in memoria quando si apre
-              // Anagrafica → i conteggi non saltano più. Ritardata di 2s per non contendere la rete
-              // al primo disegno del calendario, e comunque protetta dal throttle di 10 min (chi
-              // apre Anagrafica subito la fa partire da lì, senza raddoppiare il lavoro).
-              setTimeout(function () {
-                try { if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); } catch (e) {}
-              }, 2000);
-            }
+            if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
             if (tabName === 'members') { displayMembers(); if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); }
             // Ogni rientro nella scheda Incassi ri-legge dal cloud (refresh leggero, non
             // la sync MP pesante): sostituisce il vecchio pulsante ↻ Aggiorna rimosso, così
