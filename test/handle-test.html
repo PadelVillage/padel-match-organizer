@@ -1006,7 +1006,9 @@ const CASES = [
       const pp = CAPTURED.payment[0];
       checks.push({ label: 'payload {idReserva,idCliente,method,amountCents}', ok: !!pp && pp.body && pp.body.idReserva === 'R777' && pp.body.idCliente === 'C1' && pp.body.method === 'cash' && pp.body.amountCents === 800 });
       checks.push({ label: 'una sola chiamata (no retry su denaro)', ok: CAPTURED.payment.length === 1 });
-      checks.push({ label: 'giocatore ora "pagato" nell\'indice chip (ottimistico)', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === true });
+      checks.push({ label: 'giocatore ora "pagato" nell\'indice chip (ottimistico)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
+      // Il metodo si vede SUBITO, senza aspettare la sync incassi (~5 min).
+      checks.push({ label: 'metodo noto subito dopo l\'incasso (ottimistico) = Contanti', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === 'Contanti' });
       H.setPayHarness(false);
       return checks;
     }
@@ -1023,26 +1025,41 @@ const CASES = [
       });
       checks.push({ label: 'collectPayment risolve ok:false', ok: !!(res && res.ok === false) });
       checks.push({ label: 'edge chiamata una sola volta (no retry cieco)', ok: CAPTURED.payment.length === 1 });
-      checks.push({ label: 'giocatore NON marcato pagato dopo rifiuto', ok: H.isPaid('R888', 'C9', 'Luca Bianchi') === false });
+      checks.push({ label: 'giocatore NON marcato pagato dopo rifiuto', ok: H.isPaid(ctx.iso, 3, '19:00', 'Luca Bianchi') === false });
       H.setPayHarness(false);
       return checks;
     }
   },
   {
-    id: 38, flow: 'Pagamenti', name: 'chip calendario: indice "pagato" costruito dai record payment del cloud (match per idReserva+nome)',
+    id: 38, flow: 'Pagamenti', name: 'indice pagato+metodo dai record payment del cloud (match per giorno|campo|ora + nome, MAI per id_reserva)',
     run: async (win, H, ctx) => {
-      // Simula i record `payment` in cache cloud (id_cliente = Cod. visibile ≠ id URL):
-      // il match deve riuscire per idReserva + NOME normalizzato.
+      // Record `payment` con la forma REALE del report 11.13. Nota bene, è il punto del test:
+      // `id_reserva` NON è il numero della prenotazione ma l'identificativo del CLIENTE →
+      // due giocatori della STESSA partita hanno id_reserva diversi (1023 vs 278) e lo stesso
+      // giocatore porta lo stesso id_reserva su partite diverse (1023 in entrambe). L'aggancio
+      // deve reggersi solo su Giorno+Spazio+Ora (booking_data|campo|ora) + nome.
+      // `data` (giorno del pagamento) è volutamente diverso da `booking_data`: vince il secondo.
       CLOUD_FAKEROWS = [
-        { record_type: 'payment', deleted: false, payload: { id_reserva: 'R555', id_cliente: '000004', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid' } },
-        { record_type: 'payment', deleted: false, payload: { id_reserva: 'R555', id_cliente: '7', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid' } },
+        { record_type: 'payment', deleted: false, payload: { id_reserva: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        { record_type: 'payment', deleted: false, payload: { id_reserva: '278', id_cliente: '268', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        // Stesso socio (stesso id_reserva) ma ALTRA partita: non deve sporcare la prima.
+        { record_type: 'payment', deleted: false, payload: { id_reserva: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 1200, method: 'wallet', status: 'paid', data: ctx.iso, booking_data: ctx.iso, campo: 'Campo 4', ora: '21:00' } },
+        // Stornato in MP → tombstonato dal sync: non deve risultare pagato.
+        { record_type: 'payment', deleted: false, payload: { id_reserva: '99', id_cliente: '99', player_name: 'Carlo Neri', amount_cents: 500, method: 'cash', status: 'void', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
       ];
       await H.refreshPaidIndex();
       const checks = [];
-      checks.push({ label: 'pagato per idReserva+nome (Mario Rossi)', ok: H.isPaid('R555', '', 'Mario Rossi') === true });
-      checks.push({ label: 'pagato anche con case/spazi diversi ("  mario   rossi ")', ok: H.isPaid('R555', '', '  mario   rossi ') === true });
-      checks.push({ label: 'NON pagato: nome assente nella stessa prenotazione', ok: H.isPaid('R555', '', 'Carlo Neri') === false });
-      checks.push({ label: 'NON pagato: prenotazione senza incassi', ok: H.isPaid('R000', '', 'Mario Rossi') === false });
+      checks.push({ label: 'pagato per giorno|campo|ora + nome (Mario Rossi)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
+      checks.push({ label: 'metodo letto dal cloud = Contanti', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === 'Contanti' });
+      checks.push({ label: 'metodo del compagno di partita = Carta (non si confondono)', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Giulia Verdi') === 'Carta' });
+      checks.push({ label: 'campo "Campo 2" del report ↔ campo 2 della scheda', ok: H.isPaid(ctx.iso, 'Campo 2', '18:00', 'Mario Rossi') === true });
+      checks.push({ label: 'pagato anche con case/spazi diversi ("  mario   rossi ")', ok: H.isPaid(ctx.iso, 2, '18:00', '  mario   rossi ') === true });
+      checks.push({ label: 'stesso socio, ALTRA partita: metodo suo = Borsellino', ok: H.paidMethodsLabel(ctx.iso, 4, '21:00', 'Mario Rossi') === 'Borsellino' });
+      checks.push({ label: 'vince booking_data (giorno partita), non data (giorno pagamento)', ok: H.isPaid('2026-01-01', 2, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'NON pagato: nome assente nella stessa prenotazione', ok: H.isPaid(ctx.iso, 2, '18:00', 'Anna Blu') === false });
+      checks.push({ label: 'NON pagato: pagamento stornato (status void)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Carlo Neri') === false });
+      checks.push({ label: 'NON pagato: stessa ora, campo diverso', ok: H.isPaid(ctx.iso, 3, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'NON pagato: stesso campo, ora diversa', ok: H.isPaid(ctx.iso, 2, '19:00', 'Mario Rossi') === false });
       return checks;
     }
   },
@@ -1051,10 +1068,10 @@ const CASES = [
     run: async (win, H, ctx) => {
       H.setPayHarness(true);
       // pre-condizione: il giocatore risulta pagato (come dopo un cobro)
-      H.paidIndexAdd('R777', 'C1', 'Mario Rossi');
+      H.paidIndexAdd(ctx.iso, 2, '18:00', 'Mario Rossi', 'cash', 800);
       VOID_NEXT = { ok: true };
       const checks = [];
-      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === true });
+      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
       const res = await H.voidPayment({
         idReserva: 'R777', idCliente: 'C1', idx: '0', playerName: 'Mario Rossi',
         importoCents: 800, campo: 2, data: ctx.iso, ora: '18:00',
@@ -1065,7 +1082,8 @@ const CASES = [
       const vp = CAPTURED.void[0];
       checks.push({ label: 'payload {idReserva,idCliente,playerName}', ok: !!vp && vp.body && vp.body.idReserva === 'R777' && vp.body.idCliente === 'C1' && vp.body.playerName === 'Mario Rossi' });
       checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.void.length === 1 });
-      checks.push({ label: 'giocatore NON più pagato (storno ottimistico)', ok: H.isPaid('R777', 'C1', 'Mario Rossi') === false });
+      checks.push({ label: 'giocatore NON più pagato (storno ottimistico)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'metodo sparito con lo storno', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === '' });
       H.setPayHarness(false);
       return checks;
     }
@@ -1074,7 +1092,7 @@ const CASES = [
     id: 40, flow: 'Pagamenti', name: 'storno RIFIUTATO → resta pagato + nessun retry',
     run: async (win, H, ctx) => {
       H.setPayHarness(true);
-      H.paidIndexAdd('R888', 'C9', 'Luca Bianchi');
+      H.paidIndexAdd(ctx.iso, 3, '19:00', 'Luca Bianchi', 'card', 1200);
       VOID_NEXT = { reject: true, body: { ok: false, message: 'STORNO_RIFIUTATO' } };
       const checks = [];
       const res = await H.voidPayment({
@@ -1083,7 +1101,7 @@ const CASES = [
       });
       checks.push({ label: 'voidPayment risolve ok:false', ok: !!(res && res.ok === false) });
       checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.void.length === 1 });
-      checks.push({ label: 'giocatore RESTA pagato dopo rifiuto storno', ok: H.isPaid('R888', 'C9', 'Luca Bianchi') === true });
+      checks.push({ label: 'giocatore RESTA pagato dopo rifiuto storno', ok: H.isPaid(ctx.iso, 3, '19:00', 'Luca Bianchi') === true });
       H.setPayHarness(false);
       return checks;
     }
@@ -1232,7 +1250,10 @@ const CASES = [
       checks.push({ label: 'forma per Incassi: method/amount_cents/data/player_name', ok: !!rec && rec.payload.method === 'card' && rec.payload.amount_cents === 1550 && rec.payload.data === ctx.iso && rec.payload.player_name === 'Anna Sim' });
       checks.push({ label: 'importo = quello digitato (tariffa libera, ≠ MP)', ok: !!rec && rec.payload.amount_cents === 1550 });
       checks.push({ label: 'local_key con prefisso pmo_sim_pay| (no collisione col sync reale)', ok: !!rec && /^pmo_sim_pay\|/.test(rec.local_key || '') });
-      checks.push({ label: 'chip pagato aggiornato (ottimistico)', ok: H.isPaid('RSIM1', 'C5', 'Anna Sim') === true });
+      // Il simulato deve avere la chiave naturale come il sync reale, sennò scheda/chip non agganciano.
+      checks.push({ label: 'record simulato con booking_data/campo/ora (chiave naturale)', ok: !!rec && rec.payload.booking_data === ctx.iso && String(rec.payload.campo) === '1' && rec.payload.ora === '20:00' });
+      checks.push({ label: 'chip pagato aggiornato (ottimistico)', ok: H.isPaid(ctx.iso, 1, '20:00', 'Anna Sim') === true });
+      checks.push({ label: 'metodo mostrato = Carta', ok: H.paidMethodsLabel(ctx.iso, 1, '20:00', 'Anna Sim') === 'Carta' });
       win.__pmoPaySimAuto = false;
       return checks;
     }
@@ -1244,18 +1265,18 @@ const CASES = [
       win.__pmoPaySimAuto = true;
       // Cloud con un incasso simulato esistente per quel giocatore/prenotazione.
       CLOUD_FAKEROWS = [
-        { record_type: 'payment', local_key: 'pmo_sim_pay|RSIM2|0|anna-sim|111', deleted: false, payload: { id_reserva: 'RSIM2', id_cliente: 'C5', player_name: 'Anna Sim', amount_cents: 1550, method: 'card', data: ctx.iso, voided: false, source: 'pmo_simulate', simulated: true } },
+        { record_type: 'payment', local_key: 'pmo_sim_pay|RSIM2|0|anna-sim|111', deleted: false, payload: { id_reserva: 'RSIM2', id_cliente: 'C5', player_name: 'Anna Sim', amount_cents: 1550, method: 'card', data: ctx.iso, booking_data: ctx.iso, campo: '1', ora: '20:00', voided: false, source: 'pmo_simulate', simulated: true } },
       ];
-      H.paidIndexAdd('RSIM2', 'C5', 'Anna Sim');
+      H.paidIndexAdd(ctx.iso, 1, '20:00', 'Anna Sim', 'card', 1550);
       const checks = [];
-      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid('RSIM2', 'C5', 'Anna Sim') === true });
+      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid(ctx.iso, 1, '20:00', 'Anna Sim') === true });
       const res = await H.voidPayment({ idReserva: 'RSIM2', idCliente: 'C5', idx: '0', playerName: 'Anna Sim', importoCents: 1550, campo: 1, data: ctx.iso, ora: '20:00' });
       checks.push({ label: 'voidPayment risolve ok+simulated', ok: !!(res && res.ok === true && res.simulated === true) });
       checks.push({ label: 'NESSUNA chiamata edge matchpoint-payment-void (zero MP)', ok: CAPTURED.void.length === 0 });
       const up = CAPTURED.cloud.find(c => (c.records || []).some(r => r.record_type === 'payment' && r.payload && r.payload.voided === true));
       checks.push({ label: 'record simulato re-upsertato con voided=true', ok: !!up });
       checks.push({ label: 'almeno 1 storno applicato (res.voided>=1)', ok: !!(res && res.voided >= 1) });
-      checks.push({ label: 'chip pagato rimosso (ottimistico)', ok: H.isPaid('RSIM2', 'C5', 'Anna Sim') === false });
+      checks.push({ label: 'chip pagato rimosso (ottimistico)', ok: H.isPaid(ctx.iso, 1, '20:00', 'Anna Sim') === false });
       win.__pmoPaySimAuto = false;
       return checks;
     }
@@ -1454,8 +1475,11 @@ async function run() {
   let pass = 0; const rows = [];
   // Filtro opzionale ?only=<flow|id> per eseguire un sottoinsieme (utile quando l'ambiente
   // headless rallenta i flussi conversazionali; es. ?only=Pagamenti). Default: tutti.
+  // ?only=<flow|id>[,<flow|id>…] — lista separata da virgole (retrocompatibile col valore singolo).
+  // Serve a isolare un bleed di stato tra flussi senza pagare i test lenti: es. ?only=Pagamenti,56,57.
   const _only = (new URLSearchParams(location.search).get('only') || '').trim().toLowerCase();
-  const CASES_RUN = _only ? CASES.filter(c => String(c.flow).toLowerCase() === _only || String(c.id) === _only) : CASES;
+  const _onlyList = _only ? _only.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const CASES_RUN = _onlyList.length ? CASES.filter(c => _onlyList.includes(String(c.flow).toLowerCase()) || _onlyList.includes(String(c.id))) : CASES;
   for (const c of CASES_RUN) {
     captureReset();
     // Isolamento tra test: azzera un eventuale flusso conversazionale/scheda lasciati aperti dal

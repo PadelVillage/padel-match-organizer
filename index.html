@@ -2881,6 +2881,11 @@
     .svc-pl-iconbtn:hover:not(:disabled) { background:var(--accent-light); color:var(--accent); }
     .svc-pl-iconbtn:disabled { opacity:.4; cursor:not-allowed; }
     .svc-pl-note { font-size:.7rem; color:#b45309; margin-top:5px; }
+    /* Con che cosa ha pagato — pastiglie sotto la riga del giocatore già pagato. */
+    .svc-pl-paidmeths { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+    .svc-pl-paidmeth { display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; color:var(--green); background:rgba(22,163,74,.08); border:1px solid rgba(22,163,74,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
+    .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
+    .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -2941,6 +2946,8 @@
       .svc-pl-paid { font-size:.95rem; }
       .svc-pl-eur-input { font-size:1rem; width:80px; }
       .svc-pl-method { font-size:.92rem; height:44px; }
+      .svc-pl-paidmeth { font-size:.85rem; padding:3px 10px; }
+      .svc-pl-paidmeth i { font-size:15px; }
       .svc-pl-iconbtn { width:34px; height:34px; font-size:19px; }
       .svc-chat-fab { display:flex; position:fixed; bottom:20px; right:20px; z-index:250; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:1.4rem; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(37,99,235,.40); transition:background .15s,transform .15s; }
       .svc-chat-fab:hover { background:var(--accent-hover); transform:scale(1.08); }
@@ -7870,7 +7877,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.095';
+    const APP_VERSION = '6.096';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38046,37 +38053,83 @@ Per confermare scrivi ELIMINA.`);
   let _staffCalLastScrollIso = null; // ultima giornata renderizzata, per preservare lo scroll orizzontale sui re-render
   let _staffCalResizeTimer = null;
 
-  // ── Pagamenti Fase 2b — indice "pagato" per le chip del calendario ──────────
-  // Mappa idReserva → { ids:Set, names:Set } costruita dai record `payment` in cache
-  // cloud. Il match nelle chip è per idReserva + NOME normalizzato (gli id divergono:
-  // nel report-sync id_cliente = Cod. visibile, nella scheda idCliente = id URL).
-  // Granularità = ultima sync incassi (~5 min): mostriamo SOLO ✓ verde sui pagati,
+  // ── Pagamenti Fase 2b — indice "pagato" + METODO (chip calendario e scheda) ──
+  // Mappa CHIAVE NATURALE della prenotazione (giorno|campo|ora) → nome normalizzato →
+  // { methods:[bucket…], cents }, costruita dai record `payment` in cache cloud.
+  //
+  // ⚠️ Perché la chiave naturale e NON l'idReserva: nei record `payment` il campo
+  // `id_reserva` non contiene il numero della prenotazione ma l'identificativo del
+  // CLIENTE (è la colonna che il report 11.13 espone come "Numero di prenotazione").
+  // Verificato in PROD: lo stesso socio porta lo stesso valore su prenotazioni diverse
+  // (Fabio De Luca: 14 prenotazioni → 1 solo id_reserva), i 4 giocatori della stessa
+  // partita ne hanno 4 diversi (= il loro Cod.+offset), e i 244 id_reserva dei pagamenti
+  // non hanno NESSUN valore in comune con gli idReserva delle prenotazioni. Il vecchio
+  // join per idReserva quindi non agganciava mai: il ✓ si accendeva solo per l'add
+  // ottimistico e spariva al reload. Giorno+campo+ora sono invece sempre valorizzati nel
+  // report (0 vuoti su 879) e noti alla scheda → aggancio affidabile.
+  //
+  // Il match del giocatore è per NOME normalizzato: gli id non sono comparabili (nel
+  // report id_cliente = Cod. visibile, nella scheda idCliente = id URL). Più righe con
+  // lo stesso nome nella stessa prenotazione (es. due "Ospite", o un parziale + saldo)
+  // confluiscono in un'unica voce con più metodi → mostrati insieme ("Contanti + Carta").
+  // Granularità = ultima sync incassi (~5 min): mostriamo SOLO ✓/metodo sui pagati,
   // mai un marcatore "non pagato" (eviterebbe falsi su dato stale).
   let _staffCalPaidIndex = new Map();
   let _staffCalPaidIndexAt = 0;
   function _payNormName(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' '); }
-  function _staffCalPaidIndexAdd(idReserva, idCliente, name) {
-    const k = String(idReserva == null ? '' : idReserva).trim();
-    if (!k) return;
-    let e = _staffCalPaidIndex.get(k);
-    if (!e) { e = { ids: new Set(), names: new Set() }; _staffCalPaidIndex.set(k, e); }
-    if (idCliente) e.ids.add(String(idCliente).trim());
-    if (name) e.names.add(_payNormName(name));
+  // "Campo 2"/2/"2" → "2" · "18:00"/"18:00:00" → "18:00" (formati diversi tra report e scheda).
+  function _payCampoNum(v) { return String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+/, ''); }
+  function _payOraHm(v) {
+    const m = String(v == null ? '' : v).match(/(\d{1,2}):(\d{2})/);
+    return m ? (String(Number(m[1])).padStart(2, '0') + ':' + m[2]) : '';
   }
-  function _staffCalPaidIndexRemove(idReserva, idCliente, name) {
-    const k = String(idReserva == null ? '' : idReserva).trim();
+  function _payNatKey(data, campo, ora) {
+    const d = String(data == null ? '' : data).trim().slice(0, 10);
+    const c = _payCampoNum(campo);
+    const o = _payOraHm(ora);
+    return (d && c && o) ? (d + '|' + c + '|' + o) : '';
+  }
+  // Bucket canonico ← `_incassiMethodBucket` (regge sia i valori già normalizzati dal sync
+  // — cash/card/wallet/other — sia un'etichetta grezza di Matchpoint).
+  const _PAY_METHOD_LABEL = { contanti: 'Contanti', carta: 'Carta', borsellino: 'Borsellino', altro: 'Altro' };
+  const _PAY_METHOD_ICON = { contanti: 'ti-cash', carta: 'ti-credit-card', borsellino: 'ti-wallet', altro: 'ti-receipt' };
+  function _payBucket(method) {
+    const m = String(method == null ? '' : method).trim();
+    if (!m) return '';
+    try { return (typeof _incassiMethodBucket === 'function') ? _incassiMethodBucket(m) : ''; } catch (e) { return ''; }
+  }
+  function _staffCalPaidIndexAdd(key, name, method, cents) {
+    const k = String(key == null ? '' : key).trim();
+    const n = _payNormName(name);
+    if (!k || !n) return;
+    let e = _staffCalPaidIndex.get(k);
+    if (!e) { e = new Map(); _staffCalPaidIndex.set(k, e); }
+    let cur = e.get(n);
+    if (!cur) { cur = { methods: [], cents: 0 }; e.set(n, cur); }
+    const b = _payBucket(method);
+    if (b && cur.methods.indexOf(b) < 0) cur.methods.push(b);
+    if (typeof cents === 'number' && cents > 0) cur.cents += cents;
+  }
+  function _staffCalPaidIndexRemove(key, name) {
+    const k = String(key == null ? '' : key).trim();
     const e = _staffCalPaidIndex.get(k);
     if (!e) return;
-    if (idCliente) e.ids.delete(String(idCliente).trim());
-    if (name) e.names.delete(_payNormName(name));
-    if (!e.ids.size && !e.names.size) _staffCalPaidIndex.delete(k);
+    e.delete(_payNormName(name));
+    if (!e.size) _staffCalPaidIndex.delete(k);
   }
-  function _staffCalIsPaid(idReserva, idCliente, name) {
-    const e = _staffCalPaidIndex.get(String(idReserva == null ? '' : idReserva).trim());
-    if (!e) return false;
-    if (idCliente && e.ids.has(String(idCliente).trim())) return true;
-    if (name && e.names.has(_payNormName(name))) return true;
-    return false;
+  // → { methods:[…], cents } se il giocatore risulta pagato in quella prenotazione, sennò null.
+  function _staffCalPaidInfo(data, campo, ora, name) {
+    const e = _staffCalPaidIndex.get(_payNatKey(data, campo, ora));
+    if (!e) return null;
+    return e.get(_payNormName(name)) || null;
+  }
+  function _staffCalIsPaid(data, campo, ora, name) { return !!_staffCalPaidInfo(data, campo, ora, name); }
+  // "Contanti" · "Contanti + Carta" · '' se il metodo non è noto.
+  function _payMethodsLabel(methods) {
+    const arr = (Array.isArray(methods) ? methods : [])
+      .map(function (b) { return _PAY_METHOD_LABEL[b] || ''; })
+      .filter(Boolean);
+    return arr.join(' + ');
   }
   async function _staffCalRefreshPaidIndex() {
     try {
@@ -38086,19 +38139,27 @@ Per confermare scrivi ELIMINA.`);
       const m = new Map();
       for (const p of payments) {
         if (!p || p.voided || p.status === 'void') continue;
-        const k = String(p.id_reserva == null ? '' : p.id_reserva).trim();
-        if (!k) continue;
+        // booking_data = Giorno della prenotazione (il sync porta anche `data` = giorno del
+        // PAGAMENTO, che può essere diverso: qui serve il giorno della partita).
+        const k = _payNatKey(p.booking_data || p.data, p.campo, p.ora);
+        const n = _payNormName(p.player_name);
+        if (!k || !n) continue;
         let e = m.get(k);
-        if (!e) { e = { ids: new Set(), names: new Set() }; m.set(k, e); }
-        if (p.id_cliente != null && String(p.id_cliente).trim()) e.ids.add(String(p.id_cliente).trim());
-        if (p.player_name) e.names.add(_payNormName(p.player_name));
+        if (!e) { e = new Map(); m.set(k, e); }
+        let cur = e.get(n);
+        if (!cur) { cur = { methods: [], cents: 0 }; e.set(n, cur); }
+        const b = _payBucket(p.method);
+        if (b && cur.methods.indexOf(b) < 0) cur.methods.push(b);
+        const c = Number(p.amount_cents) || 0;
+        if (c > 0) cur.cents += c;
       }
-      // Preserva gli add ottimistici (cobro appena fatto, non ancora nel cloud sync).
+      // Preserva gli add ottimistici (cobro appena fatto, non ancora nel cloud sync). Dove il
+      // sync ha già la voce, vince il sync (autorevole); l'ottimistico riempie solo i buchi.
       for (const entry of _staffCalPaidIndex) {
         const k = entry[0], e = entry[1];
         const cur = m.get(k);
-        if (!cur) { m.set(k, e); }
-        else { e.ids.forEach(function (x) { cur.ids.add(x); }); e.names.forEach(function (x) { cur.names.add(x); }); }
+        if (!cur) { m.set(k, e); continue; }
+        for (const it of e) { if (!cur.has(it[0])) cur.set(it[0], it[1]); }
       }
       _staffCalPaidIndex = m;
       try { renderStaffCalendar(); } catch (e) {}
@@ -38124,13 +38185,20 @@ Per confermare scrivi ELIMINA.`);
     return PMO_SIM_PAY_PREFIX + String(idReserva || '') + '|' + String(idx == null ? '' : idx) + '|' + nm + '|' + t;
   }
   async function _pmoSimWritePayment(opts) {
+    const _data = opts.data || (typeof _incassiToday === 'function' ? _incassiToday() : '');
     const payload = {
       id_reserva: String(opts.idReserva || ''),
       id_cliente: String(opts.idCliente || ''),
       player_name: opts.playerName || '',
       method: opts.method || '',
       amount_cents: (typeof opts.amountCents === 'number') ? opts.amountCents : 0,
-      data: opts.data || (typeof _incassiToday === 'function' ? _incassiToday() : ''),
+      data: _data,
+      // Giorno/campo/ora della PRENOTAZIONE: è la chiave naturale con cui scheda e chip
+      // agganciano il pagamento (vedi _payNatKey). Il sync reale le porta da Giorno/Spazio/Ora
+      // del report 11.13: senza queste il simulato non sarebbe collaudabile allo stesso modo.
+      booking_data: _data,
+      campo: (opts.campo != null ? String(opts.campo) : ''),
+      ora: (opts.ora != null ? String(opts.ora) : ''),
       recorded_at: new Date().toISOString(),
       voided: false,
       source: 'pmo_simulate',
@@ -38234,7 +38302,7 @@ Per confermare scrivi ELIMINA.`);
     // `payment` nel cloud TEST e aggiorna lo stato locale + chip come nel ramo reale.
     if (_simulate) {
       try {
-        await _pmoSimWritePayment({ idReserva: idReserva, idCliente: idCliente, idx: opts.idx, playerName: playerName, method: method, amountCents: amountCents, data: opts.data });
+        await _pmoSimWritePayment({ idReserva: idReserva, idCliente: idCliente, idx: opts.idx, playerName: playerName, method: method, amountCents: amountCents, data: opts.data, campo: opts.campo, ora: opts.ora });
       } catch (e) {
         _setMsg(note, '⚠️ Simulazione incasso non riuscita: ' + esc(e && e.message ? e.message : String(e)));
         btns.forEach(function (b) { try { b.disabled = false; } catch (e2) {} });
@@ -38251,7 +38319,7 @@ Per confermare scrivi ELIMINA.`);
           if (tgt) { tgt.stato = 'riscosso'; tgt.pendenteCents = 0; if (tgt.importoCents == null) tgt.importoCents = amountCents; }
         }
       } catch (e) {}
-      try { _staffCalPaidIndexAdd(idReserva, idCliente, playerName); } catch (e) {}
+      try { _staffCalPaidIndexAdd(_payNatKey(opts.data, opts.campo, opts.ora), playerName, method, amountCents); } catch (e) {}
       _setMsg(note, '🧪 Simulato incasso ' + esc(methodLabel) + ' ' + _incassiEuro(amountCents) + ' — ' + esc(playerName) + ' (visibile in Incassi)');
       try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
       try { renderStaffCalendar(); } catch (e) {}
@@ -38289,7 +38357,7 @@ Per confermare scrivi ELIMINA.`);
             if (tgt) { tgt.stato = 'riscosso'; tgt.pendenteCents = 0; if (tgt.importoCents == null) tgt.importoCents = amountCents; }
           }
         } catch (e) {}
-        try { _staffCalPaidIndexAdd(idReserva, idCliente, playerName); } catch (e) {}
+        try { _staffCalPaidIndexAdd(_payNatKey(opts.data, opts.campo, opts.ora), playerName, method, amountCents); } catch (e) {}
         _setMsg(note, '✅ Incassato ' + esc(methodLabel) + ' ' + _incassiEuro(amountCents) + ' — ' + esc(playerName));
         try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
         try { renderStaffCalendar(); } catch (e) {}
@@ -38373,7 +38441,7 @@ Per confermare scrivi ELIMINA.`);
           if (tgt) { tgt.stato = 'in_sospeso'; tgt.pendenteCents = (tgt.importoCents != null ? tgt.importoCents : importoCents); }
         }
       } catch (e) {}
-      try { _staffCalPaidIndexRemove(idReserva, idCliente, playerName); } catch (e) {}
+      try { _staffCalPaidIndexRemove(_payNatKey(opts.data, opts.campo, opts.ora), playerName); } catch (e) {}
       _setMsg(note, n > 0 ? ('🧪 Simulato storno — ' + esc(playerName)) : ('🧪 Nessun incasso simulato da stornare per ' + esc(playerName)));
       try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
       try { renderStaffCalendar(); } catch (e) {}
@@ -38410,7 +38478,7 @@ Per confermare scrivi ELIMINA.`);
             if (tgt) { tgt.stato = 'in_sospeso'; tgt.pendenteCents = (tgt.importoCents != null ? tgt.importoCents : importoCents); }
           }
         } catch (e) {}
-        try { _staffCalPaidIndexRemove(idReserva, idCliente, playerName); } catch (e) {}
+        try { _staffCalPaidIndexRemove(_payNatKey(opts.data, opts.campo, opts.ora), playerName); } catch (e) {}
         _setMsg(note, '✅ Pagamento stornato — ' + esc(playerName));
         try { if (typeof staffCalRenderPlayersEditor === 'function' && staffCalPlayersState) staffCalRenderPlayersEditor(); } catch (e) {}
         try { renderStaffCalendar(); } catch (e) {}
@@ -39220,13 +39288,16 @@ Per confermare scrivi ELIMINA.`);
           _gList.forEach(function (g) {
             const t3 = document.createElement('div');
             t3.style.cssText = 'font-size:' + fontPx + 'px;opacity:.95;white-space:normal;line-height:1.3;';
-            let _paid = false;
-            try { _paid = _staffCalIsPaid(b.idReserva, g.idCliente, g.nome); } catch (e) { _paid = false; }
-            if (_paid) {
+            // Aggancio per chiave naturale (giorno|campo|ora): l'idReserva NON è comparabile
+            // coi record `payment` (vedi _payNatKey).
+            let _pinfo = null;
+            try { _pinfo = _staffCalPaidInfo(isoDate, c, b.ora, g.nome); } catch (e) { _pinfo = null; }
+            if (_pinfo) {
+              const _ml = _payMethodsLabel(_pinfo.methods);
               const ck = document.createElement('span');
               ck.textContent = '✓ ';
               ck.style.cssText = 'color:#16a34a;font-weight:800;';
-              ck.title = 'Pagato';
+              ck.title = _ml ? ('Pagato · ' + _ml) : 'Pagato';
               t3.appendChild(ck);
               t3.appendChild(document.createTextNode(g.nome));
             } else {
@@ -39947,6 +40018,11 @@ Per confermare scrivi ELIMINA.`);
           const stato = p.stato; // 'riscosso' | 'in_sospeso' | null
           const payRow = _payShow && !marked;        // mostriamo i controlli di pagamento?
           const isPaid = payRow && stato === 'riscosso';
+          // MODALITÀ di pagamento (Contanti/Carta/Borsellino): NON è nella scheda Matchpoint
+          // (la ficha espone solo importo/pendente/saldo, da cui si deduce riscosso/in sospeso).
+          // Arriva dai record `payment` del report 11.13, agganciati per giorno|campo|ora + nome.
+          let _payInfo = null;
+          if (isPaid) { try { _payInfo = _staffCalPaidInfo(st.isoDate, st.campo, st.ora, p.nome); } catch (e) { _payInfo = null; } }
           const item = document.createElement('div');
           item.className = 'svc-pl';
           // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
@@ -40021,6 +40097,36 @@ Per confermare scrivi ELIMINA.`);
           });
           row.appendChild(x);
           item.appendChild(row);
+          // Con che cosa ha pagato (solo per chi ha già pagato): una pastiglia per metodo —
+          // più di una quando la stessa persona compare con metodi diversi (parziale + saldo,
+          // o due "Ospite" nella stessa partita, indistinguibili per nome).
+          if (payRow && isPaid) {
+            const meths = (_payInfo && Array.isArray(_payInfo.methods)) ? _payInfo.methods : [];
+            const wrap = document.createElement('div');
+            wrap.className = 'svc-pl-paidmeths';
+            if (meths.length) {
+              meths.forEach(function (b) {
+                const tag = document.createElement('span');
+                tag.className = 'svc-pl-paidmeth';
+                const ic = document.createElement('i');
+                ic.className = 'ti ' + (_PAY_METHOD_ICON[b] || 'ti-receipt');
+                ic.setAttribute('aria-hidden', 'true');
+                tag.appendChild(ic);
+                tag.appendChild(document.createTextNode(_PAY_METHOD_LABEL[b] || 'Altro'));
+                wrap.appendChild(tag);
+              });
+            } else {
+              // Pagato secondo Matchpoint (pendente=0) ma il metodo non è ancora arrivato:
+              // gli incassi si sincronizzano ogni ~5 min. Meglio dirlo che lasciare il vuoto.
+              const tag = document.createElement('span');
+              tag.className = 'svc-pl-paidmeth svc-pl-paidmeth-wait';
+              tag.innerHTML = '<i class="ti ti-clock" aria-hidden="true"></i>';
+              tag.appendChild(document.createTextNode('modalità in arrivo…'));
+              tag.title = 'Il metodo di pagamento arriva dalla sincronizzazione incassi (ogni ~5 minuti).';
+              wrap.appendChild(tag);
+            }
+            item.appendChild(wrap);
+          }
           // Metodi di incasso (solo per chi deve ancora pagare).
           if (payRow && !isPaid) {
             const saldoCents = (typeof p.saldoCents === 'number') ? p.saldoCents : null;
@@ -43428,9 +43534,16 @@ Per confermare scrivi ELIMINA.`);
         voidPayment: function (opts) { return _pmoVoidPayment(opts); },
         voidWallet: function (opts) { return _pmoVoidWallet(opts); },
         rechargeWallet: function (opts) { return _pmoRechargeWallet(opts); },
-        isPaid: function (idR, idCli, name) { return _staffCalIsPaid(idR, idCli, name); },
+        // Aggancio per chiave naturale della prenotazione (giorno, campo, ora) + nome:
+        // l'idReserva non è comparabile coi record `payment` (vedi _payNatKey).
+        isPaid: function (data, campo, ora, name) { return _staffCalIsPaid(data, campo, ora, name); },
+        paidInfo: function (data, campo, ora, name) { return _staffCalPaidInfo(data, campo, ora, name); },
+        paidMethodsLabel: function (data, campo, ora, name) {
+          const i = _staffCalPaidInfo(data, campo, ora, name);
+          return i ? _payMethodsLabel(i.methods) : '';
+        },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
-        paidIndexAdd: function (idR, idCli, name) { return _staffCalPaidIndexAdd(idR, idCli, name); }
+        paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
