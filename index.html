@@ -7857,7 +7857,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.092';
+    const APP_VERSION = '6.093';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40158,7 +40158,10 @@ Per confermare scrivi ELIMINA.`);
     closeBtn.disabled = st.busy;
     closeBtn.addEventListener('click', function () {
       if (st.busy) return;
-      staffCalPlayersState = null;
+      // Azzerare lo stato blocca i ridisegni FUTURI ma non smonta la scheda già disegnata: serve
+      // svcResetToNeutral() (la stessa del Salva) che rimuove il .svc-edit-box dal DOM e rimette
+      // l'input in modalità normale. Senza, la scheda resta aperta a schermo. v6.093
+      svcResetToNeutral();
       svcAddMessage('system', '📝 Modifica chiusa.');
     });
     actions.appendChild(saveBtn);
