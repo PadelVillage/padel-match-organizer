@@ -2871,7 +2871,7 @@
     .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
     .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
     .svc-pl-ic-gift { font-size:16px; color:#c98a04; flex:0 0 auto; }
-    .svc-pl-ic-due { font-size:16px; color:var(--text-muted); flex:0 0 auto; }
+    .svc-pl-ic-due { font-size:16px; color:#dc2626; flex:0 0 auto; }
     .svc-pl-name { flex:1 1 auto; min-width:0; font-size:.8rem; font-weight:600; line-height:1.2; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
     .svc-pl-paid { flex:0 0 auto; font-size:.76rem; font-weight:700; color:var(--green); white-space:nowrap; }
     .svc-pl-eur { flex:0 0 auto; display:inline-flex; align-items:center; gap:2px; border:1px solid var(--accent); border-radius:8px; padding:0 6px; height:30px; background:var(--surface); }
@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.098';
+    const APP_VERSION = '6.099';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40097,7 +40097,8 @@ Per confermare scrivi ELIMINA.`);
           row.className = 'svc-pl-row';
           if (payRow) {
             const ic = document.createElement('i');
-            ic.className = 'ti ' + (isGift ? 'ti-gift svc-pl-ic-gift' : (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle svc-pl-ic-due'));
+            // ✓ verde = pagato · ✗ rossa = da incassare (come «In sospeso» su MP) · 🎁 = offerta
+            ic.className = 'ti ' + (isGift ? 'ti-gift svc-pl-ic-gift' : (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle-x svc-pl-ic-due'));
             ic.setAttribute('aria-hidden', 'true');
             row.appendChild(ic);
           }
