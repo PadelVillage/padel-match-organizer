@@ -100,6 +100,12 @@ function seedStorage() {
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
 let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT;
+// Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
+// dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
+let CLOUD_LESSICO = [];
+// Chiamate uscite dal routing del mock: devono restare ZERO. Sono le falle che rendevano il banco
+// di prova dipendente dalla rete vera (vedi il fallthrough in installFetchMock).
+const LEAKS = [];
 function captureReset() {
   CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [] };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
@@ -169,16 +175,52 @@ function installFetchMock(win) {
     if (/\/rest\/v1\/pmo_ai_turns/.test(u)) {
       return jsonResponse(win, [], 200);
     }
-    // Tutto il resto (realtime websocket non passa di qui) → rete reale.
-    return realFetch(url, opts);
+    // Vocabolario appreso e impostazioni AI: select REST (non RPC) che sfuggivano al routing e
+    // andavano sul Supabase VERO → il parser dipendeva da dati remoti VIVI. Fixture fisse.
+    if (/\/rest\/v1\/pmo_lessico/.test(u)) {
+      return jsonResponse(win, CLOUD_LESSICO || [], 200);
+    }
+    if (/\/rest\/v1\/pmo_ai_settings/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
+    // Regole del parser: l'app le scarica da raw.githubusercontent.com (branch REMOTO) → l'esito
+    // dipendeva da cosa c'è pushato, non dal working tree. Le serviamo dalla copia LOCALE del repo,
+    // che è la stessa che finirà in produzione ed è quella che stiamo testando.
+    if (/parser_rules\.json/.test(u)) {
+      return realFetch('/supabase/functions/parser-rules/parser_rules.json');
+    }
+    // Rete locale (l'app, config-test.js, le fixture qui sopra) → passa davvero.
+    if (/^\//.test(u) || u.indexOf(win.location.origin) === 0) return realFetch(url, opts);
+    // ⛔ Tutto il resto è una FALLA: prima finiva sulla rete vera e rendeva il banco di prova non
+    // riproducibile (e lento). Non la lasciamo passare: la registriamo e rispondiamo a vuoto, così
+    // una falla nuova si VEDE (LEAKS) invece di sembrare che "funzioni".
+    LEAKS.push(String(u).slice(0, 120));
+    return jsonResponse(win, [], 200);
   };
+  win.fetch.__pmoFetchMock = true;
+}
+// Il mock va armato PRIMA che l'app faccia le sue chiamate di boot: `installStubs` girava dopo
+// l'attesa di PMOAi, quindi profilo/prenotazioni del boot arrivavano dal Supabase TEST VERO →
+// il calendario partiva con dati reali (render pesanti, timer che slittano, esiti non riproducibili).
+// La finestra dell'iframe viene sostituita alla navigazione: ripatchiamo a raffica finché non è nostra.
+function armFetchMockEarly(frame) {
+  let stop = false;
+  (function tick() {
+    if (stop) return;
+    try {
+      const w = frame.contentWindow;
+      if (w && typeof w.fetch === 'function' && !w.fetch.__pmoFetchMock) installFetchMock(w);
+    } catch (e) {}
+    setTimeout(tick, 4);
+  })();
+  return function () { stop = true; };
 }
 function installStubs(win) {
   try { win.confirm = function () { return true; }; } catch (e) {}
   try { win.alert = function () {}; } catch (e) {}
   try { win.prompt = function () { return ''; }; } catch (e) {}
   try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
-  installFetchMock(win);
+  if (!(win.fetch && win.fetch.__pmoFetchMock)) installFetchMock(win);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1450,6 +1492,9 @@ async function run() {
   frame.id = 'app';
   frame.src = '../index.html?env=test';
   document.body.appendChild(frame);
+  // Arma il mock SUBITO: le chiamate di boot dell'app (profilo, prenotazioni dal cloud) partono
+  // prima che PMOAi esista, quindi aspettarlo significava lasciarle andare sul Supabase vero.
+  const disarmEarly = armFetchMockEarly(frame);
 
   const win = frame.contentWindow;
   const summary = document.getElementById('summary');
@@ -1464,6 +1509,7 @@ async function run() {
     window.__RESULTS__ = { ready: false };
     return;
   }
+  disarmEarly();
   installStubs(W);
   const H = W.__PMOStaffCalTest;
   const todayIso = (typeof W.staffCalTodayIso === 'function') ? W.staffCalTodayIso() : isoOf(new Date());
@@ -1508,7 +1554,7 @@ async function run() {
   const total = CASES_RUN.length;
   summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
   summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
-  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows };
+  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows, leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length };
 }
 
 document.getElementById('run').addEventListener('click', run);
