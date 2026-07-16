@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies } from './tabellone-rescue.ts';
+import { resolveIdReserva } from './idreserva-resolve.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -549,7 +550,20 @@ async function enrichBookingsWithTabellone(
       booking.giocatori = match.giocatori;
     }
     if (match) {
-      if (match.id) booking.idReserva = String(match.id);
+      if (match.id) {
+        // L'id del tabellone resta l'AUTORITÀ. Il `numero` dell'export è solo il ripiego quando qui
+        // non arriva nulla (vedi il fallback nello snapshot): loggiamo le divergenze per verificare
+        // sul campo l'invariante idReserva === numero prima di valutare se il numero possa vincere.
+        const numeroExport = clean(booking.numero || '');
+        if (numeroExport && numeroExport !== clean(String(match.id))) {
+          console.warn(JSON.stringify({
+            event: 'idreserva_numero_mismatch',
+            numero: numeroExport, tabellone: String(match.id),
+            data: booking.data, campo: booking.campo, ora: booking.ora,
+          }));
+        }
+        booking.idReserva = String(match.id);
+      }
       matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
   }
@@ -1036,6 +1050,7 @@ Deno.serve(async (req) => {
     let newOccupancyRows = 0;
     let unchangedOccupancyRows = 0;
     let changedOccupancyRows = 0;
+    let occupancyIdReservaFromNumero = 0;
 
     const addSnapshotRecord = (recordType: string, localKey: string, payload: ParsedBooking) => {
       currentKeysByType.get(recordType)?.add(localKey);
@@ -1069,7 +1084,8 @@ Deno.serve(async (req) => {
       // quel roster parziale, facendo "lampeggiare" i giocatori sulla card. Qui: se il roster appena
       // letto è degenere (0/1 nome) ma quello già salvato in cloud per lo stesso slot era completo
       // (>=2), si tiene il completo. Se il nuovo ha >=2 nomi ci si fida (così una vera rimozione
-      // 4->2 passa comunque). Idem per idReserva, che l'enrich riempie in modo altrettanto flaky.
+      // 4->2 passa comunque). L'idReserva soffre della stessa flakiness: la sua risoluzione (sticky
+      // incluso) sta sotto, in resolveIdReserva.
       // ECCEZIONE: se la prenotazione ha una descrizione-lista autorevole (vedi playersFromDescrizione),
       // il roster è GIÀ la verità MP → lo sticky NON deve mai re-gonfiarlo col vecchio (era la causa
       // dei nomi fantasma che riapparivano dopo una rimozione su Matchpoint).
@@ -1096,12 +1112,22 @@ Deno.serve(async (req) => {
             (booking as JsonMap)._rosterShrinkSeen = true;   // …e marca, per confermare al giro dopo.
           }
         }
-        if (!clean((booking as JsonMap).idReserva) && clean(prevOcc.idReserva)) {
-          booking.idReserva = String(prevOcc.idReserva);
-        }
       }
+      // idReserva: tabellone (autorità) → sticky → `numero` dell'export (RIPIEGO, fix «🔒 manca
+      // l'idReserva» del 16/07/2026). Priorità e motivazioni in idreserva-resolve.ts, provate da
+      // idreserva-resolve.test.ts. Qui il ripiego chiude il buco che lasciava la scheda non
+      // modificabile quando il tabellone non agganciava lo slot e lo sticky non aveva nulla da
+      // ereditare (rotazione del rappresentante dello slot su un record tombstonato).
+      const idr = resolveIdReserva({
+        tabellone: (booking as JsonMap).idReserva,
+        sticky: prevOcc?.idReserva,
+        numero: booking.numero,
+      });
+      if (idr.id) booking.idReserva = idr.id;
+      if (idr.source === 'numero') occupancyIdReservaFromNumero += 1;
       addSnapshotRecord('booking_occupancy', occKey, booking);
     });
+    console.log(JSON.stringify({ event: 'idreserva_from_numero', filled: occupancyIdReservaFromNumero, occupancy: validation.occupancyBookings.length }));
 
     let deletedBookings = 0;
     let deletedOccupancies = 0;
