@@ -106,6 +106,10 @@ let CLOUD_LESSICO = [];
 // Chiamate uscite dal routing del mock: devono restare ZERO. Sono le falle che rendevano il banco
 // di prova dipendente dalla rete vera (vedi il fallthrough in installFetchMock).
 const LEAKS = [];
+// WebSocket tentate dall'app (bloccate da installWsMock) e broadcast realtime ripiegati su HTTP
+// (bloccati dal mock di fetch): attesi, contati a parte per non sporcare LEAKS.
+const WS_BLOCKED = [];
+const RT_BROADCASTS = [];
 function captureReset() {
   CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [] };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
@@ -169,6 +173,11 @@ function installFetchMock(win) {
     if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
       return jsonResponse(win, [{ status: 'active', role: 'admin', permissions: { cloud_sync: true } }], 200);
     }
+    // Boot del pannello admin: lista utenti staff e token autovalutazione. Vuoti e stabili
+    // (prima finivano nel fallthrough LEAKS a ogni run: note e innocue, ma sporcavano il conto).
+    if (/\/rest\/v1\/rpc\/(pmo_get_staff_users_admin|get_assessment_tokens_admin)/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
     if (/\/auth\/v1\/token/.test(u)) {
       return jsonResponse(win, { access_token: 'test-access-token', refresh_token: 'test-refresh-token', expires_in: 3600 }, 200);
     }
@@ -182,6 +191,12 @@ function installFetchMock(win) {
     }
     if (/\/rest\/v1\/pmo_ai_settings/.test(u)) {
       return jsonResponse(win, [], 200);
+    }
+    // Broadcast realtime via HTTP: è il ripiego di supabase-js quando la WS non è connessa — e
+    // qui non lo è MAI (vedi installWsMock). Atteso e bloccato: non è una falla, va contato a parte.
+    if (/\/realtime\/v1\/api\/broadcast/.test(u)) {
+      RT_BROADCASTS.push(String(u).slice(0, 120));
+      return jsonResponse(win, {}, 202);
     }
     // Regole del parser: l'app le scarica da raw.githubusercontent.com (branch REMOTO) → l'esito
     // dipendeva da cosa c'è pushato, non dal working tree. Le serviamo dalla copia LOCALE del repo,
@@ -199,19 +214,48 @@ function installFetchMock(win) {
   };
   win.fetch.__pmoFetchMock = true;
 }
-// Il mock va armato PRIMA che l'app faccia le sue chiamate di boot: `installStubs` girava dopo
+// ⛔ La WebSocket NON passa dal mock di fetch: supabase-js apriva una WS VERA verso il realtime
+// del Supabase TEST. Il canale 'pv-staff-cal-test' è CONDIVISO con ogni altro index.html?env=test
+// vivo nel browser: i broadcast dei nostri test (es. 'staff-cancel-pending') gli arrivavano davvero
+// e quello rispondeva scrivendo nel localStorage condiviso della stessa origin — era la scrittura
+// "[]" esterna ~100ms dopo la revert, vista solo dall'evento `storage`. Qui la WS resta per sempre
+// CONNECTING: nessun canale si aggancia, i send() di supabase-js ripiegano sul broadcast HTTP
+// (bloccato dal mock di fetch) e il banco di prova è sordo E muto verso il realtime vero.
+function installWsMock(win) {
+  function FakeWS(url) {
+    WS_BLOCKED.push(String(url).slice(0, 120));
+    this.url = String(url);
+    this.readyState = FakeWS.CONNECTING;      // per sempre: niente onopen, niente onclose
+    this.onopen = this.onclose = this.onerror = this.onmessage = null;
+  }
+  FakeWS.CONNECTING = FakeWS.prototype.CONNECTING = 0;
+  FakeWS.OPEN       = FakeWS.prototype.OPEN       = 1;
+  FakeWS.CLOSING    = FakeWS.prototype.CLOSING    = 2;
+  FakeWS.CLOSED     = FakeWS.prototype.CLOSED     = 3;
+  FakeWS.prototype.send = function () {};
+  FakeWS.prototype.close = function () { this.readyState = FakeWS.CLOSED; };
+  FakeWS.prototype.addEventListener = function () {};
+  FakeWS.prototype.removeEventListener = function () {};
+  FakeWS.__pmoWsMock = true;
+  win.WebSocket = FakeWS;
+}
+// I mock vanno armati PRIMA che l'app faccia le sue chiamate di boot: `installStubs` girava dopo
 // l'attesa di PMOAi, quindi profilo/prenotazioni del boot arrivavano dal Supabase TEST VERO →
 // il calendario partiva con dati reali (render pesanti, timer che slittano, esiti non riproducibili).
-// La finestra dell'iframe viene sostituita alla navigazione: ripatchiamo a raffica finché non è nostra.
-function armFetchMockEarly(frame) {
+// La finestra dell'iframe viene sostituita alla navigazione: ripatchiamo a raffica finché non è
+// nostra. Il tick usa `sleep` (Worker) e non setTimeout: nel tab nascosto girerebbe a 1 Hz e
+// lascerebbe all'app una finestra di boot con la rete VERA.
+function armMocksEarly(frame) {
   let stop = false;
-  (function tick() {
-    if (stop) return;
-    try {
-      const w = frame.contentWindow;
-      if (w && typeof w.fetch === 'function' && !w.fetch.__pmoFetchMock) installFetchMock(w);
-    } catch (e) {}
-    setTimeout(tick, 4);
+  (async function tick() {
+    while (!stop) {
+      try {
+        const w = frame.contentWindow;
+        if (w && typeof w.fetch === 'function' && !w.fetch.__pmoFetchMock) installFetchMock(w);
+        if (w && !(w.WebSocket && w.WebSocket.__pmoWsMock)) installWsMock(w);
+      } catch (e) {}
+      await sleep(4);
+    }
   })();
   return function () { stop = true; };
 }
@@ -221,20 +265,47 @@ function installStubs(win) {
   try { win.prompt = function () { return ''; }; } catch (e) {}
   try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
   if (!(win.fetch && win.fetch.__pmoFetchMock)) installFetchMock(win);
+  if (!(win.WebSocket && win.WebSocket.__pmoWsMock)) installWsMock(win);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper asincroni
 // ─────────────────────────────────────────────────────────────────────────────
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// ⏱️ Chrome strozza i timer dei tab NASCOSTI a 1 Hz (e a 1/minuto dopo 5 minuti): misurato,
+// `sleep(30)` durava 1000ms REALI → waitFor campionava ~4 volte invece di ~130, i budget
+// scadevano su un'app che aveva già fatto la cosa giusta, e il test 56 restava appeso.
+// I timer dei WORKER non subiscono il throttling di visibilità → lo sleep dell'harness passa
+// da un Worker dedicato (ripiego su setTimeout solo se il Worker non si può creare).
+const _timerWorker = (function () {
+  try {
+    const src = 'onmessage=function(e){setTimeout(function(){postMessage(e.data.id)},e.data.ms)}';
+    return new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  } catch (e) { return null; }
+})();
+const _timerWaiters = new Map(); let _timerSeq = 0;
+if (_timerWorker) _timerWorker.onmessage = function (e) {
+  const r = _timerWaiters.get(e.data);
+  if (r) { _timerWaiters.delete(e.data); r(); }
+};
+const sleep = (ms) => new Promise(r => {
+  if (!_timerWorker) { setTimeout(r, ms); return; }
+  const id = ++_timerSeq; _timerWaiters.set(id, r);
+  _timerWorker.postMessage({ id: id, ms: ms });
+});
+// Il predicato va valutato SEMPRE almeno una volta dopo l'ultima attesa, anche se il tempo è
+// già scaduto: il thread principale dell'app si blocca per secondi (render pesanti), e un
+// `await sleep(30)` può tornare dopo 7s. Controllando la scadenza PRIMA di valutare (com'era)
+// il ciclo usciva senza mai rivedere lo stato → falsi rossi su un'app che aveva già fatto la
+// cosa giusta (era il caso del test 2: il ripristino c'era, nessuno lo guardava più).
 async function waitFor(predicate, timeoutMs, stepMs) {
   const t0 = Date.now();
-  while (Date.now() - t0 < (timeoutMs || 4000)) {
+  const limit = timeoutMs || 4000;
+  for (;;) {
     let v = false; try { v = predicate(); } catch (e) { v = false; }
     if (v) return true;
+    if (Date.now() - t0 >= limit) return false;   // scaduto, ma il predicato è appena stato valutato
     await sleep(stepMs || 30);
   }
-  return false;
 }
 // Normalizza una booking per match: terna (data, campo, ora).
 function findBooking(bookings, iso, campo, ora) {
@@ -1492,9 +1563,10 @@ async function run() {
   frame.id = 'app';
   frame.src = '../index.html?env=test';
   document.body.appendChild(frame);
-  // Arma il mock SUBITO: le chiamate di boot dell'app (profilo, prenotazioni dal cloud) partono
-  // prima che PMOAi esista, quindi aspettarlo significava lasciarle andare sul Supabase vero.
-  const disarmEarly = armFetchMockEarly(frame);
+  // Arma i mock SUBITO (fetch + WebSocket): le chiamate di boot dell'app (profilo, prenotazioni
+  // dal cloud) partono prima che PMOAi esista, quindi aspettarlo significava lasciarle andare
+  // sul Supabase vero.
+  const disarmEarly = armMocksEarly(frame);
 
   const win = frame.contentWindow;
   const summary = document.getElementById('summary');
@@ -1554,7 +1626,8 @@ async function run() {
   const total = CASES_RUN.length;
   summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
   summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
-  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows, leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length };
+  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows, leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length,
+    wsBlocked: WS_BLOCKED.slice(0, 10), wsBlockedCount: WS_BLOCKED.length, rtBroadcastCount: RT_BROADCASTS.length };
 }
 
 document.getElementById('run').addEventListener('click', run);
