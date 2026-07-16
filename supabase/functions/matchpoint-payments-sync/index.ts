@@ -417,6 +417,9 @@ Deno.serve(async (req: Request) => {
   // esistente in quella finestra la cui chiave non è più nel report → deleted:true.
   // NB: se il report è VUOTO (minPayDate assente) NON si tombstona nulla (evita che un export
   // fallito/vuoto cancelli pagamenti veri).
+  // NB2: si riconciliano SOLO le chiavi `pay|…` generate da QUESTA sync: i record `payment`
+  // scritti dall'app (omaggi `paygift|…`, simulazioni `pmo_sim_pay|…`) non vengono dal report,
+  // quindi «assente dal report» non significa stornato — senza questo filtro morirebbero qui.
   let tombstoned = 0;
   if (minPayDate && maxPayDate) {
     const existing: { local_key: string; payload: JsonMap }[] = [];
@@ -426,6 +429,7 @@ Deno.serve(async (req: Request) => {
         .select('local_key,payload')
         .eq('record_type', 'payment')
         .eq('deleted', false)
+        .like('local_key', 'pay|%')
         .gte('payload->>data', minPayDate)
         .lte('payload->>data', maxPayDate)
         .range(from, from + SUPABASE_PAGE_SIZE - 1);
