@@ -2886,6 +2886,7 @@
     .svc-pl-paidmeth { display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; color:var(--green); background:rgba(22,163,74,.08); border:1px solid rgba(22,163,74,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
     .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
     .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
+    .svc-pl-paidmeth-gift { color:#92600a; background:#fff7e6; border-color:#f5d98a; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7877,7 +7878,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.096';
+    const APP_VERSION = '6.097';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38131,6 +38132,15 @@ Per confermare scrivi ELIMINA.`);
       .filter(Boolean);
     return arr.join(' + ');
   }
+  // Pastiglia della riga "pagato" in scheda. Una quota riscossa a 0 € su Matchpoint
+  // è una quota OFFERTA: non è un pagamento, quindi non compare mai nel report 11.13
+  // e nessuna "modalità" arriverà dalla sync — senza questo caso la scheda direbbe
+  // «modalità in arrivo…» per sempre. Importo illeggibile (null) NON è un'offerta.
+  function _payPaidBadge(stato, importoCents, methods) {
+    if (stato === 'riscosso' && importoCents === 0) return { kind: 'gift' };
+    const arr = Array.isArray(methods) ? methods : [];
+    return arr.length ? { kind: 'methods', methods: arr } : { kind: 'wait' };
+  }
   async function _staffCalRefreshPaidIndex() {
     try {
       if (typeof _incassiFetch !== 'function') return;
@@ -40023,6 +40033,8 @@ Per confermare scrivi ELIMINA.`);
           // Arriva dai record `payment` del report 11.13, agganciati per giorno|campo|ora + nome.
           let _payInfo = null;
           if (isPaid) { try { _payInfo = _staffCalPaidInfo(st.isoDate, st.campo, st.ora, p.nome); } catch (e) { _payInfo = null; } }
+          const _payBadge = isPaid ? _payPaidBadge(stato, importoCents, _payInfo && _payInfo.methods) : null;
+          const isGift = !!(_payBadge && _payBadge.kind === 'gift');
           const item = document.createElement('div');
           item.className = 'svc-pl';
           // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
@@ -40044,9 +40056,11 @@ Per confermare scrivi ELIMINA.`);
             // Pagato → si ripiega: importo verde + icona storna.
             const paid = document.createElement('span');
             paid.className = 'svc-pl-paid';
-            paid.textContent = (importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato';
+            paid.textContent = isGift ? 'Offerta'
+              : ((importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato');
             row.appendChild(paid);
-            if (_payWriteActive) {
+            // Offerta = nessun cobro registrato in MP → non c'è niente da stornare.
+            if (_payWriteActive && !isGift) {
               const sBtn = document.createElement('button');
               sBtn.type = 'button'; sBtn.className = 'svc-pl-iconbtn';
               sBtn.innerHTML = '<i class="ti ti-arrow-back-up" aria-hidden="true"></i>';
@@ -40101,11 +40115,18 @@ Per confermare scrivi ELIMINA.`);
           // più di una quando la stessa persona compare con metodi diversi (parziale + saldo,
           // o due "Ospite" nella stessa partita, indistinguibili per nome).
           if (payRow && isPaid) {
-            const meths = (_payInfo && Array.isArray(_payInfo.methods)) ? _payInfo.methods : [];
             const wrap = document.createElement('div');
             wrap.className = 'svc-pl-paidmeths';
-            if (meths.length) {
-              meths.forEach(function (b) {
+            if (isGift) {
+              // Riscossa a 0 € su Matchpoint: quota offerta, nessuna modalità da aspettare.
+              const tag = document.createElement('span');
+              tag.className = 'svc-pl-paidmeth svc-pl-paidmeth-gift';
+              tag.innerHTML = '<i class="ti ti-gift" aria-hidden="true"></i>';
+              tag.appendChild(document.createTextNode('Offerta'));
+              tag.title = 'Su Matchpoint la quota risulta riscossa a 0 €: è stata offerta.';
+              wrap.appendChild(tag);
+            } else if (_payBadge && _payBadge.kind === 'methods') {
+              _payBadge.methods.forEach(function (b) {
                 const tag = document.createElement('span');
                 tag.className = 'svc-pl-paidmeth';
                 const ic = document.createElement('i');
@@ -43543,6 +43564,7 @@ Per confermare scrivi ELIMINA.`);
           return i ? _payMethodsLabel(i.methods) : '';
         },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
+        paidBadge: function (stato, importoCents, methods) { return _payPaidBadge(stato, importoCents, methods); },
         paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }

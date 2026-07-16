@@ -1177,6 +1177,23 @@ const CASES = [
     }
   },
   {
+    id: 58, flow: 'Pagamenti', name: 'quota OFFERTA (riscossa a 0 € su MP) → pastiglia «Offerta», MAI «modalità in arrivo…»',
+    run: async (win, H, ctx) => {
+      // Un omaggio non è un pagamento: non compare nel report 11.13, quindi nessun
+      // metodo arriverà mai dalla sync. La firma è stato='riscosso' + importoCents=0
+      // letta dalla ficha MP. Senza il caso 'gift' la scheda aspetterebbe per sempre.
+      const checks = [];
+      const b = (s, c, m) => H.paidBadge(s, c, m);
+      checks.push({ label: 'riscosso + importo 0 → Offerta', ok: b('riscosso', 0, []).kind === 'gift' });
+      checks.push({ label: 'riscosso + importo 0 vince anche su un metodo presente (omonimi Ospite)', ok: b('riscosso', 0, ['contanti']).kind === 'gift' });
+      checks.push({ label: 'riscosso + importo > 0 senza metodo → attesa sync (non Offerta)', ok: b('riscosso', 800, []).kind === 'wait' });
+      checks.push({ label: 'riscosso + importo ILLEGGIBILE (null) → attesa, NON Offerta', ok: b('riscosso', null, []).kind === 'wait' });
+      checks.push({ label: 'riscosso + metodo noto → pastiglie metodo', ok: b('riscosso', 1200, ['carta']).kind === 'methods' });
+      checks.push({ label: 'in_sospeso + importo 0 → mai Offerta', ok: b('in_sospeso', 0, []).kind !== 'gift' });
+      return checks;
+    }
+  },
+  {
     id: 39, flow: 'Pagamenti', name: 'storno OK → edge payment-void col payload giusto + giocatore tolto da "pagato"',
     run: async (win, H, ctx) => {
       H.setPayHarness(true);
