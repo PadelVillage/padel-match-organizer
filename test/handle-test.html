@@ -1194,6 +1194,38 @@ const CASES = [
     }
   },
   {
+    id: 59, flow: 'Pagamenti', name: 'OMAGGIO persistito a 0 € → conta zero in Incassi + chip accesa; chiave paygift| fuori dal tombstone della sync',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      // 1) Forma del record: come i payment del sync (chiave naturale) ma a 0 € e riconoscibile.
+      const rec = H.giftRecord(ctx.iso, 2, '18:00', { nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 });
+      checks.push({ label: 'record payment a 0 € (method gift, status paid, source pmo_gift)', ok: !!rec && rec.record_type === 'payment' && rec.payload.amount_cents === 0 && rec.payload.method === 'gift' && rec.payload.status === 'paid' && rec.payload.source === 'pmo_gift' });
+      checks.push({ label: 'chiave naturale booking_data/campo/ora presente', ok: !!rec && rec.payload.booking_data === ctx.iso && String(rec.payload.campo) === '2' && rec.payload.ora === '18:00' });
+      // 2) Il tombstone dell'edge riconcilia SOLO `pay|…`: la chiave omaggio NON deve matchare,
+      //    sennò la sync la cancellerebbe al giro dopo (~5 min in PROD).
+      const key = H.giftKey(ctx.iso, 2, '18:00', 'Gino Omaggio');
+      checks.push({ label: "prefisso paygift| e NON 'pay|' (contratto col filtro del tombstone)", ok: /^paygift\|/.test(key) && key.indexOf('pay|') !== 0 });
+      // 3) Dal roster della ficha scrive SOLO gli omaggi veri (riscosso + importo 0 esplicito).
+      const n1 = await H.giftSyncFromRoster(ctx.iso, 2, '18:00', [
+        { nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 },
+        { nome: 'Pia Pagante', stato: 'riscosso', importoCents: 1200 },     // pagata vera
+        { nome: 'Ugo Sospeso', stato: 'in_sospeso', importoCents: 0 },      // non riscosso
+        { nome: 'Lia Illeggibile', stato: 'riscosso', importoCents: null }, // importo illeggibile: prudenza
+      ]);
+      const written = cloudRecords().filter(r => /^paygift\|/.test(r.local_key || ''));
+      checks.push({ label: 'scrive SOLO l\'omaggio (1 record, gli altri 3 esclusi)', ok: n1 === 1 && written.length === 1 && !!written[0].payload && written[0].payload.player_name === 'Gino Omaggio' });
+      // 4) Effetti visibili: chip accesa, etichetta Offerta, importo indicizzato ZERO.
+      checks.push({ label: 'chip pagato accesa per l\'omaggio', ok: H.isPaid(ctx.iso, 2, '18:00', 'Gino Omaggio') === true });
+      checks.push({ label: 'etichetta metodo = Offerta', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Gino Omaggio') === 'Offerta' });
+      const info = H.paidInfo(ctx.iso, 2, '18:00', 'Gino Omaggio');
+      checks.push({ label: 'importo indicizzato = 0 (conteggiato come zero, non gonfia i totali)', ok: !!info && info.cents === 0 });
+      // 5) Idempotenza: alla seconda passata non riscrive (già registrato come omaggio).
+      const n2 = await H.giftSyncFromRoster(ctx.iso, 2, '18:00', [{ nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 }]);
+      checks.push({ label: 'seconda passata: nessuna riscrittura (idempotente)', ok: n2 === 0 });
+      return checks;
+    }
+  },
+  {
     id: 39, flow: 'Pagamenti', name: 'storno OK → edge payment-void col payload giusto + giocatore tolto da "pagato"',
     run: async (win, H, ctx) => {
       H.setPayHarness(true);
