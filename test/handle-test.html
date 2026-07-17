@@ -1219,6 +1219,14 @@ const CASES = [
       checks.push({ label: 'etichetta metodo = Offerta', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Gino Omaggio') === 'Offerta' });
       const info = H.paidInfo(ctx.iso, 2, '18:00', 'Gino Omaggio');
       checks.push({ label: 'importo indicizzato = 0 (conteggiato come zero, non gonfia i totali)', ok: !!info && info.cents === 0 });
+      // 4b) Glifo della chip sulla card del calendario: 🎁 per l'omaggio puro; ✓ se c'è
+      //     (anche) un incasso vero — il 🎁 nasconderebbe il pagamento reale.
+      const cgGift = H.chipGlyph(info && info.methods);
+      checks.push({ label: 'glifo chip omaggio = 🎁 con title «Offerta»', ok: !!cgGift && cgGift.gift === true && cgGift.glyph === '🎁' && cgGift.title === 'Offerta' });
+      const cgCash = H.chipGlyph(['contanti']);
+      checks.push({ label: 'glifo chip pagamento vero = ✓ («Pagato · Contanti»)', ok: !!cgCash && cgCash.gift === false && cgCash.glyph === '✓' && cgCash.title === 'Pagato · Contanti' });
+      const cgMix = H.chipGlyph(['omaggio', 'contanti']);
+      checks.push({ label: 'omaggio POI incassato davvero (misto) → resta ✓ e il title cita entrambi', ok: !!cgMix && cgMix.gift === false && cgMix.glyph === '✓' && /Offerta/.test(cgMix.title) && /Contanti/.test(cgMix.title) });
       // 5) Idempotenza: alla seconda passata non riscrive (già registrato come omaggio).
       const n2 = await H.giftSyncFromRoster(ctx.iso, 2, '18:00', [{ nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 }]);
       checks.push({ label: 'seconda passata: nessuna riscrittura (idempotente)', ok: n2 === 0 });
