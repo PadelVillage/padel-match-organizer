@@ -1,13 +1,17 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// wa-shadow-proxy — proxy AUTENTICATO verso lo Shadow Mode backend (WhatsApp).
-// Motivo: prima il client (index.html) chiamava direttamente ${SHADOW_URL}/webhook/*
-// con l'INTERNAL_API_KEY in CHIARO nel sorgente pubblico (GitHub Pages) → chiunque
-// poteva inviare messaggi WhatsApp per conto del club. Ora il token vive solo come
-// secret server-side qui; il client passa il JWT staff e questa funzione inoltra.
-// Whitelist di azioni: suggest | approve-suggestion | send. La risposta dello Shadow
-// (body + status, incluso 429) viene ritornata VERBATIM così la UI resta invariata.
+// wa-shadow-proxy — proxy AUTENTICATO per la messaggistica WhatsApp staff.
+// Due famiglie di azioni, entrambe dietro JWT staff attivo:
+// 1) suggest | approve-suggestion | send → inoltro allo Shadow Mode backend
+//    (${SHADOW_URL}/webhook/*, token INTERNAL_API_KEY come secret server-side;
+//    risposta ritornata VERBATIM, incluso 429, così la UI resta invariata).
+// 2) inbox-list | inbox-update → lettura lista + update triage DIRETTI sul DB del
+//    progetto assistente WhatsApp (Padel Match Assistant TEST, aylykijfirtegyxzdwgu)
+//    in service_role. Motivo: le tabelle whatsapp_* hanno RLS deny-all (l'anon legge
+//    [] e non scrive — VOLUTO: testi e numeri dei clienti sono sensibili e l'anon key
+//    è pubblica su GitHub Pages). L'unico varco è questo proxy autenticato.
+//    Secret richiesto: WA_ASSISTANT_SERVICE_KEY (service key del progetto assistente).
 
 type JsonMap = Record<string, unknown>;
 
@@ -20,7 +24,17 @@ const CORS_HEADERS = {
 };
 
 // Solo questi path webhook sono inoltrabili (niente path arbitrari dal client).
-const ALLOWED_ACTIONS = new Set(['suggest', 'approve-suggestion', 'send']);
+const FORWARD_ACTIONS = new Set(['suggest', 'approve-suggestion', 'send']);
+// Azioni inbox: parlano al DB assistente in service_role (mai inoltrate allo Shadow).
+const INBOX_ACTIONS = new Set(['inbox-list', 'inbox-update']);
+
+/* ── Inbox staff (dashboard Messaggi WhatsApp) ── */
+const WA_ASSISTANT_URL_DEFAULT = 'https://aylykijfirtegyxzdwgu.supabase.co';
+const WA_INBOUND_TABLE = 'whatsapp_inbound_messages';
+// Whitelist CHIUSA dei campi triage aggiornabili dalla dashboard: tutto il resto
+// (testi, numeri, esiti IA di pipeline) resta scrivibile solo dalle edge dell'assistente.
+const INBOX_STATUS_VALUES = new Set(['Da elaborare', 'In revisione', 'Completato', 'Risposto']);
+const INBOX_REVISIONE_VALUES = new Set(['approvato', 'rifiutato', 'modificato']);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -59,6 +73,62 @@ async function getActor(req: Request): Promise<StaffActor | null> {
   };
 }
 
+async function handleInboxAction(action: string, payload: JsonMap, actor: StaffActor): Promise<Response> {
+  const waUrl = clean(Deno.env.get('WA_ASSISTANT_URL')) || WA_ASSISTANT_URL_DEFAULT;
+  const serviceKey = clean(Deno.env.get('WA_ASSISTANT_SERVICE_KEY'));
+  if (!serviceKey) {
+    return err(503, 'WA_INBOX_NOT_CONFIGURED', 'Inbox WhatsApp non configurata: manca il secret WA_ASSISTANT_SERVICE_KEY.');
+  }
+  const wa = createClient(waUrl, serviceKey, { auth: { persistSession: false } });
+
+  if (action === 'inbox-list') {
+    const rawLimit = Number(payload.limit ?? 100);
+    const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : 100, 1), 200);
+    const { data, error } = await wa.from(WA_INBOUND_TABLE)
+      .select('*').order('created_at', { ascending: false }).limit(limit);
+    if (error) return err(502, 'WA_INBOX_READ_ERROR', `Lettura inbox non riuscita: ${clean(error.message)}`);
+    return json({ ok: true, success: true, messages: data ?? [] });
+  }
+
+  // inbox-update — il ruolo readonly vede ma non tocca (stessa regola del resto dell'app).
+  if (String(actor.role).toLowerCase() === 'readonly') {
+    return err(403, 'READONLY_STAFF', 'Profilo in sola lettura: non puoi modificare il triage.');
+  }
+  const id = clean(payload.id);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return err(400, 'INVALID_ID', 'id messaggio mancante o non valido.');
+  }
+  const rawFields = (payload.fields && typeof payload.fields === 'object') ? payload.fields as JsonMap : {};
+  const fields: JsonMap = {};
+  for (const [key, value] of Object.entries(rawFields)) {
+    if (key === 'categories') {
+      if (!Array.isArray(value) || value.length > 12 || value.some((v) => typeof v !== 'string' || v.length > 40)) {
+        return err(400, 'INVALID_FIELD_VALUE', 'categories deve essere una lista di stringhe brevi.');
+      }
+      fields.categories = value.map((v) => clean(v)).filter(Boolean);
+    } else if (key === 'status') {
+      if (!INBOX_STATUS_VALUES.has(String(value))) return err(400, 'INVALID_FIELD_VALUE', `status non valido: ${clean(value)}`);
+      fields.status = String(value);
+    } else if (key === 'stato_revisione') {
+      if (!INBOX_REVISIONE_VALUES.has(String(value))) return err(400, 'INVALID_FIELD_VALUE', `stato_revisione non valido: ${clean(value)}`);
+      fields.stato_revisione = String(value);
+    } else if (key === 'risposta_suggerita_ia') {
+      const testo = clean(value);
+      if (!testo || testo.length > 4000) return err(400, 'INVALID_FIELD_VALUE', 'risposta_suggerita_ia vuota o troppo lunga (max 4000).');
+      fields.risposta_suggerita_ia = testo;
+    } else {
+      return err(400, 'INVALID_FIELD', `Campo non aggiornabile: ${key}`);
+    }
+  }
+  if (!Object.keys(fields).length) return err(400, 'NO_FIELDS', 'Nessun campo da aggiornare.');
+  fields.updated_at = new Date().toISOString();
+  const { data, error } = await wa.from(WA_INBOUND_TABLE)
+    .update(fields).eq('id', id).select().maybeSingle();
+  if (error) return err(502, 'WA_INBOX_WRITE_ERROR', `Aggiornamento triage non riuscito: ${clean(error.message)}`);
+  if (!data) return err(404, 'MESSAGE_NOT_FOUND', 'Messaggio non trovato.');
+  return json({ ok: true, success: true, message: data });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Solo POST supportato.');
@@ -71,10 +141,18 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'INVALID_JSON', 'Body non JSON valido.'); }
 
   const action = clean(body.action);
-  if (!ALLOWED_ACTIONS.has(action)) {
+  if (!FORWARD_ACTIONS.has(action) && !INBOX_ACTIONS.has(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
   const payload = (body.payload && typeof body.payload === 'object') ? body.payload as JsonMap : {};
+
+  if (INBOX_ACTIONS.has(action)) {
+    try {
+      return await handleInboxAction(action, payload, actor);
+    } catch (inboxErr) {
+      return err(500, 'WA_INBOX_ERROR', `Inbox WhatsApp: ${clean(inboxErr instanceof Error ? inboxErr.message : inboxErr)}`);
+    }
+  }
 
   const shadowUrl = clean(Deno.env.get('SHADOW_WEBHOOK_URL'));
   const shadowKey = clean(Deno.env.get('SHADOW_INTERNAL_API_KEY'));
