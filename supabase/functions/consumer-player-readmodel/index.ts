@@ -219,8 +219,12 @@ Deno.serve(async (req: Request) => {
     const isMine = roster.some((g) => nameVariants.has(normName(g)));
     if (!isMine) continue;
 
-    // Stessa prenotazione può esistere sia come booking sia come staff_booking.
-    const key = `${data}|${ora}|${clean(p.campo)}`;
+    // Stessa prenotazione può esistere sia come booking sia come staff_booking,
+    // ma il campo NON è scritto uguale ("Campo 1" dal sync MP, "1" dallo
+    // staff_booking ottimistico del percorso consumer): la chiave usa solo le
+    // cifre, altrimenti la lista raddoppia e i reply-button escono con id
+    // duplicati (Meta #131009, invio rifiutato).
+    const key = `${data}|${ora}|${clean(p.campo).replace(/\D/g, '')}`;
     if (seen.has(key)) continue;
     seen.add(key);
 
