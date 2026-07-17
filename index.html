@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.100';
+    const APP_VERSION = '6.101';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37975,16 +37975,16 @@ Per confermare scrivi ELIMINA.`);
   // Mappa CHIAVE NATURALE della prenotazione (giorno|campo|ora) → nome normalizzato →
   // { methods:[bucket…], cents }, costruita dai record `payment` in cache cloud.
   //
-  // ⚠️ Perché la chiave naturale e NON l'idReserva: nei record `payment` il campo
-  // `id_reserva` non contiene il numero della prenotazione ma l'identificativo del
-  // CLIENTE (è la colonna che il report 11.13 espone come "Numero di prenotazione").
-  // Verificato in PROD: lo stesso socio porta lo stesso valore su prenotazioni diverse
-  // (Fabio De Luca: 14 prenotazioni → 1 solo id_reserva), i 4 giocatori della stessa
-  // partita ne hanno 4 diversi (= il loro Cod.+offset), e i 244 id_reserva dei pagamenti
-  // non hanno NESSUN valore in comune con gli idReserva delle prenotazioni. Il vecchio
-  // join per idReserva quindi non agganciava mai: il ✓ si accendeva solo per l'add
-  // ottimistico e spariva al reload. Giorno+campo+ora sono invece sempre valorizzati nel
-  // report (0 vuoti su 879) e noti alla scheda → aggancio affidabile.
+  // ⚠️ Perché la chiave naturale e NON un id: nei record `payment` il campo
+  // `id_cliente_mp` (fino a v6.100 chiamato `id_reserva`, dall'header fuorviante del
+  // report 11.13 "Numero di prenotazione") contiene l'identificativo del CLIENTE, non
+  // della prenotazione. Verificato in PROD: lo stesso socio porta lo stesso valore su
+  // prenotazioni diverse (Fabio De Luca: 14 prenotazioni → 1 solo valore), i 4 giocatori
+  // della stessa partita ne hanno 4 diversi (= il loro Cod.+offset), e i 244 valori dei
+  // pagamenti non hanno NESSUN elemento in comune con gli idReserva delle prenotazioni.
+  // Il vecchio join per idReserva quindi non agganciava mai: il ✓ si accendeva solo per
+  // l'add ottimistico e spariva al reload. Giorno+campo+ora sono invece sempre valorizzati
+  // nel report (0 vuoti su 879) e noti alla scheda → aggancio affidabile.
   //
   // Il match del giocatore è per NOME normalizzato: gli id non sono comparabili (nel
   // report id_cliente = Cod. visibile, nella scheda idCliente = id URL). Più righe con
