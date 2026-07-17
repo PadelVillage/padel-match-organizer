@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.099';
+    const APP_VERSION = '6.100';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -22624,8 +22624,13 @@ Grazie!`
         const d = byDay.get(data);
         const pid = (p.id_cliente != null ? String(p.id_cliente) : '').trim();
         const pname = (p.player_name || '').trim();
-        const pkey = pid || ('n:' + pname.toLowerCase()) || 'na';
-        if (!d.players.has(pkey)) d.players.set(pkey, { id: pid, name: pname, contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, omaggi: 0 });
+        // Una riga per giocatore E partita (campo+ora+giorno prenotazione nella chiave):
+        // un pagatore con più partite nel giorno (es. «Ospite») non collassa in una riga sola.
+        const campoN = (typeof _payCampoNum === 'function') ? _payCampoNum(p.campo) : String(p.campo || '').replace(/\D/g, '');
+        const oraHm = (typeof _payOraHm === 'function') ? _payOraHm(p.ora) : String(p.ora || '');
+        const bdata = String(p.booking_data || '').slice(0, 10);
+        const pkey = (pid || ('n:' + pname.toLowerCase()) || 'na') + '|' + campoN + '|' + oraHm + '|' + bdata;
+        if (!d.players.has(pkey)) d.players.set(pkey, { id: pid, name: pname, campo: campoN, ora: oraHm, bdata, contanti: 0, carta: 0, borsellino: 0, altro: 0, totale: 0, n: 0, omaggi: 0 });
         const pl = d.players.get(pkey);
         if (isGiftRec) { d.omaggi += 1; pl.omaggi += 1; sel.omaggi += 1; continue; }
         d[bucket] += cents; d.totale += cents; d.n += 1;
@@ -22671,16 +22676,27 @@ Grazie!`
           const d = byDay.get(k);
           const isSel = k === today;
           bodyRows += `<tr style="background:#eaf2fb;border-top:2px solid #cfe0f5;">
-            <td colspan="2" style="font-weight:800;">📅 ${k}${isSel ? ' · Oggi' : ''} <span style="font-weight:500;color:#7a8;">· ${d.n} pagament${d.n === 1 ? 'o' : 'i'}${d.omaggi ? ` · 🎁 ${d.omaggi} omagg${d.omaggi === 1 ? 'io' : 'i'}` : ''}</span></td>
+            <td colspan="4" style="font-weight:800;">📅 ${k}${isSel ? ' · Oggi' : ''} <span style="font-weight:500;color:#7a8;">· ${d.n} pagament${d.n === 1 ? 'o' : 'i'}${d.omaggi ? ` · 🎁 ${d.omaggi} omagg${d.omaggi === 1 ? 'io' : 'i'}` : ''}</span></td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.contanti)}</td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.carta)}</td>
             <td style="text-align:right;font-weight:700;">${_incassiEuro(d.borsellino)}</td>
             <td style="text-align:right;font-weight:800;">${_incassiEuro(d.totale)}</td></tr>`;
-          const players = Array.from(d.players.values()).sort((a, b) => b.totale - a.totale);
+          // In ordine di PARTITA (ora → campo), poi importo: le righe della stessa partita
+          // restano vicine. Senza ora (record vecchi, pre campo/ora nel payload) in coda.
+          const players = Array.from(d.players.values()).sort((a, b) =>
+            (a.ora || '99:99').localeCompare(b.ora || '99:99')
+            || String(a.campo || '').localeCompare(String(b.campo || ''), undefined, { numeric: true })
+            || b.totale - a.totale);
           for (const pl of players) {
+            // Ora della PRENOTAZIONE; se la partita è di un giorno diverso dal pagamento
+            // (es. incasso oggi di una partita di ieri) il giorno compare accanto all'ora.
+            const bd = (pl.bdata && pl.ora && pl.bdata !== k)
+              ? `<span style="font-size:11px;color:#999;" title="Partita del ${esc(pl.bdata)}">${esc(pl.bdata.slice(8, 10))}/${esc(pl.bdata.slice(5, 7))} </span>` : '';
             bodyRows += `<tr style="border-bottom:1px solid #f0f0f0;">
               <td style="color:#999;white-space:nowrap;">${pl.id ? esc(pl.id) : '—'}</td>
               <td>${esc(pl.name || '—')}${pl.omaggi ? ` <span title="Quota offerta (riscossa a 0 € su Matchpoint)">🎁</span>` : ''}</td>
+              <td style="text-align:center;white-space:nowrap;">${pl.campo ? esc(pl.campo) : '—'}</td>
+              <td style="text-align:center;white-space:nowrap;">${pl.ora ? bd + esc(pl.ora) : '—'}</td>
               <td style="text-align:right;">${_incassiEuro(pl.contanti)}</td>
               <td style="text-align:right;">${_incassiEuro(pl.carta)}</td>
               <td style="text-align:right;">${_incassiEuro(pl.borsellino)}</td>
@@ -22689,7 +22705,8 @@ Grazie!`
         }
         table = `<div class="section" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="border-bottom:2px solid #ddd;text-align:left;">
-            <th>ID</th><th>Giocatore</th><th style="text-align:right;">Cash</th><th style="text-align:right;">Card</th>
+            <th>ID</th><th>Giocatore</th><th style="text-align:center;">Campo</th><th style="text-align:center;">Ora</th>
+            <th style="text-align:right;">Cash</th><th style="text-align:right;">Card</th>
             <th style="text-align:right;">Wallet</th><th style="text-align:right;">Totale</th></tr></thead>
           <tbody>${bodyRows}</tbody></table></div>`;
       }
