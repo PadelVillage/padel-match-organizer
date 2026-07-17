@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.106';
+    const APP_VERSION = '6.107';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10320,11 +10320,10 @@ Grazie.`
     // rimettere questo flag a false. Non tocca l'autovalutazione PUBBLICA dei soci
     // (modalità assessment-public-mode / autovalutazione.html), che resta attiva.
     const PMO_ASSESSMENT_PARKED = true;
-    // "Messaggi WhatsApp" è sperimentale (libreria template + triage messaggi in arrivo) e
-    // non ancora operativa: in PROD resta NASCOSTA (codice presente ma non esposto), visibile
-    // solo in TEST. Come per il tab "Assistente AI", quando la feature sarà pronta basta
-    // sganciare questo gate (renderlo false anche in PROD o dare un permesso ruolo).
-    const PMO_WHATSAPP_TEST_ONLY = (typeof PMO_IS_TEST_ENV !== 'undefined') && !PMO_IS_TEST_ENV;
+    // "Messaggi WhatsApp" (libreria template + triage messaggi in arrivo) è OPERATIVA anche
+    // in PROD dal 18/07: il «Rispondi» consegna davvero via wa-shadow-proxy → whatsapp-send.
+    // Gate sganciato: la visibilità è governata dai normali permessi sezione (view_contact).
+    const PMO_WHATSAPP_TEST_ONLY = false;
     const PMO_SECTION_TREE = [
       { key:'view_dashboard', tab:'dashboard', label:'Calendario' },
       { key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
