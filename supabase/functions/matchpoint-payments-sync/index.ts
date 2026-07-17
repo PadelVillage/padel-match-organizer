@@ -40,7 +40,11 @@ const AMOUNT_COLUMNS = ['Importo Totale', 'Importo totale', 'Importo', 'Imp. Tot
 const COD_COLUMNS = ['Cod.', 'Cod', 'Codice', 'Code'];
 const NAME_COLUMNS = ['Nome', 'Cliente', 'Nominativo'];
 const EMAIL_COLUMNS = ['E-mail', 'Email', 'Mail'];
-const IDRES_COLUMNS = ['Numero di prenotazione', 'N. prenotazione', 'Numero prenotazione', 'N° prenotazione'];
+// ⚠️ Il report 11.13 intitola questa colonna "Numero di prenotazione" ma il valore è
+// l'identificativo del CLIENTE Matchpoint (stesso valore su prenotazioni diverse dello
+// stesso socio, diverso tra i 4 giocatori della stessa partita) → nel payload va come
+// `id_cliente_mp`, NON come id della prenotazione.
+const IDCLIENTE_MP_COLUMNS = ['Numero di prenotazione', 'N. prenotazione', 'Numero prenotazione', 'N° prenotazione'];
 const BOOKDAY_COLUMNS = ['Giorno'];
 const BOOKTIME_COLUMNS = ['Ora'];
 const SPACE_COLUMNS = ['Spazio', 'Campo'];
@@ -187,7 +191,7 @@ function base64ToBytes(b64: string): Uint8Array {
 
 type PaymentRow = {
   payDateIso: string; method: 'cash' | 'card' | 'wallet' | 'other'; amountCents: number;
-  cod: string; name: string; email: string; idReserva: string; bookDayIso: string; ora: string; campo: string; ref: string;
+  cod: string; name: string; email: string; idClienteMp: string; bookDayIso: string; ora: string; campo: string; ref: string;
 };
 
 // Parsa l'Excel. Sheet col primo foglio che ha Data Pagamento + Importo. Scarta righe totali/vuote.
@@ -222,7 +226,7 @@ function parsePaymentsWorkbook(bytes: Uint8Array): { ok: true; rows: PaymentRow[
       cod: normalizeCode(getCell(row, COD_COLUMNS)),
       name: clean(getCell(row, NAME_COLUMNS)),
       email: clean(getCell(row, EMAIL_COLUMNS)),
-      idReserva: clean(getCell(row, IDRES_COLUMNS)),
+      idClienteMp: clean(getCell(row, IDCLIENTE_MP_COLUMNS)),
       bookDayIso: itDateToIso(getCell(row, BOOKDAY_COLUMNS)),
       ora: clean(getCell(row, BOOKTIME_COLUMNS)),
       campo: clean(getCell(row, SPACE_COLUMNS)),
@@ -367,12 +371,12 @@ Deno.serve(async (req: Request) => {
       || (row.name ? members.byName.get(normalizeName(row.name)) : undefined);
     const memberLid = rec ? memberLocalId(rec) : '';
     if (memberLid) matched += 1;
-    // Rif. Pagamento è spesso vuoto → chiave composta deterministica (id_reserva, id_cliente,
+    // Rif. Pagamento è spesso vuoto → chiave composta deterministica (id_cliente_mp, id_cliente,
     // giorno-pagamento, importo, metodo) coerente col match cross-source del piano, + una `seq`
     // che distingue righe ALTRIMENTI identiche (es. un solo pagatore che copre più giocatori della
     // stessa prenotazione = più righe stesso cod/importo). La seq è assegnata per ordine nel report,
     // quindi il re-sync dello stesso report rigenera le stesse chiavi (upsert idempotente).
-    const baseKey = `${row.idReserva || 'na'}|${row.cod || 'na'}|${row.payDateIso}|${row.amountCents}|${row.method}`;
+    const baseKey = `${row.idClienteMp || 'na'}|${row.cod || 'na'}|${row.payDateIso}|${row.amountCents}|${row.method}`;
     const seq = (seqByKey.get(baseKey) || 0) + 1;
     seqByKey.set(baseKey, seq);
     const localKey = `pay|${baseKey}|${seq}`;
@@ -387,7 +391,9 @@ Deno.serve(async (req: Request) => {
       record_type: 'payment',
       local_key: localKey,
       payload: {
-        id_reserva: row.idReserva,
+        // Fino a v6.100 questo campo si chiamava `id_reserva` (nome ereditato dall'header
+        // fuorviante del report); i record storici sono stati migrati via SQL alla chiave nuova.
+        id_cliente_mp: row.idClienteMp,
         id_cliente: row.cod,
         member_local_id: memberLid || null,
         player_name: row.name,

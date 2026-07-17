@@ -1144,21 +1144,21 @@ const CASES = [
     }
   },
   {
-    id: 38, flow: 'Pagamenti', name: 'indice pagato+metodo dai record payment del cloud (match per giorno|campo|ora + nome, MAI per id_reserva)',
+    id: 38, flow: 'Pagamenti', name: 'indice pagato+metodo dai record payment del cloud (match per giorno|campo|ora + nome, MAI per id)',
     run: async (win, H, ctx) => {
       // Record `payment` con la forma REALE del report 11.13. Nota bene, è il punto del test:
-      // `id_reserva` NON è il numero della prenotazione ma l'identificativo del CLIENTE →
-      // due giocatori della STESSA partita hanno id_reserva diversi (1023 vs 278) e lo stesso
-      // giocatore porta lo stesso id_reserva su partite diverse (1023 in entrambe). L'aggancio
-      // deve reggersi solo su Giorno+Spazio+Ora (booking_data|campo|ora) + nome.
+      // `id_cliente_mp` (fino a v6.100 `id_reserva`) NON è il numero della prenotazione ma
+      // l'identificativo del CLIENTE → due giocatori della STESSA partita hanno valori diversi
+      // (1023 vs 278) e lo stesso giocatore porta lo stesso valore su partite diverse (1023 in
+      // entrambe). L'aggancio deve reggersi solo su Giorno+Spazio+Ora (booking_data|campo|ora) + nome.
       // `data` (giorno del pagamento) è volutamente diverso da `booking_data`: vince il secondo.
       CLOUD_FAKEROWS = [
-        { record_type: 'payment', deleted: false, payload: { id_reserva: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
-        { record_type: 'payment', deleted: false, payload: { id_reserva: '278', id_cliente: '268', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
-        // Stesso socio (stesso id_reserva) ma ALTRA partita: non deve sporcare la prima.
-        { record_type: 'payment', deleted: false, payload: { id_reserva: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 1200, method: 'wallet', status: 'paid', data: ctx.iso, booking_data: ctx.iso, campo: 'Campo 4', ora: '21:00' } },
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '278', id_cliente: '268', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        // Stesso socio (stesso id_cliente_mp) ma ALTRA partita: non deve sporcare la prima.
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 1200, method: 'wallet', status: 'paid', data: ctx.iso, booking_data: ctx.iso, campo: 'Campo 4', ora: '21:00' } },
         // Stornato in MP → tombstonato dal sync: non deve risultare pagato.
-        { record_type: 'payment', deleted: false, payload: { id_reserva: '99', id_cliente: '99', player_name: 'Carlo Neri', amount_cents: 500, method: 'cash', status: 'void', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '99', id_cliente: '99', player_name: 'Carlo Neri', amount_cents: 500, method: 'cash', status: 'void', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
       ];
       await H.refreshPaidIndex();
       const checks = [];
