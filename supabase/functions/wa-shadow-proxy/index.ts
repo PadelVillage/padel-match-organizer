@@ -6,6 +6,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // 1) suggest | approve-suggestion | send → inoltro allo Shadow Mode backend
 //    (${SHADOW_URL}/webhook/*, token INTERNAL_API_KEY come secret server-side;
 //    risposta ritornata VERBATIM, incluso 429, così la UI resta invariata).
+//    Eccezione «send»: lo Shadow REGISTRA soltanto (replied_at, mai Meta) — la
+//    consegna reale la fa questo proxy chiamando l'edge whatsapp-send del progetto
+//    assistente (credenziali Meta già lì; scrive whatsapp_outbound_messages).
+//    Se la consegna riesce lo status dell'inbound passa a «Risposto» e la risposta
+//    al client porta inviato_meta:true; se fallisce resta la sola registrazione
+//    shadow (inviato_meta:false + errore_meta), stessa UX di prima.
 // 2) inbox-list | inbox-update → lettura lista + update triage DIRETTI sul DB del
 //    progetto assistente WhatsApp (Padel Match Assistant TEST, aylykijfirtegyxzdwgu)
 //    in service_role. Motivo: le tabelle whatsapp_* hanno RLS deny-all (l'anon legge
@@ -171,8 +177,64 @@ Deno.serve(async (req: Request) => {
 
   // Passa attraverso body + status verbatim (incluso 429) così la UI resta invariata.
   const text = await res.text();
+
+  // «send» registrato dallo Shadow → consegna reale via whatsapp-send (assistente).
+  if (action === 'send' && res.ok) {
+    let shadowData: JsonMap = {};
+    try { shadowData = JSON.parse(text) as JsonMap; } catch { /* non-JSON: passthrough sotto */ }
+    if (shadowData.success === true && shadowData.inviato_meta !== true) {
+      const merged = await deliverViaMeta(payload, shadowData);
+      return json(merged, res.status);
+    }
+  }
+
   return new Response(text, {
     status: res.status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
 });
+
+// Consegna reale del «Rispondi» staff: chiama whatsapp-send sul progetto assistente
+// (service key come JWT: la funzione è verify_jwt e scrive lei il log outbound),
+// poi allinea lo status dell'inbound a «Risposto». Ogni fallimento degrada alla sola
+// registrazione shadow: inviato_meta:false + errore_meta, mai un errore bloccante.
+async function deliverViaMeta(payload: JsonMap, shadowData: JsonMap): Promise<JsonMap> {
+  const waUrl = clean(Deno.env.get('WA_ASSISTANT_URL')) || WA_ASSISTANT_URL_DEFAULT;
+  const serviceKey = clean(Deno.env.get('WA_ASSISTANT_SERVICE_KEY'));
+  const numero = clean(payload.numero).replace(/[^0-9]/g, '');
+  const testo = clean(payload.testo);
+  const messageId = clean(payload.message_id);
+  const inboundId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId) ? messageId : null;
+
+  if (!serviceKey) return { ...shadowData, inviato_meta: false, errore_meta: 'WA_ASSISTANT_SERVICE_KEY mancante' };
+  if (numero.length < 8 || !testo) return { ...shadowData, inviato_meta: false, errore_meta: 'numero o testo mancanti' };
+
+  try {
+    const sendResp = await fetch(`${waUrl}/functions/v1/whatsapp-send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` },
+      body: JSON.stringify({
+        recipient_number: numero,
+        message_text: testo,
+        inbound_message_id: inboundId ?? undefined,
+      }),
+    });
+    const sendData = (await sendResp.json().catch(() => ({}))) as JsonMap;
+    if (!sendResp.ok || sendData.success !== true) {
+      return { ...shadowData, inviato_meta: false, errore_meta: clean(sendData.error) || `whatsapp-send HTTP ${sendResp.status}` };
+    }
+
+    // whatsapp-send marca l'inbound «Archiviato»: per il flusso manuale staff lo
+    // status corretto è «Risposto» (stesso valore che la dashboard mostra in locale).
+    if (inboundId) {
+      const wa = createClient(waUrl, serviceKey, { auth: { persistSession: false } });
+      await wa.from(WA_INBOUND_TABLE)
+        .update({ status: 'Risposto', updated_at: new Date().toISOString() })
+        .eq('id', inboundId);
+    }
+
+    return { ...shadowData, inviato_meta: true, meta_message_id: sendData.meta_message_id ?? null };
+  } catch (metaErr) {
+    return { ...shadowData, inviato_meta: false, errore_meta: clean(metaErr instanceof Error ? metaErr.message : metaErr) };
+  }
+}
