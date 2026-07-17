@@ -7235,7 +7235,7 @@ body.assessment-public-mode .assessment-public-only-card {
         <div class="wa-section-head">
           <div>
             <h3>📲 Messaggi in entrata</h3>
-            <span style="font-size:12px;color:#667085;">Messaggi WhatsApp ricevuti · aggiornamento in tempo reale</span>
+            <span style="font-size:12px;color:#667085;">Messaggi WhatsApp ricevuti · aggiornamento automatico</span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#667085;">
@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.102';
+    const APP_VERSION = '6.105';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -35606,10 +35606,12 @@ Per confermare scrivi ELIMINA.`);
     /* ── Config ── */
     const WA_URL  = 'https://aylykijfirtegyxzdwgu.supabase.co';
     const WA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5bHlraWpmaXJ0ZWd5eHpkd2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDA4OTcsImV4cCI6MjA5NDg3Njg5N30._wJ9l8-yHbDtcjSe5rNT2qRKK6bfdyERQKI_D2EljEg';
-    const WA_TABLE = 'whatsapp_inbound_messages';
     // NB: URL e token dello Shadow backend NON sono più nel client (erano in chiaro nel
     // sorgente pubblico). Le chiamate /webhook/* passano dall'edge autenticata
     // wa-shadow-proxy, che tiene il token come secret server-side (vedi waShadowCall).
+    // Dal v6.104 anche LISTA e TRIAGE passano dal proxy (azioni inbox-list/inbox-update):
+    // le tabelle whatsapp_* hanno RLS deny-all e l'anon key (WA_KEY, usata solo per la
+    // RPC aggregata wa_usage_stats della card Consumi) non legge più i messaggi.
 
     /* Detect test env using the same logic as the main app */
     function isTestEnv() {
@@ -35629,15 +35631,14 @@ Per confermare scrivi ELIMINA.`);
     }
 
     /* ── State ── */
-    let waSb       = null;
-    let waChannel  = null;
     let waMsgs     = [];
     let waFiltered = [];
     let waActiveId = null;
     let waActiveMsg = null;
     let waInited   = false;
     let waActivePill    = 'tutti';
-    let waTimerInterval = null;
+    let waLoadedOnce    = false;
+    let waPollTimer     = null;
 
     /* ── Metadata ── */
     const WA_CAT_META = {
@@ -35724,21 +35725,56 @@ Per confermare scrivi ELIMINA.`);
       if (g('waStatUrgent'))  g('waStatUrgent').textContent  = waMsgs.filter(m => (m.categories||[]).includes('URGENTE')).length;
     }
 
-    /* ── Load messages ── */
-    window.waLoadMessages = async function() {
-      if (!waSb) return;
-      document.getElementById('waMsgList').innerHTML = '<div class="wa-detail-placeholder">Caricamento…</div>';
+    /* ── Load messages ──
+       Via wa-shadow-proxy (JWT staff → service_role lato server): l'anon non legge
+       le tabelle whatsapp_* (RLS deny-all, voluto). opts.quiet = polling/boot:
+       niente placeholder "Caricamento…" e, finché non c'è un primo caricamento
+       riuscito, l'errore di login mostra un invito e non un errore rosso. */
+    window.waLoadMessages = async function(opts) {
+      const quiet = !!(opts && opts.quiet);
+      const listEl = document.getElementById('waMsgList');
+      if (!listEl) return;
+      if (!quiet) listEl.innerHTML = '<div class="wa-detail-placeholder">Caricamento…</div>';
       try {
-        const { data, error } = await waSb.from(WA_TABLE).select('*').order('created_at', { ascending:false }).limit(100);
-        if (error) throw error;
-        waMsgs = data || [];
+        const { ok, status, data } = await waShadowCall('inbox-list', { limit: 100 });
+        if (!ok || !data.success) throw new Error(data.errore || `HTTP ${status}`);
+        const fresh = Array.isArray(data.messages) ? data.messages : [];
+        const byId = new Map(waMsgs.map(m => [String(m.id), m]));
+        const prevIds = waLoadedOnce ? new Set(byId.keys()) : null;
+        /* Merge riga DB su stato locale: i flag effimeri (_fallback_ia, …) sopravvivono */
+        waMsgs = fresh.map(f => {
+          const old = byId.get(String(f.id));
+          return old ? { ...old, ...f } : f;
+        });
+        if (waActiveId) {
+          const sel = waMsgs.find(m => String(m.id) === String(waActiveId));
+          if (sel) { waActiveMsg = sel; waRenderDetail(waActiveMsg); }
+        }
         waApplyFilters();
         waUpdateStats();
         waUpdatePillCounts();
         waSetStatus(`${waMsgs.length} messaggi · ${new Date().toLocaleTimeString('it-IT')}`);
+        waSetRt('connected', 'Aggiornamento automatico (60s)');
+        if (prevIds) {
+          const nuovi = waMsgs.filter(m => !prevIds.has(String(m.id)));
+          if (nuovi.length === 1) waToast('📲 Nuovo messaggio da ' + (nuovi[0].sender_name || nuovi[0].sender_number || '–'));
+          else if (nuovi.length > 1) waToast(`📲 ${nuovi.length} nuovi messaggi`);
+        }
+        waLoadedOnce = true;
       } catch (err) {
-        document.getElementById('waMsgList').innerHTML = `<div class="wa-detail-placeholder" style="color:#c62828;">❌ ${waEsc(err.message||err)}</div>`;
-        waSetStatus('Errore caricamento');
+        const msg = String(err?.message || err);
+        if (quiet && waLoadedOnce) return; /* polling fallito: tieni la lista che c'è */
+        /* "Accedi…" = niente token locale; "Autenticazione staff richiesta." = 401
+           dell'edge (sessione scaduta/stantia): in entrambi i casi serve il login. */
+        if (/^Accedi|Autenticazione staff richiesta/.test(msg)) {
+          listEl.innerHTML = '<div class="wa-detail-placeholder">🔐 Accedi come staff per vedere i messaggi.</div>';
+          waSetRt('', 'In attesa di login');
+          waSetStatus('Login staff richiesto');
+        } else {
+          listEl.innerHTML = `<div class="wa-detail-placeholder" style="color:#c62828;">❌ ${waEsc(msg)}</div>`;
+          waSetRt('error', 'Errore');
+          waSetStatus('Errore caricamento');
+        }
       }
     };
 
@@ -35802,10 +35838,6 @@ Per confermare scrivi ELIMINA.`);
       set('waPillCountINFO',         (counts['INFO']||0) + (counts['RECLAMO']||0) + (counts['URGENTE']||0) + (counts['ALTRO']||0));
       set('waPillCountSPAM',         counts['SPAM_NOT_RELEVANT'] || 0);
     }
-    function waTickTimer() {
-      waRenderList();
-    }
-
     /* ── Select message ── */
     window.waSelect = function(id) {
       waActiveId  = id;
@@ -35881,14 +35913,21 @@ Per confermare scrivi ELIMINA.`);
       document.getElementById('waBtnReply').disabled = m.status === 'Risposto';
     }
 
+    /* ── Update triage via proxy ──
+       Whitelist server-side: categories | status | stato_revisione | risposta_suggerita_ia. */
+    async function waInboxUpdate(id, fields) {
+      const { ok, status, data } = await waShadowCall('inbox-update', { id, fields });
+      if (!ok || !data.success) throw new Error(data.errore || `HTTP ${status}`);
+      return data.message;
+    }
+
     /* ── Toggle category ── */
     window.waToggleCat = async function(cat) {
-      if (!waActiveMsg || !waSb) return;
+      if (!waActiveMsg) return;
       const cur = waActiveMsg.categories || [];
       const upd = cur.includes(cat) ? cur.filter(c => c !== cat) : [...cur, cat];
       try {
-        const { error } = await waSb.from(WA_TABLE).update({ categories: upd }).eq('id', waActiveMsg.id);
-        if (error) throw error;
+        await waInboxUpdate(waActiveMsg.id, { categories: upd });
         waActiveMsg.categories = upd;
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
         if (i !== -1) waMsgs[i].categories = upd;
@@ -35903,10 +35942,9 @@ Per confermare scrivi ELIMINA.`);
 
     /* ── Mark done ── */
     window.waMarkDone = async function() {
-      if (!waActiveMsg || !waSb) return;
+      if (!waActiveMsg) return;
       try {
-        const { error } = await waSb.from(WA_TABLE).update({ status:'Completato' }).eq('id', waActiveMsg.id);
-        if (error) throw error;
+        await waInboxUpdate(waActiveMsg.id, { status:'Completato' });
         waActiveMsg.status = 'Completato';
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
         if (i !== -1) waMsgs[i].status = 'Completato';
@@ -35940,10 +35978,9 @@ Per confermare scrivi ELIMINA.`);
 
     /* ── Revision (Shadow Mode validation) ── */
     window.waApproveRevision = async function() {
-      if (!waActiveMsg || !waSb) return;
+      if (!waActiveMsg) return;
       try {
-        const { error } = await waSb.from(WA_TABLE).update({ stato_revisione: 'approvato' }).eq('id', waActiveMsg.id);
-        if (error) throw error;
+        await waInboxUpdate(waActiveMsg.id, { stato_revisione: 'approvato' });
         waActiveMsg.stato_revisione = 'approvato';
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
         if (i !== -1) waMsgs[i].stato_revisione = 'approvato';
@@ -35951,10 +35988,9 @@ Per confermare scrivi ELIMINA.`);
       } catch (err) { waToast('Errore: ' + (err.message||err), 'err'); }
     };
     window.waRejectRevision = async function() {
-      if (!waActiveMsg || !waSb) return;
+      if (!waActiveMsg) return;
       try {
-        const { error } = await waSb.from(WA_TABLE).update({ stato_revisione: 'rifiutato' }).eq('id', waActiveMsg.id);
-        if (error) throw error;
+        await waInboxUpdate(waActiveMsg.id, { stato_revisione: 'rifiutato' });
         waActiveMsg.stato_revisione = 'rifiutato';
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
         if (i !== -1) waMsgs[i].stato_revisione = 'rifiutato';
@@ -35971,12 +36007,11 @@ Per confermare scrivi ELIMINA.`);
       ta.focus();
     };
     window.waSaveEditedRevision = async function() {
-      if (!waActiveMsg || !waSb) return;
+      if (!waActiveMsg) return;
       const txt = (document.getElementById('waShadowEditText')?.value || '').trim();
       if (!txt) { waToast('Testo vuoto', 'err'); return; }
       try {
-        const { error } = await waSb.from(WA_TABLE).update({ risposta_suggerita_ia: txt, stato_revisione: 'modificato' }).eq('id', waActiveMsg.id);
-        if (error) throw error;
+        await waInboxUpdate(waActiveMsg.id, { risposta_suggerita_ia: txt, stato_revisione: 'modificato' });
         waActiveMsg.risposta_suggerita_ia = txt;
         waActiveMsg.stato_revisione = 'modificato';
         const i = waMsgs.findIndex(m => m.id === waActiveMsg.id);
@@ -36158,29 +36193,14 @@ Per confermare scrivi ELIMINA.`);
       }
     };
 
-    /* ── Realtime ── */
-    function waStartRt() {
-      if (!waSb) return;
-      waChannel = waSb.channel('wa-inbound')
-        .on('postgres_changes', { event:'INSERT', schema:'public', table:WA_TABLE }, payload => {
-          waMsgs.unshift(payload.new);
-          waApplyFilters(); waUpdateStats(); waUpdatePillCounts();
-          waToast('📲 Nuovo messaggio da ' + (payload.new.sender_name || payload.new.sender_number || '–'));
-          waSetStatus('Nuovo messaggio · ' + new Date().toLocaleTimeString('it-IT'));
-        })
-        .on('postgres_changes', { event:'UPDATE', schema:'public', table:WA_TABLE }, payload => {
-          const upd = payload.new;
-          const i = waMsgs.findIndex(m => m.id === upd.id);
-          if (i !== -1) waMsgs[i] = { ...waMsgs[i], ...upd };
-          if (waActiveMsg?.id === upd.id) { waActiveMsg = { ...waActiveMsg, ...upd }; waRenderDetail(waActiveMsg); }
-          waApplyFilters(); waUpdateStats(); waUpdatePillCounts();
-        })
-        .subscribe(status => {
-          if (status === 'SUBSCRIBED')    waSetRt('connected', 'Realtime attivo');
-          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') waSetRt('error', 'Errore Realtime');
-          else if (status === 'CLOSED')   waSetRt('', 'Disconnesso');
-          else                            waSetRt('', 'Connessione…');
-        });
+    /* ── Aggiornamento periodico ──
+       La realtime postgres_changes è MUTA per RLS deny-all sul progetto assistente
+       (stesso motivo della lista vuota): al suo posto un polling via proxy ogni 60s.
+       Il poll quiet rinfresca anche i contatori "In attesa da X min" e, senza login,
+       non fa rumore: al primo staff loggato la lista si popola da sola. */
+    function waStartPolling() {
+      if (waPollTimer) return;
+      waPollTimer = setInterval(() => { waLoadMessages({ quiet: true }); }, 60000);
     }
 
     /* ── Init ── */
@@ -36189,14 +36209,28 @@ Per confermare scrivi ELIMINA.`);
       waInited = true;
       const dashboard = document.getElementById('waInboundDashboard');
       if (dashboard) dashboard.style.display = 'block';
-      /* Mostra banner di sicurezza se siamo in env=test */
+      /* Sotto il banco di prova (fetch mockata __pmoFetchMock) niente lista né
+         polling: ogni chiamata al proxy sarebbe un leak. */
+      let underHarness = false;
+      try { underHarness = !!(window.fetch && window.fetch.__pmoFetchMock); } catch {}
+      /* Lista e triage passano da wa-shadow-proxy (JWT staff → service_role lato
+         server): i contenuti non sono esposti all'anon. Il progetto assistente è
+         UNICO: in ambiente di test si vedono i messaggi REALI dei clienti (banner
+         sotto), ma l'INVIO resta reindirizzato a WA_TEST_OVERRIDE_NUMBER — ai
+         clienti veri si risponde solo da PROD. */
       const testBanner = document.getElementById('waTestModeBanner');
-      if (testBanner) testBanner.style.display = isTestEnv() ? 'block' : 'none';
+      if (isTestEnv()) {
+        if (testBanner) {
+          testBanner.style.display = 'block';
+          testBanner.textContent = '⚠️ MODALITÀ TEST — La lista mostra i messaggi WhatsApp REALI dei clienti (progetto assistente unico). Ogni invio da qui è reindirizzato a +39 335 7615 855 (Maurizio): ai clienti veri si risponde solo da PROD.';
+        }
+      } else if (testBanner) {
+        testBanner.style.display = 'none';
+      }
+      if (underHarness) { waSetRt('', 'Banco di prova'); return; }
       try {
-        waSb = supabase.createClient(WA_URL, WA_KEY);
-        waLoadMessages();
-        waStartRt();
-        waTimerInterval = setInterval(waTickTimer, 60000);
+        waLoadMessages({ quiet: true }); /* senza login: invito, non errore */
+        waStartPolling();
       } catch (err) {
         console.error('[WA Dashboard] init error:', err);
         waSetRt('error', 'Errore init');
