@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.101';
+    const APP_VERSION = '6.102';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38050,6 +38050,15 @@ Per confermare scrivi ELIMINA.`);
       .filter(Boolean);
     return arr.join(' + ');
   }
+  // Glifo della chip "pagato" sulla card del calendario: 🎁 quando la quota è SOLO
+  // un'offerta (nessun incasso vero), sennò ✓ verde. Un omaggio poi trasformato in
+  // incasso vero porta entrambi i metodi → resta ✓ (il 🎁 nasconderebbe l'incasso).
+  function _payChipGlyph(methods) {
+    const arr = Array.isArray(methods) ? methods : [];
+    if (arr.length === 1 && arr[0] === 'omaggio') return { gift: true, glyph: '🎁', title: 'Offerta' };
+    const ml = _payMethodsLabel(arr);
+    return { gift: false, glyph: '✓', title: ml ? ('Pagato · ' + ml) : 'Pagato' };
+  }
   // Pastiglia della riga "pagato" in scheda. Una quota riscossa a 0 € su Matchpoint
   // è una quota OFFERTA: non è un pagamento, quindi non compare mai nel report 11.13
   // e nessuna "modalità" arriverà dalla sync — senza questo caso la scheda direbbe
@@ -39127,11 +39136,11 @@ Per confermare scrivi ELIMINA.`);
             let _pinfo = null;
             try { _pinfo = _staffCalPaidInfo(isoDate, c, b.ora, g.nome); } catch (e) { _pinfo = null; }
             if (_pinfo) {
-              const _ml = _payMethodsLabel(_pinfo.methods);
+              const _cg = _payChipGlyph(_pinfo.methods);
               const ck = document.createElement('span');
-              ck.textContent = '✓ ';
-              ck.style.cssText = 'color:#16a34a;font-weight:800;';
-              ck.title = _ml ? ('Pagato · ' + _ml) : 'Pagato';
+              ck.textContent = _cg.glyph + ' ';
+              if (!_cg.gift) ck.style.cssText = 'color:#16a34a;font-weight:800;';
+              ck.title = _cg.title;
               t3.appendChild(ck);
               t3.appendChild(document.createTextNode(g.nome));
             } else {
@@ -43386,6 +43395,7 @@ Per confermare scrivi ELIMINA.`);
         },
         refreshPaidIndex: function () { _staffCalPaidIndexAt = 0; return _staffCalRefreshPaidIndex(); },
         paidBadge: function (stato, importoCents, methods) { return _payPaidBadge(stato, importoCents, methods); },
+        chipGlyph: function (methods) { return _payChipGlyph(methods); },
         giftKey: function (data, campo, ora, name) { return _pmoGiftKey(data, campo, ora, name); },
         giftRecord: function (data, campo, ora, p) { return _pmoGiftRecord(data, campo, ora, p); },
         giftSyncFromRoster: function (data, campo, ora, roster) { return _pmoGiftSyncFromRoster(data, campo, ora, roster); },
