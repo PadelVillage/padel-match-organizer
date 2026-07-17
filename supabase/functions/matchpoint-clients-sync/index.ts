@@ -217,6 +217,13 @@ function phoneDigits(value: unknown) {
   return normalizePhone(value).replace(/\D/g, '');
 }
 
+// Guardia telefono corto/sospetto (stile anti-churn v6.090): l'export Excel di Matchpoint
+// a volte emette per un socio un numero MONCO (es. "+39335811", 8 cifre, socio 000004)
+// mentre la pagina cliente mostra quello pieno. Un numero italiano plausibile dopo
+// normalizePhone ha almeno 11 cifre ("39" + ≥9): sotto questa soglia il numero in arrivo
+// non deve mai sovrascrivere un numero pieno già presente nel record.
+const PLAUSIBLE_PHONE_MIN_DIGITS = 11;
+
 function emailKey(value: unknown) {
   return clean(value).toLocaleLowerCase('it-IT').replace(/\s+/g, '');
 }
@@ -406,7 +413,8 @@ function mergeProtectedMember(existing: JsonMap, imported: ParsedMember, importe
 // Direzione B (Matchpoint → app): a differenza di mergeProtectedMember (che protegge i dati
 // curati nell'app), qui Matchpoint È autorevole sui campi anagrafici "di contatto": Nome,
 // Cognome, Telefono, Email, Sesso. Il Livello NON viene mai sovrascritto (resta curato nell'app
-// tramite l'autovalutazione). Ritorna anche `changed`: true se uno di quei campi è davvero
+// tramite l'autovalutazione); un Telefono corto/sospetto non sovrascrive un numero pieno
+// (guardia sotto, segnalato in `phoneSuspectKept`). Ritorna anche `changed`: true se uno di quei campi è davvero
 // cambiato rispetto al payload memorizzato (confronto normalizzato, così differenze di sola
 // formattazione non generano falsi cambiamenti né broadcast inutili).
 function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, importedAt: string) {
@@ -423,11 +431,21 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
   const sn = pickText(titleCaseNamePart(imported.surname), existing.surname);
   if (sn.changed) changed = true;
 
-  // Telefono: confronto sulle sole cifre normalizzate.
+  // Telefono: confronto sulle sole cifre normalizzate. Guardia: un numero in arrivo
+  // corto/sospetto (export Matchpoint monco) NON sovrascrive un numero pieno esistente —
+  // la chiave del record resta invariata, si preserva solo il payload curato (es. il
+  // numero WhatsApp usato dal ponte consumer F2.x).
   let phone = clean(existing.phone);
-  if (clean(imported.phone) && phoneDigits(imported.phone) !== phoneDigits(existing.phone)) {
-    phone = clean(imported.phone);
-    changed = true;
+  let phoneSuspectKept = false;
+  const importedPhoneDigits = phoneDigits(imported.phone);
+  const existingPhoneDigits = phoneDigits(existing.phone);
+  if (clean(imported.phone) && importedPhoneDigits !== existingPhoneDigits) {
+    if (importedPhoneDigits.length < PLAUSIBLE_PHONE_MIN_DIGITS && existingPhoneDigits.length >= PLAUSIBLE_PHONE_MIN_DIGITS) {
+      phoneSuspectKept = true;
+    } else {
+      phone = clean(imported.phone);
+      changed = true;
+    }
   }
   // Email: confronto su chiave normalizzata.
   let email = clean(existing.email);
@@ -471,7 +489,7 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
     matchpointImportedAt: importedAt,
     updatedAt: changed ? importedAt : (clean(existing.updatedAt) || importedAt),
   };
-  return { payload, changed };
+  return { payload, changed, phoneSuspectKept };
 }
 
 // Invia un broadcast Realtime "member-mp-changed" sul canale pv-staff-cal-{prod|test}, così i
@@ -1896,6 +1914,8 @@ Deno.serve(async (req) => {
     let legacyDuplicateDeleted = 0;
     let legacyDuplicateReview = 0;
     const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
+    let phoneSuspectKept = 0;
+    const phoneSuspectKeptSample: Array<{ memberId: string; firstName: string; surname: string; importedPhone: string }> = [];
 
     for (const member of validation.members) {
       const candidates = collectExistingMemberCandidates(existing, member);
@@ -1910,6 +1930,17 @@ Deno.serve(async (req) => {
         const applied = applyMatchpointContacts(match.payload || {}, member, importedAt);
         payload = applied.payload;
         memberChangedForBroadcast = applied.changed;
+        if (applied.phoneSuspectKept) {
+          phoneSuspectKept += 1;
+          if (phoneSuspectKeptSample.length < 20) {
+            phoneSuspectKeptSample.push({
+              memberId: clean(payload.memberId || ''),
+              firstName: clean(payload.firstName || ''),
+              surname: clean(payload.surname || ''),
+              importedPhone: clean(member.phone || ''),
+            });
+          }
+        }
       } else {
         payload = member;
         memberChangedForBroadcast = true; // socio nuovo: va mostrato subito sui device
@@ -1999,6 +2030,7 @@ Deno.serve(async (req) => {
         staleDeleted,
         legacyDuplicateDeleted,
         legacyDuplicateReview,
+        phoneSuspectKept,
         added,
         updated,
       },
@@ -2017,6 +2049,7 @@ Deno.serve(async (req) => {
       diagnostic: exported.diagnostic,
       memberIdEnrichment,
       legacyDuplicateReviewSample,
+      phoneSuspectKeptSample,
     };
     records.push({
       record_type: 'matchpoint_data',
@@ -2069,6 +2102,8 @@ Deno.serve(async (req) => {
       legacyDuplicateDeleted,
       legacyDuplicateReview,
       legacyDuplicateReviewSample,
+      phoneSuspectKept,
+      phoneSuspectKeptSample,
       diagnosticFile,
       upserted: finalRecords.length,
       memberIdEnrichment,
