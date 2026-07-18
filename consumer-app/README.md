@@ -123,6 +123,14 @@ consumer-app/
 
 `supabase/functions/consumer-identity-lookup/` → progetto **gestionale** (deploy dalla CI).
 
+> ⚠️ **Creando una tabella nuova su questo progetto, ricordarsi i GRANT.** RLS e policy
+> non bastano: in Postgres servono anche i privilegi. Le tabelle create di recente qui
+> **non** ricevono quelli che Supabase concede per default (le `whatsapp_*`, più vecchie,
+> li hanno; le `consumer_*` no), e senza `grant … to service_role` le edge function
+> rispondono `DB_ERROR`. Non si nota provando le RPC: quelle sono `SECURITY DEFINER` e
+> ignorano i grant. Si nota solo sull'accesso diretto via PostgREST. Vedi
+> `db/20260718193000_consumer_grants_service_role.sql`.
+
 ### Provare in locale
 
 ```bash
@@ -139,11 +147,29 @@ Le due pagine scrivono l'esito macchina in `window.__RESULTS__`
 
 ## Limiti noti, dichiarati
 
-- **Il passo `identify` non ha rate limit**: chi prova molti numeri può costruire una mappa
-  telefono → nome di battesimo. Accettato — il telefono non è un segreto e il nome da solo
-  non apre nulla — ma è una scelta, non una dimenticanza. Il passo `challenge`, che è
-  quello che conta, è limitato a **6 tentativi/ora per telefono** più **5 tentativi per
-  challenge** sul codice.
+- **Rate limit.** `challenge` è limitato a **6 tentativi/ora per telefono** più **5
+  tentativi per challenge** sul codice. `identify` è limitato a **60/ora per IP**
+  (`consumer_identify_throttle`).
+
+  Il limite su `identify` è stato aggiunto il 18/07/2026, quando il ponte è andato
+  in produzione: finché rispondeva `BRIDGE_DOWN` la mappa telefono → nome era
+  inerte, dal deploy è diventata estraibile davvero. Non difende un account — il
+  nome di battesimo da solo non apre nulla — difende l'**anagrafica**: senza, chi
+  possiede una lista di numeri sa in pochi minuti quali sono soci del circolo, che
+  è un dato personale in quanto rivela un'affiliazione.
+
+  Perché 60 e non 6: la chiave è l'IP, e i soci al circolo stanno dietro lo stesso
+  wifi — un limite stretto li bloccherebbe a vicenda proprio dove useranno l'app.
+
+  ⚠️ **Mitigante, non barriera**: chi ruota IP aggira. Alza il costo di due o tre
+  ordini di grandezza, non lo rende impossibile.
+
+  ⚠️ Il conteggio usa **solo `cf-connecting-ip`**, e va lasciato così. La prima
+  versione usava `x-real-ip` con fallback su `x-forwarded-for`: misurata mandando
+  header falsificati, quattro richieste dallo stesso computer finivano in quattro
+  bucket diversi — il client sceglieva la propria chiave di rate limit. Quei due
+  header arrivano come li scrive il chiamante; `cf-connecting-ip` no, falsificarlo
+  fa respingere la richiesta con 403 dal proxy prima ancora della funzione.
 - **Login solo via telefono.** Oggi 1030 soci su 1042 (98,8%) entrano così. Restano fuori
   **3** soci che hanno l'email ma non il telefono: per loro serve accettare anche l'email
   come identificatore — è un ramo a sé, con una domanda di UX aperta (con l'email come
