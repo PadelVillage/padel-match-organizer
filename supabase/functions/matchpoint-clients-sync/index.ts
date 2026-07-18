@@ -1151,7 +1151,9 @@ async function downloadReportFromSession(
       },
     });
   } else {
-    const fields = {
+    // JsonMap esplicito: lo spread perde l'index signature di form.fields e il tipo
+    // si stringe alle due chiavi letterali, impedendo la scrittura dinamica qui sotto.
+    const fields: JsonMap = {
       ...form.fields,
       __EVENTTARGET: discoveredPostback.target,
       __EVENTARGUMENT: '',
@@ -1861,6 +1863,11 @@ Deno.serve(async (req) => {
     const exported = syncResult.main;
     const validation = validateClientWorkbook(exported.bytes, importedAt);
     if (!validation.ok) {
+      // Il ramo di errore è un'unione e non tutte le varianti portano missing/sheetNames
+      // (SHEET_MISSING non ha missing, altre non hanno nessuno dei due): i `|| []` qui sotto
+      // lo davano già per scontato. Stesso allargamento che saveValidationDiagnostic fa
+      // nella propria firma, dove infatti le righe identiche compilano.
+      const validationInfo: JsonMap = validation;
       const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
       const diagnosticSaved = await saveValidationDiagnostic(admin, actor, importedAt, exported, validation, diagnosticFile);
       await logAudit(admin, actor, 'matchpoint_clients_auto_import_blocked', {
@@ -1875,9 +1882,9 @@ Deno.serve(async (req) => {
           diagnosticFile,
         },
         validation: {
-          missing: validation.missing || [],
-          headers: validation.headers || [],
-          sheetNames: validation.sheetNames || [],
+          missing: validationInfo.missing || [],
+          headers: validationInfo.headers || [],
+          sheetNames: validationInfo.sheetNames || [],
         },
       });
       return errorResponse(422, validation.error, validation.message, {
