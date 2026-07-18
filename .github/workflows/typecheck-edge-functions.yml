@@ -98,13 +98,26 @@ jobs:
           NO_COLOR: '1'
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          # GitHub invoca la shell come `bash -e`: senza spegnerlo, il primo `deno check`
+          # che trova errori aborte lo step e tutta la logica differenziale qui sotto non
+          # verrebbe MAI eseguita — il gate si comporterebbe da gate assoluto, l'opposto
+          # di quanto voluto. L'esito di deno lo gestiamo a mano.
+          set +e
           set -uo pipefail
 
-          # Conta le sole righe di diagnostica: "TS1234 [ERROR]: ..."
-          count_errors() {
-            local dir="$1" log="$2"
+          # `deno check` fallisce per due motivi che vanno tenuti distinti:
+          #  - diagnostica di tipo         -> righe "TS1234 [ERROR]:", e' cio' che misuriamo
+          #  - fallimento infrastrutturale -> exit != 0 SENZA righe TS (rete, risoluzione
+          #    npm, import map rotta). Contarlo come "0 errori" farebbe passare il gate
+          #    senza aver controllato nulla: e' il falso verde che questo workflow esiste
+          #    per impedire, quindi va trattato come errore rumoroso.
+          # Restituisce "<exit_code> <numero_errori_di_tipo>".
+          run_check() {
+            local dir="$1" log="$2" rc=0 n=0
             ( cd "$dir" && deno check --node-modules-dir=auto index.ts ) >"$log" 2>&1
-            grep -cE '^TS[0-9]+ \[ERROR\]' "$log" || true
+            rc=$?
+            n=$(grep -cE '^TS[0-9]+ \[ERROR\]' "$log")
+            echo "$rc ${n:-0}"
           }
 
           BASE_TREE=''
@@ -117,17 +130,32 @@ jobs:
           for fn in ${{ steps.pick.outputs.functions }}; do
             DIR="supabase/functions/$fn"
             LOG="$RUNNER_TEMP/$fn.head.log"
-            NOW=$(count_errors "$DIR" "$LOG")
+            read -r RC NOW <<< "$(run_check "$DIR" "$LOG")"
+
+            # deno non ha potuto concludere: non e' un via libera, e' un check mancato.
+            if [ "$RC" -ne 0 ] && [ "$NOW" -eq 0 ]; then
+              echo "::error::$fn — deno check non ha potuto concludere (exit $RC) e non ha prodotto diagnostica di tipo: e' un controllo MANCATO, non un via libera"
+              sed -n '1,40p' "$LOG"
+              FAIL=1
+              continue
+            fi
 
             if [ "$NOW" -eq 0 ]; then
               echo "::notice::$fn — pulita"
               continue
             fi
 
-            # Ha errori: erano già lì prima della PR?
+            # Ha errori di tipo: erano già lì prima della PR?
             WAS=''
             if [ -n "$BASE_TREE" ] && [ -f "$BASE_TREE/$DIR/index.ts" ]; then
-              WAS=$(count_errors "$BASE_TREE/$DIR" "$RUNNER_TEMP/$fn.base.log")
+              read -r BRC BN <<< "$(run_check "$BASE_TREE/$DIR" "$RUNNER_TEMP/$fn.base.log")"
+              # Base non misurabile: non si puo' concludere che gli errori siano nuovi.
+              if [ "$BRC" -ne 0 ] && [ "$BN" -eq 0 ]; then
+                echo "::warning::$fn — $NOW errori di tipo, ma la versione di partenza non e' misurabile (deno exit $BRC): impossibile stabilire se siano nuovi"
+                sed -n '1,40p' "$LOG"
+                continue
+              fi
+              WAS="$BN"
             fi
 
             if [ -z "$WAS" ]; then
