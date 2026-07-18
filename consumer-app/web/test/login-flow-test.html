@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harness — flusso di login consumer (server simulato)</title>
+<style>
+  :root{color-scheme:light}   /* niente inversione automatica: il rapporto deve restare leggibile */
+  /* ⚠️ Questa pagina inietta nel proprio <head> il <style> di index.html, per
+     montare l'app vera invece di una copia. Quel foglio ha una regola body{}
+     con sfondo scuro e display:flex: senza il selettore più specifico qui
+     sotto se la prenderebbe anche il rapporto, che diventa testo scuro su
+     fondo scuro — illeggibile pur essendo tutto verde. */
+  body#harness{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    margin:0;color:#111b21;background:#fff;display:block}
+  #report{padding:22px;max-width:860px}
+  h1{font-size:19px;margin:0 0 4px} .sub{color:#667781;margin:0 0 18px}
+  #tot{font-size:16px;font-weight:700;padding:11px 14px;border-radius:9px;margin-bottom:16px}
+  .verde{background:#d6e7d2;color:#2c5c33} .rosso{background:#fde8e6;color:#c0392b}
+  table{border-collapse:collapse;width:100%} td{border-bottom:1px solid #e6e9ea;padding:6px 9px;vertical-align:top}
+  td.e{width:34px;text-align:center} tr.ko{background:#fff5f4}
+  code{background:#f2f5f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .grp td{background:#f7f9fa;font-weight:600;padding-top:11px}
+  #palco{position:fixed;left:-9999px;top:0}
+</style>
+</head>
+<body id="harness">
+<div id="report">
+  <h1>Flusso di login — rete di regressione</h1>
+  <p class="sub">Monta <code>index.html</code> VERO (non una copia) con <code>fetch</code> simulato e ne
+  percorre i rami. Risultato macchina in <code>window.__RESULTS__</code>.</p>
+  <div id="tot">esecuzione…</div>
+  <table id="out"></table>
+</div>
+<div id="palco"></div>
+
+<script>
+  // ── Server simulato: riproduce il CONTRATTO delle due edge function ──────
+  // La proprietà che conta: «email giusta» ed «email sbagliata» rispondono in
+  // modo IDENTICO. Solo la verifica del codice le distingue. Qui il finto
+  // server usa il prefisso dell'id per ricordarsi quale sia quale; il server
+  // vero tiene quel flag nel DB e al browser arriva un id opaco.
+  const realFetch = window.fetch.bind(window);
+
+  const SOCI = {
+    '3391234567': [{ index: 0, first_name: 'Mario',  has_email: true  }],
+    '3399999999': [{ index: 0, first_name: 'Walter', has_email: false }],
+    '3391111111': [{ index: 0, first_name: 'Anna',   has_email: true  },
+                   { index: 1, first_name: 'Luca',   has_email: true  }],
+  };
+  const EMAIL_IN_SCHEDA = {
+    '3391234567|0': 'mario.rossi@gmail.com',
+    '3391111111|0': 'anna@esempio.it',
+    '3391111111|1': 'luca@esempio.it',
+  };
+
+  window.__CALLS__ = [];
+  // Registro di TUTTE le risposte del finto server, che reset() non azzera: è
+  // su questo che si verifica che al browser non sia mai arrivato un cognome,
+  // un'email in anagrafica o un memberId. Guardare invece l'HTML di questa
+  // pagina non direbbe nulla, perché qui dentro quei dati ci sono per forza —
+  // è il finto server a doverli conoscere.
+  window.__RISPOSTE__ = [];
+  window.fetch = async (url, opts) => {
+    const u = String(url);
+    if (!u.includes('/functions/v1/')) return realFetch(url, opts);
+    const body = JSON.parse(opts?.body ?? '{}');
+    window.__CALLS__.push({ fn: u.split('/functions/v1/')[1], body });
+    const reply = (o, status = 200) => {
+      window.__RISPOSTE__.push(o);
+      return new Response(JSON.stringify(o),
+        { status, headers: { 'Content-Type': 'application/json' } });
+    };
+
+    if (u.endsWith('consumer-auth-start')) {
+      if (body.step === 'identify') {
+        const c = SOCI[body.phone];
+        return reply(c ? { ok: true, found: true, candidates: c }
+                       : { ok: true, found: false, candidates: [] });
+      }
+      const atteso = EMAIL_IN_SCHEDA[`${body.phone}|${body.candidate_index}`];
+      const combacia = !!atteso && atteso === String(body.email).trim().toLowerCase();
+      return reply({ ok: true, expires_in: 600,
+        challenge_id: (combacia ? 'ok' : 'decoy') + '0000-0000-0000-0000-000000000000' });
+    }
+    if (u.endsWith('consumer-auth-verify')) {
+      const buono = String(body.challenge_id).startsWith('ok') && body.code === '123456';
+      return buono
+        ? reply({ ok: true, access_token: 'finto.jwt', refresh_token: 'finto.refresh', expires_in: 3600 })
+        : reply({ ok: false, error: 'INVALID_CODE', message: 'Codice non valido o scaduto.' }, 401);
+    }
+    return reply({ ok: false, error: 'UNKNOWN_FN' }, 404);
+  };
+  try { localStorage.removeItem('pmo_consumer_session'); } catch (e) {}
+</script>
+
+<script type="module">
+const rows = []; let pass = 0, fail = 0;
+const group = (n) => rows.push({ group: n });
+function check(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  const good = a === e; good ? pass++ : fail++;
+  rows.push({ name, good, actual: a, expected: e });
+}
+const truthy = (n, v) => check(n, !!v, true);
+
+// Monta la pagina reale dentro il palco fuori schermo.
+const html = await (await fetch('../index.html')).text();
+const doc = new DOMParser().parseFromString(html, 'text/html');
+document.head.insertAdjacentHTML('beforeend', doc.querySelector('style').outerHTML);
+document.getElementById('palco').innerHTML = doc.querySelector('.app').outerHTML;
+await import('../ui.js');
+
+const $ = (id) => document.getElementById(id);
+const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+const vis = () => [...document.querySelectorAll('.screen.on')].map((s) => s.id)[0];
+const testo = () => $('palco').innerText;
+const { S, show } = window.__PMO_LOGIN__;
+
+function reset() {
+  Object.assign(S, { phone:'', candidateIndex:0, firstName:'', email:'', challengeId:'', expiresAt:0 });
+  try { localStorage.removeItem('pmo_consumer_session'); } catch (e) {}
+  ['in-telefono','in-email','in-codice'].forEach((i) => { $(i).value = ''; });
+  document.querySelectorAll('.msg.bad').forEach((m) => { m.classList.remove('on'); m.textContent = ''; });
+  window.__CALLS__ = [];
+  show('sc-telefono');
+}
+const digita = async (id, v, btn) => { $(id).value = v; $(btn).click(); await pausa(120); };
+
+// ── 1. percorso normale ───────────────────────────────────────────────────
+group('Socio riconosciuto, email giusta');
+reset();
+await digita('in-telefono', '339 123 4567', 'btn-telefono');
+check('il telefono arriva al server come 10 cifre', window.__CALLS__[0].body.phone, '3391234567');
+check('si passa alla richiesta email', vis(), 'sc-email');
+check('saluto col solo nome di battesimo', $('saluto-email').textContent, 'Ciao Mario! 👋');
+await digita('in-email', 'mario.rossi@gmail.com', 'btn-email');
+check('si passa al codice', vis(), 'sc-codice');
+truthy('l’email mostrata è mascherata', $('dove-codice').textContent.includes('ma•••••••••@gmail.com'));
+await digita('in-codice', '999999', 'btn-codice');
+check('codice sbagliato: si resta sul codice', vis(), 'sc-codice');
+check('codice sbagliato: messaggio generico',
+  $('err-codice').textContent, 'Codice non valido o scaduto. Controlla e riprova.');
+await digita('in-codice', '123456', 'btn-codice');
+check('codice giusto: si entra', vis(), 'sc-dentro');
+truthy('la sessione viene salvata', !!localStorage.getItem('pmo_consumer_session'));
+
+// ── 2. email sbagliata: deve essere indistinguibile ───────────────────────
+group('Email sbagliata — nessun indizio, in nessuna forma');
+reset();
+await digita('in-telefono', '339 123 4567', 'btn-telefono');
+await digita('in-email', 'ladro@attaccante.com', 'btn-email');
+check('stessa schermata di quando l’email è giusta', vis(), 'sc-codice');
+check('stesso testo, con l’email DIGITATA mascherata',
+  $('dove-codice').textContent,
+  'Abbiamo inviato un codice a 6 cifre a la•••@attaccante.com. Arriva entro un minuto.');
+truthy('nessuna parola che tradisca il mancato riscontro',
+  !/sbagliat|non combac|errat|non risult|sconosciut/i.test(testo()));
+await digita('in-codice', '123456', 'btn-codice');
+check('il codice «giusto» non apre nulla', vis(), 'sc-codice');
+check('e l’errore è lo stesso di un codice sbagliato',
+  $('err-codice').textContent, 'Codice non valido o scaduto. Controlla e riprova.');
+
+// ── 3. socio senza email in scheda ────────────────────────────────────────
+group('Socio senza email — non gli si chiede di inserirla');
+reset();
+await digita('in-telefono', '3399999999', 'btn-telefono');
+check('va in segreteria', vis(), 'sc-segreteria');
+check('riconosciuto per nome', $('saluto-segreteria').textContent, 'Ciao Walter!');
+truthy('nessun campo email compilabile in vista',
+  !$('sc-email').classList.contains('on'));
+check('nessuna challenge aperta per lui', window.__CALLS__.length, 1);
+
+// ── 4. telefono condiviso ─────────────────────────────────────────────────
+group('Telefono condiviso — scelta a pulsanti');
+reset();
+await digita('in-telefono', '3391111111', 'btn-telefono');
+check('si chiede chi sei', vis(), 'sc-scelta');
+const pulsanti = [...$('lista-scelta').querySelectorAll('button.pick')].map((b) => b.textContent);
+check('un pulsante per persona, solo nomi di battesimo', pulsanti, ['👤 Anna', '👤 Luca']);
+$('lista-scelta').querySelectorAll('button.pick')[1].click();
+await pausa(60);
+check('scelto il secondo, saluto coerente', $('saluto-email').textContent, 'Ciao Luca! 👋');
+await digita('in-email', 'luca@esempio.it', 'btn-email');
+check('al server arriva l’indice del socio scelto',
+  window.__CALLS__.at(-1).body.candidate_index, 1);
+check('e l’email del secondo socio è quella buona', vis(), 'sc-codice');
+
+// ── 5. numero non di un socio ─────────────────────────────────────────────
+group('Numero che non è di un socio');
+reset();
+await digita('in-telefono', '3350000000', 'btn-telefono');
+check('schermata «non ti troviamo»', vis(), 'sc-sconosciuto');
+check('nessun nome mostrato', /Ciao [A-Z]/.test($('sc-sconosciuto').innerText), false);
+
+// ── 6. il browser non riceve mai i dati riservati ─────────────────────────
+// Si guardano le RISPOSTE del server e il DOM della sola app montata: l'HTML
+// di questa pagina di test contiene per forza i dati finti, e includerlo
+// renderebbe il controllo sempre rosso senza dire nulla di utile.
+group('Cosa NON è mai arrivato al browser (tutte le risposte del server + DOM dell’app)');
+const superficie = JSON.stringify(window.__RISPOSTE__) + $('palco').innerHTML;
+check('mai un cognome', /rossi/i.test(superficie), false);
+check('mai un memberId', /member_id|"00[0-9]{4}"/.test(superficie), false);
+check('mai l’email in anagrafica in chiaro', superficie.includes('mario.rossi@gmail.com'), false);
+check('mai un campo che assomigli a un’email di scheda',
+  /email_for_otp|"email"\s*:/.test(superficie), false);
+truthy('ma le risposte ci sono state (il controllo non è vuoto)',
+  window.__RISPOSTE__.length >= 10);
+
+// ── esito ────────────────────────────────────────────────────────────────
+const table = $('out');
+for (const r of rows) {
+  const tr = document.createElement('tr');
+  if (r.group) { tr.className = 'grp'; tr.innerHTML = `<td colspan="3">${r.group}</td>`; }
+  else {
+    tr.className = r.good ? '' : 'ko';
+    tr.innerHTML = `<td class="e">${r.good ? '✅' : '❌'}</td><td>${r.name}</td>` +
+      `<td>${r.good ? '' : `atteso <code>${r.expected}</code> · ottenuto <code>${r.actual}</code>`}</td>`;
+  }
+  table.appendChild(tr);
+}
+const tot = $('tot');
+tot.className = fail === 0 ? 'verde' : 'rosso';
+tot.textContent = fail === 0 ? `✅ ${pass}/${pass + fail} verdi` : `❌ ${fail} rossi su ${pass + fail}`;
+
+// Il conto alla rovescia della schermata codice lascerebbe un timer acceso.
+for (let i = 1; i < 5000; i++) clearInterval(i);
+
+window.__RESULTS__ = { pass, fail, total: pass + fail,
+  failures: rows.filter((r) => r.name && !r.good).map((r) => r.name) };
+</script>
+</body>
+</html>

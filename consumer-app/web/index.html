@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#128C7E">
+<title>Padel Village — Accedi</title>
+<style>
+  :root{--ink:#111b21;--muted:#667781;--wa-green:#128C7E;--wa-green-dark:#0c5f57;--wa-bg:#ECE5DD;--danger:#c0392b}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#0b141a;color:var(--ink);display:flex;justify-content:center}
+  .app{position:relative;width:100%;max-width:460px;min-height:100vh;min-height:100dvh;background:var(--wa-bg);
+    display:flex;flex-direction:column;overflow:hidden}
+  @media(min-width:520px){
+    body{align-items:center;background:#111b21}
+    .app{min-height:0;height:92vh;max-height:900px;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  }
+  .head{background:var(--wa-green);color:#fff;padding:16px 18px;flex:0 0 auto}
+  .head h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.2px}
+  .head p{margin:3px 0 0;font-size:12.5px;opacity:.85}
+  .body{flex:1 1 auto;overflow-y:auto;padding:22px 18px 28px;display:flex;flex-direction:column}
+
+  .screen{display:none;flex-direction:column;gap:14px}
+  .screen.on{display:flex}
+
+  h2{margin:0;font-size:21px;line-height:1.25;font-weight:600}
+  p.lead{margin:0;font-size:15px;line-height:1.5;color:var(--muted)}
+
+  label{font-size:13px;font-weight:600;color:var(--muted)}
+  input{width:100%;font-family:inherit;font-size:17px;padding:13px 14px;border:1px solid #cfd8dc;border-radius:10px;
+    background:#fff;color:var(--ink);outline:none;-webkit-appearance:none}
+  input:focus{border-color:var(--wa-green);box-shadow:0 0 0 3px rgba(18,140,126,.14)}
+  input.code{letter-spacing:.42em;text-align:center;font-size:25px;font-variant-numeric:tabular-nums;padding-left:.42em}
+
+  button{font-family:inherit;font-size:16px;font-weight:600;padding:14px;border:0;border-radius:10px;
+    background:var(--wa-green);color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:active{background:var(--wa-green-dark)}
+  button[disabled]{opacity:.5;cursor:default}
+  button.ghost{background:none;color:var(--wa-green);font-size:14.5px;padding:8px;font-weight:600}
+  button.pick{background:#fff;color:var(--ink);text-align:left;padding:15px 16px;font-size:16.5px;font-weight:500;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);display:flex;align-items:center;gap:11px}
+  button.pick:active{background:#f2f5f6}
+
+  .msg{font-size:14px;line-height:1.5;padding:11px 13px;border-radius:9px;display:none}
+  .msg.on{display:block}
+  .msg.bad{background:#fde8e6;color:var(--danger)}
+  .msg.info{background:#d6e7d2;color:#3a5a40}
+
+  .note{font-size:13px;line-height:1.55;color:var(--muted)}
+  .sep{height:1px;background:#d9d2ca;margin:4px 0}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:7px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <h1>Padel Village</h1>
+    <p>Accedi con il tuo numero di telefono</p>
+  </div>
+
+  <div class="body">
+
+    <!-- 1 — telefono -->
+    <section class="screen on" id="sc-telefono">
+      <h2>Ciao! 👋</h2>
+      <p class="lead">Inserisci il numero di cellulare che hai dato al circolo.</p>
+      <label for="in-telefono">Numero di telefono</label>
+      <input id="in-telefono" type="tel" inputmode="tel" autocomplete="tel"
+             placeholder="339 123 4567" enterkeyhint="go">
+      <div class="msg bad" id="err-telefono"></div>
+      <button id="btn-telefono">Continua</button>
+    </section>
+
+    <!-- 2 — più soci sullo stesso numero -->
+    <section class="screen" id="sc-scelta">
+      <h2>Chi sei?</h2>
+      <p class="lead">Su questo numero risulta più di una persona.</p>
+      <div id="lista-scelta" style="display:flex;flex-direction:column;gap:9px"></div>
+      <button class="ghost" data-back="sc-telefono">← Cambia numero</button>
+    </section>
+
+    <!-- 3 — email -->
+    <section class="screen" id="sc-email">
+      <h2 id="saluto-email">Ciao!</h2>
+      <p class="lead">Per sicurezza, scrivi l'indirizzo email che hai dato al circolo.
+        Il codice arriverà lì.</p>
+      <label for="in-email">Email</label>
+      <input id="in-email" type="email" inputmode="email" autocomplete="email"
+             autocapitalize="off" autocorrect="off" spellcheck="false"
+             placeholder="nome@esempio.it" enterkeyhint="send">
+      <div class="msg bad" id="err-email"></div>
+      <button id="btn-email">Inviami il codice</button>
+      <button class="ghost" data-back="sc-telefono">← Cambia numero</button>
+    </section>
+
+    <!-- 4 — codice -->
+    <section class="screen" id="sc-codice">
+      <h2>Controlla la posta</h2>
+      <p class="lead" id="dove-codice"></p>
+      <label for="in-codice">Codice a 6 cifre</label>
+      <input id="in-codice" class="code" type="text" inputmode="numeric"
+             autocomplete="one-time-code" maxlength="6" placeholder="······" enterkeyhint="go">
+      <div class="msg bad" id="err-codice"></div>
+      <button id="btn-codice">Entra</button>
+      <div class="sep"></div>
+      <p class="note" id="nota-scadenza"></p>
+      <button class="ghost" id="btn-nocode">Non ho ricevuto il codice</button>
+    </section>
+
+    <!-- 5 — serve la segreteria -->
+    <section class="screen" id="sc-segreteria">
+      <h2 id="saluto-segreteria">Ci siamo quasi</h2>
+      <p class="lead">Per entrare serve un indirizzo email nella tua scheda, e al momento
+        non ce n'è uno.</p>
+      <p class="note">Non possiamo fartelo scrivere da qui: chiunque conosca il tuo numero
+        potrebbe inserire la propria email ed entrare al posto tuo. Passa in segreteria o
+        scrivi al circolo, lo aggiungiamo noi in un minuto — poi entri subito.</p>
+      <button class="ghost" data-back="sc-telefono">← Torna indietro</button>
+    </section>
+
+    <!-- 6 — numero non riconosciuto -->
+    <section class="screen" id="sc-sconosciuto">
+      <h2>Non ti troviamo</h2>
+      <p class="lead">Questo numero non risulta fra i soci del circolo.</p>
+      <p class="note">Può capitare se in segreteria è registrato un altro numero.
+        Scrivi al circolo e sistemiamo.</p>
+      <button class="ghost" data-back="sc-telefono">← Prova un altro numero</button>
+    </section>
+
+    <!-- 7 — dentro -->
+    <section class="screen" id="sc-dentro">
+      <h2 id="saluto-dentro">Bentornato!</h2>
+      <div class="msg info on">Accesso effettuato. 🎾</div>
+      <p class="note">Da qui in poi partirà l'app vera e propria: prenotazioni,
+        borsellino e partite aperte.</p>
+    </section>
+
+  </div>
+</div>
+<script type="module" src="./ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Harness — logica di login consumer</title>
+<style>
+  :root{color-scheme:light}   /* niente inversione automatica: il rapporto deve restare leggibile */
+  body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:22px;color:#111b21}
+  h1{font-size:19px;margin:0 0 4px} .sub{color:#667781;margin:0 0 18px}
+  #tot{font-size:16px;font-weight:700;padding:11px 14px;border-radius:9px;margin-bottom:16px}
+  .verde{background:#d6e7d2;color:#2c5c33} .rosso{background:#fde8e6;color:#c0392b}
+  table{border-collapse:collapse;width:100%;max-width:1000px}
+  td{border-bottom:1px solid #e6e9ea;padding:6px 9px;vertical-align:top}
+  td.e{width:34px;text-align:center} tr.ko{background:#fff5f4}
+  code{background:#f2f5f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .grp td{background:#f7f9fa;font-weight:600;padding-top:11px}
+</style>
+</head>
+<body>
+<h1>Logica di login — rete di regressione</h1>
+<p class="sub">Esercita <code>logic.js</code> senza rete e senza server.
+Il risultato macchina è in <code>window.__RESULTS__</code>.</p>
+<div id="tot">esecuzione…</div>
+<table id="out"></table>
+
+<script type="module">
+import * as L from '../logic.js';
+
+const rows = [];
+let pass = 0, fail = 0;
+
+const group = (name) => rows.push({ group: name });
+function check(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  const good = a === e;
+  good ? pass++ : fail++;
+  rows.push({ name, good, actual: a, expected: e });
+}
+const truthy = (name, v) => check(name, !!v, true);
+const falsy  = (name, v) => check(name, !!v, false);
+
+// ── normalizePhone ───────────────────────────────────────────────────────
+group('normalizePhone — le forme che la gente scrive davvero');
+check('spazi',            L.normalizePhone('339 123 4567').last10, '3391234567');
+check('prefisso +39',     L.normalizePhone('+39 339 1234567').last10, '3391234567');
+check('prefisso 0039',    L.normalizePhone('0039 339 123 45 67').last10, '3391234567');
+check('punti e trattini', L.normalizePhone('339-123.4567').last10, '3391234567');
+check('già a 12 cifre',   L.normalizePhone('393391234567').last10, '3391234567');
+truthy('10 cifre è valido',  L.normalizePhone('3391234567').valid);
+falsy ('5 cifre non è valido', L.normalizePhone('12345').valid);
+falsy ('vuoto non è valido',   L.normalizePhone('').valid);
+falsy ('null non è valido',    L.normalizePhone(null).valid);
+falsy ('solo lettere non è valido', L.normalizePhone('non lo so').valid);
+
+// ── email ────────────────────────────────────────────────────────────────
+group('normalizeEmail / isPlausibleEmail');
+check('trim + minuscolo', L.normalizeEmail('  Mario.Rossi@GMAIL.com '), 'mario.rossi@gmail.com');
+check('undefined → stringa vuota', L.normalizeEmail(undefined), '');
+truthy('indirizzo normale',  L.isPlausibleEmail('mario.rossi@gmail.com'));
+truthy('dominio di terzo livello', L.isPlausibleEmail('a@mail.padelvillage.club'));
+falsy ('senza TLD',          L.isPlausibleEmail('mario@gmail'));
+falsy ('senza chiocciola',   L.isPlausibleEmail('mario.gmail.com'));
+falsy ('con spazio',         L.isPlausibleEmail('mario rossi@gmail.com'));
+falsy ('parte locale vuota', L.isPlausibleEmail('@gmail.com'));
+falsy ('dominio che inizia con punto', L.isPlausibleEmail('mario@.com'));
+falsy ('vuoto',              L.isPlausibleEmail(''));
+
+group('maskEmail — maschera SEMPRE ciò che ha digitato l’utente');
+check('parte locale lunga', L.maskEmail('mario.rossi@gmail.com'), 'ma•••••••••@gmail.com');
+check('parte locale di 2',  L.maskEmail('ab@x.it'), 'a••@x.it');
+check('parte locale di 1',  L.maskEmail('a@x.it'), 'a••@x.it');
+check('senza chiocciola resta com’è', L.maskEmail('non-una-email'), 'non-una-email');
+truthy('il dominio resta leggibile', L.maskEmail('tizio@gmail.com').endsWith('@gmail.com'));
+
+// ── codice ───────────────────────────────────────────────────────────────
+group('sanitizeCode / isCompleteCode');
+check('scarta le lettere',   L.sanitizeCode('a1b2c3d4e5f6'), '123456');
+check('taglia oltre 6',      L.sanitizeCode('1234567890'), '123456');
+check('spazi da incolla',    L.sanitizeCode(' 12 34 56 '), '123456');
+truthy('6 cifre è completo', L.isCompleteCode('123456'));
+falsy ('5 cifre non basta',  L.isCompleteCode('12345'));
+falsy ('vuoto non basta',    L.isCompleteCode(''));
+
+// ── decideAfterIdentify: è qui che si decide cosa vede il socio ──────────
+group('decideAfterIdentify — instradamento dopo il telefono');
+check('numero sconosciuto',
+  L.decideAfterIdentify({ found: false }),
+  { screen: 'sconosciuto' });
+check('trovato ma lista vuota → sconosciuto',
+  L.decideAfterIdentify({ found: true, candidates: [] }),
+  { screen: 'sconosciuto' });
+check('risposta malformata → sconosciuto',
+  L.decideAfterIdentify(null),
+  { screen: 'sconosciuto' });
+check('un socio con email → si chiede l’email',
+  L.decideAfterIdentify({ found: true, candidates: [{ index: 0, first_name: 'Mario', has_email: true }] }),
+  { screen: 'email', firstName: 'Mario', index: 0 });
+check('un socio SENZA email → segreteria, non gli si chiede di inserirla',
+  L.decideAfterIdentify({ found: true, candidates: [{ index: 0, first_name: 'Walter', has_email: false }] }),
+  { screen: 'segreteria', firstName: 'Walter', index: 0 });
+check('due soci sullo stesso numero → scelta a pulsanti',
+  L.decideAfterIdentify({ found: true, candidates: [
+    { index: 0, first_name: 'Anna', has_email: true },
+    { index: 1, first_name: 'Luca', has_email: true }] }).screen,
+  'scelta');
+check('l’indice del secondo candidato si conserva',
+  L.decideForCandidate({ index: 1, first_name: 'Luca', has_email: true }).index, 1);
+
+group('decideAfterIdentify — chiude in sicurezza sui dati ambigui');
+check('has_email assente → segreteria (non si presume che ci sia)',
+  L.decideForCandidate({ index: 0, first_name: 'Tizio' }).screen, 'segreteria');
+check('has_email stringa "true" → segreteria (confronto stretto)',
+  L.decideForCandidate({ index: 0, first_name: 'Tizio', has_email: 'true' }).screen, 'segreteria');
+check('has_email null → segreteria',
+  L.decideForCandidate({ index: 0, first_name: 'Tizio', has_email: null }).screen, 'segreteria');
+
+// Il server non manda cognome né email; se un domani lo facesse per errore,
+// questo test si accorge che la decisione se li porterebbe dietro.
+group('nessuna fuga di dati nell’oggetto di decisione');
+const sporco = L.decideAfterIdentify({ found: true, candidates: [{
+  index: 0, first_name: 'Mario', has_email: true,
+  surname: 'Rossi', email: 'mario.rossi@gmail.com', member_id: '000123',
+}] });
+check('le chiavi restituite sono solo quelle attese',
+  Object.keys(sporco).sort(), ['firstName', 'index', 'screen']);
+falsy('il cognome non compare',  JSON.stringify(sporco).includes('Rossi'));
+falsy('l’email non compare',     JSON.stringify(sporco).includes('@'));
+falsy('il memberId non compare', JSON.stringify(sporco).includes('000123'));
+
+// ── varie ────────────────────────────────────────────────────────────────
+group('prettyName / formatCountdown');
+check('iniziale maiuscola',   L.prettyName('mario'), 'Mario');
+check('non tocca già corretto', L.prettyName('Mario'), 'Mario');
+check('non tocca i nomi composti', L.prettyName('maria luisa'), 'Maria luisa');
+check('vuoto resta vuoto',    L.prettyName(''), '');
+check('600 s → 10:00',        L.formatCountdown(600), '10:00');
+check('65 s → 1:05',          L.formatCountdown(65), '1:05');
+check('0 s → 0:00',           L.formatCountdown(0), '0:00');
+check('negativo → 0:00',      L.formatCountdown(-9), '0:00');
+
+// ── esito ────────────────────────────────────────────────────────────────
+const table = document.getElementById('out');
+for (const r of rows) {
+  const tr = document.createElement('tr');
+  if (r.group) {
+    tr.className = 'grp';
+    tr.innerHTML = `<td colspan="3">${r.group}</td>`;
+  } else {
+    tr.className = r.good ? '' : 'ko';
+    tr.innerHTML = `<td class="e">${r.good ? '✅' : '❌'}</td><td>${r.name}</td>` +
+      `<td>${r.good ? '' : `atteso <code>${r.expected}</code> · ottenuto <code>${r.actual}</code>`}</td>`;
+  }
+  table.appendChild(tr);
+}
+const tot = document.getElementById('tot');
+tot.className = fail === 0 ? 'verde' : 'rosso';
+tot.textContent = fail === 0
+  ? `✅ ${pass}/${pass + fail} verdi`
+  : `❌ ${fail} rossi su ${pass + fail}`;
+
+window.__RESULTS__ = {
+  pass, fail, total: pass + fail,
+  failures: rows.filter((r) => r.name && !r.good).map((r) => r.name),
+};
+</script>
+</body>
+</html>
