@@ -57,15 +57,27 @@ jobs:
         if: steps.changed.outputs.functions != ''
         run: |
           set -euo pipefail
+
+          # Vedi la nota estesa nel workflow PROD: `--no-verify-jwt` incondizionato
+          # spegnerebbe la verifica JWT alle funzioni che oggi ce l'hanno accesa.
+          # Le due liste vanno tenute allineate.
+          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto"
+
           for fn in ${{ steps.changed.outputs.functions }}; do
             if [ ! -f "supabase/functions/$fn/index.ts" ]; then
               echo "::warning::supabase/functions/$fn/index.ts non trovato — non è una Edge Function deployabile (es. cartella di soli dati), salto"
               continue
             fi
+
+            JWT_FLAG='--no-verify-jwt'
+            case " $VERIFY_JWT_FUNCTIONS " in
+              *" $fn "*) JWT_FLAG=''; echo "::notice::$fn — verifica JWT CONSERVATA (fuori dal default)";;
+            esac
+
             echo "::group::Deploy $fn"
             npx supabase@latest functions deploy "$fn" \
               --project-ref "$SUPABASE_PROJECT_REF" \
-              --no-verify-jwt \
+              $JWT_FLAG \
               --use-api
             echo "::endgroup::"
           done
