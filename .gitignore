@@ -31,6 +31,14 @@ node_modules/
 package.json
 package-lock.json
 
+# Lockfile generati da `deno check --node-modules-dir=auto` sulle edge function.
+# Non versionati: il deploy non li usa (`supabase functions deploy --use-api` bundla
+# server-side) e il gate typecheck e' differenziale, quindi base e head risolvono le
+# dipendenze nello stesso momento e una versione nuova a monte non fa rumore.
+# Sono 15 file: committati per sbaglio riempirebbero da soli il limite di 15 file
+# per PR di guard-main-prs.yml.
+supabase/functions/*/deno.lock
+
 # Artefatti temporanei locali (debug/scratch)
 _chromerr.txt
 _doc.html
