@@ -1,0 +1,28 @@
+# Configurazione GitHub Pages (build "legacy" = Jekyll).
+#
+# Pages serve la RADICE di `main` (source: main /), quindi finisce online tutto
+# ciò che sta nel repo, non solo l'app staff. È così che `consumer-app/web/` si è
+# trovata pubblicata su app.padelvillage.club appena la PR #539 è stata mergiata,
+# senza che fosse una decisione di nessuno.
+#
+# ⚠️ `exclude` SOSTITUISCE la lista di default di Jekyll, non la integra: se si
+# scrivono solo le voci nuove, quelle di default smettono di valere e si finisce
+# per pubblicare PIÙ di prima. Per questo i default sono ripetuti qui sotto.
+#
+# NON escludere `test/`: è l'ambiente TEST vivo (app.padelvillage.club/test/).
+# NON escludere `config.js` / `config-test.js`: l'app li carica a runtime.
+exclude:
+  # --- default di Jekyll, ripetuti perché la chiave li sovrascrive ---
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  # --- nostro ---
+  # App consumer: l'hosting è ancora da decidere e il login non è collaudato
+  # (hook, template email e SMTP non sono configurati sul progetto consumer).
+  # Pubblicarla ora significa che un socio che ci capita vede un login che
+  # sembra funzionare e poi nega tutto in silenzio.
+  - consumer-app/
