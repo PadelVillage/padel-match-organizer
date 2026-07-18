@@ -1,0 +1,154 @@
+name: Typecheck Edge Functions
+
+# Chiude l'unico punto in cui un errore può arrivare in PROD silenzioso.
+# Il deploy (deploy-edge-functions-prod.yml) bundla con esbuild, che i tipi li ELIMINA
+# senza controllarli: un errore di tipo non fa fallire il deploy, passa e si manifesta
+# solo a runtime. `deno check` è l'unico gate possibile.
+#
+# GATE DIFFERENZIALE, non assoluto. Su 30 funzioni, 11 hanno errori preesistenti (spesso
+# artefatti delle lib TS recenti, benigni a runtime). Un gate assoluto bloccherebbe ogni PR
+# che sfiora una di quelle 11 per colpa di debito altrui, e la reazione prevedibile sarebbe
+# disattivarlo. Qui si confronta invece il conteggio errori PRIMA e DOPO:
+#   - errori nuovi introdotti dalla PR  -> FAIL
+#   - stessi errori o meno di prima     -> passa (e se ne riduci, lo dice)
+# Effetto cricchetto: non si può peggiorare, e ogni funzione si ripulisce quando la tocchi.
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Funzione da controllare (vuoto = tutte)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache dipendenze Deno
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-${{ hashFiles('supabase/functions/*/deno.json') }}
+          restore-keys: deno-${{ runner.os }}-
+
+      - name: Determina funzioni da controllare
+        id: pick
+        env:
+          MANUAL_FN: ${{ github.event.inputs.function }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          all_functions() {
+            for d in supabase/functions/*/; do
+              n=$(basename "$d")
+              case "$n" in _*) continue;; esac
+              [ -f "$d/index.ts" ] || continue
+              echo "$n"
+            done
+          }
+
+          if [ -n "${MANUAL_FN:-}" ]; then
+            FNS="$MANUAL_FN"
+          elif [ -z "${BASE_SHA:-}" ]; then
+            FNS=$(all_functions | tr '\n' ' ')
+          else
+            CHANGED=$(git diff --name-only "$BASE_SHA" HEAD -- 'supabase/functions/**' || true)
+            # Una modifica a _shared ricade su chi la importa: si controlla tutto.
+            if echo "$CHANGED" | grep -qE '^supabase/functions/_'; then
+              echo "::notice::_shared modificato — controllo tutte le funzioni"
+              FNS=$(all_functions | tr '\n' ' ')
+            else
+              FNS=$(echo "$CHANGED" \
+                | awk -F/ '$1=="supabase" && $2=="functions" && $3 !~ /^_/ {print $3}' \
+                | sort -u | tr '\n' ' ')
+            fi
+          fi
+
+          # Stessa selezione del deploy: niente cartella o niente index.ts = niente deploy.
+          KEEP=''
+          for fn in $FNS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              KEEP="$KEEP $fn"
+            else
+              echo "::warning::supabase/functions/$fn senza index.ts (es. asset-only come parser-rules), salto"
+            fi
+          done
+          echo "functions=$(echo "$KEEP" | xargs echo -n)" >> "$GITHUB_OUTPUT"
+          echo "Funzioni da controllare:$KEEP"
+
+      - name: deno check differenziale
+        if: steps.pick.outputs.functions != ''
+        env:
+          NO_COLOR: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+
+          # Conta le sole righe di diagnostica: "TS1234 [ERROR]: ..."
+          count_errors() {
+            local dir="$1" log="$2"
+            ( cd "$dir" && deno check --node-modules-dir=auto index.ts ) >"$log" 2>&1
+            grep -cE '^TS[0-9]+ \[ERROR\]' "$log" || true
+          }
+
+          BASE_TREE=''
+          if [ -n "${BASE_SHA:-}" ]; then
+            BASE_TREE="$RUNNER_TEMP/base"
+            git worktree add --detach "$BASE_TREE" "$BASE_SHA" >/dev/null 2>&1 || BASE_TREE=''
+          fi
+
+          FAIL=0
+          for fn in ${{ steps.pick.outputs.functions }}; do
+            DIR="supabase/functions/$fn"
+            LOG="$RUNNER_TEMP/$fn.head.log"
+            NOW=$(count_errors "$DIR" "$LOG")
+
+            if [ "$NOW" -eq 0 ]; then
+              echo "::notice::$fn — pulita"
+              continue
+            fi
+
+            # Ha errori: erano già lì prima della PR?
+            WAS=''
+            if [ -n "$BASE_TREE" ] && [ -f "$BASE_TREE/$DIR/index.ts" ]; then
+              WAS=$(count_errors "$BASE_TREE/$DIR" "$RUNNER_TEMP/$fn.base.log")
+            fi
+
+            if [ -z "$WAS" ]; then
+              # Funzione nuova nella PR: nessun termine di paragone, deve nascere pulita.
+              echo "::error::$fn — funzione nuova con $NOW errori di tipo: deve nascere pulita"
+              sed -n '1,60p' "$LOG"
+              FAIL=1
+            elif [ "$NOW" -gt "$WAS" ]; then
+              echo "::error::$fn — la PR introduce errori di tipo NUOVI ($WAS prima, $NOW ora)"
+              sed -n '1,60p' "$LOG"
+              FAIL=1
+            elif [ "$NOW" -lt "$WAS" ]; then
+              echo "::notice::$fn — errori preesistenti ridotti da $WAS a $NOW, grazie"
+            else
+              echo "::warning::$fn — $NOW errori di tipo PREESISTENTI, non introdotti da questa PR (da ripulire quando tocchi questo file)"
+            fi
+          done
+
+          [ -n "$BASE_TREE" ] && git worktree remove --force "$BASE_TREE" >/dev/null 2>&1 || true
+          exit "$FAIL"
+
+      - name: Nessuna funzione toccata
+        if: steps.pick.outputs.functions == ''
+        run: echo "Nessuna Edge Function con index.ts modificata in questa PR."
