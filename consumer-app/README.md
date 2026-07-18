@@ -14,22 +14,38 @@ Questa cartella tocca **due** progetti. Confonderli è l'errore facile da fare q
 | | Progetto | Cosa | Deploy |
 |---|---|---|---|
 | **Gestionale** | `padel-match-organizer` = `qqbfphyslczzkxoncgex` | l'anagrafica dei soci | `supabase/functions/**` → auto-deploy al push su `main` |
-| **Consumer** | `Padel Match Assistant TEST` = `aylykijfirtegyxzdwgu` | `auth.users`, `consumer_profiles`, le challenge | **nessuna CI**: si deploya a mano |
+| **Consumer** | `Padel Match Assistant TEST` = `aylykijfirtegyxzdwgu` | `auth.users`, `consumer_profiles`, le challenge | `consumer-app/edge-functions/**` → auto-deploy al push su `main` |
 
 🚨 **Le function in `consumer-app/edge-functions/` NON vanno spostate in
-`supabase/functions/`.** Quel percorso è cablato nei due workflow di deploy, che puntano al
-**gestionale**: ci finirebbero sul progetto sbagliato, dove non esistono né `auth.users`
-né le tabelle che usano.
+`supabase/functions/`.** Quel percorso è cablato nei workflow di deploy del **gestionale**:
+ci finirebbero sul progetto sbagliato, dove non esistono né `auth.users` né le tabelle che
+usano.
 
 Viceversa `consumer-identity-lookup` sta in `supabase/functions/` **apposta**: legge
 l'anagrafica, quindi deve girare sul gestionale, e la CI esistente lo deploya da sola.
 
-⚠️ **Debito noto.** Il progetto consumer non ha una CI di deploy: le sue function si
-deployano a mano, ed è esattamente la condizione che ha prodotto il caso
-`matchpoint-wallet-correct` (sorgente vivo diverso da quello in git, scoperto solo
-diffando col progetto). Finché non c'è un workflow, dopo ogni deploy a mano **verificare
-che il sorgente qui corrisponda a quello vivo** (`get_edge_function` restituisce il
-sorgente eseguito). Il gate `deno check` della CI non copre questa cartella.
+### Il debito «deploy a mano» è chiuso
+
+Le function del consumer si deployavano a mano — la stessa condizione che aveva prodotto
+il caso `matchpoint-wallet-correct` (sorgente vivo diverso da quello in git, scoperto solo
+diffando col progetto). Ora ci pensa `deploy-edge-functions-consumer.yml`, e il gate
+`deno check` copre anche questa cartella.
+
+Tre cose di quel workflow non sono dettagli:
+
+- **`verify_jwt` è ACCESO per default**, l'opposto del workflow del gestionale, dove
+  `--no-verify-jwt` è incondizionato con una allowlist di eccezioni — ed è proprio quella
+  forma che ha spento la verifica a quattro funzioni per sbaglio (PR #538). Le function
+  pubbliche vanno dichiarate in `PUBLIC_FUNCTIONS`, una alla volta e per iscritto.
+- **Dopo il deploy lo stato viene RILETTO** dal Management API e confrontato con
+  l'intenzione. Un deploy che esce 0 non è la prova che `verify_jwt` sia rimasto com'era:
+  è esattamente l'assunzione che ha lasciato passare la #538.
+- **Mai aggiungere `--prune`**: cancellerebbe dal progetto `whatsapp-webhook` e
+  `whatsapp-send`, che di sorgente nel repo non ne hanno affatto.
+
+La CLI Supabase cerca i sorgenti solo in `<workdir>/supabase/functions/<slug>/` e non
+accetta percorsi: il workflow costruisce perciò un albero di staging usa-e-getta in
+`RUNNER_TEMP` e ci punta con `--workdir`, senza spostare nulla nel repo.
 
 ---
 
@@ -109,7 +125,9 @@ non sono fatti tutti**, sul progetto **`aylykijfirtegyxzdwgu`**.
 
 ```
 consumer-app/
-  web/                 frontend (GitHub Pages) — nessun build step
+  web/                 frontend — nessun build step. NON pubblicato: escluso da Pages in
+                       _config.yml, destinato a `soci.padelvillage.club` da un repo a parte
+                       (origin separato da quello dello staff — vedi sotto)
     index.html         guscio + stili
     logic.js           logica PURA: niente DOM, niente rete → tutta testabile
     ui.js              schermate e collegamenti
@@ -117,11 +135,24 @@ consumer-app/
     test/
       login-logic-test.html   rete di regressione sulla logica pura
       login-flow-test.html    percorre il flusso montando index.html VERO, con fetch simulato
-  edge-functions/      → progetto CONSUMER (deploy a mano)
+  edge-functions/      → progetto CONSUMER (deploy-edge-functions-consumer.yml)
   db/                  migration già applicate sul progetto consumer, versionate qui
 ```
 
 `supabase/functions/consumer-identity-lookup/` → progetto **gestionale** (deploy dalla CI).
+
+### Dove va pubblicata `web/` — deciso, e perché
+
+**`soci.padelvillage.club`, da un repo separato.** La ragione non è estetica: è che un
+**origin separato** da quello dell'app staff porta con sé localStorage separato. Su questo
+progetto la quota di localStorage è già stata saturata una volta lato staff — esiste
+`pmoSetItemResilient` proprio per quello — e una PWA dei soci sullo stesso origin
+competerebbe per la stessa quota. In più il service worker prende scope `/` invece di una
+sottocartella, e lo scope non si cambia più dopo che i soci hanno installato la PWA.
+
+Le edge function **restano qui** anche quando `web/` si sposta: vanno su Supabase, non su
+Pages, e tenerle nel repo del gestionale mantiene atomico ogni cambio al contratto del
+ponte (`consumer-identity-lookup` ↔ `consumer-auth-start`), che vive su entrambi i lati.
 
 > ⚠️ **Creando una tabella nuova su questo progetto, ricordarsi i GRANT.** RLS e policy
 > non bastano: in Postgres servono anche i privilegi. Le tabelle create di recente qui
