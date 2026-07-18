@@ -1540,25 +1540,72 @@ async function loadExistingMemberRecords(admin: any) {
     if (page === 49) throw new Error('SUPABASE_MEMBER_PAGE_LIMIT_EXCEEDED');
   }
   const byKey = new Map<string, any[]>();
+  // Identità distinte viste sotto ogni chiave `name:` — serve alla guardia anti-omonimia
+  // (vedi collectExistingMemberCandidates): due CLIENTI Matchpoint diversi con lo stesso
+  // nome non devono poter essere riagganciati per nome.
+  const nameIdentities = new Map<string, Set<string>>();
   for (const record of records) {
     const payload = record.payload || {};
     for (const key of memberLookupKeys(payload)) {
       const list = byKey.get(key) || [];
       list.push(record);
       byKey.set(key, list);
+      if (!key.startsWith('name:')) continue;
+      const identity = phoneDigits(payload.phone || payload.telefono || '')
+        || emailKey(payload.email || '')
+        || clean(payload.memberId || '');
+      if (!identity) continue;
+      const seen = nameIdentities.get(key) || new Set<string>();
+      seen.add(identity);
+      nameIdentities.set(key, seen);
     }
   }
-  return { records, byKey };
+  const ambiguousNameKeys = new Set<string>();
+  for (const [key, identities] of nameIdentities) {
+    if (identities.size > 1) ambiguousNameKeys.add(key);
+  }
+  return { records, byKey, ambiguousNameKeys };
 }
 
-function collectExistingMemberCandidates(existing: { byKey: Map<string, any[]> }, member: ParsedMember) {
+type ExistingMemberIndex = { byKey: Map<string, any[]>; ambiguousNameKeys?: Set<string> };
+
+function collectExistingMemberCandidates(
+  existing: ExistingMemberIndex,
+  member: ParsedMember,
+  importAmbiguousNameKeys?: Set<string>,
+) {
   const candidates = new Map<string, any>();
   for (const key of memberLookupKeys(member)) {
+    // GUARDIA ANTI-OMONIMIA. La chiave `name:` serve a riagganciare i soci senza contatti
+    // (vedi commento su nameCodes) e chi ha cambiato numero in Matchpoint. Ma se lo stesso
+    // nome corrisponde a PIÙ identità — o fra i record esistenti, o dentro l'export stesso —
+    // riagganciare per nome fonde due persone diverse su un unico record (ne eredita
+    // `id` e `memberId`). Stessa filosofia della nameMap dell'arricchimento codice, che
+    // accetta «SOLO nomi univoci nel report».
+    if (key.startsWith('name:')
+      && (existing.ambiguousNameKeys?.has(key) || importAmbiguousNameKeys?.has(key))) continue;
     for (const record of existing.byKey.get(key) || []) {
       if (record?.local_key) candidates.set(record.local_key, record);
     }
   }
   return [...candidates.values()];
+}
+
+// Nomi che compaiono più di una volta NELL'EXPORT: due clienti Matchpoint omonimi. Senza
+// questa guardia il secondo importato si aggancerebbe per nome al record del primo.
+function collectAmbiguousImportedNameKeys(members: ParsedMember[]) {
+  const counts = new Map<string, number>();
+  for (const member of members) {
+    const name = normalizeKey(memberName(member));
+    if (!name) continue;
+    const key = `name:${name}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const ambiguous = new Set<string>();
+  for (const [key, count] of counts) {
+    if (count > 1) ambiguous.add(key);
+  }
+  return ambiguous;
 }
 
 function chooseExistingMemberRecord(candidates: any[], member: ParsedMember) {
@@ -1916,9 +1963,24 @@ Deno.serve(async (req) => {
     const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
     let phoneSuspectKept = 0;
     const phoneSuspectKeptSample: Array<{ memberId: string; firstName: string; surname: string; importedPhone: string }> = [];
+    // Guardia anti-omonimia: nomi ambigui nell'export + nomi già ambigui fra gli esistenti.
+    const importAmbiguousNameKeys = collectAmbiguousImportedNameKeys(validation.members);
+    const homonymNameKeys = new Set<string>([
+      ...importAmbiguousNameKeys,
+      ...(existing.ambiguousNameKeys || new Set<string>()),
+    ]);
+    let homonymGuardApplied = 0;
+    const homonymGuardSample: string[] = [];
 
     for (const member of validation.members) {
-      const candidates = collectExistingMemberCandidates(existing, member);
+      const memberNameKey = `name:${normalizeKey(memberName(member))}`;
+      if (homonymNameKeys.has(memberNameKey)) {
+        homonymGuardApplied += 1;
+        if (homonymGuardSample.length < 20 && !homonymGuardSample.includes(memberNameKey)) {
+          homonymGuardSample.push(memberNameKey);
+        }
+      }
+      const candidates = collectExistingMemberCandidates(existing, member, importAmbiguousNameKeys);
       const match = chooseExistingMemberRecord(candidates, member);
       const canonicalKey = memberCloudKey(member);
       const localKey = clean((match && !shouldNormalizeMemberLocalKey(match) && match.local_key)
@@ -2031,6 +2093,7 @@ Deno.serve(async (req) => {
         legacyDuplicateDeleted,
         legacyDuplicateReview,
         phoneSuspectKept,
+        homonymGuardApplied,
         added,
         updated,
       },
@@ -2104,6 +2167,8 @@ Deno.serve(async (req) => {
       legacyDuplicateReviewSample,
       phoneSuspectKept,
       phoneSuspectKeptSample,
+      homonymGuardApplied,
+      homonymGuardSample,
       diagnosticFile,
       upserted: finalRecords.length,
       memberIdEnrichment,
