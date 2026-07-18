@@ -46,9 +46,27 @@ const IDENTITY_URL_DEFAULT =
 // tentativi e di bombardare un socio di email non richieste.
 const MAX_CHALLENGES_PER_HOUR = 6;
 
+// Quante `identify` può fare lo stesso IP in un'ora. Difende l'ANAGRAFICA, non
+// l'account: `identify` restituisce il solo nome di battesimo e non apre nulla,
+// ma senza limite chi ha una lista di numeri scopre in pochi minuti quali sono
+// soci del circolo. È un dato che rivela un'affiliazione: tema privacy.
+//
+// Perché 60 e non 6 come le challenge: la chiave qui è l'IP, e i soci che
+// giocano al circolo stanno tutti dietro lo STESSO wifi. Un limite stretto li
+// bloccherebbe a vicenda proprio nel posto dove useranno l'app. Sessanta
+// lasciano respirare una ventina di persone in contemporanea e tagliano
+// comunque l'estrazione di massa di due o tre ordini di grandezza.
+//
+// ⚠️ Mitigante, non barriera: chi ruota IP aggira. Alza il costo, non chiude.
+const MAX_IDENTIFY_PER_HOUR = 60;
+
 // Le challenge servono per il rate limit dell'ultima ora; oltre questo le righe
 // sono solo residuo, e contengono l'email del socio. Purgate a ogni giro.
 const PURGE_AFTER_HOURS = 24;
+
+// Le righe di throttle non contengono nulla di utile oltre la finestra: si
+// tengono un po' più di un'ora e via.
+const THROTTLE_PURGE_AFTER_HOURS = 3;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -75,6 +93,26 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+// L'IP del chiamante, per il rate limit di `identify`.
+//
+// ⚠️ Si usa SOLO `cf-connecting-ip`, e la ragione è stata MISURATA, non dedotta.
+// Prima versione di questa funzione: `x-real-ip` con fallback sull'ultimo
+// elemento di `x-forwarded-for`. Provata mandando header falsificati e
+// contando gli ip_hash prodotti: quattro richieste dallo stesso computer
+// hanno prodotto QUATTRO bucket distinti. Cioè il client sceglieva la propria
+// chiave di rate limit — un controllo che non controllava niente.
+//
+// `x-forwarded-for` e `x-real-ip` arrivano qui come li ha scritti il client.
+// `cf-connecting-ip` no: falsificarlo fa respingere la richiesta con 403 dal
+// proxy, prima ancora che arrivi a questa funzione (verificato). È l'unico
+// valore che il chiamante non controlla, quindi è l'unico che vale.
+//
+// Se un giorno l'infrastruttura davanti cambiasse e l'header sparisse, il
+// chiamante finirebbe nel ramo fail-open più sotto, che lo dice nei log.
+function clientIp(req: Request): string {
+  return clean(req.headers.get('cf-connecting-ip'));
 }
 
 async function callIdentityBridge(payload: JsonMap): Promise<JsonMap | null> {
@@ -128,8 +166,76 @@ Deno.serve(async (req: Request) => {
   }
   const last10 = digits.slice(-10);
 
+  const supabaseUrl = clean(Deno.env.get('SUPABASE_URL'));
+  const serviceKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+  if (!supabaseUrl || !serviceKey) {
+    return err(503, 'MISSING_ENV', 'Variabili Supabase non configurate.');
+  }
+  const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  const sinceHour = new Date(Date.now() - 3600_000).toISOString();
+
   // ── identify: telefono → nome di battesimo ──────────────────────────────
   if (step === 'identify') {
+    const ip = clientIp(req);
+
+    if (!ip) {
+      // Fail-OPEN, e deliberatamente. Senza IP la chiave del contatore sarebbe
+      // la stessa per tutti, e il limite si trasformerebbe in un tetto GLOBALE
+      // di 60 identify/ora per l'intero circolo: un guasto peggiore di quello
+      // che sto prevenendo. Resta un console.error perché non passi in
+      // silenzio — se questa riga compare nei log, il rate limit non sta
+      // proteggendo nulla e va sistemato il modo in cui leggo l'IP.
+      console.error('[auth-start] IP non determinabile: identify servita SENZA rate limit');
+    } else {
+      const ipHash = await sha256Hex(ip);
+
+      await service
+        .from('consumer_identify_throttle')
+        .delete()
+        .lt('created_at', new Date(Date.now() - THROTTLE_PURGE_AFTER_HOURS * 3600_000).toISOString())
+        .then(({ error }) => {
+          if (error) console.warn('[auth-start] purge throttle fallita:', error.message);
+        });
+
+      const { count, error: throttleErr } = await service
+        .from('consumer_identify_throttle')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip_hash', ipHash)
+        .gte('created_at', sinceHour);
+
+      // Fail-CLOSED, al contrario del caso «IP assente» qui sopra: lì il
+      // controllo non si poteva fare per tutti, qui non si è potuto fare per
+      // uno. Un controllo che non è riuscito non è un via libera.
+      if (throttleErr) {
+        console.error('[auth-start] rate limit identify non verificabile:', throttleErr.message);
+        return err(503, 'DB_ERROR', 'Servizio non disponibile, riprova tra poco.');
+      }
+
+      if ((count ?? 0) >= MAX_IDENTIFY_PER_HOUR) {
+        // Qui il 429 è ESPLICITO, al contrario della challenge decoy: là tacere
+        // serve a non trasformare l'app in un oracolo sulle email, qui non c'è
+        // nessun segreto da proteggere e chi incappa nel limite è quasi sempre
+        // un socio dietro il wifi del circolo. Dirgli «riprova più tardi» è
+        // l'unica risposta che gli permette di capire cosa sta succedendo;
+        // un `found:false` silenzioso lo manderebbe a pensare di non essere
+        // in anagrafica, e in segreteria a chiedere perché.
+        console.warn(`[auth-start] identify oltre soglia (${count}/h) per ip ${ipHash.slice(0, 8)}…`);
+        return err(429, 'TOO_MANY_REQUESTS', 'Troppe richieste da questa rete. Riprova fra qualche minuto.');
+      }
+
+      // Si registrano solo le richieste SERVITE: contare anche quelle
+      // respinte allungherebbe la finestra da sé a ogni nuovo tentativo, e a
+      // restarci chiuso fuori sarebbe soprattutto il socio in buona fede.
+      // Stesso ragionamento del rate limit delle challenge, più sotto.
+      await service
+        .from('consumer_identify_throttle')
+        .insert({ ip_hash: ipHash })
+        .then(({ error }) => {
+          if (error) console.warn('[auth-start] insert throttle fallita:', error.message);
+        });
+    }
+
     const data = await callIdentityBridge({ mode: 'identify', phone: last10 });
     if (!data) return err(503, 'BRIDGE_DOWN', 'Servizio non disponibile, riprova tra poco.');
     return ok({
@@ -139,13 +245,10 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── challenge: confronto email + invio del codice ───────────────────────
-  const supabaseUrl = clean(Deno.env.get('SUPABASE_URL'));
-  const serviceKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
   const anonKey = clean(Deno.env.get('SUPABASE_ANON_KEY'));
-  if (!supabaseUrl || !serviceKey || !anonKey) {
+  if (!anonKey) {
     return err(503, 'MISSING_ENV', 'Variabili Supabase non configurate.');
   }
-  const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
   const phoneHash = await sha256Hex(last10);
 
@@ -158,7 +261,6 @@ Deno.serve(async (req: Request) => {
       if (error) console.warn('[auth-start] purge fallita:', error.message);
     });
 
-  const sinceHour = new Date(Date.now() - 3600_000).toISOString();
   const { count, error: countErr } = await service
     .from('consumer_login_challenges')
     .select('id', { count: 'exact', head: true })
