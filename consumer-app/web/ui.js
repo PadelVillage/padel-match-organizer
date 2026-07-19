@@ -1,3 +1,6 @@
+// ⛔️ COPIA NON VIVA — la sorgente è il repo PadelVillage/padel-match-assistant,
+// che è quello pubblicato su https://soci.padelvillage.club. Modificare QUESTO file
+// non cambia nulla di ciò che vedono i soci. Vedi ../README.md.
 // ui.js — schermate e collegamento fra il DOM e i due moduli puri.
 // Qui non c'è nessuna regola di sicurezza: quelle stanno nel server. Qui c'è
 // solo il compito di non mostrare mai più di quello che il server ha mandato.

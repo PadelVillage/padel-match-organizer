@@ -1,3 +1,6 @@
+// ⛔️ COPIA NON VIVA — la sorgente è il repo PadelVillage/padel-match-assistant,
+// che è quello pubblicato su https://soci.padelvillage.club. Modificare QUESTO file
+// non cambia nulla di ciò che vedono i soci. Vedi ../README.md.
 // logic.js — logica PURA del login: nessun DOM, nessuna rete, nessuno stato
 // globale. Tutto ciò che sta qui è esercitabile dall'harness
 // (web/test/login-logic-test.html) senza far partire l'app.
