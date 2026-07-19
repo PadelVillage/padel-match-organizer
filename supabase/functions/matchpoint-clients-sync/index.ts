@@ -197,16 +197,32 @@ function parseDateValue(value: unknown) {
   return '';
 }
 
+// Mobile italiano storico scritto senza prefisso: 9 cifre che iniziano per 3 (335…, 347…, 360…).
+// Esiste solo per NON far scattare lo scalino internazionale qui sotto su un italiano che
+// qualcuno ha scritto col "+": senza questa guardia perderebbe il 39, scenderebbe sotto
+// PLAUSIBLE_PHONE_MIN_DIGITS e verrebbe scartato dall'import — l'opposto del fix del 19/07.
+// Gli E.164 esteri lunghi esattamente 9 cifre e inizianti per 3 sono solo Andorra (+376 + 6):
+// nessuno in anagrafica, e sbagliarne uno ipotetico è meglio che azzerare il numero a 5 soci veri.
+const ITALIAN_LOCAL_MOBILE_RE = /^3\d{8}$/;
+
 function normalizePhone(value: unknown) {
   const raw = clean(value);
   let digits = raw.replace(/\D/g, '');
   if (!digits) return '';
+  // "Era già internazionale" si decide ORA: lo 00 sparisce alla riga sotto e il + non è mai
+  // entrato in `digits`. Valgono entrambe le forme perché non sappiamo quale usi l'export.
+  const hadIntlPrefix = raw.startsWith('+') || digits.startsWith('00');
   if (digits.startsWith('00')) digits = digits.slice(2);
   // v6.090: collassa prefisso 39 duplicato (dato sporco Matchpoint "+39+39..." / "+3939...").
   // Rende canonici i soci MP double-39 → agganciano per telefono il gemello Google e si fondono.
   if (digits.length === 14 && digits.startsWith('3939') && /^393\d{9}$/.test(digits.slice(2))) digits = digits.slice(2);
   if (digits.length === 10 && digits.startsWith('3')) digits = `39${digits}`;
   else if (digits.startsWith('0') && digits.length >= 7 && digits.length <= 11) digits = `39${digits}`;
+  else if (hadIntlPrefix && digits.length >= 8 && !ITALIAN_LOCAL_MOBILE_RE.test(digits)) {
+    // Numero estero già completo di prefisso paese: lasciarlo stare. Lo stesso scalino c'è già
+    // in google-contacts-import (getWhatsAppPhoneInfo): era il loro disaccordo ad aprire due
+    // schede allo stesso socio estero, una chiavata +39<estero> e una corretta.
+  }
   else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11) digits = `39${digits}`;
   if (['3939561626', '393939561626', '03939561626'].includes(raw.replace(/\D/g, '')) || digits === '393939561626') {
     digits = '393939561626';
