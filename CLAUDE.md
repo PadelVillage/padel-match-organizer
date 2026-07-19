@@ -31,9 +31,20 @@ di questo repo: quella è una copia **non viva**, i soci non la vedono. Le edge 
 consumer invece restano qui.
 
 ⚠️ **Il ponte identità del consumer punta a PROD**: `CONSUMER_IDENTITY_URL` in
-`consumer-auth-start` ha come default il gestionale `qqbf…`, e le `consumer-*` del ponte sono
-deployate solo lì. Una prova del login consumer legge quindi l'anagrafica **vera** dei soci.
-Finché non esiste un ponte verso `cudi…`, il consumer **non ha un ambiente di TEST**.
+`consumer-auth-start` ha come default il gestionale `qqbf…`. Il ponte è però in **sola
+lettura** (`consumer-identity-lookup` fa un `.select()` e nulla più) e fallisce chiuso senza
+`CONSUMER_BRIDGE_SECRET` (503 `BRIDGE_DISARMED`): il consumer **non può sporcare** il
+gestionale. Dal 19/07 la stessa funzione sta anche su `cudi…`, così il contratto del ponte —
+che vive sui due lati e va cambiato insieme — si prova senza toccare la produzione. La copia
+su TEST nasce disarmata: va armata col secret quando serve.
+
+⚠️ **`cudi…` NON è una sandbox di dati finti**: ha gli **stessi soci veri** di PROD (2811
+contro 2774 al 19/07), perché entrambi sincronizzano dallo stesso Matchpoint. Spostarsi su
+TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
+
+Il consumer resta comunque **senza anteprima**: `soci.padelvillage.club` esce da `main`, quindi
+ogni push è live. Finché gli utenti veri sono zero non è un problema; prima di invitare il
+primo socio, sì.
 
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
