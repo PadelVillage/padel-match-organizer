@@ -1,16 +1,27 @@
-name: Guard worker sync (main↔test-preview)
+name: Guard sync main↔test-preview (worker, CI, istruzioni)
 
-# Il worker (tools/matchpoint-browser-worker/src/server.mjs) gira come UN solo processo
-# Hetzner condiviso TEST+PROD e si deploya SOLO da main. Se il server.mjs di test-preview
-# diverge da quello di main, una promozione può riportare in PROD un worker vecchio
-# (perdere fix recenti) → "il deploy rompe un fix precedente". Questo guard fallisce se i
-# due branch hanno server.mjs diverso, così il drift non passa mai inosservato.
+# Alcuni file NON possono differire tra i due rami, perché il ramo su cui vivono non è
+# il ramo che ne subisce gli effetti:
+#
+#  • server.mjs — il worker gira come UN solo processo Hetzner condiviso TEST+PROD e si
+#    deploya SOLO da main. Se il server.mjs di test-preview diverge, una promozione può
+#    riportare in PROD un worker vecchio → "il deploy rompe un fix precedente".
+#  • .github/workflows/** — deploy-edge-functions-test.yml scatta da test-preview, quello
+#    PROD da main: un fix alla CI fatto solo su main NON protegge l'altro ramo. Successo il
+#    19/07: la lista VERIFY_JWT_FUNCTIONS della #538 stava solo su main, e da test-preview
+#    si continuava a deployare con --no-verify-jwt incondizionato.
+#  • CLAUDE.md — le istruzioni di progetto valgono per entrambi gli ambienti. Due copie
+#    divergenti significano due sessioni che lavorano con regole diverse.
+#
+# Questo guard fallisce se uno qualunque diverge, così il drift non passa mai inosservato.
 
 on:
   push:
     branches: [main, test-preview]
     paths:
       - 'tools/matchpoint-browser-worker/src/server.mjs'
+      - '.github/workflows/**'
+      - 'CLAUDE.md'
   schedule:
     - cron: '0 6 * * *'   # backstop giornaliero (06:00 UTC)
   workflow_dispatch:
@@ -25,23 +36,40 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: server.mjs deve essere IDENTICO tra main e test-preview
+      - name: main e test-preview devono essere IDENTICI su worker, CI e istruzioni
         run: |
           set -euo pipefail
-          WORKER="tools/matchpoint-browser-worker/src/server.mjs"
+          GUARDED="tools/matchpoint-browser-worker/src/server.mjs .github/workflows CLAUDE.md"
           git fetch -q origin main test-preview
-          if git diff --quiet origin/main origin/test-preview -- "$WORKER"; then
-            echo "✅ server.mjs IDENTICO tra main e test-preview — nessun drift del worker."
+
+          DRIFT=''
+          for path in $GUARDED; do
+            if git diff --quiet origin/main origin/test-preview -- "$path"; then
+              echo "✅ $path — identico"
+            else
+              echo "::error::DRIFT: $path differisce tra main e test-preview."
+              DRIFT="$DRIFT $path"
+            fi
+          done
+
+          if [ -z "$DRIFT" ]; then
+            echo "Nessun drift tra i due rami."
             exit 0
           fi
-          echo "::error::DRIFT WORKER: server.mjs differisce tra main e test-preview."
-          echo "Il worker si deploya SOLO da main (condiviso TEST+PROD): i due branch DEVONO restare allineati,"
-          echo "altrimenti una promozione può riportare in PROD un worker vecchio (perdere fix recenti)."
+
           echo "----- diffstat (main vs test-preview) -----"
-          git --no-pager diff --stat origin/main origin/test-preview -- "$WORKER" || true
+          git --no-pager diff --stat origin/main origin/test-preview -- $DRIFT || true
           echo "-------------------------------------------"
-          echo "RIMEDIO (riallinea test-preview a main; NON deploya il worker):"
+          echo "Il ramo su cui questi file vivono NON è il ramo che ne subisce gli effetti:"
+          echo "  · il worker si deploya solo da main ma è condiviso TEST+PROD;"
+          echo "  · deploy-edge-functions-test.yml scatta da test-preview, quello PROD da main;"
+          echo "  · CLAUDE.md detta le regole a chi lavora su entrambi."
+          echo ""
+          echo "RIMEDIO (riallinea test-preview a main; NON deploya nulla):"
           echo "  git checkout test-preview"
-          echo "  git checkout origin/main -- $WORKER"
-          echo "  git commit -m 'chore(worker): riallinea server.mjs a main' && git push origin test-preview"
+          for path in $DRIFT; do echo "  git checkout origin/main -- $path"; done
+          echo "  git commit -m 'chore: riallinea test-preview a main' && git push origin test-preview"
+          echo ""
+          echo "Se invece la versione giusta è quella di test-preview, portala su main con una PR:"
+          echo "la direzione va scelta, non subita."
           exit 1
