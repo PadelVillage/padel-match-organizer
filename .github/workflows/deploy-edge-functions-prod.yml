@@ -52,6 +52,21 @@ jobs:
         if: steps.changed.outputs.functions != ''
         run: |
           set -euo pipefail
+
+          # Funzioni che DEVONO conservare la verifica JWT a livello di piattaforma.
+          # `--no-verify-jwt` incondizionato la spegnerebbe al primo redeploy: queste
+          # sei oggi ce l'hanno ACCESA (deployate a mano, senza il flag) e passare
+          # per la CI le declasserebbe in silenzio — su endpoint che muovono denaro
+          # reale e non sono idempotenti. Non esiste un `--verify-jwt`: la verifica è
+          # attiva per default, quindi per conservarla si OMETTE il flag.
+          # Verificare con list_edge_functions dopo il deploy se si tocca questa lista.
+          # matchpoint-payment-write/-void sono ACTIVE solo sul progetto TEST (v8, deploy
+          # a mano del 29/06) e il loro sorgente non è mai stato in git — sta archiviato
+          # in supabase/functions/_archive/, che la CI non deploya. Sono in lista in
+          # anticipo: il giorno che qualcuno le committasse davvero, senza questa riga
+          # il primo deploy le lascerebbe aperte.
+          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto matchpoint-payment-write matchpoint-payment-void"
+
           for fn in ${{ steps.changed.outputs.functions }}; do
             if [ ! -d "supabase/functions/$fn" ]; then
               echo "::warning::Cartella supabase/functions/$fn non trovata, salto"
@@ -61,10 +76,16 @@ jobs:
               echo "::warning::supabase/functions/$fn senza index.ts (es. asset-only come parser-rules), salto"
               continue
             fi
+
+            JWT_FLAG='--no-verify-jwt'
+            case " $VERIFY_JWT_FUNCTIONS " in
+              *" $fn "*) JWT_FLAG=''; echo "::notice::$fn — verifica JWT CONSERVATA (fuori dal default)";;
+            esac
+
             echo "::group::Deploy $fn → PROD ($SUPABASE_PROJECT_REF)"
             npx supabase@latest functions deploy "$fn" \
               --project-ref "$SUPABASE_PROJECT_REF" \
-              --no-verify-jwt \
+              $JWT_FLAG \
               --use-api
             echo "::endgroup::"
           done
