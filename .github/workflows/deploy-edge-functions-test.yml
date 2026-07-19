@@ -61,7 +61,7 @@ jobs:
           # Vedi la nota estesa nel workflow PROD: `--no-verify-jwt` incondizionato
           # spegnerebbe la verifica JWT alle funzioni che oggi ce l'hanno accesa.
           # Le due liste vanno tenute allineate.
-          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto"
+          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto matchpoint-payment-write matchpoint-payment-void"
 
           for fn in ${{ steps.changed.outputs.functions }}; do
             if [ ! -f "supabase/functions/$fn/index.ts" ]; then
