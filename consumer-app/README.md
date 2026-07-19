@@ -1,5 +1,22 @@
 # App consumer — login dei soci
 
+> # ⛔️ `web/` NON è più la sorgente viva
+>
+> Dal **19/07/2026** il frontend è pubblicato su **https://soci.padelvillage.club** dal repo
+> **[`PadelVillage/padel-match-assistant`](https://github.com/PadelVillage/padel-match-assistant)**,
+> dove i file stanno nella **radice** (serve perché lo scope del service worker sia `/`).
+>
+> **Le modifiche al frontend vanno fatte lì.** I file in `web/` qui sotto sono una copia
+> rimasta indietro: toccarli non cambia nulla di ciò che vedono i soci, ed è il modo esatto
+> per ricreare il disallineamento che su questo progetto è già costato caro.
+>
+> Sono ancora qui solo perché `guard-main-prs.yml` vieta le PR verso `main` che cancellano
+> file. Vanno tolti con una cancellazione deliberata, non di straforo.
+>
+> ⚠️ **Le edge function invece restano qui** (`edge-functions/`, più
+> `consumer-identity-lookup` in `supabase/functions/`): quelle **non** sono duplicate, e
+> questo è tuttora il loro unico posto. Vedi più sotto il perché.
+
 Web app per i giocatori (vanilla zero-build multi-file). Questa cartella contiene la
 **fetta verticale del login**: telefono → nome di battesimo → email confrontata → codice a
 6 cifre → profilo agganciato. Il resto dell'app (prenotazioni, borsellino, partite aperte)

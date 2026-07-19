@@ -1,3 +1,6 @@
+// ⛔️ COPIA NON VIVA — la sorgente è il repo PadelVillage/padel-match-assistant,
+// che è quello pubblicato su https://soci.padelvillage.club. Modificare QUESTO file
+// non cambia nulla di ciò che vedono i soci. Vedi ../README.md.
 // api.js — l'unico punto dell'app che parla con la rete.
 //
 // Il browser vede tre endpoint e nient'altro. In particolare NON vede mai:
