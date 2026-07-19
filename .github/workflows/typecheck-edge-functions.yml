@@ -1,0 +1,237 @@
+name: Typecheck Edge Functions
+
+# Chiude l'unico punto in cui un errore può arrivare in PROD silenzioso.
+# Il deploy (deploy-edge-functions-*.yml) bundla con esbuild, che i tipi li ELIMINA
+# senza controllarli: un errore di tipo non fa fallire il deploy, passa e si manifesta
+# solo a runtime. `deno check` è l'unico gate possibile.
+#
+# ⚠️ DUE RADICI, due progetti Supabase diversi:
+#   - `supabase/functions/**`          → gestionale `qqbfphyslczzkxoncgex`
+#   - `consumer-app/edge-functions/**` → consumer   `aylykijfirtegyxzdwgu`
+# La seconda è stata aggiunta perché il gate la ignorava: la PR #541 ha modificato
+# `consumer-auth-start` e ha girato il solo `guard-main`, senza alcun typecheck.
+# Un gate che filtra su un percorso è cieco su tutto il resto per costruzione, e qui il
+# resto è cresciuto sotto un percorso nuovo.
+#
+# GATE DIFFERENZIALE, non assoluto. Su 30 funzioni, 11 hanno errori preesistenti (spesso
+# artefatti delle lib TS recenti, benigni a runtime). Un gate assoluto bloccherebbe ogni PR
+# che sfiora una di quelle 11 per colpa di debito altrui, e la reazione prevedibile sarebbe
+# disattivarlo. Qui si confronta invece il conteggio errori PRIMA e DOPO:
+#   - errori nuovi introdotti dalla PR  -> FAIL
+#   - stessi errori o meno di prima     -> passa (e se ne riduci, lo dice)
+# Effetto cricchetto: non si può peggiorare, e ogni funzione si ripulisce quando la tocchi.
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+      - 'consumer-app/edge-functions/**'
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Funzione da controllare — nome o percorso cartella (vuoto = tutte)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Cache dipendenze Deno
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-${{ hashFiles('supabase/functions/*/deno.json', 'consumer-app/edge-functions/*/deno.json') }}
+          restore-keys: deno-${{ runner.os }}-
+
+      - name: Determina funzioni da controllare
+        id: pick
+        env:
+          MANUAL_FN: ${{ github.event.inputs.function }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          # Le funzioni si identificano col PERCORSO della cartella, non col nome nudo:
+          # con due radici un nome non è più univoco, un percorso lo è sempre.
+          ROOTS='supabase/functions consumer-app/edge-functions'
+
+          functions_in_root() {
+            local root="$1" d n
+            for d in "$root"/*/; do
+              n=$(basename "$d")
+              case "$n" in _*) continue;; esac
+              [ -f "$d/index.ts" ] || continue
+              echo "${d%/}"
+            done
+          }
+
+          all_functions() {
+            local root
+            for root in $ROOTS; do functions_in_root "$root"; done
+          }
+
+          # Da `git diff --name-only` alle cartelle-funzione, per una qualunque radice.
+          changed_dirs() {
+            awk -v roots="$ROOTS" '
+              BEGIN { nr = split(roots, R, " ") }
+              {
+                for (i = 1; i <= nr; i++) {
+                  r = R[i]
+                  if (index($0, r "/") == 1) {
+                    rest = substr($0, length(r) + 2)
+                    s = index(rest, "/")
+                    if (s > 1) print r "/" substr(rest, 1, s - 1)
+                  }
+                }
+              }' | sort -u
+          }
+
+          FNS=''
+          if [ -n "${MANUAL_FN:-}" ]; then
+            # Si accetta sia `consumer-auth-start` sia il percorso completo della cartella.
+            if [ -d "$MANUAL_FN" ]; then
+              FNS="${MANUAL_FN%/}"
+            else
+              for root in $ROOTS; do
+                if [ -d "$root/$MANUAL_FN" ]; then FNS="$root/$MANUAL_FN"; break; fi
+              done
+            fi
+            if [ -z "$FNS" ]; then
+              echo "::error::'$MANUAL_FN' non corrisponde a nessuna funzione sotto: $ROOTS"
+              exit 1
+            fi
+          elif [ -z "${BASE_SHA:-}" ]; then
+            FNS=$(all_functions | tr '\n' ' ')
+          else
+            DIRS=$(git diff --name-only "$BASE_SHA" HEAD -- 'supabase/functions/**' 'consumer-app/edge-functions/**' \
+                   | changed_dirs || true)
+            SHARED_ROOTS=''
+            for d in $DIRS; do
+              case "${d##*/}" in
+                # Una modifica a _shared ricade su chi la importa: si controlla tutta la
+                # radice che la contiene — e SOLO quella, perché le due radici non si
+                # importano a vicenda (girano su progetti Supabase diversi).
+                _*) SHARED_ROOTS="$SHARED_ROOTS ${d%/*}" ;;
+                *)  FNS="$FNS $d" ;;
+              esac
+            done
+            for root in $(echo "$SHARED_ROOTS" | tr ' ' '\n' | grep -v '^$' | sort -u); do
+              echo "::notice::$root/_… modificato — controllo tutte le funzioni di $root"
+              FNS="$FNS $(functions_in_root "$root" | tr '\n' ' ')"
+            done
+          fi
+
+          # Stessa selezione del deploy: niente index.ts = niente deploy, quindi niente check.
+          KEEP=''
+          for d in $(echo "$FNS" | tr ' ' '\n' | grep -v '^$' | sort -u); do
+            if [ -f "$d/index.ts" ]; then
+              KEEP="$KEEP $d"
+            else
+              echo "::warning::$d senza index.ts (es. asset-only come parser-rules), salto"
+            fi
+          done
+          echo "functions=$(echo "$KEEP" | xargs echo -n)" >> "$GITHUB_OUTPUT"
+          echo "Funzioni da controllare:$KEEP"
+
+      - name: deno check differenziale
+        if: steps.pick.outputs.functions != ''
+        env:
+          NO_COLOR: '1'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          FNS: ${{ steps.pick.outputs.functions }}
+        run: |
+          # GitHub invoca la shell come `bash -e`: senza spegnerlo, il primo `deno check`
+          # che trova errori aborte lo step e tutta la logica differenziale qui sotto non
+          # verrebbe MAI eseguita — il gate si comporterebbe da gate assoluto, l'opposto
+          # di quanto voluto. L'esito di deno lo gestiamo a mano.
+          set +e
+          set -uo pipefail
+
+          # `deno check` fallisce per due motivi che vanno tenuti distinti:
+          #  - diagnostica di tipo         -> righe "TS1234 [ERROR]:", e' cio' che misuriamo
+          #  - fallimento infrastrutturale -> exit != 0 SENZA righe TS (rete, risoluzione
+          #    npm, import map rotta). Contarlo come "0 errori" farebbe passare il gate
+          #    senza aver controllato nulla: e' il falso verde che questo workflow esiste
+          #    per impedire, quindi va trattato come errore rumoroso.
+          # Restituisce "<exit_code> <numero_errori_di_tipo>".
+          run_check() {
+            local dir="$1" log="$2" rc=0 n=0
+            ( cd "$dir" && deno check --node-modules-dir=auto index.ts ) >"$log" 2>&1
+            rc=$?
+            n=$(grep -cE '^TS[0-9]+ \[ERROR\]' "$log")
+            echo "$rc ${n:-0}"
+          }
+
+          BASE_TREE=''
+          if [ -n "${BASE_SHA:-}" ]; then
+            BASE_TREE="$RUNNER_TEMP/base"
+            git worktree add --detach "$BASE_TREE" "$BASE_SHA" >/dev/null 2>&1 || BASE_TREE=''
+          fi
+
+          FAIL=0
+          for fn in $FNS; do
+            DIR="$fn"
+            SAFE=$(echo "$fn" | tr '/' '_')
+            LOG="$RUNNER_TEMP/$SAFE.head.log"
+            read -r RC NOW <<< "$(run_check "$DIR" "$LOG")"
+
+            # deno non ha potuto concludere: non e' un via libera, e' un check mancato.
+            if [ "$RC" -ne 0 ] && [ "$NOW" -eq 0 ]; then
+              echo "::error::$fn — deno check non ha potuto concludere (exit $RC) e non ha prodotto diagnostica di tipo: e' un controllo MANCATO, non un via libera"
+              sed -n '1,40p' "$LOG"
+              FAIL=1
+              continue
+            fi
+
+            if [ "$NOW" -eq 0 ]; then
+              echo "::notice::$fn — pulita"
+              continue
+            fi
+
+            # Ha errori di tipo: erano già lì prima della PR?
+            WAS=''
+            if [ -n "$BASE_TREE" ] && [ -f "$BASE_TREE/$DIR/index.ts" ]; then
+              read -r BRC BN <<< "$(run_check "$BASE_TREE/$DIR" "$RUNNER_TEMP/$SAFE.base.log")"
+              # Base non misurabile: non si puo' concludere che gli errori siano nuovi.
+              if [ "$BRC" -ne 0 ] && [ "$BN" -eq 0 ]; then
+                echo "::warning::$fn — $NOW errori di tipo, ma la versione di partenza non e' misurabile (deno exit $BRC): impossibile stabilire se siano nuovi"
+                sed -n '1,40p' "$LOG"
+                continue
+              fi
+              WAS="$BN"
+            fi
+
+            if [ -z "$WAS" ]; then
+              # Funzione nuova nella PR: nessun termine di paragone, deve nascere pulita.
+              echo "::error::$fn — funzione nuova con $NOW errori di tipo: deve nascere pulita"
+              sed -n '1,60p' "$LOG"
+              FAIL=1
+            elif [ "$NOW" -gt "$WAS" ]; then
+              echo "::error::$fn — la PR introduce errori di tipo NUOVI ($WAS prima, $NOW ora)"
+              sed -n '1,60p' "$LOG"
+              FAIL=1
+            elif [ "$NOW" -lt "$WAS" ]; then
+              echo "::notice::$fn — errori preesistenti ridotti da $WAS a $NOW, grazie"
+            else
+              echo "::warning::$fn — $NOW errori di tipo PREESISTENTI, non introdotti da questa PR (da ripulire quando tocchi questo file)"
+            fi
+          done
+
+          [ -n "$BASE_TREE" ] && git worktree remove --force "$BASE_TREE" >/dev/null 2>&1 || true
+          exit "$FAIL"
+
+      - name: Nessuna funzione toccata
+        if: steps.pick.outputs.functions == ''
+        run: echo "Nessuna Edge Function con index.ts modificata in questa PR."

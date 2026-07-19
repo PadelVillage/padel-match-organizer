@@ -1,0 +1,191 @@
+name: Deploy Edge Functions (CONSUMER)
+
+# Deploy delle Edge Function del progetto CONSUMER `aylykijfirtegyxzdwgu`
+# (nel pannello si chiama ancora "Padel Match Assistant TEST", ma porta traffico reale).
+#
+# ⚠️ NON è un gemello di deploy-edge-functions-{prod,test}.yml. Quelli deployano
+# `supabase/functions/**` sul GESTIONALE `qqbfphyslczzkxoncgex`. Le function del consumer
+# stanno apposta sotto `consumer-app/edge-functions/**`: spostarle sotto
+# `supabase/functions/` le manderebbe sul progetto sbagliato.
+#
+# Perché esiste: fino a oggi le function del consumer si deployavano A MANO. La PR #541 ha
+# modificato `consumer-auth-start` e ha girato il solo `guard-main` — nessun typecheck,
+# nessun deploy. Il codice su main e il codice vivo sul progetto potevano divergere senza
+# che nulla lo dicesse.
+#
+# ⚠️ verify_jwt: qui il default è ACCESO, l'OPPOSTO del workflow del gestionale.
+# Là `--no-verify-jwt` è incondizionato con una allowlist di eccezioni, e proprio quella
+# scelta ha spento la verifica a 4 funzioni in silenzio (PR #538). Le due function di login
+# oggi hanno verify_jwt ACCESO: il default sicuro è conservarlo e scrivere l'eccezione.
+# Non esiste un `--verify-jwt`: la verifica è attiva per default, quindi si OMETTE il flag.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'consumer-app/edge-functions/**'
+  workflow_dispatch:
+    inputs:
+      function:
+        description: 'Nome funzione da deployare (vuoto = tutte quelle toccate)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: aylykijfirtegyxzdwgu
+      FN_ROOT: consumer-app/edge-functions
+      # Funzioni PUBBLICHE per necessità: chi le chiama non ha un JWT Supabase.
+      # Oggi nessuna delle function del login lo è, quindi la lista è vuota.
+      #
+      # `whatsapp-webhook` sul progetto ha verify_jwt=false perché la chiama Meta, ma il
+      # suo sorgente NON è nel repo e questo workflow non la tocca. Se un giorno la si
+      # porta qui sotto, va aggiunta a questa lista PRIMA del primo deploy: col default
+      # acceso Meta prenderebbe 401, e dopo qualche 401 Meta disattiva il webhook.
+      PUBLIC_FUNCTIONS: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Determina funzioni da deployare
+        id: changed
+        env:
+          MANUAL_FN: ${{ github.event.inputs.function }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${MANUAL_FN:-}" ]; then
+            echo "Lista forzata da workflow_dispatch: $MANUAL_FN"
+            echo "functions=$MANUAL_FN" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- "$FN_ROOT/**" \
+            | awk -F/ -v root="$FN_ROOT" '
+                BEGIN { n = split(root, R, "/") }
+                {
+                  # Il prefisso si verifica QUI, senza fidarsi del pathspec di git:
+                  # un awk che estrae "la componente n+1" da un percorso qualunque
+                  # restituisce nomi di funzione anche per file di un altro progetto.
+                  ok = 1
+                  for (i = 1; i <= n; i++) if ($i != R[i]) { ok = 0; break }
+                  # NF > n+1 pretende che ci sia un file DENTRO la cartella-funzione.
+                  # Senza, `consumer-app/edge-functions/.gitignore` verrebbe letto come
+                  # una funzione di nome ".gitignore" — e non è teoria: la #541 ha
+                  # toccato esattamente quel file.
+                  if (ok && NF > n + 1 && $(n+1) !~ /^_/) print $(n+1)
+                }' \
+            | sort -u | tr '\n' ' ')
+          echo "Funzioni modificate: $CHANGED"
+          echo "functions=$(echo "$CHANGED" | xargs echo -n)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        if: steps.changed.outputs.functions != ''
+        env:
+          FNS: ${{ steps.changed.outputs.functions }}
+        run: |
+          set -euo pipefail
+
+          # `functions deploy` accetta solo NOMI di funzione — nessun argomento di
+          # percorso, verificato su `--help` della CLI — e cerca i sorgenti in
+          # <workdir>/supabase/functions/<slug>/. I nostri stanno apposta altrove,
+          # quindi si costruisce un albero di staging usa-e-getta e ci si punta con
+          # --workdir. Si COPIA, non si sposta: `supabase/functions/` del repo resta
+          # intatta, e nessun deploy del gestionale può pescare per sbaglio una
+          # function del consumer.
+          STAGE="$RUNNER_TEMP/consumer-project"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/supabase/functions"
+          printf 'project_id = "%s"\n' "$SUPABASE_PROJECT_REF" > "$STAGE/supabase/config.toml"
+
+          STAGED=''
+          for fn in ${FNS:-}; do
+            if [ ! -f "$FN_ROOT/$fn/index.ts" ]; then
+              echo "::warning::$FN_ROOT/$fn senza index.ts, salto"
+              continue
+            fi
+            cp -R "$FN_ROOT/$fn" "$STAGE/supabase/functions/$fn"
+            STAGED="$STAGED $fn"
+          done
+
+          if [ -z "$(echo "$STAGED" | xargs echo -n)" ]; then
+            echo "::error::Nessuna funzione con index.ts fra quelle modificate: non ho deployato nulla"
+            exit 1
+          fi
+
+          for fn in $STAGED; do
+            JWT_FLAG=''
+            case " $PUBLIC_FUNCTIONS " in
+              *" $fn "*) JWT_FLAG='--no-verify-jwt'; echo "::notice::$fn — deploy PUBBLICO (verify_jwt spento, eccezione dichiarata)";;
+            esac
+
+            echo "::group::Deploy $fn → CONSUMER ($SUPABASE_PROJECT_REF)"
+            # ⚠️ MAI aggiungere `--prune`: cancellerebbe dal progetto le function che non
+            # hanno sorgente qui — cioè `whatsapp-webhook` e `whatsapp-send`, che di
+            # sorgente nel repo non ne hanno affatto. Il default (niente prune) le lascia
+            # in pace ed è load-bearing, non una svista.
+            npx supabase@latest functions deploy "$fn" \
+              --workdir "$STAGE" \
+              --project-ref "$SUPABASE_PROJECT_REF" \
+              $JWT_FLAG \
+              --use-api
+            echo "::endgroup::"
+          done
+
+      - name: Rileggi lo stato reale dal progetto
+        if: steps.changed.outputs.functions != ''
+        env:
+          FNS: ${{ steps.changed.outputs.functions }}
+        run: |
+          set -euo pipefail
+
+          # Il deploy che esce 0 NON è la prova che verify_jwt sia come lo volevamo:
+          # è esattamente l'assunzione che ha lasciato passare la #538. Qui si rilegge lo
+          # stato vero dal Management API e si confronta con l'intenzione dichiarata.
+          ACTUAL=$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/functions") || {
+              echo "::error::Management API irraggiungibile: verify_jwt NON verificato — controllo mancato, non via libera"
+              exit 1
+            }
+
+          if ! printf '%s' "$ACTUAL" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            echo "::error::Management API: risposta inattesa, impossibile verificare verify_jwt — controllo mancato, non via libera"
+            printf '%s' "$ACTUAL" | head -c 500
+            exit 1
+          fi
+
+          FAIL=0
+          for fn in $FNS; do
+            WANT=true
+            case " $PUBLIC_FUNCTIONS " in *" $fn "*) WANT=false;; esac
+
+            GOT=$(printf '%s' "$ACTUAL" | jq -r --arg s "$fn" '.[] | select(.slug == $s) | .verify_jwt' | head -1)
+            VER=$(printf '%s' "$ACTUAL" | jq -r --arg s "$fn" '.[] | select(.slug == $s) | .version' | head -1)
+
+            if [ -z "$GOT" ]; then
+              echo "::error::$fn — dopo il deploy non risulta sul progetto $SUPABASE_PROJECT_REF"
+              FAIL=1
+            elif [ "$GOT" != "$WANT" ]; then
+              echo "::error::$fn — verify_jwt atteso $WANT, letto $GOT: il deploy ha cambiato la postura di sicurezza"
+              FAIL=1
+            else
+              echo "::notice::$fn — v$VER, verify_jwt=$GOT come atteso"
+            fi
+          done
+          exit "$FAIL"
+
+      - name: Nessuna funzione da deployare
+        if: steps.changed.outputs.functions == ''
+        run: echo "Nessuna Edge Function del consumer modificata in questo push."
