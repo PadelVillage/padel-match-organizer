@@ -32,6 +32,7 @@ type ParsedMember = {
   surname: string;
   name: string;
   phone: string;
+  phoneImportRejected: boolean;
   email: string;
   gender: string;
   birthDate: string;
@@ -222,6 +223,11 @@ function phoneDigits(value: unknown) {
 // mentre la pagina cliente mostra quello pieno. Un numero italiano plausibile dopo
 // normalizePhone ha almeno 11 cifre ("39" + ≥9): sotto questa soglia il numero in arrivo
 // non deve mai sovrascrivere un numero pieno già presente nel record.
+// La soglia ha DUE usi, e il secondo è quello che chiude il buco del primo:
+//   · qui sotto in applyMatchpointContacts, per non sovrascrivere un numero pieno — ma
+//     protegge solo chi sta GIÀ bene: chi arriva monco la prima volta non ha niente da
+//     proteggere, il monco entra e da lì è congelato (monco == monco ⇒ nessun cambiamento);
+//   · in parseMemberRow, per non farlo entrare proprio — nemmeno come chiave d'identità.
 const PLAUSIBLE_PHONE_MIN_DIGITS = 11;
 
 function emailKey(value: unknown) {
@@ -275,14 +281,27 @@ function parseMemberRow(row: JsonMap, importedAt: string): ParsedMember | null {
   const fullName = compactSpaces(`${firstName} ${surname}`);
   if (!firstName || !surname) return null;
   if (normalizeKey(fullName).includes('tpcappnoncancellare')) return null;
-  const keySource = memberCloudKey({ phone: getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']), email: getCell(row, ['E-mail', 'Email', 'Mail']), name: fullName });
+  // L'export Excel di Matchpoint a volte consegna il cellulare in notazione scientifica
+  // ("3,93385E+11"): togliendo i non-cifra resta "+39338511", dove il "11" finale è
+  // l'ESPONENTE. Non è un telefono accorciato, è un numero INVENTATO — e siccome il campo
+  // risulta pieno, il difetto è invisibile. Si scarta qui, PRIMA della chiave: memberCloudKey
+  // usa il telefono come identità del socio, quindi un numero storpiato lo fa sembrare
+  // un'altra persona e apre una scheda NUOVA invece di riagganciare la sua (è così che sono
+  // nati i doppioni di Longato e Carnevale). Scartandolo, la chiave ricade su `email:`.
+  // Il campo resta VUOTO — un socio senza telefono è visibilmente incompleto e recuperabile —
+  // e `phoneImportRejected` lo consegna al report giornaliero (anagrafica-report-telefoni).
+  const importedPhone = normalizePhone(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
+  const phoneImportRejected = !!importedPhone && phoneDigits(importedPhone).length < PLAUSIBLE_PHONE_MIN_DIGITS;
+  const phone = phoneImportRejected ? '' : importedPhone;
+  const keySource = memberCloudKey({ phone, email: getCell(row, ['E-mail', 'Email', 'Mail']), name: fullName });
   return {
     id: `matchpoint_${shortHash(keySource || fullName)}`,
     memberId: '',
     firstName,
     surname,
     name: fullName,
-    phone: normalizePhone(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile'])),
+    phone,
+    phoneImportRejected,
     email: clean(getCell(row, ['E-mail', 'Email', 'Mail'])),
     gender: genderFromValue(getCell(row, ['Sesso', 'Genere', 'Gender']), firstName),
     birthDate: parseDateValue(getCell(row, ['Data di nascita', 'Data nascita', 'Nascita', 'Birth Date', 'Birthday', 'DOB'])),
@@ -472,6 +491,13 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
     surname,
     name: compactSpaces(`${firstName} ${surname}`),
     phone,
+    // Marcatore letto dal report giornaliero. Vale solo se il record RESTA senza un numero
+    // usabile: se in archivio c'è già quello pieno (guardia `phoneSuspectKept`, caso Aprea e
+    // Comes) non c'è niente da segnalare, e marcarlo comunque riempirebbe la mail di soci a
+    // posto — il report controlla questo campo PRIMA del telefono, quindi vincerebbe lui.
+    // Si azzera da solo il giorno che Matchpoint torna a mandare il numero buono.
+    phoneImportRejected: imported.phoneImportRejected === true
+      && phoneDigits(phone).length < PLAUSIBLE_PHONE_MIN_DIGITS,
     email,
     gender,
     birthDate: existing.birthDate || imported.birthDate || '',
